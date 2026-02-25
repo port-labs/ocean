@@ -37,7 +37,6 @@ from github.core.exporters.pull_request_exporter import (
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
-from github.helpers.dlq import RateLimitDLQ, with_dlq_on_rate_limit
 from github.core.exporters.release_exporter import RestReleaseExporter
 from github.core.exporters.tag_exporter import RestTagExporter
 from github.core.exporters.dependabot_exporter import RestDependabotAlertExporter
@@ -100,7 +99,12 @@ from integration import (
     GithubWorkflowConfig,
     GithubWorkflowRunConfig,
 )
-from github.core.options import FileContentOptions
+from github.enrichments.included_files import (
+    IncludedFilesEnricher,
+    FileIncludedFilesStrategy,
+    FolderIncludedFilesStrategy,
+    RepositoryIncludedFilesStrategy,
+)
 
 MAX_CONCURRENT_REPOS = 10
 
@@ -173,54 +177,6 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield organizations
 
 
-async def _enrich_repo_with_included_files(
-    rest_client: Any,
-    repo: dict[str, Any],
-    file_paths: list[str],
-) -> dict[str, Any]:
-    """Enrich a repository dict with __includedFiles from the given file paths."""
-    repo_name = repo["name"]
-    organization = repo["owner"]["login"]
-    default_branch = repo.get("default_branch")
-    included: dict[str, Any] = {}
-    file_exporter = RestFileExporter(rest_client)
-
-    for file_path in file_paths:
-        try:
-            response = await file_exporter.get_resource(
-                FileContentOptions(
-                    organization=organization,
-                    repo_name=repo_name,
-                    file_path=file_path,
-                    branch=default_branch,
-                )
-            )
-            included[file_path] = response.get("content") if response else None
-        except Exception as e:
-            logger.debug(
-                f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
-            )
-            included[file_path] = None
-
-    repo["__includedFiles"] = included
-    return repo
-
-
-async def _enrich_repos_batch_with_included_files(
-    rest_client: Any,
-    repositories: list[dict[str, Any]],
-    file_paths: list[str],
-) -> list[dict[str, Any]]:
-    """Enrich a batch of repositories with included files."""
-    import asyncio
-
-    tasks = [
-        _enrich_repo_with_included_files(rest_client, repo, file_paths)
-        for repo in repositories
-    ]
-    return list(await asyncio.gather(*tasks))
-
-
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories across organizations."""
@@ -232,6 +188,14 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_config = cast(GithubRepositoryConfig, event.resource_config)
     included_relationships = repo_config.selector.include
     included_files = repo_config.selector.included_files or []
+    included_files_enricher = (
+        IncludedFilesEnricher(
+            client=rest_client,
+            strategy=RepositoryIncludedFilesStrategy(included_files=included_files),
+        )
+        if included_files
+        else None
+    )
 
     dlq = RateLimitDLQ()
 
@@ -258,10 +222,8 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for org in organizations
         )
         async for repositories in stream_async_iterators_tasks(*tasks):
-            if included_files:
-                repositories = await _enrich_repos_batch_with_included_files(
-                    rest_client, repositories, included_files
-                )
+            if included_files_enricher:
+                repositories = await included_files_enricher.enrich_batch(repositories)
             yield repositories
 
     if not dlq.is_empty:
@@ -990,104 +952,6 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield batch
 
 
-async def _enrich_folder_with_included_files(
-    rest_client: Any,
-    folder: dict[str, Any],
-    file_paths: list[str],
-) -> dict[str, Any]:
-    """Enrich a folder entity with __includedFiles from the given file paths."""
-    repo = folder.get("__repository", {})
-    organization = folder.get("__organization", "")
-    repo_name = repo.get("name", "")
-    default_branch = repo.get("default_branch")
-    included: dict[str, Any] = {}
-    file_exporter = RestFileExporter(rest_client)
-
-    for file_path in file_paths:
-        try:
-            response = await file_exporter.get_resource(
-                FileContentOptions(
-                    organization=organization,
-                    repo_name=repo_name,
-                    file_path=file_path,
-                    branch=default_branch,
-                )
-            )
-            included[file_path] = response.get("content") if response else None
-        except Exception as e:
-            logger.debug(
-                f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
-            )
-            included[file_path] = None
-
-    folder["__includedFiles"] = included
-    return folder
-
-
-async def _enrich_folders_batch_with_included_files(
-    rest_client: Any,
-    folders: list[dict[str, Any]],
-    file_paths: list[str],
-) -> list[dict[str, Any]]:
-    """Enrich a batch of folders with included files."""
-    import asyncio
-
-    tasks = [
-        _enrich_folder_with_included_files(rest_client, folder, file_paths)
-        for folder in folders
-    ]
-    return list(await asyncio.gather(*tasks))
-
-
-async def _enrich_file_entity_with_included_files(
-    rest_client: Any,
-    file_entity: dict[str, Any],
-    file_paths: list[str],
-) -> dict[str, Any]:
-    """Enrich a file entity with __includedFiles from the given file paths."""
-    organization = file_entity.get("organization", "")
-    repo = file_entity.get("repository", {})
-    repo_name = repo.get("name", "") if isinstance(repo, dict) else ""
-    branch = file_entity.get("branch")
-    included: dict[str, Any] = {}
-    file_exporter = RestFileExporter(rest_client)
-
-    for file_path in file_paths:
-        try:
-            response = await file_exporter.get_resource(
-                FileContentOptions(
-                    organization=organization,
-                    repo_name=repo_name,
-                    file_path=file_path,
-                    branch=branch,
-                )
-            )
-            included[file_path] = response.get("content") if response else None
-        except Exception as e:
-            logger.debug(
-                f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
-            )
-            included[file_path] = None
-
-    file_entity["__includedFiles"] = included
-    return file_entity
-
-
-async def _enrich_file_entities_batch_with_included_files(
-    rest_client: Any,
-    file_entities: list[dict[str, Any]],
-    file_paths: list[str],
-) -> list[dict[str, Any]]:
-    """Enrich a batch of file entities with included files."""
-    import asyncio
-
-    tasks = [
-        _enrich_file_entity_with_included_files(rest_client, fe, file_paths)
-        for fe in file_entities
-    ]
-    return list(await asyncio.gather(*tasks))
-
-
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all folders in specified repositories."""
@@ -1097,7 +961,23 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     folder_exporter = RestFolderExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
-    included_files = selector.included_files or []
+    should_enrich_with_included_files = any(
+        folder_sel.included_files for folder_sel in selector.folders
+    )
+    should_enrich_with_included_files = should_enrich_with_included_files or bool(
+        selector.included_files
+    )
+    included_files_enricher = (
+        IncludedFilesEnricher(
+            client=rest_client,
+            strategy=FolderIncludedFilesStrategy(
+                folder_selectors=selector.folders,
+                global_included_files=selector.included_files,
+            ),
+        )
+        if should_enrich_with_included_files
+        else None
+    )
 
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
@@ -1117,10 +997,8 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         dlq,
         "folders",
     ):
-        if included_files:
-            folders = await _enrich_folders_batch_with_included_files(
-                rest_client, folders, included_files
-            )
+        if included_files_enricher:
+            folders = await included_files_enricher.enrich_batch(folders)
         yield folders
 
     if not dlq.is_empty:
@@ -1141,7 +1019,17 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     config = cast(GithubFileResourceConfig, event.resource_config)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
-    included_files = config.selector.included_files or []
+    should_enrich_with_included_files = bool(config.selector.included_files)
+    included_files_enricher = (
+        IncludedFilesEnricher(
+            client=rest_client,
+            strategy=FileIncludedFilesStrategy(
+                included_files=config.selector.included_files,
+            ),
+        )
+        if should_enrich_with_included_files
+        else None
+    )
 
     pattern_builder = FilePatternMappingBuilder(
         org_exporter=org_exporter,
@@ -1157,10 +1045,8 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         dlq,
         "files",
     ):
-        if included_files:
-            file_results = await _enrich_file_entities_batch_with_included_files(
-                rest_client, file_results, included_files
-            )
+        if included_files_enricher:
+            file_results = await included_files_enricher.enrich_batch(file_results)
         yield file_results
 
     if not dlq.is_empty:

@@ -1,3 +1,4 @@
+from wcmatch import glob
 from enum import StrEnum
 from typing import (
     Any,
@@ -17,6 +18,9 @@ from port_ocean.utils import cache
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
+
+
+BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE
 
 
 class GithubClientType(StrEnum):
@@ -215,3 +219,8 @@ def has_exhausted_rate_limit_headers(headers: Any) -> bool:
         headers.get("x-ratelimit-remaining") == "0"
         and headers.get("x-ratelimit-reset") is not None
     )
+
+
+def matches_glob_pattern(path: str, pattern: str, flags: int = 0) -> bool:
+    combined_flags = BASE_GLOB_FLAGS | flags
+    return glob.globmatch(path, pattern, flags=combined_flags)
