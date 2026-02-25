@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.48 (2026-02-25)
+
+
+### Improvements
+
+- Added Dead Letter Queue (DLQ) mechanism for rate-limited requests (429/403) across all resync kinds — failed operations are deferred and retried at the end of each resync after the rate-limit window recovers
+
+
 ## 5.0.47 (2026-02-25)
 
 
