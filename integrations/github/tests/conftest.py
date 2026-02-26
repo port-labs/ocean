@@ -36,6 +36,13 @@ TEST_INTEGRATION_CONFIG: Dict[str, Any] = {
 
 
 @pytest.fixture(autouse=True)
+def _fast_async_sleep() -> Generator[None, None, None]:
+    """Replace asyncio.sleep with a no-op so client-level retries run instantly."""
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
     """Mock the PortOcean context to prevent initialization errors."""
 

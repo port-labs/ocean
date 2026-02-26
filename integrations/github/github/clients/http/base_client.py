@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
+import asyncio
+
 import httpx
 from httpx import Response
 
@@ -10,6 +12,10 @@ from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.limiter import GitHubRateLimiter
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
+from github.clients.http.client_retry_handler import (
+    ClientRetryHandler,
+    ClientRetryConfig,
+)
 
 
 if TYPE_CHECKING:
@@ -31,6 +37,7 @@ class AbstractGithubClient(ABC):
         self.rate_limiter: GitHubRateLimiter = GitHubRateLimiterRegistry.get_limiter(
             host=github_host, config=self.rate_limiter_config
         )
+        self._retry_handler = ClientRetryHandler(ClientRetryConfig())
 
     _DEFAULT_IGNORED_ERRORS = [
         IgnoredError(
@@ -38,9 +45,6 @@ class AbstractGithubClient(ABC):
             message="Unauthorized access to endpoint — authentication required or token invalid",
             type="UNAUTHORIZED",
         ),
-        # Note: While GitHub documentation mentions 403 as a rate limit code,
-        # in practice 403s are tied to permissions rather than rate limiting.
-        # Therefore we ignore 403s rather than retrying them as we do for rate limit errors.
         IgnoredError(
             status=403,
             message="Forbidden access to endpoint — insufficient permissions",
@@ -95,8 +99,63 @@ class AbstractGithubClient(ABC):
         ignore_default_errors: bool = True,
         authenticator_headers_params: Optional[Dict[str, Any]] = None,
     ) -> Response:
-        """Make a request to the GitHub API with GitHub rate limiting and error handling."""
+        """Make a request to the GitHub API with retries, rate limiting and error handling.
 
+        The retry loop runs *outside* the rate-limiter semaphore so that
+        back-off sleeps (token refresh, rate-limit resets) do not block other
+        coroutines from making progress.
+        """
+        handler = self._retry_handler
+        last_error: Optional[httpx.HTTPStatusError] = None
+
+        for attempt in range(handler.config.max_attempts):
+            try:
+                return await self._send_single_request(
+                    resource=resource,
+                    params=params,
+                    method=method,
+                    json_data=json_data,
+                    authenticator_headers_params=authenticator_headers_params,
+                )
+            except httpx.HTTPStatusError as e:
+                last_error = e
+                is_last_attempt = attempt >= handler.config.max_attempts - 1
+
+                if (
+                    handler.is_retryable(e.response, self.rate_limiter)
+                    and not is_last_attempt
+                ):
+                    handler.prepare_retry(
+                        e.response, self.authenticator, attempt, resource
+                    )
+                    sleep_time = handler.calculate_sleep(attempt, e.response)
+                    logger.info(
+                        f"[GitHubClient] sleeping {sleep_time:.1f}s before retry "
+                        f"{attempt + 2}/{handler.config.max_attempts} for {method} {resource}"
+                    )
+                    await asyncio.sleep(sleep_time)
+                    continue
+
+                if self.rate_limiter.is_rate_limit_response(e.response):
+                    raise
+
+                if self._should_ignore_error(
+                    e, resource, method, ignored_errors, ignore_default_errors
+                ):
+                    return Response(200, content=b"{}")
+                raise
+
+        raise last_error  # type: ignore[misc]
+
+    async def _send_single_request(
+        self,
+        resource: str,
+        params: Optional[Dict[str, Any]],
+        method: str,
+        json_data: Optional[Dict[str, Any]],
+        authenticator_headers_params: Optional[Dict[str, Any]],
+    ) -> Response:
+        """Execute one request inside the rate-limiter semaphore."""
         async with self.rate_limiter:
             try:
                 response = await self.authenticator.client.request(
@@ -107,38 +166,10 @@ class AbstractGithubClient(ABC):
                     headers=await self.headers(**(authenticator_headers_params or {})),
                 )
                 response.raise_for_status()
-
                 logger.debug(f"Successfully fetched {method} {resource}")
                 return response
 
-            except httpx.HTTPStatusError as e:
-                response = e.response
-                is_rate_limit = self.rate_limiter.is_rate_limit_response(response)
-                rate_remaining = response.headers.get("x-ratelimit-remaining", "?")
-                rate_limit = response.headers.get("x-ratelimit-limit", "?")
-                rate_reset = response.headers.get("x-ratelimit-reset", "?")
-                github_request_id = response.headers.get(
-                    "x-github-request-id", "unknown"
-                )
-
-                logger.error(
-                    f"[GitHubClient] {method} {resource} failed — "
-                    f"status={response.status_code}, is_rate_limit={is_rate_limit}, "
-                    f"rate_limit={rate_remaining}/{rate_limit}, reset={rate_reset}, "
-                    f"github_request_id={github_request_id}"
-                )
-
-                if not is_rate_limit:
-                    if self._should_ignore_error(
-                        e, resource, method, ignored_errors, ignore_default_errors
-                    ):
-                        return Response(200, content=b"{}")
-
-                logger.error(
-                    f"[GitHubClient] raising HTTPStatusError for {method} {resource}: "
-                    f"status={response.status_code}, response_body={response.text[:500]}"
-                )
-
+            except httpx.HTTPStatusError:
                 raise
 
             except httpx.HTTPError as e:
@@ -187,14 +218,5 @@ class AbstractGithubClient(ABC):
         method: str = "GET",
         ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Send a paginated request to GitHub API and yield results.
-
-        Args:
-            resource: The API resource path
-            params: Query parameters or variables
-            method: HTTP method
-
-        Yields:
-            Lists of items from paginated responses
-        """
+        """Send a paginated request to GitHub API and yield results."""
         pass

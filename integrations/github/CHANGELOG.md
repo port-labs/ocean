@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.49 (2026-02-26)
+
+
+### Improvements
+
+- Moved HTTP retry logic from transport level to client level so the rate-limiter semaphore is released between retry attempts, preventing resyncs from appearing stuck on 401/403 errors
+- Added `ClientRetryHandler` with exponential backoff, jitter, and rate-limit header support (x-ratelimit-reset, retry-after)
+- 401 responses now trigger token cache invalidation before retrying
+- Rate-limit errors (403/429) always propagate after retry exhaustion for DLQ handling
+- Set transport max_attempts to 1 (pass-through) since retries are now handled at the client level
+
 ## 5.0.48 (2026-02-25)
 
 
