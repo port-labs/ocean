@@ -16,7 +16,10 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from initialize_client import get_client
 from http_server.overrides import HttpServerResourceConfig
 from http_server.client import HttpServerClient
-from http_server.helpers.endpoint_resolver import resolve_dynamic_endpoints
+from http_server.helpers.endpoint_resolver import (
+    resolve_dynamic_endpoints,
+    resolve_dynamic_query_params,
+)
 from http_server.helpers.endpoint_cache import (
     get_endpoint_cache,
     initialize_endpoint_cache,
@@ -143,25 +146,29 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = resource_config.selector
 
     method = getattr(selector, "method", "GET")
-    query_params = getattr(selector, "query_params", None) or {}
+    query_params = getattr(selector, "query_params", None)
+    dynamic_query_param = getattr(selector, "dynamic_query_param", None)
     headers = getattr(selector, "headers", None) or {}
     body = getattr(selector, "body", None)
     data_path = getattr(selector, "data_path", None) or "."
 
-    fetch_fn = functools.partial(
-        fetch_endpoint_data,
-        http_client=http_client,
-        method=method,
-        query_params=query_params,
-        headers=headers,
-        body=body,
-        data_path=data_path,
-    )
+    async for resolved_query_params in resolve_dynamic_query_params(
+        query_params, dynamic_query_param
+    ):
+        async for endpoint_batch in resolve_dynamic_endpoints(selector, kind):
+            fetch_fn = functools.partial(
+                fetch_endpoint_data,
+                http_client=http_client,
+                method=method,
+                query_params=resolved_query_params,
+                headers=headers,
+                body=body,
+                data_path=data_path,
+            )
 
-    async for endpoint_batch in resolve_dynamic_endpoints(selector, kind):
-        async for batch in process_endpoints_concurrently(
-            endpoints=endpoint_batch,
-            fetch_fn=fetch_fn,
-            concurrency_limit=DEFAULT_CONCURRENCY_LIMIT,
-        ):
-            yield batch
+            async for batch in process_endpoints_concurrently(
+                endpoints=endpoint_batch,
+                fetch_fn=fetch_fn,
+                concurrency_limit=DEFAULT_CONCURRENCY_LIMIT,
+            ):
+                yield batch
