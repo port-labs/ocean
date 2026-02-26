@@ -190,21 +190,32 @@ class SnykClient:
             yield enrich_batch_with_org(projects, org)
 
     async def _process_target(
-        self, org: dict[str, Any], target_data: dict[str, Any]
+        self,
+        org: dict[str, Any],
+        target_data: dict[str, Any],
+        attach_project_data: bool = False,
     ) -> dict[str, Any]:
+        if not attach_project_data:
+            return target_data
+
+        target_data.setdefault("__projects", [])
+
         async for projects in self.get_paginated_projects(org):
-            target_data.setdefault("__projects", []).extend(
+            target_data["__projects"].extend(
                 self._get_projects_by_target(projects, target_data["id"])
             )
         return target_data
 
     async def get_single_target_by_project_id(
-        self, org: dict[str, Any], project_id: str
+        self, org: dict[str, Any], project_id: str, attach_project_data: bool = False
     ) -> dict[str, Any]:
         project = await self.get_single_project(org["id"], project_id)
         target_id = (
             project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
         )
+
+        if target_id is None:
+            return {}
 
         url = f"{self.rest_api_url}/orgs/{org['id']}/targets/{target_id}"
 
@@ -217,23 +228,34 @@ class SnykClient:
 
         target = response["data"]
 
-        await self._process_target(org, target)
+        await self._process_target(org, target, attach_project_data=attach_project_data)
         return target
 
     async def get_paginated_targets(
-        self, org: dict[str, Any]
+        self,
+        org: dict[str, Any],
+        attach_project_data: bool = False,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Fetching paginated targets for organization: {org['id']}")
 
         url = f"/orgs/{org['id']}/targets"
         query_params = {"version": self.snyk_api_version}
+
         async for targets in self._get_paginated_resources(
             url_path=url, query_params=query_params
         ):
-            targets_with_project_data = await asyncio.gather(
-                *[self._process_target(org, target_data) for target_data in targets]
-            )
-            yield targets_with_project_data
+            if attach_project_data:
+                targets_with_project_data = await asyncio.gather(
+                    *[
+                        self._process_target(
+                            org, target_data, attach_project_data=attach_project_data
+                        )
+                        for target_data in targets
+                    ]
+                )
+                yield targets_with_project_data
+            else:
+                yield targets
 
     @cache_coroutine_result()
     async def get_single_project(self, org_id: str, project_id: str) -> dict[str, Any]:

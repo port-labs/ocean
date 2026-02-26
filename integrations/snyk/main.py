@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any, cast
+from integration import TargetResourceConfig
 from loguru import logger
 from IntegrationKind import IntegrationKind
 from initialize_client import init_client
@@ -35,8 +36,15 @@ async def on_organization_resync(kind: str) -> list[dict[str, Any]]:
 @ocean.on_resync(IntegrationKind.TARGET)
 async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
+    selector = cast(TargetResourceConfig, event.resource_config).selector
+
     all_organizations = await snyk_client.get_organizations_in_groups()
-    tasks = (snyk_client.get_paginated_targets(org) for org in all_organizations)
+    tasks = (
+        snyk_client.get_paginated_targets(
+            org, attach_project_data=selector.attach_project_data
+        )
+        for org in all_organizations
+    )
     async for targets in stream_async_iterators_tasks(*tasks):
         logger.debug(f"Received batch with {len(targets)} targets")
         yield targets
