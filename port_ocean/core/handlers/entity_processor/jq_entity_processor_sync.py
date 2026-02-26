@@ -71,8 +71,6 @@ class JQEntityProcessorSync:
             raise EntityProcessorException(
                 f"Expected boolean value, got value:{value} of type: {type(value)} instead"
             )
-        except EntityProcessorException:
-            raise
         except ValueError as exc:
             logger.warning(
                 f"Selector query failed for pattern '{pattern}', treating as false. Error: {exc}"
