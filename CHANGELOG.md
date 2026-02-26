@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.37.4 (2026-02-25)
+
+### Bug fixes
+
+- Fixed JQ selector evaluation throwing exceptions on type errors instead of returning false. When a selector like `.content.openapi != null` encounters data where `.content` is a string (not an object), it now gracefully returns false with a warning log instead of failing the entire entity calculation and skipping the delete phase.
+
 ## 0.37.3 (2026-02-24)
 
 ### Improvements
