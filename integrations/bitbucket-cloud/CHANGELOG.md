@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.4.24 (2026-02-23)
+## 0.4.25 (2026-02-25)
 
 
 ### Improvements
 
-- Moved enrich utility functions from main.py to dedicated helpers/enrich_utils.py module
+- Bumped ocean version to ^0.37.3
+
+
+## 0.4.24 (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
 
 
 ## 0.4.23 (2026-02-22)

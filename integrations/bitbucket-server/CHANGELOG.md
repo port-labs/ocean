@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.127-beta (2026-02-25)
+
+
+### Bug Fixes
+
+- Fixed bug where project filter regex is None though the selector was set
+
+
+## 0.1.126-beta (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+## 0.1.125-beta (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
 ## 0.1.124-beta (2026-02-22)
 
 
