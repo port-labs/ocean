@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.48 (2026-02-25)
+
+
+### Features
+
+- Added support for resync for `health-assessment` kind
+- Added support for live events for `health-assessment` kind
+
+
 ## 0.2.47 (2026-02-25)
 
 
@@ -486,7 +495,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.29.2
->>>>>>> origin
 
 
 ## 0.1.201 (2025-11-06)

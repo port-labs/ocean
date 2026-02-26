@@ -9,13 +9,34 @@ from port_ocean.context.event import event
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils import http_async_client
 
+HEALTH_ASSESSMENT_TRIGGER_SCOPE = "assessment"
+
+
+class HealthAssessmentEvents(StrEnum):
+    DRIFTED = "assessment:drifted"
+    CHECK_FAILURE = "assessment:check_failure"
+    FAILED = "assessment:failed"
+
+
+class WorkspaceRunEvents(StrEnum):
+    APPLYING = "run:applying"
+    COMPLETED = "run:completed"
+    CREATED = "run:created"
+    ERRORED = "run:errored"
+    NEEDS_ATTENTION = "run:needs_attention"
+    PLANNING = "run:planning"
+
+
 TERRAFORM_WEBHOOK_EVENTS = [
-    "run:applying",
-    "run:completed",
-    "run:created",
-    "run:errored",
-    "run:needs_attention",
-    "run:planning",
+    WorkspaceRunEvents.APPLYING,
+    WorkspaceRunEvents.COMPLETED,
+    WorkspaceRunEvents.CREATED,
+    WorkspaceRunEvents.ERRORED,
+    WorkspaceRunEvents.NEEDS_ATTENTION,
+    WorkspaceRunEvents.PLANNING,
+    HealthAssessmentEvents.DRIFTED,
+    HealthAssessmentEvents.CHECK_FAILURE,
+    HealthAssessmentEvents.FAILED,
 ]
 
 
@@ -49,7 +70,11 @@ class TerraformClient:
         json_data: Optional[dict[str, Any]] = None,
         follow_redirects: bool = False,
     ) -> dict[str, Any]:
-        url = endpoint if urlparse(endpoint).scheme else f"{self.api_url}/{endpoint}"
+        url = (
+            endpoint
+            if urlparse(endpoint).scheme
+            else f"{self.api_url}/{endpoint.lstrip('/')}"
+        )
 
         try:
             async with self.rate_limiter:
@@ -292,3 +317,23 @@ class TerraformClient:
                 for state_version in state_versions
             ]
             yield list(await asyncio.gather(*tasks))
+
+    async def process_workspace_runs(
+        self, workspace: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for run_batch in self.get_paginated_runs_for_workspace(workspace["id"]):
+            if run_batch:
+                yield run_batch
+
+    async def get_current_health_assessment_for_workspace(
+        self,
+        workspace_id: str,
+    ) -> dict[str, Any]:
+        assessment = await self.send_api_request(
+            f"workspaces/{workspace_id}/current-assessment-result"
+        )
+        return assessment.get("data", {})
+
+    async def get_single_health_assessment(self, assessment_id: str) -> dict[str, Any]:
+        assessment = await self.send_api_request(f"assessment-results/{assessment_id}")
+        return assessment.get("data", {})

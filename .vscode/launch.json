@@ -361,6 +361,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/terraform-cloud",
+      "envFile": "${workspaceFolder}/integrations/terraform-cloud/.env",
+      "justMyCode": true,
+      "name": "Run terraform-cloud integration",
+      "program": "${workspaceFolder}/integrations/terraform-cloud/debug.py",
+      "python": "${workspaceFolder}/integrations/terraform-cloud/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/custom",
       "envFile": "${workspaceFolder}/integrations/custom/examples/config-no-auth.env",
       "justMyCode": true,
