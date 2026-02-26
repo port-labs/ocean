@@ -440,7 +440,6 @@ class GitLabClient:
                 if result := await completed_task:
                     yield result
 
-    @cache_iterator_result()
     async def get_repository_tree(
         self,
         project: dict[str, Any],
