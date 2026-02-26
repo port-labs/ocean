@@ -3,7 +3,6 @@ from dataclasses import asdict
 from typing import cast
 
 from aiolimiter import AsyncLimiter
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
 from client import BitbucketClient
@@ -38,12 +37,6 @@ def init_client() -> BitbucketClient:
 def _create_config() -> BitbucketClientConfig:
     integration_config = ocean.integration_config
 
-    project_filter_regex = None
-    if event.resource_config and hasattr(event.resource_config, "selector"):
-        project_filter_regex = getattr(
-            event.resource_config.selector, "projectFilterRegex", None
-        )
-
     return BitbucketClientConfig(
         username=integration_config["bitbucket_username"],
         password=integration_config["bitbucket_password"],
@@ -55,5 +48,4 @@ def _create_config() -> BitbucketClientConfig:
         ),
         rate_limit=int(integration_config["bitbucket_rate_limit_quota"]),
         rate_limit_window=int(integration_config["bitbucket_rate_limit_window"]),
-        project_filter_regex=project_filter_regex,
     )

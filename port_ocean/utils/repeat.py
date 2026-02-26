@@ -68,7 +68,9 @@ def repeat_every(
                         formatted_exception = "".join(
                             format_exception(type(exc), exc, exc.__traceback__)
                         )
-                        logger.error(formatted_exception)
+                        logger.bind(traceback=formatted_exception).error(
+                            f"Repeated task failed: {str(exc)}"
+                        )
                         if raise_exceptions:
                             raise exc
                     await asyncio.sleep(seconds)
