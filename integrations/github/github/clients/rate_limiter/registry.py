@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 from threading import Lock
 
 
@@ -20,3 +20,12 @@ class GitHubRateLimiterRegistry:
             if key not in cls._instances:
                 cls._instances[key] = GitHubRateLimiter(config)
             return cls._instances[key]
+
+    @classmethod
+    def get_limiter_if_exists(
+        cls, host: str, api_type: str
+    ) -> Optional[GitHubRateLimiter]:
+        """Return an existing rate limiter if one was created for this host and api_type."""
+        key = f"{host}:{api_type}"
+        with cls._lock:
+            return cls._instances.get(key)
