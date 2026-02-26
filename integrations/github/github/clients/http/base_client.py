@@ -121,7 +121,10 @@ class AbstractGithubClient(ABC):
                 last_error = e
                 is_last_attempt = attempt >= handler.config.max_attempts - 1
 
-                if handler.is_retryable(e.response, self.rate_limiter) and not is_last_attempt:
+                if (
+                    handler.is_retryable(e.response, self.rate_limiter)
+                    and not is_last_attempt
+                ):
                     handler.prepare_retry(
                         e.response, self.authenticator, attempt, resource
                     )
@@ -133,8 +136,6 @@ class AbstractGithubClient(ABC):
                     await asyncio.sleep(sleep_time)
                     continue
 
-                # Rate-limit errors always propagate so higher-level
-                # mechanisms (e.g. the DLQ) can handle them.
                 if self.rate_limiter.is_rate_limit_response(e.response):
                     raise
 
@@ -162,9 +163,7 @@ class AbstractGithubClient(ABC):
                     url=resource,
                     params=params,
                     json=json_data,
-                    headers=await self.headers(
-                        **(authenticator_headers_params or {})
-                    ),
+                    headers=await self.headers(**(authenticator_headers_params or {})),
                 )
                 response.raise_for_status()
                 logger.debug(f"Successfully fetched {method} {resource}")
