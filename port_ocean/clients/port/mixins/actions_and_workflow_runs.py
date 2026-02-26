@@ -57,7 +57,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         if self._is_wf_node_run(run):
             # API expects "WARN" not "WARNING"
             log_level: Literal["INFO", "WARN", "ERROR", "DEBUG"] = (
-                "WARN" if level == "WARNING" else level  # type: ignore[assignment]
+                "WARN" if level == "WARNING" else level
             )
             await self.post_wf_node_run_logs(
                 run.id,
