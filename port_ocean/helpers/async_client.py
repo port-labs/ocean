@@ -2,6 +2,7 @@ from typing import Any, Type
 
 import httpx
 from loguru import logger
+from port_ocean.context.ocean import ocean
 
 from port_ocean.helpers.ip_blocker import IPBlockerTransport
 from port_ocean.helpers.retry import RetryTransport, RetryConfig
@@ -33,7 +34,7 @@ class OceanAsyncClient(httpx.AsyncClient):
     def _wrap_with_ip_blocker_if_needed(
         self, transport: httpx.AsyncBaseTransport
     ) -> httpx.AsyncBaseTransport:
-        if not self._ip_blocker:
+        if not self._ip_blocker and not ocean.app.is_saas():
             return transport
         return IPBlockerTransport(wrapped=transport)
 
