@@ -24,7 +24,10 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(BitbucketGenericResourceConfig, event.resource_config).selector
     logger.info(f"Resyncing projects with filter: {selector.projects}")
     client = init_client()
-    async for project_batch in client.get_projects(projects_filter=selector.projects):
+    async for project_batch in client.get_projects(
+        projects_filter=selector.projects,
+        project_filter_regex=selector.projectFilterRegex,
+    ):
         logger.info(f"Received {len(project_batch)} projects")
         yield project_batch
 
@@ -34,7 +37,10 @@ async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(BitbucketGenericResourceConfig, event.resource_config).selector
     logger.info(f"Resyncing repositories for projects: {selector.projects}")
     client = init_client()
-    async for repo_batch in client.get_repositories(projects_filter=selector.projects):
+    async for repo_batch in client.get_repositories(
+        projects_filter=selector.projects,
+        project_filter_regex=selector.projectFilterRegex,
+    ):
         logger.info(f"Received {len(repo_batch)} repositories")
         yield repo_batch
 
@@ -45,7 +51,9 @@ async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Resyncing pull requests with state: {selector.state}")
     client = init_client()
     async for pr_batch in client.get_pull_requests(
-        projects_filter=selector.projects, state=selector.state
+        projects_filter=selector.projects,
+        state=selector.state,
+        project_filter_regex=selector.projectFilterRegex,
     ):
         logger.info(f"Received {len(pr_batch)} pull requests")
         yield pr_batch
