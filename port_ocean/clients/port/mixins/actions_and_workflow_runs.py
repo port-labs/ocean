@@ -6,6 +6,7 @@ from port_ocean.clients.port.mixins.workflow_nodes import WorkflowNodesClientMix
 from port_ocean.core.models import (
     ActionRun,
     WorkflowNodeRun,
+    WorkflowNodeRunLog,
     RunStatus,
     WorkflowNodeRunStatus,
     WorkflowNodeRunResult,
@@ -55,10 +56,12 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
     ) -> None:
         if self._is_wf_node_run(run):
             # API expects "WARN" not "WARNING"
-            log_level = "WARN" if level == "WARNING" else level
-            await self.patch_wf_node_run(
+            log_level: Literal["INFO", "WARN", "ERROR", "DEBUG"] = (
+                "WARN" if level == "WARNING" else level
+            )
+            await self.post_wf_node_run_logs(
                 run.id,
-                {"logs": [{"logLevel": log_level, "log": message, "tags": {}}]},
+                [WorkflowNodeRunLog(level=log_level, message=message)],
                 should_raise=should_raise,
             )
         else:
@@ -71,12 +74,16 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         should_raise: bool = False,
     ) -> None:
         if self._is_wf_node_run(run):
+            await self.post_wf_node_run_logs(
+                run.id,
+                [WorkflowNodeRunLog(level="ERROR", message=error_summary)],
+                should_raise=should_raise,
+            )
             await self.patch_wf_node_run(
                 run.id,
                 {
                     "status": WorkflowNodeRunStatus.COMPLETED,
                     "result": WorkflowNodeRunResult.FAILED,
-                    "logs": [{"logLevel": "ERROR", "log": error_summary, "tags": {}}],
                 },
                 should_raise=should_raise,
             )
@@ -141,19 +148,21 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 if success
                 else WorkflowNodeRunResult.FAILED
             )
-            payload: dict[str, Any] = {
-                "status": WorkflowNodeRunStatus.COMPLETED,
-                "result": result,
-            }
             if message:
-                payload["logs"] = [
-                    {
-                        "logLevel": "INFO" if success else "ERROR",
-                        "log": message,
-                        "tags": {},
-                    }
-                ]
-            await self.patch_wf_node_run(run.id, payload)
+                log_level: Literal["INFO", "WARN", "ERROR", "DEBUG"] = (
+                    "INFO" if success else "ERROR"
+                )
+                await self.post_wf_node_run_logs(
+                    run.id,
+                    [WorkflowNodeRunLog(level=log_level, message=message)],
+                )
+            await self.patch_wf_node_run(
+                run.id,
+                {
+                    "status": WorkflowNodeRunStatus.COMPLETED,
+                    "result": result,
+                },
+            )
         else:
             status = RunStatus.SUCCESS if success else RunStatus.FAILURE
             await self.patch_run(run.id, {"status": status})
