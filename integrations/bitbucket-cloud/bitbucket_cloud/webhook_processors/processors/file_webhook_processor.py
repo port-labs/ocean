@@ -60,12 +60,17 @@ class FileWebhookProcessor(_BitbucketAbstractWebhookProcessor):
 
         included_files = selector.included_files or []
         if included_files and updated_raw_results:
-            from main import _enrich_file_entities_batch_with_included_files
+            from bitbucket_cloud.enrichments.included_files import (
+                IncludedFilesEnricher,
+                FileIncludedFilesStrategy,
+            )
 
             client = init_client()
-            updated_raw_results = await _enrich_file_entities_batch_with_included_files(
-                client, updated_raw_results, included_files
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=FileIncludedFilesStrategy(included_files=included_files),
             )
+            updated_raw_results = await enricher.enrich_batch(updated_raw_results)
 
         return WebhookEventRawResults(
             updated_raw_results=updated_raw_results,

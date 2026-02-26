@@ -3,7 +3,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
-    _enrich_file_with_included_files,
+)
+from gitlab.enrichments.included_files import (
+    IncludedFilesEnricher,
+    FileIncludedFilesStrategy,
 )
 from gitlab.helpers.utils import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
@@ -341,7 +344,7 @@ class TestFilePushWebhookProcessor:
 
 @pytest.mark.asyncio
 class TestFileEnrichWithIncludedFiles:
-    """Tests for the _enrich_file_with_included_files function"""
+    """Tests for the IncludedFilesEnricher with FileIncludedFilesStrategy"""
 
     async def test_enrich_file_success(self) -> None:
         """Test successful enrichment with included files."""
@@ -352,24 +355,30 @@ class TestFileEnrichWithIncludedFiles:
 
         file_entity: dict[str, Any] = {
             "file": {"path": "src/main.py"},
-            "repo": {"id": 1, "path_with_namespace": "group/project"},
+            "repo": {
+                "id": 1,
+                "path_with_namespace": "group/project",
+                "default_branch": "main",
+            },
+            "branch": "main",
         }
 
-        result = await _enrich_file_with_included_files(
-            client,
-            file_entity,
-            ["README.md", "CODEOWNERS"],
-            project_path="group/project",
-            ref="main",
+        enricher = IncludedFilesEnricher(
+            client=client,
+            strategy=FileIncludedFilesStrategy(
+                included_files=["README.md", "CODEOWNERS"]
+            ),
         )
+        result = (await enricher.enrich_batch([file_entity]))[0]
 
         assert result["__includedFiles"] == {
             "README.md": "readme content",
             "CODEOWNERS": "owners content",
         }
         assert client.get_file_content.call_count == 2
-        client.get_file_content.assert_any_call("group/project", "README.md", "main")
-        client.get_file_content.assert_any_call("group/project", "CODEOWNERS", "main")
+        # File is at src/main.py, so included files should be resolved relative to src/
+        client.get_file_content.assert_any_call("group/project", "src/README.md", "main")
+        client.get_file_content.assert_any_call("group/project", "src/CODEOWNERS", "main")
 
     async def test_enrich_file_missing_file(self) -> None:
         """Test enrichment when a file cannot be fetched — stores None."""
@@ -380,16 +389,21 @@ class TestFileEnrichWithIncludedFiles:
 
         file_entity: dict[str, Any] = {
             "file": {"path": "src/main.py"},
-            "repo": {"id": 1},
+            "repo": {
+                "id": 1,
+                "path_with_namespace": "group/project",
+                "default_branch": "main",
+            },
+            "branch": "main",
         }
 
-        result = await _enrich_file_with_included_files(
-            client,
-            file_entity,
-            ["README.md", "MISSING.md"],
-            project_path="group/project",
-            ref="main",
+        enricher = IncludedFilesEnricher(
+            client=client,
+            strategy=FileIncludedFilesStrategy(
+                included_files=["README.md", "MISSING.md"]
+            ),
         )
+        result = (await enricher.enrich_batch([file_entity]))[0]
 
         assert result["__includedFiles"] == {
             "README.md": "content",
@@ -403,16 +417,19 @@ class TestFileEnrichWithIncludedFiles:
 
         file_entity: dict[str, Any] = {
             "file": {"path": "src/main.py"},
-            "repo": {"id": 1},
+            "repo": {
+                "id": 1,
+                "path_with_namespace": "group/project",
+                "default_branch": "main",
+            },
+            "branch": "main",
         }
 
-        result = await _enrich_file_with_included_files(
-            client,
-            file_entity,
-            [],
-            project_path="group/project",
-            ref="main",
+        enricher = IncludedFilesEnricher(
+            client=client,
+            strategy=FileIncludedFilesStrategy(included_files=[]),
         )
+        result = (await enricher.enrich_batch([file_entity]))[0]
 
-        assert result["__includedFiles"] == {}
+        assert result.get("__includedFiles") == {}
         client.get_file_content.assert_not_called()

@@ -129,11 +129,19 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         updated_folders = created_folders + modified_folders
         if included_files and updated_folders:
-            from main import _enrich_folders_batch_with_included_files
-
-            updated_folders = await _enrich_folders_batch_with_included_files(
-                client, updated_folders, included_files
+            from azure_devops.enrichments.included_files import (
+                IncludedFilesEnricher,
+                FolderIncludedFilesStrategy,
             )
+
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=FolderIncludedFilesStrategy(
+                    folder_selectors=folder_config.selector.folders,
+                    global_included_files=included_files,
+                ),
+            )
+            updated_folders = await enricher.enrich_batch(updated_folders)
 
         return WebhookEventRawResults(
             updated_raw_results=updated_folders,

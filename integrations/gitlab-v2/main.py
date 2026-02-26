@@ -73,36 +73,6 @@ RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
 DEFAULT_MAX_CONCURRENT = 10
 
 
-async def _fetch_included_files_content(
-    client: Any,
-    project: dict[str, Any],
-    file_paths: list[str],
-) -> dict[str, Any]:
-    """Fetch included files for a project. Returns dict of file_path -> content."""
-    project_path = project.get("path_with_namespace", str(project.get("id", "")))
-    ref = project.get("default_branch", "main")
-    included: dict[str, Any] = {}
-    for file_path in file_paths:
-        try:
-            content = await client.get_file_content(project_path, file_path, ref)
-            included[file_path] = content
-        except Exception:
-            logger.debug(
-                f"Could not fetch file '{file_path}' from {project_path}@{ref}"
-            )
-            included[file_path] = None
-    return included
-
-
-def _apply_included_files(
-    entities: list[dict[str, Any]],
-    included: dict[str, Any],
-) -> None:
-    """Apply fetched included files to a batch of entities."""
-    for entity in entities:
-        entity["__includedFiles"] = included
-
-
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean GitLab-v2 Integration")
@@ -378,8 +348,6 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else None
     )
 
-    files_cache: dict[str, dict[str, Any]] = {}
-
     async for files_batch in client.search_files(
         scope,
         search_path,
@@ -389,14 +357,16 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         enriched_batch = await client._enrich_files_with_repos(files_batch)
         if included_files:
-            for file_entity in enriched_batch:
-                repo = file_entity.get("repo", {})
-                repo_key = str(repo.get("id", repo.get("path_with_namespace", "")))
-                if repo_key not in files_cache:
-                    files_cache[repo_key] = await _fetch_included_files_content(
-                        client, repo, included_files
-                    )
-                file_entity["__includedFiles"] = files_cache[repo_key]
+            from gitlab.enrichments.included_files import (
+                IncludedFilesEnricher,
+                FileIncludedFilesStrategy,
+            )
+
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=FileIncludedFilesStrategy(included_files=included_files),
+            )
+            enriched_batch = await enricher.enrich_batch(enriched_batch)
         yield enriched_batch
 
 
@@ -424,7 +394,6 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 include_languages=False,
             ):
                 for project in projects_batch:
-                    cached_files: dict[str, Any] | None = None
                     async for folders_batch in client.get_repository_folders(
                         path=path,
                         repository=project["path_with_namespace"],
@@ -432,11 +401,21 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     ):
                         if folders_batch:
                             if included_files:
-                                if cached_files is None:
-                                    cached_files = await _fetch_included_files_content(
-                                        client, project, included_files
-                                    )
-                                _apply_included_files(folders_batch, cached_files)
+                                from gitlab.enrichments.included_files import (
+                                    IncludedFilesEnricher,
+                                    FolderIncludedFilesStrategy,
+                                )
+
+                                enricher = IncludedFilesEnricher(
+                                    client=client,
+                                    strategy=FolderIncludedFilesStrategy(
+                                        folder_selectors=selector.folders,
+                                        global_included_files=included_files,
+                                    ),
+                                )
+                                folders_batch = await enricher.enrich_batch(
+                                    folders_batch
+                                )
                             logger.info(
                                 f"Found {len(folders_batch)} folders in {project['path_with_namespace']}"
                             )
@@ -444,17 +423,23 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else:
             # Process specific repos
             for repo in repos:
-                cached_files = None
                 async for folders_batch in client.get_repository_folders(
                     path=path, repository=repo.name, branch=repo.branch
                 ):
                     if included_files and folders_batch:
-                        if cached_files is None:
-                            # Extract project from the first folder entity
-                            cached_files = await _fetch_included_files_content(
-                                client, folders_batch[0].get("repo", {}), included_files
-                            )
-                        _apply_included_files(folders_batch, cached_files)
+                        from gitlab.enrichments.included_files import (
+                            IncludedFilesEnricher,
+                            FolderIncludedFilesStrategy,
+                        )
+
+                        enricher = IncludedFilesEnricher(
+                            client=client,
+                            strategy=FolderIncludedFilesStrategy(
+                                folder_selectors=selector.folders,
+                                global_included_files=included_files,
+                            ),
+                        )
+                        folders_batch = await enricher.enrich_batch(folders_batch)
                     logger.info(f"Found batch of {len(folders_batch)} matching folders")
                     yield folders_batch
 
