@@ -51,60 +51,52 @@ def _plain_500_response() -> httpx.Response:
     return httpx.Response(500, request=req, headers={})
 
 
-class TestGitHubRetryTransportLogBeforeRetry:
-    def test_calls_notifier_on_429(self) -> None:
-        """Notifier is invoked when the response is a 429."""
-        notifier = Mock()
+class TestGitHubRetryTransportAfterRetryAsync:
+    @pytest.mark.asyncio
+    async def test_calls_notifier_on_429(self) -> None:
+        """Notifier is awaited when the response is a 429."""
+        notifier = AsyncMock()
         transport = _make_transport(notifier=notifier)
         req = httpx.Request("GET", "https://api.github.com/test")
 
-        with patch.object(
-            type(transport).__mro__[1], "_log_before_retry", return_value=None
-        ):
-            transport._log_before_retry(req, 5.0, _rate_limit_429_response(), None)
+        await transport.after_retry_async(req, _rate_limit_429_response(), 1)
 
-        notifier.assert_called_once()
-        call_response = notifier.call_args.args[0]
-        assert call_response.status_code == 429
+        notifier.assert_awaited_once()
+        assert notifier.call_args.args[0].status_code == 429
 
-    def test_calls_notifier_on_rate_limit_403(self) -> None:
-        """Notifier is invoked when the response is a 403 with exhausted rate limit headers."""
-        notifier = Mock()
+    @pytest.mark.asyncio
+    async def test_calls_notifier_on_rate_limit_403(self) -> None:
+        """Notifier is awaited when the response is a 403 with exhausted rate limit headers."""
+        notifier = AsyncMock()
         transport = _make_transport(notifier=notifier)
         req = httpx.Request("GET", "https://api.github.com/test")
 
-        with patch.object(
-            type(transport).__mro__[1], "_log_before_retry", return_value=None
-        ):
-            transport._log_before_retry(req, 5.0, _rate_limit_403_response(), None)
+        await transport.after_retry_async(req, _rate_limit_403_response(), 1)
 
-        notifier.assert_called_once()
-        call_response = notifier.call_args.args[0]
-        assert call_response.status_code == 403
+        notifier.assert_awaited_once()
+        assert notifier.call_args.args[0].status_code == 403
 
-    def test_does_not_call_notifier_on_non_rate_limit_response(self) -> None:
+    @pytest.mark.asyncio
+    async def test_does_not_call_notifier_on_non_rate_limit_response(self) -> None:
         """Notifier is NOT invoked for a plain 500 response."""
-        notifier = Mock()
+        notifier = AsyncMock()
         transport = _make_transport(notifier=notifier)
         req = httpx.Request("GET", "https://api.github.com/test")
 
-        with patch.object(
-            type(transport).__mro__[1], "_log_before_retry", return_value=None
-        ):
-            transport._log_before_retry(req, 5.0, _plain_500_response(), None)
+        await transport.after_retry_async(req, _plain_500_response(), 1)
 
-        notifier.assert_not_called()
+        notifier.assert_not_awaited()
 
-    def test_no_notifier_does_not_raise(self) -> None:
-        """When no notifier is configured, _log_before_retry completes without error."""
+    @pytest.mark.asyncio
+    async def test_no_notifier_does_not_raise(self) -> None:
+        """When no notifier is configured, after_retry_async completes without error."""
         transport = _make_transport(notifier=None)
         req = httpx.Request("GET", "https://api.github.com/test")
 
-        with patch.object(
-            type(transport).__mro__[1], "_log_before_retry", return_value=None
-        ):
-            transport._log_before_retry(req, 5.0, _rate_limit_429_response(), None)
+        await transport.after_retry_async(req, _rate_limit_429_response(), 1)
 
+
+class TestGitHubRetryTransportLogBeforeRetry:
     def test_logs_structured_fields_on_rate_limit_response(self) -> None:
         """logger.bind is called with rate limit context fields when a rate limit is hit."""
         transport = _make_transport()

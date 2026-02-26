@@ -81,13 +81,7 @@ class GitHubRateLimiter:
         except ValueError:
             return None
 
-    def notify_rate_limited(self, response: httpx.Response) -> None:
-        try:
-            asyncio.get_running_loop().create_task(self._apply_rate_limit(response))
-        except RuntimeError:
-            pass
-
-    async def _apply_rate_limit(self, response: httpx.Response) -> None:
+    async def notify_rate_limited(self, response: httpx.Response) -> None:
         headers = RateLimiterRequiredHeaders(**response.headers)
         async with self._lock:
             self._handle_rate_limit_response(headers, "transport-retry")

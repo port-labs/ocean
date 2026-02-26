@@ -264,8 +264,8 @@ class TestRateLimiter:
         self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
     ) -> None:
         """
-        notify_rate_limited (called synchronously from the transport) must update the
-        limiter state so that the next __aenter__ sleeps.
+        notify_rate_limited (awaited by the transport) must update the limiter state
+        so that the next __aenter__ sleeps.
         """
         client = MockGitHubClient(github_host, client_config)
         reset_in = 30
@@ -278,11 +278,7 @@ class TestRateLimiter:
             "x-ratelimit-reset": str(int(time.time()) + reset_in),
         }
 
-        client.rate_limiter.notify_rate_limited(mock_response)
-
-        # asyncio.sleep is mocked globally; use gather to let the created task actually run.
-        pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        await asyncio.gather(*pending, return_exceptions=True)
+        await client.rate_limiter.notify_rate_limited(mock_response)
 
         assert client.rate_limiter._initialized is True
         assert client.rate_limiter.rate_limit_info is not None
@@ -566,12 +562,13 @@ class TestNotifyRateLimitedConcurrency:
             }
             return resp
 
-        for reset_in in [10, 20, 30]:
-            client.rate_limiter.notify_rate_limited(make_429(reset_in))
-
-        # asyncio.sleep is mocked; gather pending tasks to flush all _apply_rate_limit coroutines.
-        pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        await asyncio.gather(*pending, return_exceptions=True)
+        tasks = [
+            asyncio.create_task(
+                client.rate_limiter.notify_rate_limited(make_429(reset_in))
+            )
+            for reset_in in [10, 20, 30]
+        ]
+        await asyncio.gather(*tasks)
 
         info = client.rate_limiter.rate_limit_info
         assert info is not None
@@ -580,10 +577,10 @@ class TestNotifyRateLimitedConcurrency:
         assert info.reset_time in {now + 10, now + 20, now + 30}
 
     @pytest.mark.asyncio
-    async def test_notify_rate_limited_while_enforce_holds_lock_is_deferred(
+    async def test_notify_rate_limited_blocks_when_lock_held(
         self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
     ) -> None:
-        """notify_rate_limited schedules as a task and runs after the current lock holder releases."""
+        """notify_rate_limited awaits the lock, so it blocks until the current holder releases."""
         client = MockGitHubClient(github_host, client_config)
         now = int(time.time())
 
@@ -595,15 +592,16 @@ class TestNotifyRateLimitedConcurrency:
             "x-ratelimit-reset": str(now + 5),
         }
 
-        # Fire notify while we still haven't released the lock
+        # Create the notify task while we hold the lock — it will be blocked on lock acquisition.
         async with client.rate_limiter._lock:
-            client.rate_limiter.notify_rate_limited(notify_response)
-            # Task is scheduled but cannot run yet — lock is held
+            notify_task = asyncio.create_task(
+                client.rate_limiter.notify_rate_limited(notify_response)
+            )
+            # Task exists but hasn't run yet (hasn't even tried the lock).
             assert client.rate_limiter.rate_limit_info is None
 
-        # Lock is now released; gather the pending task to let _apply_rate_limit run.
-        pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        await asyncio.gather(*pending, return_exceptions=True)
+        # Lock released — awaiting the task lets it run and acquire the lock.
+        await notify_task
 
         assert client.rate_limiter._initialized is True
         assert client.rate_limiter.rate_limit_info is not None

@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Coroutine, Dict, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
 from github.clients.auth.retry_transport import GitHubRetryTransport
@@ -47,7 +47,9 @@ class GitHubHeaders(BaseModel):
 
 class AbstractGitHubAuthenticator(ABC):
     _http_client: Optional[httpx.AsyncClient] = None
-    _rate_limit_notifier: Optional[Callable[[httpx.Response], None]] = None
+    _rate_limit_notifier: Optional[
+        Callable[[httpx.Response], Coroutine[Any, Any, None]]
+    ] = None
 
     @abstractmethod
     async def get_token(self, **kwargs: Any) -> GitHubToken:
@@ -58,7 +60,7 @@ class AbstractGitHubAuthenticator(ABC):
         pass
 
     def set_rate_limit_notifier(
-        self, notifier: Callable[[httpx.Response], None]
+        self, notifier: Callable[[httpx.Response], Coroutine[Any, Any, None]]
     ) -> None:
         self._rate_limit_notifier = notifier
 

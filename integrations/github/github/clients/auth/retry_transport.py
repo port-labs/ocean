@@ -1,4 +1,4 @@
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import Any, Callable, Coroutine, Iterable, Optional, Union
 
 import httpx
 from loguru import logger
@@ -11,8 +11,8 @@ class GitHubRetryTransport(RetryTransport):
     """
     Extends the default Ocean retry transport with GitHub-specific behaviour:
     - Retries rate-limit 403 responses (GitHub sometimes uses 403 for quota exhaustion).
-    - Fires a sync `rate_limit_notifier` callback before each 429 retry sleep so the
-      rate limiter can immediately pause all other in-flight coroutines.
+    - Awaits an async `rate_limit_notifier` in `after_retry_async` on each rate-limit
+      response so the rate limiter acquires its lock inline before the retry sleep begins.
     """
 
     def __init__(
@@ -27,7 +27,9 @@ class GitHubRetryTransport(RetryTransport):
         retry_status_codes: Optional[Iterable[int]] = None,
         retry_config: Optional[RetryConfig] = None,
         logger: Optional[Any] = None,
-        rate_limit_notifier: Optional[Callable[[httpx.Response], None]] = None,
+        rate_limit_notifier: Optional[
+            Callable[[httpx.Response], Coroutine[Any, Any, None]]
+        ] = None,
     ) -> None:
         super().__init__(
             wrapped_transport,
@@ -43,6 +45,15 @@ class GitHubRetryTransport(RetryTransport):
         )
         self._rate_limit_notifier = rate_limit_notifier
 
+    async def after_retry_async(
+        self,
+        request: httpx.Request,
+        response: httpx.Response,
+        attempt: int,
+    ) -> None:
+        if is_rate_limit_response(response) and self._rate_limit_notifier:
+            await self._rate_limit_notifier(response)
+
     def _log_before_retry(
         self,
         request: httpx.Request,
@@ -51,8 +62,6 @@ class GitHubRetryTransport(RetryTransport):
         error: Optional[Exception],
     ) -> None:
         if response and is_rate_limit_response(response):
-            if self._rate_limit_notifier:
-                self._rate_limit_notifier(response)
             logger.bind(
                 remaining=response.headers.get("x-ratelimit-remaining"),
                 limit=response.headers.get("x-ratelimit-limit"),
