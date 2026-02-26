@@ -1,7 +1,6 @@
 from port_ocean.context.event import event
 from integration import GitlabPortAppConfig
-from typing import cast, Any, Optional, AsyncIterator
-from loguru import logger
+from typing import cast, Any, Optional
 
 
 def get_visibility_config() -> tuple[bool, int]:
@@ -58,5 +57,3 @@ def build_project_params(
     if include_only_active_projects is not None:
         params["active"] = include_only_active_projects
     return params
-
-

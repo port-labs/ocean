@@ -8,7 +8,6 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
-from port_ocean.utils.cache import cache_iterator_result
 from urllib.parse import quote
 from wcmatch import glob
 
