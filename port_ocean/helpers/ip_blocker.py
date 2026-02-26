@@ -111,7 +111,7 @@ async def _resolve_to_ip_addresses(hostname: str) -> list[str]:
         socket.AF_UNSPEC,
         socket.SOCK_STREAM,
     )
-    return list(dict.fromkeys(info[4][0] for info in addr_info if info[4]))
+    return list[str](dict.fromkeys(str(info[4][0]) for info in addr_info if info[4]))
 
 
 def _is_blocked(ip_str: str) -> bool:
@@ -135,6 +135,10 @@ class IPBlockerTransport(httpx.AsyncBaseTransport):
             return await self._wrapped.handle_async_request(request)
 
         ip_addresses: list[str] = await _resolve_to_ip_addresses(hostname)
+        if not ip_addresses:
+            raise BlockedIPError(
+                f"Request to {hostname} was blocked: Host could not resolve to any IP address"
+            )
         blocked_ip_addresses: list[str] = [
             ip_address for ip_address in ip_addresses if _is_blocked(ip_address)
         ]

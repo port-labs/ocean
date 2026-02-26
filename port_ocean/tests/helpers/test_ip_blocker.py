@@ -56,7 +56,7 @@ class TestIPBlockerTransport:
         await transport.handle_async_request(
             httpx.Request("GET", "https://api.github.com/repos/port/example")
         )
-        sent = wrapped.handle_async_request.call_args[0][0]
+        sent: httpx.Request = wrapped.handle_async_request.call_args[0][0]
         assert sent.url.host == "api.github.com"
         """URL is rewritten to validated IP (rebinding mitigation); Host + sni_hostname keep TLS working."""
         with patch(
@@ -73,7 +73,7 @@ class TestIPBlockerTransport:
                 httpx.Request("GET", "https://example.com/foo?q=1")
             )
 
-            sent: httpx.Request = wrapped.handle_async_request.call_args[0][0]
+            sent = wrapped.handle_async_request.call_args[0][0]
             assert sent.url.host == "93.184.216.34"
             assert sent.headers.get("host") == "example.com"
             assert sent.extensions.get("sni_hostname") == "example.com"
