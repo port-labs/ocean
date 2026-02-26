@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.39.1 (2026-02-26)
+
+### Improvements
+
+- Added support for the updated workflows log API
+
+## 0.38.0 (2026-02-26)
+
+### Improvements
+
+- Updated retry transport to use async methods for before_retry and after_retry
+
 ## 0.37.3 (2026-02-24)
 
 ### Improvements
