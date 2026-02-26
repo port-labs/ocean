@@ -45,8 +45,8 @@ class GitHubRateLimiter:
         if self.rate_limit_info.remaining <= 1:
             delay = self.rate_limit_info.seconds_until_reset
             if delay > 0:
-                logger.warning(
-                    f"{self.api_type} requests paused for {delay:.1f}s due to rate limit"
+                logger.bind(api_type=self.api_type, delay=delay).warning(
+                    f"Requests paused for {delay:.1f}s due to rate limit"
                 )
                 await asyncio.sleep(delay)
             self._initialized = False
@@ -82,8 +82,15 @@ class GitHubRateLimiter:
             return None
 
     def notify_rate_limited(self, response: httpx.Response) -> None:
+        try:
+            asyncio.get_running_loop().create_task(self._apply_rate_limit(response))
+        except RuntimeError:
+            pass
+
+    async def _apply_rate_limit(self, response: httpx.Response) -> None:
         headers = RateLimiterRequiredHeaders(**response.headers)
-        self._handle_rate_limit_response(headers, "transport-retry")
+        async with self._lock:
+            self._handle_rate_limit_response(headers, "transport-retry")
 
     async def on_response(self, response: httpx.Response, resource: str) -> None:
         rate_limit_headers = RateLimiterRequiredHeaders(**response.headers)
@@ -120,7 +127,11 @@ class GitHubRateLimiter:
         if info is not None:
             self.rate_limit_info = info
             self._initialized = True
-            logger.warning(
+            logger.bind(
+                api_type=self.api_type,
+                resource=resource,
+                resets_in=info.seconds_until_reset,
+            ).warning(
                 f"GitHub rate limit exhausted for {self.api_type} on {resource}: "
                 f"resets in {info.seconds_until_reset}s"
             )
@@ -138,14 +149,21 @@ class GitHubRateLimiter:
 
     def _log_rate_limit_status(self, info: RateLimitInfo, resource: str) -> None:
         resets_in = info.seconds_until_reset
+        bound = logger.bind(
+            api_type=self.api_type,
+            resource=resource,
+            remaining=info.remaining,
+            limit=info.limit,
+            resets_in=resets_in,
+        )
         base_message = (
-            f"GitHub rate limit on {resource} for {self.api_type}: "
+            f"GitHub rate limit for {self.api_type} on {resource}: "
             f"{info.remaining}/{info.limit} remaining (resets in {resets_in}s)"
         )
 
         if info.remaining <= 0:
-            logger.warning(f"Exhausted {base_message}")
+            bound.warning(f"Exhausted — {base_message}")
         elif info.remaining <= info.limit * 0.1:
-            logger.warning(f"Near exhaustion {base_message}")
+            bound.warning(f"Near exhaustion — {base_message}")
         else:
-            logger.debug(f"Status {base_message}")
+            bound.debug(f"Status — {base_message}")

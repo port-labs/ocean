@@ -119,18 +119,27 @@ class AbstractGithubClient(ABC):
                 response = e.response
                 await self.rate_limiter.on_response(response, resource)
 
-                if not self.rate_limiter.is_rate_limit_response(response):
+                is_rate_limit = self.rate_limiter.is_rate_limit_response(response)
+                if not is_rate_limit:
                     if self._should_ignore_error(
                         e, resource, method, ignored_errors, ignore_default_errors
                     ):
                         return Response(200, content=b"{}")
 
-                github_request_id = response.headers.get(
-                    "x-github-request-id", "unknown"
-                )
-                logger.error(
-                    f"GitHub API error for endpoint '{resource}': Status {response.status_code}, "
-                    f"Method: {method}, GitHub Request ID: {github_request_id}, Response: {response.text}"
+                logger.bind(
+                    status_code=response.status_code,
+                    method=method,
+                    resource=resource,
+                    github_request_id=response.headers.get(
+                        "x-github-request-id", "unknown"
+                    ),
+                    is_rate_limit=is_rate_limit,
+                    rate_remaining=response.headers.get("x-ratelimit-remaining", "?"),
+                    rate_limit=response.headers.get("x-ratelimit-limit", "?"),
+                    rate_reset=response.headers.get("x-ratelimit-reset", "?"),
+                ).error(
+                    f"GitHub API error for {method} {resource}: status={response.status_code}, "
+                    f"is_rate_limit={is_rate_limit}, body={response.text[:500]}"
                 )
                 raise
 

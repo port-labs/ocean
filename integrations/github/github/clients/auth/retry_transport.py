@@ -1,6 +1,7 @@
 from typing import Any, Callable, Iterable, Optional, Union
 
 import httpx
+from loguru import logger
 
 from port_ocean.helpers.retry import RetryConfig, RetryTransport
 from github.clients.rate_limiter.utils import is_rate_limit_response
@@ -49,8 +50,19 @@ class GitHubRetryTransport(RetryTransport):
         response: Optional[httpx.Response],
         error: Optional[Exception],
     ) -> None:
-        if response and self._rate_limit_notifier and is_rate_limit_response(response):
-            self._rate_limit_notifier(response)
+        if response and is_rate_limit_response(response):
+            if self._rate_limit_notifier:
+                self._rate_limit_notifier(response)
+            logger.bind(
+                remaining=response.headers.get("x-ratelimit-remaining"),
+                limit=response.headers.get("x-ratelimit-limit"),
+                reset=response.headers.get("x-ratelimit-reset"),
+                method=request.method,
+                url=str(request.url),
+                sleep_time=sleep_time,
+            ).warning(
+                f"GitHub rate limit hit — retrying {request.method} {request.url} in {sleep_time}s"
+            )
         super()._log_before_retry(request, sleep_time, response, error)
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
