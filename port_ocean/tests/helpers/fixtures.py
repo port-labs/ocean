@@ -1,9 +1,11 @@
 from os import path
 from typing import Any, Callable, Dict, List, Tuple, Union
+from unittest.mock import MagicMock
 
 import pytest
 
 from port_ocean.clients.port.client import PortClient
+from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.ocean import Ocean
 from port_ocean.tests.helpers.ocean_app import (
@@ -19,6 +21,10 @@ from port_ocean.tests.helpers.smoke_test import (
 
 @pytest.fixture
 def port_client_for_fake_integration() -> Tuple[SmokeTestDetails, PortClient]:
+    mock_ocean = MagicMock(spec=Ocean)
+    mock_ocean.is_saas.return_value = False
+    initialize_port_ocean_context(mock_ocean)
+
     smoke_test_details = get_smoke_test_details()
     port_client = get_port_client_for_fake_integration()
 
