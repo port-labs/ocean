@@ -30,8 +30,7 @@ class SnykIntegration(BaseIntegration):
         CONFIG_CLASS = SnykPortAppConfig
 
 
-class TargetSelector(BaseModel):
-    query: str
+class TargetSelector(Selector):
     attach_project_data: bool = Field(default=True, alias="attachProjectData")
 
 
