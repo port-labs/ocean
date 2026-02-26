@@ -390,14 +390,8 @@ class GitLabClient:
             if projects_batch:
                 yield projects_batch
         else:
-            # AI! rewrite this to fetch all projects available to the user with `self.get_projects` rather than fetching groups first
-            async for groups_batch in self.get_parent_groups(params=params):
-                for group in groups_batch:
-                    async for projects_batch in self.rest.get_paginated_resource(
-                        f"groups/{group['id']}/projects",
-                        params={"include_subgroups": True},
-                    ):
-                        yield projects_batch
+            async for projects_batch in self.get_projects(params=params):
+                yield projects_batch
 
     async def search_files_using_tree(
         self,
