@@ -22,19 +22,17 @@ class OceanAsyncClient(httpx.AsyncClient):
         transport_class: Type[RetryTransport] = RetryTransport,
         transport_kwargs: dict[str, Any] | None = None,
         retry_config: RetryConfig | None = None,
-        use_ip_blocker: bool = True,
         **kwargs: Any,
     ):
         self._transport_kwargs = transport_kwargs
         self._transport_class = transport_class
         self._retry_config = retry_config
-        self._use_ip_blocker = use_ip_blocker
         super().__init__(**kwargs)
 
     def _wrap_with_ip_blocker_if_needed(
         self, transport: httpx.AsyncBaseTransport
     ) -> httpx.AsyncBaseTransport:
-        if not self._use_ip_blocker or not ocean.app.is_saas():
+        if not ocean.app.is_saas():
             return transport
         return IPBlockerTransport(wrapped=transport)
 
