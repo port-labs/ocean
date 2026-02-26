@@ -57,3 +57,39 @@ def build_project_params(
     if include_only_active_projects is not None:
         params["active"] = include_only_active_projects
     return params
+
+
+async def get_projects_to_scan(
+    client: Any,  # GitLabClient
+    repositories: Optional[list[str]] = None,
+    params: Optional[dict[str, Any]] = None,
+) -> list[dict[str, Any]]:
+    """Helper function to get list of projects to scan for files.
+
+    Args:
+        client: GitLabClient instance
+        repositories: Optional list of repository names/IDs to limit scan to
+        params: Optional parameters for group filtering
+
+    Returns:
+        List of project dictionaries
+    """
+    from loguru import logger
+
+    projects_to_scan = []
+
+    if repositories:
+        for repo in repositories:
+            try:
+                projects_to_scan.append(await client.get_project(repo))
+            except Exception as e:
+                logger.warning(f"Could not fetch project {repo}: {e}")
+    else:
+        async for groups_batch in client.get_parent_groups(params=params):
+            for group in groups_batch:
+                async for projects_batch in client.rest.get_paginated_resource(
+                    f"groups/{group['id']}/projects",
+                    params={"include_subgroups": True},
+                ):
+                    projects_to_scan.extend(projects_batch)
+    return projects_to_scan

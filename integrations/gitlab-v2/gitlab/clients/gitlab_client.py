@@ -13,6 +13,7 @@ from urllib.parse import quote
 from wcmatch import glob
 
 from gitlab.helpers.utils import parse_file_content
+from gitlab.clients.utils import get_projects_to_scan
 
 from gitlab.clients.rest_client import RestClient
 
@@ -363,7 +364,6 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
-    # Ai! this function is too long, move utility functionalities to the utils file
     async def search_files_using_tree(
         self,
         path: str,
@@ -371,22 +371,7 @@ class GitLabClient:
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        projects_to_scan = []
-
-        if repositories:
-            for repo in repositories:
-                try:
-                    projects_to_scan.append(await self.get_project(repo))
-                except Exception as e:
-                    logger.warning(f"Could not fetch project {repo}: {e}")
-        else:
-            async for groups_batch in self.get_parent_groups(params=params):
-                for group in groups_batch:
-                    async for projects_batch in self.rest.get_paginated_resource(
-                        f"groups/{group['id']}/projects",
-                        params={"include_subgroups": True},
-                    ):
-                        projects_to_scan.extend(projects_batch)
+        projects_to_scan = await get_projects_to_scan(self, repositories, params)
 
         semaphore = asyncio.Semaphore(10)
 
