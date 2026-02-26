@@ -20,6 +20,7 @@ features:
       - kind: branch
       - kind: environment
       - kind: deployment
+      - kind: deployment-status
       - kind: dependabot-alert
       - kind: code-scanning-alerts
       - kind: file
