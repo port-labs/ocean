@@ -1,6 +1,6 @@
 from port_ocean.context.event import event
 from integration import GitlabPortAppConfig
-from typing import cast, Any, Optional
+from typing import cast, Any, Optional, AsyncIterator
 from loguru import logger
 
 
@@ -60,12 +60,11 @@ def build_project_params(
     return params
 
 
-# Ai! projects to scan should be yielded in batches of 100
 async def get_projects_to_scan(
     client: Any,  # GitLabClient
     repositories: Optional[list[str]] = None,
     params: Optional[dict[str, Any]] = None,
-) -> list[dict[str, Any]]:
+) -> AsyncIterator[list[dict[str, Any]]]:
     """Helper function to get list of projects to scan for files.
 
     Args:
@@ -73,18 +72,21 @@ async def get_projects_to_scan(
         repositories: Optional list of repository names/IDs to limit scan to
         params: Optional parameters for group filtering
 
-    Returns:
+    Yields:
         List of project dictionaries
     """
-
-    projects_to_scan = []
-
     if repositories:
+        projects_batch = []
         for repo in repositories:
             try:
-                projects_to_scan.append(await client.get_project(repo))
+                projects_batch.append(await client.get_project(repo))
+                if len(projects_batch) >= 100:
+                    yield projects_batch
+                    projects_batch = []
             except Exception as e:
                 logger.warning(f"Could not fetch project {repo}: {e}")
+        if projects_batch:
+            yield projects_batch
     else:
         async for groups_batch in client.get_parent_groups(params=params):
             for group in groups_batch:
@@ -92,5 +94,4 @@ async def get_projects_to_scan(
                     f"groups/{group['id']}/projects",
                     params={"include_subgroups": True},
                 ):
-                    projects_to_scan.extend(projects_batch)
-    return projects_to_scan
+                    yield projects_batch

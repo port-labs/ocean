@@ -371,8 +371,6 @@ class GitLabClient:
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        projects_to_scan = await get_projects_to_scan(self, repositories, params)
-
         semaphore = asyncio.Semaphore(10)
 
         async def _search_project(project: dict[str, Any]) -> list[dict[str, Any]]:
@@ -407,10 +405,11 @@ class GitLabClient:
                     )
                 return results
 
-        tasks = [asyncio.create_task(_search_project(p)) for p in projects_to_scan]
-        for completed_task in asyncio.as_completed(tasks):
-            if result := await completed_task:
-                yield result
+        async for projects_batch in get_projects_to_scan(self, repositories, params):
+            tasks = [asyncio.create_task(_search_project(p)) for p in projects_batch]
+            for completed_task in asyncio.as_completed(tasks):
+                if result := await completed_task:
+                    yield result
 
     @cache_iterator_result()
     async def get_repository_tree(
