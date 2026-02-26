@@ -83,7 +83,6 @@ class TestGitLabClient:
         self, client: GitLabClient
     ) -> None:
         """Test search_files_using_tree with no specific repos"""
-        mock_group = {"id": 123, "name": "group"}
         mock_project = {
             "id": 1,
             "path_with_namespace": "group/project",
@@ -104,12 +103,7 @@ class TestGitLabClient:
         with (
             patch.object(
                 client,
-                "get_parent_groups",
-                return_value=async_mock_generator([[mock_group]]),
-            ) as mock_get_groups,
-            patch.object(
-                client.rest,
-                "get_paginated_resource",
+                "get_projects",
                 return_value=async_mock_generator([[mock_project]]),
             ) as mock_get_projects,
             patch.object(
@@ -123,7 +117,6 @@ class TestGitLabClient:
                 results.extend(batch)
 
             assert len(results) == 1
-            mock_get_groups.assert_called()
             mock_get_projects.assert_called()
             mock_get_tree.assert_called()
 
@@ -157,18 +150,12 @@ class TestGitLabClient:
         self, client: GitLabClient
     ) -> None:
         """Test search_files_using_tree falls back to groups when no repos provided"""
-        mock_group = {"id": 123, "name": "group"}
         mock_project = {"id": 1, "path_with_namespace": "group/project"}
 
         with (
             patch.object(
                 client,
-                "get_parent_groups",
-                return_value=async_mock_generator([[mock_group]]),
-            ) as mock_get_groups,
-            patch.object(
-                client.rest,
-                "get_paginated_resource",
+                "get_projects",
                 return_value=async_mock_generator([[mock_project]]),
             ) as mock_get_projects,
             patch.object(
@@ -181,10 +168,7 @@ class TestGitLabClient:
             async for batch in client.search_files_using_tree("*.json"):
                 results.extend(batch)
 
-            mock_get_groups.assert_called()
-            mock_get_projects.assert_called_with(
-                "groups/123/projects", params={"include_subgroups": True}
-            )
+            mock_get_projects.assert_called()
 
     async def test_get_projects(self, client: GitLabClient) -> None:
         """Test project fetching and enrichment with languages and labels via REST."""
@@ -1209,29 +1193,3 @@ class TestGitLabClient:
         selector_default = ProjectSelector(query="true")
         assert selector_default.included_files == []
 
-    async def test_get_parent_groups(self, client: GitLabClient) -> None:
-        """Test that get_parent_groups returns only top-level groups"""
-        # Arrange
-        page1_groups = [
-            {"id": 1, "name": "Child", "parent_id": 3},  # Parent in page 2
-            {"id": 2, "name": "Orphan", "parent_id": 999},  # Missing parent
-        ]
-        page2_groups = [
-            {"id": 3, "name": "Parent", "parent_id": None},  # True top-level
-            {"id": 4, "name": "Child of Parent", "parent_id": 3},  # Child of parent
-        ]
-
-        with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            return_value=async_mock_generator([page1_groups, page2_groups]),
-        ):
-            # Act
-            results = []
-            async for batch in client.get_parent_groups():
-                results.extend(batch)
-
-            # Assert - only top-level groups returned
-            assert len(results) == 2
-            result_ids = {group["id"] for group in results}
-            assert result_ids == {2, 3}  # Orphan and Parent, not children
