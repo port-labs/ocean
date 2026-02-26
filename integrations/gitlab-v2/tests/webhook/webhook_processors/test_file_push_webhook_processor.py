@@ -355,13 +355,19 @@ class TestFileEnrichWithIncludedFiles:
 
         file_entity: dict[str, Any] = {
             "file": {"path": "src/main.py"},
-            "repo": {"id": 1, "path_with_namespace": "group/project", "default_branch": "main"},
+            "repo": {
+                "id": 1,
+                "path_with_namespace": "group/project",
+                "default_branch": "main",
+            },
             "branch": "main",
         }
 
         enricher = IncludedFilesEnricher(
             client=client,
-            strategy=FileIncludedFilesStrategy(included_files=["README.md", "CODEOWNERS"]),
+            strategy=FileIncludedFilesStrategy(
+                included_files=["README.md", "CODEOWNERS"]
+            ),
         )
         result = (await enricher.enrich_batch([file_entity]))[0]
 
@@ -382,13 +388,19 @@ class TestFileEnrichWithIncludedFiles:
 
         file_entity: dict[str, Any] = {
             "file": {"path": "src/main.py"},
-            "repo": {"id": 1, "path_with_namespace": "group/project", "default_branch": "main"},
+            "repo": {
+                "id": 1,
+                "path_with_namespace": "group/project",
+                "default_branch": "main",
+            },
             "branch": "main",
         }
 
         enricher = IncludedFilesEnricher(
             client=client,
-            strategy=FileIncludedFilesStrategy(included_files=["README.md", "MISSING.md"]),
+            strategy=FileIncludedFilesStrategy(
+                included_files=["README.md", "MISSING.md"]
+            ),
         )
         result = (await enricher.enrich_batch([file_entity]))[0]
 
@@ -404,7 +416,11 @@ class TestFileEnrichWithIncludedFiles:
 
         file_entity: dict[str, Any] = {
             "file": {"path": "src/main.py"},
-            "repo": {"id": 1, "path_with_namespace": "group/project", "default_branch": "main"},
+            "repo": {
+                "id": 1,
+                "path_with_namespace": "group/project",
+                "default_branch": "main",
+            },
             "branch": "main",
         }
 

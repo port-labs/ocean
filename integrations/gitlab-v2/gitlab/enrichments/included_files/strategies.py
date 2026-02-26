@@ -67,9 +67,7 @@ class FolderIncludedFilesStrategy:
 
     def context_for(self, entity: dict[str, Any]) -> IncludedFilesEntityContext:
         project = entity.get("__project") or entity.get("repo", {})
-        project_path = project.get("path_with_namespace") or str(
-            project.get("id", "")
-        )
+        project_path = project.get("path_with_namespace") or str(project.get("id", ""))
         project_id = str(project.get("id", ""))
         branch = entity.get("branch") or project.get("default_branch", "main")
         folder_path = entity.get("path", "")

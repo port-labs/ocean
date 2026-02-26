@@ -73,8 +73,6 @@ RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
 DEFAULT_MAX_CONCURRENT = 10
 
 
-
-
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean GitLab-v2 Integration")
@@ -350,8 +348,6 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else None
     )
 
-    files_cache: dict[str, dict[str, Any]] = {}
-
     async for files_batch in client.search_files(
         scope,
         search_path,
@@ -398,7 +394,6 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 include_languages=False,
             ):
                 for project in projects_batch:
-                    cached_files: dict[str, Any] | None = None
                     async for folders_batch in client.get_repository_folders(
                         path=path,
                         repository=project["path_with_namespace"],
@@ -418,7 +413,9 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                         global_included_files=included_files,
                                     ),
                                 )
-                                folders_batch = await enricher.enrich_batch(folders_batch)
+                                folders_batch = await enricher.enrich_batch(
+                                    folders_batch
+                                )
                             logger.info(
                                 f"Found {len(folders_batch)} folders in {project['path_with_namespace']}"
                             )
@@ -426,7 +423,6 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else:
             # Process specific repos
             for repo in repos:
-                cached_files = None
                 async for folders_batch in client.get_repository_folders(
                     path=path, repository=repo.name, branch=repo.branch
                 ):

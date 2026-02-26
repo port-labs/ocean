@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,

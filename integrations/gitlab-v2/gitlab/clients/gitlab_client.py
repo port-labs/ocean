@@ -146,7 +146,9 @@ class GitLabClient:
 
                 enricher = IncludedFilesEnricher(
                     client=self,
-                    strategy=ProjectIncludedFilesStrategy(included_files=included_files),
+                    strategy=ProjectIncludedFilesStrategy(
+                        included_files=included_files
+                    ),
                 )
                 enriched_batch = await enricher.enrich_batch(enriched_batch)
 
@@ -543,7 +545,6 @@ class GitLabClient:
 
         project["__searchQueries"] = search_results
         return project
-
 
     async def get_group_members(
         self, group_id: str, include_bot_members: bool, include_inherited_members: bool

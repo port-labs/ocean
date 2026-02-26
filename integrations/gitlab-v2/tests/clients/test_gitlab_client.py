@@ -1005,7 +1005,9 @@ class TestGitLabClient:
         ) as mock_get_file_content:
             enricher = IncludedFilesEnricher(
                 client=client,
-                strategy=ProjectIncludedFilesStrategy(included_files=["README.md", "CODEOWNERS"]),
+                strategy=ProjectIncludedFilesStrategy(
+                    included_files=["README.md", "CODEOWNERS"]
+                ),
             )
             result = (await enricher.enrich_batch([project]))[0]
 
@@ -1038,7 +1040,9 @@ class TestGitLabClient:
         ):
             enricher = IncludedFilesEnricher(
                 client=client,
-                strategy=ProjectIncludedFilesStrategy(included_files=["README.md", "MISSING.md"]),
+                strategy=ProjectIncludedFilesStrategy(
+                    included_files=["README.md", "MISSING.md"]
+                ),
             )
             result = (await enricher.enrich_batch([project]))[0]
 
@@ -1096,7 +1100,9 @@ class TestGitLabClient:
 
             assert len(results) == 1
             assert results[0]["__includedFiles"] == {"README.md": "# Hello"}
-            mock_get_file_content.assert_called_once_with("test/test-project", "README.md", "main")
+            mock_get_file_content.assert_called_once_with(
+                "test/test-project", "README.md", "main"
+            )
 
     async def test_get_project_with_included_files(self, client: GitLabClient) -> None:
         """Test that get_project (single) enriches with included files."""

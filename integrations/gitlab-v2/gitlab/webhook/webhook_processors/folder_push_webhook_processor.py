@@ -8,7 +8,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from loguru import logger
-from typing import Any, cast
+from typing import cast
 from integration import GitLabFoldersResourceConfig
 from gitlab.helpers.utils import ObjectKind
 

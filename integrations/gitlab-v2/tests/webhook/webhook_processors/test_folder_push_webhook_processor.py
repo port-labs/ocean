@@ -234,7 +234,11 @@ class TestFolderEnrichWithIncludedFiles:
         folder: dict[str, Any] = {
             "name": "src",
             "path": "src",
-            "__project": {"path_with_namespace": "group/project", "id": "1", "default_branch": "main"},
+            "__project": {
+                "path_with_namespace": "group/project",
+                "id": "1",
+                "default_branch": "main",
+            },
             "branch": "abc123",
         }
 
@@ -265,7 +269,11 @@ class TestFolderEnrichWithIncludedFiles:
         folder: dict[str, Any] = {
             "name": "src",
             "path": "src",
-            "__project": {"path_with_namespace": "group/project", "id": "1", "default_branch": "main"},
+            "__project": {
+                "path_with_namespace": "group/project",
+                "id": "1",
+                "default_branch": "main",
+            },
             "branch": "abc123",
         }
 
@@ -291,7 +299,11 @@ class TestFolderEnrichWithIncludedFiles:
         folder: dict[str, Any] = {
             "name": "src",
             "path": "src",
-            "__project": {"path_with_namespace": "group/project", "id": "1", "default_branch": "main"},
+            "__project": {
+                "path_with_namespace": "group/project",
+                "id": "1",
+                "default_branch": "main",
+            },
             "branch": "abc123",
         }
 

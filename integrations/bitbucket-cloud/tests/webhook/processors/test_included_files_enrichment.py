@@ -193,7 +193,15 @@ class TestBitbucketIncludedFilesEnrichment:
         ) as mock_enricher_class:
             mock_enricher = AsyncMock()
             mock_enricher.enrich_batch = AsyncMock(
-                return_value=[{**sample_repo, "__includedFiles": {"README.md": "# Hello", "CODEOWNERS": "* @admin"}}]
+                return_value=[
+                    {
+                        **sample_repo,
+                        "__includedFiles": {
+                            "README.md": "# Hello",
+                            "CODEOWNERS": "* @admin",
+                        },
+                    }
+                ]
             )
             mock_enricher_class.return_value = mock_enricher
 

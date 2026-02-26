@@ -152,9 +152,7 @@ class TestIncludedFilesFetcher:
 
     async def test_fetcher_handles_missing_file(self) -> None:
         mock_client = MagicMock()
-        mock_client.get_file_content = AsyncMock(
-            side_effect=Exception("404 Not Found")
-        )
+        mock_client.get_file_content = AsyncMock(side_effect=Exception("404 Not Found"))
 
         fetcher = IncludedFilesFetcher(client=mock_client)
         key = IncludedFileFetchKey(

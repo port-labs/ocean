@@ -1,4 +1,3 @@
-import asyncio
 from typing import Union, cast, Any
 
 from loguru import logger
@@ -73,6 +72,7 @@ async def _enrich_repos_batch_with_included_files(
         IncludedFilesEnricher,
         RepositoryIncludedFilesStrategy,
     )
+
     enricher = IncludedFilesEnricher(
         client=client,
         strategy=RepositoryIncludedFilesStrategy(included_files=file_paths),
