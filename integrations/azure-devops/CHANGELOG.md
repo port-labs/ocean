@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.19 (2026-02-25)
+
+
+### Bug Fixes
+
+- Fixed bug with pipeline builds pagination returning only the first page
+
+
+## 0.7.18 (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+## 0.7.17 (2026-02-25)
+
+### Features
+
+- Added group and group-member kind
+
+
 ## 0.7.16 (2026-02-24)
 
 

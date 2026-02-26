@@ -330,6 +330,96 @@ class AzureDevopsClient(HTTPBaseClient):
             yield users
 
     @cache_iterator_result()
+    async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate all security groups in the organization."""
+        groups_url = (
+            self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/groups"
+        )
+        async for groups in self._get_paginated_by_top_and_continuation_token(
+            groups_url
+        ):
+            yield groups
+
+    async def _get_group_direct_members(
+        self, group_descriptor: str
+    ) -> Optional[list[dict[str, Any]]]:
+        """Get direct members of a group."""
+        members_url = (
+            self._format_service_url("vssps")
+            + f"/{API_URL_PREFIX}/graph/Memberships/{group_descriptor}"
+        )
+        response = await self.send_request(
+            "GET", members_url, params={"direction": "Down"}
+        )
+        if not response:
+            return None
+        return response.json()["value"]
+
+    async def _lookup_subjects(
+        self, descriptors: list[str]
+    ) -> Optional[dict[str, dict[str, Any]]]:
+        """Batch lookup subject details for multiple descriptors."""
+        lookup_url = (
+            self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/subjectlookup"
+        )
+        request_body = {"lookupKeys": [{"descriptor": d} for d in descriptors]}
+
+        response = await self.send_request(
+            "POST",
+            lookup_url,
+            data=json.dumps(request_body),
+            headers={"Content-Type": "application/json"},
+            params={"api-version": "7.1-preview.1"},
+        )
+        if not response:
+            return None
+        return response.json()["value"]
+
+    async def generate_group_members(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate direct group memberships (top-level only, no recursion).
+
+        Yields members for each group. Each member includes:
+        - __group: The full group object this member belongs to
+        """
+        async for groups in self.generate_groups():
+            for group in groups:
+                group_descriptor = group["descriptor"]
+
+                memberships = await self._get_group_direct_members(group_descriptor)
+                if not memberships:
+                    logger.info(
+                        f"No membership found for {group_descriptor}, skipping ..."
+                    )
+                    continue
+
+                descriptors = [
+                    membership["memberDescriptor"] for membership in memberships
+                ]
+                subject_details = await self._lookup_subjects(descriptors)
+
+                if not subject_details:
+                    logger.warning(
+                        f"Failed to lookup subject details for group '{group_descriptor}'"
+                    )
+                    continue
+
+                members = [
+                    {
+                        **subject_details[membership["memberDescriptor"]],
+                        "__group": group,
+                    }
+                    for membership in memberships
+                ]
+
+                logger.info(
+                    f"Resolved {len(members)} direct members for group '{group_descriptor}'"
+                )
+                yield members
+
+    @cache_iterator_result()
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
@@ -587,7 +677,8 @@ class AzureDevopsClient(HTTPBaseClient):
         """Yield paginated builds for a single project, enriched with project data."""
         builds_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
         async for builds in self._get_paginated_by_top_and_continuation_token(
-            builds_url
+            builds_url,
+            additional_params={"queryOrder": "queueTimeDescending"},
         ):
             yield self._enrich_builds_with_project_data(builds, project)
 

@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.48 (2026-02-25)
+
+
+### Improvements
+
+- Updated REST API page size from 50 back to 100
+
+## 5.0.47 (2026-02-25)
+
+
+### Improvements
+
+- Reduced REST API page size from 100 to 50 to lower rate limit pressure
+- Set retry base delay to 1 second for GitHub to prevent wasted 0s retry attempts
+- Added info-level logging across retry transport, GitHub client, and rate limiter for full request lifecycle traceability
+
+
+## 5.0.46 (2026-02-25)
+
+
+### Improvements
+
+- Added structured rate limit logging on retry for easier debugging.
+
+
+## 5.0.45 (2026-02-25)
+
+
+### Bug Fixes
+
+- Replace null control characters with "[null]" string
+
+
+## 5.0.44 (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
 ## 5.0.43 (2026-02-24)
 
 
