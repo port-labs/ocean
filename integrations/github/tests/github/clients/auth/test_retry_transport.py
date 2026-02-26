@@ -1,5 +1,5 @@
 import time
-from typing import Optional
+from typing import Any, Callable, Coroutine, Optional
 from unittest.mock import Mock, patch, AsyncMock
 
 import httpx
@@ -9,13 +9,15 @@ from github.clients.auth.retry_transport import GitHubRetryTransport
 
 
 def _make_transport(
-    notifier: Optional[Mock] = None,
+    notifier: Optional[AsyncMock] = None,
+    token_refresher: Optional[Callable[[], Coroutine[Any, Any, dict[str, str]]]] = None,
 ) -> GitHubRetryTransport:
     """Build a GitHubRetryTransport with a no-op sync wrapped transport."""
     wrapped = httpx.MockTransport(handler=lambda r: httpx.Response(200))
     return GitHubRetryTransport(
         wrapped_transport=wrapped,
         rate_limit_notifier=notifier,
+        token_refresher=token_refresher,
     )
 
 
@@ -188,3 +190,83 @@ class TestGitHubRetryTransportShouldRetry:
             result = await transport._should_retry_async(_rate_limit_403_response())
 
         assert result is True
+
+
+class TestGitHubRetryTransportBeforeRetryAsync:
+    @pytest.mark.asyncio
+    async def test_returns_request_with_fresh_headers(self) -> None:
+        """before_retry_async replaces auth headers using the token_refresher result."""
+        fresh_headers = {
+            "Authorization": "Bearer new-token",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        refresher = AsyncMock(return_value=fresh_headers)
+        transport = _make_transport(token_refresher=refresher)
+
+        original_req = httpx.Request(
+            "GET",
+            "https://api.github.com/repos",
+            headers={"Authorization": "Bearer old-token"},
+        )
+        result = await transport.before_retry_async(original_req, None, 30.0, 1)
+
+        assert result is not None
+        refresher.assert_awaited_once()
+        assert result.headers["Authorization"] == "Bearer new-token"
+        assert result.method == original_req.method
+        assert result.url == original_req.url
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_no_refresher(self) -> None:
+        """before_retry_async returns None (use original request) when no token_refresher is set."""
+        transport = _make_transport(token_refresher=None)
+        req = httpx.Request("GET", "https://api.github.com/repos")
+
+        result = await transport.before_retry_async(req, None, 30.0, 1)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_preserves_non_auth_headers(self) -> None:
+        """before_retry_async keeps existing non-auth headers and only overlays fresh ones."""
+        fresh_headers = {"Authorization": "Bearer new-token"}
+        refresher = AsyncMock(return_value=fresh_headers)
+        transport = _make_transport(token_refresher=refresher)
+
+        original_req = httpx.Request(
+            "GET",
+            "https://api.github.com/repos",
+            headers={
+                "Authorization": "Bearer old-token",
+                "X-Custom-Header": "keep-me",
+            },
+        )
+        result = await transport.before_retry_async(original_req, None, 30.0, 1)
+
+        assert result is not None
+        assert result.headers["Authorization"] == "Bearer new-token"
+        assert result.headers["X-Custom-Header"] == "keep-me"
+
+    @pytest.mark.asyncio
+    async def test_called_for_all_retry_attempts(self) -> None:
+        """token_refresher is invoked on every retry, not just the first."""
+        tokens = ["Bearer token-1", "Bearer token-2"]
+        call_count = 0
+
+        async def rotating_refresher() -> dict[str, str]:
+            nonlocal call_count
+            token = tokens[call_count % len(tokens)]
+            call_count += 1
+            return {"Authorization": token}
+
+        transport = _make_transport(token_refresher=rotating_refresher)
+        req = httpx.Request("GET", "https://api.github.com/repos")
+
+        result_1 = await transport.before_retry_async(req, None, 5.0, 1)
+        result_2 = await transport.before_retry_async(req, None, 5.0, 2)
+
+        assert result_1 is not None
+        assert result_2 is not None
+        assert result_1.headers["Authorization"] == "Bearer token-1"
+        assert result_2.headers["Authorization"] == "Bearer token-2"

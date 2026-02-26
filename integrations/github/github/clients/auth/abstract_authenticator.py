@@ -64,6 +64,9 @@ class AbstractGitHubAuthenticator(ABC):
     ) -> None:
         self._rate_limit_notifier = notifier
 
+    async def _get_headers_dict(self) -> Dict[str, str]:
+        return (await self.get_headers()).as_dict()
+
     @property
     def client(self) -> httpx.AsyncClient:
         if self._http_client is None:
@@ -80,7 +83,10 @@ class AbstractGitHubAuthenticator(ABC):
             self._http_client = OceanAsyncClient(
                 GitHubRetryTransport,
                 retry_config=retry_config,
-                transport_kwargs={"rate_limit_notifier": self._rate_limit_notifier},
+                transport_kwargs={
+                    "rate_limit_notifier": self._rate_limit_notifier,
+                    "token_refresher": self._get_headers_dict,
+                },
                 timeout=ocean.config.client_timeout,
             )
         return self._http_client

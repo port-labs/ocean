@@ -1,4 +1,4 @@
-from typing import Any, Callable, Coroutine, Iterable, Optional, Union
+from typing import Any, Callable, Coroutine, Dict, Iterable, Optional, Union
 
 import httpx
 from loguru import logger
@@ -13,6 +13,8 @@ class GitHubRetryTransport(RetryTransport):
     - Retries rate-limit 403 responses (GitHub sometimes uses 403 for quota exhaustion).
     - Awaits an async `rate_limit_notifier` in `after_retry_async` on each rate-limit
       response so the rate limiter acquires its lock inline before the retry sleep begins.
+    - Refreshes auth headers via `token_refresher` in `before_retry_async` so long
+      rate-limit sleeps never leave the retry carrying a stale or expired token.
     """
 
     def __init__(
@@ -30,6 +32,9 @@ class GitHubRetryTransport(RetryTransport):
         rate_limit_notifier: Optional[
             Callable[[httpx.Response], Coroutine[Any, Any, None]]
         ] = None,
+        token_refresher: Optional[
+            Callable[[], Coroutine[Any, Any, Dict[str, str]]]
+        ] = None,
     ) -> None:
         super().__init__(
             wrapped_transport,
@@ -44,6 +49,26 @@ class GitHubRetryTransport(RetryTransport):
             logger=logger,
         )
         self._rate_limit_notifier = rate_limit_notifier
+        self._token_refresher = token_refresher
+
+    async def before_retry_async(
+        self,
+        request: httpx.Request,
+        response: Optional[httpx.Response],
+        sleep_time: float,
+        attempt: int,
+    ) -> Optional[httpx.Request]:
+        if self._token_refresher is None:
+            return None
+        fresh_headers = await self._token_refresher()
+        fresh_lower = {k.lower(): v for k, v in fresh_headers.items()}
+        return httpx.Request(
+            method=request.method,
+            url=request.url,
+            headers={**dict(request.headers), **fresh_lower},
+            content=request.content,
+            extensions=request.extensions,
+        )
 
     async def after_retry_async(
         self,
