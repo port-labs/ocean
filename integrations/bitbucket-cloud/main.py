@@ -61,43 +61,23 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
-async def _enrich_repo_with_included_files(
-    client: BitbucketClient,
-    repo: dict[str, Any],
-    file_paths: list[str],
-) -> dict[str, Any]:
-    """Enrich a repository dict with __includedFiles from the given file paths."""
-    repo_slug = repo.get("slug") or repo.get("name", "").replace(" ", "-")
-    default_branch = repo.get("mainbranch", {}).get("name", "main")
-    included: dict[str, Any] = {}
-
-    for file_path in file_paths:
-        try:
-            content = await client.get_repository_files(
-                repo_slug, default_branch, file_path
-            )
-            included[file_path] = content
-        except Exception as e:
-            logger.debug(
-                f"Could not fetch file {file_path} from {repo_slug}@{default_branch}: {e}"
-            )
-            included[file_path] = None
-
-    repo["__includedFiles"] = included
-    return repo
-
-
 async def _enrich_repos_batch_with_included_files(
     client: BitbucketClient,
     repositories: list[dict[str, Any]],
     file_paths: list[str],
 ) -> list[dict[str, Any]]:
     """Enrich a batch of repositories with included files."""
-    tasks = [
-        _enrich_repo_with_included_files(client, repo, file_paths)
-        for repo in repositories
-    ]
-    return list(await asyncio.gather(*tasks))
+    if not file_paths or not repositories:
+        return repositories
+    from bitbucket_cloud.enrichments.included_files import (
+        IncludedFilesEnricher,
+        RepositoryIncludedFilesStrategy,
+    )
+    enricher = IncludedFilesEnricher(
+        client=client,
+        strategy=RepositoryIncludedFilesStrategy(included_files=file_paths),
+    )
+    return await enricher.enrich_batch(repositories)
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
@@ -138,9 +118,10 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield batch
 
 
-from bitbucket_cloud.helpers.enrich_utils import (  # noqa: E402
-    _enrich_folders_batch_with_included_files,
-    _enrich_file_entities_batch_with_included_files,
+from bitbucket_cloud.enrichments.included_files import (  # noqa: E402
+    IncludedFilesEnricher,
+    FileIncludedFilesStrategy,
+    FolderIncludedFilesStrategy,
 )
 
 
@@ -160,9 +141,14 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=params,
     ):
         if included_files:
-            matching_folders = await _enrich_folders_batch_with_included_files(
-                client, matching_folders, included_files
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=FolderIncludedFilesStrategy(
+                    folder_selectors=selector.folders,
+                    global_included_files=included_files,
+                ),
             )
+            matching_folders = await enricher.enrich_batch(matching_folders)
         yield matching_folders
 
 
@@ -177,9 +163,11 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client() if included_files else None
     async for file_result in process_file_patterns(selector.files):
         if included_files and client:
-            file_result = await _enrich_file_entities_batch_with_included_files(
-                client, file_result, included_files
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=FileIncludedFilesStrategy(included_files=included_files),
             )
+            file_result = await enricher.enrich_batch(file_result)
         yield file_result
 
 

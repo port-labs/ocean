@@ -8,33 +8,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from loguru import logger
-from typing import Any, Optional, cast
+from typing import Any, cast
 from integration import GitLabFoldersResourceConfig
 from gitlab.helpers.utils import ObjectKind
-
-
-async def _enrich_folder_with_included_files(
-    client: Any,
-    folder: dict[str, Any],
-    file_paths: list[str],
-    project_path: str,
-    ref: str,
-) -> dict[str, Any]:
-    """Enrich a single folder entity with __includedFiles."""
-    included_files: dict[str, Optional[str]] = {}
-
-    for file_path in file_paths:
-        try:
-            content = await client.get_file_content(project_path, file_path, ref)
-            included_files[file_path] = content
-        except Exception:
-            logger.debug(
-                f"Could not fetch file '{file_path}' from {project_path}@{ref}, storing as None"
-            )
-            included_files[file_path] = None
-
-    folder["__includedFiles"] = included_files
-    return folder
 
 
 class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
@@ -85,14 +61,19 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         # Enrich folders with included files if configured
         if included_files and folders:
-            for folder in folders:
-                await _enrich_folder_with_included_files(
-                    self._gitlab_webhook_client,
-                    folder,
-                    included_files,
-                    project_path=repo_path,
-                    ref=ref,
-                )
+            from gitlab.enrichments.included_files import (
+                IncludedFilesEnricher,
+                FolderIncludedFilesStrategy,
+            )
+
+            enricher = IncludedFilesEnricher(
+                client=self._gitlab_webhook_client,
+                strategy=FolderIncludedFilesStrategy(
+                    folder_selectors=folder_patterns,
+                    global_included_files=included_files,
+                ),
+            )
+            folders = await enricher.enrich_batch(folders)
 
         if not folders:
             logger.info(

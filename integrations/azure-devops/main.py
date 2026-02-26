@@ -162,47 +162,23 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield pull_requests
 
 
-async def _enrich_repo_with_included_files(
-    client: AzureDevopsClient,
-    repo: dict[str, Any],
-    file_paths: list[str],
-) -> dict[str, Any]:
-    """Enrich a repository dict with __includedFiles from the given file paths."""
-    repo_id = repo.get("id", "")
-    default_branch_ref = repo.get("defaultBranch", "refs/heads/main")
-    # Strip the refs/heads/ prefix to get the branch name
-    branch_name = default_branch_ref.replace("refs/heads/", "")
-    included: dict[str, Any] = {}
-
-    for file_path in file_paths:
-        try:
-            content_bytes = await client.get_file_by_branch(
-                file_path, repo_id, branch_name
-            )
-            included[file_path] = (
-                content_bytes.decode("utf-8") if content_bytes else None
-            )
-        except Exception as e:
-            logger.debug(
-                f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch_name}: {e}"
-            )
-            included[file_path] = None
-
-    repo["__includedFiles"] = included
-    return repo
-
-
 async def _enrich_repos_batch_with_included_files(
     client: AzureDevopsClient,
     repositories: list[dict[str, Any]],
     file_paths: list[str],
 ) -> list[dict[str, Any]]:
     """Enrich a batch of repositories with included files."""
-    tasks = [
-        _enrich_repo_with_included_files(client, repo, file_paths)
-        for repo in repositories
-    ]
-    return list(await asyncio.gather(*tasks))
+    if not file_paths or not repositories:
+        return repositories
+    from azure_devops.enrichments.included_files import (
+        IncludedFilesEnricher,
+        RepositoryIncludedFilesStrategy,
+    )
+    enricher = IncludedFilesEnricher(
+        client=client,
+        strategy=RepositoryIncludedFilesStrategy(included_files=file_paths),
+    )
+    return await enricher.enrich_batch(repositories)
 
 
 @ocean.on_resync(Kind.REPOSITORY)
@@ -322,9 +298,10 @@ async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield deployments
 
 
-from azure_devops.helpers.enrich_utils import (  # noqa: E402
-    _enrich_folders_batch_with_included_files,
-    _enrich_file_entities_batch_with_included_files,
+from azure_devops.enrichments.included_files import (  # noqa: E402
+    IncludedFilesEnricher,
+    FileIncludedFilesStrategy,
+    FolderIncludedFilesStrategy,
 )
 
 
@@ -343,9 +320,11 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if files_batch:
             logger.info(f"Resyncing batch of {len(files_batch)} files")
             if included_files:
-                files_batch = await _enrich_file_entities_batch_with_included_files(
-                    azure_devops_client, files_batch, included_files
+                enricher = IncludedFilesEnricher(
+                    client=azure_devops_client,
+                    strategy=FileIncludedFilesStrategy(included_files=included_files),
                 )
+                files_batch = await enricher.enrich_batch(files_batch)
             yield files_batch
 
 
@@ -393,9 +372,14 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         selector.folders, selector.project_name
     ):
         if included_files:
-            matching_folders = await _enrich_folders_batch_with_included_files(
-                azure_devops_client, matching_folders, included_files
+            enricher = IncludedFilesEnricher(
+                client=azure_devops_client,
+                strategy=FolderIncludedFilesStrategy(
+                    folder_selectors=selector.folders,
+                    global_included_files=included_files,
+                ),
             )
+            matching_folders = await enricher.enrich_batch(matching_folders)
         yield matching_folders
 
 

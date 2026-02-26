@@ -987,6 +987,11 @@ class TestGitLabClient:
         self, client: GitLabClient
     ) -> None:
         """Test enriching a project with included file contents."""
+        from gitlab.enrichments.included_files import (
+            IncludedFilesEnricher,
+            ProjectIncludedFilesStrategy,
+        )
+
         project = {
             "id": "123",
             "path_with_namespace": "test/project",
@@ -998,9 +1003,11 @@ class TestGitLabClient:
             "get_file_content",
             AsyncMock(side_effect=["# README content", "* @owner"]),
         ) as mock_get_file_content:
-            result = await client.enrich_project_with_included_files(
-                project, ["README.md", "CODEOWNERS"]
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=ProjectIncludedFilesStrategy(included_files=["README.md", "CODEOWNERS"]),
             )
+            result = (await enricher.enrich_batch([project]))[0]
 
             assert "__includedFiles" in result
             assert result["__includedFiles"]["README.md"] == "# README content"
@@ -1013,6 +1020,11 @@ class TestGitLabClient:
         self, client: GitLabClient
     ) -> None:
         """Test that missing files are stored as None."""
+        from gitlab.enrichments.included_files import (
+            IncludedFilesEnricher,
+            ProjectIncludedFilesStrategy,
+        )
+
         project = {
             "id": "123",
             "path_with_namespace": "test/project",
@@ -1024,9 +1036,11 @@ class TestGitLabClient:
             "get_file_content",
             AsyncMock(side_effect=["# README content", Exception("404 Not Found")]),
         ):
-            result = await client.enrich_project_with_included_files(
-                project, ["README.md", "MISSING.md"]
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=ProjectIncludedFilesStrategy(included_files=["README.md", "MISSING.md"]),
             )
+            result = (await enricher.enrich_batch([project]))[0]
 
             assert result["__includedFiles"]["README.md"] == "# README content"
             assert result["__includedFiles"]["MISSING.md"] is None
@@ -1035,14 +1049,23 @@ class TestGitLabClient:
         self, client: GitLabClient
     ) -> None:
         """Test that an empty file list results in an empty __includedFiles dict."""
+        from gitlab.enrichments.included_files import (
+            IncludedFilesEnricher,
+            ProjectIncludedFilesStrategy,
+        )
+
         project = {
             "id": "123",
             "path_with_namespace": "test/project",
             "default_branch": "main",
         }
 
-        result = await client.enrich_project_with_included_files(project, [])
-        assert result["__includedFiles"] == {}
+        enricher = IncludedFilesEnricher(
+            client=client,
+            strategy=ProjectIncludedFilesStrategy(included_files=[]),
+        )
+        result = (await enricher.enrich_batch([project]))[0]
+        assert result.get("__includedFiles") == {}
 
     async def test_get_projects_with_included_files(self, client: GitLabClient) -> None:
         """Test that get_projects enriches with included files when specified."""
@@ -1059,14 +1082,9 @@ class TestGitLabClient:
             patch.object(client.rest, "get_paginated_resource") as mock_get_resource,
             patch.object(
                 client,
-                "enrich_project_with_included_files",
-                AsyncMock(
-                    side_effect=lambda p, **kwargs: {
-                        **p,
-                        "__includedFiles": {"README.md": "# Hello"},
-                    }
-                ),
-            ) as mock_enrich_files,
+                "get_file_content",
+                AsyncMock(return_value="# Hello"),
+            ) as mock_get_file_content,
         ):
             mock_get_resource.return_value = async_mock_generator([mock_projects])
 
@@ -1078,7 +1096,7 @@ class TestGitLabClient:
 
             assert len(results) == 1
             assert results[0]["__includedFiles"] == {"README.md": "# Hello"}
-            mock_enrich_files.assert_called_once()
+            mock_get_file_content.assert_called_once_with("test/test-project", "README.md", "main")
 
     async def test_get_project_with_included_files(self, client: GitLabClient) -> None:
         """Test that get_project (single) enriches with included files."""
@@ -1096,14 +1114,9 @@ class TestGitLabClient:
             ),
             patch.object(
                 client,
-                "enrich_project_with_included_files",
-                AsyncMock(
-                    return_value={
-                        **mock_project,
-                        "__includedFiles": {"README.md": "content"},
-                    }
-                ),
-            ) as mock_enrich_files,
+                "get_file_content",
+                AsyncMock(return_value="content"),
+            ),
         ):
             result = await client.get_project(
                 "test/project", included_files=["README.md"]
@@ -1111,7 +1124,6 @@ class TestGitLabClient:
 
             assert "__includedFiles" in result
             assert result["__includedFiles"]["README.md"] == "content"
-            mock_enrich_files.assert_called_once_with(mock_project, ["README.md"])
 
     async def test_selector_included_files_field(self) -> None:
         """Test that ProjectSelector correctly parses the includedFiles field."""

@@ -60,13 +60,16 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         included_files = selector.included_files or []
         updated = created + modified
         if included_files and updated:
-            from azure_devops.helpers.enrich_utils import (
-                _enrich_file_entities_batch_with_included_files,
+            from azure_devops.enrichments.included_files import (
+                IncludedFilesEnricher,
+                FileIncludedFilesStrategy,
             )
 
-            updated = await _enrich_file_entities_batch_with_included_files(
-                client, updated, included_files
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=FileIncludedFilesStrategy(included_files=included_files),
             )
+            updated = await enricher.enrich_batch(updated)
 
         return WebhookEventRawResults(
             updated_raw_results=updated,

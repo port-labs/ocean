@@ -25,31 +25,6 @@ class RepositoryWebhookProcessor(_BitbucketAbstractWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.REPOSITORY]
 
-    async def _enrich_with_included_files(
-        self,
-        repo_data: dict[str, Any],
-        file_paths: list[str],
-    ) -> dict[str, Any]:
-        """Enrich a repository dict with __includedFiles."""
-        repo_slug = repo_data.get("slug") or repo_data.get("name", "").replace(" ", "-")
-        default_branch = repo_data.get("mainbranch", {}).get("name", "main")
-        included: dict[str, Any] = {}
-
-        for file_path in file_paths:
-            try:
-                content = await self._webhook_client.get_repository_files(
-                    repo_slug, default_branch, file_path
-                )
-                included[file_path] = content
-            except Exception as e:
-                logger.debug(
-                    f"Could not fetch file {file_path} from {repo_slug}@{default_branch}: {e}"
-                )
-                included[file_path] = None
-
-        repo_data["__includedFiles"] = included
-        return repo_data
-
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
@@ -63,9 +38,16 @@ class RepositoryWebhookProcessor(_BitbucketAbstractWebhookProcessor):
         selector = cast(RepositoryResourceConfig, resource_config).selector
         included_files = selector.included_files or []
         if included_files:
-            repository_details = await self._enrich_with_included_files(
-                repository_details, included_files
+            from bitbucket_cloud.enrichments.included_files import (
+                IncludedFilesEnricher,
+                RepositoryIncludedFilesStrategy,
             )
+
+            enricher = IncludedFilesEnricher(
+                client=self._webhook_client,
+                strategy=RepositoryIncludedFilesStrategy(included_files=included_files),
+            )
+            repository_details = (await enricher.enrich_batch([repository_details]))[0]
 
         return WebhookEventRawResults(
             updated_raw_results=[repository_details],

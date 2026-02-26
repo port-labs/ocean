@@ -2,7 +2,7 @@
 
 import pytest
 from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
@@ -12,6 +12,10 @@ from azure_devops.webhooks.webhook_processors.repository_processor import (
     RepositoryWebhookProcessor,
 )
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.enrichments.included_files import (
+    IncludedFilesEnricher,
+    RepositoryIncludedFilesStrategy,
+)
 
 
 @pytest.fixture
@@ -41,7 +45,7 @@ def sample_repo_no_branch() -> Dict[str, Any]:
 
 @pytest.mark.asyncio
 class TestAzureDevopsIncludedFilesEnrichment:
-    """Tests for the _enrich_with_included_files static method on RepositoryWebhookProcessor."""
+    """Tests for the IncludedFilesEnricher with RepositoryIncludedFilesStrategy."""
 
     async def test_enrich_with_included_files_success(
         self,
@@ -53,9 +57,13 @@ class TestAzureDevopsIncludedFilesEnrichment:
             side_effect=[b"# README content", b"* @owner"]
         )
 
-        result = await RepositoryWebhookProcessor._enrich_with_included_files(
-            mock_client, sample_repo, ["README.md", "CODEOWNERS"]
+        enricher = IncludedFilesEnricher(
+            client=mock_client,
+            strategy=RepositoryIncludedFilesStrategy(
+                included_files=["README.md", "CODEOWNERS"]
+            ),
         )
+        result = (await enricher.enrich_batch([sample_repo]))[0]
 
         assert "__includedFiles" in result
         assert result["__includedFiles"]["README.md"] == "# README content"
@@ -74,9 +82,13 @@ class TestAzureDevopsIncludedFilesEnrichment:
             side_effect=[b"# README content", Exception("404 Not Found")]
         )
 
-        result = await RepositoryWebhookProcessor._enrich_with_included_files(
-            mock_client, sample_repo, ["README.md", "MISSING.md"]
+        enricher = IncludedFilesEnricher(
+            client=mock_client,
+            strategy=RepositoryIncludedFilesStrategy(
+                included_files=["README.md", "MISSING.md"]
+            ),
         )
+        result = (await enricher.enrich_batch([sample_repo]))[0]
 
         assert result["__includedFiles"]["README.md"] == "# README content"
         assert result["__includedFiles"]["MISSING.md"] is None
@@ -86,12 +98,14 @@ class TestAzureDevopsIncludedFilesEnrichment:
         mock_client: MagicMock,
         sample_repo: Dict[str, Any],
     ) -> None:
-        """Test that an empty file list results in an empty __includedFiles dict."""
-        result = await RepositoryWebhookProcessor._enrich_with_included_files(
-            mock_client, sample_repo, []
+        """Test that an empty file list results in no __includedFiles dict."""
+        enricher = IncludedFilesEnricher(
+            client=mock_client,
+            strategy=RepositoryIncludedFilesStrategy(included_files=[]),
         )
+        result = (await enricher.enrich_batch([sample_repo]))[0]
 
-        assert result["__includedFiles"] == {}
+        assert "__includedFiles" not in result
 
     async def test_enrich_with_included_files_strips_refs_heads(
         self,
@@ -102,12 +116,15 @@ class TestAzureDevopsIncludedFilesEnrichment:
             "id": "repo-789",
             "name": "test-repo",
             "defaultBranch": "refs/heads/develop",
+            "project": {"id": "project-1", "name": "TestProject"},
         }
         mock_client.get_file_by_branch = AsyncMock(return_value=b"content")
 
-        await RepositoryWebhookProcessor._enrich_with_included_files(
-            mock_client, repo, ["README.md"]
+        enricher = IncludedFilesEnricher(
+            client=mock_client,
+            strategy=RepositoryIncludedFilesStrategy(included_files=["README.md"]),
         )
+        await enricher.enrich_batch([repo])
 
         mock_client.get_file_by_branch.assert_called_once_with(
             "README.md", "repo-789", "develop"
@@ -118,12 +135,15 @@ class TestAzureDevopsIncludedFilesEnrichment:
         mock_client: MagicMock,
         sample_repo_no_branch: Dict[str, Any],
     ) -> None:
-        """Test fallback to refs/heads/main when defaultBranch is missing."""
+        """Test fallback to main when defaultBranch is missing."""
+        sample_repo_no_branch["defaultBranch"] = "refs/heads/main"
         mock_client.get_file_by_branch = AsyncMock(return_value=b"content")
 
-        await RepositoryWebhookProcessor._enrich_with_included_files(
-            mock_client, sample_repo_no_branch, ["README.md"]
+        enricher = IncludedFilesEnricher(
+            client=mock_client,
+            strategy=RepositoryIncludedFilesStrategy(included_files=["README.md"]),
         )
+        await enricher.enrich_batch([sample_repo_no_branch])
 
         mock_client.get_file_by_branch.assert_called_once_with(
             "README.md", "repo-456", "main"
@@ -139,9 +159,11 @@ class TestAzureDevopsIncludedFilesEnrichment:
             return_value="héllo wörld".encode("utf-8")
         )
 
-        result = await RepositoryWebhookProcessor._enrich_with_included_files(
-            mock_client, sample_repo, ["file.txt"]
+        enricher = IncludedFilesEnricher(
+            client=mock_client,
+            strategy=RepositoryIncludedFilesStrategy(included_files=["file.txt"]),
         )
+        result = (await enricher.enrich_batch([sample_repo]))[0]
 
         assert result["__includedFiles"]["file.txt"] == "héllo wörld"
 
@@ -153,9 +175,11 @@ class TestAzureDevopsIncludedFilesEnrichment:
         """Test that None content from get_file_by_branch is stored as None."""
         mock_client.get_file_by_branch = AsyncMock(return_value=None)
 
-        result = await RepositoryWebhookProcessor._enrich_with_included_files(
-            mock_client, sample_repo, ["file.txt"]
+        enricher = IncludedFilesEnricher(
+            client=mock_client,
+            strategy=RepositoryIncludedFilesStrategy(included_files=["file.txt"]),
         )
+        result = (await enricher.enrich_batch([sample_repo]))[0]
 
         assert result["__includedFiles"]["file.txt"] is None
 
@@ -191,7 +215,16 @@ class TestAzureDevopsIncludedFilesEnrichment:
         resource_config = MagicMock()
         resource_config.selector.included_files = ["README.md", "CODEOWNERS"]
 
-        result = await processor.handle_event(payload, resource_config)
+        with patch(
+            "azure_devops.enrichments.included_files.enricher.IncludedFilesEnricher"
+        ) as mock_enricher_class:
+            mock_enricher = AsyncMock()
+            mock_enricher.enrich_batch = AsyncMock(
+                return_value=[{**sample_repo, "__includedFiles": {"README.md": "# Hello", "CODEOWNERS": "* @admin"}}]
+            )
+            mock_enricher_class.return_value = mock_enricher
+
+            result = await processor.handle_event(payload, resource_config)
 
         assert isinstance(result, WebhookEventRawResults)
         assert len(result.updated_raw_results) == 1
