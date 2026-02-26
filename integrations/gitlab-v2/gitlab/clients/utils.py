@@ -1,6 +1,7 @@
 from port_ocean.context.event import event
 from integration import GitlabPortAppConfig
 from typing import cast, Any, Optional
+from loguru import logger
 
 
 def get_visibility_config() -> tuple[bool, int]:
@@ -59,6 +60,7 @@ def build_project_params(
     return params
 
 
+# Ai! projects to scan should be yielded in batches of 100
 async def get_projects_to_scan(
     client: Any,  # GitLabClient
     repositories: Optional[list[str]] = None,
@@ -74,7 +76,6 @@ async def get_projects_to_scan(
     Returns:
         List of project dictionaries
     """
-    from loguru import logger
 
     projects_to_scan = []
 
