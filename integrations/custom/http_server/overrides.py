@@ -1,5 +1,4 @@
-from http import HTTPMethod
-from typing import ClassVar, Dict, Any, Optional
+from typing import ClassVar, Dict, Any, Literal, Optional
 from pydantic import Field, BaseModel, root_validator
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -12,6 +11,8 @@ from http_server.exceptions import (
     CustomAuthRequestTemplateError,
 )
 
+HTTP_METHOD = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
+
 
 class ApiPathParameter(BaseModel):
     """Configuration for API-discovered path parameters"""
@@ -19,10 +20,10 @@ class ApiPathParameter(BaseModel):
     endpoint: str = Field(
         title="Endpoint", description="API endpoint to discover parameter values"
     )
-    method: HTTPMethod = Field(
+    method: HTTP_METHOD = Field(
         title="Method",
         description="HTTP method",
-        default=HTTPMethod.GET.value,
+        default="GET",
     )
     query_params: Optional[Dict[str, Any]] = Field(
         title="Query Parameters",
@@ -61,10 +62,11 @@ class HttpServerSelector(Selector):
         description="HTTP endpoint path (supports {param} templates)",
         default=None,
     )
-    method: HTTPMethod = Field(
+    method: str = Field(
+        enum=["GET", "POST", "PUT", "PATCH", "DELETE"],
         title="Method",
         description="HTTP method",
-        default=HTTPMethod.GET.value,
+        default="GET",
     )
     query_params: Optional[Dict[str, Any]] = Field(
         title="Query Parameters",
@@ -116,10 +118,10 @@ class CustomAuthRequestConfig(BaseModel):
         title="Endpoint",
         description="Endpoint path or full URL for authentication request (e.g., '/oauth/token' or 'https://auth.example.com/token')",
     )
-    method: HTTPMethod = Field(
+    method: HTTP_METHOD = Field(
         title="Method",
         description="HTTP method for authentication request",
-        default=HTTPMethod.POST.value,
+        default="POST",
     )
     headers: Optional[Dict[str, str]] = Field(
         title="Headers",
