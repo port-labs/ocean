@@ -60,6 +60,7 @@ def build_project_params(
     return params
 
 
+# AI! this requires the GitlabClient class, please move it to `gitlab_client` file
 async def get_projects_to_scan(
     client: Any,  # GitLabClient
     repositories: Optional[list[str]] = None,
