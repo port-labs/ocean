@@ -2,7 +2,7 @@ import fnmatch
 from pathlib import PurePosixPath
 from typing import Any, Protocol, Sequence
 
-from integration import BitbucketFolderSelector
+from integration import FolderPattern
 
 from bitbucket_cloud.enrichments.included_files.utils import (
     FolderIncludedFilesRequests,
@@ -61,7 +61,7 @@ class FolderIncludedFilesStrategy:
     def __init__(
         self,
         *,
-        folder_selectors: Sequence[BitbucketFolderSelector],
+        folder_selectors: Sequence[FolderPattern],
         global_included_files: Sequence[str] = (),
     ) -> None:
         self._selectors = list(folder_selectors)
@@ -130,10 +130,10 @@ class FolderIncludedFilesStrategy:
             ):
                 continue
 
-            if not fnmatch(folder_path, selector.path):
+            if not fnmatch.fnmatch(folder_path, selector.path):
                 continue
 
-            folder_paths.extend(selector.included_files or [])
+            # FolderPattern doesn't have included_files - they come from global_included_files
 
         return FolderIncludedFilesRequests(
             global_paths=global_paths,

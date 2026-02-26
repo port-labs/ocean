@@ -2,7 +2,7 @@ import fnmatch
 from pathlib import PurePosixPath
 from typing import Any, Protocol, Sequence
 
-from azure_devops.misc import AzureDevopsFolderSelector
+from azure_devops.misc import FolderPattern
 
 from azure_devops.enrichments.included_files.utils import (
     FolderIncludedFilesRequests,
@@ -63,7 +63,7 @@ class FolderIncludedFilesStrategy:
     def __init__(
         self,
         *,
-        folder_selectors: Sequence[AzureDevopsFolderSelector],
+        folder_selectors: Sequence[FolderPattern],
         global_included_files: Sequence[str] = (),
     ) -> None:
         self._selectors = list(folder_selectors)
@@ -136,10 +136,10 @@ class FolderIncludedFilesStrategy:
             ):
                 continue
 
-            if not fnmatch(folder_path, selector.path):
+            if not fnmatch.fnmatch(folder_path, selector.path):
                 continue
 
-            folder_paths.extend(selector.included_files or [])
+            # FolderPattern doesn't have included_files - they come from global_included_files
 
         return FolderIncludedFilesRequests(
             global_paths=global_paths,
@@ -164,7 +164,11 @@ class FileIncludedFilesStrategy:
         branch_ref = entity.get("branch") or repo.get(
             "defaultBranch", "refs/heads/main"
         )
-        branch = branch_ref.replace("refs/heads/", "") if isinstance(branch_ref, str) else branch_ref
+        branch = (
+            branch_ref.replace("refs/heads/", "")
+            if isinstance(branch_ref, str)
+            else branch_ref
+        )
         file_path = entity.get("path", "")
         base_path = str(PurePosixPath(file_path).parent)
         return IncludedFilesEntityContext(

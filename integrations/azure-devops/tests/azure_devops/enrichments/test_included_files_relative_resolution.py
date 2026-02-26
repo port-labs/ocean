@@ -7,17 +7,16 @@ from azure_devops.enrichments.included_files import (
     FolderIncludedFilesStrategy,
     IncludedFilesEnricher,
 )
-from azure_devops.misc import AzureDevopsFolderSelector, RepositoryBranchMapping
+from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 
 
 @pytest.mark.asyncio
 class TestIncludedFilesRelativeResolution:
     async def test_folder_included_files_resolves_relative_to_folder_path(self) -> None:
         folder_selectors = [
-            AzureDevopsFolderSelector(
+            FolderPattern(
                 path="apps/*",
                 repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
-                includedFiles=["README.md"],
             )
         ]
         folders = [
@@ -71,10 +70,9 @@ class TestIncludedFilesRelativeResolution:
 
     async def test_folder_global_included_files_attaches_to_top_level(self) -> None:
         folder_selectors = [
-            AzureDevopsFolderSelector(
+            FolderPattern(
                 path="apps/*",
                 repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
-                includedFiles=["README.md"],
             )
         ]
         folders = [
@@ -133,9 +131,7 @@ class TestIncludedFilesRelativeResolution:
         ]
 
         mock_client = MagicMock()
-        mock_client.get_file_by_branch = AsyncMock(
-            return_value=b"service-a-readme"
-        )
+        mock_client.get_file_by_branch = AsyncMock(return_value=b"service-a-readme")
 
         enricher = IncludedFilesEnricher(
             client=mock_client,

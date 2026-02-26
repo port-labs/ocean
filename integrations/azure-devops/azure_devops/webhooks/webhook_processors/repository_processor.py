@@ -75,4 +75,3 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             return None
 
         return {"kind": Kind.REPOSITORY, **repository}
-
