@@ -46,7 +46,18 @@ class TestIPBlockerTransport:
         assert sent.url.host == "api.getport.io"
 
     @pytest.mark.asyncio
-    async def test_dns_rebinding_mitigation_pins_ip_keeps_host_sni(self) -> None:
+    async def test_trusted_vendor_bypass(self) -> None:
+        """Requests to known integration vendor APIs (e.g. GitHub, Atlassian) skip the check."""
+        wrapped = AsyncMock(spec=httpx.AsyncBaseTransport)
+        wrapped.handle_async_request.return_value = httpx.Response(
+            200, request=httpx.Request("GET", "https://api.github.com/")
+        )
+        transport = IPBlockerTransport(wrapped=wrapped)
+        await transport.handle_async_request(
+            httpx.Request("GET", "https://api.github.com/repos/port/example")
+        )
+        sent = wrapped.handle_async_request.call_args[0][0]
+        assert sent.url.host == "api.github.com"
         """URL is rewritten to validated IP (rebinding mitigation); Host + sni_hostname keep TLS working."""
         with patch(
             "port_ocean.helpers.ip_blocker._resolve_to_ip_addresses",

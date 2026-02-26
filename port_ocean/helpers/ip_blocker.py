@@ -57,7 +57,42 @@ _BLOCKED_IPV6 = [
 _NETS_V4 = frozenset(ipaddress.ip_network(c, strict=False) for c in _BLOCKED_IPV4)
 _NETS_V6 = frozenset(ipaddress.ip_network(c, strict=False) for c in _BLOCKED_IPV6)
 
-_TRUSTED_SUBDOMAINS = (".port.io", ".getport.io")
+_TRUSTED_SUBDOMAINS = (
+    # Port domains
+    ".getport.io",
+    ".port.io",
+    # Third-party API domains
+    ".aikido.dev",
+    ".amplication.com",
+    ".armorcode.com",
+    ".atlassian.com",
+    ".atlassian.net",
+    ".azure.com",
+    ".bitbucket.org",
+    ".checkmarx.net",
+    ".datadoghq.com",
+    ".dynatrace.com",
+    ".firehydrant.io",
+    ".github.com",
+    ".gitlab.com",
+    ".komodor.com",
+    ".launchdarkly.com",
+    ".linear.app",
+    ".management.azure.com",
+    ".newrelic.com",
+    ".octopus.com",
+    ".okta.com",
+    ".opsgenie.com",
+    ".pagerduty.com",
+    ".sentry.io",
+    ".servicenow.com",
+    ".service-now.com",
+    ".snyk.io",
+    ".sonarqube.org",
+    ".statuspage.io",
+    ".terraform.io",
+    ".wiz.io",
+)
 
 
 async def _resolve_to_ip_addresses(hostname: str) -> list[str]:
