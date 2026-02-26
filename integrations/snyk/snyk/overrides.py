@@ -33,7 +33,7 @@ class SnykIntegration(BaseIntegration):
 
 class TargetSelector(BaseModel):
     query: str
-    attach_project_data: bool = Field(default=False, alias="attachProjectData")
+    attach_project_data: bool = Field(default=True, alias="attachProjectData")
 
 
 class TargetResourceConfig(ResourceConfig):
