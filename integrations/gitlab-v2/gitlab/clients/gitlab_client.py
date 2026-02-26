@@ -439,6 +439,7 @@ class GitLabClient:
                 if result := await completed_task:
                     yield result
 
+    # AI! can we make this function better, prettier, smaller
     async def get_repository_tree(
         self,
         project: dict[str, Any],
@@ -494,7 +495,6 @@ class GitLabClient:
             async for folders_batch in self.get_repository_tree(
                 project, path, effective_branch, folders_only=True
             ):
-                # Remap 'item' to 'folder' for backward compatibility with older consumers of get_repository_folders
                 yield [{**item, "folder": item.pop("item")} for item in folders_batch]
 
     async def _enrich_batch(
