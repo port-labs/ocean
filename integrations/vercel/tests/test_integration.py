@@ -1,10 +1,9 @@
-"""Unit tests for integration.py config models and utils.py pure helpers."""
+"""Unit tests for integration.py config models and helpers/utils.py."""
 
 from __future__ import annotations
 
 from integration import VercelSelector
-from utils import extract_entity
-
+from vercel.helpers.utils import extract_entity
 
 # ── VercelSelector tests ───────────────────────────────────────────────────────
 

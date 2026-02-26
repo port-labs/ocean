@@ -179,10 +179,10 @@
           "description": "What triggered this deployment (git, api, redeploy, etc.)"
         },
         "inspectorUrl": {
-          "title": "Build Logs",
+          "title": "Deployment Inspector",
           "type": "string",
           "format": "url",
-          "description": "Vercel deployment inspector — build output, logs, and deployment details"
+          "description": "Vercel deployment inspector — build output, status, and deployment details"
         }
       },
       "required": []

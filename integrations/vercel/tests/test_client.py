@@ -1,4 +1,4 @@
-"""Unit tests for vercel/client.py."""
+"""Unit tests for vercel/clients/http/vercel_client.py."""
 
 from __future__ import annotations
 
@@ -9,8 +9,7 @@ from typing import Any
 import pytest
 import pytest_httpx
 
-from client import VercelClient, PAGE_LIMIT
-
+from vercel.clients.http.vercel_client import PAGE_LIMIT, VercelClient
 
 # ── Fixture helpers ────────────────────────────────────────────────────────────
 

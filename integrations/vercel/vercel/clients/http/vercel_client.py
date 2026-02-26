@@ -15,12 +15,10 @@ import logging
 from typing import Any, AsyncGenerator
 
 import httpx
-from port_ocean.context.ocean import ocean
 
 logger = logging.getLogger(__name__)
 
 VERCEL_BASE_URL = "https://api.vercel.com"
-# Number of items to request per paginated page.
 PAGE_LIMIT = 100
 
 
@@ -31,8 +29,6 @@ class VercelClient:
         self.token = token
         self.team_id = team_id
         self._client: httpx.AsyncClient | None = None
-
-    # ── lifecycle ──────────────────────────────────────────────────────────
 
     async def __aenter__(self) -> "VercelClient":
         self._client = httpx.AsyncClient(
@@ -48,8 +44,6 @@ class VercelClient:
     async def __aexit__(self, *_: Any) -> None:
         if self._client:
             await self._client.aclose()
-
-    # ── internal helpers ───────────────────────────────────────────────────
 
     def _team_params(self, extra: dict[str, Any] | None = None) -> dict[str, Any]:
         """Build query-param dict, injecting teamId when configured."""
@@ -87,8 +81,6 @@ class VercelClient:
                 break
             params["until"] = next_cursor
 
-    # ── public API methods ─────────────────────────────────────────────────
-
     async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Yield pages of teams the token has access to.
@@ -97,7 +89,6 @@ class VercelClient:
         so the blueprint entity exists for relations.
         """
         if self.team_id:
-            # Fetch the specific team only.
             data = await self._get(f"/v2/teams/{self.team_id}")
             yield [data]
         else:
@@ -107,7 +98,6 @@ class VercelClient:
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Yield pages of projects (optionally scoped to a team)."""
         async for page in self._paginate("/v9/projects", "projects"):
-            # Attach teamId to each project so we can resolve the relation later.
             if self.team_id:
                 for project in page:
                     project.setdefault("teamId", self.team_id)
@@ -140,7 +130,6 @@ class VercelClient:
             f"/v9/projects/{project_id}/domains",
             "domains",
         ):
-            # Attach projectId so we can resolve the relation in mapping.
             for domain in page:
                 domain.setdefault("projectId", project_id)
             yield page
@@ -150,8 +139,6 @@ class VercelClient:
         async for page in self.get_projects():
             for project in page:
                 yield project
-
-    # ── webhook validation ─────────────────────────────────────────────────
 
     @staticmethod
     def verify_webhook_signature(
@@ -171,12 +158,3 @@ class VercelClient:
             hashlib.sha1,
         ).hexdigest()
         return hmac.compare_digest(expected, signature_header)
-
-
-def create_client() -> VercelClient:
-    """Build a VercelClient from the current Ocean integration configuration."""
-    cfg = ocean.integration_config
-    return VercelClient(
-        token=cfg["token"],
-        team_id=cfg.get("teamId") or None,
-    )
