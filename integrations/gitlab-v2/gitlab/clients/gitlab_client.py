@@ -439,7 +439,6 @@ class GitLabClient:
                 if result := await completed_task:
                     yield result
 
-    # AI! can we make this function better, prettier, smaller
     async def get_repository_tree(
         self,
         project: dict[str, Any],
@@ -453,37 +452,30 @@ class GitLabClient:
         )
         project_path = str(project["id"])
 
-        is_wildcard_or_file = any(c in path for c in "*?[]") or not folders_only
-
-        # If using wildcards or fetching files, we must fetch recursively from root to match against pattern.
-        # Otherwise, we can use the path directly in the API call.
+        # Determine if we need to fetch recursively from root (for wildcards or file search)
+        # or if we can query a specific path directly
+        is_pattern_search = any(c in path for c in "*?[]") or not folders_only
         params = {
             "ref": ref,
-            "path": "" if is_wildcard_or_file else path,
-            "recursive": is_wildcard_or_file,
+            "path": "" if is_pattern_search else path,
+            "recursive": is_pattern_search,
         }
 
         async for batch in self.rest.get_paginated_project_resource(
             project_path, "repository/tree", params
         ):
-            filtered_batch = [
-                item
-                for item in batch
-                if (not folders_only or item["type"] == "tree")
-                and (
-                    glob.globmatch(
-                        item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
-                    )
-                    if is_wildcard_or_file
-                    else True
-                )
-            ]
+            filtered_batch = []
+            for item in batch:
+                if folders_only and item["type"] != "tree":
+                    continue
+                if is_pattern_search and not glob.globmatch(
+                    item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
+                ):
+                    continue
+                filtered_batch.append({"item": item, "repo": project, "__branch": ref})
 
             if filtered_batch:
-                yield [
-                    {"item": item, "repo": project, "__branch": ref}
-                    for item in filtered_batch
-                ]
+                yield filtered_batch
 
     async def get_repository_folders(
         self, path: str, repository: str, branch: Optional[str] = None
