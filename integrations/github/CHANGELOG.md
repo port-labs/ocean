@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.48 (2026-02-25)
+
+
+### Improvements
+
+- Updated REST API page size from 50 back to 100
+
 ## 5.0.47 (2026-02-25)
 
 
