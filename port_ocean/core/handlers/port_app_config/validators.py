@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import types as _types
 from typing import Any, Literal, Type, Union, get_args, get_origin
@@ -8,16 +9,20 @@ from port_ocean.core.handlers.port_app_config.models import (
     CUSTOM_KIND,
     PortAppConfig,
     ResourceConfig,
+    Selector,
 )
+from port_ocean.utils.misc import get_subclass_class_from_module
 
 
-def validate_and_get_resource_kinds(
+def validate_and_get_config_schema(
     config_class: Type[PortAppConfig],
-) -> dict[str, dict[str, Any]]:
-    """Validate kind definitions and return a mapping of kind."""
+) -> dict[str, Any]:
+    """Validate config definitions and return UI schema (kinds + advancedConfig)."""
     models = _get_resource_config_models(config_class)
     _validate_kind_discriminator(config_class)
-    return _build_kinds_mapping(models, config_class.allow_custom_kinds)
+    kinds = _build_kinds_mapping(models, config_class.allow_custom_kinds)
+    advanced_config = _get_advanced_config(config_class)
+    return {"kinds": kinds, "advancedConfig": advanced_config}
 
 
 def _validate_kind_discriminator(config_class: Type[PortAppConfig]) -> None:
@@ -103,6 +108,24 @@ def _unwrap_union(annotation: Any) -> list[type]:
     return [annotation]
 
 
+def _get_advanced_config(config_class: Type[PortAppConfig]) -> dict[str, Any]:
+    """Return metadata for root PortAppConfig fields (except 'resources') from JSON schema."""
+    schema = config_class.schema()
+    return {k: v for k, v in schema.get("properties", {}).items() if k != "resources"}
+
+
+def _get_selector_schema(selector_type: Any, model: type) -> dict[str, Any]:
+    """Return JSON schema for the selector type, or resolve from model's module, or base Selector."""
+    if isinstance(selector_type, type) and hasattr(selector_type, "schema"):
+        return selector_type.schema()
+    selector_class = get_subclass_class_from_module(
+        importlib.import_module(model.__module__), Selector
+    )
+    if selector_class is not None:
+        return selector_class.schema()
+    return Selector.schema()
+
+
 def _build_kinds_mapping(
     models: list[type],
     allow_custom_kinds: bool,
@@ -126,7 +149,15 @@ def _build_kinds_mapping(
                 f"Duplicate kind '{kind_value}' found in resource config models"
             )
 
-        kinds[kind_value] = _field_info_to_dict(kind_field.field_info)
+        kind_entry = _field_info_to_dict(kind_field.field_info)
+
+        selector_field = model.__fields__.get("selector")
+        if selector_field is not None:
+            kind_entry["selectors"] = _get_selector_schema(
+                selector_field.outer_type_, model
+            )
+
+        kinds[kind_value] = kind_entry
 
     return kinds
 
