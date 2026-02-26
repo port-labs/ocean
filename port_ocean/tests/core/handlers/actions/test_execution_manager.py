@@ -900,4 +900,3 @@ class TestExecutionManager:
         assert await execution_manager._global_queue.size() == 2
         assert action_run.id in execution_manager._deduplication_set
         assert wf_node_run.id in execution_manager._deduplication_set
-
