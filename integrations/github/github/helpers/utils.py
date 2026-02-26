@@ -45,6 +45,7 @@ class ObjectKind(StrEnum):
     BRANCH = "branch"
     ENVIRONMENT = "environment"
     DEPLOYMENT = "deployment"
+    DEPLOYMENT_STATUS = "deployment-status"
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
     SECRET_SCANNING_ALERT = "secret-scanning-alerts"
