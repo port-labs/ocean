@@ -118,17 +118,23 @@ class GitHubRateLimiter:
                 info.reset_time = int(time.time()) + retry_after_seconds
             info.remaining = 0
 
-        if info is not None:
-            self.rate_limit_info = info
-            self._initialized = True
-            logger.bind(
-                api_type=self.api_type,
-                resource=resource,
-                resets_in=info.seconds_until_reset,
-            ).warning(
-                f"GitHub rate limit exhausted for {self.api_type} on {resource}: "
-                f"resets in {info.seconds_until_reset}s"
-            )
+        if info is None:
+            return
+
+        existing_reset = self.rate_limit_info.reset_time if self.rate_limit_info else 0
+        if info.reset_time <= max(int(time.time()), existing_reset):
+            return
+
+        self.rate_limit_info = info
+        self._initialized = True
+        logger.bind(
+            api_type=self.api_type,
+            resource=resource,
+            resets_in=info.seconds_until_reset,
+        ).warning(
+            f"GitHub rate limit exhausted for {self.api_type} on {resource}: "
+            f"resets in {info.seconds_until_reset}s"
+        )
 
     def _initialize_from_response(
         self, headers: RateLimiterRequiredHeaders, resource: str
