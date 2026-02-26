@@ -10,6 +10,7 @@ from azure_devops.client.rate_limiter import (
     LIMIT_RESET_HEADER,
     LIMIT_RETRY_AFTER_HEADER,
 )
+from azure_devops.client.auth_client import AuthClient
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
@@ -29,6 +30,33 @@ class HTTPBaseClient:
         )
         self._personal_access_token = personal_access_token
         self._rate_limiter = AzureDevOpsRateLimiter()
+        self._auth_client = AuthClient(personal_access_token)
+
+    def _ensure_oauth_headers(
+        self, headers: Optional[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """
+        Ensure the Authorization header is set correctly when OAuth is enabled.
+        Falls back to PAT if OAuth token is not available (e.g., at app startup).
+        """
+        return self._auth_client.get_headers(headers)
+
+    def _prepare_auth_and_headers(
+        self, headers: Optional[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """
+        Prepare authentication and headers for the request.
+        Returns the prepared headers dictionary.
+        """
+        if self._auth_client.is_oauth_enabled():
+            self._client.auth = None
+            headers = self._ensure_oauth_headers(headers)
+            if not headers.get("Authorization"):
+                self._client.auth = BasicAuth("", self._personal_access_token)
+        else:
+            self._client.auth = BasicAuth("", self._personal_access_token)
+
+        return headers or {}
 
     async def send_request(
         self,
@@ -39,7 +67,7 @@ class HTTPBaseClient:
         headers: Optional[dict[str, Any]] = None,
         timeout: int = 5,
     ) -> Response | None:
-        self._client.auth = BasicAuth("", self._personal_access_token)
+        headers = self._prepare_auth_and_headers(headers)
         self._client.follow_redirects = True
 
         try:
@@ -101,7 +129,14 @@ class HTTPBaseClient:
                 )
                 if not response:
                     break
-                response_json = response.json()
+                try:
+                    response_json = response.json()
+                except ValueError as json_error:
+                    logger.error(
+                        f"Failed to parse JSON response from {url} with params {params}. "
+                        f"Error: {json_error}"
+                    )
+                    raise
                 items = response_json[data_key]
 
                 logger.info(
@@ -150,7 +185,14 @@ class HTTPBaseClient:
                 if not response:
                     break
 
-                objects_page = response.json()["value"]
+                try:
+                    objects_page = response.json()["value"]
+                except ValueError as json_error:
+                    logger.error(
+                        f"Failed to parse JSON response from {url} with params {params}. "
+                        f"Error: {json_error}"
+                    )
+                    raise
                 if objects_page:
                     logger.info(
                         f"Found {len(objects_page)} objects in url {url} with params: {params} and max_results: {max_results}"
