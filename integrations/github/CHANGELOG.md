@@ -7,14 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.0.40 (2026-02-23)
-
-
-### Improvements
-
-- Moved enrich utility functions from main.py to dedicated helpers/enrich_utils.py module
-
-
 ## 5.0.39 (2026-02-22)
 
 
