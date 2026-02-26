@@ -25,6 +25,7 @@ class RestClient(HTTPBaseClient):
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch a paginated project resource (e.g., labels)."""
         encoded_project_path = quote(project_path, safe="")
+
         path = f"projects/{encoded_project_path}/{resource_type}"
 
         async for batch in self._make_paginated_request(path, params=params):

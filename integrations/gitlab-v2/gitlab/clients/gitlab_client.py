@@ -57,6 +57,29 @@ class GitLabClient:
             )
         return project
 
+    async def get_parent_groups(
+        self,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        all_group_ids = set()
+        groups_by_id = {}
+
+        async for group_batch in self.get_groups(params=params):
+            for group in group_batch:
+                group_id = group["id"]
+                all_group_ids.add(group_id)
+                groups_by_id[group_id] = group
+
+        top_level_groups = [
+            group
+            for group in groups_by_id.values()
+            if group.get("parent_id") is None
+            or group.get("parent_id") not in all_group_ids
+        ]
+
+        if top_level_groups:
+            yield top_level_groups
+
     async def get_group(self, group_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request("GET", f"groups/{group_id}")
 
@@ -339,107 +362,120 @@ class GitLabClient:
         response = await self.rest.send_api_request("GET", path, params=params)
         return bool(response)
 
-    async def get_parent_groups(
+    async def get_projects_to_scan(
         self,
+        repositories: Optional[list[str]] = None,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        all_group_ids = set()
-        groups_by_id = {}
+        """Helper function to get list of projects to scan for files.
 
-        async for group_batch in self.get_groups(params=params):
-            for group in group_batch:
-                group_id = group["id"]
-                all_group_ids.add(group_id)
-                groups_by_id[group_id] = group
+        Args:
+            repositories: Optional list of repository names/IDs to limit scan to
+            params: Optional parameters for group filtering
 
-        top_level_groups = [
-            group
-            for group in groups_by_id.values()
-            if group.get("parent_id") is None
-            or group.get("parent_id") not in all_group_ids
-        ]
+        Yields:
+            List of project dictionaries
+        """
+        if repositories:
+            projects_batch = []
+            for repo in repositories:
+                try:
+                    projects_batch.append(await self.get_project(repo))
+                    if len(projects_batch) >= 100:
+                        yield projects_batch
+                        projects_batch = []
+                except Exception as e:
+                    logger.warning(f"Could not fetch project {repo}: {e}")
+            if projects_batch:
+                yield projects_batch
+        else:
+            async for projects_batch in self.get_projects(params=params):
+                yield projects_batch
 
-        if top_level_groups:
-            yield top_level_groups
-
-    async def search_files(
+    async def search_files_using_tree(
         self,
-        scope: str,
         path: str,
         repositories: list[str] | None = None,
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        search_query = f"path:{path}"
-        logger.info(f"Starting file search with path pattern: '{path}'")
+        semaphore = asyncio.Semaphore(10)
 
-        if repositories:
-            logger.info(f"Searching across {len(repositories)} specific repositories")
-            for repo in repositories:
-                logger.debug(f"Processing repository: {repo}")
-                async for batch in self._search_files_in_repository(
-                    repo, scope, search_query, skip_parsing
-                ):
-                    yield batch
-        else:
-            logger.info("Searching across groups")
-            async for top_level_groups in self.get_parent_groups(
-                params=params,
-            ):
-                logger.info(
-                    f"Found {len(top_level_groups)} top-level searchable groups"
-                )
-
-                for group in top_level_groups:
-                    group_id = str(group["id"])
-                    logger.debug(f"Processing group: {group_id}")
-                    async for batch in self._search_files_in_group(
-                        group_id, scope, search_query, skip_parsing
+        async def _search_project(project: dict[str, Any]) -> list[dict[str, Any]]:
+            async with semaphore:
+                results = []
+                try:
+                    async for tree_batch in self.get_repository_tree(
+                        project, path, ref=project.get("default_branch", "main")
                     ):
-                        yield batch
+                        for entry in tree_batch:
+                            item = entry["item"]
+                            if item["type"] != "blob":
+                                continue
+                            file_obj = {
+                                "path": item["path"],
+                                "project_id": project["id"],
+                                "ref": entry["__branch"],
+                                "id": item["id"],
+                                "mode": item["mode"],
+                                "name": item["name"],
+                            }
+                            results.append(
+                                await self._process_file(
+                                    file_obj,
+                                    project["path_with_namespace"],
+                                    skip_parsing=skip_parsing,
+                                )
+                            )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to process project {project.get('path_with_namespace', project.get('id'))}: {e}"
+                    )
+                return results
+
+        async for projects_batch in self.get_projects_to_scan(repositories, params):
+            tasks = [asyncio.create_task(_search_project(p)) for p in projects_batch]
+            for completed_task in asyncio.as_completed(tasks):
+                if result := await completed_task:
+                    yield result
 
     async def get_repository_tree(
         self,
         project: dict[str, Any],
         path: str,
         ref: str = "main",
+        folders_only: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch repository tree (folders only) for a project."""
+        """Fetch repository tree for a project."""
+        logger.info(
+            f"fetching repository tree for project {project.get('name', project.get('id'))}"
+        )
+        project_path = str(project["id"])
 
-        project_path = project["path_with_namespace"]
-        is_wildcard = any(c in path for c in "*?[]")
+        # Determine if we need to fetch recursively from root (for wildcards or file search)
+        # or if we can query a specific path directly
+        is_pattern_search = any(c in path for c in "*?[]") or not folders_only
+        params = {
+            "ref": ref,
+            "path": "" if is_pattern_search else path,
+            "recursive": is_pattern_search,
+        }
 
-        if is_wildcard:
-            # For wildcard patterns, we need to recursively search and filter using globmatch
-            params = {"ref": ref, "path": "", "recursive": True}
+        async for batch in self.rest.get_paginated_project_resource(
+            project_path, "repository/tree", params
+        ):
+            filtered_batch = []
+            for item in batch:
+                if folders_only and item["type"] != "tree":
+                    continue
+                if is_pattern_search and not glob.globmatch(
+                    item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
+                ):
+                    continue
+                filtered_batch.append({"item": item, "repo": project, "__branch": ref})
 
-            async for batch in self.rest.get_paginated_project_resource(
-                project_path, "repository/tree", params
-            ):
-                folders_batch = [
-                    item
-                    for item in batch
-                    if item["type"] == "tree"
-                    and glob.globmatch(
-                        item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
-                    )
-                ]
-                if folders_batch:
-                    yield [
-                        {"folder": folder, "repo": project, "__branch": ref}
-                        for folder in folders_batch
-                    ]
-        else:
-            # For exact paths, use non-recursive search
-            params = {"ref": ref, "path": path, "recursive": False}
-            async for batch in self.rest.get_paginated_project_resource(
-                project_path, "repository/tree", params
-            ):
-                if folders_batch := [item for item in batch if item["type"] == "tree"]:
-                    yield [
-                        {"folder": folder, "repo": project, "__branch": ref}
-                        for folder in folders_batch
-                    ]
+            if filtered_batch:
+                yield filtered_batch
 
     async def get_repository_folders(
         self, path: str, repository: str, branch: Optional[str] = None
@@ -449,9 +485,9 @@ class GitLabClient:
         if project:
             effective_branch = branch or project["default_branch"]
             async for folders_batch in self.get_repository_tree(
-                project, path, effective_branch
+                project, path, effective_branch, folders_only=True
             ):
-                yield folders_batch
+                yield [{**item, "folder": item.pop("item")} for item in folders_batch]
 
     async def _enrich_batch(
         self,

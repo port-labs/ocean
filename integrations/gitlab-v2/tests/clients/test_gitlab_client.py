@@ -35,7 +35,140 @@ class TestGitLabClient:
     @pytest.fixture
     def client(self) -> GitLabClient:
         """Initialize GitLab client with test configuration"""
-        return GitLabClient("https://gitlab.example.com", "test-token")
+        client = GitLabClient("https://gitlab.example.com", "test-token")
+        client._process_file = AsyncMock(side_effect=lambda f, c, **k: f)  # type: ignore
+        return client
+
+    async def test_search_files_using_tree(self, client: GitLabClient) -> None:
+        """Test search_files_using_tree"""
+        mock_project = {
+            "id": 1,
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree_item = {
+            "item": {
+                "type": "blob",
+                "path": "test.json",
+                "id": "blob1",
+                "mode": "100644",
+                "name": "test.json",
+            },
+            "repo": mock_project,
+            "__branch": "main",
+        }
+
+        with (
+            patch.object(
+                client, "get_project", AsyncMock(return_value=mock_project)
+            ) as mock_get_project,
+            patch.object(
+                client,
+                "get_repository_tree",
+                return_value=async_mock_generator([[mock_tree_item]]),
+            ) as mock_get_tree,
+        ):
+            results = []
+            async for batch in client.search_files_using_tree(
+                "*.json", repositories=["group/project"]
+            ):
+                results.extend(batch)
+
+            assert len(results) == 1
+            assert results[0]["path"] == "test.json"
+            mock_get_project.assert_called_with("group/project")
+            mock_get_tree.assert_called()
+
+    async def test_search_files_using_tree_all_projects(
+        self, client: GitLabClient
+    ) -> None:
+        """Test search_files_using_tree with no specific repos"""
+        mock_project = {
+            "id": 1,
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree_item = {
+            "item": {
+                "type": "blob",
+                "path": "test.json",
+                "id": "blob1",
+                "mode": "100644",
+                "name": "test.json",
+            },
+            "repo": mock_project,
+            "__branch": "main",
+        }
+
+        with (
+            patch.object(
+                client,
+                "get_projects",
+                return_value=async_mock_generator([[mock_project]]),
+            ) as mock_get_projects,
+            patch.object(
+                client,
+                "get_repository_tree",
+                return_value=async_mock_generator([[mock_tree_item]]),
+            ) as mock_get_tree,
+        ):
+            results = []
+            async for batch in client.search_files_using_tree("*.json"):
+                results.extend(batch)
+
+            assert len(results) == 1
+            mock_get_projects.assert_called()
+            mock_get_tree.assert_called()
+
+    async def test_search_files_using_tree_with_error(
+        self, client: GitLabClient
+    ) -> None:
+        """Test search_files_using_tree handles project processing errors gracefully"""
+        mock_project = {
+            "id": 1,
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+
+        with (
+            patch.object(client, "get_project", AsyncMock(return_value=mock_project)),
+            patch.object(
+                client,
+                "get_repository_tree",
+                side_effect=Exception("Tree error"),
+            ),
+        ):
+            results = []
+            async for batch in client.search_files_using_tree(
+                "*.json", repositories=["group/project"]
+            ):
+                results.extend(batch)
+
+            assert len(results) == 0
+
+    async def test_search_files_using_tree_fallback_groups(
+        self, client: GitLabClient
+    ) -> None:
+        """Test search_files_using_tree falls back to groups when no repos provided"""
+        mock_project = {"id": 1, "path_with_namespace": "group/project"}
+
+        with (
+            patch.object(
+                client,
+                "get_projects",
+                return_value=async_mock_generator([[mock_project]]),
+            ) as mock_get_projects,
+            patch.object(
+                client,
+                "get_repository_tree",
+                return_value=async_mock_generator([]),
+            ),
+        ):
+            results = []
+            async for batch in client.search_files_using_tree("*.json"):
+                results.extend(batch)
+
+            mock_get_projects.assert_called()
 
     async def test_get_projects(self, client: GitLabClient) -> None:
         """Test project fetching and enrichment with languages and labels via REST."""
@@ -57,7 +190,6 @@ class TestGitLabClient:
                 AsyncMock(return_value=mock_languages),
             ) as mock_get_languages,
         ):
-
             # Mock get_resource to yield projects
             mock_get_resource.return_value = async_mock_generator([mock_projects])
 
@@ -99,7 +231,6 @@ class TestGitLabClient:
                 AsyncMock(return_value=mock_languages),
             ) as mock_get_languages,
         ):
-
             # Mock get_resource to yield projects
             mock_get_resource.return_value = async_mock_generator([mock_projects])
 
@@ -488,76 +619,6 @@ class TestGitLabClient:
         assert result[0]["enriched"] is True
         assert result[1]["enriched"] is True
 
-    async def test_search_files_in_repos(self, client: GitLabClient) -> None:
-        """Test file search in specific repositories using scope and query via _search_in_repository"""
-        processed_files = [
-            {"path": "test.json", "project_id": "123", "content": {"key": "value"}}
-        ]
-        repos = ["group/project"]
-        scope = "blobs"
-        query = "test.json"
-        with patch.object(
-            client,
-            "_search_files_in_repository",
-            return_value=async_mock_generator([processed_files]),
-        ) as mock_search_repo:
-            with patch.object(
-                client, "get_file_content", return_value='{"key": "value"}'
-            ):
-                results = []
-                async for batch in client.search_files(
-                    scope, query, repositories=repos, skip_parsing=False
-                ):
-                    results.extend(batch)
-                assert len(results) == 1
-                assert results[0]["path"] == "test.json"
-                assert results[0]["content"] == {"key": "value"}
-                mock_search_repo.assert_called_once_with(
-                    "group/project", "blobs", "path:test.json", False
-                )
-
-    async def test_search_files_in_groups(self, client: GitLabClient) -> None:
-        """Test file search across all groups using scope and query with config parameters"""
-        mock_groups = [{"id": "1", "name": "Group1"}]
-        processed_files = [
-            {"path": "test.yaml", "project_id": "123", "content": {"key": "value"}}
-        ]
-        scope = "blobs"
-        query = "test.yaml"
-
-        with patch.object(
-            client, "get_groups", return_value=async_mock_generator([mock_groups])
-        ) as mock_get_groups:
-            with patch.object(
-                client,
-                "_search_files_in_group",
-                return_value=async_mock_generator([processed_files]),
-            ) as mock_search_group:
-                with patch.object(
-                    client, "get_file_content", return_value="key: value"
-                ):
-                    results = []
-                    # Act - Test with config parameters (like main.py would call)
-                    async for batch in client.search_files(
-                        scope,
-                        query,
-                        skip_parsing=False,
-                        params={"min_access_level": 30},
-                    ):
-                        results.extend(batch)
-
-                    assert len(results) == 1
-                    assert results[0]["path"] == "test.yaml"
-                    assert results[0]["content"] == {"key": "value"}
-
-                    # Assert - Should use config parameters, not internal fallback
-                    mock_get_groups.assert_called_once_with(
-                        params={"min_access_level": 30}
-                    )
-                    mock_search_group.assert_called_once_with(
-                        "1", "blobs", "path:test.yaml", False
-                    )
-
     async def test_get_file_content(self, client: GitLabClient) -> None:
         """Test fetching file content via REST"""
         # Arrange
@@ -623,14 +684,14 @@ class TestGitLabClient:
             assert exists is False
 
     async def test_get_repository_tree(self, client: GitLabClient) -> None:
-        """Test fetching repository tree (folders only) for a project"""
-        project = {"path_with_namespace": "group/project"}
-        path = "src"
+        """Test fetching repository tree for a project"""
+        project = {"path_with_namespace": "group/project", "name": "project", "id": 1}
+        path = "src/*"
         ref = "main"
         mock_tree = [
-            {"type": "tree", "name": "folder1"},
-            {"type": "blob", "name": "file.txt"},
-            {"type": "tree", "name": "folder2"},
+            {"type": "tree", "name": "folder1", "path": "src/folder1"},
+            {"type": "blob", "name": "file.txt", "path": "src/file.txt"},
+            {"type": "tree", "name": "folder2", "path": "src/folder2"},
         ]
         with patch.object(
             client.rest,
@@ -641,16 +702,43 @@ class TestGitLabClient:
             async for batch in client.get_repository_tree(project, path, ref):
                 results.extend(batch)
 
-            assert len(results) == 2
-            assert results[0]["folder"]["name"] == "folder1"
-            assert results[1]["folder"]["name"] == "folder2"
+            assert len(results) == 3
+            names = sorted([r["item"]["name"] for r in results])
+            assert names == ["file.txt", "folder1", "folder2"]
             assert all(r["repo"] == project for r in results)
             assert all(r["__branch"] == ref for r in results)
             mock_get_paginated.assert_called_once_with(
-                "group/project",
+                "1",
                 "repository/tree",
-                {"ref": "main", "path": "src", "recursive": False},
+                {"ref": "main", "path": "", "recursive": True},
             )
+
+    async def test_get_parent_groups(self, client: GitLabClient) -> None:
+        """Test that get_parent_groups returns only top-level groups"""
+        # Arrange
+        page1_groups = [
+            {"id": 1, "name": "Child", "parent_id": 3},  # Parent in page 2
+            {"id": 2, "name": "Orphan", "parent_id": 999},  # Missing parent
+        ]
+        page2_groups = [
+            {"id": 3, "name": "Parent", "parent_id": None},  # True top-level
+            {"id": 4, "name": "Child of Parent", "parent_id": 3},  # Child of parent
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([page1_groups, page2_groups]),
+        ):
+            # Act
+            results = []
+            async for batch in client.get_parent_groups():
+                results.extend(batch)
+
+            # Assert - only top-level groups returned
+            assert len(results) == 2
+            result_ids = {group["id"] for group in results}
+            assert result_ids == {2, 3}  # Orphan and Parent, not children
 
     async def test_get_repository_folders(self, client: GitLabClient) -> None:
         """Test searching folders in a single repository"""
@@ -663,11 +751,12 @@ class TestGitLabClient:
             "id": "1",
             "path_with_namespace": "group/project1",
             "default_branch": "main",
+            "name": "project1",
         }
 
         mock_tree = [
-            {"type": "tree", "name": "folder1"},
-            {"type": "blob", "name": "file.txt"},
+            {"type": "tree", "name": "folder1", "path": "src/folder1"},
+            {"type": "blob", "name": "file.txt", "path": "src/file.txt"},
         ]
 
         with patch.object(
@@ -693,7 +782,7 @@ class TestGitLabClient:
 
                 mock_get_project.assert_called_once_with("group/project1")
                 mock_get_paginated.assert_called_once_with(
-                    "group/project1",
+                    "1",
                     "repository/tree",
                     {"ref": "develop", "path": "src", "recursive": False},
                 )
@@ -701,6 +790,9 @@ class TestGitLabClient:
     async def test_process_file_with_file_reference(self, client: GitLabClient) -> None:
         """Test that parsed file content with file:// reference fetches and resolves content."""
         # Arrange
+        # Unmock _process_file for this test since we want to test its logic
+        del client._process_file
+
         file = {
             "path": "config.yaml",
             "project_id": "123",
@@ -1127,30 +1219,3 @@ class TestGitLabClient:
         # Test without includedFiles (default empty list)
         selector_default = ProjectSelector(query="true")
         assert selector_default.included_files == []
-
-    async def test_get_parent_groups(self, client: GitLabClient) -> None:
-        """Test that get_parent_groups returns only top-level groups"""
-        # Arrange
-        page1_groups = [
-            {"id": 1, "name": "Child", "parent_id": 3},  # Parent in page 2
-            {"id": 2, "name": "Orphan", "parent_id": 999},  # Missing parent
-        ]
-        page2_groups = [
-            {"id": 3, "name": "Parent", "parent_id": None},  # True top-level
-            {"id": 4, "name": "Child of Parent", "parent_id": 3},  # Child of parent
-        ]
-
-        with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            return_value=async_mock_generator([page1_groups, page2_groups]),
-        ):
-            # Act
-            results = []
-            async for batch in client.get_parent_groups():
-                results.extend(batch)
-
-            # Assert - only top-level groups returned
-            assert len(results) == 2
-            result_ids = {group["id"] for group in results}
-            assert result_ids == {2, 3}  # Orphan and Parent, not children
