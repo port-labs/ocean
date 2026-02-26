@@ -10,10 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 5.0.48 (2026-02-25)
 
 
-### Features
+### Improvements
 
-- Added `deployment-status` kind to track GitHub deployment statuses with full resync and real-time webhook support. Includes task and environment filters via selector configuration.
-
+- Updated REST API page size from 50 back to 100
 
 ## 5.0.47 (2026-02-25)
 
