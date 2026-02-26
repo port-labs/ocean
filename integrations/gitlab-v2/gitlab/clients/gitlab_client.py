@@ -13,7 +13,6 @@ from urllib.parse import quote
 from wcmatch import glob
 
 from gitlab.helpers.utils import parse_file_content
-from gitlab.clients.utils import get_projects_to_scan
 
 from gitlab.clients.rest_client import RestClient
 
@@ -364,6 +363,41 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
+    async def get_projects_to_scan(
+        self,
+        repositories: Optional[list[str]] = None,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Helper function to get list of projects to scan for files.
+
+        Args:
+            repositories: Optional list of repository names/IDs to limit scan to
+            params: Optional parameters for group filtering
+
+        Yields:
+            List of project dictionaries
+        """
+        if repositories:
+            projects_batch = []
+            for repo in repositories:
+                try:
+                    projects_batch.append(await self.get_project(repo))
+                    if len(projects_batch) >= 100:
+                        yield projects_batch
+                        projects_batch = []
+                except Exception as e:
+                    logger.warning(f"Could not fetch project {repo}: {e}")
+            if projects_batch:
+                yield projects_batch
+        else:
+            async for groups_batch in self.get_parent_groups(params=params):
+                for group in groups_batch:
+                    async for projects_batch in self.rest.get_paginated_resource(
+                        f"groups/{group['id']}/projects",
+                        params={"include_subgroups": True},
+                    ):
+                        yield projects_batch
+
     async def search_files_using_tree(
         self,
         path: str,
@@ -405,7 +439,7 @@ class GitLabClient:
                     )
                 return results
 
-        async for projects_batch in get_projects_to_scan(self, repositories, params):
+        async for projects_batch in self.get_projects_to_scan(repositories, params):
             tasks = [asyncio.create_task(_search_project(p)) for p in projects_batch]
             for completed_task in asyncio.as_completed(tasks):
                 if result := await completed_task:
