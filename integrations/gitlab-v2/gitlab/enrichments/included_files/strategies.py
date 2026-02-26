@@ -147,12 +147,20 @@ class FileIncludedFilesStrategy:
         self._included_files = list(included_files)
 
     def context_for(self, entity: dict[str, Any]) -> IncludedFilesEntityContext:
-        project = entity.get("repo", {}) or entity.get("__project", {})
+        # Project can be in entity["repo"], entity["__project"], or entity["project"]
+        project = entity.get("repo", {}) or entity.get("__project", {}) or entity.get("project", {})
         project_path = project.get("path_with_namespace") or str(project.get("id", ""))
         project_id = str(project.get("id", ""))
         branch = entity.get("branch") or project.get("default_branch", "main")
-        file_path = entity.get("path", "")
-        base_path = str(PurePosixPath(file_path).parent)
+        # File path can be in entity["file"]["path"] or entity["path"]
+        file_path = entity.get("file", {}).get("path", "") or entity.get("path", "")
+        if file_path:
+            base_path = str(PurePosixPath(file_path).parent)
+            # Treat "." as empty base path
+            if base_path == ".":
+                base_path = ""
+        else:
+            base_path = ""
         return IncludedFilesEntityContext(
             project_path=project_path,
             project_id=project_id,

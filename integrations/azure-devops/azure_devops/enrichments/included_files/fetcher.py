@@ -58,9 +58,13 @@ class IncludedFilesFetcher:
             content_bytes = await self._client.get_file_by_branch(
                 path, repo_id, branch or "main"
             )
-            content = content_bytes.decode("utf-8") if content_bytes else None
+            # Handle empty bytes - return empty string, not None
+            if content_bytes is None:
+                content = None
+            else:
+                content = content_bytes.decode("utf-8") if content_bytes else ""
 
-            if content:
+            if content is not None:
                 logger.info(
                     f"IncludedFilesFetcher: fetched file content "
                     f"(repo={key.repo_name}, branch={branch}, path={path})"

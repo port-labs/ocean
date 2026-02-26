@@ -376,8 +376,9 @@ class TestFileEnrichWithIncludedFiles:
             "CODEOWNERS": "owners content",
         }
         assert client.get_file_content.call_count == 2
-        client.get_file_content.assert_any_call("group/project", "README.md", "main")
-        client.get_file_content.assert_any_call("group/project", "CODEOWNERS", "main")
+        # File is at src/main.py, so included files should be resolved relative to src/
+        client.get_file_content.assert_any_call("group/project", "src/README.md", "main")
+        client.get_file_content.assert_any_call("group/project", "src/CODEOWNERS", "main")
 
     async def test_enrich_file_missing_file(self) -> None:
         """Test enrichment when a file cannot be fetched — stores None."""

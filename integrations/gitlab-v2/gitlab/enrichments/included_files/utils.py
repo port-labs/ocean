@@ -97,6 +97,10 @@ def resolve_included_file_path(requested_path: str, base_path: str) -> str:
     clean_requested = requested_path.lstrip("/")
     clean_base = (base_path or "").strip("/")
 
+    # Treat "." as empty base path
+    if clean_base == ".":
+        clean_base = ""
+
     if not clean_base:
         return clean_requested
 

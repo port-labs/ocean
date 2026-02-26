@@ -78,9 +78,11 @@ class IncludedFilesEnricher:
         await self._fetch_all(keys)
 
         for entity, target, requested, key in planned:
-            target_obj = (
-                entity if target == IncludedFilesTarget.ENTITY else entity[target]
-            )
+            if target == IncludedFilesTarget.ENTITY:
+                target_obj = entity
+            else:
+                # For FOLDER target, try entity[target] first, fallback to entity itself
+                target_obj = entity.get(target, entity)
 
             target_obj.setdefault("__includedFiles", {})
             target_obj["__includedFiles"][requested] = await self._fetcher.get(key)
