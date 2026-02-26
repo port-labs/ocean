@@ -363,6 +363,7 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
+    # Ai! this function is too long, move utility functionalities to the utils file
     async def search_files_using_tree(
         self,
         path: str,
