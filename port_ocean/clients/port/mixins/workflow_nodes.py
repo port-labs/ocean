@@ -3,7 +3,7 @@ import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.models import WorkflowNodeRun
+from port_ocean.core.models import WorkflowNodeRun, WorkflowNodeRunLog
 from port_ocean.exceptions.execution_manager import RunAlreadyAcknowledgedError
 
 INTERNAL_WORKFLOW_CLIENT_HEADER = {"x-port-reserved-usage": "true"}
@@ -60,5 +60,18 @@ class WorkflowNodesClientMixin:
             f"{self.auth.api_url}/workflows/nodes/runs/{run_id}",
             headers=await self.auth.headers(),
             json=payload,
+        )
+        handle_port_status_code(response, should_raise=should_raise)
+
+    async def post_wf_node_run_logs(
+        self,
+        run_id: str,
+        logs: list[WorkflowNodeRunLog],
+        should_raise: bool = False,
+    ) -> None:
+        response = await self.client.post(
+            f"{self.auth.api_url}/workflows/nodes/runs/{run_id}/logs",
+            headers=await self.auth.headers(),
+            json={"logs": [log.dict() for log in logs]},
         )
         handle_port_status_code(response, should_raise=should_raise)
