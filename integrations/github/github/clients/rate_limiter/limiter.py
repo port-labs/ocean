@@ -98,7 +98,11 @@ class GitHubRateLimiter:
                 self.rate_limit_info is not None
                 and int(time.time()) >= self.rate_limit_info.reset_time
             )
-            if not self._initialized or epoch_passed:
+            stale_exhausted = (
+                self.rate_limit_info is not None
+                and self.rate_limit_info.remaining <= 0
+            )
+            if not self._initialized or epoch_passed or stale_exhausted:
                 self._initialize_from_response(rate_limit_headers, resource)
 
     def _handle_rate_limit_response(
