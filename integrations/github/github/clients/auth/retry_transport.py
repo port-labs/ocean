@@ -2,14 +2,19 @@ import httpx
 from loguru import logger
 
 from port_ocean.helpers.retry import RetryTransport
-from github.helpers.utils import has_exhausted_rate_limit_headers
 
 
 class GitHubRetryTransport(RetryTransport):
     """
-    Extends the default Ocean retry transport to also retry GitHub 403 responses
-    that are clearly rate-limit related (based on GitHub rate limit headers).
+    Extends the default Ocean retry transport.
+
+    401 and 403 are NOT retried at the transport level — they are handled by
+    the higher-level retry loop in AbstractGithubClient.make_request, which
+    releases the rate-limiter semaphore between attempts and refreshes auth
+    tokens on 401.
     """
+
+    _NO_TRANSPORT_RETRY_CODES = frozenset({401, 403})
 
     def _log_before_retry(
         self,
@@ -39,19 +44,11 @@ class GitHubRetryTransport(RetryTransport):
         super()._log_before_retry(request, sleep_time, response, error)
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
-        return await super()._should_retry_async(response) or self._is_403_rate_limit(
-            response
-        )
+        if response.status_code in self._NO_TRANSPORT_RETRY_CODES:
+            return False
+        return await super()._should_retry_async(response)
 
     def _should_retry(self, response: httpx.Response) -> bool:
-        return super()._should_retry(response) or self._is_403_rate_limit(response)
-
-    def _is_403_rate_limit(self, response: httpx.Response) -> bool:
-        """
-        GitHub can respond with 403 for rate limits. Treat it as retryable only when
-        the rate limit headers indicate an exhausted quota.
-        """
-        if response.status_code != 403:
+        if response.status_code in self._NO_TRANSPORT_RETRY_CODES:
             return False
-
-        return has_exhausted_rate_limit_headers(response.headers)
+        return super()._should_retry(response)

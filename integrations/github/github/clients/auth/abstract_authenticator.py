@@ -60,14 +60,13 @@ class AbstractGitHubAuthenticator(ABC):
     def client(self) -> httpx.AsyncClient:
         if self._http_client is None:
             retry_config = RetryConfig(
+                max_attempts=1,
                 retry_after_headers=[
                     "Retry-After",
                     "X-RateLimit-Reset",
                 ],
                 additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
                 max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
-                base_delay=1.0,
-                max_attempts=20,
             )
             self._http_client = OceanAsyncClient(
                 GitHubRetryTransport,
