@@ -68,7 +68,11 @@ def repo_branch_matches(
         if mapping.name != repo_name:
             continue
 
-        if mapping.branch is not None:
+        # "default" is a special value that means "use the default branch"
+        if mapping.branch == "default":
+            if is_default:
+                return True
+        elif mapping.branch is not None:
             if branch == mapping.branch:
                 return True
         else:

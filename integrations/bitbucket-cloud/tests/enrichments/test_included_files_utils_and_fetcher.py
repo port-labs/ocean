@@ -77,8 +77,9 @@ class TestRepoBranchMatches:
             is False
         )
 
-    def test_none_branch_mapping_means_default_branch(self) -> None:
-        repos = [RepositoryBranchMapping(name="test-repo", branch=None)]
+    def test_default_branch_mapping_means_default_branch(self) -> None:
+        # When branch is "default", it matches the default_branch
+        repos = [RepositoryBranchMapping(name="test-repo", branch="default")]
         assert (
             repo_branch_matches(
                 repos=repos,
@@ -107,7 +108,9 @@ class TestIncludedFilesFetcher:
         file_path = "README.md"
 
         key = IncludedFileFetchKey(
+            workspace="test-workspace",
             repo_slug=repo_slug,
+            repo_name="test-repo",
             branch=branch,
             file_path=file_path,
         )
@@ -156,7 +159,9 @@ class TestIncludedFilesFetcher:
 
         fetcher = IncludedFilesFetcher(client=mock_client)
         key = IncludedFileFetchKey(
+            workspace="test-workspace",
             repo_slug="test-repo",
+            repo_name="test-repo",
             branch="main",
             file_path="MISSING.md",
         )
@@ -170,7 +175,9 @@ class TestIncludedFilesFetcher:
 
         fetcher = IncludedFilesFetcher(client=mock_client)
         key = IncludedFileFetchKey(
+            workspace="test-workspace",
             repo_slug="test-repo",
+            repo_name="test-repo",
             branch="main",
             file_path="file.txt",
         )
@@ -184,7 +191,9 @@ class TestIncludedFilesFetcher:
 
         fetcher = IncludedFilesFetcher(client=mock_client)
         key = IncludedFileFetchKey(
+            workspace="test-workspace",
             repo_slug="test-repo",
+            repo_name="test-repo",
             branch="main",
             file_path="empty.txt",
         )
