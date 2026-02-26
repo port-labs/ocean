@@ -2,7 +2,7 @@ import fnmatch
 from pathlib import PurePosixPath
 from typing import Any, Protocol, Sequence
 
-from integration import FolderSelector
+from azure_devops.misc import AzureDevopsFolderSelector
 
 from azure_devops.enrichments.included_files.utils import (
     FolderIncludedFilesRequests,
@@ -63,7 +63,7 @@ class FolderIncludedFilesStrategy:
     def __init__(
         self,
         *,
-        folder_selectors: Sequence[FolderSelector],
+        folder_selectors: Sequence[AzureDevopsFolderSelector],
         global_included_files: Sequence[str] = (),
     ) -> None:
         self._selectors = list(folder_selectors)

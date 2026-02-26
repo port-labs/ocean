@@ -3,7 +3,7 @@ from enum import StrEnum
 import posixpath
 from typing import Iterable, Optional, Sequence
 
-from integration import RepositoryBranchMapping
+from azure_devops.misc import RepositoryBranchMapping
 
 
 @dataclass(frozen=True)

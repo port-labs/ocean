@@ -7,14 +7,14 @@ from azure_devops.enrichments.included_files import (
     FolderIncludedFilesStrategy,
     IncludedFilesEnricher,
 )
-from integration import FolderSelector, RepositoryBranchMapping
+from azure_devops.misc import AzureDevopsFolderSelector, RepositoryBranchMapping
 
 
 @pytest.mark.asyncio
 class TestIncludedFilesRelativeResolution:
     async def test_folder_included_files_resolves_relative_to_folder_path(self) -> None:
         folder_selectors = [
-            FolderSelector(
+            AzureDevopsFolderSelector(
                 path="apps/*",
                 repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                 includedFiles=["README.md"],
@@ -71,7 +71,7 @@ class TestIncludedFilesRelativeResolution:
 
     async def test_folder_global_included_files_attaches_to_top_level(self) -> None:
         folder_selectors = [
-            FolderSelector(
+            AzureDevopsFolderSelector(
                 path="apps/*",
                 repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                 includedFiles=["README.md"],

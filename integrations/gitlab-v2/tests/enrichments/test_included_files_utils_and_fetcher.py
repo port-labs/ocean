@@ -77,8 +77,9 @@ class TestRepoBranchMatches:
             is False
         )
 
-    def test_none_branch_mapping_means_default_branch(self) -> None:
-        repos = [RepositoryBranchMapping(name="test-project", branch=None)]
+    def test_default_branch_mapping_means_default_branch(self) -> None:
+        # When branch is "default", it matches the default_branch
+        repos = [RepositoryBranchMapping(name="test-project", branch="default")]
         assert (
             repo_branch_matches(
                 repos=repos,

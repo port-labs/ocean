@@ -11,7 +11,7 @@ from azure_devops.enrichments.included_files.utils import (
     repo_branch_matches,
     resolve_included_file_path,
 )
-from integration import RepositoryBranchMapping
+from azure_devops.misc import RepositoryBranchMapping
 
 
 class TestResolveIncludedFilePath:
