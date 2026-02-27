@@ -244,14 +244,15 @@ async def test_cache_failures_dont_affect_execution(
     result1 = await collect_iterator_results(sample_iterator(3))
     assert result1 == [0, 1, 2]
     assert iterator_call_count == 1
-    assert mock_cache_provider.get.call_count == 1
+    # get is called twice due to double-checked locking pattern
+    assert mock_cache_provider.get.call_count == 2
     assert mock_cache_provider.set.call_count == 1
 
     # Second call - should execute function again (cache read fails)
     result2 = await collect_iterator_results(sample_iterator(3))
     assert result2 == [0, 1, 2]
     assert iterator_call_count == 2
-    assert mock_cache_provider.get.call_count == 2
+    assert mock_cache_provider.get.call_count == 4
     assert mock_cache_provider.set.call_count == 2
 
     # Test coroutine function
@@ -259,14 +260,14 @@ async def test_cache_failures_dont_affect_execution(
     result3 = await sample_coroutine(4)
     assert result3 == 8
     assert coroutine_call_count == 1
-    assert mock_cache_provider.get.call_count == 3
+    assert mock_cache_provider.get.call_count == 6
     assert mock_cache_provider.set.call_count == 3
 
     # Second call - should execute function again (cache read fails)
     result4 = await sample_coroutine(4)
     assert result4 == 8
     assert coroutine_call_count == 2
-    assert mock_cache_provider.get.call_count == 4
+    assert mock_cache_provider.get.call_count == 8
     assert mock_cache_provider.set.call_count == 4
 
     # Verify that both read and write errors were raised
@@ -546,3 +547,64 @@ async def test_cache_iterator_maintains_chunks(
     # Verify structure is preserved (chunks remain separate)
     assert results2 == [[1, 2], [3, 4]]
     assert call_count == 1
+
+
+async def async_gen_to_list(async_gen: AsyncIterator[Any]) -> list[Any]:
+    results = []
+    async for item in async_gen:
+        results.append(item)
+    return results
+
+
+@pytest.mark.asyncio
+async def test_cache_iterator_result_concurrency(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+    execution_count = 0
+
+    @cache.cache_iterator_result()
+    async def slow_iterator(x: int) -> AsyncGenerator[List[int], None]:
+        nonlocal execution_count
+        execution_count += 1
+        await asyncio.sleep(0.1)
+        yield [x]
+        yield [x + 1]
+
+    # Simulate 5 concurrent calls
+    # We create the tasks, which will all hit the cache logic almost simultaneously
+    tasks = [async_gen_to_list(slow_iterator(1)) for _ in range(5)]
+
+    # Wait for all to complete
+    results = await asyncio.gather(*tasks)
+
+    # Assertions
+    # execution_count should be 1 if locking works correctly (preventing thundering herd)
+    assert execution_count == 1
+
+    for res in results:
+        assert res == [[1], [2]]
+
+
+@pytest.mark.asyncio
+async def test_cache_coroutine_result_concurrency(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+    execution_count = 0
+
+    @cache.cache_coroutine_result()
+    async def slow_coroutine(x: int) -> int:
+        nonlocal execution_count
+        execution_count += 1
+        await asyncio.sleep(0.1)
+        return x * 2
+
+    # Simulate 5 concurrent calls
+    tasks = [slow_coroutine(10) for _ in range(5)]
+    results = await asyncio.gather(*tasks)
+
+    # Assertions
+    assert execution_count == 1
+    for res in results:
+        assert res == 20
