@@ -332,3 +332,12 @@ class SnykClient:
             )
 
             return all_organizations
+
+    async def process_project_issues(
+        self, project: dict[str, Any], enrich_with_org: bool = False
+    ) -> list[dict[str, Any]]:
+        organization_id = project["relationships"]["organization"]["data"]["id"]
+        issues = await self.get_issues(organization_id, project["id"])
+        if not enrich_with_org:
+            return issues
+        return enrich_batch_with_org(issues, project["__organization"])

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.27 (2026-02-27)
+
+
+### Bug Fixes
+
+- Fix semaphore leakage.
+- Serialize target enrichment to fix cache race condition
+
+
 ## 0.3.26 (2026-02-26)
 
 
