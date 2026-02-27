@@ -1,7 +1,11 @@
+deleteDependentEntities: false
+createMissingRelatedEntities: true
+enableMergeEntity: true
 resources:
   - kind: repositories
     selector:
       query: 'true'
+      includeInactive: false
     port:
       entity:
         mappings:
@@ -9,13 +13,77 @@ resources:
           identifier: .id | tostring
           title: .name
           properties:
-            name: .name
             provider: .provider
             externalRepoId: .external_repo_id
-            active: .active
             url: .url
+            active: .active
             branch: .branch
             lastScannedAt: .last_scanned_at
+  - kind: containers
+    selector:
+      query: 'true'
+      filterStatus: all
+    port:
+      entity:
+        mappings:
+          blueprint: '"aikidoContainer"'
+          identifier: .id | tostring
+          title: .name
+          properties:
+            provider: .provider
+            cloudId: .cloud_id
+            registryId: .registry_id
+            registryName: .registry_name
+            tag: .tag
+            distro: .distro
+            distroVersion: .distro_version
+            lastScannedAt: .last_scanned_at
+            lastScannedTag: .last_scanned_tag
+            lastPushedAt: .last_pushed_at
+          relations:
+            aikidoRepository: .linked_code_repo_id | tostring
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"aikidoTeam"'
+          identifier: .id | tostring
+          title: .name
+          properties:
+            externalSource: .external_source
+            externalSourceId: .external_source_id
+            responsibilities: .responsibilities
+            active: .active
+          relations:
+            aikidoRepositories: >-
+              .responsibilities | map(select(.type == "code_repository") | .id | tostring)
+            aikidoContainers: >-
+              .responsibilities | map(select(.type == "container_repository") | .id | tostring)
+  - kind: issue_groups
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"aikidoIssueGroup"'
+          identifier: .id | tostring
+          title: .title
+          properties:
+            description: .description
+            type: .type
+            severityScore: .severity_score
+            severity: .severity
+            groupStatus: .group_status
+            timeToFixMinutes: .time_to_fix_minutes
+            locations: .locations
+            howToFix: .how_to_fix
+          relations:
+            aikidoRepositories: >-
+              [.locations[]? | select(.type == "code_repository") | (.id | tostring)]
+            aikidoContainers: >-
+              [.locations[]? | select(.type == "container_repository") | (.id | tostring)]
   - kind: issues
     selector:
       query: 'true'
@@ -24,16 +92,24 @@ resources:
         mappings:
           blueprint: '"aikidoIssue"'
           identifier: .id | tostring
-          title: .rule | tostring
+          title: .id | tostring
           properties:
-            status: .status
-            severity: .severity
-            severityScore: .severity_score
             affectedFile: .affected_file
-            attackSurface: .attack_surface
-            type: .type
-            rule: .rule
+            affectedPackage: .affected_package
+            attackSurface: (.attack_surface // "" | if . == "" then "not_applicable" else . end)
+            closedAt: .closed_at
             codeRepoId: .code_repo_id
             codeRepoName: .code_repo_name
+            containerRepoId: .container_repo_id
+            containerRepoName: .container_repo_name
+            firstDetectedAt: .first_detected_at
+            groupId: .group_id
+            ignoredAt: .ignored_at
+            slaDays: .sla_days
+            status: .status
+            severity: .severity
+            type: .type
           relations:
-            aikidoRepository: .code_repo_id
+            aikidoRepository: .code_repo_id | tostring
+            aikidoContainer: .container_repo_id | tostring
+            aikidoIssueGroup: .group_id | tostring
