@@ -78,7 +78,6 @@ class SnykClient:
             **({"version": version} if version is not None else {}),
         }
         async with self.rate_limiter, self.semaphore:
-            print(self.semaphore._value)
             try:
                 response = await self.http_client.request(
                     method=method, url=url, params=query_params, json=json_data
