@@ -46,7 +46,7 @@ class GitHubHeaders(BaseModel):
 
 
 class AbstractGitHubAuthenticator(ABC):
-    _http_clients: Optional[Dict[frozenset, httpx.AsyncClient]] = None
+    _http_clients: Optional[Dict[frozenset[str], httpx.AsyncClient]] = None
     _rate_limit_notifier: Optional[
         Callable[[httpx.Response], Coroutine[Any, Any, None]]
     ] = None
@@ -68,7 +68,7 @@ class AbstractGitHubAuthenticator(ABC):
         return (await self.get_headers()).as_dict()
 
     def get_client(
-        self, extra_retryable_methods: frozenset = frozenset()
+        self, extra_retryable_methods: frozenset[str] = frozenset()
     ) -> httpx.AsyncClient:
         if self._http_clients is None:
             self._http_clients = {}

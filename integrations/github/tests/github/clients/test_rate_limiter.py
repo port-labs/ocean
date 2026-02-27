@@ -47,6 +47,11 @@ class _DummyAuthenticator:
         self._response = response
         self.client = self
 
+    def get_client(
+        self, extra_retryable_methods: frozenset[str] = frozenset()
+    ) -> "_DummyAuthenticator":
+        return self
+
     def set_rate_limit_notifier(self, notifier: Any) -> None:
         pass
 

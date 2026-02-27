@@ -35,7 +35,7 @@ class AbstractGithubClient(ABC):
             self.rate_limiter.notify_rate_limited
         )
 
-    _extra_retryable_methods: frozenset = frozenset()
+    _extra_retryable_methods: frozenset[str] = frozenset()
 
     _DEFAULT_IGNORED_ERRORS = [
         IgnoredError(
@@ -104,7 +104,9 @@ class AbstractGithubClient(ABC):
 
         async with self.rate_limiter:
             try:
-                response = await self.authenticator.get_client(self._extra_retryable_methods).request(
+                response = await self.authenticator.get_client(
+                    self._extra_retryable_methods
+                ).request(
                     method=method,
                     url=resource,
                     params=params,
