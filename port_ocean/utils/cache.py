@@ -126,7 +126,6 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
     return decorator
 
 
-# AI! implement a similar caching mechanism here
 def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
     """Coroutine version of `cache_iterator_result` from port_ocean.utils.cache
 
@@ -156,14 +155,22 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
             except FailedToReadCacheError as e:
                 logger.warning(f"Failed to read cache for {cache_key}: {str(e)}")
 
-            result = await func(*args, **kwargs)
-            try:
-                await ocean.app.cache_provider.set(
-                    cache_key,
-                    result,
-                )
-            except FailedToWriteCacheError as e:
-                logger.warning(f"Failed to write cache for {cache_key}: {str(e)}")
+            lock = _locks.setdefault(cache_key, asyncio.Lock())
+            async with lock:
+                try:
+                    if cache := await ocean.app.cache_provider.get(cache_key):
+                        return cache
+                except FailedToReadCacheError:
+                    pass
+
+                result = await func(*args, **kwargs)
+                try:
+                    await ocean.app.cache_provider.set(
+                        cache_key,
+                        result,
+                    )
+                except FailedToWriteCacheError as e:
+                    logger.warning(f"Failed to write cache for {cache_key}: {str(e)}")
             return result
 
         return wrapper
