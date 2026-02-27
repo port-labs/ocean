@@ -78,6 +78,7 @@ class SnykClient:
             **({"version": version} if version is not None else {}),
         }
         async with self.rate_limiter, self.semaphore:
+            print(self.semaphore._value)
             try:
                 response = await self.http_client.request(
                     method=method, url=url, params=query_params, json=json_data
@@ -230,10 +231,11 @@ class SnykClient:
         async for targets in self._get_paginated_resources(
             url_path=url, query_params=query_params
         ):
-            targets_with_project_data = await asyncio.gather(
-                *[self._process_target(org, target_data) for target_data in targets]
-            )
-            yield targets_with_project_data
+            batch = []
+            for target in targets:
+                batch.append(await self._process_target(org, target))
+
+            yield batch
 
     @cache_coroutine_result()
     async def get_single_project(self, org_id: str, project_id: str) -> dict[str, Any]:
