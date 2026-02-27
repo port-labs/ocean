@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.0.38 (2026-02-18)
+## 5.1.4 (2026-02-27)
 
 
 ### Bug Fixes
@@ -17,6 +17,131 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Simplified open pull request fetching (REST/GraphQL) and improved GraphQL logging for open and closed pull request exports.
+
+
+## 5.1.3 (2026-02-26)
+
+
+### Improvements
+
+- Refactored `GitHubRateLimiter` to eliminate race conditions by ensuring rate limit state is initialised from the first response per window and maintained via an optimistic internal counter, removing the need to read response headers on every call.
+- Added `retry-after` header support so 429 responses without standard `x-ratelimit-*` headers are handled correctly.
+- Rate limit state resets automatically on epoch expiry or after sleeping through an exhausted window, ensuring a fresh server read at the start of each new window.
+
+
+## 5.1.2 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+## 5.1.1 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+## 5.1.0 (2026-02-26)
+
+
+### Features
+
+- Added `deployment-status` kind to track GitHub deployment statuses with full resync and real-time webhook support. Includes task and environment filters via selector configuration.
+
+
+## 5.0.48 (2026-02-25)
+
+
+### Improvements
+
+- Restored REST API page size to 100.
+
+## 5.0.47 (2026-02-25)
+
+
+### Improvements
+
+- Reduced REST API page size from 100 to 50 to lower rate limit pressure
+- Set retry base delay to 1 second for GitHub to prevent wasted 0s retry attempts
+- Added info-level logging across retry transport, GitHub client, and rate limiter for full request lifecycle traceability
+
+
+## 5.0.46 (2026-02-25)
+
+
+### Improvements
+
+- Added structured rate limit logging on retry for easier debugging.
+
+
+## 5.0.45 (2026-02-25)
+
+
+### Bug Fixes
+
+- Replace null control characters with "[null]" string
+
+
+## 5.0.44 (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+## 5.0.43 (2026-02-24)
+
+
+### Improvements
+
+- Improved `includedFiles` enrichment for GitHub repository/folder/file kinds by introducing a reusable enrichment module, adding batch fetch caching/in-flight deduplication, and expanding test coverage.
+
+- Improved `includedFiles` path resolution for monorepos to resolve relative to each matched folder/file (and avoid accidental double-joining of base paths).
+
+
+## 5.0.42 (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
+## 5.0.41 (2026-02-24)
+
+
+### Improvements
+
+- PortAppConfig model strict kinds enforcements
+
+
+## 5.0.40 (2026-02-23)
+
+
+### Bug Fixes
+
+- Fixed crash when GitHub GraphQL API returns null file data during file resync (e.g. binary files, large files, or files deleted between listing and content fetch)
+
+
+## 5.0.39 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.1
+
+
+## 5.0.38 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
 
 
 ## 5.0.37 (2026-02-17)
