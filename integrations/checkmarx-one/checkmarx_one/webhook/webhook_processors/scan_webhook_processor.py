@@ -20,7 +20,7 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
     """Processes scan-related webhook events from Checkmarx One."""
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return {"scanId", "projectId", "branch", "status"} <= payload.keys()
+        return {"scanId", "projectId", "branch", "statusInfo"} <= payload.keys()
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Validate that the event is a scan-related event."""
@@ -103,7 +103,9 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
         if not statuses:
             return True
 
-        return scan["status"] in statuses
+        status_info = scan.get("statusInfo", [])
+        scan_statuses = {info["status"] for info in status_info if "status" in info}
+        return bool(scan_statuses & set(statuses))
 
     @staticmethod
     def _filter_scan_by_project_names(

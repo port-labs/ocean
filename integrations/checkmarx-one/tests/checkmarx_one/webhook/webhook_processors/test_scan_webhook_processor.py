@@ -96,7 +96,9 @@ class TestScanWebhookProcessor:
                     "scanId": "scan-123",
                     "projectId": "project-456",
                     "branch": "main",
-                    "status": "Completed",
+                    "statusInfo": [
+                        {"name": "general", "status": "Completed", "details": ""}
+                    ],
                 },
                 True,
             ),
@@ -106,7 +108,9 @@ class TestScanWebhookProcessor:
                     "projectId": "project-101",
                     "additionalField": "value",
                     "branch": "main",
-                    "status": "Completed",
+                    "statusInfo": [
+                        {"name": "general", "status": "Completed", "details": ""}
+                    ],
                 },
                 True,
             ),
@@ -114,7 +118,9 @@ class TestScanWebhookProcessor:
                 {
                     "projectId": "project-456",
                     "branch": "main",
-                    "status": "Completed",
+                    "statusInfo": [
+                        {"name": "general", "status": "Completed", "details": ""}
+                    ],
                 },  # missing scanId
                 False,
             ),
@@ -122,7 +128,9 @@ class TestScanWebhookProcessor:
                 {
                     "scanId": "scan-123",
                     "branch": "main",
-                    "status": "Completed",
+                    "statusInfo": [
+                        {"name": "general", "status": "Completed", "details": ""}
+                    ],
                 },  # missing projectId
                 False,
             ),
@@ -150,7 +158,10 @@ class TestScanWebhookProcessor:
         scan_data = {
             "id": "scan-123",
             "projectId": "project-456",
-            "status": "Completed",
+            "statusInfo": [
+                {"name": "general", "status": "Completed", "details": ""},
+                {"name": "sast", "status": "Completed", "details": ""},
+            ],
             "created_at": "2023-01-01T00:00:00Z",
             "updated_at": "2023-01-01T01:00:00Z",
             "branch": "main",
@@ -161,7 +172,10 @@ class TestScanWebhookProcessor:
             "scanId": "scan-123",
             "projectId": "project-456",
             "branch": "main",
-            "status": "Completed",
+            "statusInfo": [
+                {"name": "general", "status": "Completed", "details": ""},
+                {"name": "sast", "status": "Completed", "details": ""},
+            ],
         }
 
         # Mock the scan exporter
@@ -197,14 +211,14 @@ class TestScanWebhookProcessor:
         scan_data: dict[str, Any] = {
             "id": "scan-123",
             "projectId": "project-456",
-            "status": "Completed",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
             "branch": "develop",
         }
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
             "branch": "develop",
-            "status": "Completed",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
         }
 
         mock_exporter = AsyncMock()
@@ -231,13 +245,13 @@ class TestScanWebhookProcessor:
         scan_data: dict[str, Any] = {
             "id": "scan-123",
             "projectId": "project-999",
-            "status": "Completed",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
             "branch": "main",
         }
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-999",
-            "status": "Completed",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
             "branch": "main",
         }
 
@@ -265,14 +279,14 @@ class TestScanWebhookProcessor:
         scan_data: dict[str, Any] = {
             "id": "scan-123",
             "projectId": "project-456",
-            "status": "Failed",
+            "statusInfo": [{"name": "general", "status": "Failed", "details": ""}],
             "branch": "main",
         }
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
             "branch": "main",
-            "status": "Completed",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
         }
 
         mock_exporter = AsyncMock()
