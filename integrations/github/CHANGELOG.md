@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.1.4 (2026-02-27)
+## 5.1.6 (2026-02-27)
 
 
 ### Bug Fixes
@@ -17,6 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Simplified open pull request fetching (REST/GraphQL) and improved GraphQL logging for open and closed pull request exports.
+
+
+## 5.1.5 (2026-02-27)
+
+
+### Bug Fixes
+
+- Fixed graphql pull request exporter to include merged pull requests
+
+
+## 5.1.4 (2026-02-27)
+
+
+### Improvements
+
+- Added support for additional retryable methods to support transient GitHub API errors retry for graphql requests
 
 
 ## 5.1.3 (2026-02-26)
