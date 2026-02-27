@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.2 (2026-02-27)
+
+### Improvements
+
+- Make caching decorators concurrency safe
+
 ## 0.38.1 (2026-02-26)
 
 ### Improvements
