@@ -56,6 +56,7 @@ def hash_func(func: Callable[..., Any], *args: Any, **kwargs: Any) -> str:
     return f"{safe_func_id}_{short_hash}"
 
 
+# AI? how can I make this cache function concurrency safe
 def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCallable]:
     """
     This decorator caches the results of an async iterator function. It checks if the result is already in the cache
