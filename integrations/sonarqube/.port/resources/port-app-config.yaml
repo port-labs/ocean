@@ -38,6 +38,7 @@ resources:
             mainBranchLastAnalysisDate: (.__branch.analysisDate // null) | if . then sub("(?<h>[+-]\\d{2})(?<m>\\d{2})$"; "\(.h):\(.m)") else null end
             revision: .revision
             managed: .managed
+            qualityGateName: .__qualityGateName
   - kind: analysis
     selector:
       query: 'true'
