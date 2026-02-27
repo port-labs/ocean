@@ -118,7 +118,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
         total_count = 0
         logger.info(
-            f"[Rest] Starting api fetch for closed pull requests of repository {repo_name} from {organization} "
+            f"[Rest] Starting fetch for closed pull requests of repository {repo_name} from {organization} "
             f"with max_results={max_results}"
         )
 
@@ -156,7 +156,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             total_count += batch_count
 
         logger.info(
-            f"[Rest] Fetched {total_count} closed pull requests from {organization}/{repo_name}"
+            f"[Rest] Fetched total of {total_count} closed pull requests from {organization}/{repo_name}"
         )
 
 
@@ -305,7 +305,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             total_count += batch_count
 
         logger.info(
-            f"[GraphQL] Fetched {total_count} closed pull requests from {organization}/{repo_name}"
+            f"[GraphQL] Fetched total of {total_count} closed pull requests from {organization}/{repo_name}"
         )
 
     def _normalize_pr_node(
