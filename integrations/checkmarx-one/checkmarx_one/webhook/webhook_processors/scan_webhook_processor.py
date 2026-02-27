@@ -8,11 +8,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from checkmarx_one.core.options import SingleScanOptions, ListScanOptions
+from checkmarx_one.core.options import SingleScanOptions
 from checkmarx_one.exporter_factory import create_scan_exporter
 from checkmarx_one.utils import ObjectKind
 from checkmarx_one.webhook.events import CheckmarxEventType
-from integration import CheckmarxOneScanResourcesConfig
+from integration import CheckmarxOneScanResourcesConfig, CheckmarxOneScanSelector
 from .abstract_webhook_processor import _CheckmarxOneAbstractWebhookProcessor
 
 
@@ -43,29 +43,23 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
 
         logger.info(f"Processing scan: {scan_id} of project: {project_id}")
 
-        selector = cast(CheckmarxOneScanResourcesConfig, resource_config).selector
-        options = ListScanOptions(
-            project_names=selector.project_names,
-            branches=selector.branches,
-            statuses=selector.statuses,
-            from_date=selector.from_date,
-        )
         empty_results = WebhookEventRawResults(
             updated_raw_results=[], deleted_raw_results=[]
         )
-        if not self._filter_scan_by_branches(payload, options["branches"]):
+        selector = cast(CheckmarxOneScanResourcesConfig, resource_config).selector
+        if not self._filter_scan_by_branches(payload, selector.branches):
             logger.warning(
                 f"Scan {scan_id} of project {project_id} skipped due to branch filter"
             )
             return empty_results
 
-        if not self._filter_scan_by_project_names(payload, options["project_names"]):
+        if not self._filter_scan_by_project_names(payload, selector.project_names):
             logger.warning(
                 f"Scan {scan_id} of project {project_id} skipped due to project name filter"
             )
             return empty_results
 
-        if not self._filter_scan_by_statuses(payload, options):
+        if not self._filter_scan_by_statuses(payload, selector):
             logger.warning(
                 f"Scan {scan_id} of project {project_id} skipped due to status filter"
             )
@@ -94,13 +88,13 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
 
     @staticmethod
     def _filter_scan_by_statuses(
-        scan: dict[str, Any], options: ListScanOptions
+        scan: dict[str, Any], selector: CheckmarxOneScanSelector
     ) -> bool:
-        statuses = options["statuses"]
+        statuses = selector.statuses
         if not statuses:
             return True
 
-        status_info = scan.get("statusInfo", [])
+        status_info = scan["statusInfo"]
         scan_statuses = {info["status"] for info in status_info if "status" in info}
         return bool(scan_statuses & set(statuses))
 
