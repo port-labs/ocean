@@ -244,7 +244,7 @@ class SnykClient:
             url_path=url, query_params=query_params
         ):
             if attach_project_data:
-                logger.info("Enriching target with projects")
+                logger.info("Enriching targets with projects")
                 targets_with_project_data = await asyncio.gather(
                     *[self._process_target(org, target_data) for target_data in targets]
                 )
