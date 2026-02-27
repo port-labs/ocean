@@ -7,12 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.6 (2026-02-27)
+
+
+### Improvements
+
+- Added logs for visibility in the pull request exporter
+
+
+## 5.1.5 (2026-02-27)
+
+
+### Bug Fixes
+
+- Fixed graphql pull request exporter to include merged pull requests
+
+
+## 5.1.4 (2026-02-27)
+
+
+### Improvements
+
+- Added support for additional retryable methods to support transient GitHub API errors retry for graphql requests
+
+
+## 5.1.3 (2026-02-26)
+
+
+### Improvements
+
+- Refactored `GitHubRateLimiter` to eliminate race conditions by ensuring rate limit state is initialised from the first response per window and maintained via an optimistic internal counter, removing the need to read response headers on every call.
+- Added `retry-after` header support so 429 responses without standard `x-ratelimit-*` headers are handled correctly.
+- Rate limit state resets automatically on epoch expiry or after sleeping through an exhausted window, ensuring a fresh server read at the start of each new window.
+
+
+## 5.1.2 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+## 5.1.1 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+## 5.1.0 (2026-02-26)
+
+
+### Features
+
+- Added `deployment-status` kind to track GitHub deployment statuses with full resync and real-time webhook support. Includes task and environment filters via selector configuration.
+
+
 ## 5.0.48 (2026-02-25)
 
 
 ### Improvements
 
-- Updated REST API page size from 50 back to 100
+- Restored REST API page size to 100.
 
 ## 5.0.47 (2026-02-25)
 
