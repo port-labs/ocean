@@ -35,6 +35,7 @@ resources:
             mainBranchLastAnalysisDate: .__branch.analysisDate
             revision: .revision
             managed: .managed
+            qualityGateName: .__qualityGateName
   - kind: projects
     selector:
       query: 'true'
@@ -70,6 +71,7 @@ resources:
             coverage: .__measures[]? | select(.metric == "coverage") | .value
             mainBranch: .__branch.name
             tags: .tags
+            qualityGateName: .__qualityGateName
   - kind: analysis
     selector:
       query: 'true'
