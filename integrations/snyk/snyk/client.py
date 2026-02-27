@@ -230,11 +230,10 @@ class SnykClient:
         async for targets in self._get_paginated_resources(
             url_path=url, query_params=query_params
         ):
-            batch = []
-            for target in targets:
-                batch.append(await self._process_target(org, target))
-
-            yield batch
+            targets_with_project_data = await asyncio.gather(
+                *[self._process_target(org, target_data) for target_data in targets]
+            )
+            yield targets_with_project_data
 
     @cache_coroutine_result()
     async def get_single_project(self, org_id: str, project_id: str) -> dict[str, Any]:
@@ -333,3 +332,12 @@ class SnykClient:
             )
 
             return all_organizations
+
+    async def process_project_issues(
+        self, project: dict[str, Any], enrich_with_org: bool = False
+    ) -> list[dict[str, Any]]:
+        organization_id = project["relationships"]["organization"]["data"]["id"]
+        issues = await self.get_issues(organization_id, project["id"])
+        if not enrich_with_org:
+            return issues
+        return enrich_batch_with_org(issues, project["__organization"])

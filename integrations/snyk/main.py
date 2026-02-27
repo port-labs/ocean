@@ -7,24 +7,10 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-from snyk.client import SnykClient
 from snyk.overrides import ProjectResourceConfig
-from snyk.utils import enrich_batch_with_org
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.target_webhook_processor import TargetWebhookProcessor
-
-
-async def process_project_issues(
-    project: dict[str, Any],
-    snyk_client: SnykClient,
-    enrich_with_org: bool = False,
-) -> list[dict[str, Any]]:
-    organization_id = project["relationships"]["organization"]["data"]["id"]
-    issues = await snyk_client.get_issues(organization_id, project["id"])
-    if not enrich_with_org:
-        return issues
-    return enrich_batch_with_org(issues, project["__organization"])
 
 
 @ocean.on_resync(IntegrationKind.ORGANIZATION)
@@ -58,7 +44,7 @@ async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "The flag attach_issues_to_project is set to True, fetching issues for projects in batch. Please know that this approach of mapping issues to projects will be deprecated soon, in favour of our new data model for Snyk resources. Refer to the documentation for more information: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk/#project"
             )
             issue_tasks = [
-                process_project_issues(project, snyk_client) for project in projects
+                snyk_client.process_project_issues(project) for project in projects
             ]
             issues = await asyncio.gather(*issue_tasks)
             yield [
@@ -89,7 +75,7 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             f"Received batch with {len(projects)} projects, getting their issues parallelled"
         )
         tasks = [
-            process_project_issues(project, snyk_client, enrich_with_org=True)
+            snyk_client.process_project_issues(project, enrich_with_org=True)
             for project in projects
         ]
         project_issues_list = await asyncio.gather(*tasks)
