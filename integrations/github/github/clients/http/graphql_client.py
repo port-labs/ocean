@@ -30,6 +30,8 @@ class GithubGraphQLClient(AbstractGithubClient):
             parsed._replace(path=graphql_path, params="", query="", fragment="")
         )
 
+    _extra_retryable_methods: frozenset = frozenset({"POST"})
+
     @property
     def base_url(self) -> str:
         return self._graphql_url
