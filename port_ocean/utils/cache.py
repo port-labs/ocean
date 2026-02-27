@@ -98,6 +98,8 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
             lock = _locks.setdefault(cache_key, asyncio.Lock())
             async with lock:
                 try:
+                    # Check cache again before writing because another task may have
+                    # populated the cache while we were waiting for lock.
                     if cache := await ocean.app.cache_provider.get(cache_key):
                         for chunk in cache:
                             yield chunk
@@ -124,6 +126,7 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
     return decorator
 
 
+# AI! implement a similar caching mechanism here
 def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
     """Coroutine version of `cache_iterator_result` from port_ocean.utils.cache
 
