@@ -248,7 +248,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         variables = {
             "organization": organization,
             "repo": repo_name,
-            "states": ["CLOSED"],
+            "states": ["CLOSED", "MERGED"],
             "__path": "repository.pullRequests",
         }
 
