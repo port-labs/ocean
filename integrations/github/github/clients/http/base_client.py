@@ -35,8 +35,6 @@ class AbstractGithubClient(ABC):
             self.rate_limiter.notify_rate_limited
         )
 
-    _extra_retryable_methods: frozenset[str] = frozenset()
-
     _DEFAULT_IGNORED_ERRORS = [
         IgnoredError(
             status=401,
@@ -56,6 +54,10 @@ class AbstractGithubClient(ABC):
             message="Resource not found at endpoint",
         ),
     ]
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        return self.authenticator.client
 
     async def headers(self, **kwargs: Any) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
@@ -104,9 +106,7 @@ class AbstractGithubClient(ABC):
 
         async with self.rate_limiter:
             try:
-                response = await self.authenticator.get_client(
-                    self._extra_retryable_methods
-                ).request(
+                response = await self.client.request(
                     method=method,
                     url=resource,
                     params=params,

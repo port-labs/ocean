@@ -46,7 +46,7 @@ class GitHubHeaders(BaseModel):
 
 
 class AbstractGitHubAuthenticator(ABC):
-    _http_clients: Optional[Dict[frozenset[str], httpx.AsyncClient]] = None
+    _http_client: Optional[httpx.AsyncClient] = None
     _rate_limit_notifier: Optional[
         Callable[[httpx.Response], Coroutine[Any, Any, None]]
     ] = None
@@ -67,44 +67,42 @@ class AbstractGitHubAuthenticator(ABC):
     async def _get_headers_dict(self) -> Dict[str, str]:
         return (await self.get_headers()).as_dict()
 
-    def get_client(
+    def _make_client(
         self, extra_retryable_methods: frozenset[str] = frozenset()
     ) -> httpx.AsyncClient:
-        if self._http_clients is None:
-            self._http_clients = {}
-        if extra_retryable_methods not in self._http_clients:
-            default_methods = frozenset(
-                ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
-            )
-            retry_config = RetryConfig(
-                retry_after_headers=[
-                    "Retry-After",
-                    "X-RateLimit-Reset",
-                ],
-                retryable_methods=default_methods | extra_retryable_methods,
-                additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
-                ignore_retry_after_status_codes=[
-                    HTTPStatus.INTERNAL_SERVER_ERROR,
-                    HTTPStatus.BAD_GATEWAY,
-                ],
-                max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
-                base_delay=1.0,
-                max_attempts=10,
-            )
-            self._http_clients[extra_retryable_methods] = OceanAsyncClient(
-                GitHubRetryTransport,
-                retry_config=retry_config,
-                transport_kwargs={
-                    "rate_limit_notifier": self._rate_limit_notifier,
-                    "token_refresher": self._get_headers_dict,
-                },
-                timeout=ocean.config.client_timeout,
-            )
-        return self._http_clients[extra_retryable_methods]
+        default_methods = frozenset(
+            ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
+        )
+        retry_config = RetryConfig(
+            retry_after_headers=[
+                "Retry-After",
+                "X-RateLimit-Reset",
+            ],
+            retryable_methods=default_methods | extra_retryable_methods,
+            additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+            ignore_retry_after_status_codes=[
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                HTTPStatus.BAD_GATEWAY,
+            ],
+            max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
+            base_delay=1.0,
+            max_attempts=10,
+        )
+        return OceanAsyncClient(
+            GitHubRetryTransport,
+            retry_config=retry_config,
+            transport_kwargs={
+                "rate_limit_notifier": self._rate_limit_notifier,
+                "token_refresher": self._get_headers_dict,
+            },
+            timeout=ocean.config.client_timeout,
+        )
 
     @property
     def client(self) -> httpx.AsyncClient:
-        return self.get_client()
+        if self._http_client is None:
+            self._http_client = self._make_client()
+        return self._http_client
 
     @cache_coroutine_result()
     async def is_personal_org(self, github_host: str, organization: str) -> bool:
