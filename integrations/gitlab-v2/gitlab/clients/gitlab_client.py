@@ -398,6 +398,32 @@ class GitLabClient:
                     ):
                         yield batch
 
+    async def search_files_in_projects(
+        self,
+        scope: str,
+        path: str,
+        skip_parsing: bool = False,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Search for files across all accessible projects.
+
+        This is an alternative to search_files() for cases where the token
+        does not have group-level access. Instead of searching via the
+        Groups API, it iterates over all accessible projects and searches
+        each one individually using the Projects API.
+        """
+        search_query = f"path:{path}"
+        logger.info(
+            f"Starting project-level file search with path pattern: '{path}'"
+        )
+        async for projects_batch in self.get_projects(params=params):
+            for project in projects_batch:
+                repo_path = project["path_with_namespace"]
+                async for batch in self._search_files_in_repository(
+                    repo_path, scope, search_query, skip_parsing
+                ):
+                    yield batch
+
     async def get_repository_tree(
         self,
         project: dict[str, Any],
