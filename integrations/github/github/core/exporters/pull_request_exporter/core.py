@@ -61,12 +61,14 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
         if "open" in states:
+            logger.info(f"Fetching open PRs with rest api from {organization}/{repo_name}")
             async for open_batch in self._fetch_open_pull_requests(
                 organization, cast(str, repo_name)
             ):
                 yield open_batch
 
         if "closed" in states:
+            logger.info(f"Fetching closed PRs with rest api from {organization}/{repo_name}")
             async for closed_batch in self._fetch_closed_pull_requests(
                 organization, cast(str, repo_name), max_results, updated_after
             ):
@@ -112,14 +114,14 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
         total_count = 0
         logger.info(
-            f"[Closed PRs] Starting fetch for closed pull requests of repository {repo_name} from {organization} "
+            f"Starting rest api fetch for closed pull requests of repository {repo_name} from {organization} "
             f"with max_results={max_results}"
         )
 
         async for pull_requests in self.client.send_paginated_request(endpoint, params):
             if not pull_requests:
                 logger.info(
-                    f"[Closed PRs] No more closed pull requests returned for repository {repo_name} from {organization}; stopping."
+                    f"No more rest api closed pull requests returned for repository {repo_name} from {organization}; stopping."
                 )
                 break
 
@@ -132,7 +134,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             batch_count = len(limited_batch)
 
             logger.info(
-                f"[Closed PRs] Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
+                f"Fetched rest api closed pull requests batch of {batch_count} from {repo_name} from {organization} "
                 f"(total so far: {total_count + batch_count}/{max_results})"
             )
 
@@ -168,7 +170,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             variables,
         )
 
-        logger.info(f"[GraphQL] Fetching PR {organization}/{repo_name}#{pr_number}")
+        logger.info(f"Fetching graphql PR {organization}/{repo_name}#{pr_number}")
         response = await self.client.send_api_request(
             self.client.base_url,
             method="POST",
@@ -177,7 +179,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         if not response:
             logger.warning(
-                f"[GraphQL] PR {organization}/{repo_name}#{pr_number} not found"
+                f"Graphql PR {organization}/{repo_name}#{pr_number} not found"
             )
             return None
 
@@ -195,12 +197,12 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         repo_name = repo["name"]
 
         if "open" in states:
-            logger.info(f"Fetching open PRs from {organization}/{repo_name}")
+            logger.info(f"Fetching open PRs with graphql api from {organization}/{repo_name}")
             async for batch in self._fetch_open_pull_requests(organization, repo):
                 yield batch
 
         if "closed" in states:
-            logger.info(f"Fetching closed PRs from {organization}/{repo_name}")
+            logger.info(f"Fetching closed PRs with graphql api from {organization}/{repo_name}")
             async for batch in self._fetch_closed_pull_requests(
                 organization, repo, max_results, updated_after
             ):
@@ -219,7 +221,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "__path": "repository.pullRequests",
         }
 
-        logger.info(f"[GraphQL] Fetching open PRs from {organization}/{repo_name}")
+        logger.info(f"Fetching graphql open PRs from {organization}/{repo_name}")
 
         async for pr_nodes in self.client.send_paginated_request(
             LIST_PULL_REQUESTS_GQL,
@@ -233,7 +235,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 for pr_node in pr_nodes
             ]
 
-            logger.info(f"[GraphQL] Yielding batch of {len(batch)} open PRs")
+            logger.info(f"Yielding graphql open PRs batch of {len(batch)} from {organization}/{repo_name}")
             yield batch
 
     async def _fetch_closed_pull_requests(
@@ -252,7 +254,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "__path": "repository.pullRequests",
         }
 
-        logger.info(f"[GraphQL] Fetching closed PRs from {organization}/{repo_name}")
+        logger.info(f"Fetching graphql closed PRs from {organization}/{repo_name}")
 
         total_count = 0
         async for pr_nodes in self.client.send_paginated_request(
@@ -261,7 +263,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         ):
             if not pr_nodes:
                 logger.info(
-                    f"No more closed pull requests returned for repository {repo_name} from {organization}; stopping."
+                    f"No more graphql closed pull requests returned for repository {repo_name} from {organization}; stopping."
                 )
                 break
 
@@ -273,7 +275,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             batch_count = len(limited_batch)
 
             logger.info(
-                f"Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
+                f"Fetched graphql closed pull requests batch of {batch_count} from {repo_name} from {organization} "
                 f"(total so far: {total_count + batch_count}/{max_results})"
             )
 
