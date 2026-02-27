@@ -477,6 +477,38 @@ async def test_get_quality_gate_for_project_is_called_with_correct_params(
     assert result == "Sonar way"
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "side_effect",
+    [
+        httpx.HTTPStatusError(
+            "Server error",
+            request=httpx.Request("GET", "https://sonarqube.com"),
+            response=httpx.Response(500, request=httpx.Request("GET", "https://sonarqube.com")),
+        ),
+        httpx.TimeoutException("Request timed out"),
+    ],
+)
+async def test_get_quality_gate_for_project_returns_none_on_error(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+    side_effect: Exception,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+    mock_send_api_request = AsyncMock(side_effect=side_effect)
+    monkeypatch.setattr(sonarqube_client, "_send_api_request", mock_send_api_request)
+
+    result = await sonarqube_client.get_quality_gate_for_project(PURE_PROJECTS[0]["key"])
+
+    assert result is None
+
+
 async def test_get_single_project_is_called_with_correct_params(
     mock_ocean_context: Any,
     monkeypatch: Any,
