@@ -713,33 +713,6 @@ class TestGitLabClient:
                 {"ref": "main", "path": "", "recursive": True},
             )
 
-    async def test_get_parent_groups(self, client: GitLabClient) -> None:
-        """Test that get_parent_groups returns only top-level groups"""
-        # Arrange
-        page1_groups = [
-            {"id": 1, "name": "Child", "parent_id": 3},  # Parent in page 2
-            {"id": 2, "name": "Orphan", "parent_id": 999},  # Missing parent
-        ]
-        page2_groups = [
-            {"id": 3, "name": "Parent", "parent_id": None},  # True top-level
-            {"id": 4, "name": "Child of Parent", "parent_id": 3},  # Child of parent
-        ]
-
-        with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            return_value=async_mock_generator([page1_groups, page2_groups]),
-        ):
-            # Act
-            results = []
-            async for batch in client.get_parent_groups():
-                results.extend(batch)
-
-            # Assert - only top-level groups returned
-            assert len(results) == 2
-            result_ids = {group["id"] for group in results}
-            assert result_ids == {2, 3}  # Orphan and Parent, not children
-
     async def test_get_repository_folders(self, client: GitLabClient) -> None:
         """Test searching folders in a single repository"""
         # Arrange
@@ -1219,3 +1192,30 @@ class TestGitLabClient:
         # Test without includedFiles (default empty list)
         selector_default = ProjectSelector(query="true")
         assert selector_default.included_files == []
+
+    async def test_get_parent_groups(self, client: GitLabClient) -> None:
+        """Test that get_parent_groups returns only top-level groups"""
+        # Arrange
+        page1_groups = [
+            {"id": 1, "name": "Child", "parent_id": 3},  # Parent in page 2
+            {"id": 2, "name": "Orphan", "parent_id": 999},  # Missing parent
+        ]
+        page2_groups = [
+            {"id": 3, "name": "Parent", "parent_id": None},  # True top-level
+            {"id": 4, "name": "Child of Parent", "parent_id": 3},  # Child of parent
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([page1_groups, page2_groups]),
+        ):
+            # Act
+            results = []
+            async for batch in client.get_parent_groups():
+                results.extend(batch)
+
+            # Assert - only top-level groups returned
+            assert len(results) == 2
+            result_ids = {group["id"] for group in results}
+            assert result_ids == {2, 3}  # Orphan and Parent, not children
