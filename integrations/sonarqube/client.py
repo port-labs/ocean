@@ -44,6 +44,7 @@ class Endpoints:
     ANALYSIS = "activity_feed/list"
     PORTFOLIO_DETAILS = "views/show"
     PORTFOLIOS = "views/list"
+    QUALITY_GATE_PROJECT = "qualitygates/get_by_project"
 
 
 PAGE_SIZE = 100
@@ -290,6 +291,32 @@ class SonarQubeClient:
         )
         return response.get("branches", [])
 
+    async def get_quality_gate_for_project(self, project_key: str) -> str | None:
+        """
+        Retrieve the quality gate name assigned to a project.
+
+        :param project_key: A string containing the project key.
+        :return: The name of the quality gate assigned to the project, or None.
+        """
+        logger.debug(f"Fetching quality gate for project: {project_key}")
+        try:
+            response = await self._send_api_request(
+                endpoint=Endpoints.QUALITY_GATE_PROJECT,
+                query_params={"project": project_key},
+            )
+            return response.get("qualityGate", {}).get("name")
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                f"Failed to fetch quality gate for project {project_key}: "
+                f"HTTP {e.response.status_code}. Skipping."
+            )
+            return None
+        except httpx.HTTPError as e:
+            logger.warning(
+                f"Failed to fetch quality gate for project {project_key}: {e}. Skipping."
+            )
+            return None
+
     async def get_single_project(self, project: dict[str, Any]) -> dict[str, Any]:
         """
         Retrieves project information from SonarQube API.
@@ -301,12 +328,17 @@ class SonarQubeClient:
         project_key = cast(str, project.get("key"))
         logger.info(f"Fetching all project information for: {project_key}")
 
-        project["__measures"] = await self.get_measures(project_key)
+        measures, branches, quality_gate_name = await asyncio.gather(
+            self.get_measures(project_key),
+            self.get_branches(project_key),
+            self.get_quality_gate_for_project(project_key),
+        )
 
-        branches = await self.get_branches(project_key)
+        project["__measures"] = measures
         project["__branches"] = branches
         main_branch = [branch for branch in branches if branch.get("isMain")]
         project["__branch"] = main_branch[0]
+        project["__qualityGateName"] = quality_gate_name
 
         if self.is_onpremise:
             project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
