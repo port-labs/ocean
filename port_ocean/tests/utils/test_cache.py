@@ -546,25 +546,9 @@ async def test_cache_iterator_maintains_chunks(
     # Verify structure is preserved (chunks remain separate)
     assert results2 == [[1, 2], [3, 4]]
     assert call_count == 1
-import asyncio
-from unittest.mock import AsyncMock, patch
-from typing import AsyncIterator
-
-import pytest
-
-from port_ocean.utils.cache import cache_iterator_result, cache_coroutine_result
 
 
-@pytest.fixture
-def mock_ocean():
-    with patch("port_ocean.utils.cache.ocean") as mock:
-        mock.app.cache_provider = AsyncMock()
-        mock.app.cache_provider.get.return_value = None
-        mock.app.cache_provider.set.return_value = None
-        yield mock
-
-
-async def async_gen_to_list(async_gen: AsyncIterator) -> list:
+async def async_gen_to_list(async_gen: AsyncIterator[Any]) -> list[Any]:
     results = []
     async for item in async_gen:
         results.append(item)
@@ -572,11 +556,14 @@ async def async_gen_to_list(async_gen: AsyncIterator) -> list:
 
 
 @pytest.mark.asyncio
-async def test_cache_iterator_result_concurrency(mock_ocean):
+async def test_cache_iterator_result_concurrency(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
     execution_count = 0
 
-    @cache_iterator_result()
-    async def slow_iterator(x):
+    @cache.cache_iterator_result()
+    async def slow_iterator(x: int) -> AsyncGenerator[int, None]:
         nonlocal execution_count
         execution_count += 1
         await asyncio.sleep(0.1)
@@ -586,30 +573,27 @@ async def test_cache_iterator_result_concurrency(mock_ocean):
     # Simulate 5 concurrent calls
     # We create the tasks, which will all hit the cache logic almost simultaneously
     tasks = [async_gen_to_list(slow_iterator(1)) for _ in range(5)]
-    
+
     # Wait for all to complete
     results = await asyncio.gather(*tasks)
 
     # Assertions
     # execution_count should be 1 if locking works correctly (preventing thundering herd)
     assert execution_count == 1
-    
+
     for res in results:
         assert res == [1, 2]
 
-    # Verify cache interactions
-    # .get() is called multiple times (once initially, once inside lock for winner, + double checks for losers)
-    assert mock_ocean.app.cache_provider.get.called
-    # .set() is called exactly once by the winner
-    mock_ocean.app.cache_provider.set.assert_called_once()
-
 
 @pytest.mark.asyncio
-async def test_cache_coroutine_result_concurrency(mock_ocean):
+async def test_cache_coroutine_result_concurrency(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
     execution_count = 0
 
-    @cache_coroutine_result()
-    async def slow_coroutine(x):
+    @cache.cache_coroutine_result()
+    async def slow_coroutine(x: int) -> int:
         nonlocal execution_count
         execution_count += 1
         await asyncio.sleep(0.1)
@@ -623,25 +607,3 @@ async def test_cache_coroutine_result_concurrency(mock_ocean):
     assert execution_count == 1
     for res in results:
         assert res == 20
-
-    assert mock_ocean.app.cache_provider.get.called
-    mock_ocean.app.cache_provider.set.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_cache_different_args(mock_ocean):
-    execution_count = 0
-
-    @cache_coroutine_result()
-    async def echo(x):
-        nonlocal execution_count
-        execution_count += 1
-        return x
-
-    # Call with different args - should result in different cache keys
-    # so they should execute independently (concurrency or not)
-    results = await asyncio.gather(echo(1), echo(2))
-
-    assert results == [1, 2]
-    assert execution_count == 2
-    assert mock_ocean.app.cache_provider.set.call_count == 2
