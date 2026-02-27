@@ -244,14 +244,15 @@ async def test_cache_failures_dont_affect_execution(
     result1 = await collect_iterator_results(sample_iterator(3))
     assert result1 == [0, 1, 2]
     assert iterator_call_count == 1
-    assert mock_cache_provider.get.call_count == 1
+    # get is called twice due to double-checked locking pattern
+    assert mock_cache_provider.get.call_count == 2
     assert mock_cache_provider.set.call_count == 1
 
     # Second call - should execute function again (cache read fails)
     result2 = await collect_iterator_results(sample_iterator(3))
     assert result2 == [0, 1, 2]
     assert iterator_call_count == 2
-    assert mock_cache_provider.get.call_count == 2
+    assert mock_cache_provider.get.call_count == 4
     assert mock_cache_provider.set.call_count == 2
 
     # Test coroutine function
@@ -259,14 +260,14 @@ async def test_cache_failures_dont_affect_execution(
     result3 = await sample_coroutine(4)
     assert result3 == 8
     assert coroutine_call_count == 1
-    assert mock_cache_provider.get.call_count == 3
+    assert mock_cache_provider.get.call_count == 6
     assert mock_cache_provider.set.call_count == 3
 
     # Second call - should execute function again (cache read fails)
     result4 = await sample_coroutine(4)
     assert result4 == 8
     assert coroutine_call_count == 2
-    assert mock_cache_provider.get.call_count == 4
+    assert mock_cache_provider.get.call_count == 8
     assert mock_cache_provider.set.call_count == 4
 
     # Verify that both read and write errors were raised
