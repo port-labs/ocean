@@ -299,11 +299,23 @@ class SonarQubeClient:
         :return: The name of the quality gate assigned to the project, or None.
         """
         logger.info(f"Fetching quality gate for project: {project_key}")
-        response = await self._send_api_request(
-            endpoint=Endpoints.QUALITY_GATE_PROJECT,
-            query_params={"project": project_key},
-        )
-        return response.get("qualityGate", {}).get("name")
+        try:
+            response = await self._send_api_request(
+                endpoint=Endpoints.QUALITY_GATE_PROJECT,
+                query_params={"project": project_key},
+            )
+            return response.get("qualityGate", {}).get("name")
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                f"Failed to fetch quality gate for project {project_key}: "
+                f"HTTP {e.response.status_code}. Skipping."
+            )
+            return None
+        except httpx.HTTPError as e:
+            logger.warning(
+                f"Failed to fetch quality gate for project {project_key}: {e}. Skipping."
+            )
+            return None
 
     async def get_single_project(self, project: dict[str, Any]) -> dict[str, Any]:
         """
