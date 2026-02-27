@@ -1,3 +1,5 @@
+from typing import cast, Any, Optional, List
+
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -6,10 +8,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from checkmarx_one.core.options import SingleScanOptions
+from checkmarx_one.core.options import SingleScanOptions, ListScanOptions
 from checkmarx_one.exporter_factory import create_scan_exporter
 from checkmarx_one.utils import ObjectKind
 from checkmarx_one.webhook.events import CheckmarxEventType
+from integration import CheckmarxOneScanResourcesConfig
 from .abstract_webhook_processor import _CheckmarxOneAbstractWebhookProcessor
 
 
@@ -17,7 +20,7 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
     """Processes scan-related webhook events from Checkmarx One."""
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return {"scanId", "projectId"} <= payload.keys()
+        return {"scanId", "projectId", "branch", "status"} <= payload.keys()
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Validate that the event is a scan-related event."""
@@ -44,6 +47,37 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
         data_to_upsert = await scan_exporter.get_resource(
             SingleScanOptions(scan_id=scan_id)
         )
+        logger.info(f"Scan data to upsert: {data_to_upsert}")
+
+        selector = cast(CheckmarxOneScanResourcesConfig, resource_config).selector
+        options = ListScanOptions(
+            project_names=selector.project_names,
+            branches=selector.branches,
+            statuses=selector.statuses,
+            from_date=selector.from_date,
+        )
+        empty_results = WebhookEventRawResults(
+            updated_raw_results=[], deleted_raw_results=[]
+        )
+        if not self._filter_scan_by_branches(data_to_upsert, options["branches"]):
+            logger.warning(
+                f"Scan {scan_id} of project {project_id} skipped due to branch filter"
+            )
+            return empty_results
+
+        if not self._filter_scan_by_project_names(
+            data_to_upsert, options["project_names"]
+        ):
+            logger.warning(
+                f"Scan {scan_id} of project {project_id} skipped due to project name filter"
+            )
+            return empty_results
+
+        if not self._filter_scan_by_statuses(data_to_upsert, options):
+            logger.warning(
+                f"Scan {scan_id} of project {project_id} skipped due to status filter"
+            )
+            return empty_results
 
         logger.info(f"Processed scan data for scan: {scan_id} in project: {project_id}")
 
@@ -51,3 +85,34 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
             updated_raw_results=[data_to_upsert],
             deleted_raw_results=[],
         )
+
+    @staticmethod
+    def _filter_scan_by_branches(
+        scan: dict[str, Any], branches: Optional[List[str]]
+    ) -> bool:
+        if not branches:
+            return True
+
+        return scan["branch"] in branches
+
+    @staticmethod
+    def _filter_scan_by_statuses(
+        scan: dict[str, Any], options: ListScanOptions
+    ) -> bool:
+        statuses = options["statuses"]
+        if not statuses:
+            return True
+
+        return scan["status"] in statuses
+
+    @staticmethod
+    def _filter_scan_by_project_names(
+        scan: dict[str, Any], project_names: Optional[List[str]]
+    ) -> bool:
+        logger.info(
+            f"Filtering scan by project names: {project_names} for scan: {scan}"
+        )
+        if not project_names:
+            return True
+
+        return scan["projectId"] in project_names

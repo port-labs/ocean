@@ -1,22 +1,23 @@
-from typing import Dict
-import pytest
+from typing import Dict, Any
 from unittest.mock import AsyncMock, patch
+
+import pytest
+from port_ocean.core.handlers.port_app_config.models import (
+    EntityMapping,
+    MappingsConfig,
+    PortResourceConfig,
+)
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
-from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
-    ScanWebhookProcessor,
-)
+
 from checkmarx_one.utils import ObjectKind
 from checkmarx_one.webhook.events import CheckmarxEventType
-
-from port_ocean.core.handlers.port_app_config.models import (
-    EntityMapping,
-    MappingsConfig,
-    PortResourceConfig,
+from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
+    ScanWebhookProcessor,
 )
 from integration import CheckmarxOneScanResourcesConfig, CheckmarxOneScanSelector
 
@@ -25,7 +26,12 @@ from integration import CheckmarxOneScanResourcesConfig, CheckmarxOneScanSelecto
 def scan_resource_config() -> CheckmarxOneScanResourcesConfig:
     return CheckmarxOneScanResourcesConfig(
         kind="scan",
-        selector=CheckmarxOneScanSelector(query="true"),
+        selector=CheckmarxOneScanSelector(
+            query="true",
+            projectIds=["project-456"],
+            branches=["main"],
+            statuses=["Completed"],
+        ),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -89,6 +95,8 @@ class TestScanWebhookProcessor:
                 {
                     "scanId": "scan-123",
                     "projectId": "project-456",
+                    "branch": "main",
+                    "status": "Completed",
                 },
                 True,
             ),
@@ -97,18 +105,24 @@ class TestScanWebhookProcessor:
                     "scanId": "scan-789",
                     "projectId": "project-101",
                     "additionalField": "value",
+                    "branch": "main",
+                    "status": "Completed",
                 },
                 True,
             ),
             (
                 {
                     "projectId": "project-456",
+                    "branch": "main",
+                    "status": "Completed",
                 },  # missing scanId
                 False,
             ),
             (
                 {
                     "scanId": "scan-123",
+                    "branch": "main",
+                    "status": "Completed",
                 },  # missing projectId
                 False,
             ),
@@ -135,7 +149,7 @@ class TestScanWebhookProcessor:
         """Test handling a scan event successfully."""
         scan_data = {
             "id": "scan-123",
-            "project_id": "project-456",
+            "projectId": "project-456",
             "status": "Completed",
             "created_at": "2023-01-01T00:00:00Z",
             "updated_at": "2023-01-01T01:00:00Z",
@@ -146,6 +160,8 @@ class TestScanWebhookProcessor:
         payload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
+            "status": "Completed",
         }
 
         # Mock the scan exporter
@@ -172,6 +188,108 @@ class TestScanWebhookProcessor:
         assert len(result.updated_raw_results) == 1
         assert len(result.deleted_raw_results) == 0
         assert result.updated_raw_results[0] == scan_data
+
+    async def test_handle_event_skips_due_to_branch_filter(
+        self,
+        scan_webhook_processor: ScanWebhookProcessor,
+        scan_resource_config: CheckmarxOneScanResourcesConfig,
+    ) -> None:
+        scan_data: dict[str, Any] = {
+            "id": "scan-123",
+            "projectId": "project-456",
+            "status": "Completed",
+            "branch": "develop",
+        }
+        payload: EventPayload = {
+            "scanId": "scan-123",
+            "projectId": "project-456",
+            "branch": "develop",
+            "status": "Completed",
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = scan_data
+
+        with patch(
+            "checkmarx_one.webhook.webhook_processors.scan_webhook_processor.create_scan_exporter"
+        ) as mock_create_exporter:
+            mock_create_exporter.return_value = mock_exporter
+
+            result = await scan_webhook_processor.handle_event(
+                payload, scan_resource_config
+            )
+
+        mock_exporter.get_resource.assert_called_once()
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+
+    async def test_handle_event_skips_due_to_project_name_filter(
+        self,
+        scan_webhook_processor: ScanWebhookProcessor,
+        scan_resource_config: CheckmarxOneScanResourcesConfig,
+    ) -> None:
+        scan_data: dict[str, Any] = {
+            "id": "scan-123",
+            "projectId": "project-999",
+            "status": "Completed",
+            "branch": "main",
+        }
+        payload: EventPayload = {
+            "scanId": "scan-123",
+            "projectId": "project-999",
+            "status": "Completed",
+            "branch": "main",
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = scan_data
+
+        with patch(
+            "checkmarx_one.webhook.webhook_processors.scan_webhook_processor.create_scan_exporter"
+        ) as mock_create_exporter:
+            mock_create_exporter.return_value = mock_exporter
+
+            result = await scan_webhook_processor.handle_event(
+                payload, scan_resource_config
+            )
+
+        mock_exporter.get_resource.assert_called_once()
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+
+    async def test_handle_event_skips_due_to_status_filter(
+        self,
+        scan_webhook_processor: ScanWebhookProcessor,
+        scan_resource_config: CheckmarxOneScanResourcesConfig,
+    ) -> None:
+        scan_data: dict[str, Any] = {
+            "id": "scan-123",
+            "projectId": "project-456",
+            "status": "Failed",
+            "branch": "main",
+        }
+        payload: EventPayload = {
+            "scanId": "scan-123",
+            "projectId": "project-456",
+            "branch": "main",
+            "status": "Completed",
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = scan_data
+
+        with patch(
+            "checkmarx_one.webhook.webhook_processors.scan_webhook_processor.create_scan_exporter"
+        ) as mock_create_exporter:
+            mock_create_exporter.return_value = mock_exporter
+
+            result = await scan_webhook_processor.handle_event(
+                payload, scan_resource_config
+            )
+
+        mock_exporter.get_resource.assert_called_once()
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
 
     async def test_handle_event_exporter_error(
         self,

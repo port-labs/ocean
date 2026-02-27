@@ -89,6 +89,8 @@ class TestApiSecurityWebhookProcessor:
                 {
                     "scanId": "scan-123",
                     "projectId": "project-456",
+                    "branch": "main",
+                    "status": "Completed",
                 },
                 True,
             ),
@@ -97,18 +99,24 @@ class TestApiSecurityWebhookProcessor:
                     "scanId": "scan-789",
                     "projectId": "project-101",
                     "additionalField": "value",
+                    "branch": "main",
+                    "status": "Completed",
                 },
                 True,
             ),
             (
                 {
                     "projectId": "project-456",
+                    "branch": "main",
+                    "status": "Completed",
                 },  # missing scanId
                 False,
             ),
             (
                 {
                     "scanId": "scan-123",
+                    "branch": "main",
+                    "status": "Completed",
                 },  # missing projectId
                 False,
             ),
