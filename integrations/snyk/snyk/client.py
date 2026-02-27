@@ -226,6 +226,7 @@ class SnykClient:
         target = response["data"]
 
         if attach_project_data:
+            logger.info(f"Enriching target {target_id} with projects")
             await self._process_target(org, target)
 
         return target
