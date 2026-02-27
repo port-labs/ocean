@@ -497,7 +497,7 @@ class TestGraphQLPullRequestExporter:
             {
                 "organization": "test-org",
                 "repo": "repo1",
-                "states": ["CLOSED"],
+                "states": ["CLOSED", "MERGED"],
                 "__path": "repository.pullRequests",
             },
         )
@@ -565,7 +565,7 @@ class TestGraphQLPullRequestExporter:
             {
                 "organization": "test-org",
                 "repo": "repo1",
-                "states": ["CLOSED"],
+                "states": ["CLOSED", "MERGED"],
                 "__path": "repository.pullRequests",
             },
         )
