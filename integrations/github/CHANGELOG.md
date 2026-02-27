@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.4 (2026-02-27)
+
+
+### Improvements
+
+- Added support for additional retryable methods to support transient GitHub API errors retry for graphql requests
+
+
 ## 5.1.3 (2026-02-26)
 
 
