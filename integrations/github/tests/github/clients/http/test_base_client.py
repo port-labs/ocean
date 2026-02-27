@@ -327,3 +327,17 @@ class TestAbstractGithubClient:
                 json=None,
                 headers=await client.headers(),
             )
+
+
+class TestAbstractGithubClientClientProperty:
+    def test_client_property_delegates_to_authenticator_client(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+            base_client = ConcreteGithubClient(
+                organization="test-org",
+                github_host="https://api.github.com",
+                authenticator=authenticator,
+            )
+            assert base_client.client is authenticator.client
