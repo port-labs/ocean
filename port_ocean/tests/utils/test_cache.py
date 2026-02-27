@@ -564,12 +564,12 @@ async def test_cache_iterator_result_concurrency(
     execution_count = 0
 
     @cache.cache_iterator_result()
-    async def slow_iterator(x: int) -> AsyncGenerator[int, None]:
+    async def slow_iterator(x: int) -> AsyncGenerator[List[int], None]:
         nonlocal execution_count
         execution_count += 1
         await asyncio.sleep(0.1)
-        yield x
-        yield x + 1
+        yield [x]
+        yield [x + 1]
 
     # Simulate 5 concurrent calls
     # We create the tasks, which will all hit the cache logic almost simultaneously
@@ -583,7 +583,7 @@ async def test_cache_iterator_result_concurrency(
     assert execution_count == 1
 
     for res in results:
-        assert res == [1, 2]
+        assert res == [[1], [2]]
 
 
 @pytest.mark.asyncio
