@@ -61,14 +61,18 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
         if "open" in states:
-            logger.info(f"Fetching open PRs with rest api from {organization}/{repo_name}")
+            logger.info(
+                f"Fetching open PRs with rest api from {organization}/{repo_name}"
+            )
             async for open_batch in self._fetch_open_pull_requests(
                 organization, cast(str, repo_name)
             ):
                 yield open_batch
 
         if "closed" in states:
-            logger.info(f"Fetching closed PRs with rest api from {organization}/{repo_name}")
+            logger.info(
+                f"Fetching closed PRs with rest api from {organization}/{repo_name}"
+            )
             async for closed_batch in self._fetch_closed_pull_requests(
                 organization, cast(str, repo_name), max_results, updated_after
             ):
@@ -197,12 +201,16 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         repo_name = repo["name"]
 
         if "open" in states:
-            logger.info(f"Fetching open PRs with graphql api from {organization}/{repo_name}")
+            logger.info(
+                f"Fetching open PRs with graphql api from {organization}/{repo_name}"
+            )
             async for batch in self._fetch_open_pull_requests(organization, repo):
                 yield batch
 
         if "closed" in states:
-            logger.info(f"Fetching closed PRs with graphql api from {organization}/{repo_name}")
+            logger.info(
+                f"Fetching closed PRs with graphql api from {organization}/{repo_name}"
+            )
             async for batch in self._fetch_closed_pull_requests(
                 organization, repo, max_results, updated_after
             ):
@@ -235,7 +243,9 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 for pr_node in pr_nodes
             ]
 
-            logger.info(f"Yielding graphql open PRs batch of {len(batch)} from {organization}/{repo_name}")
+            logger.info(
+                f"Yielding graphql open PRs batch of {len(batch)} from {organization}/{repo_name}"
+            )
             yield batch
 
     async def _fetch_closed_pull_requests(
