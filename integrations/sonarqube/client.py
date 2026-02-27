@@ -328,14 +328,17 @@ class SonarQubeClient:
         project_key = cast(str, project.get("key"))
         logger.info(f"Fetching all project information for: {project_key}")
 
-        project["__measures"] = await self.get_measures(project_key)
+        measures, branches, quality_gate_name = await asyncio.gather(
+            self.get_measures(project_key),
+            self.get_branches(project_key),
+            self.get_quality_gate_for_project(project_key),
+        )
 
-        branches = await self.get_branches(project_key)
+        project["__measures"] = measures
         project["__branches"] = branches
         main_branch = [branch for branch in branches if branch.get("isMain")]
         project["__branch"] = main_branch[0]
-
-        project["__qualityGateName"] = await self.get_quality_gate_for_project(project_key)
+        project["__qualityGateName"] = quality_gate_name
 
         if self.is_onpremise:
             project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
