@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.7 (2026-02-27)
+
+
+### Bug Fixes
+
+- Handle repository visibility transitions in `repository` webhooks by emitting delete events when a repository no longer matches the configured visibility filter.
+
+
 ## 5.1.6 (2026-02-27)
 
 
