@@ -211,6 +211,7 @@ class SnykClient:
         )
 
         if target_id is None:
+            logger.warning(f"No target ID found in project {project_id}; skipping target fetching.")
             return {}
 
         url = f"{self.rest_api_url}/orgs/{org['id']}/targets/{target_id}"
