@@ -78,6 +78,10 @@
         "managed": {
           "type": "boolean",
           "title": "Managed"
+        },
+        "qualityGateName": {
+          "type": "string",
+          "title": "Quality Gate Name"
         }
       },
       "required": []
@@ -203,6 +207,10 @@
         "tags": {
           "type": "array",
           "title": "Tags"
+        },
+        "qualityGateName": {
+          "type": "string",
+          "title": "Quality Gate Name"
         }
       },
       "required": []
