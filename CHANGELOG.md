@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.1 (2026-02-26)
+
+### Improvements
+
+- Updated workflow node run logs API
+
+## 0.38.0 (2026-02-26)
+
+### Improvements
+
+- Updated retry transport to use async methods for before_retry and after_retry
+
 ## 0.37.3 (2026-02-24)
 
 ### Improvements
@@ -32,6 +44,12 @@ Fixed advanced config structure in ui schema generation
 
 - Release workflow now uploads integration specs to versioned S3 paths (`integration/version/spec.json`) and uploads port-app-config and UI schemas to S3 per integration version (generated via `ocean port-app-config schema` in release)
 
+
+## 0.36.1 (2026-02-18)
+
+### Bug fixes
+
+- Port's Workflows logs endpoints changes
 
 ## 0.36.0 (2026-02-17)
 
