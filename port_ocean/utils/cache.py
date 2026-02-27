@@ -12,6 +12,7 @@ AsyncIteratorCallable = Callable[..., AsyncIterator[list[Any]]]
 AsyncCallable = Callable[..., Awaitable[Any]]
 
 _locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
+_key_locks_guard = asyncio.Lock()
 
 
 def sanitize_identifier(name: str) -> str:
@@ -95,7 +96,9 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
             except FailedToReadCacheError as e:
                 logger.warning(f"Failed to read cache for {cache_key}: {str(e)}")
 
-            lock = _locks.setdefault(cache_key, asyncio.Lock())
+            async with _key_locks_guard:
+                lock = _locks.setdefault(cache_key, asyncio.Lock())
+
             async with lock:
                 try:
                     # Check cache again before writing because another task may have
@@ -155,7 +158,9 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
             except FailedToReadCacheError as e:
                 logger.warning(f"Failed to read cache for {cache_key}: {str(e)}")
 
-            lock = _locks.setdefault(cache_key, asyncio.Lock())
+            async with _key_locks_guard:
+                lock = _locks.setdefault(cache_key, asyncio.Lock())
+
             async with lock:
                 try:
                     if cache := await ocean.app.cache_provider.get(cache_key):
