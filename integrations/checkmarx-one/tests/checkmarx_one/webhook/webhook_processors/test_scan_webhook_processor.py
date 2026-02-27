@@ -233,7 +233,6 @@ class TestScanWebhookProcessor:
                 payload, scan_resource_config
             )
 
-        mock_exporter.get_resource.assert_called_once()
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
 
@@ -267,7 +266,6 @@ class TestScanWebhookProcessor:
                 payload, scan_resource_config
             )
 
-        mock_exporter.get_resource.assert_called_once()
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
 
@@ -286,7 +284,7 @@ class TestScanWebhookProcessor:
             "scanId": "scan-123",
             "projectId": "project-456",
             "branch": "main",
-            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
+            "statusInfo": [{"name": "general", "status": "Failed", "details": ""}],
         }
 
         mock_exporter = AsyncMock()
@@ -301,7 +299,6 @@ class TestScanWebhookProcessor:
                 payload, scan_resource_config
             )
 
-        mock_exporter.get_resource.assert_called_once()
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
 
@@ -314,6 +311,8 @@ class TestScanWebhookProcessor:
         payload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
         }
 
         # Mock the scan exporter to raise an exception

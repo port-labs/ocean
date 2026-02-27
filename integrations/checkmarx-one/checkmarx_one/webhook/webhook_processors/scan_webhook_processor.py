@@ -43,12 +43,6 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
 
         logger.info(f"Processing scan: {scan_id} of project: {project_id}")
 
-        scan_exporter = create_scan_exporter()
-        data_to_upsert = await scan_exporter.get_resource(
-            SingleScanOptions(scan_id=scan_id)
-        )
-        logger.info(f"Scan data to upsert: {data_to_upsert}")
-
         selector = cast(CheckmarxOneScanResourcesConfig, resource_config).selector
         options = ListScanOptions(
             project_names=selector.project_names,
@@ -59,25 +53,28 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
         empty_results = WebhookEventRawResults(
             updated_raw_results=[], deleted_raw_results=[]
         )
-        if not self._filter_scan_by_branches(data_to_upsert, options["branches"]):
+        if not self._filter_scan_by_branches(payload, options["branches"]):
             logger.warning(
                 f"Scan {scan_id} of project {project_id} skipped due to branch filter"
             )
             return empty_results
 
-        if not self._filter_scan_by_project_names(
-            data_to_upsert, options["project_names"]
-        ):
+        if not self._filter_scan_by_project_names(payload, options["project_names"]):
             logger.warning(
                 f"Scan {scan_id} of project {project_id} skipped due to project name filter"
             )
             return empty_results
 
-        if not self._filter_scan_by_statuses(data_to_upsert, options):
+        if not self._filter_scan_by_statuses(payload, options):
             logger.warning(
                 f"Scan {scan_id} of project {project_id} skipped due to status filter"
             )
             return empty_results
+
+        scan_exporter = create_scan_exporter()
+        data_to_upsert = await scan_exporter.get_resource(
+            SingleScanOptions(scan_id=scan_id)
+        )
 
         logger.info(f"Processed scan data for scan: {scan_id} in project: {project_id}")
 
