@@ -57,29 +57,6 @@ class GitLabClient:
             )
         return project
 
-    async def get_parent_groups(
-        self,
-        params: Optional[dict[str, Any]] = None,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        all_group_ids = set()
-        groups_by_id = {}
-
-        async for group_batch in self.get_groups(params=params):
-            for group in group_batch:
-                group_id = group["id"]
-                all_group_ids.add(group_id)
-                groups_by_id[group_id] = group
-
-        top_level_groups = [
-            group
-            for group in groups_by_id.values()
-            if group.get("parent_id") is None
-            or group.get("parent_id") not in all_group_ids
-        ]
-
-        if top_level_groups:
-            yield top_level_groups
-
     async def get_group(self, group_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request("GET", f"groups/{group_id}")
 
@@ -361,6 +338,29 @@ class GitLabClient:
         path = f"projects/{encoded_project_path}/search"
         response = await self.rest.send_api_request("GET", path, params=params)
         return bool(response)
+
+    async def get_parent_groups(
+        self,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        all_group_ids = set()
+        groups_by_id = {}
+
+        async for group_batch in self.get_groups(params=params):
+            for group in group_batch:
+                group_id = group["id"]
+                all_group_ids.add(group_id)
+                groups_by_id[group_id] = group
+
+        top_level_groups = [
+            group
+            for group in groups_by_id.values()
+            if group.get("parent_id") is None
+            or group.get("parent_id") not in all_group_ids
+        ]
+
+        if top_level_groups:
+            yield top_level_groups
 
     async def get_projects_to_scan(
         self,
