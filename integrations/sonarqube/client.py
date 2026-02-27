@@ -44,6 +44,7 @@ class Endpoints:
     ANALYSIS = "activity_feed/list"
     PORTFOLIO_DETAILS = "views/show"
     PORTFOLIOS = "views/list"
+    QUALITY_GATE_PROJECT = "qualitygates/get_by_project"
 
 
 PAGE_SIZE = 100
@@ -290,6 +291,20 @@ class SonarQubeClient:
         )
         return response.get("branches", [])
 
+    async def get_quality_gate_for_project(self, project_key: str) -> str | None:
+        """
+        Retrieve the quality gate name assigned to a project.
+
+        :param project_key: A string containing the project key.
+        :return: The name of the quality gate assigned to the project, or None.
+        """
+        logger.info(f"Fetching quality gate for project: {project_key}")
+        response = await self._send_api_request(
+            endpoint=Endpoints.QUALITY_GATE_PROJECT,
+            query_params={"project": project_key},
+        )
+        return response.get("qualityGate", {}).get("name")
+
     async def get_single_project(self, project: dict[str, Any]) -> dict[str, Any]:
         """
         Retrieves project information from SonarQube API.
@@ -307,6 +322,8 @@ class SonarQubeClient:
         project["__branches"] = branches
         main_branch = [branch for branch in branches if branch.get("isMain")]
         project["__branch"] = main_branch[0]
+
+        project["__qualityGateName"] = await self.get_quality_gate_for_project(project_key)
 
         if self.is_onpremise:
             project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
