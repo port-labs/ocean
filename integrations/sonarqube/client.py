@@ -298,7 +298,7 @@ class SonarQubeClient:
         :param project_key: A string containing the project key.
         :return: The name of the quality gate assigned to the project, or None.
         """
-        logger.info(f"Fetching quality gate for project: {project_key}")
+        logger.debug(f"Fetching quality gate for project: {project_key}")
         try:
             response = await self._send_api_request(
                 endpoint=Endpoints.QUALITY_GATE_PROJECT,
