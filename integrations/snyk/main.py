@@ -1,6 +1,6 @@
 import asyncio
 from typing import Any, cast
-from integration import TargetResourceConfig
+from snyk.overrides import TargetResourceConfig
 from loguru import logger
 from IntegrationKind import IntegrationKind
 from initialize_client import init_client

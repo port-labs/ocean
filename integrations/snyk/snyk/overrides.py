@@ -6,6 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
+from pydantic import Field
 from typing import Literal
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -19,17 +20,6 @@ class ProjectResourceConfig(ResourceConfig):
     selector: ProjectSelector
 
 
-class SnykPortAppConfig(PortAppConfig):
-    resources: list[ProjectResourceConfig | ResourceConfig] = Field(
-        default_factory=list
-    )
-
-
-class SnykIntegration(BaseIntegration):
-    class AppConfigHandlerClass(APIPortAppConfig):
-        CONFIG_CLASS = SnykPortAppConfig
-
-
 class TargetSelector(Selector):
     attach_project_data: bool = Field(default=True, alias="attachProjectData")
 
@@ -37,3 +27,14 @@ class TargetSelector(Selector):
 class TargetResourceConfig(ResourceConfig):
     kind: Literal["target"]
     selector: TargetSelector
+
+
+class SnykPortAppConfig(PortAppConfig):
+    resources: list[ProjectResourceConfig | TargetResourceConfig | ResourceConfig] = (
+        Field(default_factory=list)
+    )
+
+
+class SnykIntegration(BaseIntegration):
+    class AppConfigHandlerClass(APIPortAppConfig):
+        CONFIG_CLASS = SnykPortAppConfig

@@ -193,11 +193,7 @@ class SnykClient:
         self,
         org: dict[str, Any],
         target_data: dict[str, Any],
-        attach_project_data: bool = False,
     ) -> dict[str, Any]:
-        if not attach_project_data:
-            return target_data
-
         target_data.setdefault("__projects", [])
 
         async for projects in self.get_paginated_projects(org):
@@ -207,7 +203,7 @@ class SnykClient:
         return target_data
 
     async def get_single_target_by_project_id(
-        self, org: dict[str, Any], project_id: str, attach_project_data: bool = False
+        self, org: dict[str, Any], project_id: str, attach_project_data: bool
     ) -> dict[str, Any]:
         project = await self.get_single_project(org["id"], project_id)
         target_id = (
@@ -228,13 +224,15 @@ class SnykClient:
 
         target = response["data"]
 
-        await self._process_target(org, target, attach_project_data=attach_project_data)
+        if attach_project_data:
+            await self._process_target(org, target)
+
         return target
 
     async def get_paginated_targets(
         self,
         org: dict[str, Any],
-        attach_project_data: bool = False,
+        attach_project_data: bool,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Fetching paginated targets for organization: {org['id']}")
 
@@ -245,13 +243,9 @@ class SnykClient:
             url_path=url, query_params=query_params
         ):
             if attach_project_data:
+                logger.info("Enriching target with projects")
                 targets_with_project_data = await asyncio.gather(
-                    *[
-                        self._process_target(
-                            org, target_data, attach_project_data=attach_project_data
-                        )
-                        for target_data in targets
-                    ]
+                    *[self._process_target(org, target_data) for target_data in targets]
                 )
                 yield targets_with_project_data
             else:
