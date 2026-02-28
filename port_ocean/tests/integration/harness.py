@@ -129,9 +129,47 @@ class IntegrationTestHarness:
 
         port_utils_module._http_client.push(port_client)
 
+        # Also patch the Port _get_http_client_context function directly
+        # to handle cases where ContextVar-based LocalStack doesn't persist
+        # across async fixture boundaries
+        p_port = patch(
+            "port_ocean.clients.port.utils._get_http_client_context",
+            return_value=port_client,
+        )
+        p_port.start()
+        self._patches.append(p_port)
+
         # Also directly set the port_client's client attribute
         if self._ocean:
             self._ocean.port_client.client = port_client
+
+        # Patch OceanAsyncClient._init_transport so integrations that create
+        # their own client instances also get the intercepted transport
+        original_init_transport = None
+        try:
+            from port_ocean.helpers.async_client import OceanAsyncClient
+
+            original_init_transport = OceanAsyncClient._init_transport
+        except ImportError:
+            pass
+
+        if original_init_transport is not None:
+            test_transport = self.third_party_transport
+
+            def _patched_init_transport(
+                self_client: Any,
+                transport: Any = None,
+                **kwargs: Any,
+            ) -> Any:
+                return test_transport
+
+            p2 = patch.object(
+                OceanAsyncClient,
+                "_init_transport",
+                _patched_init_transport,
+            )
+            p2.start()
+            self._patches.append(p2)
 
     async def trigger_resync(self, kinds: list[str] | None = None) -> ResyncResult:
         """Trigger a resync and collect results.
@@ -161,6 +199,41 @@ class IntegrationTestHarness:
             upserted_entities=list(self.port_mock.upserted_entities),
             errors=[],
         )
+
+    async def discover_requests(self) -> str:
+        """Run a resync with strict=False and print all URLs the integration called.
+
+        Useful when writing tests for a new integration — shows exactly what
+        third-party API routes need to be mocked.
+
+        Returns:
+            Formatted string listing all discovered requests.
+        """
+        if not self._ocean:
+            raise RuntimeError("Harness not started. Call start() first.")
+
+        try:
+            await self._ocean.integration.sync_raw_all(trigger_type="machine")
+        except Exception as e:
+            logger.warning(f"Discovery resync raised: {e}")
+
+        # Collect all third-party calls (non-Port)
+        lines = []
+        seen: set[tuple[str, str]] = set()
+        for entry in self.third_party_transport.calls:
+            method = entry.request.method
+            url = str(entry.request.url)
+            status = entry.response.status_code
+            key = (method, url)
+            if key not in seen:
+                seen.add(key)
+                marker = " ← UNMATCHED (404)" if status == 404 else ""
+                lines.append(f"  {method} {url} → {status}{marker}")
+
+        header = f"Discovered {len(lines)} unique third-party requests:"
+        output = "\n".join([header] + (lines if lines else ["  (no requests)"]))
+        print(output)
+        return output
 
     async def shutdown(self) -> None:
         """Clean up patches and state."""

@@ -31,7 +31,9 @@ Both are `httpx.AsyncClient` instances stored in `werkzeug.LocalStack` objects. 
 
 `httpx.AsyncClient` delegates all actual HTTP work to a **transport** (`httpx.AsyncBaseTransport`). We created `InterceptTransport` — a transport that never hits the network. Instead, it matches incoming requests against a routing table and returns canned responses.
 
-The harness pushes `httpx.AsyncClient` instances (backed by `InterceptTransport`) onto the `LocalStack` singletons *before* the resync runs. Since `LocalStack.top` returns the most recently pushed value, all integration code that accesses `http_async_client` or the Port client transparently gets the intercepted version.
+The harness patches both HTTP client singletons with `httpx.AsyncClient` instances backed by `InterceptTransport` *before* the resync runs. All integration code that accesses `http_async_client` or the Port client transparently gets the intercepted version.
+
+Additionally, the harness patches `OceanAsyncClient._init_transport` so that integrations which create their own HTTP clients (rather than using the global `http_async_client`) also get the intercepted transport.
 
 ```
 Normal flow:
@@ -47,17 +49,18 @@ Test flow:
 2. **Initializes the signal handler** — required by Ocean's constructor
 3. **Creates an `Ocean` app** — using `create_default_app()` with your config overrides and the integration's `spec.yaml`
 4. **Loads `main.py`** — this registers `@ocean.on_resync` handlers onto the Ocean app
-5. **Patches HTTP clients** — pushes intercepted clients onto both `LocalStack` singletons
+5. **Patches HTTP clients** — patches both `LocalStack` singletons and `_get_http_client_context` functions, plus `OceanAsyncClient._init_transport`
 6. **Initializes handlers** — entity processor (JQ), port app config handler, entities state applier
 7. **Calls `sync_raw_all()`** — the real resync method that drives the full pipeline
 8. **Collects results** — `PortMockResponder` captures every entity the framework tries to upsert
-9. **Cleans up** — pops clients off stacks, resets singletons, removes sys.path entries
+9. **Cleans up** — stops patches, pops clients off stacks, resets singletons, removes sys.path entries
 
 ## Files
 
 ```
 port_ocean/tests/integration/
 ├── __init__.py          # Public exports
+├── base.py              # BaseIntegrationTest — base class for tests
 ├── transport.py         # InterceptTransport — the mock httpx transport
 ├── port_mock.py         # PortMockResponder — pre-wired Port API mock
 └── harness.py           # IntegrationTestHarness — boots integration, triggers resync
@@ -86,6 +89,7 @@ transport.add_route("GET", "/api/data", {"json": {"results": []}})
 # Inspect what was called
 transport.calls                         # all requests
 transport.calls_for("/api/items")       # filtered by URL substring
+transport.print_call_log()              # formatted summary of all calls
 ```
 
 **Strict mode** (`strict=True`, default): raises `UnmatchedRequestError` for any request without a matching route. Set `strict=False` to return 404 for unmatched requests instead.
@@ -123,6 +127,41 @@ result = await harness.trigger_resync()
 await harness.shutdown()
 ```
 
+### `BaseIntegrationTest`
+
+Base class that reduces per-integration test boilerplate. Handles harness lifecycle automatically:
+
+```python
+class TestMyIntegration(BaseIntegrationTest):
+    integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+
+    def create_third_party_transport(self) -> InterceptTransport:
+        transport = InterceptTransport(strict=False)
+        transport.add_route("GET", "/api/items", {"json": [{"id": 1}]})
+        return transport
+
+    def create_mapping_config(self) -> dict:
+        return {
+            "deleteDependentEntities": True,
+            "createMissingRelatedEntities": True,
+            "enableMergeEntity": True,
+            "resources": [...]
+        }
+
+    def create_integration_config(self) -> dict:
+        return {"integration": {"identifier": "test", "type": "my-type", "config": {}}}
+
+    @pytest.mark.asyncio
+    async def test_resync_produces_entities(self, resync: ResyncResult):
+        assert len(resync.upserted_entities) > 0
+```
+
+Two fixtures are provided automatically:
+- **`harness`** — a started `IntegrationTestHarness` (auto-shutdown after test)
+- **`resync`** — a `ResyncResult` from triggering a resync (use when you just need results)
+
+Use `harness` directly when you need to interact with the harness (e.g., inspect call logs). Use `resync` when you only need the upserted entities.
+
 ## Running integration tests
 
 From any integration directory:
@@ -133,137 +172,155 @@ make install/local-core    # one-time: install local Ocean core with the test fr
 poetry run pytest tests/test_integration_resync.py -xvs -o "addopts="
 ```
 
-The `-o "addopts="` overrides the default `-n auto` (parallel execution) so you get serial execution with visible output.
+### Why `-xvs -o "addopts="`?
+
+- **`-x`** — stop on first failure (useful during development)
+- **`-v`** — verbose output showing test names
+- **`-s`** — don't capture stdout (lets you see log output)
+- **`-o "addopts="`** — overrides the default `addopts = -n auto` in `pyproject.toml`, which runs tests in parallel via pytest-xdist. Integration tests must run serially because they modify global state (Ocean singleton, HTTP client stacks).
+
+Without `-o "addopts="`, pytest-xdist spins up worker processes that interfere with each other. You'll see cryptic failures if you forget this flag.
+
+### Quick reference
+
+```bash
+# Run all integration tests
+poetry run pytest tests/test_integration_resync.py -xvs -o "addopts="
+
+# Run a specific test class
+poetry run pytest tests/test_integration_resync.py::TestMyIntegration -xvs -o "addopts="
+
+# Run a specific test method
+poetry run pytest tests/test_integration_resync.py::TestMyIntegration::test_resync -xvs -o "addopts="
+```
 
 ## Writing integration tests for a new integration
 
-### Step 1: Understand the integration's HTTP calls
+### Step 1: Discover what URLs your integration calls
 
-Read the integration's `main.py` and client code. Identify:
+You can either read the integration's client code manually, or use the **discovery mode** to find out automatically.
+
+**Option A: Manual discovery**
+
+Read the integration's `main.py` and client code. Search for `http_async_client.get(`, `self.client.get(`, etc. Identify:
 - What URLs does it call on the third-party API?
 - What does the response format look like?
 - What resource kinds does it define in `@ocean.on_resync`?
 
+**Option B: Discovery mode**
+
+Run a resync with an empty transport (`strict=False`) and let the harness show you every URL the integration tried to call:
+
+```python
+harness = IntegrationTestHarness(
+    integration_path=INTEGRATION_PATH,
+    port_mapping_config=minimal_mapping_config,
+    third_party_transport=InterceptTransport(strict=False),  # returns 404 for everything
+    config_overrides=integration_config,
+)
+await harness.start()
+output = await harness.discover_requests()
+# Prints all unique URLs the integration called, marking unmatched ones
+await harness.shutdown()
+```
+
+You can also use `print_call_log()` on any transport after a resync to see the full HTTP call history:
+
+```python
+result = await harness.trigger_resync()
+harness.third_party_transport.print_call_log()           # third-party calls only
+harness.port_mock.transport.print_call_log()             # Port API calls
+harness.third_party_transport.print_call_log(include_port=True)  # include Port calls too
+```
+
 ### Step 2: Create the test file
 
-Create `integrations/{name}/tests/test_integration_resync.py`:
+Create `integrations/{name}/tests/test_integration_resync.py`.
+
+**Using the base class (recommended):**
 
 ```python
 import os
+from typing import Any
 import pytest
-from port_ocean.tests.integration import InterceptTransport, IntegrationTestHarness
+from port_ocean.tests.integration import BaseIntegrationTest, InterceptTransport, ResyncResult
 
-INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-```
+class TestMyIntegration(BaseIntegrationTest):
+    integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
-### Step 3: Define third-party fixtures
+    def create_third_party_transport(self) -> InterceptTransport:
+        transport = InterceptTransport(strict=False)
+        transport.add_route(
+            "GET",
+            "api.example.com/v2/projects",
+            {"json": [{"id": "proj-1", "name": "My Project", "status": "active"}]},
+        )
+        return transport
 
-Create an `InterceptTransport` with routes matching the URLs your integration calls:
-
-```python
-@pytest.fixture
-def third_party_transport() -> InterceptTransport:
-    transport = InterceptTransport(strict=False)
-
-    # Match the URLs your integration actually calls
-    transport.add_route(
-        "GET",
-        "api.example.com/v2/projects",
-        {
-            "json": [
-                {"id": "proj-1", "name": "My Project", "status": "active"},
-            ]
-        },
-    )
-
-    return transport
-```
-
-**How to find the right URLs**: Look at the integration's client code. Search for `http_async_client.get(`, `self.client.get(`, etc. The URL patterns in your routes need to match what the integration actually calls.
-
-### Step 4: Define mapping config
-
-This is the Port mapping configuration — it defines how raw third-party data maps to Port entities via JQ expressions:
-
-```python
-@pytest.fixture
-def mapping_config() -> dict:
-    return {
-        "deleteDependentEntities": True,
-        "createMissingRelatedEntities": True,
-        "enableMergeEntity": True,
-        "resources": [
-            {
-                "kind": "project",                              # matches @ocean.on_resync("project")
-                "selector": {"query": "true"},                  # JQ filter (true = accept all)
-                "port": {
-                    "entity": {
-                        "mappings": {
-                            "identifier": ".id",                # JQ: raw_data.id → entity identifier
-                            "title": ".name",                   # JQ: raw_data.name → entity title
-                            "blueprint": '"myBlueprint"',       # literal string (note the quotes)
-                            "properties": {
-                                "projectName": ".name",
-                                "projectStatus": ".status",
-                            },
-                            "relations": {},
+    def create_mapping_config(self) -> dict[str, Any]:
+        return {
+            "deleteDependentEntities": True,
+            "createMissingRelatedEntities": True,
+            "enableMergeEntity": True,
+            "resources": [
+                {
+                    "kind": "project",
+                    "selector": {"query": "true"},
+                    "port": {
+                        "entity": {
+                            "mappings": {
+                                "identifier": ".id",
+                                "title": ".name",
+                                "blueprint": '"myBlueprint"',
+                                "properties": {
+                                    "projectName": ".name",
+                                    "projectStatus": ".status",
+                                },
+                                "relations": {},
+                            }
                         }
-                    }
+                    },
+                },
+            ],
+        }
+
+    def create_integration_config(self) -> dict[str, Any]:
+        return {
+            "integration": {
+                "identifier": "test-my-integration",
+                "type": "my-integration",
+                "config": {
+                    "api_token": "fake-token",
+                    "api_url": "https://api.example.com",
                 },
             },
-        ],
-    }
+        }
+
+    @pytest.mark.asyncio
+    async def test_resync_creates_expected_entities(self, resync: ResyncResult) -> None:
+        assert len(resync.upserted_entities) == 1
+        entity = resync.upserted_entities[0]
+        assert entity["identifier"] == "proj-1"
+        assert entity["blueprint"] == "myBlueprint"
+        assert entity["properties"]["projectName"] == "My Project"
 ```
 
 **Key detail**: The `"kind"` in the mapping config must match the kind string in `@ocean.on_resync("kind")` — this is how the framework knows which handler to call for which resource.
 
-### Step 5: Define integration config
-
-Override any integration-specific settings your integration reads from `ocean.integration_config`:
+**Using separate test classes for different scenarios**: Create multiple classes inheriting from `BaseIntegrationTest`, each with different transport/mapping configurations:
 
 ```python
-@pytest.fixture
-def integration_config() -> dict:
-    return {
-        "integration": {
-            "identifier": "test-my-integration",
-            "type": "my-integration",
-            "config": {
-                "api_token": "fake-token",      # whatever your integration expects
-                "api_url": "https://api.example.com",
-            },
-        },
-    }
+class TestMyIntegrationBasic(BaseIntegrationTest):
+    # ... basic happy-path config
+
+class TestMyIntegrationWithFilter(BaseIntegrationTest):
+    # ... config with JQ selector filter
+
+class TestMyIntegrationErrorHandling(BaseIntegrationTest):
+    # ... config with error responses from third-party
 ```
 
-### Step 6: Write tests
-
-```python
-@pytest.mark.asyncio
-async def test_resync_creates_expected_entities(
-    third_party_transport, mapping_config, integration_config
-):
-    harness = IntegrationTestHarness(
-        integration_path=INTEGRATION_PATH,
-        port_mapping_config=mapping_config,
-        third_party_transport=third_party_transport,
-        config_overrides=integration_config,
-    )
-
-    try:
-        await harness.start()
-        result = await harness.trigger_resync()
-
-        assert len(result.upserted_entities) == 1
-        entity = result.upserted_entities[0]
-        assert entity["identifier"] == "proj-1"
-        assert entity["blueprint"] == "myBlueprint"
-        assert entity["properties"]["projectName"] == "My Project"
-    finally:
-        await harness.shutdown()
-```
-
-### Step 7: Run it
+### Step 3: Run it
 
 ```bash
 cd integrations/{name}
@@ -329,4 +386,11 @@ all_calls = third_party_transport.calls
 project_calls = third_party_transport.calls_for("/api/projects")
 assert len(project_calls) == 1
 assert project_calls[0].response.status_code == 200
+
+# Print formatted call log
+third_party_transport.print_call_log()
 ```
+
+## Integrations with custom HTTP clients
+
+Some integrations create their own `OceanAsyncClient` instead of using the global `http_async_client`. The harness automatically handles this by patching `OceanAsyncClient._init_transport` to inject the test transport. No extra configuration is needed — any `OceanAsyncClient` created during the test will use the intercepted transport.

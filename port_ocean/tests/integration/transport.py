@@ -137,6 +137,38 @@ class InterceptTransport(httpx.AsyncBaseTransport):
     def calls_for(self, url_substring: str) -> list[RequestLog]:
         return [c for c in self._call_log if url_substring in str(c.request.url)]
 
+    def print_call_log(self, include_port: bool = False) -> str:
+        """Print a formatted summary of all HTTP requests made through this transport.
+
+        Args:
+            include_port: If False (default), filters out Port API calls
+                         (localhost:5555) to show only third-party requests.
+
+        Returns:
+            The formatted string (also printed to stdout).
+        """
+        lines = []
+        for i, entry in enumerate(self._call_log):
+            url = str(entry.request.url)
+            if not include_port and "localhost:5555" in url:
+                continue
+            status = entry.response.status_code
+            method = entry.request.method
+            body_preview = ""
+            if entry.request.content:
+                try:
+                    body_preview = (
+                        f"  body: {entry.request.content.decode('utf-8')[:200]}"
+                    )
+                except UnicodeDecodeError:
+                    body_preview = f"  body: <{len(entry.request.content)} bytes>"
+            lines.append(f"  [{i}] {method} {url} → {status}{body_preview}")
+
+        header = f"HTTP Call Log ({len(lines)} calls):"
+        output = "\n".join([header] + (lines if lines else ["  (no calls)"]))
+        print(output)
+        return output
+
     def reset(self) -> None:
         self._call_log.clear()
         for route in self._routes:
