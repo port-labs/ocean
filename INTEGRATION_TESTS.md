@@ -63,7 +63,9 @@ port_ocean/tests/integration/
 ├── base.py              # BaseIntegrationTest — base class for tests
 ├── transport.py         # InterceptTransport — the mock httpx transport
 ├── port_mock.py         # PortMockResponder — pre-wired Port API mock
-└── harness.py           # IntegrationTestHarness — boots integration, triggers resync
+├── harness.py           # IntegrationTestHarness — boots integration, triggers resync
+├── discover.py          # Discovery — captures real API traffic to discovery.json
+└── generate.py          # Generator — creates test file from discovery.json
 ```
 
 ### `InterceptTransport`
@@ -162,6 +164,38 @@ Two fixtures are provided automatically:
 
 Use `harness` directly when you need to interact with the harness (e.g., inspect call logs). Use `resync` when you only need the upserted entities.
 
+## Quick start — auto-generate a test
+
+The fastest path to a working integration test:
+
+```bash
+cd integrations/my-integration
+
+# 1. Set up real credentials in .env (for discovery)
+echo 'OCEAN__INTEGRATION__CONFIG__MY_TOKEN=real-token-here' > .env
+
+# 2. Run discovery — captures all HTTP requests/responses to discovery.json
+make test/integration/discover
+
+# 3. Generate a test file from the captured data
+make test/integration/generate
+
+# 4. Run the generated test
+make test/integration
+```
+
+This produces a `tests/test_integration_resync.py` with mocked routes, mapping config, and a smoke test — ready to run and customize. See [Discovery](#discovery) and [Test generation](#test-generation) below for details.
+
+## Makefile targets
+
+Run these from an integration directory (`integrations/my-integration/`):
+
+| Target | Description |
+|--------|-------------|
+| `make test/integration` | Run `tests/test_integration_resync.py` |
+| `make test/integration/discover` | Run a real resync, capture all HTTP traffic to `.port/resources/discovery.json` |
+| `make test/integration/generate` | Generate `tests/test_integration_resync.py` from `discovery.json` |
+
 ## Running integration tests
 
 From any integration directory:
@@ -198,18 +232,34 @@ poetry run pytest tests/test_integration_resync.py::TestMyIntegration::test_resy
 
 ### Step 1: Discover what URLs your integration calls
 
-You can either read the integration's client code manually, or use the **discovery mode** to find out automatically.
+You have three options, from easiest to most manual:
 
-**Option A: Manual discovery**
+**Option A: Auto-generate (recommended)**
+
+Use the discovery + generation pipeline to get a working test automatically. See [Quick start](#quick-start--auto-generate-a-test) above. Then skip to Step 3.
+
+**Option B: Discovery mode with `.env`**
+
+If you have real API credentials, run discovery to capture all HTTP traffic:
+
+```bash
+# Set up credentials
+echo 'OCEAN__INTEGRATION__CONFIG__API_TOKEN=real-token' > .env
+
+# Run discovery
+make test/integration/discover
+```
+
+This creates `.port/resources/discovery.json` with all requests/responses. You can then either run `make test/integration/generate` to auto-generate the test, or use the JSON as a reference while writing the test manually.
+
+**Option C: Manual discovery**
 
 Read the integration's `main.py` and client code. Search for `http_async_client.get(`, `self.client.get(`, etc. Identify:
 - What URLs does it call on the third-party API?
 - What does the response format look like?
 - What resource kinds does it define in `@ocean.on_resync`?
 
-**Option B: Discovery mode**
-
-Run a resync with an empty transport (`strict=False`) and let the harness show you every URL the integration tried to call:
+You can also run a resync with `strict=False` and inspect the call log programmatically:
 
 ```python
 harness = IntegrationTestHarness(
@@ -394,3 +444,128 @@ third_party_transport.print_call_log()
 ## Integrations with custom HTTP clients
 
 Some integrations create their own `OceanAsyncClient` instead of using the global `http_async_client`. The harness automatically handles this by patching `OceanAsyncClient._init_transport` to inject the test transport. No extra configuration is needed — any `OceanAsyncClient` created during the test will use the intercepted transport.
+
+## Discovery
+
+Discovery (`port_ocean.tests.integration.discover`) runs your integration against real APIs and records every HTTP request/response into `.port/resources/discovery.json`.
+
+### Prerequisites
+
+Create a `.env` file in your integration directory with real credentials:
+
+```bash
+# integrations/github/.env
+OCEAN__INTEGRATION__CONFIG__GITHUB_HOST=https://api.github.com
+OCEAN__INTEGRATION__CONFIG__GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+OCEAN__INTEGRATION__CONFIG__GITHUB_ORGANIZATION=my-org
+```
+
+Environment variable names follow the pattern `OCEAN__INTEGRATION__CONFIG__<SCREAMING_SNAKE_CASE>` where the config name from `spec.yaml` is converted from camelCase (e.g., `githubHost` → `GITHUB_HOST`).
+
+### Running
+
+```bash
+cd integrations/my-integration
+make test/integration/discover
+```
+
+### Output format
+
+The resulting `.port/resources/discovery.json` contains:
+
+| Field | Description |
+|-------|-------------|
+| `metadata` | Integration type and generation timestamp |
+| `integration_config` | The config used (from `.env` + `spec.yaml` defaults) |
+| `mapping_config` | From `.port/resources/port-app-config.yml` |
+| `blueprints` | From `.port/resources/blueprints.json` |
+| `third_party_requests` | All third-party HTTP requests with full request/response data |
+| `port_requests` | All Port API requests made during resync |
+
+Each request entry in `third_party_requests` looks like:
+
+```json
+{
+  "method": "GET",
+  "url": "https://api.github.com/orgs/my-org/repos",
+  "request_headers": { ... },
+  "request_body": null,
+  "response_status": 200,
+  "response_body": [ ... ]
+}
+```
+
+### Without credentials
+
+If no `.env` is provided, discovery runs with dummy config values (from `spec.yaml` defaults) and a mock transport that returns 404 for everything. This is useful for seeing what URLs the integration tries to call, even if the responses are all failures.
+
+## Test generation
+
+The generator (`port_ocean.tests.integration.generate`) reads `discovery.json` and produces a ready-to-run test file.
+
+### Running
+
+```bash
+cd integrations/my-integration
+make test/integration/generate
+```
+
+This writes `tests/test_integration_resync.py`.
+
+### What it does
+
+1. **Reads** `.port/resources/discovery.json`
+2. **Groups** third-party requests into URL patterns using a recursive splitting algorithm
+3. **Picks** the best representative response for each pattern (prefers 2xx)
+4. **Truncates** array responses to 2 items to keep the file small
+5. **Sanitizes** sensitive config values (tokens, secrets, keys, passwords) → `"test-value"`
+6. **Writes** a complete test file with `BaseIntegrationTest` subclass and a smoke test
+
+### URL pattern detection algorithm
+
+Given requests like:
+```
+GET /repos/my-org/repo-1/contents/README.md → 200
+GET /repos/my-org/repo-2/contents/README.md → 200
+GET /repos/my-org/repo-1/contents/CODEOWNERS → 404
+GET /orgs/my-org/repos → 200
+GET /orgs/my-org/installation → 200
+```
+
+The algorithm:
+1. Groups requests by `(method, base_url, segment_count)`
+2. Recursively splits groups: if a segment position has few (≤3) distinct values, it splits into subgroups to avoid merging structurally different endpoints (e.g., `/orgs/...` stays separate from `/repos/...`)
+3. Positions with many distinct values become `[^/]+` wildcards
+4. Routes are ordered with specific patterns before catch-all patterns
+
+Result:
+```python
+transport.add_route("GET", "/orgs/my-org/installation", {"json": {...}})
+transport.add_route("GET", "/orgs/my-org/repos", {"json": [...]})
+transport.add_route("GET", r"/repos/my-org/[^/]+/contents/CODEOWNERS", {"status_code": 404})
+transport.add_route("GET", r"/repos/my-org/[^/]+/contents/README.md", {"json": {...}})
+```
+
+### Sensitive data handling
+
+Config values whose keys match patterns like `token`, `secret`, `key`, `password`, `credential`, `auth`, or `private` are replaced with `"test-value"` in the generated test. Response bodies are kept as-is (they contain API data, not credentials).
+
+### Customizing the generated test
+
+The generated file is a starting point. Common customizations:
+
+- **Add specific assertions** — check entity counts, blueprint types, property values
+- **Adjust mock responses** — modify response bodies to test edge cases
+- **Add error scenarios** — test how the integration handles 401s, 500s, rate limits
+- **Add multiple test methods** — test different resource kinds separately
+
+```python
+@pytest.mark.asyncio
+async def test_resync_creates_repos(self, resync: ResyncResult) -> None:
+    repos = [
+        e for e in resync.upserted_entities
+        if e.get("blueprint") == "githubRepository"
+    ]
+    assert len(repos) == 2
+    assert all(r.get("identifier") for r in repos)
+```
