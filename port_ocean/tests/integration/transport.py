@@ -105,6 +105,28 @@ class Route:
             raise TypeError(f"Unexpected response type: {type(result)}")
 
 
+class RecordingTransport(httpx.AsyncBaseTransport):
+    """Transport that forwards requests to the real API and records them."""
+
+    def __init__(self) -> None:
+        self._real_transport = httpx.AsyncHTTPTransport()
+        self._call_log: list[RequestLog] = []
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        response = await self._real_transport.handle_async_request(request)
+        # Read the response stream so content is available for logging
+        await response.aread()
+        self._call_log.append(RequestLog(request=request, response=response))
+        return response
+
+    @property
+    def calls(self) -> list[RequestLog]:
+        return list(self._call_log)
+
+    def reset(self) -> None:
+        self._call_log.clear()
+
+
 class UnmatchedRequestError(Exception):
     pass
 

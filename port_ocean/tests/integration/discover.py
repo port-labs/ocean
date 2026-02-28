@@ -7,6 +7,8 @@ Usage (from an integration directory):
 
 import asyncio
 import json
+import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,7 +18,10 @@ import yaml
 from loguru import logger
 
 from port_ocean.tests.integration.harness import IntegrationTestHarness
-from port_ocean.tests.integration.transport import InterceptTransport
+from port_ocean.tests.integration.transport import (
+    InterceptTransport,
+    RecordingTransport,
+)
 
 
 # -- Config generation helpers ------------------------------------------------
@@ -40,15 +45,55 @@ def _generate_dummy_value(config_entry: dict[str, Any]) -> Any:
     return type_map.get(type_name, "placeholder")
 
 
+def _camel_to_screaming_snake(name: str) -> str:
+    """Convert camelCase to SCREAMING_SNAKE_CASE: githubHost -> GITHUB_HOST."""
+    s1 = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
+    s2 = re.sub(r"([a-z\d])([A-Z])", r"\1_\2", s1)
+    return s2.upper()
+
+
+def _load_env_config(
+    integration_path: Path, spec_config_names: list[str]
+) -> dict[str, str]:
+    """Load integration config values from .env file and environment.
+
+    Ocean uses env vars like OCEAN__INTEGRATION__CONFIG__GITHUB_HOST
+    for a spec.yaml config named 'githubHost'.
+    """
+    from dotenv import dotenv_values
+
+    # Load .env file (handles multiline values, quotes, comments, etc.)
+    env_file = integration_path / ".env"
+    env_values: dict[str, str | None] = {}
+    if env_file.exists():
+        env_values = dotenv_values(env_file)
+
+    # Actual environment takes precedence
+    env_values.update(os.environ)  # type: ignore[arg-type]
+
+    # Map spec config names to their env var equivalents and extract values
+    config: dict[str, str] = {}
+    for name in spec_config_names:
+        env_key = f"OCEAN__INTEGRATION__CONFIG__{_camel_to_screaming_snake(name)}"
+        value = env_values.get(env_key)
+        if value is not None:
+            config[name] = value
+
+    return config
+
+
 def _build_integration_config(
-    spec: dict[str, Any], integration_type: str
+    spec: dict[str, Any], integration_type: str, env_config: dict[str, str]
 ) -> dict[str, Any]:
-    """Build a dummy integration config block from spec.yaml configurations."""
+    """Build integration config from .env values, falling back to dummies."""
     config_values: dict[str, Any] = {}
     for entry in spec.get("configurations", []):
         name = entry.get("name")
         if name:
-            config_values[name] = _generate_dummy_value(entry)
+            if name in env_config:
+                config_values[name] = env_config[name]
+            else:
+                config_values[name] = _generate_dummy_value(entry)
 
     return {
         "integration": {
@@ -103,8 +148,20 @@ async def run_discovery(integration_path: Path) -> dict[str, Any]:
     mapping_config = _load_mapping_config(integration_path)
     blueprints = _load_blueprints(integration_path)
 
-    # Build dummy config
-    integration_config = _build_integration_config(spec, integration_type)
+    # Load real config from .env, fall back to dummies for missing values
+    spec_config_names = [
+        entry["name"] for entry in spec.get("configurations", []) if "name" in entry
+    ]
+    env_config = _load_env_config(integration_path, spec_config_names)
+    if env_config:
+        logger.info(
+            f"Loaded {len(env_config)} config values from .env: "
+            f"{list(env_config.keys())}"
+        )
+    else:
+        logger.info("No .env found or no matching config values — using dummy config")
+
+    integration_config = _build_integration_config(spec, integration_type, env_config)
 
     # Build blueprints dict for the port mock
     blueprints_dict: dict[str, dict[str, Any]] = {}
@@ -113,8 +170,15 @@ async def run_discovery(integration_path: Path) -> dict[str, Any]:
         if bp_id:
             blueprints_dict[bp_id] = bp
 
-    # Create harness with non-strict transport (captures all requests)
-    transport = InterceptTransport(strict=False)
+    # Use RecordingTransport (real API calls) when .env has config,
+    # otherwise fall back to InterceptTransport (fake 404s)
+    if env_config:
+        transport: InterceptTransport | RecordingTransport = RecordingTransport()
+        logger.info("Using RecordingTransport — requests will hit real APIs")
+    else:
+        transport = InterceptTransport(strict=False)
+        logger.info("Using InterceptTransport — requests will get mock 404s")
+
     harness = IntegrationTestHarness(
         integration_path=str(integration_path),
         port_mapping_config=mapping_config,
