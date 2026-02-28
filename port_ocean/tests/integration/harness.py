@@ -11,7 +11,10 @@ from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.ocean import Ocean
 from port_ocean.tests.integration.port_mock import PortMockResponder
-from port_ocean.tests.integration.transport import InterceptTransport
+from port_ocean.tests.integration.transport import (
+    InterceptTransport,
+    RecordingTransport,
+)
 from port_ocean.utils.misc import get_spec_file, load_module
 
 # Cache config factories by integration path to avoid pydantic
@@ -33,7 +36,7 @@ class IntegrationTestHarness:
         self,
         integration_path: str,
         port_mapping_config: dict[str, Any],
-        third_party_transport: InterceptTransport,
+        third_party_transport: InterceptTransport | RecordingTransport,
         port_blueprints: dict[str, dict[str, Any]] | None = None,
         config_overrides: dict[str, Any] | None = None,
     ) -> None:
