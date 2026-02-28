@@ -11,6 +11,37 @@ class RequestLog:
     request: httpx.Request
     response: httpx.Response
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the request/response pair to a JSON-compatible dict."""
+        req = self.request
+        resp = self.response
+
+        request_body: Any = None
+        if req.content:
+            try:
+                request_body = json.loads(req.content.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                request_body = f"<{len(req.content)} bytes>"
+
+        response_body: Any = None
+        if resp.content:
+            try:
+                response_body = json.loads(resp.content.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                try:
+                    response_body = resp.content.decode("utf-8")
+                except UnicodeDecodeError:
+                    response_body = f"<{len(resp.content)} bytes>"
+
+        return {
+            "method": req.method,
+            "url": str(req.url),
+            "request_headers": dict(req.headers),
+            "request_body": request_body,
+            "response_status": resp.status_code,
+            "response_body": response_body,
+        }
+
 
 @dataclass
 class Route:

@@ -43,7 +43,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/prod install/local-core lint lint/fix run test test/integration clean seed
+.SILENT: install install/prod install/local-core lint lint/fix run test test/integration test/discover clean seed
 
 install:
 	$(call deactivate_virtualenv) && \
@@ -75,6 +75,9 @@ test:
 
 test/integration:
 	$(ACTIVATE) && poetry run pytest tests/test_integration_resync.py -xvs -o "addopts="
+
+test/discover:
+	$(ACTIVATE) && poetry run python -m port_ocean.tests.integration.discover
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
