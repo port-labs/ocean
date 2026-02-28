@@ -128,8 +128,10 @@ async def test_get_single_target_should_not_fetch_projects_when_attach_flag_is_f
     snyk_client: SnykClient,
 ) -> None:
     mock_org = {"id": "047f3b54-6997-402c-80b6-193496030c25"}
+
+    mocked_project_id = "76191494-b77a-422f-8700-1f952136009a"
     mock_project = {
-        "id": "76191494-b77a-422f-8700-1f952136009a",
+        "id": mocked_project_id,
         "relationships": {"target": {"data": {"id": "target-id"}}},
     }
 
@@ -146,7 +148,7 @@ async def test_get_single_target_should_not_fetch_projects_when_attach_flag_is_f
     ):
 
         await snyk_client.get_single_target_by_project_id(
-            mock_org, mock_project["id"], attach_project_data=False
+            mock_org, mocked_project_id, attach_project_data=False
         )
 
         mock_pag.assert_not_called()
@@ -157,12 +159,14 @@ async def test_get_single_target_by_project_id_should_gracefully_handle_missing_
     snyk_client: SnykClient,
 ) -> None:
     mock_org = {"id": "047f3b54-6997-402c-80b6-193496030c25"}
-    mock_project = {"id": "76191494-b77a-422f-8700-1f952136009a", "relationships": {}}
+
+    mocked_project_id = "76191494-b77a-422f-8700-1f952136009a"
+    mock_project = {"id": mocked_project_id, "relationships": {}}
 
     with patch.object(
         snyk_client, "get_single_project", AsyncMock(return_value=mock_project)
     ):
         result = await snyk_client.get_single_target_by_project_id(
-            mock_org, mock_project["id"], attach_project_data=False
+            mock_org, mocked_project_id, attach_project_data=False
         )
         assert result == {}
