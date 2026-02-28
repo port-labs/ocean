@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.63-beta (2026-02-27)
+
+
+### Bug Fixes
+
+- Fixed azureSubscriptionBatchSize config being treated as string instead of integer when using Port-hosted integration
+
+
 ## 0.2.62-beta (2026-02-26)
 
 

@@ -55,6 +55,10 @@ class AbstractGithubClient(ABC):
         ),
     ]
 
+    @property
+    def client(self) -> httpx.AsyncClient:
+        return self.authenticator.client
+
     async def headers(self, **kwargs: Any) -> Dict[str, str]:
         """Build and return headers for GitHub API requests."""
         return (await self.authenticator.get_headers(**kwargs)).as_dict()
@@ -102,7 +106,7 @@ class AbstractGithubClient(ABC):
 
         async with self.rate_limiter:
             try:
-                response = await self.authenticator.client.request(
+                response = await self.client.request(
                     method=method,
                     url=resource,
                     params=params,
