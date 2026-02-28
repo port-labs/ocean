@@ -2,7 +2,9 @@ from typing import Any, Type
 
 import httpx
 from loguru import logger
+from port_ocean.context.ocean import ocean
 
+from port_ocean.helpers.ip_blocker import IPBlockerTransport
 from port_ocean.helpers.retry import RetryTransport, RetryConfig
 from port_ocean.helpers.stream import Stream
 from typing import AsyncGenerator, List, Dict
@@ -27,30 +29,40 @@ class OceanAsyncClient(httpx.AsyncClient):
         self._retry_config = retry_config
         super().__init__(**kwargs)
 
+    def _wrap_with_ip_blocker_if_needed(
+        self, transport: httpx.AsyncBaseTransport
+    ) -> httpx.AsyncBaseTransport:
+        if not ocean.app.is_saas():
+            return transport
+        return IPBlockerTransport(wrapped=transport)
+
     def _init_transport(  # type: ignore[override]
         self,
         transport: httpx.AsyncBaseTransport | None = None,
         **kwargs: Any,
     ) -> httpx.AsyncBaseTransport:
         if transport is not None:
+            transport = self._wrap_with_ip_blocker_if_needed(transport)
             return super()._init_transport(transport=transport, **kwargs)
 
-        return self._transport_class(
+        inner = self._transport_class(
             wrapped_transport=httpx.AsyncHTTPTransport(**kwargs),
             retry_config=self._retry_config,
             logger=logger,
             **(self._transport_kwargs or {}),
         )
+        return self._wrap_with_ip_blocker_if_needed(inner)
 
     def _init_proxy_transport(  # type: ignore[override]
         self, proxy: httpx.Proxy, **kwargs: Any
     ) -> httpx.AsyncBaseTransport:
-        return self._transport_class(
+        inner = self._transport_class(
             wrapped_transport=httpx.AsyncHTTPTransport(proxy=proxy, **kwargs),
             retry_config=self._retry_config,
             logger=logger,
             **(self._transport_kwargs or {}),
         )
+        return self._wrap_with_ip_blocker_if_needed(inner)
 
     async def get_stream(self, url: str, **kwargs: Any) -> Stream:
         req = self.build_request("GET", url, **kwargs)

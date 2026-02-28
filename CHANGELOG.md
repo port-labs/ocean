@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.2 (2026-02-29)
+
+### Improvements
+
+- Handled SSRF and DNS rebinding attacks
+
+
 ## 0.38.1 (2026-02-26)
 
 ### Improvements
