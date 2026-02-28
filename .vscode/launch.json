@@ -413,6 +413,17 @@
       "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/vercel",
+      "envFile": "${workspaceFolder}/integrations/vercel/.env",
+      "justMyCode": true,
+      "name": "Run vercel integration",
+      "program": "${workspaceFolder}/integrations/vercel/debug.py",
+      "python": "${workspaceFolder}/integrations/vercel/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }
