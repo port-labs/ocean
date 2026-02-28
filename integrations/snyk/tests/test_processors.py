@@ -13,7 +13,7 @@ from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.target_webhook_processor import TargetWebhookProcessor
 from typing import Any
 
-from snyk.overrides import ProjectSelector
+from snyk.overrides import ProjectSelector, TargetSelector, TargetResourceConfig
 
 
 @pytest.fixture
@@ -51,6 +51,25 @@ def resource_config() -> ResourceConfig:
                         "url": ".links.html",
                         "origin": ".origin",
                     },
+                    relations={},
+                )
+            )
+        ),
+    )
+
+
+@pytest.fixture
+def target_resource_config() -> TargetResourceConfig:
+    return TargetResourceConfig(
+        kind="target",
+        selector=TargetSelector.parse_obj({"attachProjectData": True, "query": "true"}),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".attributes.display_name",
+                    blueprint='"snykTarget"',
+                    properties={"origin": ".origin"},
                     relations={},
                 )
             )
@@ -245,44 +264,6 @@ async def test_handleEvent_projectUpdated_projectReturnedFromClient_updatedRawRe
 
 
 @pytest.mark.asyncio
-async def test_handleEvent_projectUpdated_targetReturnedFromClient_updatedRawResultsReturnedCorrectly(
-    targetWebhookProcessor: TargetWebhookProcessor,
-    resource_config: ResourceConfig,
-) -> None:
-    payload: dict[str, Any] = {
-        "event": "project.updated",
-        "project": {"id": "test-project-id"},
-        "org": {"id": "test-org-id"},
-    }
-    mock_target: dict[str, Any] = {
-        "id": "test-target-id",
-        "name": "Test Target",
-        "url": "https://example.com",
-    }
-
-    with patch(
-        "webhook_processors.target_webhook_processor.init_client"
-    ) as mock_create_client:
-        mock_client = AsyncMock()
-        mock_organization = {"id": "test-org-id", "name": "Test Org"}
-        mock_client.get_all_organizations.return_value = [mock_organization]
-
-        async def mock_get_target(*args: Any, **kwargs: Any) -> dict[str, Any]:
-            assert args[0] == mock_organization
-            assert args[1] == "test-project-id"
-            return mock_target
-
-        mock_client.get_single_target_by_project_id = mock_get_target
-        mock_create_client.return_value = mock_client
-
-        result = await targetWebhookProcessor.handle_event(payload, resource_config)
-
-        assert len(result.updated_raw_results) == 1
-        assert len(result.deleted_raw_results) == 0
-        assert result.updated_raw_results[0] == mock_target
-
-
-@pytest.mark.asyncio
 async def test_handleEvent_projectUpdated_issuesReturnedFromClient_updatedRawResultsReturnedCorrectly(
     issueWebhookProcessor: IssueWebhookProcessor,
     resource_config: ResourceConfig,
@@ -318,3 +299,86 @@ async def test_handleEvent_projectUpdated_issuesReturnedFromClient_updatedRawRes
         assert len(result.updated_raw_results) == 1
         assert len(result.deleted_raw_results) == 0
         assert result.updated_raw_results[0] == mock_issues[0]
+
+
+@pytest.mark.asyncio
+async def test_handleEvent_projectUpdated_targetReturnedFromClient_updatedRawResultsReturnedCorrectly(
+    targetWebhookProcessor: TargetWebhookProcessor,
+    target_resource_config: TargetResourceConfig,
+) -> None:
+    payload: dict[str, Any] = {
+        "event": "project.updated",
+        "project": {"id": "76191494-b77a-422f-8700-1f952136009a"},
+        "org": {"id": "047f3b54-6997-402c-80b6-193496030c25"},
+    }
+    mock_target: dict[str, Any] = {
+        "id": "6d3c162a-8951-460d-83b6-96b4478f7e2c",
+        "attributes": {"display_name": "production-api-target"},
+    }
+
+    with patch("webhook_processors.target_webhook_processor.init_client") as mock_init:
+        mock_client = AsyncMock()
+        mock_org = {"id": "047f3b54-6997-402c-80b6-193496030c25"}
+        mock_client.get_all_organizations.return_value = [mock_org]
+        mock_client.get_single_target_by_project_id = AsyncMock(
+            return_value=mock_target
+        )
+        mock_init.return_value = mock_client
+
+        await targetWebhookProcessor.handle_event(payload, target_resource_config)
+
+        mock_client.get_single_target_by_project_id.assert_called_once_with(
+            mock_org, "76191494-b77a-422f-8700-1f952136009a", attach_project_data=True
+        )
+
+
+@pytest.mark.asyncio
+async def test_target_webhook_processor_handle_event_should_return_empty_results_when_org_not_found(
+    targetWebhookProcessor: TargetWebhookProcessor,
+    target_resource_config: TargetResourceConfig,
+) -> None:
+    payload = {
+        "project": {"id": "76191494-b77a-422f-8700-1f952136009a"},
+        "org": {"id": "00000000-0000-0000-0000-000000000000"},
+    }
+
+    with patch("webhook_processors.target_webhook_processor.init_client") as mock_init:
+        mock_client = AsyncMock()
+        mock_init.return_value = mock_client
+        mock_client.get_all_organizations.return_value = [
+            {"id": "047f3b54-6997-402c-80b6-193496030c25"}
+        ]
+
+        result = await targetWebhookProcessor.handle_event(
+            payload, target_resource_config
+        )
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_target_webhook_processor_handle_event_should_pass_attach_project_data_from_config_to_client(
+    targetWebhookProcessor: TargetWebhookProcessor,
+    target_resource_config: TargetResourceConfig,
+) -> None:
+    snyk_org_id = "047f3b54-6997-402c-80b6-193496030c25"
+    snyk_project_id = "76191494-b77a-422f-8700-1f952136009a"
+
+    payload = {"project": {"id": snyk_project_id}, "org": {"id": snyk_org_id}}
+
+    with patch("webhook_processors.target_webhook_processor.init_client") as mock_init:
+        mock_client = AsyncMock()
+        mock_init.return_value = mock_client
+
+        mock_org = {"id": snyk_org_id}
+        mock_client.get_all_organizations.return_value = [mock_org]
+        mock_client.get_single_target_by_project_id.return_value = {
+            "id": "6d3c162a-8951-460d-83b6-96b4478f7e2c"
+        }
+
+        await targetWebhookProcessor.handle_event(payload, target_resource_config)
+
+        mock_client.get_single_target_by_project_id.assert_called_once_with(
+            mock_org, snyk_project_id, attach_project_data=True
+        )

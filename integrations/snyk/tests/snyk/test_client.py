@@ -121,3 +121,52 @@ async def test_get_paginated_resources(
             resources.extend(resource_batch)
 
         assert resources == [{"id": "item1"}, {"id": "item2"}]
+
+
+@pytest.mark.asyncio
+async def test_get_single_target_should_not_fetch_projects_when_attach_flag_is_false(
+    snyk_client: SnykClient,
+) -> None:
+    mock_org = {"id": "047f3b54-6997-402c-80b6-193496030c25"}
+
+    mocked_project_id = "76191494-b77a-422f-8700-1f952136009a"
+    mock_project = {
+        "id": mocked_project_id,
+        "relationships": {"target": {"data": {"id": "target-id"}}},
+    }
+
+    with (
+        patch.object(
+            snyk_client, "get_single_project", AsyncMock(return_value=mock_project)
+        ),
+        patch.object(
+            snyk_client,
+            "_send_api_request",
+            AsyncMock(return_value={"data": {"id": "target-id"}}),
+        ),
+        patch.object(snyk_client, "get_paginated_projects") as mock_pag,
+    ):
+
+        await snyk_client.get_single_target_by_project_id(
+            mock_org, mocked_project_id, attach_project_data=False
+        )
+
+        mock_pag.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_single_target_by_project_id_should_gracefully_handle_missing_target_link(
+    snyk_client: SnykClient,
+) -> None:
+    mock_org = {"id": "047f3b54-6997-402c-80b6-193496030c25"}
+
+    mocked_project_id = "76191494-b77a-422f-8700-1f952136009a"
+    mock_project = {"id": mocked_project_id, "relationships": {}}
+
+    with patch.object(
+        snyk_client, "get_single_project", AsyncMock(return_value=mock_project)
+    ):
+        result = await snyk_client.get_single_target_by_project_id(
+            mock_org, mocked_project_id, attach_project_data=False
+        )
+        assert result == {}

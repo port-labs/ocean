@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.27 (2026-02-26)
+
+
+### Bug Fixes
+
+- Fixed 429 Too Many Requests errors during target resyncs and webhooks by respecting the attachProjectData configuration, preventing unnecessary org-wide project fetches.
+
+
 ## 0.3.26 (2026-02-26)
 
 
