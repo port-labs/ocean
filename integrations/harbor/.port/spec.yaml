@@ -1,0 +1,38 @@
+type: goharbor
+description: GoHarbor container registry integration for Port Ocean
+icon: Harbor
+docs: https://github.com/goharbor/harbor
+features:
+  - type: exporter
+    section: Container Registry
+    resources:
+      - kind: project
+      - kind: user
+      - kind: repository
+      - kind: artifact
+
+configurations:
+  - name: harborUrl
+    required: true
+    type: url
+    description: "The URL of your Harbor instance (e.g., http://localhost:8081)"
+    sensitive: false
+
+  - name: username
+    required: true
+    type: string
+    description: "Harbor username"
+    sensitive: true
+
+  - name: password
+    required: true
+    type: string
+    description: "Harbor password or robot account token"
+    sensitive: true
+
+
+  - name: webhookSecret
+    required: false
+    type: string
+    description: "Optional shared secret for validating Harbor webhook requests"
+    sensitive: true
