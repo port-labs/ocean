@@ -109,8 +109,8 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
                         for chunk in cache:
                             yield chunk
                         return
-                except FailedToReadCacheError:
-                    logger.debug(f"Cache miss for {cache_key}. Fetching data...")
+                except FailedToReadCacheError as e:
+                    logger.debug(f"Failed to read cache for {cache_key}: {str(e)}")
 
                 cached_results = list()
                 async for result in func(*args, **kwargs):
@@ -169,8 +169,8 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
                 try:
                     if cache := await ocean.app.cache_provider.get(cache_key):
                         return cache
-                except FailedToReadCacheError:
-                    logger.debug(f"Cache miss for {cache_key}. Fetching data...")
+                except FailedToReadCacheError as e:
+                    logger.debug(f"Failed to read cache for {cache_key}: {str(e)}")
 
                 result = await func(*args, **kwargs)
                 try:
