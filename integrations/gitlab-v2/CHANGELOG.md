@@ -7,12 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.5.49 (2026-03-01)
+## 0.5.50 (2026-03-01)
 
 
 ### Improvements
 
 - Fall back to project-level file search when groups are inaccessible
+
+
+## 0.5.49 (2026-03-01)
+
+
+### Improvements
+
 - Bumped ocean version to ^0.38.3
 
 
