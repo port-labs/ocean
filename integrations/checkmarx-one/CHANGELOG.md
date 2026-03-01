@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.15 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+## 0.2.14 (2026-02-27)
+
+
+### Bug Fixes
+
+- Fixed a bug where scan webhook processor did not filter scans based on project name, branch, and status.
+
+
 ## 0.2.13 (2026-02-26)
 
 
