@@ -1,0 +1,24 @@
+port:
+  clientId: "{{ from env PORT_CLIENT_ID }}"
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}"
+  baseUrl: https://api.getport.io
+
+eventListener:
+  type: POLLING
+
+integration:
+  identifier: harbor-local
+  type: Harbor
+  config:
+    baseUrl: http://localhost:8081/api/v2.0
+    authMode: basic
+    username: "{{ from env HARBOR_ADMIN_USER }}"
+    password: "{{ from env HARBOR_ADMIN_PASS }}"
+    verifyTls: false
+    projects: "opensource"
+    artifactTagFilter: ""
+    maxConcurrentRequests: 5
+    maxRetries: 3
+    retryJitterSeconds: 0.5
+    logLevel: DEBUG
+    portOrgId: "{{ from env PORT_ORG_ID }}"
