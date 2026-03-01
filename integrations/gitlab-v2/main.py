@@ -68,7 +68,6 @@ from gitlab.webhook.webhook_processors.release_webhook_processor import (
 )
 from gitlab.clients.options import IssueOptions
 
-
 RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
 DEFAULT_MAX_CONCURRENT = 10
 
