@@ -130,10 +130,11 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files = selector.included_files or []
 
+    params = build_project_params(
+        include_only_active_projects=include_only_active_projects
+    )
     async for projects_batch in client.get_projects(
-        params=build_project_params(
-            include_only_active_projects=include_only_active_projects
-        ),
+        params=params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=include_languages,
         search_queries=search_queries,
@@ -411,11 +412,15 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             "Group-level file search returned no results. "
             "Falling back to project-level file search."
         )
+        # control project filtering using group selector to avoid adding a new selector
+        params = build_project_params(
+            include_only_active_projects=include_only_active_groups
+        )
         async for files_batch in client.search_files_in_projects(
             scope,
             search_path,
             skip_parsing,
-            build_group_params(include_only_active_groups=include_only_active_groups),
+            params,
         ):
             yield await _enrich_and_yield(files_batch)
 
@@ -426,6 +431,10 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(GitLabFoldersResourceConfig, event.resource_config).selector
     included_files = selector.included_files or []
 
+    include_only_active_projects = selector.include_only_active_projects
+    projects_params = build_project_params(
+        include_only_active_projects=include_only_active_projects
+    )
     for folder_selector in selector.folders:
         path = folder_selector.path
         repos = folder_selector.repos
@@ -435,11 +444,9 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.info(
                 f"No repositories specified for path {path}; syncing from all projects"
             )
-            include_only_active_projects = selector.include_only_active_projects
+
             async for projects_batch in client.get_projects(
-                params=build_project_params(
-                    include_only_active_projects=include_only_active_projects
-                ),
+                params=projects_params,
                 max_concurrent=DEFAULT_MAX_CONCURRENT,
                 include_languages=False,
             ):

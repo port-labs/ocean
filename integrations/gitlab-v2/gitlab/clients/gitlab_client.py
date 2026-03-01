@@ -413,7 +413,9 @@ class GitLabClient:
         each one individually using the Projects API.
         """
         search_query = f"path:{path}"
-        logger.info(f"Starting project-level file search with path pattern: '{path}'")
+        logger.info(
+            f"Starting project-level file search with path pattern: '{path}' using params: {params}"
+        )
         async for projects_batch in self.get_projects(params=params):
             for project in projects_batch:
                 repo_path = project["path_with_namespace"]
