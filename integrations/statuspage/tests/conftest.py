@@ -1,13 +1,9 @@
-# ruff: noqa
+"""Pytest configuration and fixtures."""
+
 from typing import Generator
 
 import pytest
 from unittest.mock import MagicMock, patch
-
-from port_ocean.tests.helpers.fixtures import (
-    get_mocked_ocean_app,
-    get_mock_ocean_resource_configs,
-)
 
 
 @pytest.fixture(autouse=True)
