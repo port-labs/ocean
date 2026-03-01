@@ -75,6 +75,8 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
     The caching mechanism also detects changes in parameters.
     If a function is called with different parameter values, it will be stored in different hash keys for each unique call.
 
+    Concurrency is handled by using asyncio locks to prevent race conditions when multiple tasks try to access the same cache key.
+
     Usage:
     ```python
     @cache_iterator_result()
@@ -129,7 +131,6 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
     return decorator
 
 
-# AI! The decorator docstrings in function cache_iterator_result don’t mention concurrency. Adding a short note can help future readers.
 def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
     """Coroutine version of `cache_iterator_result` from port_ocean.utils.cache
 
