@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Fall back to project-level file search when groups are inaccessible
+- Bumped ocean version to ^0.38.3
 
 
 ## 0.5.48 (2026-03-01)
