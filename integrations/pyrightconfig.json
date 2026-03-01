@@ -1,0 +1,11 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": ["integrations", "port_ocean"],
+  "extraPaths": [
+    ".",                // repo root on sys.path
+    "./integrations"    // so "integrations.sailpoint" resolves
+  ],
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false
+}

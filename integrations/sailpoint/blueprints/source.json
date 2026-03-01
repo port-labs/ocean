@@ -1,0 +1,29 @@
+{
+  "identifier": "sailpoint_source",
+  "title": "SailPoint Source",
+  "icon": "Database",
+  "schema": {
+    "properties": {
+      "name": { "type": "string" },
+      "description": { "type": "string" },
+      "connectorType": { "type": "string", "description": "e.g., Workday, AD, SAP, DB, SaaS" },
+      "authoritative": { "type": "boolean" },
+      "status": { "type": "string", "enum": ["ENABLED", "DISABLED", "ERROR", "UNKNOWN"] },
+      "createdAt": { "type": "string", "format": "date-time" },
+      "updatedAt": { "type": "string", "format": "date-time" }
+    },
+    "required": ["name", "connectorType"]
+  },
+  "relations": {
+    "accounts": {
+      "title": "Accounts",
+      "target": "sailpoint_account",
+      "many": true
+    },
+    "entitlements": {
+      "title": "Entitlements",
+      "target": "sailpoint_entitlement",
+      "many": true
+    }
+  }
+}

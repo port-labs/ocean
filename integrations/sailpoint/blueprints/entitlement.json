@@ -1,0 +1,45 @@
+{
+  "identifier": "sailpoint_entitlement",
+  "title": "SailPoint Entitlement",
+  "icon": "Key",
+  "schema": {
+    "properties": {
+      "name": { "type": "string" },
+      "description": { "type": "string" },
+      "attribute": { "type": "string", "description": "Authoritative attribute on the source" },
+      "value": { "type": "string", "description": "Value of the entitlement on the attribute" },
+      "riskScore": { "type": "number" },
+      "sourceId": { "type": "string" },
+      "createdAt": { "type": "string", "format": "date-time" },
+      "updatedAt": { "type": "string", "format": "date-time" }
+    },
+    "required": ["name", "sourceId"]
+  },
+  "relations": {
+    "source": {
+      "title": "Source",
+      "target": "sailpoint_source",
+      "many": false
+    },
+    "accessProfiles": {
+      "title": "Access Profiles",
+      "target": "sailpoint_access_profile",
+      "many": true
+    },
+    "roles": {
+      "title": "Roles",
+      "target": "sailpoint_role",
+      "many": true
+    },
+    "identities": {
+      "title": "Granted Identities",
+      "target": "sailpoint_identity",
+      "many": true
+    },
+    "accounts": {
+      "title": "Accounts with Entitlement",
+      "target": "sailpoint_account",
+      "many": true
+    }
+  }
+}
