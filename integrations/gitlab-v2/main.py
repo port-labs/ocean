@@ -404,8 +404,10 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         skip_parsing,
         build_group_params(include_only_active_groups=include_only_active_groups),
     ):
-        found_any_files = True
-        yield await _enrich_and_yield(files_batch)
+        enriched_batch = await _enrich_and_yield(files_batch)
+        if enriched_batch:
+            found_any_files = True
+            yield enriched_batch
 
     if not found_any_files and not repositories:
         logger.info(
