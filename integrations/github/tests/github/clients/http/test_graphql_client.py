@@ -271,7 +271,7 @@ class TestGithubGraphQLClientRetryConfig:
     ) -> None:
         with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
             mock_ocean.config.client_timeout = 60
-            transport = cast(GitHubRetryTransport, authenticator.client._transport)
+            transport = _get_retry_transport(authenticator.client._transport)
             retryable = transport._retry_config.retryable_methods
 
         assert "POST" not in retryable

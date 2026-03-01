@@ -28,6 +28,7 @@ def mock_ocean_context() -> None:
     """Fixture to mock the Ocean context initialization."""
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.is_saas.return_value = False
         mock_ocean_app.config.integration.config = TEST_INTEGRATION_CONFIG
         mock_ocean_app.config.client_timeout = 30.0
         mock_ocean_app.integration_router = MagicMock()

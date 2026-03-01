@@ -5,6 +5,16 @@ from port_ocean.tests.helpers.fixtures import (
     get_mock_ocean_resource_configs,
 )
 import pytest
+from unittest.mock import MagicMock, patch
+
+
+@pytest.fixture(autouse=True)
+def _mock_ocean_context():
+    """Mock Port Ocean context so OceanAsyncClient can be used without initializing the app."""
+    mock_ocean = MagicMock()
+    mock_ocean.app.is_saas.return_value = False
+    with patch("port_ocean.helpers.async_client.ocean", mock_ocean):
+        yield
 
 
 def pytest_collection_modifyitems(session: Any, config: Any, items: Any) -> None:
