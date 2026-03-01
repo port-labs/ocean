@@ -1,0 +1,200 @@
+[
+  {
+    "identifier": "harborProject",
+    "title": "Harbor Project",
+    "icon": "Harbor",
+    "description": "A Harbor container registry project",
+    "schema": {
+      "properties": {
+        "ownerName": {
+          "title": "Owner",
+          "type": "string",
+          "description": "The owner of the project"
+        },
+        "public": {
+          "title": "Public",
+          "type": "boolean",
+          "description": "Whether the project is public"
+        },
+        "repoCount": {
+          "title": "Repository Count",
+          "type": "number",
+          "description": "Number of repositories in the project"
+        },
+        "creationTime": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the project was created"
+        },
+        "updateTime": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the project was last updated"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "harborUser",
+    "title": "Harbor User",
+    "icon": "User",
+    "description": "A Harbor user account",
+    "schema": {
+      "properties": {
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "format": "email",
+          "description": "User email address"
+        },
+        "realname": {
+          "title": "Real Name",
+          "type": "string",
+          "description": "User's real name"
+        },
+        "sysadminFlag": {
+          "title": "System Admin",
+          "type": "boolean",
+          "description": "Whether the user is a system administrator"
+        },
+        "adminRoleInAuth": {
+          "title": "Admin Role (Auth)",
+          "type": "boolean",
+          "description": "Whether admin privilege is granted by authenticator"
+        },
+        "creationTime": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the user was created"
+        },
+        "updateTime": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the user was last updated"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "harborRepository",
+    "title": "Harbor Repository",
+    "icon": "Package",
+    "description": "A Harbor repository containing container images or charts",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "Repository description"
+        },
+        "artifactCount": {
+          "title": "Artifact Count",
+          "type": "number",
+          "description": "Number of artifacts in the repository"
+        },
+        "pullCount": {
+          "title": "Pull Count",
+          "type": "number",
+          "description": "Total number of pulls"
+        },
+        "creationTime": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the repository was created"
+        },
+        "updateTime": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the repository was last updated"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "harborProject",
+        "description": "The Harbor project containing this repository",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "harborArtifact",
+    "title": "Harbor Artifact",
+    "icon": "Docker",
+    "description": "A Harbor artifact (container image, chart, etc.)",
+    "schema": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "description": "Artifact type (i.e., IMAGE, CHART, etc.)"
+        },
+        "digest": {
+          "title": "Digest",
+          "type": "string",
+          "description": "Artifact digest (SHA256)"
+        },
+        "size": {
+          "title": "Size",
+          "type": "number",
+          "description": "Artifact size in bytes"
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of tags for this artifact"
+        },
+        "pushTime": {
+          "title": "Pushed At",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the artifact was pushed"
+        },
+        "pullTime": {
+          "title": "Last Pulled At",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the artifact was last pulled"
+        },
+        "vulnerabilities": {
+          "title": "Vulnerabilities",
+          "type": "object",
+          "description": "Vulnerability scan summary"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "target": "harborRepository",
+        "description": "The repository containing this artifact",
+        "required": false,
+        "many": false
+      },
+      "project": {
+        "title": "Project",
+        "target": "harborProject",
+        "description": "The project containing this artifact",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
