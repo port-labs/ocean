@@ -1,11 +1,13 @@
 """Pytest configuration and fixtures for ArgoCD integration tests."""
 
+from typing import Generator
+
 import pytest
 from unittest.mock import MagicMock, patch
 
 
 @pytest.fixture(autouse=True)
-def _mock_ocean_context():
+def _mock_ocean_context() -> Generator[None, None, None]:
     """Mock Port Ocean context so OceanAsyncClient can be used without initializing the app."""
     mock_ocean = MagicMock()
     mock_ocean.app.is_saas.return_value = False

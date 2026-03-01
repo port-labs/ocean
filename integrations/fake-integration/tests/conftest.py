@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Generator
 
 from port_ocean.tests.helpers.fixtures import (
     get_mocked_ocean_app,
@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 
 @pytest.fixture(autouse=True)
-def _mock_ocean_context():
+def _mock_ocean_context() -> Generator[None, None, None]:
     """Mock Port Ocean context so OceanAsyncClient can be used without initializing the app."""
     mock_ocean = MagicMock()
     mock_ocean.app.is_saas.return_value = False
