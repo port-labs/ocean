@@ -109,7 +109,6 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
                         return
                 except FailedToReadCacheError:
                     logger.debug(f"Cache miss for {cache_key}. Fetching data...")
-                    pass
 
                 cached_results = list()
                 async for result in func(*args, **kwargs):
@@ -130,6 +129,7 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
     return decorator
 
 
+# AI! The decorator docstrings in function cache_iterator_result don’t mention concurrency. Adding a short note can help future readers.
 def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
     """Coroutine version of `cache_iterator_result` from port_ocean.utils.cache
 
@@ -168,7 +168,6 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
                         return cache
                 except FailedToReadCacheError:
                     logger.debug(f"Cache miss for {cache_key}. Fetching data...")
-                    pass
 
                 result = await func(*args, **kwargs)
                 try:
