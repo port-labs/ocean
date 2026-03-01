@@ -203,7 +203,7 @@ class SnykClient:
         return target_data
 
     async def get_single_target_by_project_id(
-        self, org: dict[str, Any], project_id: str, attach_project_data: bool
+        self, org: dict[str, Any], project_id: str, attach_project_data: bool = True
     ) -> dict[str, Any]:
         project = await self.get_single_project(org["id"], project_id)
         target_id = (
@@ -236,7 +236,7 @@ class SnykClient:
     async def get_paginated_targets(
         self,
         org: dict[str, Any],
-        attach_project_data: bool,
+        attach_project_data: bool = True,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Fetching paginated targets for organization: {org['id']}")
 
