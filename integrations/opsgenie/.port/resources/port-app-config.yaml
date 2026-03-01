@@ -128,3 +128,31 @@ resources:
           blueprint: '"opsGenieTeam"'
           properties:
             oncallUsers: .__currentOncalls.onCallRecipients
+  - kind: policies/alert
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"opsGeniePolicy"'
+          properties:
+            type: .type
+            order: .order
+            enabled: .enabled
+          relations:
+            opsGenieTeam: .teamId
+  - kind: policies/notification
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"opsGeniePolicy"'
+          properties:
+            type: .type
+            order: .order
+            enabled: .enabled
