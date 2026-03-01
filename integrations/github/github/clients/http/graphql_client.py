@@ -127,7 +127,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             )
 
         cursor = None
-        logger.info(f"Starting GraphQL pagination for query with path {path}")
+        logger.info(f"[GraphQL] Starting pagination for query with path {path}")
 
         while True:
             payload = self.build_graphql_payload(resource, params, cursor=cursor)
@@ -151,7 +151,7 @@ class GithubGraphQLClient(AbstractGithubClient):
                 break
 
             cursor = page_info.get("endCursor")
-            logger.debug(f"Next page cursor: {cursor}")
+            logger.debug(f"[GraphQL] Next page cursor: {cursor}")
 
     def _extract_nodes(
         self, data: Dict[str, Any], path: str, node_key: str = "nodes"
