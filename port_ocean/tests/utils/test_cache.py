@@ -32,6 +32,13 @@ async def collect_iterator_results(iterator: AsyncIterator[List[T]]) -> List[T]:
     return results
 
 
+async def async_gen_to_list(async_gen: AsyncIterator[Any]) -> list[Any]:
+    results = []
+    async for item in async_gen:
+        results.append(item)
+    return results
+
+
 @pytest.mark.asyncio
 async def test_cache_iterator_result(mock_ocean: Any, monkeypatch: Any) -> None:
     monkeypatch.setattr(cache, "ocean", mock_ocean)
@@ -547,13 +554,6 @@ async def test_cache_iterator_maintains_chunks(
     # Verify structure is preserved (chunks remain separate)
     assert results2 == [[1, 2], [3, 4]]
     assert call_count == 1
-
-
-async def async_gen_to_list(async_gen: AsyncIterator[Any]) -> list[Any]:
-    results = []
-    async for item in async_gen:
-        results.append(item)
-    return results
 
 
 @pytest.mark.asyncio

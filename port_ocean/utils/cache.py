@@ -142,6 +142,8 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
     removed when the event is finished.
     If a database is configured, the cache will also be stored in the database.
 
+    Concurrency is handled by using asyncio locks to prevent race conditions when multiple tasks try to access the same cache key.
+
     Usage:
     ```python
     @cache_coroutine_result()
