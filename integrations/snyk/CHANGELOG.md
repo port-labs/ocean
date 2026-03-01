@@ -12,8 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fix semaphore leakage.
-- Serialize target enrichment to fix cache race condition
+- Fix semaphore leakage
 
 
 ## 0.3.26 (2026-02-26)
