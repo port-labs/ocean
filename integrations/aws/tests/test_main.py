@@ -1,7 +1,5 @@
-import asyncio
-
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from botocore.exceptions import ClientError
 from typing import Any, AsyncGenerator
 
@@ -11,7 +9,6 @@ from aioboto3 import Session
 
 
 def _make_session(region: str = "eu-west-3") -> MagicMock:
-    """Create a mock session with the given region name."""
     session = MagicMock(spec=Session)
     session.region_name = region
     return session
@@ -25,27 +22,13 @@ def _access_denied_error() -> ClientError:
 
 
 def _type_not_found_error() -> ClientError:
-    """Benign: the resource type is not registered in this region."""
     return ClientError(
         {"Error": {"Code": "TypeNotFoundException", "Message": "Type not found"}},
         "ListResources",
     )
 
 
-def _general_service_exception_unsupported() -> ClientError:
-    return ClientError(
-        {
-            "Error": {
-                "Code": "GeneralServiceException",
-                "Message": "The operation is unsupported due to a transient backend failure",
-            }
-        },
-        "ListResources",
-    )
-
-
 def _real_error(code: str = "InternalServiceError") -> ClientError:
-    """Non-benign: a genuine service error that should block reconciliation."""
     return ClientError(
         {"Error": {"Code": code, "Message": "Something went wrong"}},
         "ListResources",
@@ -53,8 +36,6 @@ def _real_error(code: str = "InternalServiceError") -> ClientError:
 
 
 class MockCredentials:
-    """Minimal mock for AwsCredentials that yields sessions for given regions."""
-
     def __init__(self, regions: list[str], account_id: str = "123456789012") -> None:
         self._regions = regions
         self.account_id = account_id
@@ -68,215 +49,23 @@ class MockCredentials:
             yield _make_session(r)
 
 
-# ---------- _safe_region_generator tests ----------
-
-
-@pytest.mark.asyncio
-async def test_safe_region_generator_passes_through_batches() -> None:
-    """On success, batches are yielded unchanged."""
-    from main import _safe_region_generator
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        yield [{"id": "1"}]
-        yield [{"id": "2"}]
-
-    session = _make_session("us-east-1")
-    failed_regions: list[str] = []
-    errors: list[Exception] = []
-
-    results = []
-    async for batch in _safe_region_generator(
-        resync_func, "AWS::S3::Bucket", session, failed_regions, errors
-    ):
-        results.append(batch)
-
-    assert results == [[{"id": "1"}], [{"id": "2"}]]
-    assert failed_regions == []
-    assert errors == []
-
-
-@pytest.mark.asyncio
-async def test_safe_region_generator_tracks_real_errors() -> None:
-    """Real errors (e.g. InternalServiceError) are caught and recorded as failures."""
-    from main import _safe_region_generator
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        raise _real_error("InternalServiceError")
-        yield  # make this an async generator
-
-    session = _make_session("eu-west-3")
-    failed_regions: list[str] = []
-    errors: list[Exception] = []
-
-    results = []
-    async for batch in _safe_region_generator(
-        resync_func, "AWS::EC2::Instance", session, failed_regions, errors
-    ):
-        results.append(batch)
-
-    assert results == []
-    assert failed_regions == ["eu-west-3"]
-    assert len(errors) == 1
-    assert isinstance(errors[0], ClientError)
-
-
-@pytest.mark.asyncio
-async def test_safe_region_generator_suppresses_type_not_found() -> None:
-    """TypeNotFoundException is benign — suppressed without recording a failure."""
-    from main import _safe_region_generator
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        raise _type_not_found_error()
-        yield
-
-    session = _make_session("eu-west-3")
-    failed_regions: list[str] = []
-    errors: list[Exception] = []
-
-    results = []
-    async for batch in _safe_region_generator(
-        resync_func, "AWS::ResourceGroups::Group", session, failed_regions, errors
-    ):
-        results.append(batch)
-
-    assert results == []
-    assert failed_regions == []
-    assert errors == []
-
-
-@pytest.mark.asyncio
-async def test_safe_region_generator_ignores_access_denied() -> None:
-    """Access-denied errors are swallowed and NOT recorded as failures."""
-    from main import _safe_region_generator
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        raise _access_denied_error()
-        yield
-
-    session = _make_session("eu-west-3")
-    failed_regions: list[str] = []
-    errors: list[Exception] = []
-
-    results = []
-    async for batch in _safe_region_generator(
-        resync_func, "AWS::ResourceGroups::Group", session, failed_regions, errors
-    ):
-        results.append(batch)
-
-    assert results == []
-    assert failed_regions == []
-    assert errors == []
-
-
-@pytest.mark.asyncio
-async def test_safe_region_generator_does_not_suppress_generic_unsupported() -> None:
-    from main import _safe_region_generator
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        raise _general_service_exception_unsupported()
-        yield
-
-    session = _make_session("eu-west-3")
-    failed_regions: list[str] = []
-    errors: list[Exception] = []
-
-    results = []
-    async for batch in _safe_region_generator(
-        resync_func, "AWS::EC2::Instance", session, failed_regions, errors
-    ):
-        results.append(batch)
-
-    assert results == []
-    assert failed_regions == ["eu-west-3"]
-    assert len(errors) == 1
-    assert isinstance(errors[0], ClientError)
-
-
-@pytest.mark.asyncio
-async def test_safe_region_generator_yields_partial_then_fails() -> None:
-    """If some batches succeed before a real error, they are yielded and error is tracked."""
-    from main import _safe_region_generator
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        yield [{"id": "good-1"}]
-        raise _real_error("InternalServiceError")
-
-    session = _make_session("eu-west-3")
-    failed_regions: list[str] = []
-    errors: list[Exception] = []
-
-    results = []
-    async for batch in _safe_region_generator(
-        resync_func, "AWS::EC2::Instance", session, failed_regions, errors
-    ):
-        results.append(batch)
-
-    assert results == [[{"id": "good-1"}]]
-    assert failed_regions == ["eu-west-3"]
-    assert len(errors) == 1
-
-
-@pytest.mark.asyncio
-async def test_safe_region_generator_propagates_cancelled_error() -> None:
-    """asyncio.CancelledError must not be swallowed — it should propagate."""
-    from main import _safe_region_generator
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        raise asyncio.CancelledError()
-        yield []
-
-    session = _make_session("us-east-1")
-    failed_regions: list[str] = []
-    errors: list[Exception] = []
-
-    with pytest.raises(asyncio.CancelledError):
-        async for _ in _safe_region_generator(
-            resync_func,
-            "AWS::EC2::Instance",
-            session,
-            failed_regions,
-            errors,
-        ):
-            pass
-
-    # CancelledError should NOT be recorded as a failure
-    assert failed_regions == []
-    assert errors == []
-
-
-@pytest.mark.asyncio
-async def test_global_resync_tries_next_region_on_non_access_denied() -> None:
-    """Non-access-denied error in first region -> try next region instead of raising."""
+async def test_global_resync_succeeds_first_region() -> None:
     from main import _handle_global_resource_resync
 
-    call_log: list[str] = []
-
     async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        region = session.region_name
-        call_log.append(region)
-        if region == "us-east-1":
-            raise _real_error("InternalServiceError")
-        yield [{"id": "from-" + region}]
+        yield [{"id": "from-" + session.region_name}]
 
-    credentials = MockCredentials(["us-east-1", "eu-west-1", "ap-southeast-1"])
-
+    credentials = MockCredentials(["us-east-1", "eu-west-1"])
     results = []
     async for batch in _handle_global_resource_resync(
-        "AWS::IAM::Role",
-        credentials,  # type: ignore[arg-type]
-        resync_func,
-        ["us-east-1", "eu-west-1", "ap-southeast-1"],
+        "AWS::IAM::Role", credentials, resync_func, ["us-east-1", "eu-west-1"]  # type: ignore[arg-type]
     ):
         results.append(batch)
 
-    # Should have tried us-east-1 (failed), then succeeded on eu-west-1
-    assert call_log == ["us-east-1", "eu-west-1"]
-    assert results == [[{"id": "from-eu-west-1"}]]
+    assert results == [[{"id": "from-us-east-1"}]]
 
 
-@pytest.mark.asyncio
-async def test_global_resync_tries_next_region_on_access_denied() -> None:
-    """Access-denied in first region -> try next region."""
+async def test_global_resync_skips_access_denied_tries_next() -> None:
     from main import _handle_global_resource_resync
 
     call_log: list[str] = []
@@ -289,7 +78,6 @@ async def test_global_resync_tries_next_region_on_access_denied() -> None:
         yield [{"id": "from-" + region}]
 
     credentials = MockCredentials(["us-east-1", "eu-west-1"])
-
     results = []
     async for batch in _handle_global_resource_resync(
         "AWS::IAM::Role", credentials, resync_func, ["us-east-1", "eu-west-1"]  # type: ignore[arg-type]
@@ -300,41 +88,39 @@ async def test_global_resync_tries_next_region_on_access_denied() -> None:
     assert results == [[{"id": "from-eu-west-1"}]]
 
 
-@pytest.mark.asyncio
-async def test_global_resync_all_regions_fail_raises_exception_group() -> None:
-    """If ALL regions fail with real errors, an ExceptionGroup is raised to block reconciliation."""
+async def test_global_resync_skips_type_not_found() -> None:
+    """TypeNotFoundException is benign — region is skipped without raising."""
     from main import _handle_global_resource_resync
 
+    call_log: list[str] = []
+
     async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        raise _real_error("InternalServiceError")
-        yield
+        region = session.region_name
+        call_log.append(region)
+        if region == "us-east-1":
+            raise _type_not_found_error()
+        yield [{"id": "from-" + region}]
 
     credentials = MockCredentials(["us-east-1", "eu-west-1"])
-
     results = []
-    with pytest.raises(ExceptionGroup) as exc_info:
-        async for batch in _handle_global_resource_resync(
-            "AWS::IAM::Role", credentials, resync_func, ["us-east-1", "eu-west-1"]  # type: ignore[arg-type]
-        ):
-            results.append(batch)
+    async for batch in _handle_global_resource_resync(
+        "AWS::IAM::Role", credentials, resync_func, ["us-east-1", "eu-west-1"]  # type: ignore[arg-type]
+    ):
+        results.append(batch)
 
-    assert results == []
-    assert len(exc_info.value.exceptions) == 2
-    assert "us-east-1" in str(exc_info.value)
-    assert "eu-west-1" in str(exc_info.value)
+    assert "us-east-1" in call_log
+    assert results == [[{"id": "from-eu-west-1"}]]
 
 
-@pytest.mark.asyncio
-async def test_global_resync_all_benign_errors_complete_normally() -> None:
-    """If ALL regions fail with only benign errors (access denied), no exception is raised."""
+async def test_global_resync_all_type_not_found_completes_empty() -> None:
+    """All regions hit TypeNotFoundException — completes with no data and no exception."""
     from main import _handle_global_resource_resync
 
     async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        raise _access_denied_error()
-        yield
+        raise _type_not_found_error()
+        yield  # noqa: unreachable
 
     credentials = MockCredentials(["us-east-1", "eu-west-1"])
-
     results = []
     async for batch in _handle_global_resource_resync(
         "AWS::IAM::Role", credentials, resync_func, ["us-east-1", "eu-west-1"]  # type: ignore[arg-type]
@@ -344,193 +130,17 @@ async def test_global_resync_all_benign_errors_complete_normally() -> None:
     assert results == []
 
 
-@pytest.mark.asyncio
-async def test_resync_benign_errors_do_not_block_reconciliation() -> None:
-    """TypeNotFoundException in some regions is benign — no ExceptionGroup raised."""
-    from main import resync_resources_for_account
+async def test_global_resync_real_error_raises() -> None:
+    """A real error (not access-denied, not type-not-found) propagates immediately."""
+    from main import _handle_global_resource_resync
 
     async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        region = session.region_name
-        if region == "eu-west-3":
-            raise _type_not_found_error()
-        yield [{"id": f"from-{region}"}]
-
-    credentials = MockCredentials(["us-east-1", "eu-west-3", "ap-southeast-1"])
-
-    mock_event = MagicMock()
-    mock_event.resource_config.selector.is_region_allowed = lambda r: True
-
-    results = []
-    with (
-        patch("main.event", new=mock_event),
-        patch("main.is_global_resource", return_value=False),
-    ):
-        async for batch in resync_resources_for_account(
-            credentials, "AWS::ResourceGroups::Group", resync_func  # type: ignore[arg-type]
-        ):
-            results.append(batch)
-
-    # Healthy regions yielded, no exception → reconciliation will run
-    ids = {item["id"] for batch in results for item in batch}
-    assert "from-us-east-1" in ids
-    assert "from-ap-southeast-1" in ids
-    assert len(results) == 2
-
-
-@pytest.mark.asyncio
-async def test_resync_real_errors_raise_exception_group() -> None:
-    """Real errors (InternalServiceError) raise ExceptionGroup to block reconciliation."""
-    from main import resync_resources_for_account
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        region = session.region_name
-        if region == "eu-west-1":
-            raise _real_error("InternalServiceError")
-        yield [{"id": f"from-{region}"}]
-
-    credentials = MockCredentials(["us-east-1", "eu-west-1", "ap-southeast-1"])
-
-    mock_event = MagicMock()
-    mock_event.resource_config.selector.is_region_allowed = lambda r: True
-
-    results = []
-    with pytest.raises(ExceptionGroup) as exc_info:
-        with (
-            patch("main.event", new=mock_event),
-            patch("main.is_global_resource", return_value=False),
-        ):
-            async for batch in resync_resources_for_account(
-                credentials, "AWS::EC2::Instance", resync_func  # type: ignore[arg-type]
-            ):
-                results.append(batch)
-
-    # Healthy regions still yielded before the raise
-    ids = {item["id"] for batch in results for item in batch}
-    assert "from-us-east-1" in ids
-    assert "from-ap-southeast-1" in ids
-
-    # ExceptionGroup contains the real error
-    assert len(exc_info.value.exceptions) == 1
-    assert "eu-west-1" in str(exc_info.value)
-
-
-@pytest.mark.asyncio
-async def test_resync_all_benign_errors_complete_normally() -> None:
-    """All regions hit TypeNotFoundException — completes empty, no exception."""
-    from main import resync_resources_for_account
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        raise _type_not_found_error()
-        yield
+        raise _real_error()
+        yield  # noqa: unreachable
 
     credentials = MockCredentials(["us-east-1", "eu-west-1"])
-
-    mock_event = MagicMock()
-    mock_event.resource_config.selector.is_region_allowed = lambda r: True
-
-    results = []
-    with (
-        patch("main.event", new=mock_event),
-        patch("main.is_global_resource", return_value=False),
-    ):
-        async for batch in resync_resources_for_account(
-            credentials, "AWS::ResourceGroups::Group", resync_func  # type: ignore[arg-type]
+    with pytest.raises(ClientError):
+        async for _ in _handle_global_resource_resync(
+            "AWS::IAM::Role", credentials, resync_func, ["us-east-1", "eu-west-1"]  # type: ignore[arg-type]
         ):
-            results.append(batch)
-
-    assert results == []
-
-
-@pytest.mark.asyncio
-async def test_resync_all_real_errors_raise_exception_group() -> None:
-    """All regions fail with real errors — ExceptionGroup raised."""
-    from main import resync_resources_for_account
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        raise _real_error("InternalServiceError")
-        yield
-
-    credentials = MockCredentials(["us-east-1", "eu-west-1"])
-
-    mock_event = MagicMock()
-    mock_event.resource_config.selector.is_region_allowed = lambda r: True
-
-    with pytest.raises(ExceptionGroup):
-        with (
-            patch("main.event", new=mock_event),
-            patch("main.is_global_resource", return_value=False),
-        ):
-            async for batch in resync_resources_for_account(
-                credentials, "AWS::EC2::Instance", resync_func  # type: ignore[arg-type]
-            ):
-                pass
-
-
-@pytest.mark.asyncio
-async def test_process_tasks_catches_unexpected_error() -> None:
-    """If a generator raises after yielding, _process_tasks catches it and tracks the error."""
-    from main import _process_tasks
-
-    async def failing_generator() -> AsyncGenerator[list[dict[str, str]], None]:
-        yield [{"id": "ok"}]
-        raise RuntimeError("unexpected merge failure")
-
-    failed_regions: list[str] = []
-    errors: list[Exception] = []
-    tasks: list[Any] = [failing_generator()]
-
-    results = []
-    async for batch in _process_tasks(tasks, failed_regions, errors, "us-east-1"):
-        results.append(batch)
-
-    assert results == [[{"id": "ok"}]]
-    assert "us-east-1" in failed_regions
-    assert len(errors) == 1
-    assert tasks == []  # cleared in finally block
-
-
-class FailingMockCredentials:
-    """Mock that raises during create_session_for_each_region."""
-
-    def __init__(self, regions: list[str], account_id: str = "123456789012") -> None:
-        self._regions = regions
-        self.account_id = account_id
-        self.enabled_regions = regions
-
-    async def create_session_for_each_region(
-        self, allowed_regions: list[str] | None = None
-    ) -> AsyncGenerator[MagicMock, None]:
-        raise RuntimeError("STS endpoint unreachable")
-        yield  # make this an async generator
-
-
-@pytest.mark.asyncio
-async def test_resync_session_creation_failure_raises_exception_group() -> None:
-    """If create_session_for_each_region raises, ExceptionGroup is raised to block reconciliation."""
-    from main import resync_resources_for_account
-
-    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        yield [{"id": "should-not-reach"}]
-
-    credentials = FailingMockCredentials(["us-east-1", "eu-west-1"])
-
-    mock_event = MagicMock()
-    mock_event.resource_config.selector.is_region_allowed = lambda r: True
-
-    results = []
-    with pytest.raises(ExceptionGroup) as exc_info:
-        with (
-            patch("main.event", new=mock_event),
-            patch("main.is_global_resource", return_value=False),
-        ):
-            async for batch in resync_resources_for_account(
-                credentials, "AWS::EC2::Instance", resync_func  # type: ignore[arg-type]
-            ):
-                results.append(batch)
-
-    # No batches should have been yielded
-    assert results == []
-
-    # ExceptionGroup wraps the session-creation error
-    assert len(exc_info.value.exceptions) == 1
-    assert isinstance(exc_info.value.exceptions[0], RuntimeError)
+            pass
