@@ -12,6 +12,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
     mock_app = MagicMock()
+    mock_app.is_saas.return_value = False
     mock_app.config.integration.config = {
         "terraform_cloud_host": "https://app.terraform.io",
         "terraform_cloud_token": "test-token",
