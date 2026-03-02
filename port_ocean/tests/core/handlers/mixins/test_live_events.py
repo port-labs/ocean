@@ -556,11 +556,13 @@ async def test_parse_raw_event_results_items_to_parse_expansion(
     webhook_result.resource = file_resource_config_with_items_to_parse
 
     entities_to_create, entities_to_delete = (
-        await mock_live_events_mixin._parse_raw_event_results_to_entities([webhook_result])
+        await mock_live_events_mixin._parse_raw_event_results_to_entities(
+            [webhook_result]
+        )
     )
 
     assert len(entities_to_create) == 2
     assert entities_to_create[0].identifier == "svc-one"
     assert entities_to_create[1].identifier == "svc-two"
     assert entities_to_delete == []
-    assert mock_live_events_mixin.entity_processor.parse_items.call_count == 2  # type: ignore
+    assert mock_live_events_mixin.entity_processor.parse_items.call_count == 2
