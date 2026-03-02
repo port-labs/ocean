@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.4 (2026-03-02)
+
+### Bug Fixes
+
+- Added fallback to local defaults in PortOriginSetup when Port provisioning fails, ensuring integrations get their default mapping even if the provision-service doesn't create it
+
 ## 0.38.3 (2026-03-01)
 
 ### Improvements
