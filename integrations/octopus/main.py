@@ -3,7 +3,8 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from client import OctopusClient, ObjectKind
+from client import OctopusClient
+from utils import ObjectKind
 
 TRACKED_EVENTS = [
     "spaces",
@@ -114,7 +115,8 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
             resource_prefix = resource_id.split("-")[0].lower()
             if resource_prefix in TRACKED_EVENTS:
                 if resource_prefix == ObjectKind.SPACE:
-                    await client.get_single_space(space_id)
+                    space_data = await client.get_single_space(space_id)
+                    await ocean.register_raw(ObjectKind.SPACE, [space_data])
                     return {"ok": True}
                 kind = ObjectKind(resource_prefix.rstrip("s"))
                 try:

@@ -17,64 +17,130 @@ configurations:
     required: false
     type: string
     default: "none"
-    description: "Authentication method: none, bearer_token, basic, or api_key"
-    enum: ["none", "bearer_token", "basic", "api_key"]
+    description: "Authentication method: none, bearer_token, basic, api_key, or custom"
+    enum: ["bearer_token", "basic", "api_key", "none", "custom"]
   - name: apiToken
     required: false
     type: string
     description: "Bearer token for authentication (required if authType is bearer_token)"
     sensitive: true
+    dependencies:
+      - on: authType
+        when:
+          equals: bearer_token
+        then:
+          required: true
   - name: username
     required: false
     type: string
     description: "Username for basic authentication (required if authType is basic)"
+    dependencies:
+      - on: authType
+        when:
+          equals: basic
+        then:
+          required: true
   - name: password
     required: false
     type: string
     description: "Password for basic authentication (required if authType is basic)"
     sensitive: true
+    dependencies:
+      - on: authType
+        when:
+          equals: basic
+        then:
+          required: true
   - name: apiKey
     required: false
     type: string
     description: "API key for authentication (required if authType is api_key)"
     sensitive: true
+    dependencies:
+      - on: authType
+        when:
+          equals: api_key
+        then:
+          required: true
   - name: apiKeyHeader
     required: false
     type: string
     default: "X-API-Key"
     description: "Header name for API key authentication"
+    dependencies:
+      - on: authType
+        when:
+          equals: api_key
+        then:
+          required: false
   - name: paginationType
     required: false
     type: string
     default: "none"
     description: "Pagination method: none, offset, page, or cursor"
-    enum: ["none", "offset", "page", "cursor"]
+    enum: ["offset", "page", "cursor", "none"]
   - name: pageSize
     required: false
     type: string
     default: "100"
     description: "Number of items per page for pagination"
+    dependencies:
+      - on: paginationType
+        when:
+          in: ["offset", "page", "cursor"]
+        then:
+          required: false
   - name: paginationParam
     required: false
     type: string
     description: "Query parameter name for the main pagination value. For cursor: 'cursor', 'page[after]', 'after'. For page: 'page', 'pageNumber'. For offset: 'offset', 'skip'. Defaults vary by paginationType."
+    dependencies:
+      - on: paginationType
+        when:
+          in: ["offset", "page", "cursor"]
+        then:
+          required: false
   - name: sizeParam
     required: false
     type: string
     description: "Query parameter name for page size/limit. Examples: 'limit', 'size', 'page[size]', 'per_page'. Defaults vary by paginationType."
+    dependencies:
+      - on: paginationType
+        when:
+          in: ["offset", "page", "cursor"]
+        then:
+          required: false
   - name: startPage
     required: false
     type: string
     default: "1"
     description: "Starting page number for page-based pagination (e.g., 0 or 1). Defaults to 1."
+    dependencies:
+      - on: paginationType
+        when:
+          equals: page
+        then:
+          required: false
   - name: cursorPath
     required: false
     type: string
     description: "Dot-notation path to extract cursor from response for cursor pagination (e.g., 'meta.after_cursor', 'links.next'). Defaults to common patterns if not specified."
+    dependencies:
+      - on: paginationType
+        when:
+          equals: cursor
+        then:
+          required: false
   - name: hasMorePath
     required: false
     type: string
     description: "Dot-notation path to check if more pages exist (e.g., 'meta.has_more', 'pagination.hasMore'). Works with all pagination types. Defaults to common patterns if not specified."
+    dependencies:
+      - on: paginationType
+        when:
+          in: ["offset", "page", "cursor"]
+        then:
+          required: false
   - name: timeout
     required: false
     type: string
@@ -90,6 +156,40 @@ configurations:
     type: string
     default: "10"
     description: "Maximum concurrent API requests (uses Ocean's built-in rate limiting and caching)"
+  - name: customAuthRequest
+    required: false
+    type: object
+    description: "Custom authentication request configuration. Required when authType is 'custom'. Defines how to make the authentication request. Example can be found in https://docs.port.io/build-your-software-catalog/custom-integration/ocean-custom-integration/installation-types/self-hosted/custom-authentication"
+    dependencies:
+      - on: authType
+        when:
+          equals: custom
+        then:
+          required: true
+  - name: customAuthRequestTemplate
+    required: false
+    type: object
+    description: "Custom authentication response usage configuration. Required when authType is 'custom'. Defines how to use auth response values in subsequent requests using template syntax {{.jq_path}}. Example can be found in https://docs.port.io/build-your-software-catalog/custom-integration/ocean-custom-integration/installation-types/self-hosted/custom-authentication"
+    dependencies:
+      - on: authType
+        when:
+          equals: custom
+        then:
+          required: true
+interface:
+  sections:
+    - label: Advanced Configuration
+      configurationNames:
+        - paginationType
+        - pageSize
+        - paginationParam
+        - sizeParam
+        - startPage
+        - cursorPath
+        - hasMorePath
+        - timeout
+        - verifySsl
+        - maxConcurrentRequests
 installationDocs:
   saas:
     - name: SaasOAuth2
@@ -109,7 +209,7 @@ installationDocs:
     enabled: true
     docs: build-your-software-catalog/custom-integration/ocean-custom-integration/overview
 saas:
-  enabled: false
+  enabled: true
   liveEvents:
     enabled: false
 deploymentMethodOverride:

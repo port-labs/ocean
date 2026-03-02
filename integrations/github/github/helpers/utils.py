@@ -1,3 +1,4 @@
+from wcmatch import glob
 from enum import StrEnum
 from typing import (
     Any,
@@ -17,6 +18,9 @@ from port_ocean.utils import cache
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
+
+
+BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE
 
 
 class GithubClientType(StrEnum):
@@ -41,6 +45,7 @@ class ObjectKind(StrEnum):
     BRANCH = "branch"
     ENVIRONMENT = "environment"
     DEPLOYMENT = "deployment"
+    DEPLOYMENT_STATUS = "deployment-status"
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
     SECRET_SCANNING_ALERT = "secret-scanning-alerts"
@@ -62,7 +67,10 @@ def enrich_with_organization(
 
 
 def enrich_with_repository(
-    response: Dict[str, Any], repo_name: str, key: str = "__repository"
+    response: Dict[str, Any],
+    repo_name: str,
+    key: str = "__repository",
+    repo: Optional[dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Helper function to enrich response with repository information.
     Args:
@@ -72,7 +80,10 @@ def enrich_with_repository(
     Returns:
         The enriched response
     """
+
     response[key] = repo_name
+    if repo:
+        response["__repository_object"] = repo
     return response
 
 
@@ -97,6 +108,11 @@ async def fetch_commit_diff(
     """
     resource = f"{client.base_url}/repos/{organization}/{repo_name}/compare/{before_sha}...{after_sha}"
     response = await client.send_api_request(resource)
+    if not response:
+        logger.warning(
+            f"No commit diff found for {before_sha}...{after_sha} in {repo_name} from {organization}"
+        )
+        return {"files": []}
 
     logger.info(
         f"Found {len(response['files'])} files in commit diff of organization: {organization}"
@@ -166,3 +182,46 @@ async def enrich_user_with_primary_email(
     if primary_email:
         user["email"] = primary_email["email"]
     return user
+
+
+def issue_matches_labels(
+    issue_labels: list[dict[str, Any]], required_labels: Optional[list[str]]
+) -> bool:
+    """
+    Check if an issue's labels match the required labels filter.
+
+    Args:
+        issue_labels: List of label objects from webhook payload
+        required_labels: List of required labels
+
+    Returns:
+        True if issue matches (has ALL of the required labels), False otherwise
+    """
+    if not required_labels:
+        return True
+
+    required_set = {label.lower() for label in required_labels}
+    if not required_set:
+        return True
+
+    issue_label_names = {label["name"].lower() for label in issue_labels}
+
+    return required_set.issubset(issue_label_names)
+
+
+def has_exhausted_rate_limit_headers(headers: Any) -> bool:
+    """
+    Return True when GitHub's rate limit headers indicate an exhausted quota.
+
+    Accepts any headers-like mapping (e.g. `httpx.Headers`, `dict[str, str]`).
+    """
+
+    return (
+        headers.get("x-ratelimit-remaining") == "0"
+        and headers.get("x-ratelimit-reset") is not None
+    )
+
+
+def matches_glob_pattern(path: str, pattern: str, flags: int = 0) -> bool:
+    combined_flags = BASE_GLOB_FLAGS | flags
+    return glob.globmatch(path, pattern, flags=combined_flags)

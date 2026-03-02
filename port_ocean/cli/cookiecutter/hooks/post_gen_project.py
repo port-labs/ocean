@@ -20,7 +20,6 @@ def handle_private_integration_flags():
         shutil.copyfile(infra_make_file, target_link_make_file)
         shutil.copyfile(infra_dockerfile, target_link_dockerfile)
         shutil.copyfile(infra_dockerignore, target_link_dockerignore)
-        os.remove("sonar-project.properties")
         return
 
     os.symlink(infra_make_file, target_link_make_file)
@@ -28,3 +27,5 @@ def handle_private_integration_flags():
 
 if __name__ == "__main__":
     handle_private_integration_flags()
+    if os.path.exists(".env.development"):
+        shutil.move(".env.development", ".env")

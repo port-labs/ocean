@@ -2,6 +2,7 @@
 Ocean Custom Client Factory
 
 Factory function to create HTTP client instances from Ocean configuration.
+Supports shared client singleton for parallel-safe operation.
 """
 
 import os
@@ -11,7 +12,12 @@ from typing import Dict, Any, Optional
 from pydantic import parse_raw_as
 
 from http_server.client import HttpServerClient
+from http_server.exceptions import CustomAuthConfigError
 from port_ocean.context.ocean import ocean
+
+
+# Global client singleton
+_client: Optional[HttpServerClient] = None
 
 
 def _resolve_env_vars(value: str) -> str:
@@ -43,7 +49,7 @@ def _parse_custom_headers(headers_config: Optional[str]) -> Dict[str, str]:
 
         return resolved_headers
     except Exception as e:
-        raise ValueError(f"Invalid custom_headers JSON: {e}")
+        raise CustomAuthConfigError(f"Invalid custom_headers JSON: {e}")
 
 
 def init_client() -> HttpServerClient:
@@ -62,3 +68,17 @@ def init_client() -> HttpServerClient:
         max_concurrent_requests=int(config.get("max_concurrent_requests", 10)),
         custom_headers=custom_headers,
     )
+
+
+async def get_client() -> HttpServerClient:
+    """Get the shared client instance.
+
+    Authentication is handled automatically by httpx.Auth when requests are made.
+
+    Returns:
+        HttpServerClient: The initialized client
+    """
+    global _client
+    if _client is None:
+        _client = init_client()
+    return _client

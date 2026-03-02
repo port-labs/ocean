@@ -171,7 +171,7 @@ class TestMultiAccountStrategy:
     ) -> None:
         """Test get_account_sessions yields pre-validated sessions."""
         # Set up the strategy as if healthcheck has already been completed
-        strategy._valid_arns = ["arn:aws:iam::123456789012:role/test-role"]
+        strategy._valid_arns = {"arn:aws:iam::123456789012:role/test-role"}
         strategy._valid_sessions = {
             "arn:aws:iam::123456789012:role/test-role": mock_aiosession
         }
@@ -199,18 +199,9 @@ class TestMultiAccountHealthCheckMixin:
         return MultiAccountStrategy(provider=provider, config=mock_multi_account_config)
 
     def test_valid_arns_property(self, strategy: MultiAccountStrategy) -> None:
-        """Test valid_arns property returns the list of valid ARNs."""
-        strategy._valid_arns = ["arn1", "arn2"]
-        assert strategy.valid_arns == ["arn1", "arn2"]
-
-    def test_valid_arns_property_when_not_initialized(
-        self, strategy: MultiAccountStrategy
-    ) -> None:
-        """Test valid_arns property returns empty list when _valid_arns doesn't exist."""
-        # Ensure _valid_arns doesn't exist
-        if hasattr(strategy, "_valid_arns"):
-            delattr(strategy, "_valid_arns")
-        assert strategy.valid_arns == []
+        """Test valid_arns property returns the set of valid ARNs."""
+        strategy._valid_arns = {"arn1", "arn2"}
+        assert strategy.valid_arns == {"arn1", "arn2"}
 
     @pytest.mark.asyncio
     async def test_can_assume_role_success(
@@ -253,17 +244,23 @@ class TestMultiAccountHealthCheckMixin:
 
     @pytest.mark.asyncio
     async def test_healthcheck_no_arns(self, strategy: MultiAccountStrategy) -> None:
-        """Test healthcheck fails when no role ARNs provided."""
+        """Test healthcheck raises when no role ARNs provided."""
         strategy.config = {"region": "us-west-2"}  # No account_role_arn
-        result = await strategy.healthcheck()
-        assert result is False
+        with pytest.raises(
+            AWSSessionError,
+            match="No account_role_arns provided for multi-account strategy",
+        ):
+            await strategy.healthcheck()
 
     @pytest.mark.asyncio
     async def test_healthcheck_empty_arns(self, strategy: MultiAccountStrategy) -> None:
-        """Test healthcheck fails when empty role ARNs list provided."""
-        strategy.config = {"account_role_arn": [], "region": "us-west-2"}
-        result = await strategy.healthcheck()
-        assert result is False
+        """Test healthcheck raises when empty role ARNs list provided."""
+        strategy.config = {"account_role_arns": [], "region": "us-west-2"}
+        with pytest.raises(
+            AWSSessionError,
+            match="No account_role_arns provided for multi-account strategy",
+        ):
+            await strategy.healthcheck()
 
     @pytest.mark.asyncio
     async def test_healthcheck_partial_failure(
@@ -317,6 +314,20 @@ class TestMultiAccountHealthCheckMixin:
             assert len(strategy._valid_arns) == 25
             assert len(strategy._valid_sessions) == 25
 
+    @pytest.mark.asyncio
+    async def test_healthcheck_is_idempotent(
+        self, strategy: MultiAccountStrategy, mock_aiosession: AsyncMock
+    ) -> None:
+        """Test that calling healthcheck multiple times does not accumulate duplicate ARNs."""
+        with patch.object(strategy, "_can_assume_role", return_value=mock_aiosession):
+            await strategy.healthcheck()
+            assert len(strategy._valid_arns) == 2
+
+            # Call healthcheck again (simulates retry after failed resync)
+            await strategy.healthcheck()
+            assert len(strategy._valid_arns) == 2
+            assert len(strategy._valid_sessions) == 2
+
 
 class TestOrganizationsHealthCheckMixin:
     """Test OrganizationsHealthCheckMixin."""
@@ -341,7 +352,7 @@ class TestOrganizationsHealthCheckMixin:
     def test_initialization(self, strategy: OrganizationsStrategy) -> None:
         """Test OrganizationsHealthCheckMixin initialization."""
         assert strategy._organization_role_details is None
-        assert strategy._valid_arns == []
+        assert strategy._valid_arns == set()
         assert strategy._valid_sessions == {}
         assert strategy._organization_session is None
         assert strategy._discovered_accounts == []
@@ -540,20 +551,20 @@ class TestOrganizationsHealthCheckMixin:
                 )  # Only account ARNs are added during health check
                 assert len(strategy.valid_sessions) == 2
                 # Verify the account ARNs are correctly formatted
-                expected_arns = [
+                expected_arns = {
                     "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole",
                     "arn:aws:iam::123456789013:role/OrganizationAccountAccessRole",
-                ]
+                }
                 assert strategy.valid_arns == expected_arns
 
     @pytest.mark.asyncio
     async def test_healthcheck_no_accounts(
         self, strategy: OrganizationsStrategy
     ) -> None:
-        """Test healthcheck fails when no accounts discovered."""
+        """Test healthcheck raises when no accounts discovered."""
         with patch.object(strategy, "discover_accounts", return_value=[]):
-            result = await strategy.healthcheck()
-            assert result is False
+            with pytest.raises(AWSSessionError, match="No accounts discovered"):
+                await strategy.healthcheck()
 
     @pytest.mark.asyncio
     async def test_healthcheck_partial_failure(
@@ -581,7 +592,29 @@ class TestOrganizationsHealthCheckMixin:
                 expected_arn = (
                     "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole"
                 )
-                assert strategy.valid_arns == [expected_arn]
+                assert strategy.valid_arns == {expected_arn}
+
+    @pytest.mark.asyncio
+    async def test_healthcheck_is_idempotent(
+        self, strategy: OrganizationsStrategy, mock_aiosession: AsyncMock
+    ) -> None:
+        """Test that calling healthcheck multiple times does not accumulate duplicate ARNs."""
+        mock_accounts = [
+            {"Id": "123456789012", "Name": "Test Account 1", "Status": "ACTIVE"},
+            {"Id": "123456789013", "Name": "Test Account 2", "Status": "ACTIVE"},
+        ]
+
+        with patch.object(strategy, "discover_accounts", return_value=mock_accounts):
+            with patch.object(
+                strategy, "_can_assume_role_in_account", return_value=mock_aiosession
+            ):
+                await strategy.healthcheck()
+                assert len(strategy.valid_arns) == 2
+
+                # Call healthcheck again (simulates retry after failed resync)
+                await strategy.healthcheck()
+                assert len(strategy.valid_arns) == 2
+                assert len(strategy.valid_sessions) == 2
 
 
 class TestOrganizationsStrategy:
@@ -623,10 +656,9 @@ class TestOrganizationsStrategy:
                     sessions.append((account_info, session))
 
                 assert len(sessions) == 2
-                assert sessions[0][0]["Id"] == "123456789012"
-                assert sessions[0][1] == mock_aiosession
-                assert sessions[1][0]["Id"] == "123456789013"
-                assert sessions[1][1] == mock_aiosession
+                account_ids = {s[0]["Id"] for s in sessions}
+                assert account_ids == {"123456789012", "123456789013"}
+                assert all(s[1] == mock_aiosession for s in sessions)
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_with_failed_accounts(

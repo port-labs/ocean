@@ -41,6 +41,29 @@ class CloudControlThrottlingConfig(enum.Enum):
     RETRY_MODE: Literal["legacy", "standard", "adaptive"] = "adaptive"
 
 
+OPT_IN_REGIONS = frozenset(
+    {
+        "af-south-1",
+        "ap-east-1",
+        "ap-south-2",
+        "ap-southeast-3",
+        "ap-southeast-4",
+        "ap-southeast-5",
+        "ap-southeast-6",
+        "ap-east-2",
+        "ap-southeast-7",
+        "ca-west-1",
+        "eu-south-1",
+        "eu-south-2",
+        "eu-central-2",
+        "il-central-1",
+        "mx-central-1",
+        "me-south-1",
+        "me-central-1",
+    }
+)
+
+
 class CustomProperties(enum.StrEnum):
     ACCOUNT_ID = "__AccountId"
     KIND = "__Kind"
@@ -56,6 +79,7 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     ELBV2_LOAD_BALANCER = "AWS::ELBV2::LoadBalancer"
     SQS_QUEUE = "AWS::SQS::Queue"
     RESOURCE_GROUP = "AWS::ResourceGroups::Group"
+    S3_BUCKET = "AWS::S3::Bucket"
 
 
 def _check_general_service_exception(e: Exception, patterns: List[str]) -> bool:

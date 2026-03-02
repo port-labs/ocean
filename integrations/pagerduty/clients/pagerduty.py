@@ -1,3 +1,4 @@
+import asyncio
 from http import HTTPStatus
 from typing import Any, AsyncGenerator, Dict, Optional
 
@@ -18,6 +19,8 @@ USER_KEY = "users"
 MAX_CONCURRENT_REQUESTS = 10
 PAGE_SIZE = 100
 OAUTH_TOKEN_PREFIX = "pd"
+# Pagerduty classic pagination can only retrieve 10k resources. learn more: https://developer.pagerduty.com/docs/pagination
+MAX_PAGERDUTY_RESOURCES = 10_000
 
 
 class PagerDutyClient(OAuthClient):
@@ -93,6 +96,13 @@ class PagerDutyClient(OAuthClient):
                 has_more_data = data["more"]
                 if has_more_data:
                     offset += data["limit"]
+
+                if (offset + PAGE_SIZE) > MAX_PAGERDUTY_RESOURCES:
+                    logger.warning(
+                        f"Reached max pagerduty limit of {MAX_PAGERDUTY_RESOURCES} for {resource}"
+                    )
+                    break
+
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"Got {e.response.status_code} status code while fetching paginated data: {str(e)}"
@@ -243,7 +253,6 @@ class PagerDutyClient(OAuthClient):
     async def get_incident_analytics_by_services(
         self, service_ids: list[str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         logger.info(f"Fetching analytics for services: {service_ids} for period")
 
         request_data = {
@@ -369,3 +378,37 @@ class PagerDutyClient(OAuthClient):
             incident["__analytics"] = analytics_map.get(incident["id"])
 
         return incidents
+
+    async def get_entity_custom_fields(
+        self, entity_type: str, entity_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch custom field values for a single service or incident."""
+        logger.debug(f"Fetching custom fields for {entity_type}/{entity_id}")
+        data = await self.send_api_request(
+            endpoint=f"{entity_type}/{entity_id}/custom_fields/values",
+            method="GET",
+        )
+        return data.get("custom_fields", [])
+
+    async def enrich_entities_with_custom_fields(
+        self, entities: list[dict[str, Any]], entity_type: str
+    ) -> list[dict[str, Any]]:
+        """Enrich a batch of entities with their custom field values."""
+        logger.info(f"Enriching {len(entities)} {entity_type} with custom fields")
+
+        results = await asyncio.gather(
+            *[
+                self.get_entity_custom_fields(entity_type, entity["id"])
+                for entity in entities
+            ],
+            return_exceptions=True,
+        )
+        for entity, result in zip(entities, results):
+            if isinstance(result, Exception):
+                logger.warning(
+                    f"Failed to fetch custom fields for {entity_type}/{entity['id']}: {result}"
+                )
+                result = []
+            entity["__custom_fields"] = result
+
+        return entities

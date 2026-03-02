@@ -69,7 +69,7 @@ class TestGitHubAbstractWebhookProcessor:
         mock_request.headers = {"x-hub-signature-256": "test-signature"}
 
         result: bool = await gh_processor._verify_webhook_signature(
-            organization="test-org", request=mock_request
+            identifier="test-org", request=mock_request
         )
         assert result is True
 
@@ -78,7 +78,7 @@ class TestGitHubAbstractWebhookProcessor:
     ) -> None:
         mock_request: Request = create_gh_mock_request(b"{}", {})
         result: bool = await gh_processor._verify_webhook_signature(
-            organization="test-org", request=mock_request
+            identifier="test-org", request=mock_request
         )
         assert result is False
 
@@ -93,7 +93,7 @@ class TestGitHubAbstractWebhookProcessor:
         headers: Dict[str, str] = {"x-hub-signature-256": valid_signature}
         mock_request: Request = create_gh_mock_request(payload_bytes, headers)
         result: bool = await gh_processor._verify_webhook_signature(
-            organization="test-org", request=mock_request
+            identifier="test-org", request=mock_request
         )
         assert result is True
 
@@ -106,7 +106,7 @@ class TestGitHubAbstractWebhookProcessor:
         headers: Dict[str, str] = {"x-hub-signature-256": invalid_signature}
         mock_request: Request = create_gh_mock_request(payload_bytes, headers)
         result: bool = await gh_processor._verify_webhook_signature(
-            organization="test-org", request=mock_request
+            identifier="test-org", request=mock_request
         )
         assert result is False
 

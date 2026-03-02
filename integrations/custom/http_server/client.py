@@ -19,7 +19,8 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 
-from http_server.handlers import get_auth_handler, get_pagination_handler
+from http_server.auth import get_auth_handler
+from http_server.handlers import get_pagination_handler
 
 
 class HttpServerClient:
@@ -56,8 +57,11 @@ class HttpServerClient:
 
         # Configure authentication using handler pattern
         self.auth_handler = get_auth_handler(
-            self.auth_type, self.client, self.auth_config
+            self.auth_type,
+            self.client,
+            self.auth_config,
         )
+
         self.auth_handler.setup()
 
         # Concurrency control
@@ -69,12 +73,13 @@ class HttpServerClient:
         method: str = "GET",
         query_params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch data with automatic rate limiting and concurrency control"""
 
         async def _fetch() -> AsyncGenerator[List[Dict[str, Any]], None]:
             async for batch in self._fetch_with_pagination(
-                endpoint, method, query_params, headers
+                endpoint, method, query_params, headers, body
             ):
                 yield batch
 
@@ -87,6 +92,7 @@ class HttpServerClient:
         method: str,
         query_params: Optional[Dict[str, Any]],
         headers: Optional[Dict[str, str]],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch data with pagination handling using handler pattern"""
 
@@ -119,7 +125,9 @@ class HttpServerClient:
             get_nested_value_fn=self._get_nested_value,
         )
 
-        async for batch in handler.fetch_all(url, method, params, request_headers):
+        async for batch in handler.fetch_all(
+            url, method, params, request_headers, body
+        ):
             yield batch
 
     def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
@@ -139,8 +147,10 @@ class HttpServerClient:
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> httpx.Response:
-        """Make HTTP request using Ocean's built-in client with retry and rate limiting"""
+        """Make HTTP request using Ocean's built-in client with retry and rate limiting.
+        Authentication and 401 retries are handled automatically by httpx.Auth."""
         merged_headers = {
             "User-Agent": "Port-Ocean-HTTP-Integration/1.0",
             **self.custom_headers,
@@ -148,12 +158,23 @@ class HttpServerClient:
         }
 
         try:
-            response = await self.client.request(
-                method=method,
-                url=url,
-                params=params,
-                headers=merged_headers,
-            )
+            # Build request - include body if present
+            if body:
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    headers=merged_headers,
+                    json=body,
+                )
+            else:
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    headers=merged_headers,
+                )
+
             response.raise_for_status()
             return response
 

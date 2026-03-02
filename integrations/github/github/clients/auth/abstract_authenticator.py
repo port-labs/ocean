@@ -1,13 +1,21 @@
-from typing import Any, Dict, Optional
+from http import HTTPStatus
+from typing import Any, Callable, Coroutine, Dict, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
+from github.clients.auth.retry_transport import GitHubRetryTransport
 from pydantic import BaseModel, PrivateAttr, Field
 from dateutil.parser import parse
 
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.utils.cache import cache_coroutine_result
+from loguru import logger
+
 import httpx
+
+
+GITHUB_RETRY_MAX_BACKOFF = 1800
 
 
 class GitHubToken(BaseModel):
@@ -38,6 +46,11 @@ class GitHubHeaders(BaseModel):
 
 
 class AbstractGitHubAuthenticator(ABC):
+    _http_client: Optional[httpx.AsyncClient] = None
+    _rate_limit_notifier: Optional[
+        Callable[[httpx.Response], Coroutine[Any, Any, None]]
+    ] = None
+
     @abstractmethod
     async def get_token(self, **kwargs: Any) -> GitHubToken:
         pass
@@ -46,16 +59,61 @@ class AbstractGitHubAuthenticator(ABC):
     async def get_headers(self, **kwargs: Any) -> GitHubHeaders:
         pass
 
-    @property
-    def client(self) -> httpx.AsyncClient:
+    def set_rate_limit_notifier(
+        self, notifier: Callable[[httpx.Response], Coroutine[Any, Any, None]]
+    ) -> None:
+        self._rate_limit_notifier = notifier
+
+    async def _get_headers_dict(self) -> Dict[str, str]:
+        return (await self.get_headers()).as_dict()
+
+    def _make_client(
+        self, extra_retryable_methods: frozenset[str] = frozenset()
+    ) -> httpx.AsyncClient:
+        default_methods = frozenset(
+            ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
+        )
         retry_config = RetryConfig(
             retry_after_headers=[
                 "Retry-After",
                 "X-RateLimit-Reset",
-            ]
+            ],
+            retryable_methods=default_methods | extra_retryable_methods,
+            additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+            ignore_retry_after_status_codes=[
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                HTTPStatus.BAD_GATEWAY,
+            ],
+            max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
+            base_delay=1.0,
+            max_attempts=10,
         )
-
         return OceanAsyncClient(
+            GitHubRetryTransport,
             retry_config=retry_config,
+            transport_kwargs={
+                "rate_limit_notifier": self._rate_limit_notifier,
+                "token_refresher": self._get_headers_dict,
+            },
             timeout=ocean.config.client_timeout,
         )
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        if self._http_client is None:
+            self._http_client = self._make_client()
+        return self._http_client
+
+    @cache_coroutine_result()
+    async def is_personal_org(self, github_host: str, organization: str) -> bool:
+        try:
+            url = f"{github_host}/users/{organization}"
+            response = await self.client.get(url)
+            response.raise_for_status()
+            user_data = response.json()
+            return user_data["type"] == "User"
+        except Exception:
+            logger.exception(
+                "Failed to check if organization is personal, assuming it is not a personal org"
+            )
+            return False

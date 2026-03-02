@@ -5,6 +5,7 @@
 # PORT_CLIENT_ID
 # PORT_CLIENT_SECRET
 # PORT_BASE_URL (optional, defaults to 'https://api.getport.io')
+# SMOKE_TEST_IMAGE (optional, defaults to 'port-ocean-fake-integration:smoke-test-local')
 #
 
 SCRIPT_BASE="$(cd -P "$(dirname "$0")" && pwd)"
@@ -28,9 +29,12 @@ if [[ $? != 0 ]]; then
 fi
 TAR_FILE=$(basename "${TAR_FULL_PATH}")
 
-FAKE_INTEGRATION_VERSION=$(grep -E '^version = ".*"' "${ROOT_DIR}/integrations/fake-integration/pyproject.toml" | cut -d'"' -f2)
+# Use SMOKE_TEST_IMAGE from environment if set, otherwise use default
+# This allows the workflow to control which image to use (locally built vs registry)
+SMOKE_TEST_IMAGE="${SMOKE_TEST_IMAGE:-port-ocean-fake-integration:smoke-test-local}"
 
 echo "Found release ${TAR_FILE}, triggering fake integration with ID: '${INTEGRATION_IDENTIFIER}'"
+echo "Using smoke test image: ${SMOKE_TEST_IMAGE}"
 
 # NOTE: Runs the fake integration with the modified blueprints and install the current core for a single sync
 docker run --rm -i \
@@ -53,7 +57,7 @@ docker run --rm -i \
     -e OCEAN__RESOURCES_PATH="/opt/port-resources" \
     -e APPLICATION__LOG_LEVEL="DEBUG" \
     --name=ZOMG-TEST \
-    "ghcr.io/port-labs/port-ocean-fake-integration:${FAKE_INTEGRATION_VERSION}" \
+    "${SMOKE_TEST_IMAGE}" \
     -c "source ./.venv/bin/activate && pip install --root-user-action=ignore /opt/dist/${TAR_FILE}[cli] && ocean sail -O"
 
 rm -rf "${TEMP_DIR}"

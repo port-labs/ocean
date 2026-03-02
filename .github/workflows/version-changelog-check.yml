@@ -1,0 +1,144 @@
+name: Version and Changelog Check
+
+on:
+  pull_request:
+    paths:
+      - "integrations/**"
+      - "port_ocean/**"
+      - "pyproject.toml"
+      - "CHANGELOG.md"
+
+jobs:
+  check-version-changelog:
+    name: Check Version & Changelog Updates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Get base branch
+        id: base-branch
+        run: |
+          if [ "${{ github.event.pull_request.base.ref }}" != "" ]; then
+            echo "base=${{ github.event.pull_request.base.ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "base=main" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check integrations for version and changelog updates
+        run: |
+          set -e
+          BASE_BRANCH="${{ steps.base-branch.outputs.base }}"
+          ERRORS=()
+
+          # Get list of changed integration directories
+          CHANGED_INTEGRATIONS=$(git diff --name-only origin/${BASE_BRANCH}...HEAD | grep -E '^integrations/[^/]+/' | cut -d'/' -f 1,2 | sort -u || true)
+
+          if [ -z "$CHANGED_INTEGRATIONS" ]; then
+            echo "No integration changes detected"
+            exit 0
+          fi
+
+          for INTEGRATION_DIR in $CHANGED_INTEGRATIONS; do
+            INTEGRATION_NAME=$(basename "$INTEGRATION_DIR")
+            PYPROJECT_FILE="${INTEGRATION_DIR}/pyproject.toml"
+            CHANGELOG_FILE="${INTEGRATION_DIR}/CHANGELOG.md"
+
+            if [ ! -f "$PYPROJECT_FILE" ]; then
+              continue
+            fi
+
+            # Check if file exists in base branch
+            BASE_FILE_EXISTS=$(git ls-tree -r --name-only origin/${BASE_BRANCH} | grep -q "^${PYPROJECT_FILE}$" && echo "true" || echo "false")
+
+            # Check if version was bumped
+            VERSION_CHANGED=false
+            if [ "$BASE_FILE_EXISTS" = "true" ]; then
+              CURRENT_VERSION=$(grep -E '^version = ".*"' "$PYPROJECT_FILE" | cut -d'"' -f2 || echo "")
+              BASE_VERSION=$(git show origin/${BASE_BRANCH}:${PYPROJECT_FILE} 2>/dev/null | grep -E '^version = ".*"' | cut -d'"' -f2 || echo "")
+              if [ -n "$BASE_VERSION" ] && [ "$CURRENT_VERSION" != "$BASE_VERSION" ]; then
+                VERSION_CHANGED=true
+              fi
+            else
+              # New integration - skip version check
+              VERSION_CHANGED=true
+            fi
+
+            # Check if CHANGELOG.md was updated
+            CHANGELOG_UPDATED=false
+            if git diff --name-only origin/${BASE_BRANCH}...HEAD | grep -q "^${CHANGELOG_FILE}$"; then
+              CHANGELOG_UPDATED=true
+            fi
+
+            # Fail if version or changelog not updated
+            if [ "$VERSION_CHANGED" = "false" ]; then
+              ERRORS+=("❌ ${INTEGRATION_NAME}: Version not bumped in pyproject.toml")
+            fi
+
+            if [ "$CHANGELOG_UPDATED" = "false" ]; then
+              ERRORS+=("❌ ${INTEGRATION_NAME}: CHANGELOG.md not updated")
+            fi
+          done
+
+          if [ ${#ERRORS[@]} -gt 0 ]; then
+            echo "::error::Version and Changelog Check Failed"
+            printf '%s\n' "${ERRORS[@]}"
+            exit 1
+          fi
+
+          echo "✅ All integrations have version bumps and changelog updates"
+
+      - name: Check ocean core for version and changelog updates
+        run: |
+          set -e
+          BASE_BRANCH="${{ steps.base-branch.outputs.base }}"
+          ERRORS=()
+
+          # Check if ocean core files were changed
+          OCEAN_CORE_CHANGED=$(git diff --name-only origin/${BASE_BRANCH}...HEAD | grep -E '^port_ocean/' || true)
+          ROOT_PYPROJECT_CHANGED=$(git diff --name-only origin/${BASE_BRANCH}...HEAD | grep -E '^pyproject.toml$' || true)
+
+          if [ -z "$OCEAN_CORE_CHANGED" ] && [ -z "$ROOT_PYPROJECT_CHANGED" ]; then
+            echo "No ocean core changes detected"
+            exit 0
+          fi
+
+          PYPROJECT_FILE="pyproject.toml"
+          CHANGELOG_FILE="CHANGELOG.md"
+
+          # Check if version was bumped
+          CURRENT_VERSION=$(grep -E '^version = ".*"' "$PYPROJECT_FILE" | cut -d'"' -f2 || echo "")
+          BASE_VERSION=$(git show origin/${BASE_BRANCH}:${PYPROJECT_FILE} 2>/dev/null | grep -E '^version = ".*"' | cut -d'"' -f2 || echo "")
+
+          VERSION_CHANGED=false
+          if [ -n "$BASE_VERSION" ] && [ "$CURRENT_VERSION" != "$BASE_VERSION" ]; then
+            VERSION_CHANGED=true
+          fi
+
+          # Check if CHANGELOG.md was updated
+          CHANGELOG_UPDATED=false
+          if git diff --name-only origin/${BASE_BRANCH}...HEAD | grep -q "^${CHANGELOG_FILE}$"; then
+            CHANGELOG_UPDATED=true
+          fi
+
+          # Fail if version or changelog not updated
+          if [ "$VERSION_CHANGED" = "false" ]; then
+            ERRORS+=("❌ Ocean Core: Version not bumped in pyproject.toml")
+          fi
+
+          if [ "$CHANGELOG_UPDATED" = "false" ]; then
+            ERRORS+=("❌ Ocean Core: CHANGELOG.md not updated")
+          fi
+
+          if [ ${#ERRORS[@]} -gt 0 ]; then
+            echo "::error::Version and Changelog Check Failed"
+            printf '%s\n' "${ERRORS[@]}"
+            exit 1
+          fi
+
+          echo "✅ Ocean Core has version bump and changelog update"

@@ -6,6 +6,375 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.38.3 (2026-03-01)
+
+### Improvements
+
+- Make caching decorators concurrency safe
+
+## 0.38.2 (2026-03-01)
+
+### Improvements
+
+- Handled SSRF and DNS rebinding attacks
+
+
+## 0.38.1 (2026-02-26)
+
+### Improvements
+
+- Updated workflow node run logs API
+
+## 0.38.0 (2026-02-26)
+
+### Improvements
+
+- Updated retry transport to use async methods for before_retry and after_retry
+
+## 0.37.3 (2026-02-24)
+
+### Improvements
+
+- Removed traceback from exception log messages to reduce log noise
+
+## 0.37.2 (2026-02-22)
+
+### Bug fixes
+
+- Extended read-only filesystem support to work with arbitrary UID and GID combinations.
+
+## 0.37.1 (2026-02-22)
+
+### Bug fixes
+
+Fixed advanced config structure in ui schema generation
+
+
+## 0.37.0 (2026-02-22)
+
+### Improvements
+
+- Release workflow now uploads integration specs to versioned S3 paths (`integration/version/spec.json`) and uploads port-app-config and UI schemas to S3 per integration version (generated via `ocean port-app-config schema` in release)
+
+
+## 0.36.1 (2026-02-18)
+
+### Bug fixes
+
+- Port's Workflows logs endpoints changes
+
+## 0.36.0 (2026-02-17)
+
+### Improvements
+
+- Added `port-app-config schema` and `port-app-config list-kinds` CLI commands to expose integration resource kinds and selectors, with schema validation ensuring kind uniqueness across the resources union
+
+
+## 0.35.8 (2026-02-17)
+
+### Bug fixes
+
+Add `ignore_retry_after_status_codes` to the retry configuration to force exponential backoff for specified status codes.
+
+
+## 0.35.7 (2026-02-15)
+
+### Vulnerabilities
+
+- Fixed vulnerabilities in
+  - Ocean core:
+    - urllib3 (2.6.0 -> 2.6.3)
+    - cryptography (44.0.3 -> 46.0.5)
+    - psutil (7.0.0 -> 7.2.1)
+    - charset-normalizer (3.4.3 -> 3.4.4)
+    - arrow (1.3.0 -> 1.4.0)
+  - Ocean docs:
+    - webpack
+    - lodash-es
+    - qs
+    - lodash
+    - undici
+
+## 0.35.6 (2026-02-15)
+
+### Features
+
+- Added support for workflow node runs in addition to action runs in ExecutionManager. Integrations can poll and execute both via unified run API.
+
+
+## 0.35.5 (2026-02-12)
+
+### Bug fixes
+
+- Fixed integration mapping not being initialized when integration already exists prior to ocean run
+
+
+## 0.35.4 (2026-02-02)
+
+### Bug fixes
+
+- Fixed mask_object mutating original data in place, which caused entity properties to contain [REDACTED] values when examples were sent before entity transformation.
+
+
+## 0.35.3 (2026-02-02)
+
+### Improvements
+
+- Save resources initialization state of integration
+
+
+## 0.35.2 (2026-02-01)
+
+### Improvements
+
+- Block integration initialization without version and support new pyproject.toml structure.
+
+
+## 0.35.1 (2026-02-01)
+
+### Improvements
+
+- Enhance sync metrics with installation type and execution mode
+
+
+## 0.35.0 (2026-01-28)
+
+### Improvements
+
+- Hardend dockerfile security
+
+
+## 0.34.0 (2026-01-28)
+
+### Improvements
+
+- Added an optional environment variable to allow adding prefix to the routes registered by for webhooks and metrics
+
+
+## 0.33.1 (2026-01-27)
+
+### Bug fixes
+
+- Start monitoring in each process seperatly.
+
+
+## 0.33.0 (2026-01-27)
+
+### Improvements
+
+- Allowing Empty setup mode which make integraion be created without any resources
+
+
+## 0.32.17 (2026-01-25)
+
+### Bug fixes
+
+- Fixed Bug: for kindIdentifier with index > 10 like  "name-12", kindIndex was 2 instead of 12 because only the last character was used. Parse the segment after the final "-" as the index (e.g. "name-12" → 12, "project-0" → 0).
+
+
+## 0.32.16 (2026-01-21)
+
+### Bug fixes
+
+- Fix retry sleep calculation for rate-limit reset headers by treating large numeric retry values as UNIX epoch timestamps and using response headers when computing retry delays.
+
+
+## 0.32.15 (2026-01-21)
+
+### Bug fixes
+
+- Handle webhook event not supported exception and log it as a warning
+
+
+## 0.32.14 (2026-01-20)
+
+### Bug fixes
+
+- Add export of system and request metrics
+
+
+## 0.32.13 (2026-01-15)
+
+### Bug fixes
+
+- Revert Add export of system and request metrics
+
+
+## 0.32.12 (2026-01-15)
+
+### Vulnerabilities
+
+- Fix urllib3 vulnerability
+
+### Bug fixes
+
+- Format response when logging error
+- Prevent Lakehouse from breaking the regular integration behavior on error from port
+
+### Improvements
+
+- Add export of system and request metrics
+
+
+## 0.32.11 (2026-01-14)
+
+### Bug fixes
+
+- Added except clause to catch random errors
+
+
+## 0.32.10 (2026-01-11)
+
+### Bug fixes
+
+- Unset prometheous dir so db file wont be created.
+
+
+## 0.32.9 (2025-12-24)
+
+### Improvements
+
+- Added `BaseConfigChangeWebhookProcessor` base class for config change webhooks, exposing a `trigger_resync` hook that performs a full `ocean.sync_raw_all()` resync for the integration.
+
+
+## 0.32.8 (2025-12-23)
+
+### Bug fixes
+
+- Remove setup instruction for .env.example copying from CLI flow
+
+
+## 0.32.7 (2025-12-22)
+
+### Bug fixes
+
+- Update the pool to be used as context so its closed propely.
+- Update loop to accumulate batches over multiple objects.
+- Update jq processor sync to use cache that is local to it's process.
+
+
+## 0.32.6 (2025-12-21)
+
+### Bug fixes
+
+- Fix .env.example coockiecutter generation to conceal Port secrets
+
+
+## 0.32.5 (2025-12-18)
+
+### Bug fixes
+
+- Update compare entities with port to use async generator and compare entities incrementaly.
+- Update delete diff to use maps for comparing.
+- When deleteing entities batch by 1k.
+
+
+## 0.32.4 (2025-12-16)
+
+### Bug fixes
+
+- Update the core to handle jq calculations without a loop, the search functions that need to be executed by the
+  overwriten function will execute in the event loop.
+ that we can merge them.
+
+
+## 0.32.3 (2025-12-15)
+
+### Bug fixes
+
+- Fixed an issue where starting with POLLING and changing to KAFKA event listener would cause the integration to not receive messages
+
+
+## 0.32.2 (2025-12-14)
+
+### Bug fixes
+
+- Increase timeout
+- Clear http context.
+- Fix posix path error when sending logs.
+
+## 0.32.1 (2025-12-10)
+
+### Bug fixes
+
+- handle overwrite of `_search` with process pool
+
+## 0.32.0 (2025-12-09)
+
+### Improvements
+
+- Add multiprocessing
+- Memory optimizations
+
+
+## 0.31.7 (2025-12-09)
+
+### Improvements
+
+- Added log on partial bulk upsert failures
+- Updated react & react-dom versions
+
+
+## 0.31.6 (2025-12-09)
+
+### Improvements
+
+- Ocean core: Bumped minimum requirements for werkzeug & urllib3
+
+## 0.31.5 (2025-12-08)
+
+### Improvements
+
+- Change the example sending logic, so instead of collecting the
+examples in a class after a successful transformation, always send the
+examples ahead of each JQ transformation
+
+## 0.31.4 (2025-12-08)
+
+### Improvements
+
+- Add flag `itemsToParseTopLevelTransform` to control the top level payload form.
+
+## 0.31.3 (2025-12-08)
+
+### Bug fixes
+
+- fix webhook processor crashing when entity identifier is a dictionary
+
+## 0.31.2 (2025-12-07)
+
+### Vulnerabilities
+
+- Ocean core: Fixed werkzeug & urllib3 vulnerabilities
+- Ocean docs: docusaurus, glob, js-yaml & node-forge
+
+## 0.31.1 (2025-12-04)
+
+### Bug Fixes
+
+- Fixed logger.exception() call in execution manager to properly capture exceptions without interfering with automatic exception capture
+
+
+## 0.31.0 (2025-12-03)
+
+### Improvements
+
+- Remove multi-threading from ocean core.
+
+
+## 0.30.7 (2025-12-03)
+
+### Improvements
+
+- Make mapping errors have error log instead of info
+
+## 0.30.6 (2025-11-27)
+
+### Improvements
+
+- `cache_iterator_result` preserves the chunks that got inserted.
+
 ## 0.30.5 (2025-11-27)
 
 ### Bug Fixes

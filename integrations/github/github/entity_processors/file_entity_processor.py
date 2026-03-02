@@ -33,6 +33,8 @@ class FileEntityProcessor(JQEntityProcessor):
                 branch=branch,
             )
         )
+        if not file_content_response:
+            return None
         decoded_content = file_content_response["content"]
         if not decoded_content:
             logger.info(f"File too large, size - {file_content_response['size']} bytes")

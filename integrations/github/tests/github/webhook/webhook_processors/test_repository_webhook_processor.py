@@ -23,7 +23,7 @@ from github.helpers.utils import ObjectKind
 @pytest.fixture
 def resource_config() -> GithubRepositoryConfig:
     return GithubRepositoryConfig(
-        kind="repository",
+        kind=ObjectKind.REPOSITORY,
         selector=GithubRepositorySelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -47,7 +47,6 @@ def repository_webhook_processor(
 
 @pytest.mark.asyncio
 class TestRepositoryWebhookProcessor:
-
     @pytest.mark.parametrize(
         "github_event,result", [(ObjectKind.REPOSITORY, True), ("invalid", False)]
     )
@@ -96,6 +95,8 @@ class TestRepositoryWebhookProcessor:
             "name": "test-repo",
             "full_name": "test-org/test-repo",
             "description": "Test repository",
+            "visibility": "public",
+            "default_branch": "main",
         }
 
         payload = {
@@ -104,29 +105,35 @@ class TestRepositoryWebhookProcessor:
             "organization": {"login": "test-org"},
         }
 
-        if is_deletion:
-            result = await repository_webhook_processor.handle_event(
-                payload, resource_config
-            )
-        else:
-            # Mock the RepositoryExporter
-            mock_exporter = AsyncMock()
-            mock_exporter.get_resource.return_value = repo_data
-
-            with patch(
-                "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
-                return_value=mock_exporter,
-            ):
+        with patch.object(
+            repository_webhook_processor,
+            "validate_repository_visibility",
+            new=AsyncMock(return_value=True),
+        ):
+            if is_deletion:
                 result = await repository_webhook_processor.handle_event(
                     payload, resource_config
                 )
+            else:
+                # Mock the RepositoryExporter
+                mock_exporter = AsyncMock()
+                mock_exporter.get_resource.return_value = repo_data
 
-            # Verify exporter was called with correct repo name
-            mock_exporter.get_resource.assert_called_once_with(
-                SingleRepositoryOptions(
-                    organization="test-org", name="test-repo", included_relationships=[]
+                with patch(
+                    "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+                    return_value=mock_exporter,
+                ):
+                    result = await repository_webhook_processor.handle_event(
+                        payload, resource_config
+                    )
+
+                mock_exporter.get_resource.assert_called_once_with(
+                    SingleRepositoryOptions(
+                        organization="test-org",
+                        name="test-repo",
+                        included_relationships=[],
+                    )
                 )
-            )
 
         assert isinstance(result, WebhookEventRawResults)
         assert bool(result.updated_raw_results) is expected_updated
@@ -146,7 +153,7 @@ class TestRepositoryWebhookProcessor:
         self,
         repository_webhook_processor: RepositoryWebhookProcessor,
         resource_config: GithubRepositoryConfig,
-        include_relationships: List[Literal["collaborators", "teams"]],
+        include_relationships: List[Literal["collaborators", "teams", "sbom"]],
     ) -> None:
         """Test that webhook processor handles included_relationships correctly."""
         repo_data = {
@@ -154,6 +161,8 @@ class TestRepositoryWebhookProcessor:
             "name": "test-repo",
             "full_name": "test-org/test-repo",
             "description": "Test repository",
+            "visibility": "public",
+            "default_branch": "main",
         }
 
         resource_config.selector.include = include_relationships
@@ -168,9 +177,16 @@ class TestRepositoryWebhookProcessor:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = repo_data
 
-        with patch(
-            "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
-            return_value=mock_exporter,
+        with (
+            patch.object(
+                repository_webhook_processor,
+                "validate_repository_visibility",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+                return_value=mock_exporter,
+            ),
         ):
             result = await repository_webhook_processor.handle_event(
                 payload, resource_config
@@ -195,14 +211,22 @@ class TestRepositoryWebhookProcessor:
             (
                 {
                     "action": REPOSITORY_UPSERT_EVENTS[0],
-                    "repository": {"name": "repo1"},
+                    "repository": {
+                        "name": "repo1",
+                        "visibility": "public",
+                        "default_branch": "main",
+                    },
                 },
                 True,
             ),
             (
                 {
                     "action": REPOSITORY_DELETE_EVENTS[0],
-                    "repository": {"name": "repo2"},
+                    "repository": {
+                        "name": "repo2",
+                        "visibility": "public",
+                        "default_branch": "main",
+                    },
                 },
                 True,
             ),

@@ -1,21 +1,20 @@
 import asyncio
-import json
-import re
-from asyncio import Task
-from dataclasses import dataclass, field
+from asyncio.tasks import Task
 from functools import lru_cache
-from typing import Any, Optional
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
+import re
+from typing import Any, cast
 
 import jq  # type: ignore
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
-from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-    InputClassifyingResult,
-    can_expression_run_with_no_input,
-    classify_input,
+from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
+    JQEntityProcessorSync,
 )
+from port_ocean.core.handlers.entity_processor.models import MappedEntity
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
@@ -25,66 +24,49 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils.utils import (
     gather_and_split_errors_from_results,
-    zip_and_sum,
 )
 from port_ocean.exceptions.core import EntityProcessorException
-from port_ocean.utils.queue_utils import process_in_queue
 
 
-class ExampleStates:
-    __succeed: list[dict[str, Any]]
-    __errors: list[dict[str, Any]]
-    __max_size: int
-
-    def __init__(self, max_size: int = 0) -> None:
-        """
-        Store two sequences:
-          - succeed: items that succeeded
-          - errors:  items that failed
-        """
-        self.__succeed = []
-        self.__errors = []
-        self.__max_size = max_size
-
-    def add_example(self, succeed: bool, item: dict[str, Any]) -> None:
-        if succeed:
-            self.__succeed.append(item)
-        else:
-            self.__errors.append(item)
-
-    def __len__(self) -> int:
-        """
-        Total number of items (successes + errors).
-        """
-        return len(self.__succeed) + len(self.__errors)
-
-    def get_examples(self, number: int = 0) -> list[dict[str, Any]]:
-        """
-        Return a list of up to number items, taking successes first,
-        """
-        if number <= 0:
-            number = self.__max_size
-        # how many from succeed?
-        s_count = min(number, len(self.__succeed))
-        result = list(self.__succeed[:s_count])
-        # how many more from errors?
-        e_count = number - s_count
-        if e_count > 0:
-            result.extend(self.__errors[:e_count])
-        return result
+# Set globals for multiprocessing of batch data. When a process forks, it inherits these globals by reference.
+# We will take advantage of COW to avoid pickling the data.
+_MULTIPROCESS_JQ_BATCH_DATA: list[dict[str, Any]] | None = None
+_MULTIPROCESS_JQ_BATCH_MAPPINGS: dict[str, Any] | None = None
+_MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY: str | None = None
+_MULTIPROCESS_JQ_BATCH_PARSE_ALL: bool | None = None
 
 
-@dataclass
-class MappedEntity:
-    """Represents the entity after applying the mapping
+def _calculate_entity(
+    index: int,
+) -> tuple[list[MappedEntity], list[Exception]]:
+    # Access data directly from globals to avoid pickling.
+    global _MULTIPROCESS_JQ_BATCH_DATA, _MULTIPROCESS_JQ_BATCH_MAPPINGS, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY, _MULTIPROCESS_JQ_BATCH_PARSE_ALL
+    if None in [
+        _MULTIPROCESS_JQ_BATCH_DATA,
+        _MULTIPROCESS_JQ_BATCH_MAPPINGS,
+        _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY,
+        _MULTIPROCESS_JQ_BATCH_PARSE_ALL,
+    ]:
+        return [], [Exception("Missing data for index: {index}")]
+    batch_data = cast(list[dict[str, Any]], _MULTIPROCESS_JQ_BATCH_DATA)
+    data = batch_data[index]
+    raw_entity_mappings = cast(dict[str, Any], _MULTIPROCESS_JQ_BATCH_MAPPINGS)
+    selector_query = cast(str, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY)
+    parse_all = cast(bool, _MULTIPROCESS_JQ_BATCH_PARSE_ALL)
 
-    This class holds the mapping entity along with the selector boolean value and optionally the raw data.
-    """
-
-    entity: dict[str, Any] = field(default_factory=dict)
-    did_entity_pass_selector: bool = False
-    raw_data: Optional[dict[str, Any] | tuple[dict[str, Any], str]] = None
-    misconfigurations: dict[str, str] = field(default_factory=dict)
+    try:
+        entity = JQEntityProcessorSync._get_mapped_entity(
+            data,
+            raw_entity_mappings,
+            selector_query,
+            parse_all,
+        )
+        return [entity], []
+    except Exception as e:
+        if isinstance(e, BaseException) and not isinstance(e, Exception):
+            raise e
+        elif isinstance(e, Exception):
+            return [], [e]
 
 
 class JQEntityProcessor(BaseEntityProcessor):
@@ -95,104 +77,24 @@ class JQEntityProcessor(BaseEntityProcessor):
     searching for data in dictionaries, and transforming data based on object mappings.
     """
 
-    @staticmethod
-    def _format_filter(filter: str) -> str:
-        """
-        Convert single quotes to double quotes in JQ expressions.
-        Only replaces single quotes that are opening or closing string delimiters,
-        not single quotes that are part of string content.
-        """
-        # Escape single quotes only if they are opening or closing a string
-        # Pattern matches:
-        # - Single quote at start of string or after whitespace (opening quote)
-        # - Single quote before whitespace or end of string (closing quote)
-        # Uses negative lookahead/lookbehind to avoid replacing quotes inside strings
-        # \1 and \2 will be empty for the alternative that didn't match, so \1"\2 works for both cases
-        # This matches the TypeScript pattern: /(^|\s)'(?!\s|")|(?<!\s|")'(\s|$)/g
-        formatted_filter = re.sub(
-            r'(^|\s)\'(?!\s|")|(?<!\s|")\'(\s|$)', r'\1"\2', filter
-        )
-        return formatted_filter
-
-    @lru_cache
-    def _compile(self, pattern: str) -> Any:
-        # Convert single quotes to double quotes for JQ compatibility
-        pattern = self._format_filter(pattern)
-        if not ocean.config.allow_environment_variables_jq_access:
-            pattern = "def env: {}; {} as $ENV | " + pattern
-        return jq.compile(pattern)
-
-    @staticmethod
-    def _stop_iterator_handler(func: Any) -> Any:
-        """
-        Wrap the function to handle StopIteration exceptions.
-        Prevents StopIteration from stopping the thread and skipping further queue processing.
-        """
-
-        def inner() -> Any:
-            try:
-                return func()
-            except StopIteration:
-                return None
-
-        return inner
-
-    @staticmethod
-    def _notify_mapping_issues(
-        entity_misconfigurations: dict[str, str],
-        missing_required_fields: bool,
-        entity_mapping_fault_counter: int,
-    ) -> None:
-        if len(entity_misconfigurations) > 0:
-            logger.info(
-                f"Unable to find valid data for: {entity_misconfigurations} (null, missing, or misconfigured)"
-            )
-        if missing_required_fields:
-            logger.info(
-                f"{entity_mapping_fault_counter} transformations of batch failed due to empty, null or missing values"
-            )
-
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
-            loop = asyncio.get_event_loop()
             compiled_pattern = self._compile(pattern)
             func = compiled_pattern.input_value(data)
-            return await loop.run_in_executor(
-                None, self._stop_iterator_handler(func.first)
-            )
+            return func.first()
         except Exception as exc:
             logger.error(
                 f"Search failed for pattern '{pattern}' in data: {data}, Error: {exc}"
             )
             return None
 
-    @lru_cache
-    async def _search_stringified(self, data: str, pattern: str) -> Any:
-        try:
-            loop = asyncio.get_event_loop()
-            compiled_pattern = self._compile(pattern)
-            func = compiled_pattern.input_text(data)
-            return await loop.run_in_executor(
-                None, self._stop_iterator_handler(func.first)
-            )
-        except Exception as exc:
-            logger.debug(
-                f"Search failed for pattern '{pattern}' in data: {data}, Error: {exc}"
-            )
-            return None
-
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
-        loop = asyncio.get_event_loop()
 
         compiled_pattern = self._compile(pattern)
-        if isinstance(data, str):
-            func = compiled_pattern.input_text(data)
-        else:
-            func = compiled_pattern.input_value(data)
 
-        value = await loop.run_in_executor(
-            None, self._stop_iterator_handler(func.first)
-        )
+        func = compiled_pattern.input_value(data)
+
+        value = func.first()
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(
@@ -201,7 +103,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     async def _search_as_object(
         self,
-        data: dict[str, Any] | str,
+        data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
     ) -> dict[str, Any | None]:
@@ -233,12 +135,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                     self._search_as_object(data, value, misconfigurations)
                 )
             else:
-                if isinstance(data, str):
-                    search_tasks[key] = asyncio.create_task(
-                        self._search_stringified(data, value)
-                    )
-                else:
-                    search_tasks[key] = asyncio.create_task(self._search(data, value))
+                search_tasks[key] = asyncio.create_task(self._search(data, value))
 
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
@@ -262,153 +159,39 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     async def _get_mapped_entity(
         self,
-        data: dict[str, Any] | tuple[dict[str, Any], str],
+        data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
-        items_to_parse_key: str | None,
         selector_query: str,
         parse_all: bool = False,
     ) -> MappedEntity:
-        should_run = await self._should_map_entity(
-            data, selector_query, items_to_parse_key
-        )
+        should_run = await self._search_as_bool(data, selector_query)
         if parse_all or should_run:
-            misconfigurations, mapped_entity = await self._map_entity(
-                data, raw_entity_mappings, items_to_parse_key
+            misconfigurations: dict[str, str] = {}
+            mapped_entity = await self._search_as_object(
+                data, raw_entity_mappings, misconfigurations
             )
             return MappedEntity(
-                mapped_entity,
+                entity=mapped_entity,
                 did_entity_pass_selector=should_run,
-                raw_data=data,
                 misconfigurations=misconfigurations,
             )
 
-        return MappedEntity(
-            {},
-            did_entity_pass_selector=False,
-            raw_data=data,
-            misconfigurations={},
-        )
-
-    async def _map_entity(
-        self,
-        data: dict[str, Any] | tuple[dict[str, Any], str],
-        raw_entity_mappings: dict[str, Any],
-        items_to_parse_key: str | None,
-    ) -> tuple[dict[str, str], dict[str, Any]]:
-        if not items_to_parse_key:
-            # No items to parse, map the entity and return the misconfigurations and the mapped entity
-            misconfigurations: dict[str, str] = {}
-            data_to_search = data if isinstance(data, dict) else data[0]
-            mapped_entity = await self._search_as_object(
-                data_to_search, raw_entity_mappings, misconfigurations
-            )
-            return misconfigurations, mapped_entity
-
-        modified_data: tuple[dict[str, Any], str | dict[str, Any]] = (
-            data
-            if isinstance(data, tuple)
-            else (
-                {items_to_parse_key: data[items_to_parse_key]},
-                data,
-            )
-        )
-
-        misconfigurations_item: dict[str, str] = {}
-        misconfigurations_all: dict[str, str] = {}
-        # Map the entity with jq expressions that classified as single item expressions with the single item as input
-        mapped_entity_item = await self._search_as_object(
-            modified_data[0], raw_entity_mappings["item"], misconfigurations_item
-        )
-        # To Prevent misclassification data loss, we merge the expressions that classified as single item expressions and resulted as misconfigured
-        # into the expressions that classified as all expressions
-        if misconfigurations_item:
-            # The misconfigurations dict not contains the mapping expressions themselves, so we need to filter the original mapping by the misconfigured keys
-            filtered_item_mappings = self._filter_mappings_by_keys(
-                raw_entity_mappings["item"], list(misconfigurations_item.keys())
-            )
-            raw_entity_mappings["all"] = self._deep_merge(
-                raw_entity_mappings["all"], filtered_item_mappings
-            )
-        # Map the entity with jq expressions that classified as all expressions with the whole data as input
-        mapped_entity_all = await self._search_as_object(
-            modified_data[1], raw_entity_mappings["all"], misconfigurations_all
-        )
-        # Map the entity with jq expressions that classified as no input required expressions with empty object as input
-        mapped_entity_empty = await self._search_as_object(
-            {}, raw_entity_mappings["empty"], misconfigurations_all
-        )
-        # Merge the mapped entities
-        mapped_entity = self._deep_merge(mapped_entity_item, mapped_entity_all)
-        mapped_entity = self._deep_merge(mapped_entity, mapped_entity_empty)
-        return misconfigurations_all, mapped_entity
-
-    async def _should_map_entity(
-        self,
-        data: dict[str, Any] | tuple[dict[str, Any], str],
-        selector_query: str,
-        items_to_parse_key: str | None,
-    ) -> bool:
-        if can_expression_run_with_no_input(selector_query):
-            return await self._search_as_bool({}, selector_query)
-        if isinstance(data, tuple):
-            return await self._search_as_bool(
-                data[0], selector_query
-            ) or await self._search_as_bool(data[1], selector_query)
-        if items_to_parse_key:
-            return await self._search_as_bool(
-                data[items_to_parse_key], selector_query
-            ) or await self._search_as_bool(data, selector_query)
-        return await self._search_as_bool(data, selector_query)
+        return MappedEntity()
 
     async def _calculate_entity(
         self,
         data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
-        items_to_parse: str | None,
-        items_to_parse_name: str,
         selector_query: str,
         parse_all: bool = False,
     ) -> tuple[list[MappedEntity], list[Exception]]:
-        raw_data: list[dict[str, Any]] | list[tuple[dict[str, Any], str]] = [
-            data.copy()
-        ]
-        items_to_parse_key = None
-        if items_to_parse:
-            items_to_parse_key = items_to_parse_name
-            if not ocean.config.yield_items_to_parse:
-                if isinstance(data, dict) and data.get("__type") == "path":
-                    file_path = data.get("file", {}).get("content", {}).get("path")
-                    with open(file_path, "r") as f:
-                        data["file"]["content"] = json.loads(f.read())
-                items = await self._search(data, items_to_parse)
-                if not isinstance(items, list):
-                    logger.warning(
-                        f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items)}."
-                        f" Skipping..."
-                    )
-                    return [], []
-                raw_all_payload_stringified = json.dumps(data)
-                raw_data = [
-                    ({items_to_parse_name: item}, raw_all_payload_stringified)
-                    for item in items
-                ]
-            single_item_mappings, all_items_mappings, empty_items_mappings = (
-                self._build_raw_entity_mappings(
-                    raw_entity_mappings, items_to_parse_name
-                )
-            )
-            raw_entity_mappings = {
-                "item": single_item_mappings,
-                "all": all_items_mappings,
-                "empty": empty_items_mappings,
-            }
+        raw_data = [data.copy()]
 
         entities, errors = await gather_and_split_errors_from_results(
             [
                 self._get_mapped_entity(
                     raw,
                     raw_entity_mappings,
-                    items_to_parse_key,
                     selector_query,
                     parse_all,
                 )
@@ -421,323 +204,62 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
         return entities, errors
 
-    def _build_raw_entity_mappings(
-        self, raw_entity_mappings: dict[str, Any], items_to_parse_name: str
-    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    @staticmethod
+    def _format_filter(filter: str) -> str:
         """
-        Build the raw entity mappings for the items to parse.
-        The mappings are grouped by the input classifying result.
-        There are 3 input classifying results:
-            - NONE: The expression can be executed with no input
-            - SINGLE: The expression can be executed on a single item
-            - ALL: The expression can be executed on all the data
+        Convert single quotes to double quotes in JQ expressions.
+        Only replaces single quotes that are opening or closing string delimiters,
+        not single quotes that are part of string content.
         """
-        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
-            InputClassifyingResult.NONE: {},
-            InputClassifyingResult.SINGLE: {},
-            InputClassifyingResult.ALL: {},
-        }
-        for key, value in raw_entity_mappings.items():
-            if isinstance(value, str):
-                # Direct string values (identifier, title, icon, blueprint, team)
-                self.group_string_mapping_value(
-                    items_to_parse_name,
-                    mappings,
-                    key,
-                    value,
-                )
-            elif isinstance(value, dict):
-                # Complex objects (IngestSearchQuery for identifier/team, properties, relations)
-                self.group_complex_mapping_value(
-                    items_to_parse_name,
-                    mappings,
-                    key,
-                    value,
-                )
-        return (
-            mappings[InputClassifyingResult.SINGLE],
-            mappings[InputClassifyingResult.ALL],
-            mappings[InputClassifyingResult.NONE],
+        # Escape single quotes only if they are opening or closing a string
+        # Pattern matches:
+        # - Single quote at start of string or after whitespace (opening quote)
+        # - Single quote before whitespace or end of string (closing quote)
+        # Uses negative lookahead/lookbehind to avoid replacing quotes inside strings
+        # \1 and \2 will be empty for the alternative that didn't match, so \1"\2 works for both cases
+        # This matches the TypeScript pattern: /(^|\s)'(?!\s|")|(?<!\s|")'(\s|$)/g
+        formatted_filter = re.sub(
+            r'(^|\s)\'(?!\s|")|(?<!\s|")\'(\s|$)', r'\1"\2', filter
         )
+        return formatted_filter
 
-    def group_complex_mapping_value(
-        self,
-        pattern: str,
-        mappings: dict[InputClassifyingResult, dict[str, Any]],
-        key: str,
-        value: dict[str, Any],
+    @lru_cache
+    def _compile(self, pattern: str) -> Any:
+        pattern = self._format_filter(pattern)
+        if not ocean.config.allow_environment_variables_jq_access:
+            pattern = "def env: {}; {} as $ENV | " + pattern
+        compiled_pattern = jq.compile(pattern)
+        return compiled_pattern
+
+    @staticmethod
+    def _stop_iterator_handler(func: Any) -> Any:
+        """
+        Wrap the function to handle StopIteration exceptions.
+        Prevents StopIteration from stopping the thread and skipping further queue processing.
+        """
+
+        def inner() -> Any:
+            try:
+                return func()
+            except StopIteration:
+                return None
+
+        return inner
+
+    @staticmethod
+    def _notify_mapping_issues(
+        entity_misconfigurations: dict[str, str],
+        missing_required_fields: bool,
+        entity_mapping_fault_counter: int,
     ) -> None:
-        if key in ["properties", "relations"]:
-            mapping_dicts: dict[InputClassifyingResult, dict[str, Any]] = {
-                InputClassifyingResult.SINGLE: {},
-                InputClassifyingResult.ALL: {},
-                InputClassifyingResult.NONE: {},
-            }
-            # For properties and relations, filter the dictionary values
-            for dict_key, dict_value in value.items():
-                if isinstance(dict_value, str):
-                    self.group_string_mapping_value(
-                        pattern,
-                        mapping_dicts,
-                        dict_key,
-                        dict_value,
-                    )
-                elif isinstance(dict_value, dict):
-                    # Handle IngestSearchQuery objects
-                    self.group_search_query_mapping_value(
-                        pattern,
-                        mapping_dicts[InputClassifyingResult.SINGLE],
-                        mapping_dicts[InputClassifyingResult.ALL],
-                        dict_key,
-                        dict_value,
-                    )
-            for input_classifying_result, mapping_dict in mapping_dicts.items():
-                if mapping_dict:
-                    mappings[input_classifying_result][key] = mapping_dict
-        else:
-            # For identifier/team IngestSearchQuery objects
-            self.group_search_query_mapping_value(
-                pattern,
-                mappings[InputClassifyingResult.SINGLE],
-                mappings[InputClassifyingResult.ALL],
-                key,
-                value,
+        if len(entity_misconfigurations) > 0:
+            logger.error(
+                f"Unable to find valid data for: {entity_misconfigurations} (null, missing, or misconfigured)"
             )
-
-    def group_search_query_mapping_value(
-        self,
-        pattern: str,
-        single_item_dict: dict[str, Any],
-        all_item_dict: dict[str, Any],
-        dict_key: str,
-        dict_value: dict[str, Any],
-    ) -> None:
-        if self._classify_search_query(dict_value, pattern):
-            single_item_dict[dict_key] = dict_value
-        else:
-            all_item_dict[dict_key] = dict_value
-
-    def group_string_mapping_value(
-        self,
-        pattern: str,
-        mappings: dict[InputClassifyingResult, dict[str, Any]],
-        key: str,
-        value: str,
-    ) -> None:
-        input_evaluation_result = classify_input(value, pattern)
-        mappings[input_evaluation_result][key] = value
-
-    def _classify_search_query(self, query_dict: dict[str, Any], pattern: str) -> bool:
-        """
-        Classify the input required to run jq expressions of an IngestSearchQuery
-        If at least one rule contains a value that includes the pattern, return True
-        Otherwise, return False
-        Example:
-        The pattern is item
-        relations:
-            someRelation:
-              combinator: "and"
-              rules:
-                - operator: "="
-                  property: "someProperty"
-                  value: .field
-                - combinator: "or"
-                  rules:
-                    - operator: "="
-                      property: "anotherProperty"
-                      value: .item.something
-                    - operator: "="
-                      property: "yetAnotherProperty"
-                      value: .yetAnotherValue
-        One value is .item.something, which is a single item based expression, so it will be classified as SINGLE
-        """
-        if "rules" not in query_dict:
-            return False
-
-        rules = query_dict["rules"]
-        if not isinstance(rules, list):
-            return False
-
-        # Check if any rule contains a value that includes the pattern
-        for rule in rules:
-            if isinstance(rule, dict) and self._is_rule_or_query_contains_pattern(
-                rule, pattern
-            ):
-                return True
-        return False
-
-    def _is_rule_or_query_contains_pattern(
-        self, rule: dict[str, Any], pattern: str
-    ) -> bool:
-        """
-        Check if a rule or query contains a value that includes the pattern
-        If the value is a single item based expression, return True
-        Otherwise, return False
-        Example:
-        The pattern is item
-        The rule is:
-                - combinator: "or"
-                  rules:
-                    - operator: "="
-                      property: "anotherProperty"
-                      value: .item.something
-                    - operator: "="
-                      property: "yetAnotherProperty"
-                      value: .yetAnotherValue
-        This rule is not a single rule (not contains a value property) but a search query rule (contains a rules property)
-        so we need to recursively check the rules property to check if at least one rule contains a value that includes the pattern
-        In this case, one value is .item.something, which is a single item based expression, so it will be classified as SINGLE ==> true
-        """
-        if "value" in rule and isinstance(rule["value"], str):
-            # Use evaluate_input to check if the pattern is relevant for this value
-            input_evaluation_result = classify_input(rule["value"], pattern)
-            if input_evaluation_result == InputClassifyingResult.SINGLE:
-                return True
-        # Recursively check nested IngestSearchQuery objects
-        elif "rules" in rule:
-            if self._classify_search_query(rule, pattern):
-                return True
-        return False
-
-    def _filter_mappings_by_keys(
-        self, mappings: dict[str, Any], target_keys: list[str]
-    ) -> dict[str, Any]:
-        """
-        Filter mappings to preserve structure with only the specified keys present.
-        Recursively handles nested dictionaries and lists, searching for keys at any level.
-
-        Args:
-            mappings: The dictionary containing mapping configurations to filter
-            target_keys: List of keys to preserve in the filtered result
-
-        Returns:
-            A filtered dictionary containing only the specified keys and their nested structures
-
-        Examples:
-            # Basic filtering with direct keys
-            mappings = {
-                "name": "John",
-                "age": 30,
-                "city": "New York",
-                "country": "USA"
-            }
-            target_keys = ["name", "age"]
-            result = self._filter_mappings_by_keys(mappings, target_keys)
-            # Returns: {"name": "John", "age": 30}
-
-            # Nested dictionary filtering
-            mappings = {
-                "user": {
-                    "profile": {"name": "John", "email": "john@example.com"},
-                    "settings": {"theme": "dark", "notifications": True}
-                },
-                "metadata": {"created_at": "2023-01-01", "version": "1.0"}
-            }
-            target_keys = ["name", "email", "created_at"]
-            result = self._filter_mappings_by_keys(mappings, target_keys)
-            # Returns: {
-            #     "user": {
-            #         "profile": {"name": "John", "email": "john@example.com"}
-            #     },
-            #     "metadata": {"created_at": "2023-01-01"}
-            # }
-
-            # Empty target keys returns empty dict
-            result = self._filter_mappings_by_keys(mappings, [])
-            # Returns: {}
-        """
-        if not target_keys:
-            return {}
-
-        filtered_mappings: dict[str, Any] = {}
-
-        for key, value in mappings.items():
-            filtered_value = self._process_mapping_value(key, value, target_keys)
-
-            # Include if it's a direct match or contains nested target keys
-            if key in target_keys or filtered_value:
-                filtered_mappings[key] = filtered_value
-
-        return filtered_mappings
-
-    def _process_mapping_value(
-        self, key: str, value: Any, target_keys: list[str]
-    ) -> Any:
-        """
-        Process a single mapping value, handling different types recursively.
-
-        This helper method is used by _filter_mappings_by_keys to process individual
-        key-value pairs. It handles both simple values and nested dictionaries,
-        applying the filtering logic recursively to maintain the hierarchical structure.
-
-        Args:
-            key: The key of the current mapping item being processed
-            value: The value associated with the key (can be any type)
-            target_keys: List of keys to preserve in the filtered result
-
-        Returns:
-            The processed value if it should be included, None otherwise.
-            For dictionaries, returns the filtered dictionary or None if empty.
-            For simple values, returns the value if the key is in target_keys, None otherwise.
-
-        Examples:
-            # Simple value processing - key in target_keys
-            result = self._process_mapping_value("name", "John", ["name", "age"])
-            # Returns: "John"
-
-            # Simple value processing - key not in target_keys
-            result = self._process_mapping_value("city", "New York", ["name", "age"])
-            # Returns: None
-
-            # Dictionary processing with nested target keys
-            nested_dict = {
-                "profile": {"name": "John", "email": "john@example.com"},
-                "settings": {"theme": "dark"}
-            }
-            result = self._process_mapping_value("user", nested_dict, ["name", "email"])
-            # Returns: {"profile": {"name": "John", "email": "john@example.com"}}
-
-            # Dictionary processing with no matching target keys
-            result = self._process_mapping_value("user", nested_dict, ["version"])
-            # Returns: None
-        """
-        if isinstance(value, dict):
-            # Recursively filter nested dictionary
-            filtered_dict = self._filter_mappings_by_keys(value, target_keys)
-            return filtered_dict if filtered_dict else None
-        else:
-            # Return simple values as-is
-            return value if key in target_keys else None
-
-    def _deep_merge(
-        self, dict1: dict[str, Any], dict2: dict[str, Any]
-    ) -> dict[str, Any]:
-        """
-        Deep merge two dictionaries, preserving nested structures.
-        Values from dict2 override values from dict1 for the same keys.
-        """
-        result = dict1.copy()
-
-        for key, value in dict2.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
-                # Recursively merge nested dictionaries
-                result[key] = self._deep_merge(result[key], value)
-            elif (
-                key in result
-                and isinstance(result[key], list)
-                and isinstance(value, list)
-            ):
-                # Merge lists by extending
-                result[key].extend(value)
-            else:
-                # Override with value from dict2
-                result[key] = value
-
-        return result
+        if missing_required_fields:
+            logger.error(
+                f"{entity_mapping_fault_counter} transformations of batch failed due to empty, null or missing values"
+            )
 
     @staticmethod
     async def _send_examples(data: list[dict[str, Any]], kind: str) -> None:
@@ -752,6 +274,189 @@ class JQEntityProcessor(BaseEntityProcessor):
                 exc_info=True,
             )
 
+    async def separate_compileable_and_uncompileable_patterns_and_warmup_cache(
+        self, raw_entity_mappings: dict[str, Any], selector_queries: list[str] = []
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        uncompileable_patterns: dict[str, Any] = {}
+        compileable_patterns: dict[str, Any] = {}
+        for key, value in raw_entity_mappings.items():
+
+            if isinstance(value, dict):
+                compileable_patterns[key], uncompileable_patterns[key] = (
+                    await self.separate_compileable_and_uncompileable_patterns_and_warmup_cache(
+                        value
+                    )
+                )
+            else:
+                try:
+                    self._compile(value)
+                    compileable_patterns[key] = value
+                except Exception:
+                    uncompileable_patterns[key] = value
+
+        for selector_query in selector_queries:
+            try:
+                self._compile(selector_query)
+            except Exception:
+                pass
+        return compileable_patterns, uncompileable_patterns
+
+    async def parse_items_sync(
+        self,
+        compileable_patterns: dict[str, Any],
+        raw_results: list[RAW_ITEM],
+        selector_query: str,
+        parse_all: bool = False,
+    ) -> tuple[list[tuple[list[MappedEntity], list[Exception]]], list[Exception]]:
+
+        global _MULTIPROCESS_JQ_BATCH_DATA, _MULTIPROCESS_JQ_BATCH_MAPPINGS, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY, _MULTIPROCESS_JQ_BATCH_PARSE_ALL
+
+        _MULTIPROCESS_JQ_BATCH_DATA = raw_results
+        _MULTIPROCESS_JQ_BATCH_MAPPINGS = compileable_patterns
+        _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY = selector_query
+        _MULTIPROCESS_JQ_BATCH_PARSE_ALL = parse_all
+        # Fork a new process to calculate the entities.
+        # Use indexes to acess data to have the lowest pickling overhead.
+        loop = asyncio.get_running_loop()
+        with ProcessPoolExecutor(
+            max_workers=ocean.config.process_in_queue_max_workers,
+            mp_context=multiprocessing.get_context("fork"),
+        ) as pool:
+            results = await gather_and_split_errors_from_results(
+                [
+                    asyncio.wait_for(
+                        loop.run_in_executor(pool, _calculate_entity, index),
+                        timeout=ocean.config.process_in_queue_timeout,
+                    )
+                    for index in range(len(raw_results))
+                ]
+            )
+        # Clear globals to avoid memory leaks.
+        _MULTIPROCESS_JQ_BATCH_DATA = None
+        _MULTIPROCESS_JQ_BATCH_MAPPINGS = None
+        _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY = None
+        _MULTIPROCESS_JQ_BATCH_PARSE_ALL = None
+        return results
+
+    async def parse_items_async(
+        self,
+        uncompiled_patterns: dict[str, Any],
+        raw_results: list[RAW_ITEM],
+        selector_query: str,
+        parse_all: bool = False,
+    ) -> tuple[list[tuple[list[MappedEntity], list[Exception]]], list[Exception]]:
+
+        if len(uncompiled_patterns.keys()) == 0:
+            return [], []
+        results = await gather_and_split_errors_from_results(
+            [
+                self._calculate_entity(
+                    raw, uncompiled_patterns, selector_query, parse_all
+                )
+                for raw in raw_results
+            ]
+        )
+        return results
+
+    def _deep_merge(
+        self, dict1: dict[str, Any], dict2: dict[str, Any]
+    ) -> dict[str, Any]:
+        for key, value in dict2.items():
+            # If both values are dictionaries, merge them recursively
+            if key in dict1:
+                if isinstance(dict1[key], dict) and isinstance(value, dict):
+                    dict1[key] = self._deep_merge(dict1[key], value)
+            else:
+                # only add new values
+                dict1[key] = value
+        return dict1
+
+    def merge_results(
+        self,
+        jq_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ],
+        async_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ],
+        raw_results: list[RAW_ITEM],
+    ) -> tuple[list[MappedEntity], list[Exception]]:
+        errors: list[Exception] = []
+        calculated_entities_results: list[MappedEntity] = []
+
+        actual_jq_results, jq_errors = jq_results
+        actual_async_results, async_errors = async_results
+
+        original_result_size = len(raw_results)
+        jq_results_size = len(actual_jq_results)
+        async_results_size = len(actual_async_results)
+        # checkout gather and split, there are some execptions we want raise
+        if len(jq_errors) > 0 or len(async_errors) > 0:
+            raise ExceptionGroup("Error processing tasks", jq_errors + async_errors)
+        # if didnt run since no uncompiled patterns found
+        if async_results_size == 0:
+            for result in actual_jq_results:
+                entities, jq_errors = result
+                calculated_entities_results.extend(entities)
+                errors.extend(jq_errors)
+            return calculated_entities_results, errors
+
+        errors.extend(async_errors)
+
+        # Since we use gather on the same data, we can assume of we
+        for index in range(original_result_size):
+            if jq_results_size != async_results_size:
+                logger.warning(
+                    f"jq results size {jq_results_size} does not match async results size {async_results_size}"
+                )
+
+            if index > jq_results_size or index > async_results_size:
+                logger.error(
+                    f"Index {index} is out of bounds for jq_results or async_results"
+                )
+                break
+
+            jq_result, jq_error = actual_jq_results[index]
+            async_result, async_error = actual_async_results[index]
+
+            if jq_error:
+                errors.extend(jq_error)
+            if async_error:
+                errors.extend(async_error)
+
+            if len(jq_result) > 0 and len(async_result) > 0:
+                jq_mapped_entity = jq_result[0]
+                async_mapped_entity = async_result[0]
+
+                did_entity_pass_selector = (
+                    jq_mapped_entity.did_entity_pass_selector
+                    and async_mapped_entity.did_entity_pass_selector
+                )
+
+                new_entity = self._deep_merge(
+                    jq_mapped_entity.entity, async_mapped_entity.entity
+                )
+                misconfigurations = self._deep_merge(
+                    jq_mapped_entity.misconfigurations,
+                    async_mapped_entity.misconfigurations,
+                )
+                calculated_entities_results.append(
+                    MappedEntity(
+                        entity=new_entity,
+                        did_entity_pass_selector=did_entity_pass_selector,
+                        misconfigurations=misconfigurations,
+                    )
+                )
+                continue
+            if len(jq_result) > 0 and len(async_result) == 0:
+                calculated_entities_results.append(jq_result[0])
+                continue
+            if len(jq_result) == 0 and len(async_result) > 0:
+                calculated_entities_results.append(async_result[0])
+                continue
+
+        return calculated_entities_results, errors
+
     async def _parse_items(
         self,
         mapping: ResourceConfig,
@@ -759,20 +464,32 @@ class JQEntityProcessor(BaseEntityProcessor):
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0,
     ) -> CalculationResult:
+        # Send raw data examples FIRST (before transformation)
+        # This ensures users can see the raw data even if transformation fails
+        if send_raw_data_examples_amount > 0 and raw_results:
+            examples_to_send = [
+                item.copy() for item in raw_results[:send_raw_data_examples_amount]
+            ]
+            await self._send_examples(examples_to_send, mapping.kind)
+
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
         logger.info(f"Parsing {len(raw_results)} raw results into entities")
-        calculated_entities_results, errors = zip_and_sum(
-            await process_in_queue(
-                raw_results,
-                self._calculate_entity,
-                raw_entity_mappings,
-                mapping.port.items_to_parse,
-                mapping.port.items_to_parse_name,
-                mapping.selector.query,
-                parse_all,
+        # Set globals to avoid pickling.
+        compileable_patterns, uncompileable_patterns = (
+            await self.separate_compileable_and_uncompileable_patterns_and_warmup_cache(
+                raw_entity_mappings, [mapping.selector.query]
             )
+        )
+        sync_results = await self.parse_items_sync(
+            compileable_patterns, raw_results, mapping.selector.query, parse_all
+        )
+        async_results = await self.parse_items_async(
+            uncompileable_patterns, raw_results, mapping.selector.query, parse_all
+        )
+        calculated_entities_results, errors = self.merge_results(
+            sync_results, async_results, raw_results
         )
         logger.debug(
             f"Finished parsing raw results into entities with {len(errors)} errors. errors: {errors}"
@@ -780,24 +497,13 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         passed_entities = []
         failed_entities = []
-        examples_to_send = ExampleStates(send_raw_data_examples_amount)
         entity_misconfigurations: dict[str, str] = {}
         missing_required_fields: bool = False
         entity_mapping_fault_counter: int = 0
+
         for result in calculated_entities_results:
             if len(result.misconfigurations) > 0:
                 entity_misconfigurations |= result.misconfigurations
-
-            if (
-                len(examples_to_send) < send_raw_data_examples_amount
-                and result.raw_data is not None
-            ):
-                examples_to_send.add_example(
-                    result.did_entity_pass_selector,
-                    self._get_raw_data_for_example(
-                        result.raw_data, mapping.port.items_to_parse_name
-                    ),
-                )
 
             if result.entity.get("identifier") and result.entity.get("blueprint"):
                 parsed_entity = Entity.parse_obj(result.entity)
@@ -809,33 +515,16 @@ class JQEntityProcessor(BaseEntityProcessor):
                 missing_required_fields = True
                 entity_mapping_fault_counter += 1
 
+        del calculated_entities_results
+
         self._notify_mapping_issues(
             entity_misconfigurations,
             missing_required_fields,
             entity_mapping_fault_counter,
         )
 
-        await self._send_examples(examples_to_send.get_examples(), mapping.kind)
-
         return CalculationResult(
             EntitySelectorDiff(passed=passed_entities, failed=failed_entities),
             errors,
             misconfigured_entity_keys=entity_misconfigurations,
         )
-
-    def _get_raw_data_for_example(
-        self,
-        data: dict[str, Any] | tuple[dict[str, Any], str],
-        items_to_parse_name: str,
-    ) -> dict[str, Any]:
-        if isinstance(data, tuple):
-            raw_data = json.loads(data[1])
-            return {
-                **(
-                    data[0]
-                    if items_to_parse_name in data[0]
-                    else {items_to_parse_name: data[0]}
-                ),
-                **raw_data,
-            }
-        return data

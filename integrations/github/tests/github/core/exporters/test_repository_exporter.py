@@ -142,7 +142,7 @@ class TestRestRepositoryExporter:
                 # Verify the main repository request was called
                 mock_request.assert_any_call(
                     f"{rest_client.base_url}/orgs/test-org/repos",
-                    {"type": "all", "included_relationships": ["collaborators"]},
+                    {"type": "all"},
                 )
 
                 # Verify collaborator requests were called for each repository

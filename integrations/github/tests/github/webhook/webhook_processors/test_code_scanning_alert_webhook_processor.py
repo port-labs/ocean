@@ -21,7 +21,7 @@ from integration import GithubCodeScanningAlertConfig, GithubCodeScanningAlertSe
 @pytest.fixture
 def code_scanning_resource_config() -> GithubCodeScanningAlertConfig:
     return GithubCodeScanningAlertConfig(
-        kind="code-scanning-alerts",
+        kind=ObjectKind.CODE_SCANNING_ALERT,
         selector=GithubCodeScanningAlertSelector(query="true", state="open"),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -151,7 +151,7 @@ class TestCodeScanningAlertWebhookProcessor:
         """Test handling a 'fixed' event when 'fixed' state is allowed."""
         # Create config that allows 'fixed' state
         resource_config = GithubCodeScanningAlertConfig(
-            kind="code-scanning-alerts",
+            kind=ObjectKind.CODE_SCANNING_ALERT,
             selector=GithubCodeScanningAlertSelector(query="true", state=config_state),
             port=PortResourceConfig(
                 entity=MappingsConfig(
@@ -235,7 +235,7 @@ class TestCodeScanningAlertWebhookProcessor:
     ) -> None:
         """Test handling events when the action is not allowed for the configured state."""
         resource_config = GithubCodeScanningAlertConfig(
-            kind="code-scanning-alerts",
+            kind=ObjectKind.CODE_SCANNING_ALERT,
             selector=GithubCodeScanningAlertSelector(query="true", state=config_state),
             port=PortResourceConfig(
                 entity=MappingsConfig(
@@ -282,3 +282,54 @@ class TestCodeScanningAlertWebhookProcessor:
             "__repository": "test-repo",
             "__organization": "test-org",
         }
+
+
+class TestCodeScanningAlertFiltering:
+    """Tests for code scanning alert filtering functionality."""
+
+    def test_severity_filter_matches(
+        self, code_scanning_webhook_processor: CodeScanningAlertWebhookProcessor
+    ) -> None:
+        """Test severity filter accepts alerts with matching severity."""
+        selector = GithubCodeScanningAlertSelector(
+            query="true", state="open", severity="high"
+        )
+
+        # Alert has severity "high" which matches the filter
+        alert = {"rule": {"severity": "high"}}
+
+        assert (
+            code_scanning_webhook_processor._check_alert_filters(selector, alert)
+            is True
+        )
+
+    def test_severity_filter_no_match(
+        self, code_scanning_webhook_processor: CodeScanningAlertWebhookProcessor
+    ) -> None:
+        """Test severity filter rejects alerts without matching severity."""
+        selector = GithubCodeScanningAlertSelector(
+            query="true", state="open", severity="critical"
+        )
+
+        # Alert has severity "medium" which doesn't match "critical"
+        alert = {"rule": {"severity": "medium"}}
+
+        assert (
+            code_scanning_webhook_processor._check_alert_filters(selector, alert)
+            is False
+        )
+
+    def test_severity_filter_no_filter_specified(
+        self, code_scanning_webhook_processor: CodeScanningAlertWebhookProcessor
+    ) -> None:
+        """Test severity filter accepts alerts when no severity filter is specified."""
+        selector = GithubCodeScanningAlertSelector(
+            query="true", state="open"
+        )  # No severity
+
+        alert = {"rule": {"severity": "low"}}
+
+        assert (
+            code_scanning_webhook_processor._check_alert_filters(selector, alert)
+            is True
+        )

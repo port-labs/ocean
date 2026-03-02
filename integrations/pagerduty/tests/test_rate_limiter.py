@@ -45,13 +45,13 @@ class TestPagerDutyRateLimiter:
         mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_enters_pause_when_remaining_le_1(self, mock_sleep: Mock) -> None:
+    async def test_enters_pause_when_90_percent_used(self, mock_sleep: Mock) -> None:
         limiter = PagerDutyRateLimiter(max_concurrent=3)
 
-        # Seed limiter with remaining == 1 and a short reset in the future
+        # 90% usage: 900 used, 100 remaining out of 1000
         reset_in = 5
         limiter.rate_limit_info = RateLimitInfo(
-            limit=1000, remaining=1, seconds_until_reset=reset_in
+            limit=1000, remaining=100, seconds_until_reset=reset_in
         )
 
         mock_sleep.reset_mock()
@@ -59,8 +59,26 @@ class TestPagerDutyRateLimiter:
             # inside context - nothing to do
             pass
 
+        # Should sleep when at 90% utilization
         assert mock_sleep.call_count >= 1
         assert any(args[0] >= reset_in for args, _ in mock_sleep.call_args_list)
+
+    @pytest.mark.asyncio
+    async def test_no_pause_when_below_90_percent(self, mock_sleep: Mock) -> None:
+        limiter = PagerDutyRateLimiter(max_concurrent=3)
+
+        # 50% usage: 500 used, 500 remaining out of 1000
+        limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, seconds_until_reset=60
+        )
+
+        mock_sleep.reset_mock()
+        async with limiter:
+            # inside context - nothing to do
+            pass
+
+        # Should not sleep when remaining is above threshold
+        mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_concurrent_requests_respect_semaphore(

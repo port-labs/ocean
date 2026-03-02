@@ -30,10 +30,11 @@ def pull_request_webhook_processor(
 @pytest.fixture
 def resource_config() -> GithubPullRequestConfig:
     return GithubPullRequestConfig(
-        kind="pull-request",
+        kind=ObjectKind.PULL_REQUEST,
         selector=GithubPullRequestSelector(
             query="true",
             states=["open"],
+            api="rest",
         ),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -166,10 +167,16 @@ class TestPullRequestWebhookProcessor:
                 assert result.deleted_raw_results == []
                 mock_exporter.get_resource.assert_called_once_with(
                     SinglePullRequestOptions(
-                        organization="test-org", repo_name="test-repo", pr_number=101
+                        organization="test-org",
+                        repo_name="test-repo",
+                        pr_number=101,
+                        repo=None,
                     )
                 )
             elif expected_delete:
                 assert result.updated_raw_results == []
-                assert result.deleted_raw_results == [pr_data]
+                # Deletions are enriched with repository + organization metadata
+                assert result.deleted_raw_results == [
+                    {**pr_data, "__organization": "test-org"}
+                ]
                 mock_exporter.get_resource.assert_not_called()

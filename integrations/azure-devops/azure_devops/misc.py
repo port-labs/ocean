@@ -31,6 +31,9 @@ class Kind(StrEnum):
     FOLDER = "folder"
     ITERATION = "iteration"
     BRANCH = "branch"
+    ADVANCED_SECURITY_ALERT = "advanced-security-alert"
+    GROUP = "group"
+    GROUP_MEMBER = "group-member"
 
 
 ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {
@@ -66,7 +69,7 @@ class RepositoryBranchMapping(BaseModel):
 
 class FolderPattern(BaseModel):
     path: str = Field(
-        default="",
+        ...,
         alias="path",
         description="""Specify the repositories and folders to include under this relative path.
         Supports glob pattern (*) for matching within a path segment:
@@ -88,14 +91,19 @@ class FolderPattern(BaseModel):
 class AzureDevopsFolderSelector(Selector):
     """Selector for Azure DevOps folder scanning configuration"""
 
-    project_name: str = Field(
-        ...,
-        description="Name of the Azure DevOps project that contains the repositories to be scanned",
+    project_name: str | None = Field(
+        default=None,
+        description="Name of the Azure DevOps project that contains the repositories to be scanned. If not provided, scans all projects.",
     )
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
         description="Specify the repositories, branches and folders to include under this relative path",
+    )
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the folder entity",
     )
 
 

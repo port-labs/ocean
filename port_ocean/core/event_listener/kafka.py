@@ -4,7 +4,7 @@ import sys
 from asyncio import ensure_future, Task
 from typing import Any, Literal
 
-from confluent_kafka import Message  # type: ignore
+from confluent_kafka import Message
 from loguru import logger
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
@@ -146,10 +146,14 @@ class KafkaEventListener(BaseEventListener):
         Spawning a thread to handle the message allows the Kafka consumer to continue polling for new messages.
         Using wrap_method_with_context ensures that the thread has access to the current context.
         """
-        message = json.loads(raw_msg.value().decode())
+        raw_value = raw_msg.value()
+        if raw_value is None:
+            return
+
+        message = json.loads(raw_value.decode())
         topic = raw_msg.topic()
 
-        if not self._should_be_processed(message, topic):
+        if topic is None or not self._should_be_processed(message, topic):
             return
 
         if "change.log" in topic and message is not None:

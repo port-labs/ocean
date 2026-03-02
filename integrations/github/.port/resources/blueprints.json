@@ -111,6 +111,11 @@
                     "type": "string",
                     "format": "markdown",
                     "title": "Readme"
+                },
+                "codeowners": {
+                    "title": "CODEOWNERS",
+                    "type": "string",
+                    "format": "markdown"
                 }
             },
             "required": []

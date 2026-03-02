@@ -1,0 +1,4 @@
+192.168.65.254 localhost
+192.168.65.254 api.localhost
+192.168.65.254 gw.localhost
+192.168.65.254 ingest.localhost

@@ -1,0 +1,103 @@
+from pydantic import ValidationError
+from http_server.overrides import (
+    CustomAuthRequestConfig,
+    CustomAuthRequestTemplateConfig,
+)
+from http_server.exceptions import (
+    CustomAuthRequestError,
+    CustomAuthRequestTemplateError,
+)
+import pytest
+
+
+class TestCustomAuthRequestTemplateConfigValidation:
+    """Test CustomAuthRequestTemplateConfig validation"""
+
+    def test_valid_config_with_headers(self) -> None:
+        """Test that config with headers is valid"""
+        config = CustomAuthRequestTemplateConfig(
+            headers={"Authorization": "Bearer {{.token}}"}
+        )
+        assert config.headers == {"Authorization": "Bearer {{.token}}"}
+
+    def test_valid_config_with_query_params(self) -> None:
+        """Test that config with queryParams is valid"""
+        config = CustomAuthRequestTemplateConfig(queryParams={"api_key": "{{.token}}"})
+        assert config.queryParams == {"api_key": "{{.token}}"}
+
+    def test_valid_config_with_body(self) -> None:
+        """Test that config with body is valid"""
+        config = CustomAuthRequestTemplateConfig(body={"token": "{{.token}}"})
+        assert config.body == {"token": "{{.token}}"}
+
+    def test_valid_config_with_multiple_fields(self) -> None:
+        """Test that config with multiple fields is valid"""
+        config = CustomAuthRequestTemplateConfig(
+            headers={"Authorization": "Bearer {{.token}}"},
+            queryParams={"api_key": "{{.token}}"},
+        )
+        assert config.headers is not None
+        assert config.queryParams is not None
+
+    def test_invalid_config_empty(self) -> None:
+        """Test that empty config raises CustomAuthRequestTemplateError"""
+        with pytest.raises(CustomAuthRequestTemplateError) as exc_info:
+            CustomAuthRequestTemplateConfig()
+        assert (
+            "At least one of 'headers', 'queryParams', or 'body' must be provided"
+            in str(exc_info.value)
+        )
+
+    def test_invalid_config_all_none(self) -> None:
+        """Test that config with all fields None raises CustomAuthRequestTemplateError"""
+        with pytest.raises(CustomAuthRequestTemplateError) as exc_info:
+            CustomAuthRequestTemplateConfig(headers=None, queryParams=None, body=None)
+        assert (
+            "At least one of 'headers', 'queryParams', or 'body' must be provided"
+            in str(exc_info.value)
+        )
+
+
+class TestCustomAuthRequestConfigValidation:
+    """Test CustomAuthRequestConfig validation"""
+
+    def test_valid_config(self) -> None:
+        """Test that valid config passes validation"""
+        config = CustomAuthRequestConfig(
+            endpoint="/oauth/token",
+            method="POST",
+            body={"grant_type": "client_credentials"},
+        )
+        assert config.endpoint == "/oauth/token"
+        assert config.method == "POST"
+
+    def test_invalid_method(self) -> None:
+        """Test that invalid HTTP method raises CustomAuthRequestError"""
+        with pytest.raises(ValidationError) as exc_info:
+            CustomAuthRequestConfig(
+                endpoint="/oauth/token",
+                method="INVALID",  # type: ignore
+            )
+        assert "1 validation error for CustomAuthRequestConfig" in str(exc_info.value)
+
+    def test_body_and_bodyform_exclusive(self) -> None:
+        """Test that body and bodyForm cannot both be specified"""
+        with pytest.raises(CustomAuthRequestError) as exc_info:
+            CustomAuthRequestConfig(
+                endpoint="/oauth/token",
+                body={"grant_type": "client_credentials"},
+                bodyForm="grant_type=client_credentials",
+            )
+        assert "Cannot specify both 'body' and 'bodyForm'" in str(exc_info.value)
+
+    def test_body_or_bodyform_valid(self) -> None:
+        """Test that body OR bodyForm is valid"""
+        config1 = CustomAuthRequestConfig(
+            endpoint="/oauth/token", body={"grant_type": "client_credentials"}
+        )
+        assert config1.body == {"grant_type": "client_credentials"}
+
+        config2 = CustomAuthRequestConfig(
+            endpoint="/oauth/token", bodyForm="grant_type=client_credentials"
+        )
+        assert config2.bodyForm == "grant_type=client_credentials"

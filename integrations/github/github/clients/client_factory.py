@@ -89,6 +89,8 @@ class GithubClientFactory:
                 private_key=ocean.integration_config.get("github_app_private_key"),
             )
 
+            logger.info(f"instantiated new {client_type} client.")
+
             self._instances[client_type] = self._clients[client_type](
                 **integration_config(authenticator),
             )

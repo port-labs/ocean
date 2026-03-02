@@ -15,7 +15,9 @@ class EventListenerType(StrEnum):
 
 
 class CreatePortResourcesOrigin(StrEnum):
+    Empty = "Empty"
     Ocean = "Ocean"
+    Default = "Default"
     Port = "Port"
 
 
@@ -142,6 +144,22 @@ class RunStatus(StrEnum):
     FAILURE = "FAILURE"
 
 
+class WorkflowNodeRunStatus(StrEnum):
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+
+
+class WorkflowNodeRunResult(StrEnum):
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class WorkflowNodeRunLog(BaseModel):
+    level: Literal["INFO", "WARN", "ERROR", "DEBUG"]
+    message: str
+
+
 class IntegrationActionInvocationPayload(BaseModel):
     type: Literal["INTEGRATION_ACTION"]
     installationId: str
@@ -153,3 +171,32 @@ class ActionRun(BaseModel):
     id: str
     status: RunStatus
     payload: IntegrationActionInvocationPayload
+
+    @property
+    def action_type(self) -> str:
+        return self.payload.integrationActionType
+
+    @property
+    def execution_properties(self) -> dict[str, Any]:
+        return self.payload.integrationActionExecutionProperties
+
+
+class WorkflowNodeRun(BaseModel):
+    identifier: str
+    status: WorkflowNodeRunStatus
+    node: dict[str, Any]
+    config: dict[str, Any]
+    result: WorkflowNodeRunResult | None = None
+    output: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def id(self) -> str:
+        return self.identifier
+
+    @property
+    def action_type(self) -> str:
+        return self.config["integrationInvocationType"]
+
+    @property
+    def execution_properties(self) -> dict[str, Any]:
+        return self.config.get("integrationActionExecutionProperties", {})

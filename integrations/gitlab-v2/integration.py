@@ -1,4 +1,5 @@
-from typing import Literal, Any, Type, List
+from typing import Literal, Any, Type, List, Optional
+from loguru import logger
 from pydantic import BaseModel, Field, validator
 
 from port_ocean.context.ocean import PortOceanContext
@@ -23,11 +24,52 @@ FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
 
 
+class SearchQuery(BaseModel):
+    """A search query to execute against a GitLab project during enrichment."""
+
+    name: str = Field(
+        description="A unique name for this search query, used as the key in __searchQueries",
+    )
+    scope: str = Field(
+        default="blobs",
+        description="The GitLab search scope (e.g. blobs, commits, wiki_blobs, etc.)",
+    )
+    query: str = Field(
+        description="The search query string (e.g. filename:port.yml)",
+    )
+
+
+class GroupSelector(Selector):
+    include_only_active_groups: Optional[bool] = Field(
+        default=None,
+        alias="includeOnlyActiveGroups",
+        description="Filter groups by active status",
+    )
+
+
 class ProjectSelector(Selector):
     include_languages: bool = Field(
         alias="includeLanguages",
         default=False,
         description="Whether to include the languages of the project, defaults to false",
+    )
+    include_only_active_projects: Optional[bool] = Field(
+        default=None,
+        alias="includeOnlyActiveProjects",
+        description="Filter projects by active status",
+    )
+    search_queries: list[SearchQuery] = Field(
+        alias="searchQueries",
+        default_factory=list,
+        description=(
+            "List of search queries to execute against each project during enrichment. "
+            "Results are stored under __searchQueries[<name>] as a boolean (True if matches found)."
+        ),
+    )
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch from the repository and attach to the project data under __includedFiles",
     )
 
 
@@ -36,7 +78,12 @@ class ProjectResourceConfig(ResourceConfig):
     selector: ProjectSelector
 
 
-class GitlabMemberSelector(Selector):
+class GroupResourceConfig(ResourceConfig):
+    kind: Literal["group"]
+    selector: GroupSelector
+
+
+class GitlabMemberSelector(GroupSelector):
     include_bot_members: bool = Field(
         alias="includeBotMembers",
         default=False,
@@ -74,8 +121,13 @@ class FilesSelector(BaseModel):
     )
 
 
-class GitLabFilesSelector(Selector):
+class GitLabFilesSelector(GroupSelector):
     files: FilesSelector
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the file entity",
+    )
 
 
 class GitLabFilesResourceConfig(ResourceConfig):
@@ -108,7 +160,7 @@ class FolderPattern(BaseModel):
     )
 
 
-class GitlabFolderSelector(Selector):
+class GitlabFolderSelector(ProjectSelector):
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
@@ -116,7 +168,7 @@ class GitlabFolderSelector(Selector):
     )
 
 
-class GitlabMergeRequestSelector(Selector):
+class GitlabMergeRequestSelector(GroupSelector):
     states: List[Literal["opened", "closed", "merged"]] = Field(
         alias="states",
         description="Specify the state of the merge request to match. Allowed values: opened, closed, merged",
@@ -141,17 +193,59 @@ class GitlabMergeRequestResourceConfig(ResourceConfig):
 
 class TagResourceConfig(ResourceConfig):
     kind: Literal["tag"]
-    selector: Selector
+    selector: ProjectSelector
 
 
 class ReleaseResourceConfig(ResourceConfig):
     kind: Literal["release"]
-    selector: Selector
+    selector: ProjectSelector
 
 
 class GitLabFoldersResourceConfig(ResourceConfig):
     selector: GitlabFolderSelector
     kind: Literal["folder"]
+
+
+class IssueSelector(GroupSelector):
+    issue_type: Optional[Literal["issue", "incident", "test_case", "task"]] = Field(
+        default=None,
+        alias="issueType",
+        description="Filter issues by type",
+    )
+    labels: Optional[str] = Field(
+        default=None,
+        alias="labels",
+        description="Filter issues by labels",
+    )
+    non_archived: bool = Field(
+        default=True,
+        alias="nonArchived",
+        description="Return issues from non archived projects. Default value is true",
+    )
+    state: Optional[Literal["opened", "closed"]] = Field(
+        default=None,
+        alias="state",
+        description="Filter issues by state",
+    )
+    updated_after: Optional[float] = Field(
+        default=None,
+        alias="updatedAfter",
+        description="Filter issues updated on or after the given time in days",
+    )
+
+    @property
+    def updated_after_datetime(self) -> str:
+        """Convert the created_after days to a timezone-aware datetime object in ISO 8601 format"""
+        if not self.updated_after:
+            return datetime.now(timezone.utc).isoformat()
+        return (
+            datetime.now(timezone.utc) - timedelta(days=self.updated_after)
+        ).isoformat()
+
+
+class GitlabIssueResourceConfig(ResourceConfig):
+    selector: IssueSelector
+    kind: Literal["issue"]
 
 
 class GitlabVisibilityConfig(BaseModel):
@@ -183,6 +277,16 @@ class GitlabVisibilityConfig(BaseModel):
         return value
 
 
+class PipelineResourceConfig(ResourceConfig):
+    kind: Literal["pipeline"]
+    selector: ProjectSelector
+
+
+class JobResourceConfig(ResourceConfig):
+    kind: Literal["job"]
+    selector: ProjectSelector
+
+
 class GitlabPortAppConfig(PortAppConfig):
     visibility: GitlabVisibilityConfig = Field(
         default_factory=GitlabVisibilityConfig,
@@ -191,6 +295,8 @@ class GitlabPortAppConfig(PortAppConfig):
     )
     resources: list[
         ProjectResourceConfig
+        | GroupResourceConfig
+        | GitlabIssueResourceConfig
         | GitlabGroupWithMembersResourceConfig
         | GitlabMemberResourceConfig
         | GitLabFoldersResourceConfig
@@ -198,6 +304,8 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabMergeRequestResourceConfig
         | TagResourceConfig
         | ReleaseResourceConfig
+        | PipelineResourceConfig
+        | JobResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
@@ -207,8 +315,22 @@ class GitManipulationHandler(JQEntityProcessor):
         entity_processor: Type[JQEntityProcessor]
 
         if pattern.startswith(FILE_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'includedFiles' selector instead. Example: "
+                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
+                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
+            )
             entity_processor = FileEntityProcessor
         elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'search://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'searchQueries' selector instead. Example: "
+                f"selector.searchQueries: [{{name: '<queryName>', scope: '<scope>', query: '<query>'}}] "
+                f'Then map to .__searchQueries["<queryName>"]'
+            )
             entity_processor = SearchEntityProcessor
         else:
             entity_processor = JQEntityProcessor

@@ -50,7 +50,12 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         """
         repo = payload["repository"]
         repo_name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
+
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         rest_client = create_github_client()
         commit_diff = await fetch_commit_diff(
@@ -75,7 +80,8 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
             workflow = await exporter.get_resource(options)
-            workflows_to_upsert.append(workflow)
+            if workflow:
+                workflows_to_upsert.append(workflow)
 
         logger.info(
             f"Fetched {len(workflows_to_upsert)} workflows from {repo_name} of organization: {organization} "

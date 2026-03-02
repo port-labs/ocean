@@ -64,7 +64,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         member = payload["member"]
         team_slug = payload["team"]["slug"]
         member_login = member["login"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Handling membership event: {action} for {member_login} in team {team_slug}"
@@ -118,7 +118,9 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
             collaborator_copy = response.copy()
             list_of_collaborators.append(
                 enrich_with_organization(
-                    enrich_with_repository(collaborator_copy, repository["name"]),
+                    enrich_with_repository(
+                        collaborator_copy, repository["name"], repo=repository
+                    ),
                     organization,
                 )
             )

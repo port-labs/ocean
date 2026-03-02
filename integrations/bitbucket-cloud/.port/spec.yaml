@@ -19,24 +19,30 @@ configurations:
     type: string
     sensitive: true
     description: A secure token for accessing Bitbucket APIs on behalf of the workspace. Recommended for Bitbucket Cloud Premium users. Create one from the workspace settings. Refer to <a href="https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/" target="_blank">this guide</a>. You can also provide multiple tokens separated by commas to rotate between them when rate limits are hit.
+    required: false
   - name: bitbucketUsername
     type: string
     description: Your Bitbucket account username. Required only if you use username and app password for authentication, which is common for non-premium users. You can find your username on your <a href="https://bitbucket.org/account/settings/" target="_blank">account settings</a> page.
+    required: false
   - name: bitbucketAppPassword
     type: string
     sensitive: true
+    required: false
     description: To be deprecated in favor of User Scoped Token! Bitbucket app password. Required if using username/app password authentication instead of workspace token. Can be created in the <a href="https://bitbucket.org/account/settings/app-passwords/" target="_blank">Bitbucket personal account settings</a>
   - name: bitbucketUserEmail
     type: string
+    required: false
     description: The email address of the Bitbucket user. Required if using user scoped token authentication. You can find your email address on your <a href="https://bitbucket.org/account/settings/" target="_blank">account settings</a> page.
   - name: bitbucketUserScopedToken
     type: string
     sensitive: true
+    required: false
     description: A secure token for accessing Bitbucket APIs on behalf of a specific user. Create one from the user settings. This is required if using email and user scoped token authentication.
   - name: bitbucketHostUrl
     type: string
     description: The root URL for Bitbucket’s REST API. Must include protocol and version (e.g. <a href="https://api.bitbucket.org/2.0" target="_blank">https://api.bitbucket.org/2.0</a>).
     default: https://api.bitbucket.org/2.0
+    required: false
   - name: webhookSecret
     type: string
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Bitbucket are accepted.

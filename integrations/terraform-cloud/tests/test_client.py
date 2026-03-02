@@ -539,6 +539,9 @@ class TestGetPaginatedStateFiles:
                 "attributes": {
                     "hosted-state-download-url": "https://archivist.terraform.io/state1"
                 },
+                "relationships": {
+                    "workspace": {"data": {"id": "ws-123", "type": "workspaces"}},
+                },
             }
         ]
         state_file_content = {"version": 4, "resources": []}
@@ -563,7 +566,12 @@ class TestGetPaginatedStateFiles:
                 result.extend(batch)
 
             assert len(result) == 1
-            assert result[0] == state_file_content
+            assert result[0]["__state_version_id"] == "sv-1"
+            assert result[0]["__workspace"] == {
+                "data": {"id": "ws-123", "type": "workspaces"}
+            }
+            assert result[0]["version"] == state_file_content["version"]
+            assert result[0]["resources"] == state_file_content["resources"]
             mock_send.assert_called_once()
 
 

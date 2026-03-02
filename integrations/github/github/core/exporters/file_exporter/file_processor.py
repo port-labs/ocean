@@ -229,6 +229,9 @@ class FileProcessor:
                 branch=branch,
             )
         )
+        if not file_content_response:
+            logger.warning(f"File {file_path} not found from {organization}")
+            return ""
         decoded_content = file_content_response.get("content")
         if not decoded_content:
             logger.warning(f"File {file_path} has no content from {organization}")

@@ -44,6 +44,11 @@
           "type": "string",
           "format": "markdown"
         },
+        "codeowners": {
+          "title": "CODEOWNERS",
+          "type": "string",
+          "format": "markdown"
+        },
         "url": {
           "title": "Repository URL",
           "type": "string",

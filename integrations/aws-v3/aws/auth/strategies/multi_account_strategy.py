@@ -21,13 +21,13 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
         self.provider = provider
         self.config = config
 
-        self._valid_arns: list[str] = []
+        self._valid_arns: set[str] = set()
         self._valid_sessions: dict[str, AioSession] = {}
 
     @property
-    def valid_arns(self) -> list[str]:
-        """Get the list of valid ARNs that passed health check."""
-        return getattr(self, "_valid_arns", [])
+    def valid_arns(self) -> set[str]:
+        """Get the set of valid ARNs that passed health check."""
+        return self._valid_arns
 
     async def _can_assume_role(self, arn: str) -> AioSession | None:
         """Check if role can be assumed and return the session if successful."""
@@ -47,10 +47,15 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             return None
 
     async def healthcheck(self) -> bool:
+        self._valid_arns = set()
+        self._valid_sessions = {}
+
         arns = normalize_arn_list(self.config.get("account_role_arns", []))
         if not arns:
             logger.error("No account_role_arns provided for healthcheck")
-            return False
+            raise AWSSessionError(
+                "No account_role_arns provided for multi-account strategy"
+            )
 
         logger.info(f"Starting AWS account health check for {len(arns)} role ARNs")
 
@@ -79,7 +84,7 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 try:
                     arn, session = await task
                     if session:
-                        self._valid_arns.append(arn)
+                        self._valid_arns.add(arn)
                         self._valid_sessions[arn] = session
                         successful += 1
                         account_id = extract_account_from_arn(arn)
@@ -109,10 +114,6 @@ class MultiAccountStrategy(MultiAccountHealthCheckMixin):
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
         if not (self._valid_arns and self._valid_sessions):
             await self.healthcheck()
-        if not (self._valid_arns and self._valid_sessions):
-            raise AWSSessionError(
-                "Account sessions not initialized. Run healthcheck first."
-            )
 
         logger.info(f"Providing {len(self._valid_arns)} pre-validated AWS sessions")
 

@@ -13,22 +13,35 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from integration import GithubRepositoryConfig
-from github.core.options import (
-    SingleRepositoryOptions,
-)
+from github.core.options import SingleRepositoryOptions
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
+)
+from github.enrichments.included_files import (
+    IncludedFilesEnricher,
+    RepositoryIncludedFilesStrategy,
 )
 
 
 class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def _validate_payload(self, payload: EventPayload) -> bool:
-        action = payload.get("action")
-        if not action:
+        valid_actions = REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
+        repository = payload.get("repository")
+
+        if payload.get("action") not in valid_actions or not repository:
             return False
 
-        valid_actions = REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
-        return action in valid_actions
+        visibility = repository.get("visibility")
+        default_branch = repository.get("default_branch")
+
+        return visibility is not None and default_branch is not None
+
+    def should_filter_by_visibility(self) -> bool:
+        """
+        Repository processor must handle visibility transitions explicitly
+        to emit delete events.
+        """
+        return False
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         return event.headers.get("x-github-event") == "repository"
@@ -42,13 +55,29 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         action = payload["action"]
         repo = payload["repository"]
         name = repo["name"]
-        organization = payload["organization"]["login"]
+        visibility = repo["visibility"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
+        resource_config = cast(GithubRepositoryConfig, resource_config)
 
         logger.info(
             f"Processing repository event: {action} for {name} from {organization}"
         )
 
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         if action in REPOSITORY_DELETE_EVENTS:
+            logger.info(f"Repository {name} deleted. Deleting repository.")
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[repo]
+            )
+
+        if not await self.validate_repository_visibility(visibility):
+            logger.info(
+                f"Repository {name} no longer matches visibility filter. Deleting repository."
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[repo]
             )
@@ -56,7 +85,6 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         rest_client = create_github_client()
         exporter = RestRepositoryExporter(rest_client)
 
-        resource_config = cast(GithubRepositoryConfig, resource_config)
         options = SingleRepositoryOptions(
             organization=organization,
             name=name,
@@ -64,6 +92,18 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         data_to_upsert = await exporter.get_resource(options)
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        included_files = resource_config.selector.included_files or []
+        if included_files:
+            enricher = IncludedFilesEnricher(
+                client=rest_client,
+                strategy=RepositoryIncludedFilesStrategy(included_files=included_files),
+            )
+            [data_to_upsert] = await enricher.enrich_batch([data_to_upsert])
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

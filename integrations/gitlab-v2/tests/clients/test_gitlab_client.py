@@ -77,6 +77,52 @@ class TestGitLabClient:
             assert results[0]["__languages"] == mock_languages
             mock_get_languages.assert_called_once_with("test/test-project")
 
+    async def test_get_projects_with_project_query_config(
+        self, client: GitLabClient
+    ) -> None:
+        """Test project fetching and enrichment with languages and labels via REST."""
+        # Arrange
+        mock_projects = [
+            {
+                "id": "1",
+                "name": "Test Project",
+                "path_with_namespace": "test/test-project",
+            }
+        ]
+        mock_languages = {"Python": 50.0, "JavaScript": 30.0}
+
+        with (
+            patch.object(client.rest, "get_paginated_resource") as mock_get_resource,
+            patch.object(
+                client.rest,
+                "get_project_languages",
+                AsyncMock(return_value=mock_languages),
+            ) as mock_get_languages,
+        ):
+
+            # Mock get_resource to yield projects
+            mock_get_resource.return_value = async_mock_generator([mock_projects])
+
+            # Act
+            results = []
+            params = {"some": "param", "search": "test"}
+            async for batch in client.get_projects(
+                params=params,
+                max_concurrent=1,
+                include_languages=True,
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1  # One project in the batch
+            assert results[0]["name"] == "Test Project"
+            assert results[0]["__languages"] == mock_languages
+            mock_get_resource.assert_called_once_with(
+                "projects",
+                params={"all_available": True, "some": "param", "search": "test"},
+            )
+            mock_get_languages.assert_called_once_with("test/test-project")
+
     async def test_get_groups(self, client: GitLabClient) -> None:
         """Test group fetching with default config behavior (use_min_access_level=True, min_access_level=30)"""
 
@@ -102,6 +148,39 @@ class TestGitLabClient:
                 params={
                     "min_access_level": 30,
                     "all_available": True,
+                },
+            )
+
+    async def test_get_groups_with_group_query_config(
+        self, client: GitLabClient
+    ) -> None:
+        """Test group fetching with group query config"""
+
+        # Arrange
+        mock_groups: list[dict[str, Any]] = [{"id": 1, "name": "Test Group"}]
+
+        # Use a context manager for patching
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
+            # Act - Test default config behavior (like main.py would call)
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_groups(
+                params={"min_access_level": 30, "search": "test"}
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Group"
+            mock_get_resource.assert_called_once_with(
+                "groups",
+                params={
+                    "min_access_level": 30,
+                    "all_available": True,
+                    "search": "test",
                 },
             )
 
@@ -363,8 +442,9 @@ class TestGitLabClient:
                 "username": "user1",
                 "name": "User One",
                 "email": "user1@example.com",
+                "access_level": 10,
             },
-            {"id": 2, "username": "user2", "name": "User Two"},
+            {"id": 2, "username": "user2", "name": "User Two", "access_level": 10},
         ]
 
         with patch.object(
@@ -635,10 +715,12 @@ class TestGitLabClient:
             "content": mock_file_content,
             "path": "config.yaml",
         }
-        expected_parsed_content = {
-            "key": "value",
-            "ref": mock_referenced_content,
-        }
+        expected_parsed_content = [
+            {
+                "key": "value",
+                "ref": mock_referenced_content,
+            }
+        ]
 
         with (
             patch.object(
@@ -900,6 +982,151 @@ class TestGitLabClient:
             assert results[1]["id"] == 102
             assert results[1]["__project"]["path_with_namespace"] == "test/project2"
             assert mock_get_paginated.call_count == 2
+
+    async def test_enrich_project_with_included_files(
+        self, client: GitLabClient
+    ) -> None:
+        """Test enriching a project with included file contents."""
+        project = {
+            "id": "123",
+            "path_with_namespace": "test/project",
+            "default_branch": "main",
+        }
+
+        with patch.object(
+            client,
+            "get_file_content",
+            AsyncMock(side_effect=["# README content", "* @owner"]),
+        ) as mock_get_file_content:
+            result = await client.enrich_project_with_included_files(
+                project, ["README.md", "CODEOWNERS"]
+            )
+
+            assert "__includedFiles" in result
+            assert result["__includedFiles"]["README.md"] == "# README content"
+            assert result["__includedFiles"]["CODEOWNERS"] == "* @owner"
+            assert mock_get_file_content.call_count == 2
+            mock_get_file_content.assert_any_call("test/project", "README.md", "main")
+            mock_get_file_content.assert_any_call("test/project", "CODEOWNERS", "main")
+
+    async def test_enrich_project_with_included_files_missing_file(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that missing files are stored as None."""
+        project = {
+            "id": "123",
+            "path_with_namespace": "test/project",
+            "default_branch": "main",
+        }
+
+        with patch.object(
+            client,
+            "get_file_content",
+            AsyncMock(side_effect=["# README content", Exception("404 Not Found")]),
+        ):
+            result = await client.enrich_project_with_included_files(
+                project, ["README.md", "MISSING.md"]
+            )
+
+            assert result["__includedFiles"]["README.md"] == "# README content"
+            assert result["__includedFiles"]["MISSING.md"] is None
+
+    async def test_enrich_project_with_included_files_empty_list(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that an empty file list results in an empty __includedFiles dict."""
+        project = {
+            "id": "123",
+            "path_with_namespace": "test/project",
+            "default_branch": "main",
+        }
+
+        result = await client.enrich_project_with_included_files(project, [])
+        assert result["__includedFiles"] == {}
+
+    async def test_get_projects_with_included_files(self, client: GitLabClient) -> None:
+        """Test that get_projects enriches with included files when specified."""
+        mock_projects = [
+            {
+                "id": "1",
+                "name": "Test Project",
+                "path_with_namespace": "test/test-project",
+                "default_branch": "main",
+            }
+        ]
+
+        with (
+            patch.object(client.rest, "get_paginated_resource") as mock_get_resource,
+            patch.object(
+                client,
+                "enrich_project_with_included_files",
+                AsyncMock(
+                    side_effect=lambda p, **kwargs: {
+                        **p,
+                        "__includedFiles": {"README.md": "# Hello"},
+                    }
+                ),
+            ) as mock_enrich_files,
+        ):
+            mock_get_resource.return_value = async_mock_generator([mock_projects])
+
+            results = []
+            async for batch in client.get_projects(
+                included_files=["README.md"],
+            ):
+                results.extend(batch)
+
+            assert len(results) == 1
+            assert results[0]["__includedFiles"] == {"README.md": "# Hello"}
+            mock_enrich_files.assert_called_once()
+
+    async def test_get_project_with_included_files(self, client: GitLabClient) -> None:
+        """Test that get_project (single) enriches with included files."""
+        mock_project = {
+            "id": "123",
+            "path_with_namespace": "test/project",
+            "default_branch": "main",
+        }
+
+        with (
+            patch.object(
+                client.rest,
+                "send_api_request",
+                AsyncMock(return_value=mock_project),
+            ),
+            patch.object(
+                client,
+                "enrich_project_with_included_files",
+                AsyncMock(
+                    return_value={
+                        **mock_project,
+                        "__includedFiles": {"README.md": "content"},
+                    }
+                ),
+            ) as mock_enrich_files,
+        ):
+            result = await client.get_project(
+                "test/project", included_files=["README.md"]
+            )
+
+            assert "__includedFiles" in result
+            assert result["__includedFiles"]["README.md"] == "content"
+            mock_enrich_files.assert_called_once_with(mock_project, ["README.md"])
+
+    async def test_selector_included_files_field(self) -> None:
+        """Test that ProjectSelector correctly parses the includedFiles field."""
+        from integration import ProjectSelector
+
+        # Test with includedFiles
+        selector = ProjectSelector(
+            query="true",
+            includedFiles=["README.md", "CODEOWNERS"],
+        )
+        assert selector.included_files == ["README.md", "CODEOWNERS"]
+
+        # Test without includedFiles (default empty list)
+        selector_default = ProjectSelector(query="true")
+        assert selector_default.included_files == []
 
     async def test_get_parent_groups(self, client: GitLabClient) -> None:
         """Test that get_parent_groups returns only top-level groups"""

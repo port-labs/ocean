@@ -1,8 +1,11 @@
 from typing import Any, Generator
 from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
+import sys
 from port_ocean.context.event import event_context
-from port_ocean.context.ocean import initialize_port_ocean_context
+import port_ocean.context.ocean as ocean_module
+from port_ocean.context.ocean import initialize_port_ocean_context, PortOceanContext
+import gcp_core.clients as clients
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from google.pubsub_v1.types import pubsub
@@ -20,13 +23,58 @@ async def mock_subscription_pages(
 
 
 @pytest.fixture(autouse=True)
-def mock_ocean_context() -> None:
+def mock_ocean_context() -> Generator[None, None, None]:
     """Fixture to initialize the PortOcean context."""
     mock_app = MagicMock()
     mock_app.config.integration.config = {"search_all_resources_per_minute_quota": 100}
     mock_app.cache_provider = AsyncMock()
     mock_app.cache_provider.get.return_value = None
     initialize_port_ocean_context(mock_app)
+
+    yield
+
+    # Reset the context after each test to allow subsequent tests to initialize it
+    ocean_module._port_ocean = PortOceanContext(None)
+
+
+@pytest.fixture(autouse=True)
+def clean_module_cache() -> Generator[None, None, None]:
+    """Remove resource_searches from module cache to ensure fresh imports and clean patching."""
+    # Remove the module before test if it exists
+    module_name = "gcp_core.search.resource_searches"
+    cached_module = sys.modules.pop(module_name, None)
+
+    yield
+
+    # Restore or remove after test
+    if cached_module is not None:
+        sys.modules[module_name] = cached_module
+    else:
+        sys.modules.pop(module_name, None)
+
+
+@pytest.fixture(autouse=True)
+def mock_shared_clients(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pre-populate singleton client slots so lazy-init getters return mocks."""
+    default_mock = AsyncMock()
+    for name in (
+        "AssetServiceAsyncClient",
+        "ProjectsAsyncClient",
+        "FoldersAsyncClient",
+        "OrganizationsAsyncClient",
+        "PublisherAsyncClient",
+        "SubscriberAsyncClient",
+        "CloudQuotasAsyncClient",
+    ):
+        monkeypatch.setitem(clients._instances, name, default_mock)
+
+
+@pytest.fixture(autouse=True)
+def _preload_modules(mock_ocean_context: None, mock_shared_clients: None) -> None:
+    """Pre-import submodules so @patch can resolve dotted paths in Python 3.13+."""
+    import gcp_core.utils  # noqa: F401
+    import gcp_core.search.resource_searches  # noqa: F401
+    import gcp_core.search.paginated_query  # noqa: F401
 
 
 @pytest.fixture
@@ -41,7 +89,6 @@ def integration_config_mock() -> Generator[Any, Any, Any]:
 
 @pytest.mark.asyncio
 @patch("gcp_core.search.paginated_query.paginated_query", new=mock_subscription_pages)
-@patch("google.pubsub_v1.services.subscriber.SubscriberAsyncClient", new=AsyncMock)
 async def test_list_all_subscriptions_per_project(integration_config_mock: Any) -> None:
     # Arrange
     from gcp_core.search.resource_searches import list_all_subscriptions_per_project
@@ -70,15 +117,11 @@ async def test_get_single_subscription(
     get_current_resource_config_mock: MagicMock, monkeypatch: Any
 ) -> None:
     # Arrange
-    subscriber_async_client_mock = AsyncMock
-    monkeypatch.setattr(
-        "google.pubsub_v1.services.subscriber.SubscriberAsyncClient",
-        subscriber_async_client_mock,
+    mock_subscriber = AsyncMock()
+    mock_subscriber.get_subscription = AsyncMock(
+        return_value=pubsub.Subscription({"name": "subscription_name"})
     )
-    subscriber_async_client_mock.get_subscription = AsyncMock()
-    subscriber_async_client_mock.get_subscription.return_value = pubsub.Subscription(
-        {"name": "subscription_name"}
-    )
+    monkeypatch.setitem(clients._instances, "SubscriberAsyncClient", mock_subscriber)
 
     # Mock the resource config
     mock_resource_config = MagicMock()
@@ -94,9 +137,11 @@ async def test_get_single_subscription(
         "enable_message_ordering": False,
         "filter": "",
         "labels": {},
+        "message_transforms": [],
         "name": "subscription_name",
         "retain_acked_messages": False,
         "state": 0,
+        "tags": {},
         "topic": "",
     }
 
@@ -118,24 +163,18 @@ async def test_feed_to_resource(
     monkeypatch: Any,
 ) -> None:
     # Arrange
-    projects_async_client_mock = AsyncMock
-    monkeypatch.setattr(
-        "google.cloud.resourcemanager_v3.ProjectsAsyncClient",
-        projects_async_client_mock,
+    mock_projects_client = AsyncMock()
+    mock_projects_client.get_project = AsyncMock(
+        return_value=Project({"name": "project_name"})
     )
-    projects_async_client_mock.get_project = AsyncMock()
-    projects_async_client_mock.get_project.return_value = Project(
-        {"name": "project_name"}
-    )
+    monkeypatch.setitem(clients._instances, "ProjectsAsyncClient", mock_projects_client)
 
-    publisher_async_client_mock = AsyncMock
-    monkeypatch.setattr(
-        "google.pubsub_v1.services.publisher.PublisherAsyncClient",
-        publisher_async_client_mock,
+    mock_publisher_client = AsyncMock()
+    mock_publisher_client.get_topic = AsyncMock(
+        return_value=pubsub.Topic({"name": "topic_name"})
     )
-    publisher_async_client_mock.get_topic = AsyncMock()
-    publisher_async_client_mock.get_topic.return_value = pubsub.Topic(
-        {"name": "topic_name"}
+    monkeypatch.setitem(
+        clients._instances, "PublisherAsyncClient", mock_publisher_client
     )
 
     # Mock the resource config
@@ -172,9 +211,11 @@ async def test_feed_to_resource(
         },
         "kms_key_name": "",
         "labels": {},
+        "message_transforms": [],
         "name": "topic_name",
         "satisfies_pzs": False,
         "state": 0,
+        "tags": {},
     }
 
     # Act within event context
@@ -202,28 +243,24 @@ async def test_preserve_case_style_combined(
     get_current_resource_config_mock: MagicMock, monkeypatch: Any
 ) -> None:
     # Arrange
-    subscriber_async_client_mock = AsyncMock
-    monkeypatch.setattr(
-        "google.pubsub_v1.services.subscriber.SubscriberAsyncClient",
-        subscriber_async_client_mock,
+    mock_subscriber = AsyncMock()
+    mock_subscriber.get_subscription = AsyncMock(
+        return_value=pubsub.Subscription(
+            {
+                "name": "subscription_name",
+                "topic": "projects/project_name/topics/topic_name",
+                "ack_deadline_seconds": 0,
+                "retain_acked_messages": False,
+                "labels": {},
+                "enable_message_ordering": False,
+                "filter": "",
+                "detached": False,
+                "enable_exactly_once_delivery": False,
+                "state": 0,
+            }
+        )
     )
-    subscriber_async_client_mock.get_subscription = AsyncMock()
-
-    # Mock for preserve_case_style = True
-    subscriber_async_client_mock.get_subscription.return_value = pubsub.Subscription(
-        {
-            "name": "subscription_name",
-            "topic": "projects/project_name/topics/topic_name",
-            "ack_deadline_seconds": 0,
-            "retain_acked_messages": False,
-            "labels": {},
-            "enable_message_ordering": False,
-            "filter": "",
-            "detached": False,
-            "enable_exactly_once_delivery": False,
-            "state": 0,
-        }
-    )
+    monkeypatch.setitem(clients._instances, "SubscriberAsyncClient", mock_subscriber)
 
     # Mock the resource config with preserve_api_response_case_style set to True
     mock_resource_config_true = MagicMock()
@@ -241,9 +278,11 @@ async def test_preserve_case_style_combined(
         "enableMessageOrdering": False,
         "filter": "",
         "labels": {},
+        "messageTransforms": [],
         "name": "subscription_name",
         "retainAckedMessages": False,
         "state": 0,
+        "tags": {},
         "topic": "projects/project_name/topics/topic_name",
     }
 
@@ -273,9 +312,11 @@ async def test_preserve_case_style_combined(
         "enable_message_ordering": False,
         "filter": "",
         "labels": {},
+        "message_transforms": [],
         "name": "subscription_name",
         "retain_acked_messages": False,
         "state": 0,
+        "tags": {},
         "topic": "projects/project_name/topics/topic_name",
     }
 

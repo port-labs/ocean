@@ -45,10 +45,14 @@ class TestRestTagExporter:
             mock_request.return_value = mock_response.json()
             tag = await exporter.get_resource(
                 SingleTagOptions(
-                    organization="test-org", repo_name="repo1", tag_name="v1.0"
+                    organization="test-org",
+                    repo_name="repo1",
+                    tag_name="v1.0",
+                    repo={"name": "repo1"},
                 )
             )
 
+            assert tag is not None
             assert tag["name"] == "v1.0"  # Check name is set
             assert tag["__repository"] == "repo1"  # Check repository is enriched
             assert tag["commit"] == TEST_TAGS[0]["object"]  # Check commit is set
@@ -70,7 +74,9 @@ class TestRestTagExporter:
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
             async with event_context("test_event"):
-                options = ListTagOptions(organization="test-org", repo_name="repo1")
+                options = ListTagOptions(
+                    organization="test-org", repo_name="repo1", repo={"name": "repo1"}
+                )
                 exporter = RestTagExporter(rest_client)
 
                 tags: list[list[dict[str, Any]]] = [

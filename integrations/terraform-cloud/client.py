@@ -260,7 +260,20 @@ class TerraformClient:
                 )
                 for state_version in state_version_batch
             ]
-            yield list(await asyncio.gather(*tasks))
+            state_file_batch = list(await asyncio.gather(*tasks))
+            combined = []
+            for state_version, content in zip(state_version_batch, state_file_batch):
+                workspace_data = (state_version.get("relationships") or {}).get(
+                    "workspace"
+                )
+                state_version_id = state_version.get("id")
+                item = {
+                    **content,
+                    "__workspace": workspace_data,
+                    "__state_version_id": state_version_id,
+                }
+                combined.append(item)
+            yield combined
 
     async def get_state_file_for_single_workspace(
         self, workspace_name: str, organization_name: str

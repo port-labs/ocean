@@ -8,7 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic.fields import Field
+from pydantic import Field
 
 
 class ObjectKind(StrEnum):
@@ -22,6 +22,11 @@ class BitbucketGenericSelector(Selector):
     projects: set[str] | None = Field(
         default=None,
         description="List of project keys to filter. If empty, all projects will be synced",
+    )
+    projectFilterRegex: str | None = Field(
+        default=None,
+        alias="projectFilterRegex",
+        description="Optional regex pattern to filter project keys (e.g., '^PROJ-.*' to include only projects starting with 'PROJ-', or '.*-PROD$' to include only projects ending with '-PROD')",
     )
 
 

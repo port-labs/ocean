@@ -9,9 +9,33 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gitlab.helpers.utils import ObjectKind
 from loguru import logger
-from typing import cast
+from typing import Any, Optional, cast
 import fnmatch
 from integration import GitLabFilesResourceConfig
+
+
+async def _enrich_file_with_included_files(
+    client: Any,
+    file_entity: dict[str, Any],
+    file_paths: list[str],
+    project_path: str,
+    ref: str,
+) -> dict[str, Any]:
+    """Enrich a single file entity with __includedFiles."""
+    included_files: dict[str, Optional[str]] = {}
+
+    for file_path in file_paths:
+        try:
+            content = await client.get_file_content(project_path, file_path, ref)
+            included_files[file_path] = content
+        except Exception:
+            logger.debug(
+                f"Could not fetch file '{file_path}' from {project_path}@{ref}, storing as None"
+            )
+            included_files[file_path] = None
+
+    file_entity["__includedFiles"] = included_files
+    return file_entity
 
 
 class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
@@ -35,6 +59,7 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         selector = config.selector
         search_path = selector.files.path
         repos = selector.files.repos
+        included_files = selector.included_files or []
 
         # If repos is provided and doesn't include the event's repo, skip processing
         if repos and repo_path not in repos:
@@ -106,6 +131,17 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                     processed_removed_batch
                 )
             )
+
+        # Enrich updated file results with included files if configured
+        if included_files and updated_results:
+            for file_entity in updated_results:
+                await _enrich_file_with_included_files(
+                    self._gitlab_webhook_client,
+                    file_entity,
+                    included_files,
+                    project_path=repo_path,
+                    ref=branch,
+                )
 
         logger.info(
             f"Completed push event processing; updated {len(updated_results)} entities, deleted {len(deleted_results)} entities"

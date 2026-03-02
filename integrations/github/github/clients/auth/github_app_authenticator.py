@@ -10,7 +10,6 @@ from github.clients.auth.abstract_authenticator import (
     GitHubHeaders,
 )
 from github.helpers.exceptions import AuthenticationException
-from port_ocean.utils.cache import cache_coroutine_result
 
 
 class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
@@ -63,24 +62,10 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             X_GitHub_Api_Version="2022-11-28",
         )
 
-    @cache_coroutine_result()
-    async def _is_personal_org(self) -> bool:
-        try:
-            url = f"{self.github_host}/users/{self.organization}"
-            response = await self.client.get(url)
-            response.raise_for_status()
-            user_data = response.json()
-            return user_data["type"] == "User"
-        except Exception:
-            logger.exception(
-                "Failed to check if organization is personal, assuming it is not a personal org"
-            )
-            return False
-
     async def _fetch_installation_id(self, jwt_token: str) -> str:
         try:
             url = f"{self.github_host}/orgs/{self.organization}/installation"
-            if await self._is_personal_org():
+            if await self.is_personal_org(self.github_host, self.organization):
                 url = f"{self.github_host}/users/{self.organization}/installation"
             headers = {"Authorization": f"Bearer {jwt_token}"}
             response = await self.client.get(url, headers=headers)

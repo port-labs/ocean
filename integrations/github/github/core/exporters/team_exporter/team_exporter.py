@@ -1,3 +1,4 @@
+from typing import Optional
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 
@@ -9,7 +10,7 @@ from github.core.options import SingleTeamOptions, ListTeamOptions
 class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
         slug = options["slug"]
         organization = options["organization"]
 
@@ -17,6 +18,11 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
 
         url = f"{self.client.base_url}/orgs/{organization}/teams/{slug}"
         response = await self.client.send_api_request(url)
+        if not response:
+            logger.warning(
+                f"No team found with slug: {slug} in organization {organization}"
+            )
+            return None
 
         logger.info(f"Fetched team {slug} from {organization}")
         return response

@@ -61,11 +61,24 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
 
 class PagerdutyScheduleAPIQueryParams(BaseModel):
     include: list[str] | None
+    until: int | None = Field(
+        default=None,
+        description="Number of months ahead to calculate 'until' date",
+    )
+    since: int | None = Field(
+        default=None,
+        description="Number of months back to calculate 'since' date",
+    )
+    time_zone: str | None
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
         if include := value.pop("include", None):
             value["include[]"] = include
+        if until := value.pop("until", None):
+            value["until"] = get_date_range_for_upcoming_n_months(until)[1]
+        if since := value.pop("since", None):
+            value["since"] = get_date_range_for_last_n_months(since)[0]
         return value
 
 
@@ -145,6 +158,11 @@ class PagerdutyIncidentResourceConfig(ResourceConfig):
             description="If set to true, will ingest incident analytics data to Port. Default value is false",
             alias="incidentAnalytics",
         )
+        include_custom_fields: bool = Field(
+            default=False,
+            description="If set to true, will fetch and attach custom field values for each incident. Default value is false",
+            alias="includeCustomFields",
+        )
 
     kind: Literal["incidents"]
     selector: PagerdutySelector
@@ -164,6 +182,11 @@ class PagerdutyServiceResourceConfig(ResourceConfig):
             default=3,
             description="Number of months to consider for the service analytics date range. Must be a positive integer. Default value is 3 months",
             alias="analyticsMonthsPeriod",
+        )
+        include_custom_fields: bool = Field(
+            default=False,
+            description="If set to true, will fetch and attach custom field values for each service. Default value is false",
+            alias="includeCustomFields",
         )
 
     kind: Literal["services"]

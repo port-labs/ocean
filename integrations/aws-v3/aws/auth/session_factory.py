@@ -61,6 +61,7 @@ class AccountStrategyFactory:
 
     @classmethod
     async def create(cls) -> StrategyType:
+        """Create or get the cached strategy instance."""
         if cls._cached_strategy is not None:
             return cls._cached_strategy
         config = ocean.integration_config
@@ -84,7 +85,22 @@ class AccountInfo(TypedDict):
     Name: str
 
 
+async def initialize_aws_account_sessions() -> None:
+    """Validate and initialize all AWS account sessions"""
+    logger.info("Initializing AWS account sessions")
+    strategy = await AccountStrategyFactory.create()
+    await strategy.healthcheck()
+    logger.info("AWS account sessions initialized successfully")
+
+
 async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSession]]:
     strategy = await AccountStrategyFactory.create()
     async for account_info, session in strategy.get_account_sessions():
         yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session
+
+
+async def clear_aws_account_sessions() -> None:
+    """Clear AWS account sessions after resync completes by deleting the cached strategy."""
+    if AccountStrategyFactory._cached_strategy:
+        AccountStrategyFactory._cached_strategy = None
+        logger.debug("All cached AWS account sessions have been cleared.")

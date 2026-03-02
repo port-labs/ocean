@@ -1,6 +1,6 @@
-import asyncio
 from typing import Type
 
+import asyncio
 import httpx
 from loguru import logger
 
@@ -11,6 +11,7 @@ from port_ocean.core.defaults.common import (
     is_integration_exists,
 )
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+from port_ocean.utils.misc import run_async_in_new_event_loop
 
 
 def clean_defaults(
@@ -21,10 +22,9 @@ def clean_defaults(
     destroy: bool,
 ) -> None:
     try:
-        asyncio.new_event_loop().run_until_complete(
+        run_async_in_new_event_loop(
             _clean_defaults(config_class, integration_config, force, wait, destroy)
         )
-
     except Exception as e:
         logger.error(f"Failed to clear defaults, skipping... Error: {e}")
 

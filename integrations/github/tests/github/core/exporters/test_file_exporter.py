@@ -103,6 +103,7 @@ class TestRestFileExporter:
                 )
             )
 
+            assert file_data is not None
             assert file_data["content"] == TEST_FILE_CONTENT
             assert file_data["name"] == "test.txt"
             assert file_data["path"] == "test.txt"
@@ -132,6 +133,7 @@ class TestRestFileExporter:
                 )
             )
 
+            assert file_data is not None
             assert file_data["content"] is None
             assert file_data["size"] == MAX_FILE_SIZE + 1000
 
