@@ -423,7 +423,9 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             skip_parsing,
             params,
         ):
-            yield await _enrich_and_yield(files_batch)
+            enriched_batch = await _enrich_and_yield(files_batch)
+            if enriched_batch:
+                yield enriched_batch
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
