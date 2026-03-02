@@ -97,8 +97,11 @@ async def _handle_global_resource_resync(
     resync_func: Callable[[str, Session], ASYNC_GENERATOR_RESYNC_TYPE],
     allowed_regions: Optional[Iterable[str]] = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    errors: list[Exception] = []
+    failed_regions: list[str] = []
 
     async for session in credentials.create_session_for_each_region(allowed_regions):
+        region = session.region_name
         try:
             async for batch in resync_func(kind, session):
                 yield batch
@@ -107,15 +110,29 @@ async def _handle_global_resource_resync(
             if is_access_denied_exception(e):
                 logger.warning(
                     f"Access denied for global resource {kind} in region "
-                    f"{session.region_name}, trying next region"
+                    f"{region}, trying next region"
+                )
+            elif is_resource_type_not_available_exception(e):
+                logger.info(
+                    f"Skipping global resource {kind} in region {region}: "
+                    f"resource type not available in this region"
                 )
             else:
+                failed_regions.append(region)
+                errors.append(e)
                 logger.warning(
                     f"Error fetching global resource {kind} in region "
-                    f"{session.region_name}: {e}. Trying next region.",
+                    f"{region}: {e}. Trying next region.",
                     exc_info=True,
                 )
             continue
+
+    if errors:
+        error_msg = (
+            f"All regions failed for global resource {kind}. "
+            f"Failed regions: {', '.join(failed_regions)}"
+        )
+        raise ExceptionGroup(error_msg, errors)
 
 
 async def resync_resources_for_account(
@@ -189,6 +206,7 @@ async def resync_resources_for_account(
             f"for {kind} in account {credentials.account_id}: {exc}",
             exc_info=True,
         )
+        errors.append(exc)
 
     if errors:
         error_msg = (

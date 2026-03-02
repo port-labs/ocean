@@ -238,12 +238,36 @@ async def test_global_resync_tries_next_region_on_access_denied() -> None:
 
 
 @pytest.mark.asyncio
-async def test_global_resync_all_regions_fail_gracefully() -> None:
-    """If ALL regions fail, the generator completes empty -- no exception raised."""
+async def test_global_resync_all_regions_fail_raises_exception_group() -> None:
+    """If ALL regions fail with real errors, an ExceptionGroup is raised to block reconciliation."""
     from main import _handle_global_resource_resync
 
     async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise _real_error("InternalServiceError")
+        yield
+
+    credentials = MockCredentials(["us-east-1", "eu-west-1"])
+
+    results = []
+    with pytest.raises(ExceptionGroup) as exc_info:
+        async for batch in _handle_global_resource_resync(
+            "AWS::IAM::Role", credentials, resync_func, ["us-east-1", "eu-west-1"]  # type: ignore[arg-type]
+        ):
+            results.append(batch)
+
+    assert results == []
+    assert len(exc_info.value.exceptions) == 2
+    assert "us-east-1" in str(exc_info.value)
+    assert "eu-west-1" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_global_resync_all_benign_errors_complete_normally() -> None:
+    """If ALL regions fail with only benign errors (access denied), no exception is raised."""
+    from main import _handle_global_resource_resync
+
+    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        raise _access_denied_error()
         yield
 
     credentials = MockCredentials(["us-east-1", "eu-west-1"])
@@ -255,10 +279,6 @@ async def test_global_resync_all_regions_fail_gracefully() -> None:
         results.append(batch)
 
     assert results == []
-    # No exception raised -- this is the key assertion (implicit by reaching here)
-
-
-# ---------- resync_resources_for_account tests ----------
 
 
 @pytest.mark.asyncio
@@ -383,9 +403,6 @@ async def test_resync_all_real_errors_raise_exception_group() -> None:
                 pass
 
 
-# ---------- _process_tasks tests ----------
-
-
 @pytest.mark.asyncio
 async def test_process_tasks_catches_unexpected_error() -> None:
     """If a generator raises after yielding, _process_tasks catches it and tracks the error."""
@@ -407,3 +424,50 @@ async def test_process_tasks_catches_unexpected_error() -> None:
     assert "us-east-1" in failed_regions
     assert len(errors) == 1
     assert tasks == []  # cleared in finally block
+
+
+class FailingMockCredentials:
+    """Mock that raises during create_session_for_each_region."""
+
+    def __init__(self, regions: list[str], account_id: str = "123456789012") -> None:
+        self._regions = regions
+        self.account_id = account_id
+        self.enabled_regions = regions
+
+    async def create_session_for_each_region(
+        self, allowed_regions: list[str] | None = None
+    ) -> AsyncGenerator[MagicMock, None]:
+        raise RuntimeError("STS endpoint unreachable")
+        yield  # make this an async generator
+
+
+@pytest.mark.asyncio
+async def test_resync_session_creation_failure_raises_exception_group() -> None:
+    """If create_session_for_each_region raises, ExceptionGroup is raised to block reconciliation."""
+    from main import resync_resources_for_account
+
+    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield [{"id": "should-not-reach"}]
+
+    credentials = FailingMockCredentials(["us-east-1", "eu-west-1"])
+
+    mock_event = MagicMock()
+    mock_event.resource_config.selector.is_region_allowed = lambda r: True
+
+    results = []
+    with pytest.raises(ExceptionGroup) as exc_info:
+        with (
+            patch("main.event", new=mock_event),
+            patch("main.is_global_resource", return_value=False),
+        ):
+            async for batch in resync_resources_for_account(
+                credentials, "AWS::EC2::Instance", resync_func  # type: ignore[arg-type]
+            ):
+                results.append(batch)
+
+    # No batches should have been yielded
+    assert results == []
+
+    # ExceptionGroup wraps the session-creation error
+    assert len(exc_info.value.exceptions) == 1
+    assert isinstance(exc_info.value.exceptions[0], RuntimeError)
