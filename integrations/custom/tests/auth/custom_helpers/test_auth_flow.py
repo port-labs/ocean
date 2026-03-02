@@ -15,11 +15,6 @@ from custom.auth.models import (
 )
 
 
-# ============================================================================
-# AuthFlowManager Core Tests
-# ============================================================================
-
-
 @pytest.mark.asyncio
 class TestAuthFlowManager:
     """Test AuthFlowManager authentication handler"""
@@ -310,11 +305,6 @@ class TestAuthFlowManager:
         # Should have authenticated at least once, but lock should prevent duplicates
         assert len(auth_calls) >= 1
         assert len(auth_calls) <= 2
-
-
-# ============================================================================
-# Request Override Tests
-# ============================================================================
 
 
 @pytest.mark.asyncio

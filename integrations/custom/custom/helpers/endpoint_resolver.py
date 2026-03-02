@@ -12,7 +12,7 @@ from loguru import logger
 from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
     JQEntityProcessorSync,
 )
-from integration import HttpServerSelector, ApiPathParameter
+from integration import ApiPathParameter
 from custom.helpers.endpoint_cache import get_endpoint_cache
 
 
@@ -181,13 +181,14 @@ async def query_api_for_parameters(
 
 
 async def resolve_dynamic_endpoints(
-    selector: HttpServerSelector, kind: str
+    kind: str,
+    path_parameters: Optional[Dict[str, ApiPathParameter]] = None,
 ) -> AsyncGenerator[List[tuple[str, Dict[str, str]]], None]:
     """Resolve dynamic endpoints with path parameter values
 
     Args:
-        selector: The resource selector configuration
         kind: The endpoint path (e.g., "/api/v1/users" or "/api/v1/teams/{team_id}")
+        path_parameters: Optional mapping of parameter names to their discovery configs
 
     Yields:
         Batches of tuples: (resolved_url, {param_name: param_value})
@@ -197,8 +198,7 @@ async def resolve_dynamic_endpoints(
         logger.error("Kind (endpoint) is empty")
         return
 
-    # Get path_parameters from selector if they exist
-    path_parameters = getattr(selector, "path_parameters", None) or {}
+    resolved_path_parameters = path_parameters or {}
 
     # Find path parameters in endpoint template
     param_names = extract_path_parameters(kind)
@@ -209,7 +209,7 @@ async def resolve_dynamic_endpoints(
         return
 
     # Validate that all parameters are configured
-    missing_params = validate_endpoint_parameters(param_names, path_parameters)
+    missing_params = validate_endpoint_parameters(param_names, resolved_path_parameters)
     if missing_params:
         logger.error(f"Missing configuration for path parameters: {missing_params}")
         yield [(kind, {})]
@@ -223,7 +223,7 @@ async def resolve_dynamic_endpoints(
         )
 
     param_name = param_names[0]
-    param_config = path_parameters[param_name]
+    param_config = resolved_path_parameters[param_name]
 
     # Track if any values were yielded
     has_values = False

@@ -48,6 +48,7 @@ class TestListResponseHandling:
             mock_selector.query_params = {}
             mock_selector.headers = {}
             mock_selector.data_path = None
+            mock_selector.path_parameters = None
             mock_resource_config.selector = mock_selector
 
             monkeypatch.setattr(
@@ -112,6 +113,7 @@ class TestListResponseHandling:
             mock_selector.query_params = {}
             mock_selector.headers = {}
             mock_selector.data_path = None
+            mock_selector.path_parameters = None
             mock_resource_config.selector = mock_selector
 
             monkeypatch.setattr(
@@ -172,6 +174,7 @@ class TestListResponseHandling:
             mock_selector.query_params = {}
             mock_selector.headers = {}
             mock_selector.data_path = ".data.users"
+            mock_selector.path_parameters = None
             mock_resource_config.selector = mock_selector
 
             monkeypatch.setattr(

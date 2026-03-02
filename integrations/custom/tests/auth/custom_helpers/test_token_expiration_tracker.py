@@ -14,11 +14,6 @@ from custom.auth.models import (
 )
 
 
-# ============================================================================
-# Token Expiration & Proactive Re-authentication Tests
-# ============================================================================
-
-
 @pytest.mark.asyncio
 class TestTokenExpiration:
     """Test token expiration and proactive re-authentication"""

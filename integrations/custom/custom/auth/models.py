@@ -8,6 +8,7 @@ from custom.exceptions import (
 
 HTTP_METHOD = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 
+
 class CustomAuthRequestConfig(BaseModel):
     """Configuration for custom authentication request - defines how to make the auth request"""
 

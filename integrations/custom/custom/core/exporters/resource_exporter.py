@@ -16,7 +16,7 @@ from custom.helpers.utils import (
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
-class HttpResourceExporter(AbstractHttpExporter[HttpServerClient]):
+class RestResourceExporter(AbstractHttpExporter[HttpServerClient]):
     """Exporter for HTTP endpoint resources.
 
     Handles dynamic endpoint resolution, paginated data fetching,
@@ -30,17 +30,16 @@ class HttpResourceExporter(AbstractHttpExporter[HttpServerClient]):
         self, options: FetchResourceOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         kind = options["kind"]
-        selector = options["selector"]
-
-        method = selector.method
-        query_params = selector.query_params or {}
-        headers = selector.headers or {}
-        body = getattr(selector, "body", None)
-        data_path = selector.data_path or "."
+        method = options["method"]
+        query_params = options["query_params"]
+        headers = options["headers"]
+        body = options["body"]
+        data_path = options["data_path"]
+        path_parameters = options["path_parameters"]
 
         logger.info(f"Starting export for kind (endpoint): {kind}")
 
-        async for endpoint_batch in resolve_dynamic_endpoints(selector, kind):
+        async for endpoint_batch in resolve_dynamic_endpoints(kind, path_parameters):
             async for batch in process_endpoints_concurrently(
                 endpoints=endpoint_batch,
                 fetch_fn=functools.partial(
@@ -87,7 +86,9 @@ class HttpResourceExporter(AbstractHttpExporter[HttpServerClient]):
 
         cache = get_endpoint_cache()
         fetch_fn: Callable[[], AsyncGenerator[List[Dict[str, Any]], None]] = (
-            functools.partial(self._raw_fetch, endpoint, method, query_params, headers, body)
+            functools.partial(
+                self._raw_fetch, endpoint, method, query_params, headers, body
+            )
         )
 
         raw_source: AsyncGenerator[List[Dict[str, Any]], None]
@@ -128,4 +129,3 @@ class HttpResourceExporter(AbstractHttpExporter[HttpServerClient]):
 
         except Exception as e:
             logger.error(f"Error fetching data from {endpoint}: {str(e)}")
-
