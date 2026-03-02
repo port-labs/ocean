@@ -7,6 +7,134 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.195-post1 (2026-03-02)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+0.2.194-post1 (2026-03-01)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+0.2.193-post1 (2026-03-01)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+0.2.192-post1 (2026-02-26)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+0.2.191-post1 (2026-02-26)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+0.2.190-post1 (2026-02-25)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+0.2.189-post1 (2026-02-24)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
+0.2.188-post1 (2026-02-22)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.37.1
+
+
+0.2.187-post1 (2026-02-22)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
+
+
+0.2.186-post1 (2026-02-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+0.2.185-post1 (2026-02-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+## 0.2.184-post1 (2026-02-15)
+=============================
+
+### Improvements
+
+- Added deprecation warning when using `search://` prefix in mappings; use `searchQueries` selector instead
+
+
+0.2.183-post1 (2026-02-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+0.2.182-post1 (2026-02-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
+0.2.181-post1 (2026-02-12)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.2.180-post1 (2026-02-09)
+==========================
+
+### Improvements
+
+- Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `includedFiles` selector
+
+
 0.2.179-post1 (2026-02-02)
 ==========================
 

@@ -7,6 +7,116 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.4 (2026-03-02)
+
+### Improvements
+
+- Changed Saas integration to use single process.
+
+
+## 0.38.3 (2026-03-01)
+
+### Improvements
+
+- Make caching decorators concurrency safe
+
+## 0.38.2 (2026-03-01)
+
+### Improvements
+
+- Handled SSRF and DNS rebinding attacks
+
+
+## 0.38.1 (2026-02-26)
+
+### Improvements
+
+- Updated workflow node run logs API
+
+## 0.38.0 (2026-02-26)
+
+### Improvements
+
+- Updated retry transport to use async methods for before_retry and after_retry
+
+## 0.37.3 (2026-02-24)
+
+### Improvements
+
+- Removed traceback from exception log messages to reduce log noise
+
+## 0.37.2 (2026-02-22)
+
+### Bug fixes
+
+- Extended read-only filesystem support to work with arbitrary UID and GID combinations.
+
+## 0.37.1 (2026-02-22)
+
+### Bug fixes
+
+Fixed advanced config structure in ui schema generation
+
+
+## 0.37.0 (2026-02-22)
+
+### Improvements
+
+- Release workflow now uploads integration specs to versioned S3 paths (`integration/version/spec.json`) and uploads port-app-config and UI schemas to S3 per integration version (generated via `ocean port-app-config schema` in release)
+
+
+## 0.36.1 (2026-02-18)
+
+### Bug fixes
+
+- Port's Workflows logs endpoints changes
+
+## 0.36.0 (2026-02-17)
+
+### Improvements
+
+- Added `port-app-config schema` and `port-app-config list-kinds` CLI commands to expose integration resource kinds and selectors, with schema validation ensuring kind uniqueness across the resources union
+
+
+## 0.35.8 (2026-02-17)
+
+### Bug fixes
+
+Add `ignore_retry_after_status_codes` to the retry configuration to force exponential backoff for specified status codes.
+
+
+## 0.35.7 (2026-02-15)
+
+### Vulnerabilities
+
+- Fixed vulnerabilities in
+  - Ocean core:
+    - urllib3 (2.6.0 -> 2.6.3)
+    - cryptography (44.0.3 -> 46.0.5)
+    - psutil (7.0.0 -> 7.2.1)
+    - charset-normalizer (3.4.3 -> 3.4.4)
+    - arrow (1.3.0 -> 1.4.0)
+  - Ocean docs:
+    - webpack
+    - lodash-es
+    - qs
+    - lodash
+    - undici
+
+## 0.35.6 (2026-02-15)
+
+### Features
+
+- Added support for workflow node runs in addition to action runs in ExecutionManager. Integrations can poll and execute both via unified run API.
+
+
+## 0.35.5 (2026-02-12)
+
+### Bug fixes
+
+- Fixed integration mapping not being initialized when integration already exists prior to ocean run
+
+
 ## 0.35.4 (2026-02-02)
 
 ### Bug fixes

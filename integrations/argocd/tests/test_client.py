@@ -1,5 +1,6 @@
 from typing import Any
 from unittest.mock import AsyncMock, patch
+import json
 
 import pytest
 from client import (
@@ -354,6 +355,7 @@ async def test_get_managed_resources(
                 mock_stream.assert_called_with(
                     url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources",
                     target_items_path="items",
+                    params=None,
                 )
 
 
@@ -400,7 +402,9 @@ async def test_get_clusters_with_only_available_clusters(
             for cluster in all_clusters
         )
         mock_stream.assert_called_with(
-            url=f"{mock_argocd_client.api_url}/clusters", target_items_path="items"
+            url=f"{mock_argocd_client.api_url}/clusters",
+            target_items_path="items",
+            params=None,
         )
 
 
@@ -468,7 +472,9 @@ async def test_get_clusters_filters_unavailable_clusters(
             cluster_names = [cluster["name"] for cluster in all_clusters]
             assert cluster_names == ["cluster-1", "cluster-3", "cluster-5"]
             mock_stream.assert_called_with(
-                url=f"{mock_argocd_client.api_url}/clusters", target_items_path="items"
+                url=f"{mock_argocd_client.api_url}/clusters",
+                target_items_path="items",
+                params=None,
             )
 
 
@@ -654,9 +660,43 @@ async def test_get_managed_resources_with_streaming_disabled() -> None:
 
             # Should use direct API request, not streaming
             mock_request.assert_called_once_with(
-                url=f"{client.api_url}/applications/test-app/managed-resources"
+                url=f"{client.api_url}/applications/test-app/managed-resources",
+                query_params=None,
             )
             mock_stream.assert_not_called()
             assert len(resources) == 2
             # Verify application is added to each resource
             assert all("__application" in resource for resource in resources)
+
+
+# Tests for custom HTTP headers
+def test_argocd_client_custom_headers() -> None:
+    custom_headers: dict[str, str] = {
+        "X-Custom-Header": "value",
+        "CF-Access-Client-Id": "id",
+    }
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://argocd.example.com",
+        ignore_server_error=False,
+        allow_insecure=True,
+        custom_http_headers=json.dumps(custom_headers),
+    )
+
+    # Check if Authorization header is present
+    assert client.http_client.headers["Authorization"] == "Bearer test_token"
+    # Check if custom headers are present
+    assert client.http_client.headers["X-Custom-Header"] == "value"
+    assert client.http_client.headers["CF-Access-Client-Id"] == "id"
+
+
+def test_argocd_client_without_custom_headers() -> None:
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://argocd.example.com",
+        ignore_server_error=False,
+        allow_insecure=True,
+    )
+
+    assert client.http_client.headers["Authorization"] == "Bearer test_token"
+    assert "X-Custom-Header" not in client.http_client.headers

@@ -1,3 +1,4 @@
+import asyncio
 from typing import Union, cast, Any
 
 from loguru import logger
@@ -27,6 +28,7 @@ from integration import (
     RepositoryResourceConfig,
     PullRequestResourceConfig,
 )
+from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
 )
@@ -59,13 +61,57 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
+async def _enrich_repo_with_included_files(
+    client: BitbucketClient,
+    repo: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a repository dict with __includedFiles from the given file paths."""
+    repo_slug = repo.get("slug") or repo.get("name", "").replace(" ", "-")
+    default_branch = repo.get("mainbranch", {}).get("name", "main")
+    included: dict[str, Any] = {}
+
+    for file_path in file_paths:
+        try:
+            content = await client.get_repository_files(
+                repo_slug, default_branch, file_path
+            )
+            included[file_path] = content
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {repo_slug}@{default_branch}: {e}"
+            )
+            included[file_path] = None
+
+    repo["__includedFiles"] = included
+    return repo
+
+
+async def _enrich_repos_batch_with_included_files(
+    client: BitbucketClient,
+    repositories: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of repositories with included files."""
+    tasks = [
+        _enrich_repo_with_included_files(client, repo, file_paths)
+        for repo in repositories
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the workspace."""
     client = init_client()
     selector = cast(RepositoryResourceConfig, event.resource_config).selector
     params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    included_files = selector.included_files or []
     async for repositories in client.get_repositories(params=params):
+        if included_files:
+            repositories = await _enrich_repos_batch_with_included_files(
+                client, repositories, included_files
+            )
         yield repositories
 
 
@@ -92,6 +138,82 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield batch
 
 
+async def _enrich_folder_with_included_files(
+    client: BitbucketClient,
+    folder: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a folder entity with __includedFiles from the given file paths."""
+    repo = folder.get("repo", {})
+    repo_slug = repo.get("slug") or repo.get("name", "").replace(" ", "-")
+    branch = folder.get("branch", "main")
+    included: dict[str, Any] = {}
+
+    for file_path in file_paths:
+        try:
+            content = await client.get_repository_files(repo_slug, branch, file_path)
+            included[file_path] = content
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {repo_slug}@{branch}: {e}"
+            )
+            included[file_path] = None
+
+    folder["__includedFiles"] = included
+    return folder
+
+
+async def _enrich_folders_batch_with_included_files(
+    client: BitbucketClient,
+    folders: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of folders with included files."""
+    tasks = [
+        _enrich_folder_with_included_files(client, folder, file_paths)
+        for folder in folders
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
+async def _enrich_file_entity_with_included_files(
+    client: BitbucketClient,
+    file_entity: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a file entity with __includedFiles from the given file paths."""
+    repo = file_entity.get("repo", {})
+    repo_slug = repo.get("slug") or repo.get("name", "").replace(" ", "-")
+    branch = file_entity.get("branch") or repo.get("mainbranch", {}).get("name", "main")
+    included: dict[str, Any] = {}
+
+    for file_path in file_paths:
+        try:
+            content = await client.get_repository_files(repo_slug, branch, file_path)
+            included[file_path] = content
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {repo_slug}@{branch}: {e}"
+            )
+            included[file_path] = None
+
+    file_entity["__includedFiles"] = included
+    return file_entity
+
+
+async def _enrich_file_entities_batch_with_included_files(
+    client: BitbucketClient,
+    file_entities: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of file entities with included files."""
+    tasks = [
+        _enrich_file_entity_with_included_files(client, fe, file_paths)
+        for fe in file_entities
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync folders based on configuration."""
@@ -101,11 +223,16 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(BitbucketFolderSelector, config.selector)
     client = init_client()
     params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    included_files = selector.included_files or []
     async for matching_folders in process_folder_patterns(
         selector.folders,
         client,
         params=params,
     ):
+        if included_files:
+            matching_folders = await _enrich_folders_batch_with_included_files(
+                client, matching_folders, included_files
+            )
         yield matching_folders
 
 
@@ -116,7 +243,13 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         Union[ResourceConfig, BitbucketFileResourceConfig], event.resource_config
     )
     selector = cast(BitbucketFileSelector, config.selector)
+    included_files = selector.included_files or []
+    client = init_client() if included_files else None
     async for file_result in process_file_patterns(selector.files):
+        if included_files and client:
+            file_result = await _enrich_file_entities_batch_with_included_files(
+                client, file_result, included_files
+            )
         yield file_result
 
 

@@ -158,6 +158,11 @@ class PagerdutyIncidentResourceConfig(ResourceConfig):
             description="If set to true, will ingest incident analytics data to Port. Default value is false",
             alias="incidentAnalytics",
         )
+        include_custom_fields: bool = Field(
+            default=False,
+            description="If set to true, will fetch and attach custom field values for each incident. Default value is false",
+            alias="includeCustomFields",
+        )
 
     kind: Literal["incidents"]
     selector: PagerdutySelector
@@ -177,6 +182,11 @@ class PagerdutyServiceResourceConfig(ResourceConfig):
             default=3,
             description="Number of months to consider for the service analytics date range. Must be a positive integer. Default value is 3 months",
             alias="analyticsMonthsPeriod",
+        )
+        include_custom_fields: bool = Field(
+            default=False,
+            description="If set to true, will fetch and attach custom field values for each service. Default value is false",
+            alias="includeCustomFields",
         )
 
     kind: Literal["services"]

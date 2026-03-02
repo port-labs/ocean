@@ -10,7 +10,7 @@ from github.helpers.models import RepoSearchParams
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
-from integration import GithubPortAppConfig, GithubRepoSearchConfig, RepoSearchSelector
+from integration import GithubPortAppConfig, RepoSearchSelector
 from loguru import logger
 
 
@@ -28,7 +28,7 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def should_process_repo_search(
         self, payload: EventPayload, config: ResourceConfig
     ) -> bool:
-        repo_search = cast(GithubRepoSearchConfig, config).selector.repo_search
+        repo_search = cast(RepoSearchSelector, config.selector).repo_search
 
         if repo_search is not None:
             logger.info(
@@ -88,13 +88,27 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
                     return repository
         return None
 
+    def should_filter_by_visibility(self) -> bool:
+        """
+        By default, repository-based processors respect visibility filtering.
+        Subclasses may override this.
+        """
+        return True
+
     async def validate_repository_payload(self, payload: EventPayload) -> bool:
         repository = payload.get("repository", {})
         if not repository.get("name"):
             return False
 
+        if not self.should_filter_by_visibility():
+            return True
+
         repository_visibility = repository.get("visibility")
-        return await self.validate_repository_visibility(repository_visibility)
+
+        return (
+            repository_visibility is not None
+            and await self.validate_repository_visibility(repository_visibility)
+        )
 
     async def validate_repository_visibility(self, repository_visibility: str) -> bool:
         configured_visibility = cast(

@@ -40,7 +40,10 @@
     "sass": "^1.94.0",
     "stream": "^0.0.3",
     "timers": "^0.1.1",
-    "xml2js": "^0.6.2"
+    "xml2js": "^0.6.2",
+    "qs": "^6.14.1",
+    "lodash": "^4.17.23",
+    "undici": "^6.23.0"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.6.2",
@@ -63,6 +66,8 @@
   },
   "overrides": {
     "redoc": "2.4.0",
-    "image-size": "^2.0.0"
+    "image-size": "^2.0.0",
+    "webpack": "^5.104.1",
+    "lodash-es": "^4.17.23"
   }
 }

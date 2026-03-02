@@ -324,6 +324,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 continue
 
             file_path = file_paths[file_index]
+
+            if file_data is None:
+                logger.warning(f"File data for {file_path} is null from {organization}")
+                continue
+
             content = file_data["text"]
             size = file_data.get("byteSize", 0)
             skip_parsing = file_metadata.get(file_path, False)

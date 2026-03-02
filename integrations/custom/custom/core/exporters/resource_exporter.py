@@ -1,11 +1,12 @@
 import functools
-from typing import AsyncGenerator, Dict, List, Any
+from typing import AsyncGenerator, Callable, Dict, List, Any
 
 from loguru import logger
 
 from custom.clients.http.client import HttpServerClient
 from custom.core.exporters.abstract_exporter import AbstractHttpExporter
 from custom.core.options import FetchResourceOptions
+from custom.helpers.endpoint_cache import get_endpoint_cache
 from custom.helpers.endpoint_resolver import resolve_dynamic_endpoints
 from custom.helpers.utils import (
     process_endpoints_concurrently,
@@ -54,6 +55,22 @@ class HttpResourceExporter(AbstractHttpExporter[HttpServerClient]):
             ):
                 yield batch
 
+    def _raw_fetch(
+        self,
+        endpoint: str,
+        method: str,
+        query_params: Dict[str, Any],
+        headers: Dict[str, str],
+        body: Any,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        return self.client.fetch_paginated_data(
+            endpoint=endpoint,
+            method=method,
+            query_params=query_params,
+            headers=headers,
+            body=body,
+        )
+
     async def _fetch_endpoint_data(
         self,
         endpoint: str,
@@ -68,14 +85,26 @@ class HttpResourceExporter(AbstractHttpExporter[HttpServerClient]):
         """Fetch and process data from a single endpoint."""
         logger.info(f"Fetching data from: {method} {endpoint}")
 
-        try:
-            async for batch in self.client.fetch_paginated_data(
+        cache = get_endpoint_cache()
+        fetch_fn: Callable[[], AsyncGenerator[List[Dict[str, Any]], None]] = (
+            functools.partial(self._raw_fetch, endpoint, method, query_params, headers, body)
+        )
+
+        raw_source: AsyncGenerator[List[Dict[str, Any]], None]
+        if cache is not None:
+            raw_source = cache.get_or_fetch(
                 endpoint=endpoint,
                 method=method,
                 query_params=query_params,
                 headers=headers,
                 body=body,
-            ):
+                fetch_fn=fetch_fn,
+            )
+        else:
+            raw_source = fetch_fn()
+
+        try:
+            async for batch in raw_source:
                 logger.info(f"Received {len(batch)} records from {endpoint}")
 
                 if data_path == "." and batch and not isinstance(batch[0], list):
@@ -99,3 +128,4 @@ class HttpResourceExporter(AbstractHttpExporter[HttpServerClient]):
 
         except Exception as e:
             logger.error(f"Error fetching data from {endpoint}: {str(e)}")
+

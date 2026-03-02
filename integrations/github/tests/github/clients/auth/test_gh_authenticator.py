@@ -316,6 +316,15 @@ class TestGithubAuthenticator:
                     fake_handle_async_request,
                 ),
                 patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+                patch.object(
+                    github_auth,
+                    "get_headers",
+                    AsyncMock(
+                        return_value=AsyncMock(
+                            as_dict=lambda: {"Authorization": "Bearer test"}
+                        )
+                    ),
+                ),
             ):
                 client = github_auth.client
                 resp = await client.get("https://api.github.com/test")

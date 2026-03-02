@@ -8,9 +8,11 @@ from asyncio import BoundedSemaphore
 from fastapi import Request, Response
 from loguru import logger
 
-from gcp_core.helpers.ratelimiter.base import PersistentAsyncLimiter
+import gcp_core.clients as clients
+from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.signal import signal_handler
 
 from gcp_core.errors import (
     AssetHasNoProjectAncestorError,
@@ -41,7 +43,9 @@ from gcp_core.utils import (
     get_initial_quota_for_project_via_rest,
 )
 
-PROJECT_V3_GET_REQUESTS_RATE_LIMITER: PersistentAsyncLimiter
+RATE_LIMITER_TIME_PERIOD_SECONDS: float = 60.0
+
+PROJECT_V3_GET_REQUESTS_RATE_LIMITER: FixedWindowLimiter
 PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE: BoundedSemaphore
 BACKGROUND_TASK_THRESHOLD: float
 
@@ -84,6 +88,8 @@ async def _resolve_resync_method_for_resource(
 
 @ocean.on_start()
 async def setup_application_default_credentials() -> None:
+    signal_handler.register(clients.close)
+
     if not ocean.integration_config["encoded_adc_configuration"]:
         logger.info(
             "Using integration's environment Application Default Credentials configuration"
@@ -106,8 +112,8 @@ async def setup_real_time_request_controllers() -> None:
     global BACKGROUND_TASK_THRESHOLD
     if not ocean.event_listener_type == "ONCE":
         effective_quota = await get_initial_quota_for_project_via_rest()
-        PROJECT_V3_GET_REQUESTS_RATE_LIMITER = PersistentAsyncLimiter.get_limiter(
-            max_rate=effective_quota
+        PROJECT_V3_GET_REQUESTS_RATE_LIMITER = FixedWindowLimiter(
+            max_rate=effective_quota, time_period=RATE_LIMITER_TIME_PERIOD_SECONDS
         )
         PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE = asyncio.BoundedSemaphore(
             effective_quota
@@ -159,7 +165,7 @@ async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind in iter(AssetTypesWithSpecialHandling):
+    if kind in AssetTypesWithSpecialHandling:
         logger.debug("Kind already has a specific handling, skipping")
         return
     asset_rate_limiter, asset_semaphore = await resolve_request_controllers(kind)

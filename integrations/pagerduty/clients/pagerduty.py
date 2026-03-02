@@ -1,3 +1,4 @@
+import asyncio
 from http import HTTPStatus
 from typing import Any, AsyncGenerator, Dict, Optional
 
@@ -377,3 +378,37 @@ class PagerDutyClient(OAuthClient):
             incident["__analytics"] = analytics_map.get(incident["id"])
 
         return incidents
+
+    async def get_entity_custom_fields(
+        self, entity_type: str, entity_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch custom field values for a single service or incident."""
+        logger.debug(f"Fetching custom fields for {entity_type}/{entity_id}")
+        data = await self.send_api_request(
+            endpoint=f"{entity_type}/{entity_id}/custom_fields/values",
+            method="GET",
+        )
+        return data.get("custom_fields", [])
+
+    async def enrich_entities_with_custom_fields(
+        self, entities: list[dict[str, Any]], entity_type: str
+    ) -> list[dict[str, Any]]:
+        """Enrich a batch of entities with their custom field values."""
+        logger.info(f"Enriching {len(entities)} {entity_type} with custom fields")
+
+        results = await asyncio.gather(
+            *[
+                self.get_entity_custom_fields(entity_type, entity["id"])
+                for entity in entities
+            ],
+            return_exceptions=True,
+        )
+        for entity, result in zip(entities, results):
+            if isinstance(result, Exception):
+                logger.warning(
+                    f"Failed to fetch custom fields for {entity_type}/{entity['id']}: {result}"
+                )
+                result = []
+            entity["__custom_fields"] = result
+
+        return entities

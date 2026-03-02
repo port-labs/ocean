@@ -11,7 +11,7 @@ from github.core.options import (
     ListFolderOptions,
     SingleFolderOptions,
 )
-from github.helpers.utils import IgnoredError
+from github.helpers.utils import IgnoredError, matches_glob_pattern
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
@@ -56,7 +56,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
                 is_recursive_api_call = self._needs_recursive_search(path)
                 tree = await self._get_tree(url, recursive=is_recursive_api_call)
                 folders = self._retrieve_relevant_tree(
-                    organization, tree, path=path, repo=repo
+                    organization, tree, path=path, repo=repo, branch=branch
                 )
                 if folders:
                     yield folders
@@ -67,12 +67,13 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         tree: list[dict[str, Any]],
         path: str,
         repo: dict[str, Any],
+        branch: str,
     ) -> list[dict[str, Any]]:
         folders = self._filter_folder_contents(tree, path)
         logger.info(f"fetched {len(folders)} folders from {repo['name']}")
         if folders:
             formatted = self._enrich_folder_with_repository(
-                organization, folders, repo=repo
+                organization, folders, repo=repo, branch=branch
             )
             return formatted
         else:
@@ -83,12 +84,14 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         organization: str,
         folders: list[dict[str, Any]],
         repo: dict[str, Any] | None = None,
+        branch: str | None = None,
     ) -> list[dict[str, Any]]:
         formatted_folders = [
             {
                 "folder": folder,
                 "__repository": repo,
                 "__organization": organization,
+                "__branch": branch,
             }
             for folder in folders
         ]
@@ -119,5 +122,5 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         return [
             item
             for item in just_trees
-            if glob.globmatch(item["path"], path, flags=glob.GLOBSTAR | glob.DOTMATCH)
+            if matches_glob_pattern(item["path"], path, flags=glob.DOTMATCH)
         ]

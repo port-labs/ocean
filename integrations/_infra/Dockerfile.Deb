@@ -20,14 +20,14 @@ FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
 ARG OCEAN_USER_ID=1001
 ARG OCEAN_GROUP_ID=1001
 
-RUN groupadd -r appgroup -g ${OCEAN_GROUP_ID} && useradd -r -g appgroup -m -u ${OCEAN_USER_ID} ocean
+RUN groupadd -r appgroup -g ${OCEAN_GROUP_ID} && useradd -r -g appgroup -u ${OCEAN_USER_ID} ocean
 
 RUN mkdir -p /tmp/ocean
 
 ARG INTEGRATION_VERSION
 ARG BUILD_CONTEXT
 ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
-ARG OAUTH_CONFIG_DIR=/app/.config
+ARG OAUTH_CONFIG_DIR=/tmp/ocean/.config
 ARG STREAMING_LOCATION=/tmp/ocean/streaming
 
 ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
@@ -35,10 +35,8 @@ ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
 
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
 RUN mkdir -p ${STREAMING_LOCATION}
-RUN chown -R ocean:appgroup /tmp/ocean && chmod -R 755 /tmp/ocean
-
 RUN mkdir -p ${OAUTH_CONFIG_DIR}
-RUN chown -R ocean:appgroup ${OAUTH_CONFIG_DIR}
+RUN chmod -R 777 /tmp/ocean
 
 RUN apt-get update \
     && apt-get install -y \
@@ -50,7 +48,6 @@ RUN apt-get update \
     && apt-get clean
 
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
-# Used to ensure that new integrations will be public, see https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility
 LABEL org.opencontainers.image.source=https://github.com/port-labs/ocean
 
 ENV PIP_ROOT_USER_ACTION=ignore
@@ -59,39 +56,19 @@ WORKDIR /app
 
 USER ocean
 
-# Copy the application code
 COPY ./${BUILD_CONTEXT} /app
-
-# Copy dependencies from the build stage
 COPY --from=base /app/.venv /app/.venv
-
 COPY ./integrations/_infra/sync_ca_certs.sh /app/sync_ca_certs.sh
-
 COPY ./integrations/_infra/init.sh /app/init.sh
 
 USER root
 
-# Ensure that ocean is available for all in path
 RUN chmod a+x /app/.venv/bin/ocean
-
 RUN chmod a+x /app/init.sh
 RUN chmod +x /app/sync_ca_certs.sh
 RUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
-
-# Add ocean user to ssl certs group
-# Copy CA certificates to user-accessible location for unprivileged access
-RUN mkdir -p /home/ocean/.local/share/ca-certificates \
-    && cp -r /etc/ssl/certs/* /home/ocean/.local/share/ca-certificates/ 2>/dev/null || true \
-    && chown -R ocean:appgroup /home/ocean/.local/share/ca-certificates \
-    && chmod -R 644 /home/ocean/.local/share/ca-certificates \
-    && echo "export SSL_CERT_DIR=/home/ocean/.local/share/ca-certificates" >> /home/ocean/.bashrc \
-    && echo "export SSL_CERT_FILE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt" >> /home/ocean/.bashrc
-
-RUN setfacl -R -m u:ocean:rX /etc/ssl/certs \
-    && setfacl -d -m u:ocean:rX /etc/ssl/certs
-
+RUN chmod -R a+rX /app
 
 USER ocean
 
-# Run the application
 CMD ["bash", "/app/init.sh"]

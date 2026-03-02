@@ -7,6 +7,158 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.24 (2026-03-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+## 0.7.23 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+## 0.7.22 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+## 0.7.21 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+## 0.7.20 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+## 0.7.19 (2026-02-25)
+
+
+### Bug Fixes
+
+- Fixed bug with pipeline builds pagination returning only the first page
+
+
+## 0.7.18 (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+## 0.7.17 (2026-02-25)
+
+### Features
+
+- Added group and group-member kind
+
+
+## 0.7.16 (2026-02-24)
+
+
+### Bug Fixes
+
+- Fixed KeyError crash when syncing manual test runs that lack a 'build' field. Manual test runs (created via Test Plans UI/API) don't have associated pipeline builds, so code coverage fetch is now skipped for these runs.
+
+
+## 0.7.15 (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
+## 0.7.14 (2026-02-24)
+
+
+### Improvements
+
+- PortAppConfig model strict kinds enforcements
+
+
+## 0.7.13 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.1
+
+
+## 0.7.12 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
+
+
+## 0.7.11 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+## 0.7.10 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+## 0.7.9 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+## 0.7.8 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
+## 0.7.7 (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.7.6 (2026-02-09)
+
+
+### Features
+
+- Added `includedFiles` selector for repository and project entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__includedFiles` in the raw data
+- Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `includedFiles` selector
+
+
 ## 0.7.5 (2026-02-02)
 
 
