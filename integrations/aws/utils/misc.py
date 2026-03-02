@@ -152,13 +152,6 @@ def is_resource_not_found_exception(e: Exception) -> bool:
 
 
 def is_resource_type_not_available_exception(e: Exception) -> bool:
-    """Check if the error indicates a resource type is not available in the region.
-
-    These errors are benign during multi-region resync — they mean the
-    CloudControl/CloudFormation registry does not support the resource type in
-    a particular region.  They should be suppressed so that reconciliation is
-    not blocked.
-    """
     not_available_error_codes = [
         "TypeNotFoundException",
         "CFNRegistryException",
