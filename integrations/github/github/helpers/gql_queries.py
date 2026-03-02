@@ -19,6 +19,9 @@ query OrgMemberQuery(
       ) {{
         nodes {{
           login
+          id
+          databaseId
+          __typename
           ... on User {{
             email
             name
@@ -47,6 +50,9 @@ query OrgMemberQuery(
         nodes {{
             ... on User {{
               login
+              id
+              databaseId
+              __typename
               email
               name
             }}

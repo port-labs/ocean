@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.12 (2026-03-02)
+
+
+### Bug Fixes
+
+- Included `id`, `databaseId` and `__typename` in the org members GraphQL queries to support stable user mapping and type detection.
+
+
 ## 5.1.11 (2026-03-02)
 
 
