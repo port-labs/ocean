@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed 429 Too Many Requests errors during target resyncs and webhooks by respecting the attachProjectData configuration, preventing unnecessary org-wide project fetches.
+- Add an optional attachProjectData flag to allow opt-in org-wide project enrichment on the target kind.
 
 
 ## 0.3.28 (2026-03-01)
