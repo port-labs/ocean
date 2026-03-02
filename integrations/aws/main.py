@@ -38,6 +38,7 @@ from utils.misc import (
     ResourceKindsWithSpecialHandling,
     OPT_IN_REGIONS,
     is_access_denied_exception,
+    is_resource_type_not_available_exception,
     is_server_error,
 )
 from port_ocean.utils.async_iterators import (
@@ -61,6 +62,35 @@ CONCURRENT_RESYNC_ACCOUNTS = 10
 CONCURRENT_RESYNC_REGIONS = 10
 
 
+async def _safe_region_generator(
+    resync_func: Callable[[str, Session], ASYNC_GENERATOR_RESYNC_TYPE],
+    kind: str,
+    session: Session,
+    failed_regions: list[str],
+    errors: list[Exception],
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Wrap a region's resync generator so one region cannot cancel siblings."""
+    region = session.region_name
+    try:
+        async for batch in resync_func(kind, session):
+            yield batch
+    except Exception as exc:
+        if is_access_denied_exception(exc):
+            logger.info(f"Skipping {kind} in region {region}: access denied")
+        elif is_resource_type_not_available_exception(exc):
+            logger.info(
+                f"Skipping {kind} in region {region}: "
+                f"resource type not available in this region"
+            )
+        else:
+            failed_regions.append(region)
+            errors.append(exc)
+            logger.warning(
+                f"Error fetching {kind} in region {region}: {exc}",
+                exc_info=True,
+            )
+
+
 async def _handle_global_resource_resync(
     kind: str,
     credentials: AwsCredentials,
@@ -75,9 +105,17 @@ async def _handle_global_resource_resync(
             return
         except Exception as e:
             if is_access_denied_exception(e):
-                continue
+                logger.warning(
+                    f"Access denied for global resource {kind} in region "
+                    f"{session.region_name}, trying next region"
+                )
             else:
-                raise e
+                logger.warning(
+                    f"Error fetching global resource {kind} in region "
+                    f"{session.region_name}: {e}. Trying next region.",
+                    exc_info=True,
+                )
+            continue
 
 
 async def resync_resources_for_account(
@@ -124,29 +162,33 @@ async def resync_resources_for_account(
 
     # Process regional resources
     tasks: list[AsyncIterator[list[dict[Any, Any]]]] = []
-    async for session in credentials.create_session_for_each_region(allowed_regions):
-        try:
-            tasks.append(resync_func(kind, session))
+    try:
+        async for session in credentials.create_session_for_each_region(
+            allowed_regions
+        ):
+            tasks.append(
+                _safe_region_generator(
+                    resync_func, kind, session, failed_regions, errors
+                )
+            )
             if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
                 async for batch in _process_tasks(
                     tasks, failed_regions, errors, session.region_name
                 ):
                     yield batch
 
-        except Exception as exc:
-            logger.error(
-                f"Failed to complete resync for {kind} in region {session.region_name}: {exc}",
-                exc_info=True,
-            )
-            failed_regions.append(session.region_name)
-            errors.append(exc)
-
-    # Process any remaining tasks
-    if tasks:
-        async for batch in _process_tasks(
-            tasks, failed_regions, errors, session.region_name
-        ):
-            yield batch
+        # Process any remaining tasks
+        if tasks:
+            async for batch in _process_tasks(
+                tasks, failed_regions, errors, session.region_name
+            ):
+                yield batch
+    except Exception as exc:
+        logger.error(
+            f"Unexpected error during session creation or task scheduling "
+            f"for {kind} in account {credentials.account_id}: {exc}",
+            exc_info=True,
+        )
 
     if errors:
         error_msg = (
@@ -154,7 +196,6 @@ async def resync_resources_for_account(
             f"for account {credentials.account_id}. "
             f"Failed regions: {', '.join(failed_regions)}"
         )
-        logger.error(error_msg)
         raise ExceptionGroup(error_msg, errors)
 
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.258 (2026-03-02)
+
+
+### Bug Fixes
+
+- Fixed an issue where harmless region errors (like TypeNotFoundException) during multi-region sync no longer stop cleanup, so old entities are properly removed.
+
+
 ## 0.2.257 (2026-03-01)
 
 
