@@ -166,8 +166,8 @@ def is_resource_type_not_available_exception(e: Exception) -> bool:
 
         not_available_patterns = [
             "type not found",
-            "unsupported",
-            "not available",
+            "is not registered",
+            "resource type is not available in this region",
         ]
         if _check_general_service_exception(e, not_available_patterns):
             return True

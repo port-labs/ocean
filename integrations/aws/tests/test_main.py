@@ -30,6 +30,18 @@ def _type_not_found_error() -> ClientError:
     )
 
 
+def _general_service_exception_unsupported() -> ClientError:
+    return ClientError(
+        {
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "The operation is unsupported due to a transient backend failure",
+            }
+        },
+        "ListResources",
+    )
+
+
 def _real_error(code: str = "InternalServiceError") -> ClientError:
     """Non-benign: a genuine service error that should block reconciliation."""
     return ClientError(
@@ -152,6 +164,30 @@ async def test_safe_region_generator_ignores_access_denied() -> None:
     assert results == []
     assert failed_regions == []
     assert errors == []
+
+
+@pytest.mark.asyncio
+async def test_safe_region_generator_does_not_suppress_generic_unsupported() -> None:
+    from main import _safe_region_generator
+
+    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        raise _general_service_exception_unsupported()
+        yield
+
+    session = _make_session("eu-west-3")
+    failed_regions: list[str] = []
+    errors: list[Exception] = []
+
+    results = []
+    async for batch in _safe_region_generator(
+        resync_func, "AWS::EC2::Instance", session, failed_regions, errors
+    ):
+        results.append(batch)
+
+    assert results == []
+    assert failed_regions == ["eu-west-3"]
+    assert len(errors) == 1
+    assert isinstance(errors[0], ClientError)
 
 
 @pytest.mark.asyncio
