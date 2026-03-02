@@ -35,7 +35,8 @@ module "port_ocean_ecs" {
   additional_security_groups = local.security_groups
   container_port             = var.container_port
   image_registry             = var.image_registry
-
+  cpu                        = var.cpu
+  memory                     = var.memory
   port = {
     client_id     = var.port.client_id
     client_secret = var.port.client_secret
