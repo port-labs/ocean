@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from unittest.mock import MagicMock, patch
 from botocore.exceptions import ClientError
@@ -214,7 +216,32 @@ async def test_safe_region_generator_yields_partial_then_fails() -> None:
     assert len(errors) == 1
 
 
-# ---------- _handle_global_resource_resync tests ----------
+@pytest.mark.asyncio
+async def test_safe_region_generator_propagates_cancelled_error() -> None:
+    """asyncio.CancelledError must not be swallowed — it should propagate."""
+    from main import _safe_region_generator
+
+    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        raise asyncio.CancelledError()
+        yield []
+
+    session = _make_session("us-east-1")
+    failed_regions: list[str] = []
+    errors: list[Exception] = []
+
+    with pytest.raises(asyncio.CancelledError):
+        async for _ in _safe_region_generator(
+            resync_func,
+            "AWS::EC2::Instance",
+            session,
+            failed_regions,
+            errors,
+        ):
+            pass
+
+    # CancelledError should NOT be recorded as a failure
+    assert failed_regions == []
+    assert errors == []
 
 
 @pytest.mark.asyncio

@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed an issue where harmless region errors (like TypeNotFoundException) during multi-region sync no longer stop cleanup, so old entities are properly removed.
+- Fixed an issue where harmless region errors (like TypeNotFoundException) during multi-region sync could stop cleanup and prevent old entities from being removed, so cleanup now continues and old entities are properly removed.ile genuine failures still raise an ExceptionGroup to block reconciliation.
 
 
 ## 0.2.258 (2026-03-02)

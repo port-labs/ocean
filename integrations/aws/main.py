@@ -47,6 +47,7 @@ from port_ocean.utils.async_iterators import (
 
 from aioboto3 import Session
 
+import asyncio
 import functools
 
 
@@ -74,6 +75,8 @@ async def _safe_region_generator(
     try:
         async for batch in resync_func(kind, session):
             yield batch
+    except asyncio.CancelledError:
+        raise
     except Exception as exc:
         if is_access_denied_exception(exc):
             logger.info(f"Skipping {kind} in region {region}: access denied")
@@ -85,9 +88,8 @@ async def _safe_region_generator(
         else:
             failed_regions.append(region)
             errors.append(exc)
-            logger.warning(
-                f"Error fetching {kind} in region {region}: {exc}",
-                exc_info=True,
+            logger.bind(traceback=exc, kind=kind, region=region).warning(
+                f"Error fetching {kind} in region {region}"
             )
 
 
@@ -106,6 +108,8 @@ async def _handle_global_resource_resync(
             async for batch in resync_func(kind, session):
                 yield batch
             return
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             if is_access_denied_exception(e):
                 logger.warning(
@@ -120,10 +124,9 @@ async def _handle_global_resource_resync(
             else:
                 failed_regions.append(region)
                 errors.append(e)
-                logger.warning(
+                logger.bind(traceback=e, kind=kind, region=region).warning(
                     f"Error fetching global resource {kind} in region "
-                    f"{region}: {e}. Trying next region.",
-                    exc_info=True,
+                    f"{region}. Trying next region."
                 )
             continue
 
@@ -201,10 +204,9 @@ async def resync_resources_for_account(
             ):
                 yield batch
     except Exception as exc:
-        logger.error(
+        logger.bind(traceback=exc, kind=kind, account_id=credentials.account_id).error(
             f"Unexpected error during session creation or task scheduling "
-            f"for {kind} in account {credentials.account_id}: {exc}",
-            exc_info=True,
+            f"for {kind} in account {credentials.account_id}"
         )
         errors.append(exc)
 
@@ -231,8 +233,8 @@ async def _process_tasks(
         if not is_access_denied_exception(exc):
             failed_regions.append(current_region)
             errors.append(exc)
-        logger.warning(
-            f"Error processing batch in region {current_region}: {exc}", exc_info=True
+        logger.bind(traceback=exc, region=current_region).warning(
+            f"Error processing batch in region {current_region}"
         )
     finally:
         tasks.clear()
