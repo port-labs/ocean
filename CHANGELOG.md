@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.5 (2026-03-02)
+
+### Improvements
+
+- Added support for items to parse in live events context
+
+
 ## 0.38.4 (2026-03-02)
 
 ### Improvements

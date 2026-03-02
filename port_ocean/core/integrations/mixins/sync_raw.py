@@ -120,7 +120,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.info(
                     f"Found async generator function for {resource_config.kind} name: {task.__qualname__}"
                 )
-                results.append(resync_generator_wrapper(task, resource_config.kind, resource_config.port.items_to_parse_name, resource_config.port.items_to_parse))
+                results.append(resync_generator_wrapper(task, resource_config.kind, resource_config.port.items_to_parse_name, resource_config.port.items_to_parse, resource_config.port.items_to_parse_top_level_transform))
             else:
                 logger.info(
                     f"Found sync function for {resource_config.kind} name: {task.__qualname__}"
