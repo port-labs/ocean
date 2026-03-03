@@ -101,9 +101,12 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         self, external_id: str
     ) -> ActionRun | WorkflowNodeRun | None:
         """Get a run by its external ID."""
-        action_run = await self.get_run_by_external_id(external_id)
-        if action_run:
-            return action_run
+        try:
+            action_run = await self.get_run_by_external_id(external_id)
+            if action_run:
+                return action_run
+        except Exception:
+            pass
         return await self.get_wf_node_run_by_external_id(external_id)
 
     def is_run_in_progress(self, run: ActionRun | WorkflowNodeRun) -> bool:
