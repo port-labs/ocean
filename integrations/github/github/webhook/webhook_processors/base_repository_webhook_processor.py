@@ -88,13 +88,27 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
                     return repository
         return None
 
+    def should_filter_by_visibility(self) -> bool:
+        """
+        By default, repository-based processors respect visibility filtering.
+        Subclasses may override this.
+        """
+        return True
+
     async def validate_repository_payload(self, payload: EventPayload) -> bool:
         repository = payload.get("repository", {})
         if not repository.get("name"):
             return False
 
+        if not self.should_filter_by_visibility():
+            return True
+
         repository_visibility = repository.get("visibility")
-        return await self.validate_repository_visibility(repository_visibility)
+
+        return (
+            repository_visibility is not None
+            and await self.validate_repository_visibility(repository_visibility)
+        )
 
     async def validate_repository_visibility(self, repository_visibility: str) -> bool:
         configured_visibility = cast(

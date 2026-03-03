@@ -151,6 +151,30 @@ def is_resource_not_found_exception(e: Exception) -> bool:
     return False
 
 
+def is_resource_type_not_available_exception(e: Exception) -> bool:
+    not_available_error_codes = [
+        "TypeNotFoundException",
+        "CFNRegistryException",
+        "UnsupportedActionException",
+    ]
+
+    if hasattr(e, "response") and e.response is not None:
+        error_code = e.response.get("Error", {}).get("Code")
+
+        if error_code in not_available_error_codes:
+            return True
+
+        not_available_patterns = [
+            "type not found",
+            "is not registered",
+            "resource type is not available in this region",
+        ]
+        if _check_general_service_exception(e, not_available_patterns):
+            return True
+
+    return False
+
+
 def get_matching_kinds_and_blueprints_from_config(
     kind: str, region: str, resource_configs: List[AWSResourceConfig]
 ) -> tuple[dict[str, list[str]], dict[str, list[str]]]:

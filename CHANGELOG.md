@@ -7,6 +7,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.4 (2026-03-02)
+
+### Improvements
+
+- Changed Saas integration to use single process.
+
+
+## 0.38.3 (2026-03-01)
+
+### Improvements
+
+- Make caching decorators concurrency safe
+
 ## 0.38.2 (2026-03-01)
 
 ### Improvements
