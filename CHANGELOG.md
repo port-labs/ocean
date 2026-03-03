@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.5 (2026-03-03)
+
+### Bug fixes
+
+- Fixed race condition between live events and resync reconciliation: entities created or updated by live events during a running resync are no longer incorrectly deleted. Reconciliation now fetches entities from Port with an `updatedAt` filter (not after resync start time) so only entities that existed before the resync are considered for deletion.
+- JQ entity processor sync (`jq_entity_processor_sync`): `_search` now uses `next(iter(it), None)` instead of `.first()` for robust iteration over jq results, and search failures are logged as warnings with structured fields (`pattern`, `error`) instead of full error logs.
+
+
 ## 0.38.4 (2026-03-02)
 
 ### Improvements
