@@ -184,8 +184,7 @@ class ActionRun(BaseModel):
 class WorkflowNodeRun(BaseModel):
     identifier: str
     status: WorkflowNodeRunStatus
-    node: dict[str, Any] = Field(default_factory=dict)
-    config: dict[str, Any] = Field(default_factory=dict)
+    config: dict[str, Any] | None = None
     result: WorkflowNodeRunResult | None = None
     output: dict[str, Any] = Field(default_factory=dict)
     externalRunId: str | None = None

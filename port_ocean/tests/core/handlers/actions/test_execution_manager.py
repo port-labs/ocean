@@ -64,7 +64,6 @@ def generate_mock_wf_node_run(
     return WorkflowNodeRun(
         identifier=f"test-wf-node-run-id-{uuid.uuid4()}",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
-        node={"identifier": "test-node"},
         config={
             "type": "INTEGRATION_ACTION",
             "installationId": "test-installation-id",
