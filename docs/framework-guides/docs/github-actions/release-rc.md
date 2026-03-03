@@ -17,6 +17,17 @@ This workflow automates the process of:
 - Creating GitHub releases marked as pre-releases
 - Tagging the source branch with the RC version
 
+## Access Requirements
+
+This workflow can only be triggered manually by users with **write access** to the repository (maintainers and administrators). This restriction exists because the workflow:
+
+- Publishes packages to PyPI using repository secrets
+- Pushes Docker images to GitHub Container Registry
+- Creates Git tags and GitHub releases
+- Modifies the repository's release history
+
+If you need to create an RC release and don't have the required permissions, please contact a repository maintainer.
+
 ## When to Use
 
 Use this workflow when you want to:
