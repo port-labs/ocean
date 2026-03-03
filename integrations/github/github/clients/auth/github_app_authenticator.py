@@ -3,6 +3,7 @@ import base64
 from typing import Any, Optional
 from loguru import logger
 from datetime import datetime, timedelta, timezone
+from httpx import HTTPStatusError
 import jwt
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
@@ -63,14 +64,24 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         )
 
     async def _fetch_installation_id(self, jwt_token: str) -> str:
+        # Try the org endpoint first; on 404 fall back to the user endpoint.
+        # Both /orgs/ and /users/ installation endpoints accept JWT auth,
+        # so we don't need an installation token for this lookup.
+        jwt_headers = {"Authorization": f"Bearer {jwt_token}"}
+        org_url = f"{self.github_host}/orgs/{self.organization}/installation"
         try:
-            url = f"{self.github_host}/orgs/{self.organization}/installation"
-            jwt_headers = {"Authorization": f"Bearer {jwt_token}"}
-            if await self.is_personal_org(
-                self.github_host, self.organization, headers=jwt_headers
-            ):
-                url = f"{self.github_host}/users/{self.organization}/installation"
-            response = await self.client.get(url, headers=jwt_headers)
+            response = await self.client.get(org_url, headers=jwt_headers)
+            response.raise_for_status()
+            return str(response.json()["id"])
+        except HTTPStatusError as e:
+            if e.response.status_code != 404:
+                raise AuthenticationException(
+                    f"Failed to fetch installation ID: {e}"
+                ) from e
+        # 404 on /orgs/ — likely a personal account
+        user_url = f"{self.github_host}/users/{self.organization}/installation"
+        try:
+            response = await self.client.get(user_url, headers=jwt_headers)
             response.raise_for_status()
             return str(response.json()["id"])
         except Exception as e:
