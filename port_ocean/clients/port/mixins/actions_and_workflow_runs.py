@@ -97,9 +97,14 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 should_raise=should_raise,
             )
 
-    async def find_run_by_external_id(self, external_id: str) -> ActionRun | None:
-        """Get an action run by its external ID."""
-        return await self.get_run_by_external_id(external_id)
+    async def find_run_by_external_id(
+        self, external_id: str
+    ) -> ActionRun | WorkflowNodeRun | None:
+        """Get a run by its external ID."""
+        action_run = await self.get_run_by_external_id(external_id)
+        if action_run:
+            return action_run
+        return await self.get_wf_node_run_by_external_id(external_id)
 
     def is_run_in_progress(self, run: ActionRun | WorkflowNodeRun) -> bool:
         """Check if a run is currently in progress."""
@@ -114,18 +119,16 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         external_id: str,
         extra_output: dict[str, Any] | None = None,
     ) -> None:
-        """Update a run to indicate it has started with a link and external ID."""
+        """Update a run to indicate it has started, setting the link and external ID."""
         if self._is_wf_node_run(run):
-            output: dict[str, Any] = {
-                "workflowRunUrl": link,
-                "externalRunId": external_id,
-            }
+            output: dict[str, Any] = {"workflowRunUrl": link}
             if extra_output:
                 output.update(extra_output)
             await self.patch_wf_node_run(
                 run.id,
                 {
                     "status": WorkflowNodeRunStatus.IN_PROGRESS,
+                    "externalRunId": external_id,
                     "output": output,
                 },
             )
