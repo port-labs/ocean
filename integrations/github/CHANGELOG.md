@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.12 (2026-03-03)
+
+
+### Bug Fixes
+
+- Fixed GitHub App authenticator installation-id unit tests to align with the `/users/{org}/installation` lookup endpoint.
+
+
 ## 5.1.11 (2026-03-02)
 
 
