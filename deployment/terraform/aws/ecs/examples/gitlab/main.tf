@@ -7,6 +7,11 @@ module "ocean_integration" {
     "subnet-87654321"
   ]
 
+  // Optional Resource Settings
+  ecs_use_fargate = true
+  cpu             = 1024
+  memory          = 2048
+
   port = {
     client_id     = "2r8d5egc56njs34d"
     client_secret = "e5f98sdh78b5n69ws4r3t0p1l2k9h8s7a6v5d4f"
