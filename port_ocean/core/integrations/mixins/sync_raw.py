@@ -314,7 +314,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                     else:
                         logger.info(
-                            "Entities in batch didn't changed since last sync, skipping",
+                            "Entities in batch didn't change since last sync, skipping",
                             total_entities=len(objects_diff[0].entity_selector_diff.passed),
                         )
                         ocean.metrics.inc_metric(
@@ -891,7 +891,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             silent (bool): Whether to raise exceptions or handle them silently
 
         """
-        with logger.contextualize(etl_phase="reconciliation"):
+        with logger.contextualize(etl_phase=ETLPhase.RECONCILIATION):
             logger.info("Starting reconciliation phase")
 
             await self.sort_and_upsert_failed_entities(user_agent_type)

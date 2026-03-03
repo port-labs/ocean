@@ -24,6 +24,7 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
 from port_ocean.core.models import Entity
+from port_ocean.core.ocean_types import ETLPhase
 from port_ocean.context.event import event_context, EventType
 from port_ocean.clients.port.types import UserAgentType
 from dataclasses import dataclass
@@ -1232,8 +1233,8 @@ async def test_register_resource_raw_sets_transform_etl_phase_in_logger_context(
     finally:
         logger.remove(sink_id)
 
-    transform_records = [r for r in records if r.get("etl_phase") == "transform"]
-    load_records = [r for r in records if r.get("etl_phase") == "load"]
+    transform_records = [r for r in records if r.get("etl_phase") == ETLPhase.TRANSFORM]
+    load_records = [r for r in records if r.get("etl_phase") == ETLPhase.LOAD]
 
     assert (
         len(transform_records) >= 2
@@ -1311,7 +1312,7 @@ async def test_register_in_batches_sets_extract_etl_phase_in_logger_context(
     finally:
         logger.remove(sink_id)
 
-    extract_records = [r for r in records if r.get("etl_phase") == "extract"]
+    extract_records = [r for r in records if r.get("etl_phase") == ETLPhase.EXTRACT]
     assert len(extract_records) >= 2, "Expected at least 2 logs with etl_phase=extract"
 
 
@@ -1339,7 +1340,7 @@ async def test_resync_reconciliation_sets_reconciliation_etl_phase_in_logger_con
         logger.remove(sink_id)
 
     reconciliation_records = [
-        r for r in records if r.get("etl_phase") == "reconciliation"
+        r for r in records if r.get("etl_phase") == ETLPhase.RECONCILIATION
     ]
     assert (
         len(reconciliation_records) >= 1
