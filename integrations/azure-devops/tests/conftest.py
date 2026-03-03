@@ -41,6 +41,7 @@ def mock_event_context() -> Generator[None, None, None]:
 def mock_context(monkeypatch: Any) -> PortOceanContext:
     mock_context = AsyncMock()
     mock_context.port_app_config = GitPortAppConfig()
+    mock_context.is_saas.return_value = False  # callable so ocean.app.is_saas() works
     monkeypatch.setattr(PortOceanContext, "app", mock_context)
     return mock_context
 

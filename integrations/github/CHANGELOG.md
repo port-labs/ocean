@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.11 (2026-03-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+## 5.1.10 (2026-03-02)
+
+
+### Bug Fixes
+
+- Fixed pull-request selector in default mapping to use correct field name `states` instead of `state`
+
+
+## 5.1.9 (2026-03-02)
+
+
+### Bug Fixes
+
+- Handle repository visibility transitions in `repository` webhooks by emitting delete events when a repository no longer matches the configured visibility filter.
+
+
+## 5.1.8 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
 ## 5.1.7 (2026-03-01)
 
 

@@ -7,11 +7,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.38.4 (2026-03-01)
+## 0.38.5 (2026-03-02)
 
 ### Improvements
 
-- Added `externalRunId` support for workflow node runs — Fixed workflow run schema
+- Added `externalRunId` support for workflow node runs.
+- Fixed Workflows schema
+
+
+## 0.38.4 (2026-03-02)
+
+### Improvements
+
+- Changed Saas integration to use single process.
 
 
 ## 0.38.3 (2026-03-01)
