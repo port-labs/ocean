@@ -57,7 +57,35 @@ class ProjectResourceConfig(ResourceConfig):
     kind: Literal["project"]
 
 
-class WizPortAppConfig(PortAppConfig):
-    resources: list[IssueResourceConfig | ProjectResourceConfig | ResourceConfig] = (
-        Field(default_factory=list)
+class VulnerabilityFindingSelector(Selector):
+    status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] = Field(
+        alias="statusList",
+        description="List of statuses to filter vulnerability findings by",
+        default=["OPEN", "IN_PROGRESS"],
     )
+    severity_list: Optional[
+        list[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "NONE"]]
+    ] = Field(
+        alias="severityList",
+        description="List of severities to filter vulnerability findings by. If empty, all severities are fetched.",
+        default=None,
+    )
+    max_pages: int = Field(
+        alias="maxPages",
+        description="Maximum number of pages to fetch for vulnerability findings. By default, 500 pages are fetched.",
+        default=500,
+    )
+
+
+class VulnerabilityFindingResourceConfig(ResourceConfig):
+    selector: VulnerabilityFindingSelector
+    kind: Literal["vulnerabilityFinding"]
+
+
+class WizPortAppConfig(PortAppConfig):
+    resources: list[
+        IssueResourceConfig
+        | ProjectResourceConfig
+        | VulnerabilityFindingResourceConfig
+        | ResourceConfig
+    ] = Field(default_factory=list)

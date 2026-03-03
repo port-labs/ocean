@@ -74,3 +74,97 @@ resources:
           title: .name
           properties:
             url: .url
+  - kind: vulnerabilityFinding
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"wizVulnerabilityFinding"'
+          identifier: .id
+          title: .name
+          properties:
+            status: .status
+            severity: .severity
+            categories: .categories
+            version: .version
+            detectionMethod: .detectionMethod
+            score: .score
+            description: .description
+            firstDetectedAt: .firstDetectedAt
+            publishedDate: .publishedDate
+            remediation: .remediation
+            environments: .environments
+            link: .link
+            vulnerabilityExternalId: .vulnerabilityExternalId
+            portalUrl: .portalUrl
+            origin: .origin
+            CVEDescription: .CVEDescription
+            hasFix: .hasFix
+            hasExploit: .hasExploit
+            isHighProfileThreat: .isHighProfileThreat
+            updatedAt: .updatedAt
+            resolvedAt: .resolvedAt
+            rootComponent: .rootComponent
+            applicationServices: .applicationServices
+          relations:
+            projects: .projects | map(.id)
+  - kind: technology
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"wizTechnology"'
+          identifier: .id
+          title: .name
+          properties:
+            description: .description
+            categories: .categories | map(.name)
+            usage: .usage
+            status: .status
+            risk: .risk
+            note: .note
+            ownerName: .ownerName
+            businessModel: .businessModel
+            popularity: .popularity
+            projectCount: .projectCount
+            codeRepoCount: .codeRepoCount
+            isCloudService: .isCloudService
+            supportedOperatingSystems: .supportedOperatingSystems
+  - kind: hostedTechnology
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"wizHostedTechnology"'
+          identifier: .id
+          title: .name
+          properties:
+            detectionMethods: .detectionMethods
+            installedPackages: .installedPackages
+            firstSeen: .firstSeen
+            updatedAt: .updatedAt
+            cpe: .cpe
+          relations:
+            technology: .technology.id
+  - kind: repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"wizRepository"'
+          identifier: .id
+          title: .name
+          properties:
+            url: .url
+            platform: .platform
+            public: .public
+            archived: .archived
+            visibility: .visibility
+            organization: .organization.id
+            branches: .branches | map(.id)
+          relations:
+            projects: .projects | map(.id)

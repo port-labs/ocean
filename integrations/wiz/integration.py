@@ -7,6 +7,10 @@ from enum import StrEnum
 
 class ObjectKindWithSpecialHandling(StrEnum):
     PROJECT = "project"
+    VULNERABILITY_FINDING = "vulnerabilityFinding"
+    TECHNOLOGY = "technology"
+    HOSTED_TECHNOLOGY = "hostedTechnology"
+    REPOSITORY = "repository"
 
 
 class ObjectKind(StrEnum):

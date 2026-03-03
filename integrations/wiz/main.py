@@ -5,8 +5,12 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from port_ocean.context.event import event
-from overrides import IssueResourceConfig, ProjectResourceConfig
-from wiz.options import IssueOptions, ProjectOptions
+from overrides import (
+    IssueResourceConfig,
+    ProjectResourceConfig,
+    VulnerabilityFindingResourceConfig,
+)
+from wiz.options import IssueOptions, ProjectOptions, VulnerabilityFindingOptions
 from initialize_client import init_client
 from integration import ObjectKindWithSpecialHandling, ObjectKind
 from wiz.webhook_processors.issue_webhook_processor import IssueWebhookProcessor
@@ -36,7 +40,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync()
 async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind == ObjectKindWithSpecialHandling.PROJECT:
+    if kind in ObjectKindWithSpecialHandling:
         logger.debug(f"Kind {kind} has a special handling. Skipping...")
         return
 
@@ -74,6 +78,53 @@ async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     for issue in _issues
                     for ticket in issue.get("serviceTickets") or []
                 ]
+
+
+@ocean.on_resync(ObjectKindWithSpecialHandling.VULNERABILITY_FINDING)
+async def resync_vulnerability_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    wiz_client = init_client()
+    selector = cast(VulnerabilityFindingResourceConfig, event.resource_config).selector
+    logger.warning(f"Selector: {selector}")
+    status_list = selector.status_list
+    severity_list = selector.severity_list
+    max_pages = selector.max_pages
+
+    logger.info(
+        f"Resyncing {kind.lower()} with status list: {status_list}, severity list: {severity_list}, max pages: {max_pages}"
+    )
+
+    options = VulnerabilityFindingOptions(
+        max_pages=max_pages,
+        status_list=status_list,
+        severity_list=severity_list,
+    )
+
+    async for vulnerability_findings in wiz_client.get_vulnerability_findings(options):
+        yield vulnerability_findings
+
+
+@ocean.on_resync(ObjectKindWithSpecialHandling.REPOSITORY)
+async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    wiz_client = init_client()
+
+    async for repositories in wiz_client.get_repositories():
+        yield repositories
+
+
+@ocean.on_resync(ObjectKindWithSpecialHandling.TECHNOLOGY)
+async def resync_technologies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    wiz_client = init_client()
+
+    async for technologies in wiz_client.get_technologies():
+        yield technologies
+
+
+@ocean.on_resync(ObjectKindWithSpecialHandling.HOSTED_TECHNOLOGY)
+async def resync_hosted_technologies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    wiz_client = init_client()
+
+    async for hosted_technologies in wiz_client.get_hosted_technologies():
+        yield hosted_technologies
 
 
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)

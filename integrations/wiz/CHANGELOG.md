@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.260 (2026-03-03)
+
+
+### Features
+
+- Added support for new kinds including `vulnerabilityFinding`, `technology`, `hostedTechnology` and `repository`.
+
+
 ## 0.1.259 (2026-03-01)
 
 
