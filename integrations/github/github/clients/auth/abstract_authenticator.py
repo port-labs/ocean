@@ -9,7 +9,6 @@ from dateutil.parser import parse
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
-from port_ocean.utils.cache import cache_coroutine_result
 from loguru import logger
 
 import httpx
@@ -104,11 +103,15 @@ class AbstractGitHubAuthenticator(ABC):
             self._http_client = self._make_client()
         return self._http_client
 
-    @cache_coroutine_result()
-    async def is_personal_org(self, github_host: str, organization: str) -> bool:
+    async def is_personal_org(
+        self,
+        github_host: str,
+        organization: str,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> bool:
         try:
             url = f"{github_host}/users/{organization}"
-            response = await self.client.get(url)
+            response = await self.client.get(url, headers=headers)
             response.raise_for_status()
             user_data = response.json()
             return user_data["type"] == "User"
