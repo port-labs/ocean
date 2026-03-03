@@ -41,6 +41,7 @@ def mock_ocean_context() -> None:
 
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.is_saas = MagicMock(return_value=False)
         mock_ocean_app.config.integration.config = {
             "github_token": TEST_INTEGRATION_CONFIG["github_token"],
             "github_organization": TEST_INTEGRATION_CONFIG["github_organization"],

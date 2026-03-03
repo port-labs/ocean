@@ -17,7 +17,4 @@ class BaseDeploymentWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return event.headers.get("x-github-event") in [
-            "deployment",
-            "deployment_status",
-        ]
+        return event.headers.get("x-github-event") == "deployment"

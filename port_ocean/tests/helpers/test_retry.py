@@ -1,4 +1,5 @@
 import pytest
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 from http import HTTPStatus
 import httpx
@@ -397,6 +398,112 @@ class TestRetryTransport:
             )
             == 30.0
         )
+
+    @pytest.mark.asyncio
+    async def test_before_retry_refreshes_request(self) -> None:
+        """before_retry_async can return a refreshed request used for retry."""
+
+        class TestRetryTransport(RetryTransport):
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                super().__init__(*args, **kwargs)
+                self.sent_requests: list[httpx.Request] = []
+                self._refreshed_request: httpx.Request | None = None
+
+            async def before_retry_async(
+                self,
+                request: httpx.Request,
+                response: httpx.Response | None,
+                sleep_time: float,
+                attempt: int,
+            ) -> httpx.Request | None:
+                return self._refreshed_request
+
+        mock_transport = Mock()
+        original_request = httpx.Request("GET", "https://example.com")
+        refreshed_request = httpx.Request(
+            "GET", "https://example.com", headers={"Authorization": "Bearer new-token"}
+        )
+
+        transport = TestRetryTransport(
+            wrapped_transport=mock_transport, retry_config=RetryConfig(max_attempts=2)
+        )
+        transport._refreshed_request = refreshed_request
+
+        response1 = Mock()
+        response1.status_code = HTTPStatus.TOO_MANY_REQUESTS
+        response1.headers = {"Retry-After": "1"}
+        response1.aclose = AsyncMock()
+
+        response2 = Mock()
+        response2.status_code = HTTPStatus.OK
+        response2.headers = {}
+
+        async def send_method(req: httpx.Request) -> httpx.Response:
+            transport.sent_requests.append(req)
+            return response1 if len(transport.sent_requests) == 1 else response2
+
+        with patch(
+            "port_ocean.helpers.retry.asyncio.sleep",
+            new=AsyncMock(return_value=None),
+        ):
+            result = await transport._retry_operation_async(
+                original_request, send_method
+            )
+
+        assert result.status_code == HTTPStatus.OK
+        assert len(transport.sent_requests) == 2
+        assert transport.sent_requests[0] is original_request
+        assert transport.sent_requests[1] is refreshed_request
+
+    @pytest.mark.asyncio
+    async def test_after_retry_called_on_response(self) -> None:
+        """after_retry_async is called when a response is received."""
+
+        class TestRetryTransport(RetryTransport):
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                super().__init__(*args, **kwargs)
+                self.after_retry_calls: list[
+                    tuple[httpx.Request, httpx.Response, int]
+                ] = []
+
+            async def after_retry_async(
+                self,
+                request: httpx.Request,
+                response: httpx.Response,
+                attempt: int,
+            ) -> None:
+                self.after_retry_calls.append((request, response, attempt))
+
+        mock_transport = Mock()
+        transport = TestRetryTransport(
+            wrapped_transport=mock_transport, retry_config=RetryConfig(max_attempts=2)
+        )
+
+        response1 = Mock()
+        response1.status_code = HTTPStatus.TOO_MANY_REQUESTS
+        response1.headers = {"Retry-After": "1"}
+        response1.aclose = AsyncMock()
+
+        response2 = Mock()
+        response2.status_code = HTTPStatus.OK
+        response2.headers = {}
+
+        async def send_method(req: httpx.Request) -> httpx.Response:
+            return response1 if len(transport.after_retry_calls) == 0 else response2
+
+        request = httpx.Request("GET", "https://example.com")
+
+        with patch(
+            "port_ocean.helpers.retry.asyncio.sleep",
+            new=AsyncMock(return_value=None),
+        ):
+            await transport._retry_operation_async(request, send_method)
+
+        assert len(transport.after_retry_calls) == 2
+        assert transport.after_retry_calls[0][1] is response1
+        assert transport.after_retry_calls[0][2] == 1
+        assert transport.after_retry_calls[1][1] is response2
+        assert transport.after_retry_calls[1][2] == 2
 
 
 class TestRetryConfigIntegration:

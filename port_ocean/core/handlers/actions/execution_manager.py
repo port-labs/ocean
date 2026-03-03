@@ -216,17 +216,19 @@ class ExecutionManager:
                             error=e,
                         )
                     except Exception as e:
-                        logger.exception(
+                        logger.error(
                             "Error adding run to queue",
                             run_id=run.id,
                             action_type=action_type,
                             error=e,
                         )
             except Exception as e:
-                logger.exception(
+                logger.error(
                     "Unexpected error in poll action runs, will attempt to re-poll",
                     error=e,
                 )
+                # Backoff to avoid overwhelming the API with requests
+                await asyncio.sleep(self._poll_check_interval_seconds)
 
     async def _get_queues_size(self) -> int:
         """
@@ -311,7 +313,7 @@ class ExecutionManager:
                 else:
                     await self._handle_partition_queue_once(source)
             except Exception as e:
-                logger.exception("Worker processing error", source=source, error=e)
+                logger.error("Worker processing error", source=source, error=e)
 
     async def _handle_global_queue_once(self) -> None:
         """
@@ -413,7 +415,7 @@ class ExecutionManager:
                     elapsed_ms=(time.monotonic() - start_time) * 1000,
                 )
             except Exception as e:
-                logger.exception("Error executing run")
+                logger.error("Error executing run", error=e)
                 error_summary = f"Failed to execute run: {str(e)}"
 
             if error_summary:

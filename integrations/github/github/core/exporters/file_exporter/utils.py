@@ -73,8 +73,19 @@ def decode_content(content: str, encoding: str) -> str:
         raise ValueError(f"Unsupported encoding: {encoding}")
 
     try:
-        return base64.b64decode(content).decode("utf-8")
-    except (binascii.Error, UnicodeDecodeError) as e:
+        decoded_bytes = base64.b64decode(content)
+        content_str = decoded_bytes.decode("utf-8")
+        return content_str.replace("\x00", "")
+
+    except UnicodeDecodeError as e:
+        logger.warning(
+            f"Failed to decode content with strict utf-8 decoding: {str(e)}. "
+            "Retrying with replacement of invalid characters."
+        )
+        content_str = decoded_bytes.decode("utf-8", errors="replace")
+        return content_str.replace("\x00", "")
+
+    except binascii.Error as e:
         logger.error(f"Failed to decode content: {str(e)}")
         raise
 

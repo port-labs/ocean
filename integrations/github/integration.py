@@ -397,6 +397,30 @@ class GithubDeploymentConfig(ResourceConfig):
     )
 
 
+class GithubDeploymentStatusSelector(RepoSearchSelector):
+    task: Optional[str] = Field(
+        title="Task name",
+        description="Filter deployment statuses by deployment task name (e.g. deploy, deploy:migrations).",
+        default=None,
+    )
+    environment: Optional[str] = Field(
+        title="Environment name",
+        description="Filter deployment statuses by deployment environment name (e.g. staging, production).",
+        default=None,
+    )
+
+
+class GithubDeploymentStatusConfig(ResourceConfig):
+    selector: GithubDeploymentStatusSelector = Field(
+        title="Deployment status selector",
+        description="Selector for the deployment status resource.",
+    )
+    kind: Literal[ObjectKind.DEPLOYMENT_STATUS] = Field(
+        title="Github Deployment Status",
+        description="Github deployment status resource kind.",
+    )
+
+
 class GithubSecretScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "resolved", "all"] = Field(
         title="State",
@@ -566,6 +590,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
         | GithubDeploymentConfig
+        | GithubDeploymentStatusConfig
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
