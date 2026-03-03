@@ -187,9 +187,7 @@ class TestGithubAuthenticator:
         ):
             installation_id = await github_auth._fetch_installation_id(mock_jwt_token)
 
-            expected_url = (
-                f"{github_auth.github_host}/users/{github_auth.organization}/installation"
-            )
+            expected_url = f"{github_auth.github_host}/users/{github_auth.organization}/installation"
             mock_client.get.assert_awaited_once_with(
                 expected_url, headers={"Authorization": f"Bearer {mock_jwt_token}"}
             )
