@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed GitHub App authenticator installation-id unit tests to align with the `/users/{org}/installation` lookup endpoint.
+- Removed the `is_personal_org` check when fetching the GitHub App installation ID
 
 
 ## 5.1.11 (2026-03-02)
