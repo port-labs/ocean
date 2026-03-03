@@ -140,25 +140,23 @@ async def resync_resources_for_account(
         async for session in credentials.create_session_for_each_region(
             allowed_regions
         ):
+            region = session.region_name
             tasks.append(resync_func(kind, session))
             if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
                 async for batch in _process_tasks(
-                    tasks, failed_regions, errors, session.region_name
+                    tasks, failed_regions, errors, region
                 ):
                     yield batch
 
         # Process any remaining tasks
         if tasks:
-            async for batch in _process_tasks(
-                tasks, failed_regions, errors, session.region_name
-            ):
+            async for batch in _process_tasks(tasks, failed_regions, errors, region):
                 yield batch
     except Exception as exc:
-        logger.error(
-            f"Failed to complete resync for {kind} in region {session.region_name}: {exc}",
-            exc_info=True,
+        logger.bind(traceback=exc, kind=kind, region=region).error(
+            f"Failed to complete resync for {kind} in region {region}"
         )
-        failed_regions.append(session.region_name)
+        failed_regions.append(region)
         errors.append(exc)
 
     if errors:
