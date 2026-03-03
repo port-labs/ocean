@@ -4,8 +4,11 @@ from botocore.exceptions import ClientError
 from typing import Any, AsyncGenerator
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from aioboto3 import Session
+
+from utils.misc import safe_iterate
 
 
 def _make_session(region: str = "eu-west-3") -> MagicMock:
@@ -144,3 +147,156 @@ async def test_global_resync_real_error_raises() -> None:
             "AWS::IAM::Role", credentials, resync_func, ["us-east-1", "eu-west-1"]  # type: ignore[arg-type]
         ):
             pass
+
+
+async def test_safe_iterate_yields_all_items() -> None:
+    """Normal iteration passes through all items."""
+
+    async def gen() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield [{"a": 1}]
+        yield [{"b": 2}]
+
+    results = []
+    async for batch in safe_iterate(gen(), "us-east-1", "TestKind", [], []):
+        results.append(batch)
+    assert results == [[{"a": 1}], [{"b": 2}]]
+
+
+async def test_safe_iterate_suppresses_access_denied() -> None:
+    """Access denied errors are logged and suppressed."""
+
+    async def gen() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield [{"a": 1}]
+        raise _access_denied_error()
+
+    errors: list[Exception] = []
+    results = []
+    async for batch in safe_iterate(gen(), "us-east-1", "TestKind", errors, []):
+        results.append(batch)
+    assert results == [[{"a": 1}]]
+    assert errors == []
+
+
+async def test_safe_iterate_suppresses_type_not_found() -> None:
+    """TypeNotFoundException is suppressed."""
+
+    async def gen() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield []
+        raise _type_not_found_error()
+
+    errors: list[Exception] = []
+    results = []
+    async for batch in safe_iterate(gen(), "us-east-1", "TestKind", errors, []):
+        results.append(batch)
+    assert results == []
+    assert errors == []
+
+
+async def test_safe_iterate_collects_real_errors() -> None:
+    """Real errors are collected, not re-raised, when errors list is provided."""
+    real_err = _real_error()
+
+    async def gen() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield []
+        raise real_err
+
+    errors: list[Exception] = []
+    failed_regions: list[str] = []
+    results = []
+    async for batch in safe_iterate(
+        gen(), "us-east-1", "TestKind", errors, failed_regions
+    ):
+        results.append(batch)
+    assert results == []
+    assert len(errors) == 1
+    assert errors[0] is real_err
+    assert failed_regions == ["us-east-1"]
+
+
+async def test_region_error_isolation_in_merge() -> None:
+    """One iterator failing does not prevent other iterators from completing."""
+    errors: list[Exception] = []
+    failed: list[str] = []
+
+    async def good_region() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield [{"region": "us-west-2", "data": "ok"}]
+
+    async def bad_region() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield []
+        raise _real_error()
+
+    tasks = [
+        safe_iterate(
+            good_region(),
+            "us-west-2",
+            "TestKind",
+            errors,
+            failed,
+        ),
+        safe_iterate(
+            bad_region(),
+            "us-east-1",
+            "TestKind",
+            errors,
+            failed,
+        ),
+    ]
+
+    results = []
+    async for batch in stream_async_iterators_tasks(*tasks):
+        results.append(batch)
+
+    # Good iterator's data should come through
+    assert [{"region": "us-west-2", "data": "ok"}] in results
+    # Bad iterator's error should be collected
+    assert len(errors) == 1
+    assert failed == ["us-east-1"]
+
+
+async def test_multiple_failures_collected_across_merge() -> None:
+    """Multiple failing iterators each have their errors collected independently."""
+    errors: list[Exception] = []
+    failed: list[str] = []
+
+    async def good_region() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield [{"region": "eu-west-1", "data": "ok"}]
+
+    async def bad_region_1() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield []
+        raise _real_error("InternalServiceError")
+
+    async def bad_region_2() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield []
+        raise _real_error("ThrottlingException")
+
+    tasks = [
+        safe_iterate(
+            good_region(),
+            "eu-west-1",
+            "TestKind",
+            errors,
+            failed,
+        ),
+        safe_iterate(
+            bad_region_1(),
+            "us-east-1",
+            "TestKind",
+            errors,
+            failed,
+        ),
+        safe_iterate(
+            bad_region_2(),
+            "ap-south-1",
+            "TestKind",
+            errors,
+            failed,
+        ),
+    ]
+
+    results = []
+    async for batch in stream_async_iterators_tasks(*tasks):
+        results.append(batch)
+
+    assert [{"region": "eu-west-1", "data": "ok"}] in results
+    assert len(errors) == 2
+    assert set(failed) == {"us-east-1", "ap-south-1"}
