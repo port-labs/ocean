@@ -1,6 +1,7 @@
 from graphlib import CycleError
 from typing import Any, AsyncGenerator
 
+from loguru import logger
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from port_ocean.exceptions.core import OceanAbortException
 import pytest
@@ -1185,3 +1186,206 @@ async def test_on_resync_start_hook_error_prevents_resync(
     assert (
         not resync_complete_called
     ), "on_resync_complete hook should not have been called after error"
+
+
+# ---------------------------------------------------------------------------
+# ETL phase context tests (PR: ocean logging standardization)
+# ---------------------------------------------------------------------------
+
+
+def _capture_loguru_extras() -> tuple[list[dict[str, Any]], int]:
+    """Add a loguru sink that captures record extras. Returns (records_list, sink_id)."""
+    records: list[dict[str, Any]] = []
+    sink_id = logger.add(lambda msg: records.append(dict(msg.record["extra"])))
+    return records, sink_id
+
+
+@pytest.mark.asyncio
+async def test_register_resource_raw_sets_transform_etl_phase_in_logger_context(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    entity = Entity(identifier="1", blueprint="service")
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(  # type: ignore
+        return_value=[
+            CalculationResult(
+                entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
+                errors=[],
+                misconfigurations=[],
+                misconfigured_entity_keys=[],
+            )
+        ]
+    )
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=[])  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[])  # type: ignore
+
+    records, sink_id = _capture_loguru_extras()
+    try:
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            await mock_sync_raw_mixin._register_resource_raw(
+                mock_port_app_config.resources[0],
+                [{"some": "data"}],
+                UserAgentType.exporter,
+                batch=3,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    transform_records = [r for r in records if r.get("etl_phase") == "transform"]
+    load_records = [r for r in records if r.get("etl_phase") == "load"]
+
+    assert (
+        len(transform_records) >= 2
+    ), "Expected at least 2 logs with etl_phase=transform"
+    assert len(load_records) >= 2, "Expected at least 2 logs with etl_phase=load"
+
+
+@pytest.mark.asyncio
+async def test_register_resource_raw_batch_number_appears_in_log_extras(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    entity = Entity(identifier="1", blueprint="service")
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(  # type: ignore
+        return_value=[
+            CalculationResult(
+                entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
+                errors=[],
+                misconfigurations=[],
+                misconfigured_entity_keys=[],
+            )
+        ]
+    )
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=[])  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[])  # type: ignore
+
+    records, sink_id = _capture_loguru_extras()
+    try:
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            await mock_sync_raw_mixin._register_resource_raw(
+                mock_port_app_config.resources[0],
+                [{"some": "data"}],
+                UserAgentType.exporter,
+                batch=5,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    records_with_batch = [r for r in records if r.get("batch") == 5]
+    assert len(records_with_batch) >= 1, "Expected at least one log record with batch=5"
+
+
+@pytest.mark.asyncio
+async def test_register_in_batches_sets_extract_etl_phase_in_logger_context(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    from port_ocean.context.resource import resource_context
+
+    # _get_resource_raw_results returns a list of items that are either dicts or async generators
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(  # type: ignore
+        return_value=([{"id": "1", "name": "entity_1"}], [])
+    )
+    mock_sync_raw_mixin._lakehouse_data_enabled = AsyncMock(return_value=False)  # type: ignore
+    calc_result = MagicMock()
+    calc_result.errors = []
+    calc_result.entity_selector_diff = MagicMock()
+    calc_result.entity_selector_diff.passed = []
+    calc_result.number_of_transformed_entities = 0
+    mock_sync_raw_mixin._register_resource_raw = AsyncMock(return_value=calc_result)  # type: ignore
+    mock_ocean.metrics.set_metric = MagicMock()  # type: ignore
+    mock_ocean.metrics.inc_metric = MagicMock()  # type: ignore
+
+    records, sink_id = _capture_loguru_extras()
+    try:
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            async with resource_context(mock_resource_config, 0):
+                await mock_sync_raw_mixin._register_in_batches(
+                    mock_resource_config, UserAgentType.exporter
+                )
+    finally:
+        logger.remove(sink_id)
+
+    extract_records = [r for r in records if r.get("etl_phase") == "extract"]
+    assert len(extract_records) >= 2, "Expected at least 2 logs with etl_phase=extract"
+
+
+@pytest.mark.asyncio
+async def test_resync_reconciliation_sets_reconciliation_etl_phase_in_logger_context(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin.sort_and_upsert_failed_entities = AsyncMock()  # type: ignore
+    mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+    mock_sync_raw_mixin.entities_state_applier.delete_diff = AsyncMock()  # type: ignore
+
+    records, sink_id = _capture_loguru_extras()
+    try:
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            event.port_app_config = mock_port_app_config
+            await mock_sync_raw_mixin._resync_reconciliation(
+                creation_results=[],
+                did_fetched_current_state=True,
+                user_agent_type=UserAgentType.exporter,
+                app_config=mock_port_app_config,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    reconciliation_records = [
+        r for r in records if r.get("etl_phase") == "reconciliation"
+    ]
+    assert (
+        len(reconciliation_records) >= 1
+    ), "Expected at least 1 log with etl_phase=reconciliation"
+
+
+@pytest.mark.asyncio
+async def test_collect_resync_functions_returns_functions_without_setting_logger_context(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    """The old code called logger.contextualize() without `with` — a no-op.
+    Verify the removal doesn't break function collection and leaks no context."""
+    records, sink_id = _capture_loguru_extras()
+    try:
+        fns = mock_sync_raw_mixin._collect_resync_functions(mock_resource_config)
+    finally:
+        logger.remove(sink_id)
+
+    # No logs should have been emitted, and no `kind` context should be set
+    assert isinstance(fns, list)
+    assert all(
+        "kind" not in r for r in records
+    ), "Expected no logger context to be set by _collect_resync_functions"
+
+
+@pytest.mark.asyncio
+async def test_parse_items_sets_both_kind_and_resource_kind_in_logger_context(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    """base.py parse_items now contextualizes with both kind and resource_kind."""
+    processor = mock_sync_raw_mixin_with_jq_processor.entity_processor
+
+    records, sink_id = _capture_loguru_extras()
+    try:
+        await processor.parse_items(
+            mapping=mock_resource_config,
+            raw_data=[{"id": "1", "name": "test", "web_url": "https://example.com"}],
+        )
+    finally:
+        logger.remove(sink_id)
+
+    assert any(
+        r.get("kind") == mock_resource_config.kind for r in records
+    ), "Expected 'kind' to be set in logger context"
+    assert any(
+        r.get("resource_kind") == mock_resource_config.kind for r in records
+    ), "Expected 'resource_kind' to be set in logger context"
