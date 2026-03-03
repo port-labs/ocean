@@ -1255,7 +1255,9 @@ async def test_reconciliation_search_entities_uses_resync_start_time_filter(
     mock_dt = MagicMock(spec=datetime)
     mock_dt.now.return_value = resync_start_time
 
-    def isinstance_accepts_mock_dt(obj: object, type_or_tuple: type | tuple) -> bool:
+    def isinstance_accepts_mock_dt(
+        obj: object, type_or_tuple: type | tuple[type, ...]
+    ) -> bool:
         if type_or_tuple is mock_dt and isinstance(obj, datetime):
             return True
         return builtins.isinstance(obj, type_or_tuple)
@@ -1269,8 +1271,8 @@ async def test_reconciliation_search_entities_uses_resync_start_time_filter(
     ):
         await mock_sync_raw_mixin.sync_raw_all()
 
-    mock_ocean.port_client.search_entities.assert_called_once()  # type: ignore
-    call_args = mock_ocean.port_client.search_entities.call_args  # type: ignore
+    mock_ocean.port_client.search_entities.assert_called_once()
+    call_args = mock_ocean.port_client.search_entities.call_args
     query = call_args.args[1]
     assert query["combinator"] == "and"
     rules = query["rules"]
