@@ -34,6 +34,7 @@ from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,
     CalculationResult,
+    ETLPhase,
 )
 from port_ocean.core.utils.utils import (
     resolve_entities_diff,
@@ -249,7 +250,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         send_raw_data_examples_amount: int = 0,
         batch_index: int = 1,
     ) -> CalculationResult:
-        with logger.contextualize(etl_phase="transform"):
+        with logger.contextualize(etl_phase=ETLPhase.TRANSFORM):
             logger.info(
                 "Starting transform phase",
                 batch_index=batch_index,
@@ -277,7 +278,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             value=entities_failed,
         )
 
-        with logger.contextualize(etl_phase="load"):
+        with logger.contextualize(etl_phase=ETLPhase.LOAD):
             logger.info(
                 "Starting load phase",
                 batch_index=batch_index,
@@ -384,7 +385,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def _register_in_batches(
         self, resource_config: ResourceConfig, user_agent_type: UserAgentType
     ) -> tuple[list[Entity], list[Exception]]:
-        with logger.contextualize(etl_phase="extract"):
+        with logger.contextualize(etl_phase=ETLPhase.EXTRACT):
             logger.info("Starting extract phase")
             results, errors = await self._get_resource_raw_results(resource_config)
             async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
