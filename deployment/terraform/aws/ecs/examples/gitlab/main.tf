@@ -13,8 +13,8 @@ module "ocean_integration" {
   memory          = 2048
 
   port = {
-    client_id     = "2r8d5egc56njs34d"
-    client_secret = "e5f98sdh78b5n69ws4r3t0p1l2k9h8s7a6v5d4f"
+    client_id     = "aabbccvalidclientidxxyyzz"
+    client_secret = "aabbccvalidclientsercetxxyyzz"
   }
 
   integration = {
@@ -26,7 +26,7 @@ module "ocean_integration" {
 
   additional_secrets             = {
     OCEAN__INTEGRATION__CONFIG__TOKEN_MAPPING = jsonencode({
-      "glpat-jQNe7NYypFHefeaZo_ybA" = ["my-group/**"]
+      "glpat-ttookkeenn" = ["my-group/**"]
     })
   }
 }
