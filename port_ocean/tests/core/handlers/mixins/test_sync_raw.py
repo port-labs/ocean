@@ -1228,7 +1228,7 @@ async def test_register_resource_raw_sets_transform_etl_phase_in_logger_context(
                 mock_port_app_config.resources[0],
                 [{"some": "data"}],
                 UserAgentType.exporter,
-                batch=3,
+                batch_index=3,
             )
     finally:
         logger.remove(sink_id)
@@ -1269,13 +1269,15 @@ async def test_register_resource_raw_batch_number_appears_in_log_extras(
                 mock_port_app_config.resources[0],
                 [{"some": "data"}],
                 UserAgentType.exporter,
-                batch=5,
+                batch_index=5,
             )
     finally:
         logger.remove(sink_id)
 
-    records_with_batch = [r for r in records if r.get("batch") == 5]
-    assert len(records_with_batch) >= 1, "Expected at least one log record with batch=5"
+    records_with_batch = [r for r in records if r.get("batch_index") == 5]
+    assert (
+        len(records_with_batch) >= 1
+    ), "Expected at least one log record with batch_index=5"
 
 
 @pytest.mark.asyncio
