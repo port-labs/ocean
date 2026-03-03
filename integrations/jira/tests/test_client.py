@@ -536,6 +536,44 @@ async def test_get_reconciled_issues_empty_response(
         assert result == []
 
 
+def test_validate_existing_webhook_warns_on_misconfiguration() -> None:
+    """Test that all warnings fire for a misconfigured webhook."""
+    webhook = {
+        "name": "test-webhook",
+        "filters": {"issue-related-events-section": "project = PROJ1"},
+        "events": ["jira:issue_created"],
+        "enabled": False,
+    }
+    with patch("jira.client.logger") as mock_logger:
+        JiraClient._validate_existing_webhook(webhook, WEBHOOK_EVENTS)
+
+        mock_logger.warning.assert_any_call(
+            "Existing webhook has a JQL filter configured on Jira's side, "
+            "which may prevent some events from being sent",
+            jql_filter="project = PROJ1",
+        )
+        mock_logger.warning.assert_any_call(
+            "Existing webhook events do not match expected events"
+        )
+        mock_logger.warning.assert_any_call(
+            "Existing webhook is disabled and will not fire any events"
+        )
+
+
+def test_validate_existing_webhook_no_warnings_when_healthy() -> None:
+    """Test that no warnings fire for a correctly configured webhook."""
+    webhook = {
+        "name": "test-webhook",
+        "filters": {},
+        "events": WEBHOOK_EVENTS,
+        "enabled": True,
+    }
+    with patch("jira.client.logger") as mock_logger:
+        JiraClient._validate_existing_webhook(webhook, WEBHOOK_EVENTS)
+
+        mock_logger.warning.assert_not_called()
+
+
 def test_jira_issue_selector_default_jql() -> None:
     """Test that JiraIssueSelector uses the correct default JQL when not provided"""
     selector = JiraIssueSelector(query="true")
