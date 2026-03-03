@@ -247,12 +247,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType,
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0,
-        batch: int = 1,
+        batch_index: int = 1,
     ) -> CalculationResult:
         with logger.contextualize(etl_phase="transform"):
             logger.info(
                 "Starting transform phase",
-                batch=batch,
+                batch_index=batch_index,
                 raw_items=len(results),
             )
             objects_diff = await self._calculate_raw(
@@ -262,7 +262,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             entities_failed = len(objects_diff[0].entity_selector_diff.failed)
             logger.info(
                 "Transform phase complete",
-                batch=batch,
+                batch_index=batch_index,
                 entities_transformed=entities_transformed,
                 entities_failed=entities_failed,
             )
@@ -280,7 +280,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         with logger.contextualize(etl_phase="load"):
             logger.info(
                 "Starting load phase",
-                batch=batch,
+                batch_index=batch_index,
                 entities_to_load=entities_transformed,
             )
             modified_objects = []
@@ -344,7 +344,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             logger.info(
                 "Load phase complete",
-                batch=batch,
+                batch_index=batch_index,
                 entities_upserted=len(modified_objects),
             )
 
@@ -412,17 +412,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         passed_entities = []
         number_of_raw_results = 0
         number_of_transformed_entities = 0
-        batch_number = 0
+        batch_index = 0
 
         if raw_results:
-            batch_number += 1
+            batch_index += 1
             number_of_raw_results += len(raw_results)
             calculation_result = await self._register_resource_raw(
                 resource_config,
                 raw_results,
                 user_agent_type,
                 send_raw_data_examples_amount=send_raw_data_examples_amount,
-                batch=batch_number,
+                batch_index=batch_index,
             )
             errors.extend(calculation_result.errors)
             passed_entities = list(calculation_result.entity_selector_diff.passed)
@@ -436,7 +436,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         for generator in async_generators:
             try:
                 async for items in generator:
-                    batch_number += 1
+                    batch_index += 1
                     if lakehouse_data_enabled:
                         await ocean.port_client.post_integration_raw_data(items, event.id, resource_config.kind)
                     number_of_raw_results += len(items)
@@ -450,7 +450,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         items,
                         user_agent_type,
                         send_raw_data_examples_amount=send_raw_data_examples_amount,
-                        batch=batch_number,
+                        batch_index=batch_index,
                     )
                     passed_entities.extend(
                         calculation_result.entity_selector_diff.passed
