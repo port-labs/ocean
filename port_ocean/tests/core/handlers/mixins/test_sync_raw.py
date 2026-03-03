@@ -6,6 +6,7 @@ from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSor
 from port_ocean.exceptions.core import OceanAbortException
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
+import builtins
 from port_ocean.ocean import Ocean
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.models import (
@@ -24,9 +25,11 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
 from port_ocean.core.models import Entity
+from port_ocean.core.ocean_types import ETLPhase
 from port_ocean.context.event import event_context, EventType
 from port_ocean.clients.port.types import UserAgentType
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import List, Optional
 from port_ocean.tests.core.conftest import create_entity, no_op_event_context
 
@@ -125,7 +128,11 @@ async def test_sync_raw_mixin_self_dependency(
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         app_config = (
             await mock_sync_raw_mixin.port_app_config_handler.get_port_app_config(
                 use_cache=False
@@ -246,7 +253,11 @@ async def test_sync_raw_mixin_circular_dependency(
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         app_config = (
             await mock_sync_raw_mixin.port_app_config_handler.get_port_app_config(
                 use_cache=False
@@ -391,7 +402,11 @@ async def test_sync_raw_mixin_dependency(
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         app_config = (
             await mock_sync_raw_mixin.port_app_config_handler.get_port_app_config(
                 use_cache=False
@@ -801,7 +816,11 @@ async def test_register_resource_raw_no_changes_upsert_not_called_entitiy_is_ret
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
 
         # Test execution
@@ -828,7 +847,11 @@ async def test_register_resource_raw_with_changes_upsert_called_and_entities_are
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
 
         # Test execution
@@ -855,7 +878,11 @@ async def test_register_resource_raw_with_errors(
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
 
         # Test execution
@@ -931,7 +958,11 @@ async def test_on_resync_start_hooks_are_called(
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
     # Execute
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
         await mock_sync_raw_mixin.sync_raw_all(
             trigger_type="machine",
@@ -963,7 +994,11 @@ async def test_on_resync_complete_hooks_are_called_on_success(
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
 
     # Execute
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
         await mock_sync_raw_mixin.sync_raw_all(
             trigger_type="machine",
@@ -990,7 +1025,11 @@ async def test_on_resync_complete_hooks_not_called_on_error(
     mock_sync_raw_mixin._get_resource_raw_results.side_effect = Exception("Test error")  # type: ignore
 
     # Execute
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
         with pytest.raises(Exception):
             await mock_sync_raw_mixin.sync_raw_all(
@@ -1036,7 +1075,11 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
     # Execute
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
         await mock_sync_raw_mixin.sync_raw_all(
             trigger_type="machine",
@@ -1104,7 +1147,11 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
     # Enable sending raw data examples
     mock_ocean.config.send_raw_data_examples = True
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = broken_app_config
 
         # Call _register_resource_raw which will process the data
@@ -1171,7 +1218,11 @@ async def test_on_resync_start_hook_error_prevents_resync(
     mock_sync_raw_mixin._get_resource_raw_results = track_resync  # type: ignore
 
     # Execute
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(
+        EventType.RESYNC,
+        trigger_type="machine",
+        attributes={"resync_start_time": datetime.now(timezone.utc)},
+    ) as event:
         event.port_app_config = mock_port_app_config
         with pytest.raises(Exception, match="Before resync error"):
             await mock_sync_raw_mixin.sync_raw_all(
@@ -1186,6 +1237,53 @@ async def test_on_resync_start_hook_error_prevents_resync(
     assert (
         not resync_complete_called
     ), "on_resync_complete hook should not have been called after error"
+
+
+@pytest.mark.asyncio
+async def test_reconciliation_search_entities_uses_resync_start_time_filter(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_ocean: Ocean,
+) -> None:
+    """Reconciliation must fetch entities from Port with updatedAt notBetween resync_start_time and now.
+
+    This guards against the race where live events create/update entities during a resync:
+    those entities have updatedAt after resync_start_time and must be excluded from the
+    delete diff so they are not incorrectly deleted.
+    """
+    resync_start_time = datetime(2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc)
+    mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+    mock_sync_raw_mixin.sort_and_upsert_failed_entities = AsyncMock()  # type: ignore
+
+    mock_dt = MagicMock(spec=datetime)
+    mock_dt.now.return_value = resync_start_time
+
+    def isinstance_accepts_mock_dt(
+        obj: object, type_or_tuple: type | tuple[type, ...]
+    ) -> bool:
+        if type_or_tuple is mock_dt and isinstance(obj, datetime):
+            return True
+        return builtins.isinstance(obj, type_or_tuple)
+
+    with (
+        patch("port_ocean.core.integrations.mixins.sync_raw.datetime", mock_dt),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.isinstance",
+            isinstance_accepts_mock_dt,
+        ),
+    ):
+        await mock_sync_raw_mixin.sync_raw_all()
+
+    mock_ocean.port_client.search_entities.assert_called_once()
+    call_args = mock_ocean.port_client.search_entities.call_args
+    query = call_args.args[1]
+    assert query["combinator"] == "and"
+    rules = query["rules"]
+    assert len(rules) == 1
+    rule = rules[0]
+    assert rule["property"] == "$updatedAt"
+    assert rule["operator"] == "notBetween"
+    assert rule["value"]["from"] == resync_start_time.isoformat()
+    assert "to" in rule["value"]
 
 
 # ---------------------------------------------------------------------------
@@ -1227,13 +1325,13 @@ async def test_register_resource_raw_sets_transform_etl_phase_in_logger_context(
                 mock_port_app_config.resources[0],
                 [{"some": "data"}],
                 UserAgentType.exporter,
-                batch=3,
+                batch_index=3,
             )
     finally:
         logger.remove(sink_id)
 
-    transform_records = [r for r in records if r.get("etl_phase") == "transform"]
-    load_records = [r for r in records if r.get("etl_phase") == "load"]
+    transform_records = [r for r in records if r.get("etl_phase") == ETLPhase.TRANSFORM]
+    load_records = [r for r in records if r.get("etl_phase") == ETLPhase.LOAD]
 
     assert (
         len(transform_records) >= 2
@@ -1268,13 +1366,15 @@ async def test_register_resource_raw_batch_number_appears_in_log_extras(
                 mock_port_app_config.resources[0],
                 [{"some": "data"}],
                 UserAgentType.exporter,
-                batch=5,
+                batch_index=5,
             )
     finally:
         logger.remove(sink_id)
 
-    records_with_batch = [r for r in records if r.get("batch") == 5]
-    assert len(records_with_batch) >= 1, "Expected at least one log record with batch=5"
+    records_with_batch = [r for r in records if r.get("batch_index") == 5]
+    assert (
+        len(records_with_batch) >= 1
+    ), "Expected at least one log record with batch_index=5"
 
 
 @pytest.mark.asyncio
@@ -1311,7 +1411,7 @@ async def test_register_in_batches_sets_extract_etl_phase_in_logger_context(
     finally:
         logger.remove(sink_id)
 
-    extract_records = [r for r in records if r.get("etl_phase") == "extract"]
+    extract_records = [r for r in records if r.get("etl_phase") == ETLPhase.EXTRACT]
     assert len(extract_records) >= 2, "Expected at least 2 logs with etl_phase=extract"
 
 
@@ -1339,7 +1439,7 @@ async def test_resync_reconciliation_sets_reconciliation_etl_phase_in_logger_con
         logger.remove(sink_id)
 
     reconciliation_records = [
-        r for r in records if r.get("etl_phase") == "reconciliation"
+        r for r in records if r.get("etl_phase") == ETLPhase.RECONCILIATION
     ]
     assert (
         len(reconciliation_records) >= 1
