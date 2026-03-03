@@ -257,6 +257,45 @@ async def test_get_teams_paginates(aikido_client: AikidoClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_paginated_resource_continues_when_yielded_batch_is_mutated(
+    aikido_client: AikidoClient,
+) -> None:
+    first_page = [{"id": str(i)} for i in range(20)]
+    second_page: list[dict[str, Any]] = []
+    captured_params: list[dict[str, Any]] = []
+    responses = [first_page, second_page]
+
+    with patch.object(
+        aikido_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+
+        async def items_to_parse(
+            endpoint: str,
+            params: dict[str, Any] | None = None,
+            **_kwargs: Any,
+        ) -> list[dict[str, Any]]:
+            if params is not None:
+                captured_params.append(params.copy())
+            return responses.pop(0)
+
+        mock_request.side_effect = items_to_parse
+
+        async for batch in aikido_client.get_paginated_resource(
+            endpoint="api/public/v1/example",
+            resource_name="example",
+            first_page=0,
+            page_size=20,
+        ):
+            batch.clear()
+
+    assert mock_request.call_count == 2
+    assert captured_params == [
+        {"per_page": 20, "page": 0},
+        {"per_page": 20, "page": 1},
+    ]
+
+
+@pytest.mark.asyncio
 async def test_get_containers_paginates(aikido_client: AikidoClient) -> None:
     first_page = [
         {"id": str(i), "name": f"container-{i}", "provider": "aws_ecr"}

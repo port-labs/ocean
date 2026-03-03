@@ -97,9 +97,10 @@ class AikidoClient:
                 logger.info(
                     f"Fetched {len(resources)} {resource_name} from Aikido API"
                 )
+                fetched_count = len(resources)
                 yield resources
 
-                if len(resources) < page_size:
+                if fetched_count < page_size:
                     break
 
                 params["page"] += 1
