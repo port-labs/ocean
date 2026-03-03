@@ -88,23 +88,23 @@ resources:
             severity: .severity
             categories: .categories
             version: .version
-            detectionMethod: .detectionMethod
             score: .score
             description: .description
-            firstDetectedAt: .firstDetectedAt
-            publishedDate: .publishedDate
             remediation: .remediation
+            detectionMethod: .detectionMethod
             environments: .environments
             link: .link
-            vulnerabilityExternalId: .vulnerabilityExternalId
             portalUrl: .portalUrl
             origin: .origin
+            vulnerabilityExternalId: .vulnerabilityExternalId
             CVEDescription: .CVEDescription
             hasFix: .hasFix
             hasExploit: .hasExploit
             isHighProfileThreat: .isHighProfileThreat
             updatedAt: .updatedAt
             resolvedAt: .resolvedAt
+            firstDetectedAt: .firstDetectedAt
+            publishedDate: .publishedDate
             rootComponent: .rootComponent
             applicationServices: .applicationServices
           relations:
