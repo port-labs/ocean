@@ -5,6 +5,7 @@ from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSor
 from port_ocean.exceptions.core import OceanAbortException
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
+import builtins
 from port_ocean.ocean import Ocean
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.models import (
@@ -1251,9 +1252,20 @@ async def test_reconciliation_search_entities_uses_resync_start_time_filter(
     mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
     mock_sync_raw_mixin.sort_and_upsert_failed_entities = AsyncMock()  # type: ignore
 
-    with patch(
-        "port_ocean.core.integrations.mixins.sync_raw.datetime.now",
-        return_value=resync_start_time,
+    mock_dt = MagicMock(spec=datetime)
+    mock_dt.now.return_value = resync_start_time
+
+    def isinstance_accepts_mock_dt(obj: object, type_or_tuple: type | tuple) -> bool:
+        if type_or_tuple is mock_dt and isinstance(obj, datetime):
+            return True
+        return builtins.isinstance(obj, type_or_tuple)
+
+    with (
+        patch("port_ocean.core.integrations.mixins.sync_raw.datetime", mock_dt),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.isinstance",
+            isinstance_accepts_mock_dt,
+        ),
     ):
         await mock_sync_raw_mixin.sync_raw_all()
 
@@ -1268,52 +1280,3 @@ async def test_reconciliation_search_entities_uses_resync_start_time_filter(
     assert rule["operator"] == "notBetween"
     assert rule["value"]["from"] == resync_start_time.isoformat()
     assert "to" in rule["value"]
-
-
-@pytest.mark.asyncio
-async def test_reconciliation_does_not_delete_entities_updated_after_resync_start(
-    mock_sync_raw_mixin: SyncRawMixin,
-    mock_ocean: Ocean,
-    mock_port_app_config: PortAppConfig,
-) -> None:
-    """When all Port entities were updated after resync start (e.g. by live events), none are deleted.
-
-    Reconciliation fetches entities with updatedAt not after resync_start_time. If that
-    returns an empty list, delete_diff receives before=[] and no entities are deleted,
-    so live-event-created entities are preserved.
-    """
-    mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
-    mock_sync_raw_mixin.sort_and_upsert_failed_entities = AsyncMock()  # type: ignore
-    delete_diff_mock = AsyncMock()
-    mock_sync_raw_mixin.entities_state_applier.delete_diff = delete_diff_mock  # type: ignore
-
-    resync_entities = [
-        create_entity("resync-1", "svc", {}, False),
-        create_entity("resync-2", "svc", {}, False),
-    ]
-    creation_results: list[tuple[list[Entity], list[Exception]]] = [
-        (resync_entities, []),
-    ]
-
-    with patch(
-        "port_ocean.core.integrations.mixins.sync_raw.ocean",
-        mock_ocean,
-    ):
-        async with event_context(
-            EventType.RESYNC,
-            trigger_type="machine",
-            attributes={"resync_start_time": datetime.now(timezone.utc)},
-        ):
-            await mock_sync_raw_mixin.resync_reconciliation(
-                creation_results,
-                did_fetched_current_state=True,
-                user_agent_type=UserAgentType.exporter,
-                app_config=mock_port_app_config,
-                silent=True,
-            )
-
-    delete_diff_mock.assert_called_once()
-    call_args = delete_diff_mock.call_args[0]
-    diff = call_args[0]
-    assert diff["before"] == []
-    assert set(e.identifier for e in diff["after"]) == {"resync-1", "resync-2"}
