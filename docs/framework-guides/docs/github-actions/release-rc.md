@@ -10,7 +10,7 @@ The Release RC (Release Candidate) workflow is a GitHub Actions workflow that cr
 
 ## Overview
 
-This flow could be access through actions => Relase RC.
+This flow could be access through actions => Release RC.
 
 <img width="308" height="506" alt="image" src="https://github.com/user-attachments/assets/27ab54cb-ee04-421a-a0cb-a0125ee6509e" />
 
