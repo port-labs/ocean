@@ -7,6 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.5 (2026-03-03)
+
+### Improvements
+
+- Added structured `etl_phase` log context (`extract`, `transform`, `load`, `reconciliation`) across the resync pipeline for better observability
+- Consolidated `resource_kind` in both sync raw and entity processor log context.
+- Removed dead no-op `logger.contextualize` call in `_collect_resync_functions`
+
+
 ## 0.38.4 (2026-03-02)
 
 ### Improvements
