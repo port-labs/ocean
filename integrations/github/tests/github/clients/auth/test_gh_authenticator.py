@@ -204,7 +204,8 @@ class TestGithubAuthenticator:
 
             expected_url = f"{github_auth.github_host}/orgs/{github_auth.organization}/installation"
             mock_client.get.assert_called_once_with(
-                expected_url, headers=jwt_headers,
+                expected_url,
+                headers=jwt_headers,
             )
 
             assert installation_id == mock_installation_id
@@ -245,7 +246,8 @@ class TestGithubAuthenticator:
 
             expected_url = f"{github_auth.github_host}/users/{github_auth.organization}/installation"
             mock_client.get.assert_called_once_with(
-                expected_url, headers=jwt_headers,
+                expected_url,
+                headers=jwt_headers,
             )
 
             assert installation_id == mock_installation_id
@@ -320,7 +322,8 @@ class TestGithubAuthenticator:
             return_value=mock_client,
         ):
             result = await github_auth.is_personal_org(
-                "https://ghe.example.com", "Org",
+                "https://ghe.example.com",
+                "Org",
                 headers={"Authorization": "Bearer tok"},
             )
 
@@ -375,7 +378,10 @@ class TestGithubAuthenticator:
         assert personal_org_call.kwargs["headers"] == jwt_headers
 
         install_call = calls[1]
-        assert install_call.args[0] == "https://api.atpco.ghe.com/orgs/DevopsZone/installation"
+        assert (
+            install_call.args[0]
+            == "https://api.atpco.ghe.com/orgs/DevopsZone/installation"
+        )
         assert install_call.kwargs["headers"] == jwt_headers
 
     async def test_client_returns_same_instance(
