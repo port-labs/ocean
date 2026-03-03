@@ -25,12 +25,12 @@ variable "container_port" {
 
 variable "cpu" {
   default = 1024
-  type = number
+  type    = number
 }
 
 variable "memory" {
   default = 2048
-  type = number
+  type    = number
 }
 
 variable "network_mode" {
@@ -124,7 +124,7 @@ variable "additional_policy_statements" {
 }
 
 variable "allow_incoming_requests" {
-  type = bool
+  type    = bool
   default = true
 }
 
