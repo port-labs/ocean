@@ -19,12 +19,12 @@ query OrgMemberQuery(
       ) {{
         nodes {{
           login
-          id
-          databaseId
-          __typename
           ... on User {{
             email
             name
+            id
+            databaseId
+            __typename
           }}
         }}
         pageInfo {{
