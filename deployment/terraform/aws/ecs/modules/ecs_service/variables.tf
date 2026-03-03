@@ -25,10 +25,12 @@ variable "container_port" {
 
 variable "cpu" {
   default = 1024
+  type = number
 }
 
 variable "memory" {
   default = 2048
+  type = number
 }
 
 variable "network_mode" {
