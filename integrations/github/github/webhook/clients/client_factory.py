@@ -16,8 +16,10 @@ class GithubWebhookClientFactory:
         webhook_secret: str | None,
     ) -> BaseGithubWebhookClient:
         config = integration_config(authenticator)
+        # Explicit headers required: GHE may reject unauthenticated GET /users/{org}
+        auth_headers = (await authenticator.get_headers()).as_dict()
         is_personal_org = await authenticator.is_personal_org(
-            config["github_host"], organization
+            config["github_host"], organization, headers=auth_headers
         )
 
         client_cls = (

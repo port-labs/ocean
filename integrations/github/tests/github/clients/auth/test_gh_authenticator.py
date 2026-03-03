@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+
 import pytest
 import httpx
 from unittest.mock import AsyncMock, Mock, patch, PropertyMock
@@ -179,28 +180,20 @@ class TestGithubAuthenticator:
         mock_response.raise_for_status = Mock()
         mock_client.get.return_value = mock_response
 
-        with (
-            patch.object(
-                github_auth,
-                "is_personal_org",
-                AsyncMock(return_value=False),
-            ) as mock_is_personal,
-            patch.object(
-                type(github_auth),
-                "client",
-                new_callable=PropertyMock,
-                return_value=mock_client,
-            ),
+        with patch.object(
+            type(github_auth),
+            "client",
+            new_callable=PropertyMock,
+            return_value=mock_client,
         ):
             installation_id = await github_auth._fetch_installation_id(mock_jwt_token)
 
-            mock_is_personal.assert_called_once()
-
+            jwt_headers = {"Authorization": f"Bearer {mock_jwt_token}"}
             expected_url = f"{github_auth.github_host}/orgs/{github_auth.organization}/installation"
             mock_client.get.assert_called_once_with(
-                expected_url, headers={"Authorization": f"Bearer {mock_jwt_token}"}
+                expected_url,
+                headers=jwt_headers,
             )
-
             assert installation_id == mock_installation_id
 
     async def test_fetch_installation_id_for_personal_org(
@@ -210,34 +203,140 @@ class TestGithubAuthenticator:
         mock_installation_id = "67890"
 
         mock_client = AsyncMock()
-        mock_response = Mock()
-        mock_response.json = Mock(return_value={"id": mock_installation_id})
-        mock_response.raise_for_status = Mock()
-        mock_client.get.return_value = mock_response
+        ok_response = Mock()
+        ok_response.json = Mock(return_value={"id": mock_installation_id})
+        ok_response.raise_for_status = Mock()
+
+        not_found_response = Mock(status_code=404)
+        not_found_error = httpx.HTTPStatusError(
+            "Not Found", request=Mock(), response=not_found_response
+        )
+
+        mock_client.get.side_effect = [not_found_error, ok_response]
+
+        with patch.object(
+            type(github_auth),
+            "client",
+            new_callable=PropertyMock,
+            return_value=mock_client,
+        ):
+            installation_id = await github_auth._fetch_installation_id(mock_jwt_token)
+
+        jwt_headers = {"Authorization": f"Bearer {mock_jwt_token}"}
+        calls = mock_client.get.call_args_list
+        assert len(calls) == 2
+        assert (
+            calls[0].args[0]
+            == f"{github_auth.github_host}/orgs/{github_auth.organization}/installation"
+        )
+        assert calls[0].kwargs["headers"] == jwt_headers
+        assert (
+            calls[1].args[0]
+            == f"{github_auth.github_host}/users/{github_auth.organization}/installation"
+        )
+        assert calls[1].kwargs["headers"] == jwt_headers
+        assert installation_id == mock_installation_id
+
+    async def test_fetch_installation_id_raises_on_non_404_error(
+        self, github_auth: GitHubAppAuthenticator
+    ) -> None:
+        from github.helpers.exceptions import AuthenticationException
+
+        mock_client = AsyncMock()
+        forbidden_response = Mock(status_code=403)
+        mock_client.get.side_effect = httpx.HTTPStatusError(
+            "Forbidden", request=Mock(), response=forbidden_response
+        )
 
         with (
-            patch.object(
-                github_auth,
-                "is_personal_org",
-                AsyncMock(return_value=True),
-            ) as mock_is_personal,
             patch.object(
                 type(github_auth),
                 "client",
                 new_callable=PropertyMock,
                 return_value=mock_client,
             ),
+            pytest.raises(AuthenticationException),
         ):
-            installation_id = await github_auth._fetch_installation_id(mock_jwt_token)
+            await github_auth._fetch_installation_id("mock-jwt-token")
 
-            mock_is_personal.assert_called_once()
+        mock_client.get.assert_called_once()
 
-            expected_url = f"{github_auth.github_host}/users/{github_auth.organization}/installation"
-            mock_client.get.assert_called_once_with(
-                expected_url, headers={"Authorization": f"Bearer {mock_jwt_token}"}
+    async def test_is_personal_org_sends_auth_headers(
+        self, github_auth: GitHubAppAuthenticator
+    ) -> None:
+        """Verify is_personal_org forwards auth headers to the HTTP request."""
+        mock_client = AsyncMock()
+        mock_response = Mock()
+        mock_response.json = Mock(return_value={"type": "Organization"})
+        mock_response.raise_for_status = Mock()
+        mock_client.get.return_value = mock_response
+
+        headers = {"Authorization": "Bearer test-jwt"}
+
+        with patch.object(
+            type(github_auth),
+            "client",
+            new_callable=PropertyMock,
+            return_value=mock_client,
+        ):
+            result = await github_auth.is_personal_org(
+                "https://api.ghe.example.com",
+                "MyOrg",
+                headers=headers,
             )
 
-            assert installation_id == mock_installation_id
+        assert result is False
+        mock_client.get.assert_called_once_with(
+            "https://api.ghe.example.com/users/MyOrg",
+            headers=headers,
+        )
+
+    async def test_is_personal_org_returns_true_for_user(
+        self, github_auth: GitHubAppAuthenticator
+    ) -> None:
+        """Verify is_personal_org returns True when GitHub reports type User."""
+        mock_client = AsyncMock()
+        mock_response = Mock()
+        mock_response.json = Mock(return_value={"type": "User"})
+        mock_response.raise_for_status = Mock()
+        mock_client.get.return_value = mock_response
+
+        with patch.object(
+            type(github_auth),
+            "client",
+            new_callable=PropertyMock,
+            return_value=mock_client,
+        ):
+            result = await github_auth.is_personal_org(
+                "https://api.github.com",
+                "my-user",
+                headers={"Authorization": "Bearer tok"},
+            )
+
+        assert result is True
+
+    async def test_is_personal_org_returns_false_on_error(
+        self, github_auth: GitHubAppAuthenticator
+    ) -> None:
+        """Verify is_personal_org returns False when the request fails."""
+        mock_client = AsyncMock()
+        mock_client.get.side_effect = httpx.HTTPStatusError(
+            "forbidden", request=Mock(), response=Mock(status_code=403)
+        )
+
+        with patch.object(
+            type(github_auth),
+            "client",
+            new_callable=PropertyMock,
+            return_value=mock_client,
+        ):
+            result = await github_auth.is_personal_org(
+                "https://ghe.example.com",
+                "Org",
+                headers={"Authorization": "Bearer tok"},
+            )
+
+        assert result is False
 
     async def test_client_returns_same_instance(
         self, github_auth: GitHubAppAuthenticator
