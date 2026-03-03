@@ -187,7 +187,6 @@ class WorkflowNodeRun(BaseModel):
     config: dict[str, Any] | None = None
     result: WorkflowNodeRunResult | None = None
     output: dict[str, Any] = Field(default_factory=dict)
-    externalRunId: str | None = None
 
     @property
     def id(self) -> str:
