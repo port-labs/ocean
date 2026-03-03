@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed `is_personal_org` to forward authentication headers, preventing unauthenticated calls to GHE.
+- Fixed `_fetch_installation_id` to try the org endpoint first and fall back to the user endpoint on 404, avoiding a `GET /users/{username}` call that cannot be authenticated with a JWT during bootstrapping.
 
 
 ## 5.1.11 (2026-03-02)
