@@ -79,7 +79,7 @@ class VulnerabilityFindingSelector(Selector):
 
 class VulnerabilityFindingResourceConfig(ResourceConfig):
     selector: VulnerabilityFindingSelector
-    kind: Literal["vulnerabilityFinding"]
+    kind: Literal["vulnerability-finding"]
 
 
 class WizPortAppConfig(PortAppConfig):

@@ -1,9 +1,22 @@
+from typing import Any, List
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from wiz.client import WizClient  # Adjust the import based on your project structure
+from wiz.client import InvalidTokenUrlException, WizClient
+
+
+def mock_paginated_generator(*pages: List[Any]):
+    """
+    Returns a generator that yields each page in sequence.
+    """
+
+    async def _gen():
+        for page in pages:
+            yield page
+
+    return _gen()
 
 
 @pytest.fixture(autouse=True)
@@ -35,6 +48,31 @@ def mock_wiz_client() -> WizClient:
         client_secret="test_client_secret",
         token_url="https://auth0.wiz.io/token",
     )
+
+
+@pytest.mark.asyncio
+async def test_auth_request_params_returns_correct_audience_for_valid_urls() -> None:
+    """Test that auth_request_params returns correct audience for Auth0 vs Cognito token URLs."""
+    auth0_client = WizClient(
+        api_url="https://api.wiz.io",
+        client_id="cid",
+        client_secret="secret",
+        token_url="https://auth.wiz.io/oauth/token",
+    )
+    params = auth0_client.auth_request_params
+    assert params["audience"] == "beyond-api"
+    assert params["grant_type"] == "client_credentials"
+    assert params["client_id"] == "cid"
+    assert params["client_secret"] == "secret"
+
+    cognito_client = WizClient(
+        api_url="https://api.wiz.io",
+        client_id="cid",
+        client_secret="secret",
+        token_url="https://auth.app.wiz.io/oauth/token",
+    )
+    params = cognito_client.auth_request_params
+    assert params["audience"] == "wiz-api"
 
 
 @pytest.mark.asyncio
@@ -76,3 +114,138 @@ async def test_make_graphql_query(mock_wiz_client: WizClient) -> None:
 
             # Verify the response data
             assert result == mock_response_data["data"]
+
+
+@pytest.mark.asyncio
+async def test_get_vulnerability_findings_with_filters(
+    mock_wiz_client: WizClient,
+) -> None:
+    options = {
+        "status_list": ["OPEN"],
+        "severity_list": ["CRITICAL"],
+        "max_pages": 2,
+    }
+
+    mock_findings = [{"id": "vuln1", "name": "Vulnerability 1"}]
+
+    with patch.object(
+        mock_wiz_client,
+        "_get_paginated_resources",
+    ) as mock_paginated:
+        mock_paginated.return_value = mock_paginated_generator(mock_findings)
+
+        results = []
+        async for batch in mock_wiz_client.get_vulnerability_findings(options):
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="vulnerabilityFindings",
+            variables={
+                "first": 100,
+                "filterBy": {
+                    "status": ["OPEN"],
+                    "severity": ["CRITICAL"],
+                },
+            },
+            max_pages=2,
+        )
+
+        assert results == mock_findings
+
+
+@pytest.mark.asyncio
+async def test_get_vulnerability_findings_without_filters(
+    mock_wiz_client: WizClient,
+) -> None:
+    options = {}
+
+    with patch.object(
+        mock_wiz_client,
+        "_get_paginated_resources",
+    ) as mock_paginated:
+        mock_paginated.return_value = mock_paginated_generator(
+            [{"id": "vuln1", "name": "Vulnerability 1"}]
+        )
+
+        async for _ in mock_wiz_client.get_vulnerability_findings(options):
+            pass
+
+        mock_paginated.assert_called_once_with(
+            resource="vulnerabilityFindings",
+            variables={
+                "first": 100,
+                "filterBy": {},
+            },
+            max_pages=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_technologies(mock_wiz_client: WizClient) -> None:
+    mock_technologies = [{"id": "tech1", "name": "Technology 1"}]
+    with patch.object(
+        mock_wiz_client,
+        "_get_paginated_resources",
+    ) as mock_paginated:
+        mock_paginated.return_value = mock_paginated_generator(mock_technologies)
+
+        results = []
+        async for batch in mock_wiz_client.get_technologies():
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="technologies",
+            variables={
+                "first": 100,
+                "filterBy": {},
+            },
+        )
+
+        assert results == mock_technologies
+
+
+@pytest.mark.asyncio
+async def test_get_hosted_technologies(mock_wiz_client: WizClient) -> None:
+    mock_hosted_technologies = [{"id": "hosted1", "name": "Hosted Technology 1"}]
+    with patch.object(
+        mock_wiz_client,
+        "_get_paginated_resources",
+    ) as mock_paginated:
+        mock_paginated.return_value = mock_paginated_generator(mock_hosted_technologies)
+
+        results = []
+        async for batch in mock_wiz_client.get_hosted_technologies():
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="hostedTechnologies",
+            variables={
+                "first": 100,
+                "filterBy": {},
+            },
+        )
+
+        assert results == mock_hosted_technologies
+
+
+@pytest.mark.asyncio
+async def test_get_repositories(mock_wiz_client: WizClient) -> None:
+    """Test that get_repositories calls _get_paginated_resources with correct params and yields repos."""
+    mock_repos = [
+        {"id": "repo-1", "name": "my-repo", "branches": [{"id": "b1", "name": "main"}]},
+    ]
+    with patch.object(
+        mock_wiz_client,
+        "_get_paginated_resources",
+    ) as mock_paginated:
+        mock_paginated.return_value = mock_paginated_generator(mock_repos)
+
+        results = []
+        async for batch in mock_wiz_client.get_repositories():
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="repositories",
+            variables={"first": 100, "filterBy": {}},
+        )
+        assert results == mock_repos
