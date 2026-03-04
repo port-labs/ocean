@@ -1142,15 +1142,15 @@ async def test_lookup_subjects() -> None:
 
 
 @pytest.mark.asyncio
-async def test_lookup_subjects_returns_none_on_error() -> None:
-    """Test that _lookup_subjects returns None on API error."""
+async def test_lookup_subjects_returns_empty_dict_on_error() -> None:
+    """Test that _lookup_subjects returns empty dict on API error."""
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
     )
 
     with patch.object(client, "send_request", return_value=None):
         result = await client._lookup_subjects(["msa.user1"])
-        assert result is None
+        assert result == {}
 
 
 @pytest.mark.asyncio
@@ -1240,10 +1240,10 @@ async def test_generate_group_members_skips_empty_memberships(
 
 
 @pytest.mark.asyncio
-async def test_generate_group_members_skips_failed_subject_lookup(
+async def test_generate_group_members_skips_unresolved_subjects(
     mock_event_context: MagicMock,
 ) -> None:
-    """Test that groups with failed subject lookup are skipped."""
+    """Test that members with unresolved subject details are skipped."""
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
     )
@@ -1264,7 +1264,7 @@ async def test_generate_group_members_skips_failed_subject_lookup(
         patch.object(
             client, "_get_group_direct_members", return_value=mock_memberships
         ),
-        patch.object(client, "_lookup_subjects", return_value=None),
+        patch.object(client, "_lookup_subjects", return_value={}),
     ):
         async with event_context("test_event"):
             members: List[Dict[str, Any]] = []

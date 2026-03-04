@@ -4,6 +4,7 @@ import functools
 import json
 import httpx
 from collections import defaultdict
+from itertools import batched
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
 from loguru import logger
@@ -360,20 +361,18 @@ class AzureDevopsClient(HTTPBaseClient):
         self, descriptors: list[str]
     ) -> dict[str, dict[str, Any]]:
         """Batch lookup subject details for multiple descriptors."""
-
         all_results: dict[str, dict[str, Any]] = {}
-
         total_batches = (
             len(descriptors) + MAX_SUBJECTS_PER_LOOKUP - 1
         ) // MAX_SUBJECTS_PER_LOOKUP
 
         logger.info(
-            f"Looking up {len(descriptors)} subjects in {total_batches} batches"
+            f"Starting subject lookup for {len(descriptors)} descriptors across {total_batches} batch(es)"
         )
 
-        for i in range(0, len(descriptors), MAX_SUBJECTS_PER_LOOKUP):
-            batch = descriptors[i : i + MAX_SUBJECTS_PER_LOOKUP]
-            batch_num = i // MAX_SUBJECTS_PER_LOOKUP + 1
+        for batch_num, batch in enumerate(
+            batched(descriptors, MAX_SUBJECTS_PER_LOOKUP), start=1
+        ):
             request_body = {"lookupKeys": [{"descriptor": d} for d in batch]}
 
             try:
@@ -388,15 +387,15 @@ class AzureDevopsClient(HTTPBaseClient):
 
                 if not response:
                     logger.warning(
-                        f"No response for subject lookup batch {batch_num}/{total_batches}"
+                        f"No response received for subject lookup batch {batch_num} of {total_batches} (descriptors: {batch})"
                     )
                     continue
                 all_results.update(response.json()["value"])
 
             except Exception as e:
-
                 logger.warning(
-                    f"Failed to lookup subjects batch {batch_num}/{total_batches}: {e}"
+                    f"Failed to look up subjects for batch {batch_num} of {total_batches} "
+                    f"(size: {len(batch)}). Descriptors: {batch}. Error: {e}"
                 )
                 continue
 

@@ -449,11 +449,17 @@ class AzureDevopsIterationConfig(ResourceConfig):
 
 
 class AzureDevopsGroupResourceConfig(ResourceConfig):
-    kind: Literal["group"]
+    kind: Literal[Kind.GROUP] = Field(
+        title="Azure Devops Group",
+        description="Azure Devops group resource kind.",
+    )
 
 
 class AzureDevopsGroupMemberResourceConfig(ResourceConfig):
-    kind: Literal["group-member"]
+    kind: Literal[Kind.GROUP_MEMBER] = Field(
+        title="Azure Devops Group Member",
+        description="Azure Devops group member resource kind.",
+    )
 
 
 class GitPortAppConfig(PortAppConfig):
