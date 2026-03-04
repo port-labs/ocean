@@ -4,7 +4,7 @@ import sys
 from asyncio import ensure_future, Task
 from typing import Any, Literal
 
-from confluent_kafka import Message  # type: ignore[import-untyped]
+from confluent_kafka import Message
 from loguru import logger
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig

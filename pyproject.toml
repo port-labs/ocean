@@ -162,6 +162,10 @@ no_implicit_reexport = true
 # for strict mypy: (this is the tricky one :-))
 disallow_untyped_defs = true
 
+[[tool.mypy.overrides]]
+module = ["confluent_kafka.*", "jsonref"]
+ignore_missing_imports = true
+
 
 [tool.ruff]
 # Never enforce `E501` (line length violations).
