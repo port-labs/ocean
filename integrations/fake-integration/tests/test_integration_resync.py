@@ -356,3 +356,155 @@ class TestFakeIntegrationErrorHandling(BaseIntegrationTest):
         assert (
             len(http_errors) > 0
         ), f"Expected at least one HTTP-related error, but got: {all_errors}"
+
+
+class TestFakeIntegrationDeletions(BaseIntegrationTest):
+    """Test that entities are properly deleted when they no longer exist in the source."""
+
+    def create_third_party_transport(self) -> InterceptTransport:
+        """Mock returns only person-1 (person-2 and person-3 will be deleted)."""
+        transport = InterceptTransport(strict=False)
+        transport.add_route(
+            "GET",
+            "localhost:8000/integration/department/",
+            {
+                "json": {
+                    "results": [
+                        {
+                            "id": "person-1",
+                            "email": "alice@test.com",
+                            "name": "Alice Smith",
+                            "status": "WORKING",
+                            "age": 30,
+                            "bio": "Engineer",
+                        },
+                    ]
+                }
+            },
+        )
+        return transport
+
+    def create_mapping_config(self) -> dict[str, Any]:
+        return {
+            "deleteDependentEntities": True,
+            "createMissingRelatedEntities": True,
+            "enableMergeEntity": True,
+            "entityDeletionThreshold": 1.0,  # Allow all deletions for testing
+            "resources": [
+                {
+                    "kind": "fake-department",
+                    "selector": {"query": "true"},
+                    "port": {
+                        "entity": {
+                            "mappings": {
+                                "identifier": ".id",
+                                "title": ".name",
+                                "blueprint": '"fakeDepartment"',
+                                "properties": {"name": ".name"},
+                            }
+                        }
+                    },
+                },
+                {
+                    "kind": "fake-person",
+                    "selector": {"query": "true"},
+                    "port": {
+                        "entity": {
+                            "mappings": {
+                                "identifier": ".id",
+                                "title": ".name",
+                                "blueprint": '"fakePerson"',
+                                "properties": {
+                                    "email": ".email",
+                                    "age": ".age",
+                                    "status": ".status",
+                                },
+                                "relations": {
+                                    "department": ".department.id",
+                                },
+                            }
+                        }
+                    },
+                },
+            ],
+        }
+
+    def create_integration_config(self) -> dict[str, Any]:
+        return {
+            "integration": {
+                "identifier": "test-fake-integration",
+                "type": "fake-integration",
+                "config": {
+                    "single_department_run": True,
+                },
+            },
+        }
+
+    def get_port_search_entities_response(self) -> list[dict[str, Any]]:
+        """Entities that 'exist in Port' — will be deleted since they're not in new resync."""
+        return [
+            {
+                "identifier": "person-2",
+                "blueprint": "fakePerson",
+                "title": "Bob Jones",
+                "properties": {
+                    "email": "bob@test.com",
+                    "age": 25,
+                    "status": "NOPE",
+                },
+                "relations": {
+                    "department": "hr",
+                },
+            },
+            {
+                "identifier": "person-3",
+                "blueprint": "fakePerson",
+                "title": "Charlie Brown",
+                "properties": {
+                    "email": "charlie@test.com",
+                    "age": 35,
+                    "status": "WORKING",
+                },
+                "relations": {
+                    "department": "hr",
+                },
+            },
+        ]
+
+    @pytest.mark.asyncio
+    async def test_deleted_entities_are_captured(self, harness) -> None:
+        """Test that entities existing in Port but not in the new resync are deleted."""
+        # Trigger resync - person-1 will be created, person-2 and person-3 will be deleted
+        result = await harness.trigger_resync()
+
+        # Verify reconciliation succeeded
+        assert result.reconciliation_success is True, (
+            f"Reconciliation should succeed, but got errors: {result.errors}"
+        )
+
+        # Verify person-1 was upserted
+        person_entities = [
+            e for e in result.upserted_entities if e.get("blueprint") == "fakePerson"
+        ]
+        assert len(person_entities) == 1
+        assert person_entities[0]["identifier"] == "person-1"
+
+        # Verify person-2 and person-3 were deleted
+        assert len(result.deleted_entities) >= 2, (
+            f"Expected at least 2 deleted entities, got: {result.deleted_entities}"
+        )
+
+        deleted_identifiers = {e["identifier"] for e in result.deleted_entities}
+        assert "person-2" in deleted_identifiers, (
+            f"Expected person-2 to be deleted, but deleted entities are: {deleted_identifiers}"
+        )
+        assert "person-3" in deleted_identifiers, (
+            f"Expected person-3 to be deleted, but deleted entities are: {deleted_identifiers}"
+        )
+
+        # Verify deleted entities have the correct structure
+        person_2_deleted = next(
+            e for e in result.deleted_entities if e["identifier"] == "person-2"
+        )
+        assert person_2_deleted["blueprint"] == "fakePerson"
+        assert person_2_deleted["identifier"] == "person-2"

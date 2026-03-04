@@ -41,6 +41,7 @@ class IntegrationTestHarness:
         third_party_transport: InterceptTransport | RecordingTransport,
         port_blueprints: dict[str, dict[str, Any]] | None = None,
         config_overrides: dict[str, Any] | None = None,
+        port_search_entities_response: list[dict[str, Any]] | None = None,
     ) -> None:
         self.integration_path = str(Path(integration_path).resolve())
         self.port_mapping_config = port_mapping_config
@@ -48,6 +49,7 @@ class IntegrationTestHarness:
         self.port_mock = PortMockResponder(
             mapping_config=port_mapping_config,
             blueprints=port_blueprints or {},
+            search_entities_response=port_search_entities_response or [],
         )
         self.config_overrides = config_overrides or {}
         self._ocean: Ocean | None = None
