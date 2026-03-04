@@ -172,6 +172,12 @@ class IntegrationTestHarness:
                 transport: Any = None,
                 **kwargs: Any,
             ) -> Any:
+                # Respect caller-provided transport if explicitly passed
+                if transport is not None:
+                    return original_init_transport(
+                        self_client, transport=transport, **kwargs
+                    )
+                # Use test transport when no transport is provided
                 return test_transport
 
             p2 = patch.object(
