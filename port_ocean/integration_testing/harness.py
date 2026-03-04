@@ -135,14 +135,22 @@ class IntegrationTestHarness:
 
         http_module._http_client.push(third_party_client)
 
-        # Patch the Port internal client
+        # Patch the Port internal client using three complementary mechanisms:
+        # Different parts of the codebase access the client through different paths,
+        # so all three are required for complete test coverage.
         import port_ocean.clients.port.utils as port_utils_module
 
+        # Mechanism 1: Push mock client onto LocalStack
+        # _get_http_client_context() checks _http_client.top first. If a client exists
+        # on the stack, it uses that instead of creating a new one. This handles lazy
+        # initialization paths where the function is called after we've pushed our mock.
         port_utils_module._http_client.push(port_client)
 
-        # Also patch the Port _get_http_client_context function directly
-        # to handle cases where ContextVar-based LocalStack doesn't persist
-        # across async fixture boundaries
+        # Mechanism 2: Patch _get_http_client_context function
+        # get_internal_http_client() uses a LocalProxy that calls _get_http_client_context.
+        # Patching the function ensures that even if the LocalStack is empty or doesn't
+        # persist across async fixture boundaries (ContextVar-based LocalStack can lose
+        # context in async test fixtures), the patched function returns our mock client.
         p_port = patch(
             "port_ocean.clients.port.utils._get_http_client_context",
             return_value=port_client,
@@ -150,7 +158,13 @@ class IntegrationTestHarness:
         p_port.start()
         self._patches.append(p_port)
 
-        # Also directly set the port_client's client attribute
+        # Mechanism 3: Direct assignment to port_client.client attribute
+        # PortClient.__init__ sets self.client = get_internal_http_client(self) at
+        # initialization time, storing the result as an instance attribute. The mixins
+        # (EntityClientMixin, IntegrationClientMixin, etc.) also store references to
+        # self.client. Direct assignment ensures all these stored references point to
+        # the mock client, bypassing any lazy initialization that may have already occurred
+        # during Ocean app creation.
         if self._ocean:
             self._ocean.port_client.client = port_client
 
