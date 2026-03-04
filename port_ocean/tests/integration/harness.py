@@ -186,8 +186,18 @@ class IntegrationTestHarness:
         self.port_mock.upserted_entities.clear()
 
         try:
+            # Call with silent=False so errors are raised and can be captured
             await self._ocean.integration.sync_raw_all(
                 trigger_type="machine",
+                silent=False,
+            )
+        except ExceptionGroup as e:
+            # ExceptionGroup contains multiple errors - extract them
+            errors = list(e.exceptions) if hasattr(e, "exceptions") else [e]
+            logger.warning(f"Resync raised ExceptionGroup with {len(errors)} errors")
+            return ResyncResult(
+                upserted_entities=list(self.port_mock.upserted_entities),
+                errors=errors,
             )
         except Exception as e:
             logger.warning(f"Resync raised an exception: {e}")
