@@ -15,6 +15,8 @@ jobs:
     needs: detect-changes
     runs-on: ubuntu-latest
     if: ${{ needs.detect-changes.outputs.core == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true' }}
+    env:
+      RUN_SMOKE_TESTS: ${{ github.event_name != 'pull_request' || github.repository == github.event.pull_request.head.repo.full_name }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v5
@@ -55,7 +57,7 @@ jobs:
           skip-login: 'true'
 
       - name: Run fake integration for core test
-        if: github.event_name != 'pull_request' || github.repository == github.event.pull_request.head.repo.full_name
+        if: env.RUN_SMOKE_TESTS == 'true'
         env:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -68,18 +70,18 @@ jobs:
           ./scripts/run-smoke-test.sh
 
       - name: Smoke Test Core
+        if: env.RUN_SMOKE_TESTS == 'true'
         env:
           PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
-
         run: |
           make smoke/test
 
       - name: Cleanup Smoke Test
-        if: always()
+        if: always() && env.RUN_SMOKE_TESTS == 'true'
         env:
           PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
@@ -90,6 +92,7 @@ jobs:
           make smoke/clean
 
       - name: Run fake integration for core test with multiprocessing enabled
+        if: env.RUN_SMOKE_TESTS == 'true'
         env:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -102,18 +105,18 @@ jobs:
           ./scripts/run-smoke-test.sh
 
       - name: Smoke Test Core
+        if: env.RUN_SMOKE_TESTS == 'true'
         env:
           PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
-
         run: |
           make smoke/test
 
       - name: Cleanup Smoke Test
-        if: always()
+        if: always() && env.RUN_SMOKE_TESTS == 'true'
         env:
           PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
