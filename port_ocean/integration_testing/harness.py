@@ -10,8 +10,8 @@ from loguru import logger
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.ocean import Ocean
-from port_ocean.tests.integration.port_mock import PortMockResponder
-from port_ocean.tests.integration.transport import (
+from port_ocean.integration_testing.port_mock import PortMockResponder
+from port_ocean.integration_testing.transport import (
     InterceptTransport,
     RecordingTransport,
 )

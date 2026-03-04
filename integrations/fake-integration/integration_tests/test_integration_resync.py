@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from port_ocean.tests.integration import (
+from port_ocean.integration_testing import (
     BaseIntegrationTest,
     InterceptTransport,
     IntegrationTestHarness,

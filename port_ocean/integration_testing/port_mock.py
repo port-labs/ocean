@@ -4,7 +4,7 @@ from urllib.parse import unquote_plus
 
 import httpx
 
-from port_ocean.tests.integration.transport import InterceptTransport
+from port_ocean.integration_testing.transport import InterceptTransport
 
 
 class PortMockResponder:

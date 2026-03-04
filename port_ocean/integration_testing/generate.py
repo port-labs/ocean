@@ -1,11 +1,11 @@
 """Generate integration test file from discovery.json.
 
-Reads `.port/resources/discovery.json` (produced by `make test/discover`),
+Reads `.port/resources/discovery.json` (produced by `make test/integration/discover`),
 groups third-party HTTP requests into URL patterns, and writes a ready-to-use
 `integration_tests/test_integration_resync.py` with mocked routes and a basic smoke test.
 
 Usage (from an integration directory):
-    python -m port_ocean.tests.integration.generate
+    python -m port_ocean.integration_testing.generate
 """
 
 import json
@@ -303,7 +303,7 @@ def _generate_test_file(
         from typing import Any
 
         import pytest
-        from port_ocean.tests.integration import BaseIntegrationTest, InterceptTransport, ResyncResult
+        from port_ocean.integration_testing import BaseIntegrationTest, InterceptTransport, ResyncResult
 
 
         class TestResync(BaseIntegrationTest):
