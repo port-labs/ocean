@@ -549,8 +549,7 @@ def test_validate_existing_webhook_warns_on_misconfiguration() -> None:
 
         mock_logger.warning.assert_any_call(
             "Existing webhook has a JQL filter configured on Jira's side, "
-            "which may prevent some events from being sent",
-            jql_filter="project = PROJ1",
+            "which may prevent some events from being sent. JQL filter: project = PROJ1"
         )
         mock_logger.warning.assert_any_call(
             "Existing webhook events do not match expected events"

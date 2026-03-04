@@ -183,19 +183,21 @@ class JiraClient(OAuthClient):
         """Log details and warn about misconfiguration of an existing Jira webhook."""
         logger.info("Ocean real time reporting webhook already exists")
         try:
-            filters = webhook.get("filters") or {}
-            jql_filter = filters.get("issue-related-events-section") or webhook.get(
-                "jqlFilter"
+            filters_jql = (webhook.get("filters") or {}).get(
+                "issue-related-events-section"
             )
+            oauth_jql = webhook.get("jqlFilter")
 
-            if jql_filter:
-                is_expected_oauth_filter = "project not in" in jql_filter
-                if not is_expected_oauth_filter:
-                    logger.warning(
-                        "Existing webhook has a JQL filter configured on Jira's side, "
-                        "which may prevent some events from being sent",
-                        jql_filter=jql_filter,
-                    )
+            if filters_jql:
+                logger.warning(
+                    f"Existing webhook has a JQL filter configured on Jira's side, "
+                    f"which may prevent some events from being sent. JQL filter: {filters_jql}"
+                )
+            elif oauth_jql and "project not in" not in oauth_jql:
+                logger.warning(
+                    f"Existing webhook has a JQL filter configured on Jira's side, "
+                    f"which may prevent some events from being sent. JQL filter: {oauth_jql}"
+                )
 
             actual_events = webhook.get("events") or []
             if set(actual_events) != set(expected_events):
@@ -206,9 +208,8 @@ class JiraClient(OAuthClient):
                     "Existing webhook is disabled and will not fire any events"
                 )
         except Exception:
-            logger.warning(
-                "Failed to validate existing webhook configuration",
-                exc_info=True,
+            logger.opt(exception=True).warning(
+                "Failed to validate existing webhook configuration"
             )
 
     async def has_webhook_permission(self) -> bool:
