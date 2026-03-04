@@ -320,18 +320,39 @@ class TestFakeIntegrationErrorHandling(BaseIntegrationTest):
 
         # Person API returned 500, so no person entities should be upserted
         # The error should be caught and added to resync.errors
-        # Note: The fake-integration doesn't call response.raise_for_status(), so it will
-        # try to parse the error JSON and fail with a KeyError when accessing ["results"].
-        # This is a bug in the fake-integration, but the test verifies that errors are caught.
         person_entities = [
             e for e in resync.upserted_entities if e.get("blueprint") == "fakePerson"
         ]
         assert len(person_entities) == 0
 
-        # The resync should have encountered an error
-        # (KeyError because fake-integration doesn't handle HTTP errors properly)
+        # The resync should have encountered an HTTP error
         assert len(resync.errors) > 0, (
-            f"Expected resync to encounter an error, but got: {resync.errors}. "
-            f"The fake-integration doesn't handle HTTP errors, so it should fail when "
-            f"trying to parse the error response as JSON."
+            f"Expected resync to encounter an HTTP error, but got: {resync.errors}. "
+            f"The fake-integration should raise HTTPStatusError when the API returns 500."
         )
+
+        # Extract all exceptions, recursively unwrapping ExceptionGroups
+        def extract_exceptions(errors: list[Exception]) -> list[Exception]:
+            """Recursively extract exceptions from ExceptionGroups."""
+            result = []
+            for error in errors:
+                if isinstance(error, ExceptionGroup) and hasattr(error, "exceptions"):
+                    result.extend(extract_exceptions(list(error.exceptions)))
+                else:
+                    result.append(error)
+            return result
+
+        all_errors = extract_exceptions(resync.errors)
+
+        # Verify at least one error is HTTP-related
+        http_errors = [
+            e
+            for e in all_errors
+            if any(
+                keyword in str(e).lower()
+                for keyword in ["500", "internal server error", "http", "httpx"]
+            )
+        ]
+        assert (
+            len(http_errors) > 0
+        ), f"Expected at least one HTTP-related error, but got: {all_errors}"
