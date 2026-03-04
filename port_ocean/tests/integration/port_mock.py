@@ -100,6 +100,19 @@ class PortMockResponder:
             {"json": {"organization": {"featureFlags": []}}},
         )
 
+        # Metrics endpoints - must be before generic integration route
+        self.transport.add_route(
+            "PUT",
+            "/syncMetrics",
+            {"json": {"ok": True}},
+        )
+
+        self.transport.add_route(
+            "POST",
+            "/syncMetrics",
+            {"json": {"ok": True}},
+        )
+
         # Blueprint get/patch — generic catch-all for blueprints
         self.transport.add_route(
             None,
@@ -126,6 +139,10 @@ class PortMockResponder:
                     "updatedAt": "2024-01-01T00:00:00.000Z",
                     "clientId": "",
                     "logAttributes": {
+                        "ingestId": "test-ingest",
+                        "ingestUrl": "http://localhost:5555/logs/test",
+                    },
+                    "metricAttributes": {
                         "ingestId": "test-ingest",
                         "ingestUrl": "http://localhost:5555/logs/test",
                     },
