@@ -94,9 +94,7 @@ class AikidoClient:
                     )
                     break
 
-                logger.info(
-                    f"Fetched {len(resources)} {resource_name} from Aikido API"
-                )
+                logger.info(f"Fetched {len(resources)} {resource_name} from Aikido API")
                 fetched_count = len(resources)
                 yield resources
 
