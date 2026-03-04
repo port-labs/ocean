@@ -448,6 +448,10 @@ class AzureDevopsIterationConfig(ResourceConfig):
     )
 
 
+class AzureDevopsGroupResourceConfig(ResourceConfig):
+    kind: Literal["group"]
+
+
 class AzureDevopsGroupMemberResourceConfig(ResourceConfig):
     kind: Literal["group-member"]
 
@@ -490,6 +494,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsReleaseDeploymentConfig
         | AzureDevopsPipelineDeploymentConfig
         | AzureDevopsIterationConfig
+        | AzureDevopsGroupResourceConfig
         | AzureDevopsGroupMemberResourceConfig
     ] = Field(
         default_factory=list,
