@@ -54,10 +54,14 @@ class JQEntityProcessorSync:
     def _search(data: dict[str, Any], pattern: str) -> Any:
         try:
             compiled_pattern = JQEntityProcessorSync._compile(pattern)
-            return compiled_pattern.input_value(data).first()
+            it = compiled_pattern.input_value(data)
+            return next(iter(it), None)
         except Exception as exc:
-            logger.error(
-                f"Search failed for pattern '{pattern}' in data: {data}, Error: {exc}"
+            err_msg = str(exc) or repr(exc) or type(exc).__name__
+            logger.warning(
+                f"Search failed for pattern {pattern!r}: {err_msg}",
+                pattern=pattern,
+                error=exc,
             )
             return None
 
