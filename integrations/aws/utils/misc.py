@@ -363,17 +363,17 @@ async def safe_iterate(
                 yield resources
     except Exception as e:
         if is_access_denied_exception(e):
-            logger.bind(kind=kind, region=region).opt(exception=e).warning(
+            logger.bind(traceback=e, kind=kind, region=region).warning(
                 f"{region} failed during resync of {kind}, skipping..."
             )
             return
         if is_resource_type_not_available_exception(e):
-            logger.bind(kind=kind, region=region).opt(exception=e).warning(
+            logger.bind(traceback=e, kind=kind, region=region).warning(
                 f"{region} skipped during resync of {kind}: "
                 f"resource type not available"
             )
             return
-        logger.bind(kind=kind, region=region).opt(exception=e).error(
+        logger.bind(traceback=e, kind=kind, region=region).error(
             f"{region} encountered an error during resync of {kind}"
         )
         errors.append(e)

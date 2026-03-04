@@ -156,9 +156,8 @@ async def resync_resources_for_account(
                     yield batch
                 tasks.clear()
     except Exception as exc:
-        logger.bind(kind=kind, region=session.region_name).opt(exception=exc).error(
-            f"Failed to complete resync for {kind} in region {session.region_name}",
-            exc_info=True,
+        logger.bind(traceback=exc, kind=kind, region=session.region_name).error(
+            f"Failed to complete resync for {kind} in region {session.region_name}"
         )
         failed_regions.append(session.region_name)
         errors.append(exc)
