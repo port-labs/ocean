@@ -1,18 +1,21 @@
-from typing import Any, List
+from typing import Any, AsyncGenerator, List, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from wiz.client import InvalidTokenUrlException, WizClient
+from wiz.client import WizClient
+from wiz.options import VulnerabilityFindingOptions
 
 
-def mock_paginated_generator(*pages: List[Any]):
+def mock_paginated_generator(
+    *pages: List[Any],
+) -> AsyncGenerator[List[Any], None]:
     """
     Returns a generator that yields each page in sequence.
     """
 
-    async def _gen():
+    async def _gen() -> AsyncGenerator[List[Any], None]:
         for page in pages:
             yield page
 
@@ -120,7 +123,8 @@ async def test_make_graphql_query(mock_wiz_client: WizClient) -> None:
 async def test_get_vulnerability_findings_with_filters(
     mock_wiz_client: WizClient,
 ) -> None:
-    options = {
+    """Test that get_vulnerability_findings calls _get_paginated_resources with user overridden params."""
+    options: VulnerabilityFindingOptions = {
         "status_list": ["OPEN"],
         "severity_list": ["CRITICAL"],
         "max_pages": 2,
@@ -157,7 +161,8 @@ async def test_get_vulnerability_findings_with_filters(
 async def test_get_vulnerability_findings_without_filters(
     mock_wiz_client: WizClient,
 ) -> None:
-    options = {}
+    """Test that get_vulnerability_findings calls _get_paginated_resources with default params."""
+    options = cast(VulnerabilityFindingOptions, {})
 
     with patch.object(
         mock_wiz_client,
@@ -182,6 +187,7 @@ async def test_get_vulnerability_findings_without_filters(
 
 @pytest.mark.asyncio
 async def test_get_technologies(mock_wiz_client: WizClient) -> None:
+    """Test that get_technologies calls _get_paginated_resources with correct params and yields technologies."""
     mock_technologies = [{"id": "tech1", "name": "Technology 1"}]
     with patch.object(
         mock_wiz_client,
@@ -206,6 +212,7 @@ async def test_get_technologies(mock_wiz_client: WizClient) -> None:
 
 @pytest.mark.asyncio
 async def test_get_hosted_technologies(mock_wiz_client: WizClient) -> None:
+    """Test that get_hosted_technologies calls _get_paginated_resources with correct params and yields hosted technologies."""
     mock_hosted_technologies = [{"id": "hosted1", "name": "Hosted Technology 1"}]
     with patch.object(
         mock_wiz_client,
