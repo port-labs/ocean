@@ -193,7 +193,7 @@ class JiraClient(OAuthClient):
                     f"Existing webhook has a JQL filter configured on Jira's side, "
                     f"which may prevent some events from being sent. JQL filter: {filters_jql}"
                 )
-            elif oauth_jql and "project not in" not in oauth_jql:
+            elif oauth_jql:
                 logger.warning(
                     f"Existing webhook has a JQL filter configured on Jira's side, "
                     f"which may prevent some events from being sent. JQL filter: {oauth_jql}"
