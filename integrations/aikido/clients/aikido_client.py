@@ -35,7 +35,7 @@ class AikidoClient:
         method: str = "GET",
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
-    ) -> Any:
+    ) -> Dict[str, Any] | List[Dict[str, Any]]:
         """
         Send an authenticated API request to the Aikido API.
         """
