@@ -19,6 +19,7 @@ class PortMockResponder:
         mapping_config: dict[str, Any],
         integration_identifier: str = "test-integration",
         blueprints: dict[str, dict[str, Any]] | None = None,
+        search_entities_response: list[dict[str, Any]] | None = None,
     ) -> None:
         self.transport = InterceptTransport(strict=False)
         self.upserted_entities: list[dict[str, Any]] = []
@@ -27,6 +28,7 @@ class PortMockResponder:
         self.mapping_config = mapping_config
         self.integration_identifier = integration_identifier
         self.blueprints = blueprints or {}
+        self.search_entities_response = search_entities_response or []
         self._setup_routes()
 
     def _setup_routes(self) -> None:
@@ -54,7 +56,7 @@ class PortMockResponder:
         self.transport.add_route(
             "POST",
             "/v1/entities/search",
-            {"json": {"ok": True, "entities": []}},
+            self._handle_search_entities,
         )
 
         # Bulk entity upsert — must be before generic blueprints route
@@ -129,6 +131,10 @@ class PortMockResponder:
             "/v1/blueprints/",
             self._handle_blueprint,
         )
+
+    def _handle_search_entities(self, request: httpx.Request) -> dict[str, Any]:
+        """Handle POST /v1/entities/search — returns entities for reconciliation diff."""
+        return {"json": {"ok": True, "entities": self.search_entities_response}}
 
     def _handle_integration(self, request: httpx.Request) -> dict[str, Any]:
         return {

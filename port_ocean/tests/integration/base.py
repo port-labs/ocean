@@ -82,6 +82,15 @@ class BaseIntegrationTest:
             }
         }
 
+    def get_port_search_entities_response(self) -> list[dict[str, Any]] | None:
+        """Override to return entities that 'exist in Port' for reconciliation tests.
+
+        When set, search_entities during reconciliation will return these entities.
+        Use this to test deletion: entities in this list but not in the new resync
+        will be deleted.
+        """
+        return None
+
     @pytest.fixture
     async def harness(self) -> AsyncGenerator[IntegrationTestHarness, None]:
         """Creates and starts a harness, shuts it down after the test."""
@@ -90,6 +99,7 @@ class BaseIntegrationTest:
             port_mapping_config=self.create_mapping_config(),
             third_party_transport=self.create_third_party_transport(),
             config_overrides=self.create_integration_config(),
+            port_search_entities_response=self.get_port_search_entities_response(),
         )
         await h.start()
         yield h
