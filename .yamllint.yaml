@@ -12,6 +12,7 @@ ignore: |
   **/{{cookiecutter.integration_slug}}/**
   **/.mypy_cache/**
   **/.venv/**
+  .git/**
   docs/**
   deployment/**
 
