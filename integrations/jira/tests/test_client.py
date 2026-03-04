@@ -545,7 +545,7 @@ def test_validate_existing_webhook_warns_on_misconfiguration() -> None:
         "enabled": False,
     }
     with patch("jira.client.logger") as mock_logger:
-        JiraClient._validate_existing_webhook(webhook, WEBHOOK_EVENTS)
+        JiraClient._validate_existing_webhook(webhook, WEBHOOK_EVENTS, is_oauth=False)
 
         mock_logger.warning.assert_any_call(
             "Existing webhook has a JQL filter configured on Jira's side, "
@@ -568,7 +568,7 @@ def test_validate_existing_webhook_no_warnings_when_healthy() -> None:
         "enabled": True,
     }
     with patch("jira.client.logger") as mock_logger:
-        JiraClient._validate_existing_webhook(webhook, WEBHOOK_EVENTS)
+        JiraClient._validate_existing_webhook(webhook, WEBHOOK_EVENTS, is_oauth=False)
 
         mock_logger.warning.assert_not_called()
 

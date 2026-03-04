@@ -179,25 +179,25 @@ class JiraClient(OAuthClient):
     def _validate_existing_webhook(
         webhook: dict[str, Any],
         expected_events: list[str],
+        is_oauth: bool,
     ) -> None:
         """Log details and warn about misconfiguration of an existing Jira webhook."""
         logger.info("Ocean real time reporting webhook already exists")
         try:
-            filters_jql = (webhook.get("filters") or {}).get(
-                "issue-related-events-section"
+            jql_filter = (
+                webhook.get("jqlFilter")
+                if is_oauth
+                else (webhook.get("filters") or {}).get("issue-related-events-section")
             )
-            oauth_jql = webhook.get("jqlFilter")
 
-            if filters_jql:
-                logger.warning(
-                    f"Existing webhook has a JQL filter configured on Jira's side, "
-                    f"which may prevent some events from being sent. JQL filter: {filters_jql}"
-                )
-            elif oauth_jql:
-                logger.warning(
-                    f"Existing webhook has a JQL filter configured on Jira's side, "
-                    f"which may prevent some events from being sent. JQL filter: {oauth_jql}"
-                )
+            if jql_filter:
+                if is_oauth:
+                    logger.info(f"Existing webhook has a JQL filter: {jql_filter}")
+                else:
+                    logger.warning(
+                        f"Existing webhook has a JQL filter configured on Jira's side, "
+                        f"which may prevent some events from being sent. JQL filter: {jql_filter}"
+                    )
 
             actual_events = webhook.get("events") or []
             if set(actual_events) != set(expected_events):
@@ -233,7 +233,9 @@ class JiraClient(OAuthClient):
             webhook = webhooks[0]
             existing_webhook_url = webhook.get("url")
             if existing_webhook_url == webhook_target_app_host:
-                self._validate_existing_webhook(webhook, OAUTH2_WEBHOOK_EVENTS)
+                self._validate_existing_webhook(
+                    webhook, OAUTH2_WEBHOOK_EVENTS, is_oauth=True
+                )
             else:
                 logger.warning(
                     f"Ocean real time reporting webhook already exists: {existing_webhook_url} attempted to create webhook: {webhook_target_app_host}"
@@ -277,7 +279,7 @@ class JiraClient(OAuthClient):
 
         for webhook in webhooks:
             if webhook.get("url") == webhook_target_app_host:
-                self._validate_existing_webhook(webhook, WEBHOOK_EVENTS)
+                self._validate_existing_webhook(webhook, WEBHOOK_EVENTS, is_oauth=False)
                 return
 
         body = {
