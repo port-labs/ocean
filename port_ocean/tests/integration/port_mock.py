@@ -1,5 +1,6 @@
 import json as json_lib
 from typing import Any
+from urllib.parse import unquote_plus
 
 import httpx
 
@@ -22,6 +23,7 @@ class PortMockResponder:
         self.transport = InterceptTransport(strict=False)
         self.upserted_entities: list[dict[str, Any]] = []
         self.deleted_entity_ids: list[str] = []
+        self.deleted_entities: list[dict[str, Any]] = []
         self.mapping_config = mapping_config
         self.integration_identifier = integration_identifier
         self.blueprints = blueprints or {}
@@ -67,6 +69,14 @@ class PortMockResponder:
             "POST",
             "/v1/blueprints/",
             self._handle_single_upsert,
+        )
+
+        # Single entity delete — must be before bulk delete route
+        # Matches: DELETE /v1/blueprints/{blueprint}/entities/{identifier}
+        self.transport.add_route(
+            "DELETE",
+            r"/v1/blueprints/[^/]+/entities/",
+            self._handle_delete_entity,
         )
 
         # Bulk delete
@@ -176,6 +186,31 @@ class PortMockResponder:
         body = json_lib.loads(request.content.decode("utf-8"))
         self.upserted_entities.append(body)
         return {"json": {"ok": True, "entity": body}}
+
+    def _handle_delete_entity(self, request: httpx.Request) -> dict[str, Any]:
+        """Handle DELETE /v1/blueprints/{blueprint}/entities/{identifier}
+
+        Extracts blueprint and identifier from URL and records the deletion.
+        """
+        url_path = str(request.url.path)
+        # URL format: /v1/blueprints/{blueprint}/entities/{identifier}
+        parts = [p for p in url_path.strip("/").split("/") if p]
+
+        if len(parts) >= 5 and parts[0] == "v1" and parts[1] == "blueprints":
+            blueprint = parts[2]
+            identifier = parts[4]  # parts[3] is "entities"
+
+            # URL decode the identifier (it's encoded with quote_plus)
+            identifier = unquote_plus(identifier)
+
+            deleted_entity = {
+                "identifier": identifier,
+                "blueprint": blueprint,
+            }
+            self.deleted_entity_ids.append(identifier)
+            self.deleted_entities.append(deleted_entity)
+
+        return {"json": {"ok": True}}
 
     def _handle_blueprint(self, request: httpx.Request) -> dict[str, Any]:
         url_path = str(request.url.path)
