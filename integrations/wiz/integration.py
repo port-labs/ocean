@@ -7,9 +7,9 @@ from enum import StrEnum
 
 class ObjectKindWithSpecialHandling(StrEnum):
     PROJECT = "project"
-    VULNERABILITY_FINDING = "vulnerabilityFinding"
+    VULNERABILITY_FINDING = "vulnerability-finding"
     TECHNOLOGY = "technology"
-    HOSTED_TECHNOLOGY = "hostedTechnology"
+    HOSTED_TECHNOLOGY = "hosted-technology"
     REPOSITORY = "repository"
 
 
