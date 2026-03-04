@@ -55,6 +55,7 @@ jobs:
           skip-login: 'true'
 
       - name: Run fake integration for core test
+        if: github.event_name != 'pull_request' || github.repository == github.event.pull_request.head.repo.full_name
         env:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
