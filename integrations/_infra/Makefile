@@ -74,7 +74,7 @@ test:
 	$(ACTIVATE) && poetry run pytest -n auto
 
 test/integration:
-	$(ACTIVATE) && poetry run pytest tests/test_integration_resync.py -xvs -o "addopts="
+	$(ACTIVATE) && poetry run pytest integration_tests/ -xvs -o "addopts="
 
 test/integration/discover:
 	$(ACTIVATE) && poetry run python -m port_ocean.tests.integration.discover
