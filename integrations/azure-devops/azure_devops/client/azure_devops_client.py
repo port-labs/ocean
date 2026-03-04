@@ -360,9 +360,6 @@ class AzureDevopsClient(HTTPBaseClient):
         self, descriptors: list[str]
     ) -> dict[str, dict[str, Any]]:
         """Batch lookup subject details for multiple descriptors."""
-        lookup_url = (
-            self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/subjectlookup"
-        )
 
         all_results: dict[str, dict[str, Any]] = {}
 
@@ -382,7 +379,8 @@ class AzureDevopsClient(HTTPBaseClient):
             try:
                 response = await self.send_request(
                     "POST",
-                    lookup_url,
+                    self._format_service_url("vssps")
+                    + f"/{API_URL_PREFIX}/graph/subjectlookup",
                     data=json.dumps(request_body),
                     headers={"Content-Type": "application/json"},
                     params={"api-version": "7.1-preview.1"},
