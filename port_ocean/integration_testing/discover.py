@@ -2,7 +2,7 @@
 and writes a structured JSON report of all captured requests.
 
 Usage (from an integration directory):
-    python -m port_ocean.tests.integration.discover
+    python -m port_ocean.integration_testing.discover
 """
 
 import asyncio
@@ -17,8 +17,8 @@ from typing import Any
 import yaml
 from loguru import logger
 
-from port_ocean.tests.integration.harness import IntegrationTestHarness
-from port_ocean.tests.integration.transport import (
+from port_ocean.integration_testing.harness import IntegrationTestHarness
+from port_ocean.integration_testing.transport import (
     InterceptTransport,
     RecordingTransport,
 )

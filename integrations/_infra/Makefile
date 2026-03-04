@@ -77,10 +77,10 @@ test/integration:
 	$(ACTIVATE) && poetry run pytest integration_tests/ -xvs -o "addopts="
 
 test/integration/discover:
-	$(ACTIVATE) && poetry run python -m port_ocean.tests.integration.discover
+	$(ACTIVATE) && poetry run python -m port_ocean.integration_testing.discover
 
 test/integration/generate:
-	$(ACTIVATE) && poetry run python -m port_ocean.tests.integration.generate
+	$(ACTIVATE) && poetry run python -m port_ocean.integration_testing.generate
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
