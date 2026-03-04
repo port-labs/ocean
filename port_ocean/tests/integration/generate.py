@@ -349,7 +349,7 @@ def main() -> None:
     if not discovery_path.exists():
         print(
             "Error: No .port/resources/discovery.json found.\n"
-            "Run `make test/discover` first to generate the discovery file.",
+            "Run `make test/integration/discover` first to generate the discovery file.",
             file=sys.stderr,
         )
         sys.exit(1)

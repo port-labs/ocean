@@ -174,12 +174,10 @@ class IntegrationTestHarness:
             p2.start()
             self._patches.append(p2)
 
-    async def trigger_resync(self, kinds: list[str] | None = None) -> ResyncResult:
+    async def trigger_resync(self) -> ResyncResult:
         """Trigger a resync and collect results.
 
-        Args:
-            kinds: If specified, only resync these kinds.
-                   If None, resync all kinds from the mapping config.
+        Resyncs all kinds from the mapping config.
         """
         if not self._ocean:
             raise RuntimeError("Harness not started. Call start() first.")

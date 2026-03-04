@@ -4,7 +4,9 @@ Provides `BaseIntegrationTest` — subclass it, override three methods,
 and get full resync testing with minimal boilerplate.
 """
 
-from typing import Any
+import inspect
+import os
+from typing import Any, AsyncGenerator
 
 import pytest
 
@@ -16,7 +18,6 @@ class BaseIntegrationTest:
     """Base class for integration tests.
 
     Subclass this and override:
-      - integration_path    — path to the integration directory
       - create_third_party_transport() — define third-party API mock routes
       - create_mapping_config()        — define Port mapping configuration
       - create_integration_config()    — define integration-specific config
@@ -24,10 +25,11 @@ class BaseIntegrationTest:
     The harness lifecycle (start/resync/shutdown) is handled for you via
     the `resync` fixture.
 
+    The `integration_path` is automatically computed as the parent directory
+    of the test file. Override it if you need a different path.
+
     Example:
         class TestMyIntegration(BaseIntegrationTest):
-            integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-
             def create_third_party_transport(self) -> InterceptTransport:
                 transport = InterceptTransport(strict=False)
                 transport.add_route("GET", "/api/items", {"json": [{"id": 1}]})
@@ -48,7 +50,17 @@ class BaseIntegrationTest:
                 assert len(resync.upserted_entities) > 0
     """
 
-    integration_path: str = ""
+    @property
+    def integration_path(self) -> str:
+        """Path to the integration directory.
+
+        Defaults to the parent directory of the test file. Override this property
+        if you need a different path.
+        """
+        # Get the file path of the subclass (the test file)
+        test_file_path = inspect.getfile(self.__class__)
+        # Return the parent directory (integration root)
+        return os.path.abspath(os.path.join(os.path.dirname(test_file_path), "../"))
 
     def create_third_party_transport(self) -> InterceptTransport:
         """Override to define third-party API mock routes."""
@@ -71,7 +83,7 @@ class BaseIntegrationTest:
         }
 
     @pytest.fixture
-    async def harness(self) -> IntegrationTestHarness:
+    async def harness(self) -> AsyncGenerator[IntegrationTestHarness, None]:
         """Creates and starts a harness, shuts it down after the test."""
         h = IntegrationTestHarness(
             integration_path=self.integration_path,
@@ -80,7 +92,7 @@ class BaseIntegrationTest:
             config_overrides=self.create_integration_config(),
         )
         await h.start()
-        yield h  # type: ignore[misc]
+        yield h
         await h.shutdown()
 
     @pytest.fixture
