@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.7 (2026-03-04)
+
+### Bug fixes
+
+- Added mypy overrides for `confluent_kafka` and `jsonref` to handle missing/untyped imports across environments, replacing fragile inline `type: ignore` comments
+
+
 ## 0.38.6 (2026-03-03)
 
 ### Bug fixes
