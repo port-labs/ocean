@@ -1,7 +1,7 @@
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Any, Callable, Union
+from typing import Any, Callable, Union, cast
 
 import httpx
 
@@ -90,8 +90,12 @@ class Route:
                 headers.setdefault("content-type", "application/json")
             elif isinstance(body, str):
                 body_bytes = body.encode("utf-8")
-            else:
+            elif isinstance(body, bytes):
                 body_bytes = body
+            else:
+                # Handle None or other types - default to empty bytes
+                # In practice, body defaults to "" so this branch is for bytes or None
+                body_bytes = b"" if body is None else cast(bytes, body)
             return httpx.Response(
                 status_code=status_code,
                 content=body_bytes,
