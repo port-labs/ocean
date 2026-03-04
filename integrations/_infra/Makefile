@@ -43,7 +43,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/prod install/local-core lint lint/fix run test test/integration test/integration/discover test/integration/generate clean seed
+.SILENT: install install/prod install/local-core lint lint/fix run test test/integration clean seed
 
 install:
 	$(call deactivate_virtualenv) && \
