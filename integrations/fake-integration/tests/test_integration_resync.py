@@ -110,13 +110,14 @@ class TestFakeIntegrationResync(BaseIntegrationTest):
     @pytest.mark.asyncio
     async def test_resync_departments_and_persons(self, resync: ResyncResult) -> None:
         """Test a full resync produces the expected entities from controlled data."""
-        assert len(resync.upserted_entities) > 0, (
-            f"Expected entities to be upserted, got none. Errors: {resync.errors}"
-        )
+        assert (
+            len(resync.upserted_entities) > 0
+        ), f"Expected entities to be upserted, got none. Errors: {resync.errors}"
 
         # Check departments were created
         department_entities = [
-            e for e in resync.upserted_entities
+            e
+            for e in resync.upserted_entities
             if e.get("blueprint") == "fakeDepartment"
         ]
         assert len(department_entities) > 0, "Expected department entities"
@@ -125,8 +126,7 @@ class TestFakeIntegrationResync(BaseIntegrationTest):
 
         # Check persons were created
         person_entities = [
-            e for e in resync.upserted_entities
-            if e.get("blueprint") == "fakePerson"
+            e for e in resync.upserted_entities if e.get("blueprint") == "fakePerson"
         ]
         assert len(person_entities) > 0, "Expected person entities"
 
@@ -231,8 +231,7 @@ class TestFakeIntegrationSelectorFilter(BaseIntegrationTest):
     @pytest.mark.asyncio
     async def test_only_working_persons_pass(self, resync: ResyncResult) -> None:
         person_entities = [
-            e for e in resync.upserted_entities
-            if e.get("blueprint") == "fakePerson"
+            e for e in resync.upserted_entities if e.get("blueprint") == "fakePerson"
         ]
 
         # Only Alice (WORKING) should pass, Bob (NOPE) should be filtered
@@ -313,14 +312,26 @@ class TestFakeIntegrationErrorHandling(BaseIntegrationTest):
     async def test_no_persons_on_api_error(self, resync: ResyncResult) -> None:
         # Departments should still be created (they don't call the third-party API)
         department_entities = [
-            e for e in resync.upserted_entities
+            e
+            for e in resync.upserted_entities
             if e.get("blueprint") == "fakeDepartment"
         ]
         assert len(department_entities) > 0
 
         # Person API returned 500, so no person entities should be upserted
+        # The error should be caught and added to resync.errors
+        # Note: The fake-integration doesn't call response.raise_for_status(), so it will
+        # try to parse the error JSON and fail with a KeyError when accessing ["results"].
+        # This is a bug in the fake-integration, but the test verifies that errors are caught.
         person_entities = [
-            e for e in resync.upserted_entities
-            if e.get("blueprint") == "fakePerson"
+            e for e in resync.upserted_entities if e.get("blueprint") == "fakePerson"
         ]
         assert len(person_entities) == 0
+
+        # The resync should have encountered an error
+        # (KeyError because fake-integration doesn't handle HTTP errors properly)
+        assert len(resync.errors) > 0, (
+            f"Expected resync to encounter an error, but got: {resync.errors}. "
+            f"The fake-integration doesn't handle HTTP errors, so it should fail when "
+            f"trying to parse the error response as JSON."
+        )
