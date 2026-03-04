@@ -84,7 +84,6 @@ async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_vulnerability_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     wiz_client = init_client()
     selector = cast(VulnerabilityFindingResourceConfig, event.resource_config).selector
-    logger.warning(f"Selector: {selector}")
     status_list = selector.status_list
     severity_list = selector.severity_list
     max_pages = selector.max_pages

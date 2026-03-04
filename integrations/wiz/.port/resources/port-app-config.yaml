@@ -74,7 +74,7 @@ resources:
           title: .name
           properties:
             url: .url
-  - kind: vulnerabilityFinding
+  - kind: vulnerability-finding
     selector:
       query: 'true'
     port:
@@ -132,7 +132,7 @@ resources:
             codeRepoCount: .codeRepoCount
             isCloudService: .isCloudService
             supportedOperatingSystems: .supportedOperatingSystems
-  - kind: hostedTechnology
+  - kind: hosted-technology
     selector:
       query: 'true'
     port:

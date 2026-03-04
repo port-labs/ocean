@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for `vulnerabilityFinding`, `technology`, `hostedTechnology` and `repository` kinds.
+- Added support for `vulnerability-finding`, `technology`, `hosted-technology` and `repository` kinds.
 
 
 ## 0.1.262 (2026-03-03)
