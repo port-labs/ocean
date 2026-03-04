@@ -5,7 +5,6 @@ This validates the entire pipeline:
   third-party API → on_resync handler → JQ transformation → Port upsert
 """
 
-import os
 from typing import Any
 
 import pytest
@@ -18,8 +17,6 @@ from port_ocean.tests.integration import (
 
 
 class TestFakeIntegrationResync(BaseIntegrationTest):
-    integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-
     def create_third_party_transport(self) -> InterceptTransport:
         """Mock the fake-integration's third-party API (localhost:8000)."""
         transport = InterceptTransport(strict=False)
@@ -149,8 +146,6 @@ class TestFakeIntegrationResync(BaseIntegrationTest):
 class TestFakeIntegrationSelectorFilter(BaseIntegrationTest):
     """Test that JQ selectors correctly filter entities."""
 
-    integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
-
     def create_third_party_transport(self) -> InterceptTransport:
         transport = InterceptTransport(strict=False)
         transport.add_route(
@@ -248,8 +243,6 @@ class TestFakeIntegrationSelectorFilter(BaseIntegrationTest):
 
 class TestFakeIntegrationErrorHandling(BaseIntegrationTest):
     """Test that the integration handles third-party API errors gracefully."""
-
-    integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
     def create_third_party_transport(self) -> InterceptTransport:
         transport = InterceptTransport(strict=False)
