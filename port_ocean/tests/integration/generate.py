@@ -2,7 +2,7 @@
 
 Reads `.port/resources/discovery.json` (produced by `make test/discover`),
 groups third-party HTTP requests into URL patterns, and writes a ready-to-use
-`tests/test_integration_resync.py` with mocked routes and a basic smoke test.
+`integration_tests/test_integration_resync.py` with mocked routes and a basic smoke test.
 
 Usage (from an integration directory):
     python -m port_ocean.tests.integration.generate
@@ -374,8 +374,8 @@ def main() -> None:
     # Generate test file
     test_content = _generate_test_file(patterns, mapping_config, integration_config)
 
-    # Write output
-    tests_dir = integration_path / "tests"
+    # Write output (integration_tests/ is outside default pytest collection)
+    tests_dir = integration_path / "integration_tests"
     tests_dir.mkdir(exist_ok=True)
 
     output_path = tests_dir / "test_integration_resync.py"
