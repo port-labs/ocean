@@ -12,6 +12,7 @@ import pytest
 from port_ocean.tests.integration import (
     BaseIntegrationTest,
     InterceptTransport,
+    IntegrationTestHarness,
     ResyncResult,
 )
 
@@ -65,9 +66,7 @@ class TestFakeIntegrationResync(BaseIntegrationTest):
                                 "identifier": ".id",
                                 "title": ".name",
                                 "blueprint": '"fakeDepartment"',
-                                "properties": {
-                                    "name": ".name",
-                                },
+                                "properties": {"name": ".name"},
                             }
                         }
                     },
@@ -472,15 +471,17 @@ class TestFakeIntegrationDeletions(BaseIntegrationTest):
         ]
 
     @pytest.mark.asyncio
-    async def test_deleted_entities_are_captured(self, harness) -> None:
+    async def test_deleted_entities_are_captured(
+        self, harness: IntegrationTestHarness
+    ) -> None:
         """Test that entities existing in Port but not in the new resync are deleted."""
         # Trigger resync - person-1 will be created, person-2 and person-3 will be deleted
         result = await harness.trigger_resync()
 
         # Verify reconciliation succeeded
-        assert result.reconciliation_success is True, (
-            f"Reconciliation should succeed, but got errors: {result.errors}"
-        )
+        assert (
+            result.reconciliation_success is True
+        ), f"Reconciliation should succeed, but got errors: {result.errors}"
 
         # Verify person-1 was upserted
         person_entities = [
@@ -490,17 +491,17 @@ class TestFakeIntegrationDeletions(BaseIntegrationTest):
         assert person_entities[0]["identifier"] == "person-1"
 
         # Verify person-2 and person-3 were deleted
-        assert len(result.deleted_entities) >= 2, (
-            f"Expected at least 2 deleted entities, got: {result.deleted_entities}"
-        )
+        assert (
+            len(result.deleted_entities) >= 2
+        ), f"Expected at least 2 deleted entities, got: {result.deleted_entities}"
 
         deleted_identifiers = {e["identifier"] for e in result.deleted_entities}
-        assert "person-2" in deleted_identifiers, (
-            f"Expected person-2 to be deleted, but deleted entities are: {deleted_identifiers}"
-        )
-        assert "person-3" in deleted_identifiers, (
-            f"Expected person-3 to be deleted, but deleted entities are: {deleted_identifiers}"
-        )
+        assert (
+            "person-2" in deleted_identifiers
+        ), f"Expected person-2 to be deleted, but deleted entities are: {deleted_identifiers}"
+        assert (
+            "person-3" in deleted_identifiers
+        ), f"Expected person-3 to be deleted, but deleted entities are: {deleted_identifiers}"
 
         # Verify deleted entities have the correct structure
         person_2_deleted = next(
