@@ -82,7 +82,7 @@ class WorkflowNodesClientMixin:
         response = await self.client.get(
             f"{self.auth.api_url}/workflows/nodes/runs",
             headers=await self.auth.headers(),
-            params={"external_run_id": external_id},
+            params={"external_run_id": external_id, "include": "config"},
         )
         handle_port_status_code(response)
         node_runs = response.json().get("nodeRuns", [])
