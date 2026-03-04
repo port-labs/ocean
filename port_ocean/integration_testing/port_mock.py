@@ -170,7 +170,7 @@ class PortMockResponder:
         """Handle POST /v1/blueprints/{blueprint}/entities/bulk
 
         Request body: {"entities": [...]}
-        Response: {"entities": [{"index": 0, ...}, ...], "errors": []}
+        Response: {"entities": [{"index": 0, "identifier": "...", ...}, ...], "errors": []}
         """
         body = json_lib.loads(request.content.decode("utf-8"))
         entities = body.get("entities", [])
@@ -178,7 +178,10 @@ class PortMockResponder:
         response_entities = []
         for i, entity in enumerate(entities):
             self.upserted_entities.append(entity)
-            response_entities.append({"index": i, "status": "SUCCESS"})
+            identifier = entity.get("identifier", "")
+            response_entities.append(
+                {"index": i, "status": "SUCCESS", "identifier": identifier}
+            )
 
         return {
             "json": {

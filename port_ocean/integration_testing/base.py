@@ -101,9 +101,11 @@ class BaseIntegrationTest:
             config_overrides=self.create_integration_config(),
             port_search_entities_response=self.get_port_search_entities_response(),
         )
-        await h.start()
-        yield h
-        await h.shutdown()
+        try:
+            await h.start()
+            yield h
+        finally:
+            await h.shutdown()
 
     @pytest.fixture
     async def resync(self, harness: IntegrationTestHarness) -> ResyncResult:

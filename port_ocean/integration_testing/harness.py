@@ -54,6 +54,8 @@ class IntegrationTestHarness:
         self.config_overrides = config_overrides or {}
         self._ocean: Ocean | None = None
         self._patches: list[Any] = []
+        self._pushed_signal_handler: bool = False
+        self._inserted_sys_path: bool = False
 
     async def start(self) -> None:
         """Boot the integration and patch HTTP clients."""
@@ -66,6 +68,7 @@ class IntegrationTestHarness:
         # Initialize signal handler if not already initialized
         if signal_module._signal_handler.top is None:
             signal_module._signal_handler.push(signal_module.SignalHandler())
+            self._pushed_signal_handler = True
 
         # Load spec file for config factory (cached to avoid pydantic validator reuse errors)
         if self.integration_path in _config_factory_cache:
@@ -100,6 +103,7 @@ class IntegrationTestHarness:
         # Now load main.py — this registers @ocean.on_resync handlers
         if self.integration_path not in sys.path:
             sys.path.insert(0, self.integration_path)
+            self._inserted_sys_path = True
 
         main_path = f"{self.integration_path}/main.py"
         load_module(main_path)
@@ -287,16 +291,17 @@ class IntegrationTestHarness:
 
         ocean_ctx_module._port_ocean = ocean_ctx_module.PortOceanContext(None)
 
-        # Reset signal handler
-        import port_ocean.utils.signal as signal_module
+        # Reset signal handler only if this instance pushed it
+        if self._pushed_signal_handler:
+            import port_ocean.utils.signal as signal_module
 
-        try:
-            signal_module._signal_handler.pop()
-        except RuntimeError:
-            pass
+            try:
+                signal_module._signal_handler.pop()
+            except RuntimeError:
+                pass
 
-        # Remove integration path from sys.path
-        if self.integration_path in sys.path:
+        # Remove integration path from sys.path only if this instance inserted it
+        if self._inserted_sys_path and self.integration_path in sys.path:
             sys.path.remove(self.integration_path)
 
         self._ocean = None
