@@ -199,9 +199,16 @@ class JiraClient(OAuthClient):
                         f"which may prevent some events from being sent. JQL filter: {jql_filter}"
                     )
 
-            actual_events = webhook.get("events") or []
-            if set(actual_events) != set(expected_events):
-                logger.warning("Existing webhook events do not match expected events")
+            actual_events = set(webhook.get("events") or [])
+            expected = set(expected_events)
+            if actual_events != expected:
+                missing = expected - actual_events
+                extra = actual_events - expected
+                logger.warning(
+                    f"Existing webhook events do not match expected events. "
+                    f"Missing: {sorted(missing) if missing else 'none'}. "
+                    f"Extra: {sorted(extra) if extra else 'none'}"
+                )
 
             if webhook.get("enabled") is False:
                 logger.warning(
