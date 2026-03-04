@@ -137,21 +137,31 @@ async def resync_resources_for_account(
 
     # Process regional resources
     tasks: list[AsyncIterator[list[dict[Any, Any]]]] = []
-    async for session in credentials.create_session_for_each_region(allowed_regions):
-        region = session.region_name
-        tasks.append(
-            safe_iterate(
-                resync_func(kind, session),
-                region,
-                kind,
-                errors,
-                failed_regions,
+    try:
+        async for session in credentials.create_session_for_each_region(
+            allowed_regions
+        ):
+            region = session.region_name
+            tasks.append(
+                safe_iterate(
+                    resync_func(kind, session),
+                    region,
+                    kind,
+                    errors,
+                    failed_regions,
+                )
             )
+            if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
+                async for batch in stream_async_iterators_tasks(*tasks):
+                    yield batch
+                tasks.clear()
+    except Exception as exc:
+        logger.bind(kind=kind, region=session.region_name).opt(exception=exc).error(
+            f"Failed to complete resync for {kind} in region {session.region_name}",
+            exc_info=True,
         )
-        if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
-            tasks.clear()
+        failed_regions.append(session.region_name)
+        errors.append(exc)
 
     # Process any remaining tasks
     if tasks:
