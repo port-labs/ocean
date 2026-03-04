@@ -25,7 +25,9 @@ _config_factory_cache: dict[str, Any] = {}
 @dataclass
 class ResyncResult:
     upserted_entities: list[dict[str, Any]] = field(default_factory=list)
+    deleted_entities: list[dict[str, Any]] = field(default_factory=list)
     errors: list[Exception] = field(default_factory=list)
+    reconciliation_success: bool = True
 
 
 class IntegrationTestHarness:
@@ -184,10 +186,12 @@ class IntegrationTestHarness:
 
         # Clear previously captured entities
         self.port_mock.upserted_entities.clear()
+        self.port_mock.deleted_entity_ids.clear()
+        self.port_mock.deleted_entities.clear()
 
         try:
             # Call with silent=False so errors are raised and can be captured
-            await self._ocean.integration.sync_raw_all(
+            reconciliation_success = await self._ocean.integration.sync_raw_all(
                 trigger_type="machine",
                 silent=False,
             )
@@ -197,18 +201,24 @@ class IntegrationTestHarness:
             logger.warning(f"Resync raised ExceptionGroup with {len(errors)} errors")
             return ResyncResult(
                 upserted_entities=list(self.port_mock.upserted_entities),
+                deleted_entities=list(self.port_mock.deleted_entities),
                 errors=errors,
+                reconciliation_success=False,
             )
         except Exception as e:
             logger.warning(f"Resync raised an exception: {e}")
             return ResyncResult(
                 upserted_entities=list(self.port_mock.upserted_entities),
+                deleted_entities=list(self.port_mock.deleted_entities),
                 errors=[e],
+                reconciliation_success=False,
             )
 
         return ResyncResult(
             upserted_entities=list(self.port_mock.upserted_entities),
+            deleted_entities=list(self.port_mock.deleted_entities),
             errors=[],
+            reconciliation_success=reconciliation_success,
         )
 
     async def discover_requests(self) -> str:
