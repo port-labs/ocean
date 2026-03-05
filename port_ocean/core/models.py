@@ -206,7 +206,6 @@ class WorkflowNodeRun(BaseModel):
 
 
 class ClaimedWorkflowNodeRun(WorkflowNodeRun):
-    node: None = None
     config: dict[str, Any]
     result: WorkflowNodeRunResult | None = None
     output: dict[str, Any] = Field(default_factory=dict)
