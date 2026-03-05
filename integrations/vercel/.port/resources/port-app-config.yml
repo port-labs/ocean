@@ -1,0 +1,77 @@
+resources:
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"vercelTeam"'
+          properties:
+            slug: .slug
+            avatar: .avatar // null
+            createdAt: (.createdAt / 1000 | todate)
+            membership: .membership.role // null
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"vercelProject"'
+          properties:
+            framework: .framework // null
+            link: .link // null
+            latestDeploymentUrl: (if .latestDeployments[0].url then "https://" + .latestDeployments[0].url else null end)
+            createdAt: (.createdAt / 1000 | todate)
+            updatedAt: (.updatedAt / 1000 | todate)
+            nodeVersion: .nodeVersion // null
+            devCommand: .devCommand // null
+            buildCommand: .buildCommand // null
+            outputDirectory: .outputDirectory // null
+            rootDirectory: .rootDirectory // null
+          relations:
+            team: .teamId // null
+  - kind: deployment
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .uid
+          title: "(.name // .url)"
+          blueprint: '"vercelDeployment"'
+          properties:
+            url: (if .url then "https://" + .url else null end)
+            state: .state
+            target: .target // "preview"
+            createdAt: (.createdAt / 1000 | todate)
+            buildingAt: (if .buildingAt then (.buildingAt / 1000 | todate) else null end)
+            ready: (if .ready then (.ready / 1000 | todate) else null end)
+            creator: .creator // null
+            meta: .meta // null
+            source: .source // null
+            inspectorUrl: .inspectorUrl // null
+          relations:
+            project: .projectId // null
+  - kind: domain
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"vercelDomain"'
+          properties:
+            apexName: .apexName // null
+            createdAt: (.createdAt / 1000 | todate)
+            updatedAt: (.updatedAt / 1000 | todate)
+            verified: .verified // false
+            gitBranch: .gitBranch // null
+            redirect: .redirect // null
+          relations:
+            project: .projectId // null
