@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 import sys
 import uuid
 from graphlib import CycleError
@@ -34,6 +35,7 @@ from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,
     CalculationResult,
+    ETLPhase,
 )
 from port_ocean.core.utils.utils import (
     resolve_entities_diff,
@@ -96,8 +98,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     def _collect_resync_functions(
         self, resource_config: ResourceConfig
     ) -> list[Callable[[str], Awaitable[RAW_RESULT]]]:
-        logger.contextualize(kind=resource_config.kind)
-
         fns = [
             *self.event_strategy["resync"][resource_config.kind],
             *self.event_strategy["resync"][None],
@@ -120,13 +120,25 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.info(
                     f"Found async generator function for {resource_config.kind} name: {task.__qualname__}"
                 )
-                results.append(resync_generator_wrapper(task, resource_config.kind, resource_config.port.items_to_parse_name, resource_config.port.items_to_parse, resource_config.port.items_to_parse_top_level_transform))
+                results.append(
+                    resync_generator_wrapper(
+                        task,
+                        resource_config.kind,
+                        resource_config.port.items_to_parse_name,
+                        resource_config.port.items_to_parse,
+                        resource_config.port.items_to_parse_top_level_transform,
+                    )
+                )
             else:
                 logger.info(
                     f"Found sync function for {resource_config.kind} name: {task.__qualname__}"
                 )
                 task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
-                tasks.append(resync_function_wrapper(task, resource_config.kind, resource_config.port.items_to_parse))
+                tasks.append(
+                    resync_function_wrapper(
+                        task, resource_config.kind, resource_config.port.items_to_parse
+                    )
+                )
 
         logger.info(
             f"Found {len(tasks) + len(results)} resync tasks for {resource_config.kind}"
@@ -206,9 +218,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         BATCH_SIZE = 50
 
-        async def async_generator_target_entities(_entities: list[Entity]) -> AsyncGenerator[list[Entity], None]:
+        async def async_generator_target_entities(
+            _entities: list[Entity],
+        ) -> AsyncGenerator[list[Entity], None]:
             # fetch entities from port in batches
-            logger.info(f"Fetching entities from port in batches of for diff calculation, using non paginated api",batch_size=BATCH_SIZE)
+            logger.info(
+                f"Fetching entities from port in batches of for diff calculation, using non paginated api",
+                batch_size=BATCH_SIZE,
+            )
             for start_index in range(0, len(_entities), BATCH_SIZE):
                 entities_batch = _entities[start_index : start_index + BATCH_SIZE]
                 batch_results = await self._fetch_entities_batch_from_port(
@@ -216,8 +233,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
                 yield batch_results
 
-
-        return await resolve_entities_diff(entities, async_generator_target_entities(entities))
+        return await resolve_entities_diff(
+            entities, async_generator_target_entities(entities)
+        )
 
     async def _fetch_entities_batch_from_port(
         self,
@@ -249,10 +267,25 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType,
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0,
+        batch_index: int = 1,
     ) -> CalculationResult:
-        objects_diff = await self._calculate_raw(
-            [(resource, results)], parse_all, send_raw_data_examples_amount
-        )
+        with logger.contextualize(etl_phase=ETLPhase.TRANSFORM):
+            logger.info(
+                "Starting transform phase",
+                batch_index=batch_index,
+                raw_items=len(results),
+            )
+            objects_diff = await self._calculate_raw(
+                [(resource, results)], parse_all, send_raw_data_examples_amount
+            )
+            entities_transformed = len(objects_diff[0].entity_selector_diff.passed)
+            entities_failed = len(objects_diff[0].entity_selector_diff.failed)
+            logger.info(
+                "Transform phase complete",
+                batch_index=batch_index,
+                entities_transformed=entities_transformed,
+                entities_failed=entities_failed,
+            )
 
         ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
@@ -261,66 +294,82 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 MetricPhase.TRANSFORM,
                 MetricPhase.TransformResult.FAILED,
             ],
-            value=len(objects_diff[0].entity_selector_diff.failed),
+            value=entities_failed,
         )
 
-        modified_objects = []
+        with logger.contextualize(etl_phase=ETLPhase.LOAD):
+            logger.info(
+                "Starting load phase",
+                batch_index=batch_index,
+                entities_to_load=entities_transformed,
+            )
+            modified_objects = []
 
-        if event.event_type == EventType.RESYNC:
-            try:
-                changed_entities = await self._map_entities_compared_with_port(
-                    objects_diff[0].entity_selector_diff.passed,
-                    resource,
-                    user_agent_type,
-                )
-                if changed_entities:
-                    logger.info(
-                        "Upserting changed entities",
-                        changed_entities=len(changed_entities),
-                        total_entities=len(objects_diff[0].entity_selector_diff.passed),
+            if event.event_type == EventType.RESYNC:
+                try:
+                    changed_entities = await self._map_entities_compared_with_port(
+                        objects_diff[0].entity_selector_diff.passed,
+                        resource,
+                        user_agent_type,
                     )
-                    ocean.metrics.inc_metric(
-                        name=MetricType.OBJECT_COUNT_NAME,
-                        labels=[
-                            ocean.metrics.current_resource_kind(),
-                            MetricPhase.LOAD,
-                            MetricPhase.LoadResult.SKIPPED,
-                        ],
-                        value=len(objects_diff[0].entity_selector_diff.passed)
-                        - len(changed_entities),
-                    )
-                    await self.entities_state_applier.upsert(
-                        changed_entities, user_agent_type
-                    )
+                    if changed_entities:
+                        logger.info(
+                            "Upserting changed entities",
+                            changed_entities=len(changed_entities),
+                            total_entities=len(
+                                objects_diff[0].entity_selector_diff.passed
+                            ),
+                        )
+                        ocean.metrics.inc_metric(
+                            name=MetricType.OBJECT_COUNT_NAME,
+                            labels=[
+                                ocean.metrics.current_resource_kind(),
+                                MetricPhase.LOAD,
+                                MetricPhase.LoadResult.SKIPPED,
+                            ],
+                            value=len(objects_diff[0].entity_selector_diff.passed)
+                            - len(changed_entities),
+                        )
+                        await self.entities_state_applier.upsert(
+                            changed_entities, user_agent_type
+                        )
 
-                else:
-                    logger.info(
-                        "Entities in batch didn't changed since last sync, skipping",
-                        total_entities=len(objects_diff[0].entity_selector_diff.passed),
+                    else:
+                        logger.info(
+                            "Entities in batch didn't change since last sync, skipping",
+                            total_entities=len(
+                                objects_diff[0].entity_selector_diff.passed
+                            ),
+                        )
+                        ocean.metrics.inc_metric(
+                            name=MetricType.OBJECT_COUNT_NAME,
+                            labels=[
+                                ocean.metrics.current_resource_kind(),
+                                MetricPhase.LOAD,
+                                MetricPhase.LoadResult.SKIPPED,
+                            ],
+                            value=len(objects_diff[0].entity_selector_diff.passed),
+                        )
+                    modified_objects = [
+                        ocean.port_client._reduce_entity(entity)
+                        for entity in objects_diff[0].entity_selector_diff.passed
+                    ]
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}"
                     )
-                    ocean.metrics.inc_metric(
-                        name=MetricType.OBJECT_COUNT_NAME,
-                        labels=[
-                            ocean.metrics.current_resource_kind(),
-                            MetricPhase.LOAD,
-                            MetricPhase.LoadResult.SKIPPED,
-                        ],
-                        value=len(objects_diff[0].entity_selector_diff.passed),
+                    modified_objects = await self.entities_state_applier.upsert(
+                        objects_diff[0].entity_selector_diff.passed, user_agent_type
                     )
-                modified_objects = [
-                    ocean.port_client._reduce_entity(entity)
-                    for entity in objects_diff[0].entity_selector_diff.passed
-                ]
-            except Exception as e:
-                logger.warning(
-                    f"Failed to resolve batch entities with Port, falling back to upserting all entities: {str(e)}"
-                )
+            else:
                 modified_objects = await self.entities_state_applier.upsert(
                     objects_diff[0].entity_selector_diff.passed, user_agent_type
                 )
-        else:
-            modified_objects = await self.entities_state_applier.upsert(
-                objects_diff[0].entity_selector_diff.passed, user_agent_type
+
+            logger.info(
+                "Load phase complete",
+                batch_index=batch_index,
+                entities_upserted=len(modified_objects),
             )
 
         return CalculationResult(
@@ -331,7 +380,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 passed=modified_objects
             ),
             errors=objects_diff[0].errors,
-            misconfigured_entity_keys=objects_diff[0].misconfigured_entity_keys
+            misconfigured_entity_keys=objects_diff[0].misconfigured_entity_keys,
         )
 
     async def _unregister_resource_raw(
@@ -359,18 +408,28 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def _register_in_batches(
         self, resource_config: ResourceConfig, user_agent_type: UserAgentType
     ) -> tuple[list[Entity], list[Exception]]:
-        results, errors = await self._get_resource_raw_results(resource_config)
-        async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
-        raw_results: RAW_RESULT = []
-        lakehouse_data_enabled = await self._lakehouse_data_enabled()
+        with logger.contextualize(etl_phase=ETLPhase.EXTRACT):
+            logger.info("Starting extract phase")
+            results, errors = await self._get_resource_raw_results(resource_config)
+            async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
+            raw_results: RAW_RESULT = []
+            lakehouse_data_enabled = await self._lakehouse_data_enabled()
 
-        for result in results:
-            if isinstance(result, dict):
-                raw_results.append(result)
-                if lakehouse_data_enabled:
-                    await ocean.port_client.post_integration_raw_data(result, event.id, resource_config.kind)
-            else:
-                async_generators.append(result)
+            for result in results:
+                if isinstance(result, dict):
+                    raw_results.append(result)
+                    if lakehouse_data_enabled:
+                        await ocean.port_client.post_integration_raw_data(
+                            result, event.id, resource_config.kind
+                        )
+                else:
+                    async_generators.append(result)
+
+            logger.info(
+                "Extract phase complete",
+                raw_items=len(raw_results),
+                async_generators=len(async_generators),
+            )
 
         send_raw_data_examples_amount = (
             SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
@@ -379,14 +438,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         passed_entities = []
         number_of_raw_results = 0
         number_of_transformed_entities = 0
+        batch_index = 0
 
         if raw_results:
+            batch_index += 1
             number_of_raw_results += len(raw_results)
             calculation_result = await self._register_resource_raw(
                 resource_config,
                 raw_results,
                 user_agent_type,
                 send_raw_data_examples_amount=send_raw_data_examples_amount,
+                batch_index=batch_index,
             )
             errors.extend(calculation_result.errors)
             passed_entities = list(calculation_result.entity_selector_diff.passed)
@@ -400,8 +462,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         for generator in async_generators:
             try:
                 async for items in generator:
+                    batch_index += 1
                     if lakehouse_data_enabled:
-                        await ocean.port_client.post_integration_raw_data(items, event.id, resource_config.kind)
+                        await ocean.port_client.post_integration_raw_data(
+                            items, event.id, resource_config.kind
+                        )
                     number_of_raw_results += len(items)
                     if send_raw_data_examples_amount > 0:
                         send_raw_data_examples_amount = max(
@@ -413,6 +478,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         items,
                         user_agent_type,
                         send_raw_data_examples_amount=send_raw_data_examples_amount,
+                        batch_index=batch_index,
                     )
                     passed_entities.extend(
                         calculation_result.entity_selector_diff.passed
@@ -454,7 +520,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ],
             value=number_of_transformed_entities,
         )
-        if number_of_raw_results > number_of_transformed_entities :
+        if number_of_raw_results > number_of_transformed_entities:
             ocean.metrics.inc_metric(
                 name=MetricType.OBJECT_COUNT_NAME,
                 labels=[
@@ -467,16 +533,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         return passed_entities, errors
 
-    async def _lakehouse_data_enabled(
-        self
-    ) -> bool:
+    async def _lakehouse_data_enabled(self) -> bool:
         """Check if lakehouse data is enabled.
 
         Returns:
             bool: True if lakehouse data is enabled, False otherwise
         """
         flags = await ocean.port_client.get_organization_feature_flags()
-        if IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags and ocean.config.lakehouse_enabled:
+        if (
+            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
+            and ocean.config.lakehouse_enabled
+        ):
             return True
         return False
 
@@ -735,7 +802,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 kind=resource_kind_id, blueprint=resource.port.entity.mappings.blueprint
             )
 
-
             task = asyncio.create_task(
                 self._register_in_batches(resource, user_agent_type)
             )
@@ -853,56 +919,91 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             silent (bool): Whether to raise exceptions or handle them silently
 
         """
-        await self.sort_and_upsert_failed_entities(user_agent_type)
+        with logger.contextualize(etl_phase=ETLPhase.RECONCILIATION):
+            logger.info("Starting reconciliation phase")
 
-        if not did_fetched_current_state:
-            logger.warning(
-                "Due to an error before the resync, the previous state of entities at Port is unknown."
-                " Skipping delete phase due to unknown initial state."
+            await self.sort_and_upsert_failed_entities(user_agent_type)
+
+            if not did_fetched_current_state:
+                logger.warning(
+                    "Due to an error before the resync, the previous state of entities at Port is unknown."
+                    " Skipping delete phase due to unknown initial state."
+                )
+                return False
+
+            logger.info("Starting resync diff calculation")
+            generated_entities, errors = zip_and_sum(creation_results) or [
+                [],
+                [],
+            ]
+
+            if errors:
+                message = f"Resync failed with {len(errors)} errors, skipping delete phase due to incomplete state"
+                error_group = ExceptionGroup(
+                    message,
+                    errors,
+                )
+                if not silent:
+                    raise error_group
+
+                logger.error(message, exc_info=error_group)
+                return False
+
+            logger.info(
+                f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
             )
-            return False
-
-        logger.info("Starting resync diff calculation")
-        generated_entities, errors = zip_and_sum(creation_results) or [
-            [],
-            [],
-        ]
-
-        if errors:
-            message = f"Resync failed with {len(errors)} errors, skipping delete phase due to incomplete state"
-            error_group = ExceptionGroup(
-                message,
-                errors,
+            resync_start_time: datetime | None = event.attributes.get(
+                "resync_start_time"
             )
-            if not silent:
-                raise error_group
+            query: dict[Any, Any] | None = None
+            if not (resync_start_time and isinstance(resync_start_time, datetime)):
+                logger.warning(
+                    "Resync start time is not set, fetching all entities from Port with no updatedAt filter"
+                )
+            else:
+                query = {
+                    "combinator": "and",
+                    "rules": [
+                        {
+                            "property": "$updatedAt",
+                            "operator": "notBetween",
+                            "value": {
+                                "from": resync_start_time.isoformat(),
+                                "to": datetime.now(timezone.utc).isoformat(),
+                            },
+                        },
+                    ],
+                }
+            entities_at_port = await ocean.port_client.search_entities(
+                user_agent_type, query
+            )
+            entities_to_delete = len(entities_at_port) - len(generated_entities)
 
-            logger.error(message, exc_info=error_group)
-            return False
+            await self.entities_state_applier.delete_diff(
+                {"before": entities_at_port, "after": generated_entities},
+                user_agent_type,
+                app_config.entity_deletion_threshold,
+            )
 
-        logger.info(
-            f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
-        )
-        entities_at_port = await ocean.port_client.search_entities(user_agent_type)
+            logger.info(
+                "Reconciliation phase complete",
+                entities_at_port=len(entities_at_port),
+                entities_synced=len(generated_entities),
+                entities_to_delete=max(0, entities_to_delete),
+            )
 
-        await self.entities_state_applier.delete_diff(
-            {"before": entities_at_port, "after": generated_entities},
-            user_agent_type,
-            app_config.entity_deletion_threshold,
-        )
+            logger.info("Resync finished successfully")
 
-        logger.info("Resync finished successfully")
+            # Execute resync_complete hooks
+            if "resync_complete" in self.event_strategy:
+                logger.info("Executing resync_complete hooks")
 
-        # Execute resync_complete hooks
-        if "resync_complete" in self.event_strategy:
-            logger.info("Executing resync_complete hooks")
+                for resync_complete_fn in self.event_strategy["resync_complete"]:
+                    await resync_complete_fn()
 
-            for resync_complete_fn in self.event_strategy["resync_complete"]:
-                await resync_complete_fn()
+                logger.info("Finished executing resync_complete hooks")
 
-            logger.info("Finished executing resync_complete hooks")
-
-        return True
+            return True
 
     async def resync_reconciliation(
         self,
@@ -980,8 +1081,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 labels=[MetricResourceKind.RECONCILIATION, MetricPhase.RESYNC],
                 value=0,
             )
-            await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
-            await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+            await ocean.metrics.send_metrics_to_webhook(
+                kind=MetricResourceKind.RECONCILIATION
+            )
+            await ocean.metrics.report_sync_metrics(
+                kinds=[MetricResourceKind.RECONCILIATION]
+            )
 
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
@@ -1007,6 +1112,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with event_context(
             EventType.RESYNC,
             trigger_type=trigger_type,
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
         ):
             ocean.metrics.event_id = event.id
 
@@ -1030,8 +1136,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             async with metric_resource_context(MetricResourceKind.RUNTIME):
                 ocean.metrics.sync_state = SyncState.SYNCING
-                await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
-                await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
+                await ocean.metrics.send_metrics_to_webhook(
+                    kind=MetricResourceKind.RUNTIME
+                )
+                await ocean.metrics.report_sync_metrics(
+                    kinds=[MetricResourceKind.RUNTIME]
+                )
 
             # Clear cache
             await ocean.app.cache_provider.clear()
@@ -1061,7 +1171,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 multiprocessing.set_start_method("fork", True)
             try:
                 for index, resource in enumerate(app_config.resources):
-                    logger.info(
+                    logger.bind(resource_kind=resource.kind).info(
                         f"Starting processing resource {resource.kind} with index {index}"
                     )
                     creation_results.append(
@@ -1081,8 +1191,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else:
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
                     ocean.metrics.sync_state = SyncState.SYNCING
-                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
-                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+                    await ocean.metrics.send_metrics_to_webhook(
+                        kind=MetricResourceKind.RECONCILIATION
+                    )
+                    await ocean.metrics.report_sync_metrics(
+                        kinds=[MetricResourceKind.RECONCILIATION]
+                    )
 
                 success = await self.resync_reconciliation(
                     creation_results,
@@ -1093,9 +1207,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
 
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
-                    ocean.metrics.sync_state = SyncState.COMPLETED if success else SyncState.FAILED
-                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
-                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+                    ocean.metrics.sync_state = (
+                        SyncState.COMPLETED if success else SyncState.FAILED
+                    )
+                    await ocean.metrics.send_metrics_to_webhook(
+                        kind=MetricResourceKind.RECONCILIATION
+                    )
+                    await ocean.metrics.report_sync_metrics(
+                        kinds=[MetricResourceKind.RECONCILIATION]
+                    )
 
                 return success
             finally:

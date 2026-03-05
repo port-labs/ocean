@@ -45,6 +45,13 @@ class CalculationResult(NamedTuple):
     misconfigured_entity_keys: dict[str, str] = field(default_factory=dict)
 
 
+class ETLPhase:
+    EXTRACT = "extract"
+    TRANSFORM = "transform"
+    LOAD = "load"
+    RECONCILIATION = "reconciliation"
+
+
 class IntegrationEventsCallbacks(TypedDict):
     start: list[START_EVENT_LISTENER]
     resync: dict[str | None, list[RESYNC_EVENT_LISTENER]]
