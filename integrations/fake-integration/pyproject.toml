@@ -68,6 +68,7 @@ build-backend = "poetry.core.masonry.api"
 exclude = [
     'venv',
     '.venv',
+    'integration_tests',  # Requires local port_ocean with integration framework
 ]
 plugins = [
     "pydantic.mypy"
