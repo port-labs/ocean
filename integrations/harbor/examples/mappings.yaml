@@ -1,0 +1,95 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: harbor-project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"harborProject"'
+          identifier: .project_name
+          title: .display_name // .project_name
+          properties:
+            project_name: .project_name
+            display_name: .display_name
+            public: .public
+            visibility: .visibility
+            repository_count: .repository_count
+            owner: .owner
+            members: .members
+            member_roles: .member_roles
+          relations:
+            members: .members
+  - kind: harbor-user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"harborUser"'
+          identifier: .username
+          title: .display_name // .username
+          properties:
+            username: .username
+            display_name: .display_name
+            email: .email
+            creation_time: .creation_time
+            update_time: .update_time
+            is_robot: .is_robot
+            is_admin: .is_admin
+            projects: .projects
+            project_roles: .project_roles
+            role_names: .role_names
+          relations:
+            projects: .projects
+  - kind: harbor-repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"harborRepository"'
+          identifier: .repository_path
+          title: .repository_name // .repository_path
+          properties:
+            project_name: .project_name
+            repository_name: .repository_name
+            repository_path: .repository_path
+            artifact_count: .artifact_count
+            pull_count: .pull_count
+            creation_time: .creation_time
+            update_time: .update_time
+          relations:
+            project: .project_name
+  - kind: harbor-artifact
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"harborArtifact"'
+          identifier: (.repository_path // "") + "@" + (.digest // "")
+          title: (.repository // .repository_path // "") + "@" + (.digest // "")
+          properties:
+            project_name: .project_name
+            repository: .repository
+            repository_path: .repository_path
+            digest: .digest
+            artifact_type: .artifact_type
+            media_type: .media_type
+            tag_count: .tag_count
+            primary_tag: .primary_tag
+            labels: .labels
+            created_at: .created_at
+            pushed_at: .pushed_at
+            vulnerability_severity: .vulnerability_severity
+            critical_vulnerability_count: .critical_vulnerability_count
+            high_vulnerability_count: .high_vulnerability_count
+            medium_vulnerability_count: .medium_vulnerability_count
+            low_vulnerability_count: .low_vulnerability_count
+            negligible_vulnerability_count: .negligible_vulnerability_count
+            scan_completed_at: .scan_completed_at
+          relations:
+            repository: .repository_path
+            project: .project_name
