@@ -40,6 +40,7 @@ from utils.misc import (
     is_access_denied_exception,
     is_resource_type_not_available_exception,
     is_server_error,
+    safe_iterate,
 )
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -107,7 +108,7 @@ async def resync_resources_for_account(
         Batches of resources
 
     Raises:
-        ExceptionGroup: If there are errors during resync for multiple regions
+        ExceptionGroup: If there are real errors during resync across regions
     """
     errors: list[Exception] = []
     failed_regions: list[str] = []
@@ -141,23 +142,30 @@ async def resync_resources_for_account(
             allowed_regions
         ):
             region = session.region_name
-            tasks.append(resync_func(kind, session))
+            tasks.append(
+                safe_iterate(
+                    resync_func(kind, session),
+                    region,
+                    kind,
+                    errors,
+                    failed_regions,
+                )
+            )
             if len(tasks) >= CONCURRENT_RESYNC_REGIONS:
-                async for batch in _process_tasks(
-                    tasks, failed_regions, errors, region
-                ):
+                async for batch in stream_async_iterators_tasks(*tasks):
                     yield batch
-
-        # Process any remaining tasks
-        if tasks:
-            async for batch in _process_tasks(tasks, failed_regions, errors, region):
-                yield batch
+                tasks.clear()
     except Exception as exc:
-        logger.bind(traceback=exc, kind=kind, region=region).error(
-            f"Failed to complete resync for {kind} in region {region}"
+        logger.bind(traceback=exc, kind=kind, region=session.region_name).error(
+            f"Failed to complete resync for {kind} in region {session.region_name}"
         )
-        failed_regions.append(region)
+        failed_regions.append(session.region_name)
         errors.append(exc)
+
+    # Process any remaining tasks
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
 
     if errors:
         error_msg = (
@@ -167,29 +175,6 @@ async def resync_resources_for_account(
         )
         logger.error(error_msg)
         raise ExceptionGroup(error_msg, errors)
-
-
-async def _process_tasks(
-    tasks: list[AsyncIterator[list[dict[Any, Any]]]],
-    failed_regions: list[str],
-    errors: list[Exception],
-    current_region: str,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Helper to process a batch of tasks and handle errors."""
-    try:
-        async for batch in stream_async_iterators_tasks(*tasks):
-            yield batch
-    except Exception as exc:
-        if not is_access_denied_exception(
-            exc
-        ) and not is_resource_type_not_available_exception(exc):
-            failed_regions.append(current_region)
-            errors.append(exc)
-        logger.warning(
-            f"Error processing batch in region {current_region}: {exc}", exc_info=True
-        )
-    finally:
-        tasks.clear()
 
 
 @ocean.on_resync()
