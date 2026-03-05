@@ -19,3 +19,13 @@ class IssueOptions(TypedDict):
 class ProjectOptions(TypedDict):
     include_archived: NotRequired[Optional[bool]]
     impact: NotRequired[Optional[Literal["LBI", "MBI", "HBI"]]]
+
+
+class VulnerabilityFindingOptions(TypedDict):
+    max_pages: Required[int]
+    status_list: NotRequired[
+        List[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]]
+    ]
+    severity_list: NotRequired[
+        Optional[List[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "NONE"]]]
+    ]
