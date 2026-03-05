@@ -62,7 +62,7 @@ async def on_resync_copilot_organization_metrics(
                 logger.info(
                     (
                         f"Feature Flag enabled: Fetching NEW 28-day usage metrics for organization {organization['login']}."
-                        "This API is in preview and may be subject to change."
+                        " This API is in preview and may be subject to change."
                     )
                 )
                 organization_metrics = (
