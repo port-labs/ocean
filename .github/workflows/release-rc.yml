@@ -211,7 +211,7 @@ jobs:
 
       - name: Create GitHub Release (Pre-release)
         if: inputs.dry_run != true && steps.check-tag.outputs.exists != 'true'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.validate-inputs.outputs.version }}
           name: Ocean Framework ${{ needs.validate-inputs.outputs.version }} (RC)
