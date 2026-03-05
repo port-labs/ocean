@@ -1,0 +1,71 @@
+name: Check API Breakage
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  get-checkbox-state:
+    outputs:
+      is_checked: ${{ steps.get-checkbox.outputs.IS_CHECKED }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get PR Breaking Changes Checklist Status
+        id: get-checkbox
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if echo $BODY | grep -iq "\[x\] Breaking change"; then
+            echo 'Breaking changes checkbox is checked'
+            echo "IS_CHECKED=true" >> $GITHUB_OUTPUT
+          else
+            echo 'Breaking changes checkbox is unchecked'
+            echo "IS_CHECKED=false" >> $GITHUB_OUTPUT
+          fi
+
+  detect-changes:
+    needs: [get-checkbox-state]
+    if: needs.get-checkbox-state.outputs.is_checked == 'false'
+    uses: ./.github/workflows/detect-changes-matrix.yml
+
+  # prepare-matrix:
+  #   runs-on: ubuntu-latest
+  #   needs: [detect-changes]
+  #   if: needs.detect-changes.outputs.matrix == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true' || needs.detect-changes.outputs.integrations != '[]'
+  #   outputs:
+  #     matrix: ${{ steps.prepare-matrix.outputs.matrix }}
+  #   steps:
+  #     - name: Checkout Repo
+  #       uses: actions/checkout@v5
+
+  #     - name: Prepare matrix
+  #       id: prepare-matrix
+  #       run: |
+  #         echo "matrix=$(echo ${{ needs.detect-changes.outputs.integrations }} | jq -r '.')" >> $GITHUB_OUTPUT
+
+  check-schema-diff:
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: ${{ needs.detect-changes.outputs.integrations != '[]' }}
+    strategy:
+      max-parallel: 5
+      matrix:
+        integration_folder: ${{ fromJson(needs.detect-changes.outputs.integrations) }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Check Schema Diff
+        uses: ./.github/actions/check-schema-diff
+        with:
+          integration_folder: ${{ format('integrations/{0}', matrix.integration_folder) }}
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ secrets.AWS_REGION }}
