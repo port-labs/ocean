@@ -44,10 +44,13 @@ async def test_client_has_rate_limiter_with_correct_config(
 async def test_client_retry_config_includes_post(
     armorcode_client: ArmorcodeClient,
 ) -> None:
+    from port_ocean.helpers.retry import RetryTransport
+
     transport = armorcode_client.http_client._transport
     for attr in ("_wrapped", "wrapped"):
         while hasattr(transport, attr):
             transport = getattr(transport, attr)
+    assert isinstance(transport, RetryTransport)
     assert "POST" not in transport._retry_config.retryable_methods
 
 
@@ -263,12 +266,22 @@ async def test_send_api_request_acquires_rate_limiter(
 
     acquired: list[bool] = []
 
-    class TrackingLimiter(AsyncLimiter):
-        async def __aenter__(self) -> "TrackingLimiter":
-            acquired.append(True)
-            return await super().__aenter__()  # type: ignore[return-value]
+    class SpyLimiter:
+        """Pure-Python proxy that records acquisitions and delegates to a real AsyncLimiter."""
 
-    armorcode_client._rate_limiter = TrackingLimiter(ARMORCODE_REQUESTS_PER_MINUTE, 60)
+        def __init__(self, inner: AsyncLimiter) -> None:
+            self._inner = inner
+
+        async def __aenter__(self) -> None:
+            acquired.append(True)
+            await self._inner.__aenter__()
+
+        async def __aexit__(self, *args: Any) -> None:
+            await self._inner.__aexit__(*args)
+
+    armorcode_client._rate_limiter = SpyLimiter(  # type: ignore[assignment]
+        AsyncLimiter(ARMORCODE_REQUESTS_PER_MINUTE, 60)
+    )
 
     with patch.object(
         armorcode_client.http_client, "request", new_callable=AsyncMock
@@ -279,4 +292,3 @@ async def test_send_api_request_acquires_rate_limiter(
         )
 
     assert acquired, "Rate limiter was not acquired during send_api_request"
-
