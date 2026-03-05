@@ -10,6 +10,7 @@ from loguru import logger
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.ocean import Ocean
+from port_ocean.helpers.retry import RetryTransport
 from port_ocean.integration_testing.port_mock import PortMockResponder
 from port_ocean.integration_testing.transport import (
     InterceptTransport,
@@ -116,8 +117,13 @@ class IntegrationTestHarness:
 
     def _patch_http_clients(self) -> None:
         """Replace both HTTP client singletons with transport-intercepted clients."""
-        # Create a client for third-party calls
-        third_party_client = httpx.AsyncClient(transport=self.third_party_transport)
+        # Wrap third-party transport with RetryTransport so 429/5xx trigger retries
+        # (matches production behavior where http_async_client uses RetryTransport)
+        wrapped_third_party = RetryTransport(
+            wrapped_transport=self.third_party_transport,
+            logger=logger,
+        )
+        third_party_client = httpx.AsyncClient(transport=wrapped_third_party)
 
         # Create a client for Port calls
         port_client = httpx.AsyncClient(transport=self.port_mock.transport)
