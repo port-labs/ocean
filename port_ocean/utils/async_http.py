@@ -4,6 +4,7 @@ from werkzeug.local import LocalStack, LocalProxy
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryTransport
+from port_ocean.helpers.ssl import get_ssl_context, SSLClientType
 
 _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
@@ -11,9 +12,11 @@ _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 def _get_http_client_context() -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
+        ssl_context = get_ssl_context(SSLClientType.THIRD_PARTY)
         client = OceanAsyncClient(
             RetryTransport,
             timeout=ocean.config.client_timeout,
+            verify=ssl_context,
         )
         _http_client.push(client)
 
