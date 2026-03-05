@@ -31,24 +31,19 @@
     "clsx": "^2.0.0",
     "docusaurus-plugin-module-alias": "^0.0.2",
     "docusaurus-plugin-sass": "^0.2.5",
-    "prettier": "^3.5.3",
     "prism-react-renderer": "^2.3.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "redocusaurus": "^2.2.2",
+    "redocusaurus": "^2.5.0",
     "remark-math": "^6.0.0",
     "sass": "^1.94.0",
-    "stream": "^0.0.3",
-    "timers": "^0.1.1",
-    "xml2js": "^0.6.2",
-    "qs": "^6.14.1",
-    "lodash": "^4.17.23",
-    "undici": "^6.23.0"
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.6.2",
     "@docusaurus/tsconfig": "^3.6.2",
     "@docusaurus/types": "^3.6.2",
+    "prettier": "^3.5.3",
     "pretty-quick": "^4.1.0",
     "typescript": "^5.3.3"
   },
@@ -68,6 +63,8 @@
     "redoc": "2.4.0",
     "image-size": "^2.0.0",
     "webpack": "^5.104.1",
-    "lodash-es": "^4.17.23"
+    "lodash-es": "^4.17.23",
+    "serialize-javascript": "^7.0.4",
+    "dompurify": "^3.3.1"
   }
 }
