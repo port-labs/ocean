@@ -54,11 +54,11 @@ class LiveEventsMixin(HandlerMixin):
             resource = webhook_event_raw_result.resource
             for raw_item in webhook_event_raw_result.updated_raw_results:
                 async for batch in self._expand_raw_item(raw_item, resource):
-                    calaculation_results = await self.entity_processor.parse_items(
+                    calculation_results = await self.entity_processor.parse_items(
                         resource, batch, parse_all=True, send_raw_data_examples_amount=0
                     )
-                    entities.extend(calaculation_results.entity_selector_diff.passed)
-                    entities_not_passed.extend(calaculation_results.entity_selector_diff.failed)
+                    entities.extend(calculation_results.entity_selector_diff.passed)
+                    entities_not_passed.extend(calculation_results.entity_selector_diff.failed)
 
             for raw_item in webhook_event_raw_result.deleted_raw_results:
                 async for batch in self._expand_raw_item(raw_item, resource):
