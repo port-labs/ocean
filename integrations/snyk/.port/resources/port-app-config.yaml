@@ -58,9 +58,9 @@ resources:
           title: .attributes.title
           blueprint: '"snykVulnerability"'
           properties:
-            score: .attributes.risk.score.value
-            packageNames: '[.attributes.coordinates[].representations[].dependency?.package_name | select(. != null)]'
-            packageVersions: '[.attributes.coordinates[].representations[].dependency?.package_version | select(. != null)]'
+            score: .attributes.risk?.score?.value
+            packageNames: '[.attributes.coordinates[]?.representations[]?.dependency?.package_name | select(. != null)]'
+            packageVersions: '[.attributes.coordinates[]?.representations[]?.dependency?.package_version | select(. != null)]'
             severity: .attributes.effective_severity_level
             url: ("https://app.snyk.io/org/" + .__organization.slug + "/project/" + .relationships.scan_item.data.id + "#issue-" + .attributes.key | tostring)
             publicationTime: .attributes.created_at
