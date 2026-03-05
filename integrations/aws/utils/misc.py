@@ -9,8 +9,10 @@ from typing import (
     Optional,
     TYPE_CHECKING,
     AsyncGenerator,
+    AsyncIterator,
     Iterator,
 )
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from collections import deque
 from loguru import logger
 
@@ -345,3 +347,34 @@ class AsyncPaginator:
                 f"Buffering the final {len(final_batch)} queried {self.service_name} resources fetched from page {page_count} for account {self.account_id} in {self.region_name}"
             )
             yield final_batch
+
+
+async def safe_iterate(
+    resync_iter: AsyncIterator[list[dict[Any, Any]]],
+    region: str,
+    kind: str,
+    errors: list[Exception],
+    failed_regions: list[str],
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Safely iterate over an async iterator, isolating errors per-iterator."""
+    try:
+        async for resources in resync_iter:
+            if resources:
+                yield resources
+    except Exception as e:
+        if is_access_denied_exception(e):
+            logger.bind(traceback=e, kind=kind, region=region).warning(
+                f"{region} failed during resync of {kind}, skipping..."
+            )
+            return
+        if is_resource_type_not_available_exception(e):
+            logger.bind(traceback=e, kind=kind, region=region).warning(
+                f"{region} skipped during resync of {kind}: "
+                f"resource type not available"
+            )
+            return
+        logger.bind(traceback=e, kind=kind, region=region).error(
+            f"{region} encountered an error during resync of {kind}"
+        )
+        errors.append(e)
+        failed_regions.append(region)
