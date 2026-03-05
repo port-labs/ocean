@@ -15,5 +15,6 @@ class FindingExporter(AbstractArmorcodeExporter[ArmorcodeClient]):
             method="POST",
             json_data={},
             use_offset_pagination=False,
+            retry=True,
         ):
             yield findings
