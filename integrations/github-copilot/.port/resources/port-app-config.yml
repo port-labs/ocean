@@ -42,6 +42,7 @@ resources:
   - kind: copilot-organization-metrics
     selector:
       query: 'true'
+      use_usage_metrics: false
     port:
       entity:
         mappings:
