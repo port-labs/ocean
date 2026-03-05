@@ -221,7 +221,7 @@ async def test_get_new_usage_metrics_returns_none_when_manifest_has_no_links(
 
 
 @pytest.mark.asyncio
-async def test_fetch_report_from_signed_url_raises_on_http_error(
+async def test_fetch_report_from_signed_url_returns_none_on_http_error(
     github_client: GitHubClient,
 ) -> None:
     signed_url = "https://signed.example.com/copilot-report-expired.json"
