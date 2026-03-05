@@ -9,6 +9,9 @@ from urllib.parse import parse_qs, urlparse
 from .github_endpoints import GithubEndpoints
 
 
+HTTP_STATUS_NOT_FOUND = 404
+
+
 class GitHubClient:
     def __init__(self, base_url: str, token: str):
         self._token = token
@@ -39,9 +42,10 @@ class GitHubClient:
         ):
             yield teams
 
-    async def get_metrics_for_organization(
+    async def get_legacy_metrics_for_organization(
         self, organization: dict[str, Any]
     ) -> list[dict[str, Any]] | None:
+        """Fetches the legacy inline-JSON metrics."""
         url = self._resolve_route_params(
             GithubEndpoints.COPILOT_ORGANIZATION_METRICS.value,
             {"org": organization["login"]},
@@ -54,6 +58,115 @@ class GitHubClient:
                 self.forbidden_status_code,
             ],
         )
+
+    async def get_new_usage_metrics_for_organization(
+        self, organization: dict[str, Any]
+    ) -> list[dict[str, Any]] | None:
+        """Fetches the manifest, downloads the signed URLs, and normalizes the data."""
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_ORGANIZATION_METRICS_28_DAY.value,
+            {"org": organization["login"]},
+        )
+
+        report_manifest = await self.send_api_request(
+            "get",
+            url,
+            ignore_status_code=[self.forbidden_status_code, HTTP_STATUS_NOT_FOUND],
+        )
+
+        if not report_manifest:
+            logger.info(
+                f'No usage metrics found for organization {organization["login"]}'
+            )
+            return None
+
+        if isinstance(report_manifest, list):
+            report_manifest = report_manifest[0] if report_manifest else {}
+
+        download_links: list[str] = report_manifest.get("download_links", [])
+        results: list[dict[str, Any]] = []
+
+        for signed_url in download_links:
+            report_data = await self._fetch_report_from_signed_url(signed_url)
+            if report_data:
+                if not isinstance(report_data, list):
+                    logger.warning(
+                        f"Expected report data to be a list but got {type(report_data)}. Wrapping it in a list for normalization."
+                    )
+                    report_data = [report_data]
+
+                normalized_data = [
+                    self._normalize_usage_record(record) for record in report_data
+                ]
+                results.extend(normalized_data)
+
+        return results or None
+
+    async def _fetch_report_from_signed_url(
+        self, signed_url: str
+    ) -> list[dict[str, Any]] | None:
+        logger.debug("Fetching report from signed URL")
+        try:
+            response = await self._client.request(method="get", url=signed_url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error fetching report from signed URL: {e}")
+            return None
+
+    def _normalize_usage_record(self, report_record: dict[str, Any]) -> dict[str, Any]:
+        """
+        Reshapes the new Usage Metrics flat schema into the deeply nested Legacy schema so the existing YAML JQ mapping just works
+        """
+        return {
+            "date": report_record.get("day", ""),
+            "total_active_users": report_record.get("daily_active_users", 0)
+            or report_record.get("total_active_users", 0),
+            "copilot_ide_code_completions": {
+                "editors": [
+                    {
+                        "models": [
+                            {
+                                "languages": [
+                                    {
+                                        "total_code_suggestions": report_record.get(
+                                            "code_generation_activity_count", 0
+                                        ),
+                                        "total_code_acceptances": report_record.get(
+                                            "code_acceptance_activity_count", 0
+                                        ),
+                                        "total_code_lines_suggested": report_record.get(
+                                            "loc_suggested_to_add_sum", 0
+                                        ),
+                                        "total_code_lines_accepted": report_record.get(
+                                            "loc_added_sum", 0
+                                        ),
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            "copilot_ide_chat": {
+                "editors": [
+                    {
+                        "total_engaged_users": report_record.get(
+                            "monthly_active_chat_users", 0
+                        ),
+                        "models": [
+                            {
+                                "total_chat_copy_events": 0,  # Fallbacks for dropped granular metrics
+                                "total_chat_insertion_events": 0,
+                                "total_chats": report_record.get(
+                                    "user_initiated_interaction_count", 0
+                                ),
+                            }
+                        ],
+                    }
+                ]
+            },
+        }
 
     async def get_metrics_for_team(
         self, organization: dict[str, Any], team: dict[str, Any]
