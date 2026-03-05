@@ -24,7 +24,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.models import (
     ActionRun,
-    WorkflowNodeRun,
+    ClaimedWorkflowNodeRun,
     IntegrationActionInvocationPayload,
     RunStatus,
     WorkflowNodeRunStatus,
@@ -58,10 +58,10 @@ def generate_mock_action_run(
 def generate_mock_wf_node_run(
     action_type: str = "test_action",
     integrationActionExecutionProperties: dict[str, Any] | None = None,
-) -> WorkflowNodeRun:
+) -> ClaimedWorkflowNodeRun:
     if integrationActionExecutionProperties is None:
         integrationActionExecutionProperties = {}
-    return WorkflowNodeRun(
+    return ClaimedWorkflowNodeRun(
         identifier=f"test-wf-node-run-id-{uuid.uuid4()}",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
         config={

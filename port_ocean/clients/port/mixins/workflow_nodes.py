@@ -3,7 +3,11 @@ import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.models import WorkflowNodeRun, WorkflowNodeRunLog
+from port_ocean.core.models import (
+    WorkflowNodeRun,
+    WorkflowNodeRunLog,
+    ClaimedWorkflowNodeRun,
+)
 from port_ocean.exceptions.execution_manager import RunAlreadyAcknowledgedError
 
 INTERNAL_WORKFLOW_CLIENT_HEADER = {"x-port-reserved-usage": "true"}
@@ -16,7 +20,7 @@ class WorkflowNodesClientMixin:
 
     async def claim_pending_wf_node_runs(
         self, limit: int, visibility_timeout_ms: int
-    ) -> list[WorkflowNodeRun]:
+    ) -> list[ClaimedWorkflowNodeRun]:
         response = await self.client.post(
             f"{self.auth.api_url}/workflows/runs/claim-pending",
             headers={**(await self.auth.headers()), **INTERNAL_WORKFLOW_CLIENT_HEADER},
@@ -30,7 +34,7 @@ class WorkflowNodesClientMixin:
             logger.error("Error claiming pending wf_node runs", error=response.text)
             return []
         return [
-            WorkflowNodeRun.parse_obj(run)
+            ClaimedWorkflowNodeRun.parse_obj(run)
             for run in response.json().get("nodeRuns", [])
         ]
 
@@ -82,7 +86,7 @@ class WorkflowNodesClientMixin:
         response = await self.client.get(
             f"{self.auth.api_url}/workflows/nodes/runs",
             headers=await self.auth.headers(),
-            params={"external_run_id": external_id, "include": "config"},
+            params={"external_run_id": external_id, "include": "nodeConfig"},
         )
         handle_port_status_code(response)
         node_runs = response.json().get("nodeRuns", [])
