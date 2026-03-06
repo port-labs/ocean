@@ -73,4 +73,5 @@ async def test_finding_exporter_yields_batches() -> None:
         method="POST",
         json_data={},
         use_offset_pagination=False,
+        retry=True,
     )

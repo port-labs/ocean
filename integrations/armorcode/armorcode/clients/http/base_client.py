@@ -1,14 +1,17 @@
 from abc import ABC
 from typing import Any, Dict, Optional, AsyncGenerator, List
-from httpx import HTTPStatusError, AsyncClient
+from httpx import HTTPStatusError
 import httpx
 from loguru import logger
-from port_ocean.utils import http_async_client
+from aiolimiter import AsyncLimiter
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
 
 from armorcode.clients.auth.abstract_authenticator import AbstractArmorcodeAuthenticator
 from armorcode.helpers.utils import IgnoredError
 
 PAGE_SIZE = 100
+ARMORCODE_REQUESTS_PER_MINUTE = 50
 
 
 class BaseArmorcodeClient(ABC):
@@ -38,7 +41,10 @@ class BaseArmorcodeClient(ABC):
     def __init__(self, base_url: str, authenticator: AbstractArmorcodeAuthenticator):
         self.base_url = base_url.rstrip("/")
         self.authenticator = authenticator
-        self.http_client: AsyncClient = http_async_client
+        self.http_client: OceanAsyncClient = OceanAsyncClient(
+            retry_config=RetryConfig(max_attempts=5)
+        )
+        self._rate_limiter = AsyncLimiter(ARMORCODE_REQUESTS_PER_MINUTE, 60)
 
     @property
     async def headers(self) -> Dict[str, str]:
@@ -81,33 +87,36 @@ class BaseArmorcodeClient(ABC):
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
+        retry: bool = False,
     ) -> Dict[str, Any]:
         """Send an authenticated API request to the ArmorCode API."""
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
 
-        try:
-            response = await self.http_client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json_data,
-                headers=await self.headers,
-                timeout=30,
-            )
-            response.raise_for_status()
-            return response.json()
-        except HTTPStatusError as e:
-            if self._should_ignore_error(e, endpoint, ignored_errors):
-                return {}
+        async with self._rate_limiter:
+            try:
+                response = await self.http_client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_data,
+                    headers=await self.headers,
+                    timeout=30,
+                    extensions={"retryable": True} if retry else {},
+                )
+                response.raise_for_status()
+                return response.json()
+            except HTTPStatusError as e:
+                if self._should_ignore_error(e, endpoint, ignored_errors):
+                    return {}
 
-            logger.error(
-                f"ArmorCode API error for endpoint '{endpoint}': Status {e.response.status_code}, "
-                f"Method: {method}, Response: {e.response.text}"
-            )
-            raise
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error during API request to {url}: {str(e)}")
-            raise
+                logger.error(
+                    f"ArmorCode API error for endpoint '{endpoint}': Status {e.response.status_code}, "
+                    f"Method: {method}, Response: {e.response.text}"
+                )
+                raise
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error during API request to {url}: {str(e)}")
+                raise
 
     async def _send_offset_paginated_request(
         self,
@@ -115,6 +124,7 @@ class BaseArmorcodeClient(ABC):
         method: str,
         json_data: Optional[Dict[str, Any]],
         ignored_errors: Optional[List[IgnoredError]],
+        retry: bool = False,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Send offset-based paginated API requests to the ArmorCode API."""
         page_number = 0
@@ -132,6 +142,7 @@ class BaseArmorcodeClient(ABC):
                 params=params,
                 json_data=json_data,
                 ignored_errors=ignored_errors,
+                retry=retry,
             )
 
             if not response:
@@ -164,6 +175,7 @@ class BaseArmorcodeClient(ABC):
         method: str,
         json_data: Optional[Dict[str, Any]],
         ignored_errors: Optional[List[IgnoredError]],
+        retry: bool = False,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Send cursor-based paginated API requests to the ArmorCode API."""
 
@@ -176,6 +188,7 @@ class BaseArmorcodeClient(ABC):
                 params=params,
                 json_data=json_data,
                 ignored_errors=ignored_errors,
+                retry=retry,
             )
 
             if not response:
@@ -209,6 +222,7 @@ class BaseArmorcodeClient(ABC):
         json_data: Optional[Dict[str, Any]] = None,
         use_offset_pagination: bool = True,
         ignored_errors: Optional[List[IgnoredError]] = None,
+        retry: bool = False,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Send paginated API requests to the ArmorCode API."""
         if use_offset_pagination:
@@ -217,10 +231,11 @@ class BaseArmorcodeClient(ABC):
                 method,
                 json_data,
                 ignored_errors,
+                retry=retry,
             ):
                 yield items
         else:
             async for items in self._send_cursor_paginated_request(
-                endpoint, method, json_data, ignored_errors
+                endpoint, method, json_data, ignored_errors, retry=retry
             ):
                 yield items

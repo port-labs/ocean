@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.74-beta (2026-03-05)
+
+
+### Bug Fixes
+
+- Added `aiolimiter`-based token-bucket rate limiter (50 req/min) to proactively prevent HTTP 429 errors during large finding syncs.
+- Replaced shared `http_async_client` with a dedicated `OceanAsyncClient` configured to retry POST requests on 429, ensuring findings pagination is covered by retry logic.
+
+
 ## 0.1.73-beta (2026-03-03)
 
 
