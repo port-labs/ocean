@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.1.12 (2026-03-02)
+## 5.1.15 (2026-03-06)
 
 
 ### Bug Fixes
 
-- Included `id`, `databaseId` and `__typename` in the org members GraphQL queries to support stable user mapping and type detection.
+- Removed `includeBots` selection from user kind.
+
+
+## 5.1.14 (2026-03-04)
+
+
+### Bug Fixes
+
+- Removed the `is_personal_org` check when fetching the GitHub App installation ID
+
+
+## 5.1.13 (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+## 5.1.12 (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
 
 
 ## 5.1.11 (2026-03-02)

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.101-beta (2026-03-04)
+
+### Improvements
+
+- Added additional kinds to the Aikido integration: `container`, `issue_group`, and `team`
+- Added `filterStatus` selector support for `container`
+- Added `includeInactive` selector support for `repositories`
+
+
+## 0.1.100-beta (2026-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+## 0.1.99-beta (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
+
+
 ## 0.1.98-beta (2026-03-02)
 
 
