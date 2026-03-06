@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.15 (2026-03-06)
+
+
+### Bug Fixes
+
+- Removed `includeBots` selection from user kind.
+
+
 ## 5.1.14 (2026-03-04)
 
 

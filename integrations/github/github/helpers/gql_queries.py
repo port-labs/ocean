@@ -22,6 +22,9 @@ query OrgMemberQuery(
           ... on User {{
             email
             name
+            id
+            databaseId
+            __typename
           }}
         }}
         pageInfo {{
@@ -47,6 +50,9 @@ query OrgMemberQuery(
         nodes {{
             ... on User {{
               login
+              id
+              databaseId
+              __typename
               email
               name
             }}
