@@ -8,16 +8,11 @@ import time
 from typing import Dict, Any
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from http_server.auth.custom_helpers.auth_flow import AuthFlowManager
-from http_server.overrides import (
+from custom.auth.custom_helpers.auth_flow import AuthFlowManager
+from custom.auth.models import (
     CustomAuthRequestConfig,
     CustomAuthRequestTemplateConfig,
 )
-
-
-# ============================================================================
-# AuthFlowManager Core Tests
-# ============================================================================
 
 
 @pytest.mark.asyncio
@@ -50,7 +45,7 @@ class TestAuthFlowManager:
         mock_response.raise_for_status = MagicMock()
 
         with patch(
-            "http_server.auth.custom_helpers.auth_flow.OceanAsyncClient"
+            "custom.auth.custom_helpers.auth_flow.OceanAsyncClient"
         ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
@@ -77,7 +72,7 @@ class TestAuthFlowManager:
         mock_response.raise_for_status = MagicMock()
 
         with patch(
-            "http_server.auth.custom_helpers.auth_flow.OceanAsyncClient"
+            "custom.auth.custom_helpers.auth_flow.OceanAsyncClient"
         ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
@@ -107,7 +102,7 @@ class TestAuthFlowManager:
         mock_response.raise_for_status = MagicMock()
 
         with patch(
-            "http_server.auth.custom_helpers.auth_flow.OceanAsyncClient"
+            "custom.auth.custom_helpers.auth_flow.OceanAsyncClient"
         ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
@@ -138,7 +133,7 @@ class TestAuthFlowManager:
         mock_response.raise_for_status = MagicMock(side_effect=error)
 
         with patch(
-            "http_server.auth.custom_helpers.auth_flow.OceanAsyncClient"
+            "custom.auth.custom_helpers.auth_flow.OceanAsyncClient"
         ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
@@ -166,7 +161,7 @@ class TestAuthFlowManager:
         mock_api_response.read = MagicMock(return_value=b'{"data": "success"}')
 
         with patch(
-            "http_server.auth.custom_helpers.auth_flow.OceanAsyncClient"
+            "custom.auth.custom_helpers.auth_flow.OceanAsyncClient"
         ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
@@ -239,7 +234,7 @@ class TestAuthFlowManager:
         mock_auth_response.raise_for_status = MagicMock()
 
         with patch(
-            "http_server.auth.custom_helpers.auth_flow.OceanAsyncClient"
+            "custom.auth.custom_helpers.auth_flow.OceanAsyncClient"
         ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
@@ -310,11 +305,6 @@ class TestAuthFlowManager:
         # Should have authenticated at least once, but lock should prevent duplicates
         assert len(auth_calls) >= 1
         assert len(auth_calls) <= 2
-
-
-# ============================================================================
-# Request Override Tests
-# ============================================================================
 
 
 @pytest.mark.asyncio

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from http_server.helpers.endpoint_cache import (
+from custom.helpers.endpoint_cache import (
     EndpointCache,
     make_cache_key,
     analyze_cacheable_endpoints,
@@ -13,7 +13,7 @@ from http_server.helpers.endpoint_cache import (
     get_endpoint_cache,
     clear_endpoint_cache,
 )
-from http_server.overrides import (
+from integration import (
     HttpServerResourceConfig,
     HttpServerSelector,
     ApiPathParameter,
@@ -264,7 +264,7 @@ class TestGetOrFetch:
 
 class TestModuleSingleton:
     def test_lifecycle(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        import http_server.helpers.endpoint_cache as mod
+        import custom.helpers.endpoint_cache as mod
 
         monkeypatch.setattr(mod, "CACHE_DIR", str(tmp_path))
 

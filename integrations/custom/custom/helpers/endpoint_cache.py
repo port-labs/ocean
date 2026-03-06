@@ -7,7 +7,7 @@ from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
 
 import aiofiles  # type: ignore[import-untyped]
 
-from http_server.overrides import HttpServerResourceConfig, HttpServerSelector
+from integration import HttpServerResourceConfig, HttpServerSelector
 
 CACHE_DIR = "/tmp/ocean/.endpoint_response_cache"
 
