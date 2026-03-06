@@ -1,3 +1,4 @@
+from typing import Literal
 from pydantic import Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -13,6 +14,7 @@ class CopilotOrganizationMetricsSelector(Selector):
 
 
 class CopilotOrganizationMetricsResourceConfig(ResourceConfig):
+    kind: Literal["copilot-organization-metrics"]
     selector: CopilotOrganizationMetricsSelector
 
 
