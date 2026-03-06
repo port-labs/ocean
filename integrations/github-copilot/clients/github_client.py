@@ -9,9 +9,6 @@ from urllib.parse import parse_qs, urlparse
 from .github_endpoints import GithubEndpoints
 
 
-HTTP_STATUS_NOT_FOUND = 404
-
-
 class GitHubClient:
     def __init__(self, base_url: str, token: str):
         self._token = token
@@ -68,43 +65,59 @@ class GitHubClient:
             {"org": organization["login"]},
         )
 
-        report_manifest = await self.send_api_request(
-            "get",
-            url,
-            ignore_status_code=[self.forbidden_status_code, HTTP_STATUS_NOT_FOUND],
+        response = await self._send_api_request(
+            method="get",
+            path=url,
+            ignore_status_code=[self.forbidden_status_code],
         )
 
-        if not report_manifest:
+        if not response:
             logger.info(
                 f'No usage metrics found for organization {organization["login"]}'
             )
             return None
 
-        if isinstance(report_manifest, list):
-            report_manifest = report_manifest[0] if report_manifest else {}
-
+        report_manifest = response.json()
         download_links: list[str] = report_manifest.get("download_links", [])
         results: list[dict[str, Any]] = []
 
         for signed_url in download_links:
             report_data = await self._fetch_report_from_signed_url(signed_url)
-            if report_data:
-                if not isinstance(report_data, list):
-                    logger.warning(
-                        f"Expected report data to be a list but got {type(report_data)}. Wrapping it in a list for normalization."
-                    )
-                    report_data = [report_data]
+            if not report_data:
+                continue
 
-                normalized_data = [
-                    self._normalize_usage_record(record) for record in report_data
-                ]
-                results.extend(normalized_data)
+            records_to_process: list[dict[str, Any]] = []
+
+            match report_data:
+                case {"day_totals": day_totals} if isinstance(day_totals, list):
+                    # standard 28-day report schema
+                    records_to_process = day_totals
+
+                case _ if isinstance(report_data, list):
+                    # gitHub occasionally returns flat arrays directly
+                    records_to_process = report_data
+
+                case _:
+                    # unexpected schema - log and skip
+                    shape = (
+                        list(report_data.keys())
+                        if isinstance(report_data, dict)
+                        else type(report_data)
+                    )
+                    logger.warning(
+                        f"Unexpected structure from signed URL. Shape found: {shape}"
+                    )
+                    continue
+
+            results.extend(
+                self._normalize_usage_record(record) for record in records_to_process
+            )
 
         return results or None
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
-    ) -> list[dict[str, Any]] | None:
+    ) -> dict[str, Any] | list[dict[str, Any]] | None:
         logger.debug("Fetching report from signed URL")
         try:
             response = await self._client.request(method="get", url=signed_url)
