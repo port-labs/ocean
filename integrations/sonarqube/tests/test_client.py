@@ -451,6 +451,64 @@ async def test_get_branches_is_called_with_correct_params(
     )
 
 
+async def test_get_quality_gate_for_project_is_called_with_correct_params(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+    mock_send_api_request = AsyncMock()
+    mock_send_api_request.return_value = {
+        "qualityGate": {"name": "Sonar way", "id": "1", "default": True}
+    }
+    monkeypatch.setattr(sonarqube_client, "_send_api_request", mock_send_api_request)
+
+    result = await sonarqube_client.get_quality_gate_for_project(PURE_PROJECTS[0]["key"])
+
+    mock_send_api_request.assert_awaited_once_with(
+        endpoint="qualitygates/get_by_project",
+        query_params={"project": PURE_PROJECTS[0]["key"]},
+    )
+    assert result == "Sonar way"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "side_effect",
+    [
+        httpx.HTTPStatusError(
+            "Server error",
+            request=httpx.Request("GET", "https://sonarqube.com"),
+            response=httpx.Response(500, request=httpx.Request("GET", "https://sonarqube.com")),
+        ),
+        httpx.TimeoutException("Request timed out"),
+    ],
+)
+async def test_get_quality_gate_for_project_returns_none_on_error(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+    side_effect: Exception,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+    mock_send_api_request = AsyncMock(side_effect=side_effect)
+    monkeypatch.setattr(sonarqube_client, "_send_api_request", mock_send_api_request)
+
+    result = await sonarqube_client.get_quality_gate_for_project(PURE_PROJECTS[0]["key"])
+
+    assert result is None
+
+
 async def test_get_single_project_is_called_with_correct_params(
     mock_ocean_context: Any,
     monkeypatch: Any,
@@ -467,16 +525,21 @@ async def test_get_single_project_is_called_with_correct_params(
     mock_get_measures.return_value = {}
     mock_get_branches = AsyncMock()
     mock_get_branches.return_value = [{"isMain": True}]
+    mock_get_quality_gate = AsyncMock()
+    mock_get_quality_gate.return_value = "Sonar way"
 
     sonarqube_client.http_client = MockHttpxClient([])  # type: ignore
     monkeypatch.setattr(sonarqube_client, "get_measures", mock_get_measures)
     monkeypatch.setattr(sonarqube_client, "get_branches", mock_get_branches)
+    monkeypatch.setattr(
+        sonarqube_client, "get_quality_gate_for_project", mock_get_quality_gate
+    )
 
     await sonarqube_client.get_single_project(PURE_PROJECTS[0])
 
     mock_get_measures.assert_any_call(PURE_PROJECTS[0]["key"])
-
     mock_get_branches.assert_any_call(PURE_PROJECTS[0]["key"])
+    mock_get_quality_gate.assert_any_call(PURE_PROJECTS[0]["key"])
 
 
 async def test_projects_will_return_correct_data(
