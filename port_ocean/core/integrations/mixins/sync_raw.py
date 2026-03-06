@@ -126,6 +126,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resource_config.kind,
                         resource_config.port.items_to_parse_name,
                         resource_config.port.items_to_parse,
+                        resource_config.port.items_to_parse_top_level_transform,
                     )
                 )
             else:
