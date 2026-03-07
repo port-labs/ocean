@@ -218,14 +218,51 @@ class TestJQEntityProcessor:
         pattern = ".foo"
         with pytest.raises(
             EntityProcessorException,
-            match="Expected boolean value, got value:bar of type: <class 'str'> instead",
+            match=r"Expected boolean value for pattern '\.foo'",
+        ):
+            await mocked_processor._search_as_bool(data, pattern)
+
+    async def test_search_logs_field_name_on_error(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"foo": "bar"}
+        pattern = ".foo."
+        messages: list[str] = []
+        logger_id = logger.add(lambda msg: messages.append(str(msg)), level="ERROR")
+        try:
+            result = await mocked_processor._search(
+                data, pattern, field="properties.tier"
+            )
+        finally:
+            logger.remove(logger_id)
+        assert result is None
+        assert any("properties.tier" in m and ".foo." in m for m in messages)
+
+    async def test_search_as_bool_jq_error_includes_pattern(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"foo": "bar"}
+        pattern = ".foo."
+        with pytest.raises(
+            EntityProcessorException,
+            match=r"Selector query failed for pattern '\.foo\.'",
+        ):
+            await mocked_processor._search_as_bool(data, pattern)
+
+    async def test_search_as_bool_non_bool_includes_pattern(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"foo": "bar"}
+        pattern = ".foo"
+        with pytest.raises(
+            EntityProcessorException,
+            match=r"Expected boolean value for pattern '\.foo'",
         ):
             await mocked_processor._search_as_bool(data, pattern)
 
     @pytest.mark.parametrize(
         "pattern, expected",
         [
-            ('.parameters[] | select(.name == "not_exists") | .value', None),
             (
                 '.parameters[] | select(.name == "parameter_name") | .value',
                 "parameter_value",
@@ -233,6 +270,10 @@ class TestJQEntityProcessor:
             (
                 '.parameters[] | select(.name == "another_parameter") | .value',
                 "another_value",
+            ),
+            (
+                '.parameters[] | select(.name == "not_exists") | .value',
+                None,
             ),
         ],
     )
@@ -248,6 +289,19 @@ class TestJQEntityProcessor:
         }
         result = await mocked_processor._search(data, pattern)
         assert result == expected
+
+    async def test_search_returns_none_on_no_match(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {
+            "parameters": [
+                {"name": "parameter_name", "value": "parameter_value"},
+                {"name": "another_parameter", "value": "another_value"},
+            ]
+        }
+        pattern = '.parameters[] | select(.name == "not_exists") | .value'
+        result = await mocked_processor._search(data, pattern)
+        assert result is None
 
     async def test_return_a_list_of_values(
         self, mocked_processor: JQEntityProcessor
@@ -327,9 +381,9 @@ class TestJQEntityProcessor:
             assert len(result.misconfigured_entity_keys) == 4
             assert result.misconfigured_entity_keys == {
                 "identifier": ".ark",
-                "description": ".bazbar",
-                "url": ".foobar",
-                "defaultBranch": ".bar.baz",
+                "properties.description": ".bazbar",
+                "properties.url": ".foobar",
+                "properties.defaultBranch": ".bar.baz",
             }
             assert mock_send_examples.await_args is not None, "mock was not awaited"
             args, _ = mock_send_examples.await_args

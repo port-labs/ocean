@@ -77,28 +77,36 @@ class JQEntityProcessor(BaseEntityProcessor):
     searching for data in dictionaries, and transforming data based on object mappings.
     """
 
-    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+    async def _search(
+        self, data: dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
         try:
             compiled_pattern = self._compile(pattern)
             func = compiled_pattern.input_value(data)
             return func.first()
         except Exception as exc:
+            field_info = f" for field '{field}'" if field else ""
             logger.error(
-                f"Search failed for pattern '{pattern}' in data: {data}, Error: {exc}"
+                f"JQ search failed{field_info} with pattern {pattern!r}: {exc}",
+                field=field,
+                pattern=pattern,
+                error=exc,
             )
             return None
 
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
-
-        compiled_pattern = self._compile(pattern)
-
-        func = compiled_pattern.input_value(data)
-
-        value = func.first()
+        try:
+            compiled_pattern = self._compile(pattern)
+            func = compiled_pattern.input_value(data)
+            value = func.first()
+        except Exception as exc:
+            raise EntityProcessorException(
+                f"Selector query failed for pattern {pattern!r}: {exc}"
+            ) from exc
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(
-            f"Expected boolean value, got value:{value} of type: {type(value)} instead"
+            f"Expected boolean value for pattern {pattern!r}, got value:{value} of type: {type(value)} instead"
         )
 
     async def _search_as_object(
@@ -106,6 +114,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
+        _path: str = "",
     ) -> dict[str, Any | None]:
         """
         Identify and extract the relevant value for the chosen key and populate it into the entity
@@ -115,43 +124,53 @@ class JQEntityProcessor(BaseEntityProcessor):
         :param misconfigurations: due to the recursive nature of this function,
             we aim to have a dict that represents all of the misconfigured properties and when used recursively,
             we pass this reference to misfoncigured object to add the relevant misconfigured keys.
+        :param _path: dot-separated path of the current field being processed, built up recursively.
         :return: Mapped object with found value.
         """
 
         search_tasks: dict[
             str, Task[dict[str, Any | None]] | list[Task[dict[str, Any | None]]]
         ] = {}
+        path_map: dict[str, str] = {}
         for key, value in obj.items():
+            current_path = f"{_path}.{key}" if _path else key
+            path_map[key] = current_path
             if isinstance(value, list):
                 search_tasks[key] = [
                     asyncio.create_task(
-                        self._search_as_object(data, obj, misconfigurations)
+                        self._search_as_object(
+                            data, item, misconfigurations, _path=current_path
+                        )
                     )
-                    for obj in value
+                    for item in value
                 ]
-
             elif isinstance(value, dict):
                 search_tasks[key] = asyncio.create_task(
-                    self._search_as_object(data, value, misconfigurations)
+                    self._search_as_object(
+                        data, value, misconfigurations, _path=current_path
+                    )
                 )
             else:
-                search_tasks[key] = asyncio.create_task(self._search(data, value))
+                search_tasks[key] = asyncio.create_task(
+                    self._search(data, value, field=current_path)
+                )
 
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
+            current_path = path_map[key]
             try:
                 if isinstance(task, list):
                     result_list = []
-                    for task in task:
-                        task_result = await task
+                    for t in task:
+                        task_result = await t
                         if task_result is None and misconfigurations is not None:
-                            misconfigurations[key] = obj[key]
+                            misconfigurations[current_path] = obj[key]
                         result_list.append(task_result)
                     result[key] = result_list
                 else:
                     task_result = await task
                     if task_result is None and misconfigurations is not None:
-                        misconfigurations[key] = obj[key]
+                        misconfigurations[current_path] = obj[key]
                     result[key] = task_result
             except Exception:
                 result[key] = None

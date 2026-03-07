@@ -51,15 +51,17 @@ class JQEntityProcessorSync:
         return compiled_pattern
 
     @staticmethod
-    def _search(data: dict[str, Any], pattern: str) -> Any:
+    def _search(data: dict[str, Any], pattern: str, field: str | None = None) -> Any:
         try:
             compiled_pattern = JQEntityProcessorSync._compile(pattern)
             it = compiled_pattern.input_value(data)
             return next(iter(it), None)
         except Exception as exc:
             err_msg = str(exc) or repr(exc) or type(exc).__name__
+            field_info = f" for field '{field}'" if field else ""
             logger.warning(
-                f"Search failed for pattern {pattern!r}: {err_msg}",
+                f"JQ search failed{field_info} with pattern {pattern!r}: {err_msg}",
+                field=field,
                 pattern=pattern,
                 error=exc,
             )
@@ -67,12 +69,17 @@ class JQEntityProcessorSync:
 
     @staticmethod
     def _search_as_bool(data: dict[str, Any] | str, pattern: str) -> bool:
-        compiled_pattern = JQEntityProcessorSync._compile(pattern)
-        value = compiled_pattern.input_value(data).first()
+        try:
+            compiled_pattern = JQEntityProcessorSync._compile(pattern)
+            value = compiled_pattern.input_value(data).first()
+        except Exception as exc:
+            raise EntityProcessorException(
+                f"Selector query failed for pattern {pattern!r}: {exc}"
+            ) from exc
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(
-            f"Expected boolean value, got value:{value} of type: {type(value)} instead"
+            f"Expected boolean value for pattern {pattern!r}, got value:{value} of type: {type(value)} instead"
         )
 
     @staticmethod
@@ -80,35 +87,39 @@ class JQEntityProcessorSync:
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
+        _path: str = "",
     ) -> dict[str, Any | None]:
         result: dict[str, Any | None | list[Any | None]] = {}
         for key, value in obj.items():
+            current_path = f"{_path}.{key}" if _path else key
             try:
                 if isinstance(value, list):
                     result[key] = []
                     for list_item in value:
                         search_result = JQEntityProcessorSync._search_as_object(
-                            data, list_item, misconfigurations
+                            data, list_item, misconfigurations, _path=current_path
                         )
                         cast(list[dict[str, Any | None]], result[key]).append(
                             search_result
                         )
                         if search_result is None and misconfigurations is not None:
-                            misconfigurations[key] = obj[key]
+                            misconfigurations[current_path] = obj[key]
 
                 elif isinstance(value, dict):
                     search_result = JQEntityProcessorSync._search_as_object(
-                        data, value, misconfigurations
+                        data, value, misconfigurations, _path=current_path
                     )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
-                        misconfigurations[key] = obj[key]
+                        misconfigurations[current_path] = obj[key]
 
                 else:
-                    search_result = JQEntityProcessorSync._search(data, value)
+                    search_result = JQEntityProcessorSync._search(
+                        data, value, field=current_path
+                    )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
-                        misconfigurations[key] = obj[key]
+                        misconfigurations[current_path] = value
             except Exception:
                 result[key] = None
 
