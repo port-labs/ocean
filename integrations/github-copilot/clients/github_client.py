@@ -109,9 +109,7 @@ class GitHubClient:
                     )
                     continue
 
-            results.extend(
-                self._normalize_usage_record(record) for record in records_to_process
-            )
+            results.extend(records_to_process)
 
         return results or None
 
@@ -126,60 +124,6 @@ class GitHubClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching report from signed URL: {e}")
             return None
-
-    def _normalize_usage_record(self, report_record: dict[str, Any]) -> dict[str, Any]:
-        """
-        Reshapes the new Usage Metrics flat schema into the deeply nested Legacy schema so the existing YAML JQ mapping just works
-        """
-        return {
-            "date": report_record.get("day", ""),
-            "total_active_users": report_record.get("daily_active_users", 0)
-            or report_record.get("total_active_users", 0),
-            "copilot_ide_code_completions": {
-                "editors": [
-                    {
-                        "models": [
-                            {
-                                "languages": [
-                                    {
-                                        "total_code_suggestions": report_record.get(
-                                            "code_generation_activity_count", 0
-                                        ),
-                                        "total_code_acceptances": report_record.get(
-                                            "code_acceptance_activity_count", 0
-                                        ),
-                                        "total_code_lines_suggested": report_record.get(
-                                            "loc_suggested_to_add_sum", 0
-                                        ),
-                                        "total_code_lines_accepted": report_record.get(
-                                            "loc_added_sum", 0
-                                        ),
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            },
-            "copilot_ide_chat": {
-                "editors": [
-                    {
-                        "total_engaged_users": report_record.get(
-                            "monthly_active_chat_users", 0
-                        ),
-                        "models": [
-                            {
-                                "total_chat_copy_events": 0,  # Fallbacks for dropped granular metrics
-                                "total_chat_insertion_events": 0,
-                                "total_chats": report_record.get(
-                                    "user_initiated_interaction_count", 0
-                                ),
-                            }
-                        ],
-                    }
-                ]
-            },
-        }
 
     async def get_metrics_for_team(
         self, organization: dict[str, Any], team: dict[str, Any]

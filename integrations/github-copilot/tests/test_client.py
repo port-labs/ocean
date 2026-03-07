@@ -270,11 +270,7 @@ async def test_get_new_usage_metrics_parses_schema_a_and_schema_c_successfully(
     assert len(result) == 2
 
     first_item = result[0]
-    assert first_item["date"] == "2026-03-05"
-    assert first_item["total_active_users"] == 42
-    assert "copilot_ide_code_completions" in first_item
-
-    suggestions = first_item["copilot_ide_code_completions"]["editors"][0]["models"][0][
-        "languages"
-    ][0]["total_code_suggestions"]
-    assert suggestions == 150
+    assert first_item["day"] == "2026-03-05"
+    assert first_item["daily_active_users"] == 42
+    assert first_item["code_generation_activity_count"] == 150
+    assert "copilot_ide_code_completions" not in first_item
