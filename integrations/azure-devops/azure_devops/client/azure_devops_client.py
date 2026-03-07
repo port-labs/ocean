@@ -1258,7 +1258,7 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             if not repositories:
                 logger.warning("No repositories found. Skipping file discovery.")
-                return
+                continue
 
             filtered_repositories = (
                 [repo for repo in repositories if repo["name"] in repos]
