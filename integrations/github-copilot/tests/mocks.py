@@ -33,6 +33,9 @@ teams_response = [
     }
 ]
 
+
+# LEGACY: This is a mock response for the old Copilot Metrics API.
+# It is used in tests to ensure that the API client can handle the expected structure of the response.
 copilot_metrics_response = [
     {
         "date": "2024-06-24",
@@ -178,5 +181,37 @@ copilot_metrics_response = [
                 },
             ],
         },
+    }
+]
+
+
+mock_copilot_28_day_manifest_response = {
+    "download_links": [
+        "https://signed.example.com/copilot-report-part-1.json",
+        "https://signed.example.com/copilot-report-part-2.json",
+    ],
+    "report_start_day": "2026-02-01",
+    "report_end_day": "2026-02-28",
+}
+
+mock_copilot_schema_a_day_totals_wrapper = {
+    "report_start_day": "2026-02-01",
+    "report_end_day": "2026-02-28",
+    "day_totals": [
+        {
+            "org": "acme-corp-test-org",
+            "daily_active_users": 42,
+            "day": "2026-03-05",
+            "code_generation_activity_count": 150,
+        }
+    ],
+}
+
+mock_copilot_schema_c_raw_array_fallback = [
+    {
+        "org": "some-github-enterprise-corp",
+        "daily_active_users": 18,
+        "day": "2026-03-06",
+        "code_generation_activity_count": 80,
     }
 ]

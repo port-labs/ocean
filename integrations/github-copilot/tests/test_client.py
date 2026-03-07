@@ -5,7 +5,14 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from clients.github_client import GitHubClient
-from tests.mocks import organizations_response, teams_response, copilot_metrics_response
+from tests.mocks import (
+    organizations_response,
+    teams_response,
+    copilot_metrics_response,
+    mock_copilot_28_day_manifest_response,
+    mock_copilot_schema_a_day_totals_wrapper,
+    mock_copilot_schema_c_raw_array_fallback,
+)
 
 BASE_URL = "https://api.github.com"
 TOKEN = "test-token"
@@ -75,19 +82,18 @@ async def test_get_teams_of_organization_403_ignored(
 
 
 @pytest.mark.asyncio
-async def test_get_metrics_for_organization(github_client: GitHubClient) -> None:
-    expected_response = copilot_metrics_response
+async def test_get_legacy_metrics_for_organization(github_client: GitHubClient) -> None:
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_response.json.return_value = expected_response
+    mock_response.json.return_value = copilot_metrics_response
 
     with patch.object(
         github_client._client, "request", new=AsyncMock(return_value=mock_response)
     ):
-        result = await github_client.get_metrics_for_organization(
+        result = await github_client.get_legacy_metrics_for_organization(
             organizations_response[0]
         )
-        assert result == expected_response
+        assert result == copilot_metrics_response
 
 
 @pytest.mark.asyncio
@@ -153,3 +159,118 @@ def test_resolve_route_params() -> None:
     params = {"org": "acme", "team": "devs"}
     result = GitHubClient._resolve_route_params(endpoint, params)
     assert result == "/orgs/acme/teams/devs/metrics"
+
+
+@pytest.mark.asyncio
+async def test_get_new_usage_metrics_returns_none_when_manifest_has_empty_links(
+    github_client: GitHubClient,
+) -> None:
+    empty_manifest_response = MagicMock()
+    empty_manifest_response.status_code = 200
+    empty_manifest_response.json.return_value = {"download_links": []}
+
+    with patch.object(
+        github_client._client,
+        "request",
+        new=AsyncMock(return_value=empty_manifest_response),
+    ):
+        result = await github_client.get_new_usage_metrics_for_organization(
+            organizations_response[0]
+        )
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_report_from_signed_url_returns_none_on_forbidden_error(
+    github_client: GitHubClient,
+) -> None:
+    signed_url = "https://signed.example.com/copilot-report-expired.json"
+    expired_url_response = httpx.Response(
+        status_code=403, request=httpx.Request("GET", signed_url)
+    )
+    request_mock = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "Forbidden",
+            request=expired_url_response.request,
+            response=expired_url_response,
+        )
+    )
+
+    with patch.object(github_client._client, "request", new=request_mock):
+        result = await github_client._fetch_report_from_signed_url(signed_url)
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_new_usage_metrics_returns_none_when_api_request_fails(
+    github_client: GitHubClient,
+) -> None:
+    with patch.object(
+        github_client, "_send_api_request", new=AsyncMock(return_value=None)
+    ):
+        result = await github_client.get_new_usage_metrics_for_organization(
+            organizations_response[0]
+        )
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_new_usage_metrics_skips_unexpected_schema(
+    github_client: GitHubClient,
+) -> None:
+    manifest_response = MagicMock()
+    manifest_response.status_code = 200
+    manifest_response.json.return_value = {
+        "download_links": ["https://signed.example.com/unexpected.json"]
+    }
+
+    unexpected_schema_response = MagicMock()
+    unexpected_schema_response.status_code = 200
+    unexpected_schema_response.json.return_value = {"unexpected_key": "some_value"}
+
+    request_mock = AsyncMock(
+        side_effect=[manifest_response, unexpected_schema_response]
+    )
+
+    with patch.object(github_client._client, "request", new=request_mock):
+        result = await github_client.get_new_usage_metrics_for_organization(
+            organizations_response[0]
+        )
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_new_usage_metrics_parses_schema_a_and_schema_c_successfully(
+    github_client: GitHubClient,
+) -> None:
+    manifest_response = MagicMock()
+    manifest_response.status_code = 200
+    manifest_response.json.return_value = mock_copilot_28_day_manifest_response
+
+    part_1_response = MagicMock()
+    part_1_response.status_code = 200
+    part_1_response.json.return_value = mock_copilot_schema_a_day_totals_wrapper
+
+    part_2_response = MagicMock()
+    part_2_response.status_code = 200
+    part_2_response.json.return_value = mock_copilot_schema_c_raw_array_fallback
+
+    request_mock = AsyncMock(
+        side_effect=[manifest_response, part_1_response, part_2_response]
+    )
+
+    with patch.object(github_client._client, "request", new=request_mock):
+        result = await github_client.get_new_usage_metrics_for_organization(
+            organizations_response[0]
+        )
+
+    assert result is not None
+    assert len(result) == 2
+
+    first_item = result[0]
+    assert first_item["day"] == "2026-03-05"
+    assert first_item["daily_active_users"] == 42
+    assert first_item["code_generation_activity_count"] == 150
+    assert "copilot_ide_code_completions" not in first_item

@@ -39,9 +39,10 @@ class GitHubClient:
         ):
             yield teams
 
-    async def get_metrics_for_organization(
+    async def get_legacy_metrics_for_organization(
         self, organization: dict[str, Any]
     ) -> list[dict[str, Any]] | None:
+        """Fetches the legacy inline-JSON metrics."""
         url = self._resolve_route_params(
             GithubEndpoints.COPILOT_ORGANIZATION_METRICS.value,
             {"org": organization["login"]},
@@ -54,6 +55,75 @@ class GitHubClient:
                 self.forbidden_status_code,
             ],
         )
+
+    async def get_new_usage_metrics_for_organization(
+        self, organization: dict[str, Any]
+    ) -> list[dict[str, Any]] | None:
+        """Fetches the manifest, downloads the signed URLs, and normalizes the data."""
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_ORGANIZATION_METRICS_28_DAY.value,
+            {"org": organization["login"]},
+        )
+
+        response = await self._send_api_request(
+            method="get",
+            path=url,
+            ignore_status_code=[self.forbidden_status_code],
+        )
+
+        if not response:
+            logger.info(
+                f'No usage metrics found for organization {organization["login"]}'
+            )
+            return None
+
+        report_manifest = response.json()
+        download_links: list[str] = report_manifest.get("download_links", [])
+        results: list[dict[str, Any]] = []
+
+        for signed_url in download_links:
+            report_data = await self._fetch_report_from_signed_url(signed_url)
+            if not report_data:
+                continue
+
+            records_to_process: list[dict[str, Any]] = []
+
+            match report_data:
+                case {"day_totals": day_totals} if isinstance(day_totals, list):
+                    # standard 28-day report schema
+                    records_to_process = day_totals
+
+                case _ if isinstance(report_data, list):
+                    # gitHub occasionally returns flat arrays directly
+                    records_to_process = report_data
+
+                case _:
+                    # unexpected schema - log and skip
+                    shape = (
+                        list(report_data.keys())
+                        if isinstance(report_data, dict)
+                        else type(report_data)
+                    )
+                    logger.warning(
+                        f"Unexpected structure from signed URL. Shape found: {shape}"
+                    )
+                    continue
+
+            results.extend(records_to_process)
+
+        return results or None
+
+    async def _fetch_report_from_signed_url(
+        self, signed_url: str
+    ) -> dict[str, Any] | list[dict[str, Any]] | None:
+        logger.debug("Fetching report from signed URL")
+        try:
+            response = await self._client.request(method="get", url=signed_url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error fetching report from signed URL: {e}")
+            return None
 
     async def get_metrics_for_team(
         self, organization: dict[str, Any], team: dict[str, Any]
