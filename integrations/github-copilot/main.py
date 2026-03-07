@@ -72,7 +72,7 @@ async def on_resync_copilot_organization_metrics(
                 )
             else:
                 logger.warning(
-                    f'Feature Flag disabled: Fetching OLD 7-day metrics for organization {organization["login"]}.'
+                    f'Feature Flag disabled: Fetching metrics (using Legacy Metrics API) for organization {organization["login"]}.'
                 )
                 try:
                     organization_metrics = (
@@ -80,33 +80,24 @@ async def on_resync_copilot_organization_metrics(
                             organization
                         )
                     )
-
                 except Exception as e:
                     logger.warning(
                         f"Error fetching legacy metrics for organization {organization['login']}: {e}"
                     )
 
-                    organization_metrics = None
-
-                if not organization_metrics:
-                    logger.warning(
-                        f"Legacy metrics API yielded no metrics for organization {organization['login']}. Falling back to new 28-usage metrics API."
-                    )
-                    organization_metrics = (
-                        await github_client.get_new_usage_metrics_for_organization(
-                            organization
-                        )
-                    )
-
             if not organization_metrics:
                 logger.warning(
-                    f"No metrics found for organization {organization['login']} using either API."
+                    f"No metrics found for organization {organization['login']} using the selected API."
                 )
                 continue
 
             for metrics in organization_metrics:
+                # github API returns 'date' in V1 and 'day' in V2
+
+                record_date = metrics.get("date") or metrics.get("day")
+
                 logger.info(
-                    f"Received metrics of day {metrics['date']} for organization {organization['login']}"
+                    f"Received metrics of day {record_date} for organization {organization['login']}"
                 )
                 metrics["__organization"] = organization
             yield organization_metrics
