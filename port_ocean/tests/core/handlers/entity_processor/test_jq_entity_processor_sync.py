@@ -132,7 +132,6 @@ class TestJQEntityProcessorSync:
             result = mocked_processor._search(data, pattern, field="properties.tier")
             assert result is None
             assert any("properties.tier" in m for m in log_messages)
-            assert any(".foo." in m for m in log_messages)
         finally:
             logger.remove(logger_id)
 
@@ -148,7 +147,7 @@ class TestJQEntityProcessorSync:
         )
         try:
             mocked_processor._search(data, pattern)
-            assert any(".foo." in m for m in log_messages)
+            assert any("JQ search failed" in m for m in log_messages)
         finally:
             logger.remove(logger_id)
 

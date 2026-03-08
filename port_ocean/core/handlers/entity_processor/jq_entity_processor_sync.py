@@ -10,6 +10,17 @@ from port_ocean.exceptions.core import EntityProcessorException
 
 _COMPILED_PATTERNS: dict[str, Any] = {}
 
+_IDENTIFIER_KEYS = ("identifier", "id", "login", "name", "number", "key", "slug")
+
+
+def _extract_item_identifier(data: dict[str, Any]) -> str | None:
+    """Best-effort extraction of a human-readable identifier from a raw item."""
+    for key in _IDENTIFIER_KEYS:
+        val = data.get(key)
+        if val is not None:
+            return str(val)
+    return None
+
 
 class JQEntityProcessorSync:
     """Processes and parses entities using JQ expressions.
@@ -51,7 +62,12 @@ class JQEntityProcessorSync:
         return compiled_pattern
 
     @staticmethod
-    def _search(data: dict[str, Any], pattern: str, field: str | None = None) -> Any:
+    def _search(
+        data: dict[str, Any],
+        pattern: str,
+        field: str | None = None,
+        raw_item_identifier: str | None = None,
+    ) -> Any:
         try:
             compiled_pattern = JQEntityProcessorSync._compile(pattern)
             it = compiled_pattern.input_value(data)
@@ -59,11 +75,17 @@ class JQEntityProcessorSync:
         except Exception as exc:
             err_msg = str(exc) or repr(exc) or type(exc).__name__
             field_info = f" for field '{field}'" if field else ""
-            logger.warning(
-                f"JQ search failed{field_info} with pattern {pattern!r}: {err_msg}",
+            item_info = (
+                f" on item '{raw_item_identifier}'" if raw_item_identifier else ""
+            )
+            error_summary = err_msg.split("\n")[0]
+            logger.bind(
                 field=field,
                 pattern=pattern,
-                error=exc,
+                error=err_msg,
+                raw_item_identifier=raw_item_identifier,
+            ).warning(
+                f"JQ search failed{field_info}{item_info} - pattern: {pattern}: {error_summary}"
             )
             return None
 
@@ -88,6 +110,7 @@ class JQEntityProcessorSync:
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
         _path: str = "",
+        raw_item_identifier: str | None = None,
     ) -> dict[str, Any | None]:
         result: dict[str, Any | None | list[Any | None]] = {}
         for key, value in obj.items():
@@ -97,7 +120,11 @@ class JQEntityProcessorSync:
                     result[key] = []
                     for list_item in value:
                         search_result = JQEntityProcessorSync._search_as_object(
-                            data, list_item, misconfigurations, _path=current_path
+                            data,
+                            list_item,
+                            misconfigurations,
+                            _path=current_path,
+                            raw_item_identifier=raw_item_identifier,
                         )
                         cast(list[dict[str, Any | None]], result[key]).append(
                             search_result
@@ -107,7 +134,11 @@ class JQEntityProcessorSync:
 
                 elif isinstance(value, dict):
                     search_result = JQEntityProcessorSync._search_as_object(
-                        data, value, misconfigurations, _path=current_path
+                        data,
+                        value,
+                        misconfigurations,
+                        _path=current_path,
+                        raw_item_identifier=raw_item_identifier,
                     )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
@@ -115,7 +146,10 @@ class JQEntityProcessorSync:
 
                 else:
                     search_result = JQEntityProcessorSync._search(
-                        data, value, field=current_path
+                        data,
+                        value,
+                        field=current_path,
+                        raw_item_identifier=raw_item_identifier,
                     )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
@@ -135,8 +169,12 @@ class JQEntityProcessorSync:
         should_run = JQEntityProcessorSync._search_as_bool(data, selector_query)
         if parse_all or should_run:
             misconfigurations: dict[str, str] = {}
+            raw_item_identifier = _extract_item_identifier(data)
             mapped_entity = JQEntityProcessorSync._search_as_object(
-                data, raw_entity_mappings, misconfigurations
+                data,
+                raw_entity_mappings,
+                misconfigurations,
+                raw_item_identifier=raw_item_identifier,
             )
             return MappedEntity(
                 entity=mapped_entity,
