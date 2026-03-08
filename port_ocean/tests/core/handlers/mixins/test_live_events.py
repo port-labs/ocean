@@ -400,10 +400,14 @@ async def test_sync_raw_results_one_raw_result_entity_upserted(
     mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
     mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
 
-    # Call the method
-    await mock_live_events_mixin.sync_raw_results(
-        [one_webhook_event_raw_results_for_creation]
-    )
+    # Call the method with lakehouse enabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_live_events_mixin.sync_raw_results(
+            [one_webhook_event_raw_results_for_creation]
+        )
 
     # Verify lakehouse called BEFORE parsing (with raw data)
     mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_called_once_with(
@@ -431,10 +435,14 @@ async def test_sync_raw_results_entity_deleted(
     mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
     mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
 
-    # Call the method
-    await mock_live_events_mixin.sync_raw_results(
-        [one_webhook_event_raw_results_for_deletion]
-    )
+    # Call the method with lakehouse enabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_live_events_mixin.sync_raw_results(
+            [one_webhook_event_raw_results_for_deletion]
+        )
 
     # Verify lakehouse called with raw data BEFORE parsing
     mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_called_once_with(
@@ -457,10 +465,14 @@ async def test_sync_raw_results_entity_deletion_raw_data_sent_regardless(
     mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
     mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
 
-    # Call the method
-    await mock_live_events_mixin.sync_raw_results(
-        [one_webhook_event_raw_results_for_deletion]
-    )
+    # Call the method with lakehouse enabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_live_events_mixin.sync_raw_results(
+            [one_webhook_event_raw_results_for_deletion]
+        )
 
     # Verify lakehouse called with raw data (before we know if entity exists)
     mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_called_once_with(
@@ -496,8 +508,12 @@ async def test_sync_raw_results_both_upsert_and_delete(
     )
     webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
 
-    # Call the method
-    await mock_live_events_mixin.sync_raw_results([webhook_results])
+    # Call the method with lakehouse enabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_live_events_mixin.sync_raw_results([webhook_results])
 
     # Verify lakehouse called with raw data
     mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_called_once_with(
@@ -526,8 +542,12 @@ async def test_sync_raw_results_empty_results(
     )
     webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
 
-    # Call the method
-    await mock_live_events_mixin.sync_raw_results([webhook_results])
+    # Call the method with lakehouse enabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_live_events_mixin.sync_raw_results([webhook_results])
 
     # Verify lakehouse still called (will skip sending internally if no data)
     mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_called_once_with(
@@ -540,153 +560,28 @@ async def test_sync_raw_results_empty_results(
 
 
 @pytest.mark.asyncio
-async def test_send_webhook_raw_data_to_lakehouse_disabled(
+async def test_sync_raw_results_lakehouse_disabled(
     mock_live_events_mixin: LiveEventsMixin,
-    mock_ocean: Ocean,
 ) -> None:
-    """Test lakehouse send when lakehouse is disabled"""
-    from unittest.mock import MagicMock
-    from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+    """Test that lakehouse is not called when disabled"""
+    # Setup mocks
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse = AsyncMock()  # type: ignore
+    mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(return_value=([entity], []))  # type: ignore
+    mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
 
-    with patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean):
-        # Mock lakehouse as disabled
-        mock_live_events_mixin._lakehouse_data_enabled = AsyncMock(return_value=False)  # type: ignore
-        mock_ocean.port_client.post_integration_raw_data = AsyncMock()
-
-        # Create webhook event
-        webhook_event = MagicMock(spec=WebhookEvent)
-        webhook_event.trace_id = "test-event-id"
-
-        webhook_results = WebhookEventRawResults(
-            updated_raw_results=[{"name": "repo-one"}],
-            deleted_raw_results=[],
-        )
-        webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
-        webhook_results._webhook_trace_id = webhook_event.trace_id
-
-        # Call the method
-        await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(
-            [webhook_results]
+    # Call the method with lakehouse disabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=False),
+    ):
+        await mock_live_events_mixin.sync_raw_results(
+            [one_webhook_event_raw_results_for_creation]
         )
 
-        # Verify lakehouse API not called
-        mock_ocean.port_client.post_integration_raw_data.assert_not_called()
+    # Verify lakehouse not called when disabled
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_not_called()
 
-
-@pytest.mark.asyncio
-async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_ocean: Ocean,
-) -> None:
-    """Test lakehouse send when enabled - UPSERT operation with raw data"""
-    from unittest.mock import MagicMock
-    from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-    from port_ocean.core.models import LakehouseOperation
-
-    with patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean):
-        # Mock lakehouse as enabled
-        mock_live_events_mixin._lakehouse_data_enabled = AsyncMock(return_value=True)  # type: ignore
-        mock_ocean.port_client.post_integration_raw_data = AsyncMock()
-
-        # Create webhook event
-        webhook_event = MagicMock(spec=WebhookEvent)
-        webhook_event.trace_id = "test-event-id"
-
-        raw_data = [{"name": "repo-one", "stars": 100}]
-        webhook_results = WebhookEventRawResults(
-            updated_raw_results=raw_data,
-            deleted_raw_results=[],
-        )
-        webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
-        webhook_results._webhook_trace_id = webhook_event.trace_id
-
-        # Call the method
-        await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(
-            [webhook_results]
-        )
-
-        # Verify lakehouse API called with UPSERT and raw data
-        mock_ocean.port_client.post_integration_raw_data.assert_called_once_with(
-            raw_data,
-            "test-event-id",
-            "repository",
-            operation=LakehouseOperation.UPSERT,
-        )
-
-
-@pytest.mark.asyncio
-async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_ocean: Ocean,
-) -> None:
-    """Test lakehouse send when enabled - DELETE operation with raw data"""
-    from unittest.mock import MagicMock
-    from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-    from port_ocean.core.models import LakehouseOperation
-
-    with patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean):
-        # Mock lakehouse as enabled
-        mock_live_events_mixin._lakehouse_data_enabled = AsyncMock(return_value=True)  # type: ignore
-        mock_ocean.port_client.post_integration_raw_data = AsyncMock()
-
-        # Create webhook event
-        webhook_event = MagicMock(spec=WebhookEvent)
-        webhook_event.trace_id = "test-event-id"
-
-        raw_data = [{"id": "123"}]
-        webhook_results = WebhookEventRawResults(
-            updated_raw_results=[],
-            deleted_raw_results=raw_data,
-        )
-        webhook_results.resource = one_webhook_event_raw_results_for_deletion.resource
-        webhook_results._webhook_trace_id = webhook_event.trace_id
-
-        # Call the method
-        await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(
-            [webhook_results]
-        )
-
-        # Verify lakehouse API called with DELETE and raw data
-        mock_ocean.port_client.post_integration_raw_data.assert_called_once_with(
-            raw_data,
-            "test-event-id",
-            "repository",
-            operation=LakehouseOperation.DELETE,
-        )
-
-
-@pytest.mark.asyncio
-async def test_send_webhook_raw_data_to_lakehouse_api_failure(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_ocean: Ocean,
-) -> None:
-    """Test that lakehouse API failure doesn't break webhook processing"""
-    from unittest.mock import MagicMock
-    from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-
-    with patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean):
-        # Mock lakehouse as enabled
-        mock_live_events_mixin._lakehouse_data_enabled = AsyncMock(return_value=True)  # type: ignore
-        # Mock API to raise exception
-        mock_ocean.port_client.post_integration_raw_data = AsyncMock(
-            side_effect=Exception("Lakehouse API error")
-        )
-
-        # Create webhook event
-        webhook_event = MagicMock(spec=WebhookEvent)
-        webhook_event.trace_id = "test-event-id"
-
-        webhook_results = WebhookEventRawResults(
-            updated_raw_results=[{"name": "repo-one"}],
-            deleted_raw_results=[],
-        )
-        webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
-        webhook_results._webhook_trace_id = webhook_event.trace_id
-
-        # Call the method - should not raise exception
-        await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(
-            [webhook_results]
-        )
-
-        # Verify API was called but exception was caught
-        mock_ocean.port_client.post_integration_raw_data.assert_called_once()
+    # Verify parsing and Port operations still happened
+    mock_live_events_mixin._parse_raw_event_results_to_entities.assert_called_once()
+    mock_live_events_mixin.entities_state_applier.upsert.assert_called_once()

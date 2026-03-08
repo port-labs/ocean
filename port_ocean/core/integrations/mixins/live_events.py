@@ -2,7 +2,8 @@ from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from port_ocean.core.models import Entity, IntegrationFeatureFlag, LakehouseOperation
+from port_ocean.core.integrations.mixins.utils import is_lakehouse_data_enabled
+from port_ocean.core.models import Entity, LakehouseOperation
 from port_ocean.context.ocean import ocean
 
 
@@ -15,7 +16,8 @@ class LiveEventsMixin(HandlerMixin):
         Args:
             webhook_events_raw_result: List of WebhookEventRawResults objects to process
         """
-        await self._send_webhook_raw_data_to_lakehouse(webhook_events_raw_result)
+        if await is_lakehouse_data_enabled():
+            await self._send_webhook_raw_data_to_lakehouse(webhook_events_raw_result)
 
         entities_to_create, entities_to_delete = await self._parse_raw_event_results_to_entities(webhook_events_raw_result)
 
@@ -58,20 +60,6 @@ class LiveEventsMixin(HandlerMixin):
         logger.info(f"Found {len(entities)} entities to upsert {', '.join(f'{entity.blueprint}/{entity.identifier}' for entity in entities)}")
         return entities, entities_to_remove
 
-    async def _lakehouse_data_enabled(self) -> bool:
-        """Check if lakehouse data is enabled.
-
-        Returns:
-            bool: True if lakehouse data is enabled, False otherwise
-        """
-        flags = await ocean.port_client.get_organization_feature_flags()
-        if (
-            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
-            and ocean.config.lakehouse_enabled
-        ):
-            return True
-        return False
-
     async def _send_webhook_raw_data_to_lakehouse(
         self,
         webhook_events_raw_result: list[WebhookEventRawResults],
@@ -81,55 +69,62 @@ class LiveEventsMixin(HandlerMixin):
         Sends ALL raw data before transformation to maintain audit trail,
         similar to how resync sends all raw data regardless of selector/mapping results.
 
+        This is a best-effort operation - failures are logged but do not
+        block webhook processing.
+
+        Note: The caller should check if lakehouse is enabled before calling this method.
+
         Args:
             webhook_events_raw_result: List of WebhookEventRawResults objects to send to lakehouse
         """
-        if not await self._lakehouse_data_enabled():
-            return
+        try:
+            for webhook_event_raw_result in webhook_events_raw_result:
+                event_id = webhook_event_raw_result._webhook_trace_id
+                kind = webhook_event_raw_result.resource.kind
 
-        for webhook_event_raw_result in webhook_events_raw_result:
-            event_id = webhook_event_raw_result._webhook_trace_id
-            kind = webhook_event_raw_result.resource.kind
-
-            if webhook_event_raw_result.updated_raw_results:
-                logger.debug(
-                    f"Sending {len(webhook_event_raw_result.updated_raw_results)} upserted raw items to lakehouse",
-                    event_id=event_id,
-                    kind=kind,
-                )
-                try:
-                    await ocean.port_client.post_integration_raw_data(
-                        webhook_event_raw_result.updated_raw_results,
-                        event_id,
-                        kind,
-                        operation=LakehouseOperation.UPSERT,
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to send upserted webhook raw data to lakehouse: {e}",
+                if webhook_event_raw_result.updated_raw_results:
+                    logger.debug(
+                        f"Sending {len(webhook_event_raw_result.updated_raw_results)} upserted raw items to lakehouse",
                         event_id=event_id,
                         kind=kind,
                     )
+                    try:
+                        await ocean.port_client.post_integration_raw_data(
+                            webhook_event_raw_result.updated_raw_results,
+                            event_id,
+                            kind,
+                            operation=LakehouseOperation.UPSERT,
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to send upserted webhook raw data to lakehouse: {e}",
+                            event_id=event_id,
+                            kind=kind,
+                        )
 
-            if webhook_event_raw_result.deleted_raw_results:
-                logger.debug(
-                    f"Sending {len(webhook_event_raw_result.deleted_raw_results)} deleted raw items to lakehouse",
-                    event_id=event_id,
-                    kind=kind,
-                )
-                try:
-                    await ocean.port_client.post_integration_raw_data(
-                        webhook_event_raw_result.deleted_raw_results,
-                        event_id,
-                        kind,
-                        operation=LakehouseOperation.DELETE,
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to send deleted webhook raw data to lakehouse: {e}",
+                if webhook_event_raw_result.deleted_raw_results:
+                    logger.debug(
+                        f"Sending {len(webhook_event_raw_result.deleted_raw_results)} deleted raw items to lakehouse",
                         event_id=event_id,
                         kind=kind,
                     )
+                    try:
+                        await ocean.port_client.post_integration_raw_data(
+                            webhook_event_raw_result.deleted_raw_results,
+                            event_id,
+                            kind,
+                            operation=LakehouseOperation.DELETE,
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to send deleted webhook raw data to lakehouse: {e}",
+                            event_id=event_id,
+                            kind=kind,
+                        )
+        except Exception as e:
+            logger.warning(
+                f"Failed to send webhook raw data to lakehouse (best-effort operation): {e}"
+            )
 
     async def _does_entity_exists(self, entity: Entity) -> bool:
         """Check if this integration is the owner of the given entity.
