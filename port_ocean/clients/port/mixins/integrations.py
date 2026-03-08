@@ -290,7 +290,7 @@ class IntegrationClientMixin:
         headers = await self.auth.headers()
 
         response = await self.client.post(
-            f"{self.auth.ingest_url}/lakehouse/integration-type/{self.auth.integration_type}/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
+            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",
             headers=headers,
             json={
                 "items": raw_data,
