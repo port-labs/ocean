@@ -3,7 +3,10 @@ from typing import cast, TYPE_CHECKING
 
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-from integration import CopilotOrganizationMetricsResourceConfig
+from integration import (
+    CopilotOrganizationMetricsResourceConfig,
+    OrganizationUsageMetricsResourceConfig,
+)
 from clients.client_factory import create_github_client
 from strategies import get_metrics_strategy
 from loguru import logger
@@ -17,6 +20,7 @@ if TYPE_CHECKING:
 class ObjectKind(StrEnum):
     COPILOT_TEAM_METRICS = "copilot-team-metrics"
     COPILOT_ORGANIZATION_METRICS = "copilot-organization-metrics"
+    ORGANIZATION_USAGE_METRICS = "organization-usage-metrics"
 
 
 @ocean.on_resync(ObjectKind.COPILOT_TEAM_METRICS)
@@ -47,13 +51,16 @@ async def on_resync_copilot_team_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TY
 
 
 @ocean.on_resync(ObjectKind.COPILOT_ORGANIZATION_METRICS)
+@ocean.on_resync(ObjectKind.ORGANIZATION_USAGE_METRICS)
 async def on_resync_copilot_organization_metrics(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github_client = create_github_client()
 
     selector = cast(
-        CopilotOrganizationMetricsResourceConfig, event.resource_config
+        CopilotOrganizationMetricsResourceConfig
+        | OrganizationUsageMetricsResourceConfig,
+        event.resource_config,
     ).selector
     use_new_api = selector.use_usage_metrics
 

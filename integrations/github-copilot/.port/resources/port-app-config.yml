@@ -42,7 +42,7 @@ resources:
   - kind: copilot-organization-metrics
     selector:
       query: '.date != null'
-      use_usage_metrics: false
+      useUsageMetrics: false
     port:
       entity:
         mappings:
@@ -78,10 +78,10 @@ resources:
               [.copilot_ide_chat.editors[]?.total_engaged_users // 0]
               | map(select(. != null)) | add
             git_hub_org: .__organization.login
-  - kind: copilot-organization-metrics
+  - kind: organization-usage-metrics
     selector:
       query: '.day != null'
-      use_usage_metrics: true
+      useUsageMetrics: true
     port:
       entity:
         mappings:
