@@ -555,14 +555,14 @@ async def test_send_webhook_raw_data_to_lakehouse_disabled(
 
         # Create webhook event
         webhook_event = MagicMock(spec=WebhookEvent)
-        webhook_event.id = "test-event-id"
+        webhook_event.trace_id = "test-event-id"
 
         webhook_results = WebhookEventRawResults(
             updated_raw_results=[{"name": "repo-one"}],
             deleted_raw_results=[],
         )
         webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
-        webhook_results._webhook_event = webhook_event
+        webhook_results._webhook_trace_id = webhook_event.trace_id
 
         # Call the method
         await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(
@@ -590,7 +590,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
 
         # Create webhook event
         webhook_event = MagicMock(spec=WebhookEvent)
-        webhook_event.id = "test-event-id"
+        webhook_event.trace_id = "test-event-id"
 
         raw_data = [{"name": "repo-one", "stars": 100}]
         webhook_results = WebhookEventRawResults(
@@ -598,7 +598,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
             deleted_raw_results=[],
         )
         webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
-        webhook_results._webhook_event = webhook_event
+        webhook_results._webhook_trace_id = webhook_event.trace_id
 
         # Call the method
         await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(
@@ -631,7 +631,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
 
         # Create webhook event
         webhook_event = MagicMock(spec=WebhookEvent)
-        webhook_event.id = "test-event-id"
+        webhook_event.trace_id = "test-event-id"
 
         raw_data = [{"id": "123"}]
         webhook_results = WebhookEventRawResults(
@@ -639,7 +639,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
             deleted_raw_results=raw_data,
         )
         webhook_results.resource = one_webhook_event_raw_results_for_deletion.resource
-        webhook_results._webhook_event = webhook_event
+        webhook_results._webhook_trace_id = webhook_event.trace_id
 
         # Call the method
         await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(
@@ -653,33 +653,6 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
             "repository",
             operation=LakehouseOperation.DELETE,
         )
-
-
-@pytest.mark.asyncio
-async def test_send_webhook_raw_data_to_lakehouse_missing_webhook_event(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_ocean: Ocean,
-) -> None:
-    """Test lakehouse send when webhook event is not set - should skip gracefully"""
-    with patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean):
-        # Mock lakehouse as enabled
-        mock_live_events_mixin._lakehouse_data_enabled = AsyncMock(return_value=True)  # type: ignore
-        mock_ocean.port_client.post_integration_raw_data = AsyncMock()
-
-        webhook_results = WebhookEventRawResults(
-            updated_raw_results=[{"name": "repo-one"}],
-            deleted_raw_results=[],
-        )
-        webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
-        webhook_results._webhook_event = None  # Webhook event not set
-
-        # Call the method - should not raise exception
-        await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(
-            [webhook_results]
-        )
-
-        # Verify lakehouse API not called
-        mock_ocean.port_client.post_integration_raw_data.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -701,14 +674,14 @@ async def test_send_webhook_raw_data_to_lakehouse_api_failure(
 
         # Create webhook event
         webhook_event = MagicMock(spec=WebhookEvent)
-        webhook_event.id = "test-event-id"
+        webhook_event.trace_id = "test-event-id"
 
         webhook_results = WebhookEventRawResults(
             updated_raw_results=[{"name": "repo-one"}],
             deleted_raw_results=[],
         )
         webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
-        webhook_results._webhook_event = webhook_event
+        webhook_results._webhook_trace_id = webhook_event.trace_id
 
         # Call the method - should not raise exception
         await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(

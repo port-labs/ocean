@@ -88,14 +88,7 @@ class LiveEventsMixin(HandlerMixin):
             return
 
         for webhook_event_raw_result in webhook_events_raw_result:
-            webhook_event = webhook_event_raw_result._webhook_event
-            if webhook_event is None:
-                logger.warning(
-                    "Webhook event not set on WebhookEventRawResults, skipping lakehouse send"
-                )
-                continue
-
-            event_id = webhook_event.id
+            event_id = webhook_event_raw_result._webhook_trace_id
             kind = webhook_event_raw_result.resource.kind
 
             if webhook_event_raw_result.updated_raw_results:
