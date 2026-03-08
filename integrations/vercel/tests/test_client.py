@@ -5,9 +5,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import pytest_httpx
 
 from vercel.clients.http.vercel_client import PAGE_LIMIT, VercelClient
 
@@ -31,18 +31,19 @@ def _paginated_response(
 
 @pytest.mark.asyncio
 async def test_get_teams_personal(
-    httpx_mock: pytest_httpx.HTTPXMock,
     vercel_token: str,
     sample_team: dict[str, Any],
+    mock_http_async_client: AsyncMock,
 ) -> None:
     """When no teamId is set, /v2/teams is fetched and all pages yielded."""
-    httpx_mock.add_response(
-        url=f"https://api.vercel.com/v2/teams?limit={PAGE_LIMIT}",
-        json=_paginated_response([sample_team], "teams"),
-    )
+    mock_response = MagicMock()
+    mock_response.json.return_value = _paginated_response([sample_team], "teams")
+    mock_response.raise_for_status.return_value = None
 
-    async with VercelClient(token=vercel_token) as client:
-        pages = [p async for p in client.get_teams()]
+    mock_http_async_client.get = AsyncMock(return_value=mock_response)
+
+    client = VercelClient(token=vercel_token)
+    pages = [p async for p in client.get_teams()]
 
     assert len(pages) == 1
     assert pages[0][0]["id"] == sample_team["id"]
@@ -50,19 +51,20 @@ async def test_get_teams_personal(
 
 @pytest.mark.asyncio
 async def test_get_teams_scoped_to_team(
-    httpx_mock: pytest_httpx.HTTPXMock,
     vercel_token: str,
     team_id: str,
     sample_team: dict[str, Any],
+    mock_http_async_client: AsyncMock,
 ) -> None:
     """When teamId is set, the single-team endpoint is used."""
-    httpx_mock.add_response(
-        url=f"https://api.vercel.com/v2/teams/{team_id}",
-        json=sample_team,
-    )
+    mock_response = MagicMock()
+    mock_response.json.return_value = sample_team
+    mock_response.raise_for_status.return_value = None
 
-    async with VercelClient(token=vercel_token, team_id=team_id) as client:
-        pages = [p async for p in client.get_teams()]
+    mock_http_async_client.get = AsyncMock(return_value=mock_response)
+
+    client = VercelClient(token=vercel_token, team_id=team_id)
+    pages = [p async for p in client.get_teams()]
 
     assert pages == [[sample_team]]
 
@@ -72,22 +74,23 @@ async def test_get_teams_scoped_to_team(
 
 @pytest.mark.asyncio
 async def test_get_projects_attaches_team_id(
-    httpx_mock: pytest_httpx.HTTPXMock,
     vercel_token: str,
     team_id: str,
     sample_project: dict[str, Any],
+    mock_http_async_client: AsyncMock,
 ) -> None:
     """teamId should be injected into every project when client is team-scoped."""
     project_without_team = {**sample_project}
     del project_without_team["teamId"]
 
-    httpx_mock.add_response(
-        url=f"https://api.vercel.com/v9/projects?limit={PAGE_LIMIT}&teamId={team_id}",
-        json=_paginated_response([project_without_team], "projects"),
-    )
+    mock_response = MagicMock()
+    mock_response.json.return_value = _paginated_response([project_without_team], "projects")
+    mock_response.raise_for_status.return_value = None
 
-    async with VercelClient(token=vercel_token, team_id=team_id) as client:
-        pages = [p async for p in client.get_projects()]
+    mock_http_async_client.get = AsyncMock(return_value=mock_response)
+
+    client = VercelClient(token=vercel_token, team_id=team_id)
+    pages = [p async for p in client.get_projects()]
 
     assert pages[0][0]["teamId"] == team_id
 
@@ -97,22 +100,21 @@ async def test_get_projects_attaches_team_id(
 
 @pytest.mark.asyncio
 async def test_get_deployments_for_project(
-    httpx_mock: pytest_httpx.HTTPXMock,
     vercel_token: str,
     sample_deployment: dict[str, Any],
+    mock_http_async_client: AsyncMock,
 ) -> None:
     """Deployments for a specific project are fetched correctly."""
     project_id = "prj_abc123"
-    httpx_mock.add_response(
-        url=(
-            f"https://api.vercel.com/v6/deployments"
-            f"?limit={PAGE_LIMIT}&projectId={project_id}"
-        ),
-        json=_paginated_response([sample_deployment], "deployments"),
-    )
 
-    async with VercelClient(token=vercel_token) as client:
-        pages = [p async for p in client.get_deployments(project_id=project_id)]
+    mock_response = MagicMock()
+    mock_response.json.return_value = _paginated_response([sample_deployment], "deployments")
+    mock_response.raise_for_status.return_value = None
+
+    mock_http_async_client.get = AsyncMock(return_value=mock_response)
+
+    client = VercelClient(token=vercel_token)
+    pages = [p async for p in client.get_deployments(project_id=project_id)]
 
     assert len(pages) == 1
     assert pages[0][0]["uid"] == sample_deployment["uid"]
@@ -123,25 +125,23 @@ async def test_get_deployments_for_project(
 
 @pytest.mark.asyncio
 async def test_get_project_domains(
-    httpx_mock: pytest_httpx.HTTPXMock,
     vercel_token: str,
     sample_domain: dict[str, Any],
+    mock_http_async_client: AsyncMock,
 ) -> None:
     """Domains should have their projectId attached by the client."""
     project_id = "prj_abc123"
     domain_without_pid = {**sample_domain}
     del domain_without_pid["projectId"]
 
-    httpx_mock.add_response(
-        url=(
-            f"https://api.vercel.com/v9/projects/{project_id}/domains"
-            f"?limit={PAGE_LIMIT}"
-        ),
-        json=_paginated_response([domain_without_pid], "domains"),
-    )
+    mock_response = MagicMock()
+    mock_response.json.return_value = _paginated_response([domain_without_pid], "domains")
+    mock_response.raise_for_status.return_value = None
 
-    async with VercelClient(token=vercel_token) as client:
-        pages = [p async for p in client.get_project_domains(project_id)]
+    mock_http_async_client.get = AsyncMock(return_value=mock_response)
+
+    client = VercelClient(token=vercel_token)
+    pages = [p async for p in client.get_project_domains(project_id)]
 
     assert pages[0][0]["projectId"] == project_id
 
@@ -151,25 +151,26 @@ async def test_get_project_domains(
 
 @pytest.mark.asyncio
 async def test_pagination_follows_cursor(
-    httpx_mock: pytest_httpx.HTTPXMock,
     vercel_token: str,
     sample_project: dict[str, Any],
+    mock_http_async_client: AsyncMock,
 ) -> None:
     """The client should follow ``pagination.next`` cursors until exhausted."""
     cursor = 1700005000000
     second_project = {**sample_project, "id": "prj_second", "name": "second-app"}
 
-    httpx_mock.add_response(
-        url=f"https://api.vercel.com/v9/projects?limit={PAGE_LIMIT}",
-        json=_paginated_response([sample_project], "projects", next_cursor=cursor),
-    )
-    httpx_mock.add_response(
-        url=f"https://api.vercel.com/v9/projects?limit={PAGE_LIMIT}&until={cursor}",
-        json=_paginated_response([second_project], "projects"),
-    )
+    mock_response_1 = MagicMock()
+    mock_response_1.json.return_value = _paginated_response([sample_project], "projects", next_cursor=cursor)
+    mock_response_1.raise_for_status.return_value = None
 
-    async with VercelClient(token=vercel_token) as client:
-        pages = [p async for p in client.get_projects()]
+    mock_response_2 = MagicMock()
+    mock_response_2.json.return_value = _paginated_response([second_project], "projects")
+    mock_response_2.raise_for_status.return_value = None
+
+    mock_http_async_client.get = AsyncMock(side_effect=[mock_response_1, mock_response_2])
+
+    client = VercelClient(token=vercel_token)
+    pages = [p async for p in client.get_projects()]
 
     assert len(pages) == 2
     assert pages[1][0]["id"] == "prj_second"
@@ -180,20 +181,21 @@ async def test_pagination_follows_cursor(
 
 @pytest.mark.asyncio
 async def test_get_all_projects_flat_yields_individual_dicts(
-    httpx_mock: pytest_httpx.HTTPXMock,
     vercel_token: str,
     sample_project: dict[str, Any],
+    mock_http_async_client: AsyncMock,
 ) -> None:
     """get_all_projects_flat should yield individual project dicts, not pages."""
     second_project = {**sample_project, "id": "prj_second", "name": "second-app"}
 
-    httpx_mock.add_response(
-        url=f"https://api.vercel.com/v9/projects?limit={PAGE_LIMIT}",
-        json=_paginated_response([sample_project, second_project], "projects"),
-    )
+    mock_response = MagicMock()
+    mock_response.json.return_value = _paginated_response([sample_project, second_project], "projects")
+    mock_response.raise_for_status.return_value = None
 
-    async with VercelClient(token=vercel_token) as client:
-        projects = [p async for p in client.get_all_projects_flat()]
+    mock_http_async_client.get = AsyncMock(return_value=mock_response)
+
+    client = VercelClient(token=vercel_token)
+    projects = [p async for p in client.get_all_projects_flat()]
 
     assert len(projects) == 2
     assert projects[0]["id"] == sample_project["id"]

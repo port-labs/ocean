@@ -10,7 +10,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from vercel.helpers.utils import ObjectKind, extract_entity
+from vercel.helpers.utils import ObjectKind
 from vercel.webhook.events import DELETION_EVENTS
 from vercel.webhook.webhook_processors.abstract_webhook_processor import (
     AbstractVercelWebhookProcessor,
@@ -26,7 +26,7 @@ class DeploymentWebhookProcessor(AbstractVercelWebhookProcessor):
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Validate that the event is deployment-related."""
-        event_type = event.body.get("type", "")
+        event_type = event.payload.get("type", "")
         return event_type.startswith("deployment.")
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -39,7 +39,7 @@ class DeploymentWebhookProcessor(AbstractVercelWebhookProcessor):
         """Process the deployment webhook event and return raw results."""
         event_type = payload.get("type", "")
         event_payload = payload.get("payload", {})
-        entity_data = extract_entity(ObjectKind.DEPLOYMENT, event_payload)
+        entity_data = event_payload.get("deployment", event_payload)
 
         if event_type in DELETION_EVENTS:
             return await self._handle_deletion(entity_data)
@@ -58,7 +58,7 @@ class DeploymentWebhookProcessor(AbstractVercelWebhookProcessor):
             f"Upserting deployment entity: {entity_data.get('uid') or entity_data.get('id')}"
         )
 
-        return WebhookEventRawResults(data_to_upsert=[entity_data], data_to_delete=[])
+        return WebhookEventRawResults(updated_raw_results=[entity_data], deleted_raw_results=[])
 
     async def _handle_deletion(
         self, entity_data: dict[str, Any]
@@ -70,12 +70,12 @@ class DeploymentWebhookProcessor(AbstractVercelWebhookProcessor):
             logger.warning(
                 "Could not determine identifier for deleted deployment — skipping"
             )
-            return WebhookEventRawResults(data_to_upsert=[], data_to_delete=[])
+            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
         # Construct minimal payload with correct identifier field
         deletion_payload = {"uid": identifier}
 
         logger.info(f"Deleting deployment entity: {identifier}")
         return WebhookEventRawResults(
-            data_to_upsert=[], data_to_delete=[deletion_payload]
+            updated_raw_results=[], deleted_raw_results=[deletion_payload]
         )

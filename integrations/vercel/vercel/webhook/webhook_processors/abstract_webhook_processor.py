@@ -1,35 +1,47 @@
 """Abstract base class for Vercel webhook processors."""
 
-from abc import ABC, abstractmethod
+import hashlib
+import hmac
+from abc import abstractmethod
 
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from loguru import logger
+from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+)
 from port_ocean.core.handlers.webhook.webhook_event import (
+    EventHeaders,
     EventPayload,
     WebhookEvent,
-    WebhookEventRawResults,
 )
 
 
-class AbstractVercelWebhookProcessor(ABC):
+class AbstractVercelWebhookProcessor(AbstractWebhookProcessor):
     """Abstract base class for processing Vercel webhook events."""
 
-    @abstractmethod
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        """Validate that the payload contains required fields."""
-        ...
+    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+        """Validate the HMAC-SHA1 signature from Vercel when a secret is configured."""
+        secret = ocean.integration_config.get("webhookSecret")
+        if not secret:
+            return True
+
+        sig_header = headers.get("x-vercel-signature", "")
+        if not sig_header:
+            logger.warning("Missing x-vercel-signature header; rejecting webhook.")
+            return False
+
+        if self.event._original_request is None:
+            return True
+
+        raw_body = await self.event._original_request.body()
+        expected = hmac.new(secret.encode(), raw_body, hashlib.sha1).hexdigest()
+        return hmac.compare_digest(expected, sig_header)
+
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        """Delegate to subclass-specific event type check."""
+        return await self._should_process_event(event)
 
     @abstractmethod
-    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        """Return the resource kinds affected by this event."""
-        ...
-
-    @abstractmethod
-    async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        """Process the webhook event and return raw results."""
-        ...
-
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        """Determine if this processor should handle the event."""
-        return True
+        """Return True if this processor handles the given event type."""
+        ...

@@ -56,7 +56,7 @@ resources:
             source: .source // null
             inspectorUrl: .inspectorUrl // null
           relations:
-            project: .projectId // null
+            project: .__projectId // null
   - kind: domain
     selector:
       query: "true"

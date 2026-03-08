@@ -25,10 +25,9 @@ class DeploymentExporter(AbstractVercelExporter):
             async for deployments_batch in self.client.get_deployments(
                 project_id=project_id
             ):
-                # Ensure each deployment knows which project it belongs to
                 for deployment in deployments_batch:
-                    deployment.setdefault("name", project_name)
-                    deployment["projectId"] = project_id
+                    deployment["__projectId"] = project_id
+                    deployment["__projectName"] = project_name
 
                 logger.info(
                     f"Yielding {len(deployments_batch)} deployment(s) for project {project_name}"

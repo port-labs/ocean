@@ -8,7 +8,7 @@ registers the integration class with Ocean.
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import List, Literal, Optional
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -18,6 +18,10 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from pydantic import Field, validator
+
+VercelDeploymentState = Literal[
+    "BUILDING", "ERROR", "INITIALIZING", "QUEUED", "READY", "CANCELED"
+]
 
 
 class VercelSelector(Selector):
@@ -35,7 +39,7 @@ class VercelSelector(Selector):
               - ERROR
     """
 
-    deployment_states: Optional[List[str]] = Field(
+    deployment_states: Optional[List[VercelDeploymentState]] = Field(
         default=None,
         alias="deploymentStates",
         description=(
@@ -45,12 +49,12 @@ class VercelSelector(Selector):
         ),
     )
 
-    @validator("deployment_states", pre=True, always=True)
-    @classmethod
-    def upper_states(cls, v: Any) -> Any:
-        if isinstance(v, list):
-            return [s.upper() for s in v]
-        return v
+    @validator("deployment_states", pre=True)
+    def uppercase_states(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Uppercase all deployment states for consistency."""
+        if v is None:
+            return None
+        return [state.upper() for state in v]
 
 
 class VercelResourceConfig(ResourceConfig):
@@ -65,6 +69,7 @@ class VercelPortAppConfig(PortAppConfig):
     resources: List[VercelResourceConfig] = Field(default_factory=list)  # type: ignore[assignment]
 
 
+# Pydantic v1 requires this to resolve forward references in the resources field
 VercelPortAppConfig.update_forward_refs()
 
 

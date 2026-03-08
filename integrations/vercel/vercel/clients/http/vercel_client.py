@@ -14,7 +14,7 @@ import hmac
 import logging
 from typing import Any, AsyncGenerator
 
-import httpx
+from port_ocean.utils import http_async_client
 
 logger = logging.getLogger(__name__)
 
@@ -28,22 +28,13 @@ class VercelClient:
     def __init__(self, token: str, team_id: str | None = None) -> None:
         self.token = token
         self.team_id = team_id
-        self._client: httpx.AsyncClient | None = None
-
-    async def __aenter__(self) -> "VercelClient":
-        self._client = httpx.AsyncClient(
-            base_url=VERCEL_BASE_URL,
-            headers={
-                "Authorization": f"Bearer {self.token}",
+        self.client = http_async_client
+        self.client.headers.update(
+            {
+                "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
-            },
-            timeout=30.0,
+            }
         )
-        return self
-
-    async def __aexit__(self, *_: Any) -> None:
-        if self._client:
-            await self._client.aclose()
 
     def _team_params(self, extra: dict[str, Any] | None = None) -> dict[str, Any]:
         """Build query-param dict, injecting teamId when configured."""
@@ -55,9 +46,7 @@ class VercelClient:
         return params
 
     async def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
-        if self._client is None:
-            raise RuntimeError("Client not initialised — use as async context manager")
-        response = await self._client.get(path, params=params)
+        response = await self.client.get(f"{VERCEL_BASE_URL}{path}", params=params)
         response.raise_for_status()
         return response.json()
 
