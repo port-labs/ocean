@@ -53,7 +53,7 @@ async def test_post_integration_raw_data_default_operation(
         lakehouse_integration_client.client.post.assert_called_once()
         call_args = lakehouse_integration_client.client.post.call_args
 
-        expected_url = f"{TEST_INGEST_URL}/lakehouse/integration-type/github/integration/{TEST_INTEGRATION_IDENTIFIER}/sync/{sync_id}/kind/{kind}/items"
+        expected_url = f"{TEST_INGEST_URL}/lake/write/integration-type/github/integration/{TEST_INTEGRATION_IDENTIFIER}/sync/{sync_id}/kind/{kind}/items"
         assert call_args[0][0] == expected_url
 
         expected_json = call_args[1]["json"]
