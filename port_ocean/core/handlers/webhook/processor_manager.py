@@ -254,6 +254,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 )
                 if resource is not None:
                     webhook_event_raw_results.resource = resource
+                webhook_event_raw_results._webhook_event = processor.event
                 break
 
             except Exception as e:
