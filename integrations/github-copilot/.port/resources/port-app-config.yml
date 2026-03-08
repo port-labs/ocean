@@ -42,7 +42,6 @@ resources:
   - kind: copilot-organization-metrics
     selector:
       query: '.date != null'
-      useUsageMetrics: false
     port:
       entity:
         mappings:
@@ -81,7 +80,6 @@ resources:
   - kind: organization-usage-metrics
     selector:
       query: '.day != null'
-      useUsageMetrics: true
     port:
       entity:
         mappings:
