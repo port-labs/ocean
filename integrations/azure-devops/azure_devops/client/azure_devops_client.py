@@ -4,6 +4,7 @@ import functools
 import json
 import httpx
 from collections import defaultdict
+from itertools import batched
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
 from loguru import logger
@@ -63,6 +64,7 @@ MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
 MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
+MAX_SUBJECTS_PER_LOOKUP = 500
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -357,23 +359,48 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def _lookup_subjects(
         self, descriptors: list[str]
-    ) -> Optional[dict[str, dict[str, Any]]]:
+    ) -> dict[str, dict[str, Any]]:
         """Batch lookup subject details for multiple descriptors."""
-        lookup_url = (
-            self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/subjectlookup"
-        )
-        request_body = {"lookupKeys": [{"descriptor": d} for d in descriptors]}
+        all_results: dict[str, dict[str, Any]] = {}
+        total_batches = (
+            len(descriptors) + MAX_SUBJECTS_PER_LOOKUP - 1
+        ) // MAX_SUBJECTS_PER_LOOKUP
 
-        response = await self.send_request(
-            "POST",
-            lookup_url,
-            data=json.dumps(request_body),
-            headers={"Content-Type": "application/json"},
-            params={"api-version": "7.1-preview.1"},
+        logger.info(
+            f"Starting subject lookup for {len(descriptors)} descriptors across {total_batches} batch(es)"
         )
-        if not response:
-            return None
-        return response.json()["value"]
+
+        for batch_num, batch in enumerate(
+            batched(descriptors, MAX_SUBJECTS_PER_LOOKUP), start=1
+        ):
+            request_body = {"lookupKeys": [{"descriptor": d} for d in batch]}
+
+            try:
+                response = await self.send_request(
+                    "POST",
+                    self._format_service_url("vssps")
+                    + f"/{API_URL_PREFIX}/graph/subjectlookup",
+                    data=json.dumps(request_body),
+                    headers={"Content-Type": "application/json"},
+                    params={"api-version": "7.1-preview.1"},
+                )
+
+                if not response:
+                    logger.warning(
+                        f"No response received for subject lookup batch {batch_num} of {total_batches} (descriptors: {batch})"
+                    )
+                    continue
+                all_results.update(response.json()["value"])
+
+            except Exception as e:
+                logger.warning(
+                    f"Failed to look up subjects for batch {batch_num} of {total_batches} "
+                    f"(size: {len(batch)}). Descriptors: {batch}. Error: {e}"
+                )
+                continue
+
+        logger.info(f"Successfully looked up {len(all_results)} subjects")
+        return all_results
 
     async def generate_group_members(
         self,
@@ -400,19 +427,20 @@ class AzureDevopsClient(HTTPBaseClient):
                 ]
                 subject_details = await self._lookup_subjects(descriptors)
 
-                if not subject_details:
-                    logger.warning(
-                        f"Failed to lookup subject details for group '{group_descriptor}'"
+                members = []
+                for membership in memberships:
+                    member_descriptor = membership["memberDescriptor"]
+                    if member_descriptor not in subject_details:
+                        logger.debug(
+                            f"Subject details not found for member '{member_descriptor}' in group '{group_descriptor}'"
+                        )
+                        continue
+                    members.append(
+                        {
+                            **subject_details[member_descriptor],
+                            "__group": group,
+                        }
                     )
-                    continue
-
-                members = [
-                    {
-                        **subject_details[membership["memberDescriptor"]],
-                        "__group": group,
-                    }
-                    for membership in memberships
-                ]
 
                 logger.info(
                     f"Resolved {len(members)} direct members for group '{group_descriptor}'"
