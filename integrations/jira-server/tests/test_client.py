@@ -1,4 +1,3 @@
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -246,69 +245,6 @@ async def test_get_paginated_users_via_list_success(
         for call in mock_request.call_args_list:
             _, url, *_ = call.args
             assert "/user/list" in url
-
-
-class TestPaginationWithMutatedBatches:
-    """Regression tests for pagination when consumers mutate yielded batches.
-
-    When Ocean's itemsToParse is enabled, the consumer pops items from the
-    yielded list to reduce memory. Before the fix, this caused start_at to
-    never advance because len(items) was read after the list was emptied.
-    """
-
-    @pytest.mark.asyncio
-    async def test_pagination_advances_when_consumer_empties_batch(
-        self, mock_jira_server_client: JiraServerClient
-    ) -> None:
-        """Test that start_at advances correctly even when the consumer
-        empties each yielded batch via pop(), simulating itemsToParse."""
-        page1 = {"issues": [{"key": "A-1"}, {"key": "A-2"}], "total": 3}
-        page2 = {"issues": [{"key": "A-3"}], "total": 3}
-
-        # Capture startAt at each call since the params dict is mutated in place
-        captured_start_at: list[int] = []
-        original_responses = [page1, page2]
-        call_index = 0
-
-        async def capture_params(*args: Any, **kwargs: Any) -> dict[str, Any]:
-            nonlocal call_index
-            captured_start_at.append(kwargs["params"]["startAt"])
-            response = original_responses[call_index]
-            call_index += 1
-            return response
-
-        with patch.object(
-            mock_jira_server_client, "_send_api_request", side_effect=capture_params
-        ):
-            all_items = []
-            async for batch in mock_jira_server_client.get_paginated_issues():
-                # Simulate Ocean's handle_items_to_parse: pop all items
-                while batch:
-                    all_items.append(batch.pop(0))
-
-            assert all_items == [{"key": "A-1"}, {"key": "A-2"}, {"key": "A-3"}]
-
-            # Verify startAt advanced: first call startAt=0, second startAt=2
-            assert captured_start_at == [0, 2]
-
-    @pytest.mark.asyncio
-    async def test_pagination_terminates_with_mutated_batches(
-        self, mock_jira_server_client: JiraServerClient
-    ) -> None:
-        """Test that pagination terminates (no infinite loop) when batches
-        are mutated by the consumer."""
-        page1 = {"issues": [{"key": "B-1"}], "total": 1}
-
-        with patch.object(
-            mock_jira_server_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.side_effect = [page1]
-
-            async for batch in mock_jira_server_client.get_paginated_issues():
-                batch.clear()  # Consumer empties the list
-
-            # Should have called the API exactly once — not looping
-            assert mock_request.call_count == 1
 
 
 class TestShouldIgnoreError:

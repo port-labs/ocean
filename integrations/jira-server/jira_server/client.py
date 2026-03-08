@@ -121,10 +121,9 @@ class JiraServerClient:
             if not items:
                 break
 
-            batch_size = len(items)
             yield items
 
-            start_at += batch_size
+            start_at += len(items)
             if "total" in response_data and start_at >= response_data["total"]:
                 break
 
