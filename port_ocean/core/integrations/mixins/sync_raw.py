@@ -417,12 +417,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             for result in results:
                 if isinstance(result, dict):
                     raw_results.append(result)
-                    if lakehouse_data_enabled:
-                        await ocean.port_client.post_integration_raw_data(
-                            result, event.id, resource_config.kind
-                        )
                 else:
                     async_generators.append(result)
+
+            if lakehouse_data_enabled and raw_results:
+                await ocean.port_client.post_integration_raw_data(
+                    raw_results, event.id, resource_config.kind
+                )
 
             logger.info(
                 "Extract phase complete",
