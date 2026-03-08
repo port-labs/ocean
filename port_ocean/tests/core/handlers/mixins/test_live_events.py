@@ -495,12 +495,12 @@ async def test_sync_raw_results_both_upsert_and_delete(
     )
 
     # Setup mocks
-    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse = AsyncMock()  # type: ignore
-    mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse = AsyncMock()  # type: ignore[method-assign]
+    mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(  # type: ignore[method-assign]
         return_value=([entity], [entity_to_delete])
-    )  # type: ignore
-    mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
-    mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
+    )
+    mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore[method-assign]
+    mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore[method-assign]
 
     webhook_results = WebhookEventRawResults(
         updated_raw_results=[{"name": "repo-one"}],

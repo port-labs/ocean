@@ -183,9 +183,11 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
     from unittest.mock import MagicMock
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-    with patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean):
-        mock_ocean.port_client.post_integration_raw_data = AsyncMock()
-
+    mock_post = AsyncMock()
+    with (
+        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch.object(mock_ocean.port_client, "post_integration_raw_data", mock_post),
+    ):
         # Create webhook event
         webhook_event = MagicMock(spec=WebhookEvent)
         webhook_event.trace_id = "test-event-id"
@@ -204,7 +206,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
         )
 
         # Verify lakehouse API called with UPSERT and raw data
-        mock_ocean.port_client.post_integration_raw_data.assert_called_once_with(
+        mock_post.assert_called_once_with(
             raw_data,
             "test-event-id",
             "repository",
@@ -221,9 +223,11 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
     from unittest.mock import MagicMock
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-    with patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean):
-        mock_ocean.port_client.post_integration_raw_data = AsyncMock()
-
+    mock_post = AsyncMock()
+    with (
+        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch.object(mock_ocean.port_client, "post_integration_raw_data", mock_post),
+    ):
         # Create webhook event
         webhook_event = MagicMock(spec=WebhookEvent)
         webhook_event.trace_id = "test-event-id"
@@ -242,7 +246,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
         )
 
         # Verify lakehouse API called with DELETE and raw data
-        mock_ocean.port_client.post_integration_raw_data.assert_called_once_with(
+        mock_post.assert_called_once_with(
             raw_data,
             "test-event-id",
             "repository",
@@ -259,12 +263,11 @@ async def test_send_webhook_raw_data_to_lakehouse_api_failure(
     from unittest.mock import MagicMock
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-    with patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean):
-        # Mock API to raise exception
-        mock_ocean.port_client.post_integration_raw_data = AsyncMock(
-            side_effect=Exception("Lakehouse API error")
-        )
-
+    mock_post = AsyncMock(side_effect=Exception("Lakehouse API error"))
+    with (
+        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch.object(mock_ocean.port_client, "post_integration_raw_data", mock_post),
+    ):
         # Create webhook event
         webhook_event = MagicMock(spec=WebhookEvent)
         webhook_event.trace_id = "test-event-id"
@@ -282,7 +285,7 @@ async def test_send_webhook_raw_data_to_lakehouse_api_failure(
         )
 
         # Verify API was called but exception was caught
-        mock_ocean.port_client.post_integration_raw_data.assert_called_once()
+        mock_post.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -291,9 +294,11 @@ async def test_send_webhook_raw_data_to_lakehouse_empty_results(
     mock_ocean: Ocean,
 ) -> None:
     """Test that empty results don't call lakehouse API"""
-    with patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean):
-        mock_ocean.port_client.post_integration_raw_data = AsyncMock()
-
+    mock_post = AsyncMock()
+    with (
+        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch.object(mock_ocean.port_client, "post_integration_raw_data", mock_post),
+    ):
         webhook_results = WebhookEventRawResults(
             updated_raw_results=[],
             deleted_raw_results=[],
@@ -307,7 +312,7 @@ async def test_send_webhook_raw_data_to_lakehouse_empty_results(
         )
 
         # Verify lakehouse API not called when there's no data
-        mock_ocean.port_client.post_integration_raw_data.assert_not_called()
+        mock_post.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -319,9 +324,11 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
     from unittest.mock import MagicMock, call
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-    with patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean):
-        mock_ocean.port_client.post_integration_raw_data = AsyncMock()
-
+    mock_post = AsyncMock()
+    with (
+        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
+        patch.object(mock_ocean.port_client, "post_integration_raw_data", mock_post),
+    ):
         # Create webhook event
         webhook_event = MagicMock(spec=WebhookEvent)
         webhook_event.trace_id = "test-event-id"
@@ -341,8 +348,8 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
         )
 
         # Verify both UPSERT and DELETE calls were made
-        assert mock_ocean.port_client.post_integration_raw_data.call_count == 2
-        mock_ocean.port_client.post_integration_raw_data.assert_has_calls(
+        assert mock_post.call_count == 2
+        mock_post.assert_has_calls(
             [
                 call(
                     upsert_data,
