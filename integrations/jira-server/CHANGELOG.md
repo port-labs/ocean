@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.29-beta (2026-03-08)
 
 
-### Bug Fixes
+### Improvements
 
-- Resolved an infinite pagination loop that occurred when using `itemsToParse`.
+- Bumped ocean version to ^0.38.7
 
 
 ## 0.2.28-beta (2026-03-03)
