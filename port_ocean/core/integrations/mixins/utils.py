@@ -134,15 +134,17 @@ async def resync_function_wrapper(
         return validate_result(results)
 
 async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, items_to_parse: str | None = None) -> AsyncGenerator[list[dict[str, Any]], None]:
-    delete_target = extract_jq_deletion_path_revised(items_to_parse) or '.'
+    items_to_parse_expr = items_to_parse or "."
+    delete_target = extract_jq_deletion_path_revised(items_to_parse_expr) or '.'
     jq_expression = f". | del({delete_target})"
     batch_size = ocean.config.yield_items_to_parse_batch_size
 
     while len(result) > 0:
         item = result.pop(0)
         entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
-        items_to_parse_data =  await entity_processor._search(item, items_to_parse)
-        if event.resource_config.port.items_to_parse_top_level_transform:
+        items_to_parse_data = await entity_processor._search(item, items_to_parse_expr)
+        resource_config = event.resource_config
+        if resource_config is not None and resource_config.port.items_to_parse_top_level_transform:
             item = await entity_processor._search(item, jq_expression)
         if not isinstance(items_to_parse_data, list):
             logger.warning(
@@ -150,7 +152,7 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
                 f" Skipping..."
             )
             continue
-        batch = []
+        batch: list[dict[str, Any]] = []
         while len(items_to_parse_data) > 0:
             if (len(batch) >= batch_size):
                 yield batch
@@ -207,7 +209,7 @@ def unsupported_kind_response(
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
 
 class ProcessWrapper(multiprocessing.Process):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
     async def join_async(self) -> None:

@@ -80,6 +80,9 @@ class LiveEventsMixin(HandlerMixin):
         try:
             for webhook_event_raw_result in webhook_events_raw_result:
                 event_id = webhook_event_raw_result._webhook_trace_id
+                if not event_id:
+                    logger.warning("Skipping lakehouse send - no trace_id available")
+                    continue
                 kind = webhook_event_raw_result.resource.kind
 
                 if webhook_event_raw_result.updated_raw_results:

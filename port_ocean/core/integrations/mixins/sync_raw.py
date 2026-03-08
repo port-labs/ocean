@@ -32,6 +32,7 @@ from port_ocean.core.models import Entity, ProcessExecutionMode
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
+    RESYNC_EVENT_LISTENER,
     RawEntityDiff,
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,
@@ -98,8 +99,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     def _collect_resync_functions(
         self, resource_config: ResourceConfig
-    ) -> list[Callable[[str], Awaitable[RAW_RESULT]]]:
-        fns = [
+    ) -> list[RESYNC_EVENT_LISTENER]:
+        fns: list[RESYNC_EVENT_LISTENER] = [
             *self.event_strategy["resync"][resource_config.kind],
             *self.event_strategy["resync"][None],
         ]
@@ -111,11 +112,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     async def _execute_resync_tasks(
         self,
-        fns: list[Callable[[str], Awaitable[RAW_RESULT]]],
+        fns: list[RESYNC_EVENT_LISTENER],
         resource_config: ResourceConfig,
-    ) -> tuple[RESYNC_RESULT, list[RAW_RESULT | Exception]]:
-        tasks = []
-        results = []
+    ) -> tuple[RESYNC_RESULT, list[Exception]]:
+        tasks: list[Awaitable[RAW_RESULT]] = []
+        results: RESYNC_RESULT = []
         for task in fns:
             if inspect.isasyncgenfunction(task):
                 logger.info(
@@ -133,10 +134,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.info(
                     f"Found sync function for {resource_config.kind} name: {task.__qualname__}"
                 )
-                task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
+                fn = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
                 tasks.append(
                     resync_function_wrapper(
-                        task, resource_config.kind, resource_config.port.items_to_parse
+                        fn, resource_config.kind, resource_config.port.items_to_parse
                     )
                 )
 
@@ -144,12 +145,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             f"Found {len(tasks) + len(results)} resync tasks for {resource_config.kind}"
         )
         successful_results, errors = await gather_and_split_errors_from_results(tasks)
-        results.extend(
-            sum(
-                successful_results,
-                [],
-            )
-        )
+        for item in sum(successful_results, []):
+            results.append(item)
 
         logger.info(
             f"Triggered {len(tasks)} tasks for {resource_config.kind}, failed: {len(errors)}"
@@ -172,7 +169,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
 
-    def _construct_search_query_for_entities(self, entities: list[Entity]) -> dict:
+    def _construct_search_query_for_entities(self, entities: list[Entity]) -> dict[str, Any]:
         """Create a query to search for entities by their identifiers.
 
         Args:
@@ -223,7 +220,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         ) -> AsyncGenerator[list[Entity], None]:
             # fetch entities from port in batches
             logger.info(
-                f"Fetching entities from port in batches of for diff calculation, using non paginated api",
+                "Fetching entities from port in batches for diff calculation, using non paginated api",
                 batch_size=BATCH_SIZE,
             )
             for start_index in range(0, len(_entities), BATCH_SIZE):
@@ -247,8 +244,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return await ocean.port_client.search_entities(
             user_agent_type,
             parameters_to_include=["blueprint", "identifier"]
-            + (["title"] if resource.port.entity.mappings.title != None else [])
-            + (["team"] if resource.port.entity.mappings.team != None else [])
+            + (["title"] if resource.port.entity.mappings.title is not None else [])
+            + (["team"] if resource.port.entity.mappings.team is not None else [])
             + [
                 f"properties.{prop}"
                 for prop in resource.port.entity.mappings.properties
@@ -420,7 +417,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     raw_results.append(result)
                     if lakehouse_data_enabled:
                         await ocean.port_client.post_integration_raw_data(
-                            result, event.id, resource_config.kind
+                            [result], event.id, resource_config.kind
                         )
                 else:
                     async_generators.append(result)
@@ -561,7 +558,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if not resource_mappings:
             return []
 
-        diffs, errors, _, misconfigured_entity_keys = zip(
+        diffs_tuple, errors_tuple, _, _ = zip(
             *await asyncio.gather(
                 *(
                     self._register_resource_raw(
@@ -572,9 +569,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
 
-        diffs = list(diffs)
-        errors = sum(errors, [])
-        misconfigured_entity_keys = list(misconfigured_entity_keys)
+        diffs = list(diffs_tuple)
+        errors: list[Exception] = sum(errors_tuple, [])
 
         if errors:
             message = f"Failed to register {len(errors)} entities. Skipping delete phase due to incomplete state"
@@ -681,25 +677,27 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         with logger.contextualize(kind=kind):
             logger.info(f"Found {len(resource_mappings)} resources for {kind}")
 
-            entities_before, _ = zip(
-                await self._calculate_raw(
-                    [
-                        (mapping, raw_desired_state["before"])
-                        for mapping in resource_mappings
-                    ]
-                )
+            calculation_results_before = await self._calculate_raw(
+                [
+                    (mapping, raw_desired_state["before"])
+                    for mapping in resource_mappings
+                ]
             )
 
-            entities_after, after_errors = await self._calculate_raw(
+            calculation_results_after = await self._calculate_raw(
                 [(mapping, raw_desired_state["after"]) for mapping in resource_mappings]
             )
 
+            after_errors: list[Exception] = sum(
+                (calc_result.errors for calc_result in calculation_results_after), []
+            )
+
             entities_before_flatten: list[Entity] = sum(
-                (entities_diff.passed for entities_diff in entities_before), []
+                (calc_result.entity_selector_diff.passed for calc_result in calculation_results_before), []
             )
 
             entities_after_flatten: list[Entity] = sum(
-                (entities_diff.passed for entities_diff in entities_after), []
+                (calc_result.entity_selector_diff.passed for calc_result in calculation_results_after), []
             )
 
             if after_errors:
@@ -1114,7 +1112,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 f"{resource.kind}-{index}"
                 for index, resource in enumerate(app_config.resources)
             ]
-            blueprints = [
+            blueprints: list[str | None] = [
                 resource.port.entity.mappings.blueprint
                 for resource in app_config.resources
             ]
@@ -1165,7 +1163,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         await self.process_resource(resource, index, user_agent_type)
                     )
 
-            except asyncio.CancelledError as e:
+            except asyncio.CancelledError:
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )

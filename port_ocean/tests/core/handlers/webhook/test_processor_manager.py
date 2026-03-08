@@ -620,7 +620,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
     )
     # Mock lakehouse as disabled for integration tests
     monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.LiveEventsMixin._lakehouse_data_enabled",
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
         AsyncMock(return_value=False),
     )
     processed_events: list[WebhookEventRawResults] = []
@@ -995,7 +995,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
     )
     # Mock lakehouse as disabled for integration tests
     monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.LiveEventsMixin._lakehouse_data_enabled",
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
         AsyncMock(return_value=False),
     )
     processed_events: list[WebhookEventRawResults] = []
@@ -1189,7 +1189,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     )
     # Mock lakehouse as disabled for integration tests
     monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.LiveEventsMixin._lakehouse_data_enabled",
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
         AsyncMock(return_value=False),
     )
     processed_events: list[WebhookEventRawResults] = []
@@ -1327,7 +1327,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     )
     # Mock lakehouse as disabled for integration tests
     monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.LiveEventsMixin._lakehouse_data_enabled",
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
         AsyncMock(return_value=False),
     )
     processed_events: list[WebhookEventRawResults] = []
@@ -1468,7 +1468,7 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
     )
     # Mock lakehouse as disabled for integration tests
     monkeypatch.setattr(
-        "port_ocean.core.integrations.mixins.live_events.LiveEventsMixin._lakehouse_data_enabled",
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
         AsyncMock(return_value=False),
     )
     processed_events: list[WebhookEventRawResults] = []
