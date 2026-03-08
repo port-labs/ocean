@@ -1285,7 +1285,9 @@ class AzureDevopsClient(HTTPBaseClient):
             include_disabled_repositories=True
         ):
             if not repositories:
-                logger.warning("No repositories found. Skipping file discovery.")
+                logger.warning(
+                    "Skipping file discovery for project with no repositories."
+                )
                 continue
 
             filtered_repositories = (
