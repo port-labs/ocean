@@ -11,7 +11,6 @@ from tests.mocks import (
     copilot_metrics_response,
     mock_copilot_28_day_manifest_response,
     mock_copilot_schema_a_day_totals_wrapper,
-    mock_copilot_schema_c_raw_array_fallback,
 )
 
 BASE_URL = "https://api.github.com"
@@ -174,7 +173,7 @@ async def test_get_new_usage_metrics_returns_none_when_manifest_has_empty_links(
         "request",
         new=AsyncMock(return_value=empty_manifest_response),
     ):
-        result = await github_client.get_new_usage_metrics_for_organization(
+        result = await github_client.get_organization_usage_metrics(
             organizations_response[0]
         )
 
@@ -209,7 +208,7 @@ async def test_get_new_usage_metrics_returns_none_when_api_request_fails(
     with patch.object(
         github_client, "_send_api_request", new=AsyncMock(return_value=None)
     ):
-        result = await github_client.get_new_usage_metrics_for_organization(
+        result = await github_client.get_organization_usage_metrics(
             organizations_response[0]
         )
         assert result is None
@@ -234,7 +233,7 @@ async def test_get_new_usage_metrics_skips_unexpected_schema(
     )
 
     with patch.object(github_client._client, "request", new=request_mock):
-        result = await github_client.get_new_usage_metrics_for_organization(
+        result = await github_client.get_organization_usage_metrics(
             organizations_response[0]
         )
 
@@ -242,35 +241,30 @@ async def test_get_new_usage_metrics_skips_unexpected_schema(
 
 
 @pytest.mark.asyncio
-async def test_get_new_usage_metrics_parses_schema_a_and_schema_c_successfully(
+async def test_get_new_usage_metrics_successfully(
     github_client: GitHubClient,
 ) -> None:
     manifest_response = MagicMock()
     manifest_response.status_code = 200
     manifest_response.json.return_value = mock_copilot_28_day_manifest_response
 
-    part_1_response = MagicMock()
-    part_1_response.status_code = 200
-    part_1_response.json.return_value = mock_copilot_schema_a_day_totals_wrapper
-
-    part_2_response = MagicMock()
-    part_2_response.status_code = 200
-    part_2_response.json.return_value = mock_copilot_schema_c_raw_array_fallback
+    report_response = MagicMock()
+    report_response.status_code = 200
+    report_response.json.return_value = mock_copilot_schema_a_day_totals_wrapper
 
     request_mock = AsyncMock(
-        side_effect=[manifest_response, part_1_response, part_2_response]
+        side_effect=[manifest_response, report_response, report_response]
     )
 
     with patch.object(github_client._client, "request", new=request_mock):
-        result = await github_client.get_new_usage_metrics_for_organization(
+        result = await github_client.get_organization_usage_metrics(
             organizations_response[0]
         )
 
     assert result is not None
     assert len(result) == 2
 
-    first_item = result[0]
-    assert first_item["day"] == "2026-03-05"
-    assert first_item["daily_active_users"] == 42
-    assert first_item["code_generation_activity_count"] == 150
-    assert "copilot_ide_code_completions" not in first_item
+    first_record = result[0]
+    assert first_record["day"] == "2026-03-05"
+    assert first_record["daily_active_users"] == 42
+    assert "day_totals" not in first_record

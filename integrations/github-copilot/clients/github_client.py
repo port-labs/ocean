@@ -56,10 +56,10 @@ class GitHubClient:
             ],
         )
 
-    async def get_new_usage_metrics_for_organization(
+    async def get_organization_usage_metrics(
         self, organization: dict[str, Any]
     ) -> list[dict[str, Any]] | None:
-        """Fetches the manifest, downloads the signed URLs, and normalizes the data."""
+        "Fetches the 28-day usage manifest and downloads metrics from signed URLs."
         url = self._resolve_route_params(
             GithubEndpoints.COPILOT_ORGANIZATION_METRICS_28_DAY.value,
             {"org": organization["login"]},
@@ -83,33 +83,13 @@ class GitHubClient:
 
         for signed_url in download_links:
             report_data = await self._fetch_report_from_signed_url(signed_url)
-            if not report_data:
-                continue
 
-            records_to_process: list[dict[str, Any]] = []
-
-            match report_data:
-                case {"day_totals": day_totals} if isinstance(day_totals, list):
-                    # standard 28-day report schema
-                    records_to_process = day_totals
-
-                case _ if isinstance(report_data, list):
-                    # gitHub occasionally returns flat arrays directly
-                    records_to_process = report_data
-
-                case _:
-                    # unexpected schema - log and skip
-                    shape = (
-                        list(report_data.keys())
-                        if isinstance(report_data, dict)
-                        else type(report_data)
-                    )
-                    logger.warning(
-                        f"Unexpected structure from signed URL. Shape found: {shape}"
-                    )
-                    continue
-
-            results.extend(records_to_process)
+            if report_data and "day_totals" in report_data:
+                results.extend(report_data["day_totals"])
+            else:
+                logger.warning(
+                    f"Report data from signed URL {organization["login"]} is missing 'days_totals' key or is empty."
+                )
 
         return results or None
 

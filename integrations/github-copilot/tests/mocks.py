@@ -206,12 +206,3 @@ mock_copilot_schema_a_day_totals_wrapper = {
         }
     ],
 }
-
-mock_copilot_schema_c_raw_array_fallback = [
-    {
-        "org": "some-github-enterprise-corp",
-        "daily_active_users": 18,
-        "day": "2026-03-06",
-        "code_generation_activity_count": 80,
-    }
-]
