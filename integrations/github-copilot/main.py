@@ -71,6 +71,10 @@ async def on_resync_copilot_organization_metrics(
             organization_metrics = await strategy.fetch_metrics(
                 github_client, organization
             )
+
+            if not organization_metrics:
+                continue
+
             strategy._enrich_metrics_with_organization(
                 organization_metrics, organization
             )

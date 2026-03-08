@@ -10,7 +10,7 @@ class OrganizationMetricsStrategy(ABC):
     @abstractmethod
     async def fetch_metrics(
         self, github_client: "GitHubClient", organization: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, Any]] | None:
         pass
 
     def _enrich_metrics_with_organization(
@@ -24,7 +24,7 @@ class OrganizationMetricsStrategy(ABC):
 class LegacyMetricsStrategy(OrganizationMetricsStrategy):
     async def fetch_metrics(
         self, github_client: "GitHubClient", organization: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, Any]] | None:
         try:
             logger.warning(
                 f'Feature Flag disabled: Fetching metrics (using Legacy Metrics API) for organization {organization["login"]}.'
@@ -41,7 +41,9 @@ class LegacyMetricsStrategy(OrganizationMetricsStrategy):
 
 
 class NewUsageMetricsStrategy(OrganizationMetricsStrategy):
-    async def fetch_metrics(self, github_client, organization) -> list[dict[str, Any]]:
+    async def fetch_metrics(
+        self, github_client, organization
+    ) -> list[dict[str, Any]] | None:
         try:
             logger.info(
                 (
