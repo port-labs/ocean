@@ -3,6 +3,7 @@ from typing import cast, TYPE_CHECKING
 
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
+from clients.github_client import GitHubClient
 from integration import (
     CopilotOrganizationMetricsResourceConfig,
     OrganizationUsageMetricsResourceConfig,
@@ -50,20 +51,9 @@ async def on_resync_copilot_team_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TY
                     yield team_metrics
 
 
-@ocean.on_resync(ObjectKind.COPILOT_ORGANIZATION_METRICS)
-@ocean.on_resync(ObjectKind.ORGANIZATION_USAGE_METRICS)
-async def on_resync_copilot_organization_metrics(
-    kind: str,
+async def _resync_organization_metrics(
+    github_client: GitHubClient, use_new_api: bool
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    github_client = create_github_client()
-
-    selector = cast(
-        CopilotOrganizationMetricsResourceConfig
-        | OrganizationUsageMetricsResourceConfig,
-        event.resource_config,
-    ).selector
-    use_new_api = selector.use_usage_metrics
-
     strategy = get_metrics_strategy(use_new_api)
 
     async for organizations_batch in github_client.get_organizations():
@@ -78,12 +68,41 @@ async def on_resync_copilot_organization_metrics(
             strategy._enrich_metrics_with_organization(
                 organization_metrics, organization
             )
+
             for metrics in organization_metrics:
                 record_date = strategy._get_record_date_key(metrics)
                 logger.info(
                     f"Received metrics of day {record_date} for organization {organization['login']}"
                 )
             yield organization_metrics
+
+
+@ocean.on_resync(ObjectKind.COPILOT_ORGANIZATION_METRICS)
+async def on_resync_legacy_organization_metrics(
+    kind: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    github_client = create_github_client()
+    selector = cast(
+        CopilotOrganizationMetricsResourceConfig, event.resource_config
+    ).selector
+
+    async for batch in _resync_organization_metrics(
+        github_client, selector.use_usage_metrics
+    ):
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.ORGANIZATION_USAGE_METRICS)
+async def on_resync_new_organization_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    github_client = create_github_client()
+    selector = cast(
+        OrganizationUsageMetricsResourceConfig, event.resource_config
+    ).selector
+
+    async for batch in _resync_organization_metrics(
+        github_client, selector.use_usage_metrics
+    ):
+        yield batch
 
 
 @ocean.on_start()

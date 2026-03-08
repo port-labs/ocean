@@ -16,6 +16,9 @@ class OrganizationMetricsStrategy(ABC):
     def _enrich_metrics_with_organization(
         self, metrics: list[dict[str, Any]], organization: dict[str, Any]
     ) -> list[dict[str, Any]]:
+        if not metrics:
+            return []
+
         for metric in metrics:
             metric["__organization"] = organization
         return metrics
