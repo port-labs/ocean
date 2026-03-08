@@ -4,6 +4,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
+    ResourceConfig,
     Selector,
 )
 import copy
@@ -47,7 +48,7 @@ def mock_port_app_config() -> GithubPortAppConfig:
         delete_dependent_entities=True,
         create_missing_related_entities=False,
         resources=[
-            GithubPortAppConfig(
+            ResourceConfig(
                 kind=ObjectKind.USER,
                 selector=Selector(query="true"),
                 port=PortResourceConfig(
