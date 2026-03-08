@@ -7,13 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.7 (2026-03-08)
+
+### Improvements
+
+- Update post URL for lake in order to standartize them
+
 ## 0.38.6 (2026-03-03)
 
 ### Bug fixes
 
 - Fixed race condition between live events and resync reconciliation: entities created or updated by live events during a running resync are no longer incorrectly deleted. Reconciliation now fetches entities from Port with an `updatedAt` filter (not after resync start time) so only entities that existed before the resync are considered for deletion.
 - JQ entity processor sync (`jq_entity_processor_sync`): `_search` now uses `next(iter(it), None)` instead of `.first()` for robust iteration over jq results, and search failures are logged as warnings with structured fields (`pattern`, `error`) instead of full error logs.
-
 
 ## 0.38.5 (2026-03-03)
 
@@ -23,13 +28,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Consolidated `resource_kind` in both sync raw and entity processor log context.
 - Removed dead no-op `logger.contextualize` call in `_collect_resync_functions`
 
-
 ## 0.38.4 (2026-03-02)
 
 ### Improvements
 
 - Changed Saas integration to use single process.
-
 
 ## 0.38.3 (2026-03-01)
 
@@ -42,7 +45,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Handled SSRF and DNS rebinding attacks
-
 
 ## 0.38.1 (2026-02-26)
 
@@ -74,13 +76,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Fixed advanced config structure in ui schema generation
 
-
 ## 0.37.0 (2026-02-22)
 
 ### Improvements
 
 - Release workflow now uploads integration specs to versioned S3 paths (`integration/version/spec.json`) and uploads port-app-config and UI schemas to S3 per integration version (generated via `ocean port-app-config schema` in release)
-
 
 ## 0.36.1 (2026-02-18)
 
@@ -94,13 +94,11 @@ Fixed advanced config structure in ui schema generation
 
 - Added `port-app-config schema` and `port-app-config list-kinds` CLI commands to expose integration resource kinds and selectors, with schema validation ensuring kind uniqueness across the resources union
 
-
 ## 0.35.8 (2026-02-17)
 
 ### Bug fixes
 
 Add `ignore_retry_after_status_codes` to the retry configuration to force exponential backoff for specified status codes.
-
 
 ## 0.35.7 (2026-02-15)
 
@@ -126,13 +124,11 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 - Added support for workflow node runs in addition to action runs in ExecutionManager. Integrations can poll and execute both via unified run API.
 
-
 ## 0.35.5 (2026-02-12)
 
 ### Bug fixes
 
 - Fixed integration mapping not being initialized when integration already exists prior to ocean run
-
 
 ## 0.35.4 (2026-02-02)
 
@@ -140,13 +136,11 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 - Fixed mask_object mutating original data in place, which caused entity properties to contain [REDACTED] values when examples were sent before entity transformation.
 
-
 ## 0.35.3 (2026-02-02)
 
 ### Improvements
 
 - Save resources initialization state of integration
-
 
 ## 0.35.2 (2026-02-01)
 
@@ -154,13 +148,11 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 - Block integration initialization without version and support new pyproject.toml structure.
 
-
 ## 0.35.1 (2026-02-01)
 
 ### Improvements
 
 - Enhance sync metrics with installation type and execution mode
-
 
 ## 0.35.0 (2026-01-28)
 
@@ -168,13 +160,11 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 - Hardend dockerfile security
 
-
 ## 0.34.0 (2026-01-28)
 
 ### Improvements
 
 - Added an optional environment variable to allow adding prefix to the routes registered by for webhooks and metrics
-
 
 ## 0.33.1 (2026-01-27)
 
@@ -182,20 +172,17 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 - Start monitoring in each process seperatly.
 
-
 ## 0.33.0 (2026-01-27)
 
 ### Improvements
 
 - Allowing Empty setup mode which make integraion be created without any resources
 
-
 ## 0.32.17 (2026-01-25)
 
 ### Bug fixes
 
-- Fixed Bug: for kindIdentifier with index > 10 like  "name-12", kindIndex was 2 instead of 12 because only the last character was used. Parse the segment after the final "-" as the index (e.g. "name-12" → 12, "project-0" → 0).
-
+- Fixed Bug: for kindIdentifier with index > 10 like "name-12", kindIndex was 2 instead of 12 because only the last character was used. Parse the segment after the final "-" as the index (e.g. "name-12" → 12, "project-0" → 0).
 
 ## 0.32.16 (2026-01-21)
 
@@ -203,13 +190,11 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 - Fix retry sleep calculation for rate-limit reset headers by treating large numeric retry values as UNIX epoch timestamps and using response headers when computing retry delays.
 
-
 ## 0.32.15 (2026-01-21)
 
 ### Bug fixes
 
 - Handle webhook event not supported exception and log it as a warning
-
 
 ## 0.32.14 (2026-01-20)
 
@@ -217,13 +202,11 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 - Add export of system and request metrics
 
-
 ## 0.32.13 (2026-01-15)
 
 ### Bug fixes
 
 - Revert Add export of system and request metrics
-
 
 ## 0.32.12 (2026-01-15)
 
@@ -240,13 +223,11 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 - Add export of system and request metrics
 
-
 ## 0.32.11 (2026-01-14)
 
 ### Bug fixes
 
 - Added except clause to catch random errors
-
 
 ## 0.32.10 (2026-01-11)
 
@@ -254,20 +235,17 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 
 - Unset prometheous dir so db file wont be created.
 
-
 ## 0.32.9 (2025-12-24)
 
 ### Improvements
 
 - Added `BaseConfigChangeWebhookProcessor` base class for config change webhooks, exposing a `trigger_resync` hook that performs a full `ocean.sync_raw_all()` resync for the integration.
 
-
 ## 0.32.8 (2025-12-23)
 
 ### Bug fixes
 
 - Remove setup instruction for .env.example copying from CLI flow
-
 
 ## 0.32.7 (2025-12-22)
 
@@ -277,13 +255,11 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 - Update loop to accumulate batches over multiple objects.
 - Update jq processor sync to use cache that is local to it's process.
 
-
 ## 0.32.6 (2025-12-21)
 
 ### Bug fixes
 
 - Fix .env.example coockiecutter generation to conceal Port secrets
-
 
 ## 0.32.5 (2025-12-18)
 
@@ -293,22 +269,19 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 - Update delete diff to use maps for comparing.
 - When deleteing entities batch by 1k.
 
-
 ## 0.32.4 (2025-12-16)
 
 ### Bug fixes
 
 - Update the core to handle jq calculations without a loop, the search functions that need to be executed by the
   overwriten function will execute in the event loop.
- that we can merge them.
-
+  that we can merge them.
 
 ## 0.32.3 (2025-12-15)
 
 ### Bug fixes
 
 - Fixed an issue where starting with POLLING and changing to KAFKA event listener would cause the integration to not receive messages
-
 
 ## 0.32.2 (2025-12-14)
 
@@ -331,14 +304,12 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 - Add multiprocessing
 - Memory optimizations
 
-
 ## 0.31.7 (2025-12-09)
 
 ### Improvements
 
 - Added log on partial bulk upsert failures
 - Updated react & react-dom versions
-
 
 ## 0.31.6 (2025-12-09)
 
@@ -351,8 +322,8 @@ Add `ignore_retry_after_status_codes` to the retry configuration to force expone
 ### Improvements
 
 - Change the example sending logic, so instead of collecting the
-examples in a class after a successful transformation, always send the
-examples ahead of each JQ transformation
+  examples in a class after a successful transformation, always send the
+  examples ahead of each JQ transformation
 
 ## 0.31.4 (2025-12-08)
 
@@ -379,13 +350,11 @@ examples ahead of each JQ transformation
 
 - Fixed logger.exception() call in execution manager to properly capture exceptions without interfering with automatic exception capture
 
-
 ## 0.31.0 (2025-12-03)
 
 ### Improvements
 
 - Remove multi-threading from ocean core.
-
 
 ## 0.30.7 (2025-12-03)
 
@@ -403,10 +372,11 @@ examples ahead of each JQ transformation
 
 ### Bug Fixes
 
--  Fix delete target logic for complex items_to_parse jq expressions
--  Fix items_to_parse with yield_items_to_parse enabled item construction
+- Fix delete target logic for complex items_to_parse jq expressions
+- Fix items_to_parse with yield_items_to_parse enabled item construction
 
 ## 0.30.4 (2025-11-26)
+
 - Updated upsert (load) metrics to be calculated directly from response
 - Updated log on duplicate count
 
@@ -414,14 +384,13 @@ examples ahead of each JQ transformation
 
 ### Improvements
 
--  Add StreamingWrapper to core
+- Add StreamingWrapper to core
 
 ## 0.30.2 (2025-11-24)
 
 ### Improvements
 
 - Fixed NOT recreating blueprints if they exist under different name
-
 
 ## 0.30.1 (2025-11-23)
 
@@ -435,13 +404,11 @@ examples ahead of each JQ transformation
 
 - Expose actions processing capability without feature flag
 
-
 ## 0.29.10 (2025-11-20)
 
 ### Bug fixes
 
 - JQ expression classifier would classify mixed single item and all payload context expressions to run on all of the payload
-
 
 ## 0.29.9 (2025-11-20)
 
@@ -569,7 +536,6 @@ examples ahead of each JQ transformation
 - Convert Entity dictionary identifiers to consistent json representation
 - Fix buggy check in EntityMapping that always resolves to False
 
-
 ## 0.28.9 (2025-09-21)
 
 ### Bug Fixes
@@ -582,7 +548,6 @@ examples ahead of each JQ transformation
 
 - added extractionTimestamp to post_integration_raw_data
 
-
 ## 0.28.7 (2025-09-16)
 
 ### Improvements
@@ -593,16 +558,19 @@ examples ahead of each JQ transformation
 ## 0.28.6 (2025-09-16)
 
 ### Improvements
+
 - Add secrets to github ocean secrets
 
 ## 0.28.5 (2025-09-16)
 
 ### Bug Fixes
+
 - Fix user ocean permissions on `/etc/ssl/certs`
 
 ## 0.28.4 (2025-09-10)
 
 ### Bug Fixes
+
 - Using `spawn` startup method in the mutliprocessing module for windows machines that doesn't support `fork`
 
 ## 0.28.3 (2025-08-28)
@@ -665,12 +633,12 @@ examples ahead of each JQ transformation
 
 ## 0.27.5 (2024-08-13)
 
-
 ### Improvements
 
 - Bump fastapi to version 0.116.0 - fix Starlette has possible denial-of-service vector when parsing large files in multipart forms (< 0.47.2)
 
 ## 0.27.4 (2025-08-12)
+
 ### Bug Fixes
 
 - Fix kafka broker list for Terraform
@@ -706,9 +674,9 @@ Added automatic lock timeout mechanism to recover from frozen or hung workers
 Implemented context-based group tracking using ContextVar for cleaner worker-to-group association
 
 - Performance optimizations
-Configurable number of workers per webhook path (event_workers_count)
-Reduced contention by allowing concurrent processing of independent groups
-Improved resource cleanup and state management after processing
+  Configurable number of workers per webhook path (event_workers_count)
+  Reduced contention by allowing concurrent processing of independent groups
+  Improved resource cleanup and state management after processing
 
 ## 0.26.3 (2025-08-04)
 
@@ -752,7 +720,6 @@ Improved resource cleanup and state management after processing
 
 - Fixed dockerfile's ocean user argument position to be under the last FROM
 
-
 ## 0.25.2 (2025-07-13)
 
 ### Improvements
@@ -776,11 +743,13 @@ Improved resource cleanup and state management after processing
 ## 0.24.22 (2025-07-02)
 
 ### Bug Fixes
+
 - Fix trailing slash issue
 
 ## 0.24.21 (2025-06-30)
 
 ### Bug Fixes
+
 - Fixed url in PUT metrics route
 
 ## 0.24.20 (2025-06-26)
@@ -792,103 +761,123 @@ Improved resource cleanup and state management after processing
 ## 0.24.19 (2025-06-25)
 
 ### Bug Fixes
+
 - Fixed issue with resync function not retuning the success value
 
 ## 0.24.18 (2025-06-23)
 
 ### Bug Fixes
+
 - Fixed issue with upserts when there are entities with different blueprints in the same batch from live events
 
 ## 0.24.17 (2025-06-23)
 
 ### Bug Fixes
+
 - Update cache folder to be in /tmp.
 - Use root user in smoke test.
 
 ## 0.24.16 (2025-06-22)
 
 ### Improvements
+
 - Add ocean user to docker file.
 
 ## 0.24.15 (2025-06-22)
 
 ### Bug Fixes
+
 - Fixed metrics tracking for raw data processing.
 
 ## 0.24.14 (2025-06-22)
 
 ### Improvements
+
 - Reduce bulk upserts concurrency.
 
 ## 0.24.13 (2025-06-22)
 
 ### Improvements
+
 - Reduce bulk upserts concurrency.
 
 ## 0.24.12 (2025-06-19)
 
 ### Improvements
+
 - Update packages.
 
 ## 0.24.11 (2025-06-16)
 
 ### Bug Fixes
+
 - Prevented unhandled exception when webhook event is received for resource types not present in mapping but can be handled by processors.
 
 ## 0.24.10 (2025-06-15)
 
 ### Bug Fixes
+
 - Fixed overwriting syncing state metrics reporting during resource processing
 
 ## 0.24.9 (2025-06-15)
 
 ### Improvements
+
 - Added support for mapping icons as part of ocean integration mappings.
 
 ## 0.24.8 (2025-06-11)
 
 ### Bug Fixes
+
 - Fixed missing syncing state metrics reporting during resource processing
 
 ## 0.24.7 (2025-06-11)
 
 ### Bug Fixes
+
 - Update is oauth enabled condition to check if a path to oauth token is set.
 - Update requests.
 
 ## 0.24.6 (2025-06-09)
 
 ### Improvements
+
 - Added a check to not start upserting / deleting if we have 0 entities to update / delete.
 
 ## 0.24.5 (2025-06-09)
 
 ### Improvements
+
 - Made on_start tasks start regardless of the Uvicorn server startup.
 
 ## 0.24.4 (2025-06-08)
 
 ### Improvements
+
 - Refined error phase metrics for resource registration and resync.
 
 ## 0.24.3 (2025-06-08)
 
 ### Improvements
+
 - Using Port bulk upserts api in resyncs in all Ocean.
 
 ## 0.24.2 (2025-06-04)
 
 ### Improvements
+
 - Set process_execution_mode default to multi_process.
 
 ## 0.24.1 (2025-06-03)
 
 ### Improvements
+
 - Using Port bulk upserts api in resyncs in Ocean SaaS
 
 ## 0.24.0 (2025-06-03)
 
 ### Improvements
+
 - Experimental - using Port bulk upserts api in resyncs
 
 ## 0.23.5 (2025-06-01)
@@ -903,6 +892,7 @@ Improved resource cleanup and state management after processing
 ## 0.23.4 (2025-05-29)
 
 ### Improvements
+
 - Fixed metrics urls and added reconciliation kind to report
 
 ## 0.23.3 (2025-05-28)
@@ -912,71 +902,79 @@ Improved resource cleanup and state management after processing
 - Asyncio lock error in subprocess's http request.
 - PROMETHEUS_MULTIPROC_DIR default missing.
 
-
 ## 0.23.2 (2025-05-28)
 
 ### Improvements
 
 - Replaced based image to use echo images in order to reduce vulnerability exposure
 
-
 ## 0.23.1 (2025-05-27)
 
 ### Bug Fixes
+
 - Event loop is blocked by waiting for a process.
 
 ## 0.23.0 (2025-05-27)
 
 ### Features
-- Add Multiprocessing mode to ocean accessible via the OCEAN__PROCESS_EXECUTION_MODE env variable with possible values - multi_process/single_process.
-- Add caching to ocean that is saved on disk or memory accessible via OCEAN__CACHING_STORAGE_MODE env variable with possible values - disk/memory.
+
+- Add Multiprocessing mode to ocean accessible via the OCEAN\_\_PROCESS_EXECUTION_MODE env variable with possible values - multi_process/single_process.
+- Add caching to ocean that is saved on disk or memory accessible via OCEAN\_\_CACHING_STORAGE_MODE env variable with possible values - disk/memory.
 - Add support for multiprocessing to prometheus accessible via the PROMETHEUS_MULTIPROC_DIR env variable.
 
 ## 0.22.12 (2025-05-26)
 
 ### Improvements
+
 - Enhanced logs on integration initialization
 
 ## 0.22.11 (2025-05-25)
 
 ### Improvements
+
 - Enhanced metrics reporting by implementing direct integration with Port's metrics endpoint for improved monitoring and observability
 
 ## 0.22.10 (2025-05-20)
 
 ### Improvements
+
 - Fix Dependabot vulnerabilities
 
 ## 0.22.9 (2025-05-18)
 
 ### Improvements
+
 - Enhanced Ocean metrics event structure for better data organization and analysis
 - Expanded metrics collection points to provide more comprehensive monitoring capabilities
 
 ## 0.22.8 (2025-05-15)
 
 ### Improvements
+
 - Enhanced error logging by including trace IDs for server errors
 
 ## 0.22.7 (2025-05-12)
 
 ### Bug Fixes
+
 - Fixed case where new installation of an integration resulted with errors on installing a package
 
 ## 0.22.6 (2025-05-06)
 
 ### Improvements
-- Display a validation error if the mapping is not configured correctly.
 
+- Display a validation error if the mapping is not configured correctly.
 
 ## 0.22.5 (2025-04-27)
 
 ### Bug Fixes
+
 -Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
 
 ## 0.22.4 (2025-04-15)
 
 ### Features
+
 -Refactored logger setup to generate unique instance IDs.
 -Renamed try_get_hostname to resolve_hostname for clarity.
 -Removed redundant instance parameter from setup_logger.
@@ -984,6 +982,7 @@ Improved resource cleanup and state management after processing
 ## 0.22.3 (2025-04-15)
 
 ### Features
+
 - Added inctance and hostname to logger configuration.
 - Updated setup_logger function to include inctance.
 - Generated unique inctance in run function.
@@ -1040,7 +1039,7 @@ Improved resource cleanup and state management after processing
 
 ### Bug Fixes
 
-- fixed wrong integration version showing in UI and API by moving the check of OCEAN__INITIALIZE_PORT_RESOURCES=false to after the patch
+- fixed wrong integration version showing in UI and API by moving the check of OCEAN\_\_INITIALIZE_PORT_RESOURCES=false to after the patch
 
 ## 0.21.0 (2025-03-01)
 
@@ -1056,12 +1055,11 @@ Improved resource cleanup and state management after processing
 ## 0.20.4 (2025-02-25)
 
 ### Bug Fixes
+
 - Converted should_process_event and get_matching_kinds methods to async.
 - Enhanced error handling to process successful results even if some processors fail.
 - Updated tests to validate async methods and error handling improvements.
 - Added a new integration test for webhook processing with mixed processor outcomes.
-
-
 
 ## 0.20.3 (2025-02-24)
 
@@ -1188,7 +1186,6 @@ Improved resource cleanup and state management after processing
 
 - Fixed vulnerability in the jinja package that is resolved by updating to 3.1.5
 
-
 ## 0.17.7 (2025-01-08)
 
 ### Bug Fixes
@@ -1205,17 +1202,13 @@ Improved resource cleanup and state management after processing
 
 - Fixed a bug where the `unregister_raw` and `register_raw` were not handling right the errors and misconfigured entity keys
 
-
 ## 0.17.5 (2025-01-07)
-
 
 ### Bug Fixes
 
 - Explicit poetry version due to major version (2.0.0) breaking the CI
 
-
 ## 0.17.4 (2024-12-31)
-
 
 ### Bug Fixes
 
@@ -1224,7 +1217,6 @@ Improved resource cleanup and state management after processing
 
 ## 0.17.3 (2024-12-31)
 
-
 ### Bug Fixes
 
 - Added support for empty values for JQ mapping logs
@@ -1232,27 +1224,21 @@ Improved resource cleanup and state management after processing
 
 ## 0.17.2 (2024-12-31)
 
-
 ### Bug Fixes
 
 - Fixed lint failures
 
-
 ## 0.17.1 (2024-12-31)
-
 
 ### Bug Fixes
 
 - Fixed lint failure for resources that have two `on_resync` decorators
 
-
 ## 0.17.0 (2024-12-31)
-
 
 ### Features
 
 - Added new webhooks only event listener mode. This event listener handles only webhook invocations and raises error once used for resync.
-
 
 ## 0.16.1 (2024-12-25)
 
@@ -1260,9 +1246,7 @@ Improved resource cleanup and state management after processing
 
 - Added new info log for JQ mapping per batch to notify of misconfigured JQ mappings between a property and the JQ target
 
-
 ## 0.16.0 (2024-12-24)
-
 
 ### Improvements
 
@@ -1275,13 +1259,11 @@ Improved resource cleanup and state management after processing
 - When experiencing cyclic error on topological sort try unsorted upsert of the entities
 - Fix topologicals sort tree creation so an entity cannot be its own dependency
 
-
 ## 0.15.3 (2024-12-22)
 
 ### Bug Fixes
 
 - Extended `Ocean new` cli command to fill out more information for the user and also fixed wrong output
-
 
 ## 0.15.2 (2024-12-15)
 
@@ -1289,13 +1271,11 @@ Improved resource cleanup and state management after processing
 
 - Add handling for different installation types compatibility
 
-
 ## 0.15.1 (2024-12-15)
 
 ### Bug Fixes
 
 - Changed `SaasOauth` runtime to `SaasOauth2`
-
 
 ## 0.15.0 (2024-12-12)
 
@@ -1303,9 +1283,7 @@ Improved resource cleanup and state management after processing
 
 - Added `SaasOauth` runtime support
 
-
 ## 0.14.7 (2024-12-09)
-
 
 ### Bug Fixes
 
@@ -1314,9 +1292,7 @@ Improved resource cleanup and state management after processing
 - Set upsert entenies as retryable.
 - Update the condition upon which the JWT token is refreshed so it will refresh on expiration instead of only after.
 
-
 ## 0.14.6 (2024-12-04)
-
 
 ### Improvements
 
@@ -1324,22 +1300,17 @@ Improved resource cleanup and state management after processing
 
 ## 0.14.5 (2024-12-03)
 
-
 ### Improvements
 
 - Add performance test framework
 
-
 ## 0.14.4 (2024-12-03)
-
 
 ### Bug Fixes
 
 - Add try/except block on httpx transport of ocean client to log timeouts and other exceptions (Client timeouts not recorded)
 
-
 ## 0.14.3 (2024-11-25)
-
 
 ### Improvements
 
@@ -1347,45 +1318,35 @@ Improved resource cleanup and state management after processing
 
 ## 0.14.2 (2024-11-24)
 
-
 ### Bug Fixes
 
 - Fix ocean new.
 
 ## 0.14.1 (2024-11-13)
 
-
 ### Improvements
 
 - Added a decorator to help with caching results from coroutines.
 
-
 ## 0.14.0 (2024-11-12)
-
 
 ### Improvements
 
 - Add support for choosing default resources that the integration will create dynamically
 
-
 ## 0.13.1 (2024-11-12)
-
 
 ### Bug Fixes
 
 - Fix memory leak due to repetitive registration of FastAPI routes
 
-
 ## 0.13.0 (2024-11-10)
-
 
 ### Improvements
 
 - Bump python from 3.11 to 3.12 (0.13.0)
 
-
 ## 0.12.9 (2024-11-07)
-
 
 ### Bug Fixes
 
@@ -1393,9 +1354,7 @@ Improved resource cleanup and state management after processing
 - Await logger thread on exit (Integration logs not being ingested)
 - Serialize exception (Integration logs not being ingested)
 
-
 ## 0.12.8 (2024-11-04)
-
 
 ### Improvements
 
@@ -1403,27 +1362,21 @@ Improved resource cleanup and state management after processing
 
 ## 0.12.7 (2024-10-23)
 
-
 ### Bug Fixes
 
 - Fixed get_integration_ocean_app test fixture configuration injection (0.12.7)
 
-
 ## 0.12.6 (2024-10-20)
-
 
 ### Bug Fixes
 
 - Fixed get_integration_resource_config assumption for port-app-config files to be of .yaml extension only (0.12.6)
 
-
 ## 0.12.5 (2024-10-21)
-
 
 ### Bug Fixes
 
 - Fixed get_integration_resource_config assumption for port-app-config files to be of .yml extension only (0.12.5)
-
 
 ## 0.12.3 (2024-10-09)
 
@@ -1431,13 +1384,11 @@ Improved resource cleanup and state management after processing
 
 - Updated docker base image to improve security vulnerabilities
 
-
 ## 0.12.2 (2024-10-06)
 
 ### Improvements
 
 - Added a util `semaphore_async_iterator` to enable seamless control over concurrent executions.
-
 
 ## 0.12.1 (2024-10-02)
 
@@ -1484,13 +1435,11 @@ Improved resource cleanup and state management after processing
 
 - Added fix lint command to the makefile as well as the pre-commit hook
 
-
 ## 0.10.9 (2024-09-05)
 
 ### Bug Fixes
 
 - Replaced StopAsyncIteration with a return statement to ignore prevent errors in cases where empty tasks are sent to the stream_async_iterators_tasks function
-
 
 ## 0.10.8 (2024-09-04)
 
@@ -1499,13 +1448,11 @@ Improved resource cleanup and state management after processing
 - Avoid raising exception when receiving ReadTimeout on batch upsert entities
 - Increased both internal port client and third party client timeout to handle long requests
 
-
 ## 0.10.7 (2024-08-28)
 
 ### Improvements
 
 - Add search identifier support (Allow to run a search query to find the identifier of the entity as part of the mapping)
-
 
 ## 0.10.6 (2024-08-31)
 
@@ -1513,13 +1460,11 @@ Improved resource cleanup and state management after processing
 
 - Fixed error log when looking for existence of integration on initialization
 
-
 ## 0.10.5 (2024-08-27)
 
 ### Improvements
 
 - Test support and helpers
-
 
 ## 0.10.4 (2024-08-28)
 
@@ -1527,13 +1472,11 @@ Improved resource cleanup and state management after processing
 
 - Fixed upsert entity failure when saving modified data for search relations calculations
 
-
 ## 0.10.3 (2024-08-28)
 
 ### Bug Fixes
 
 - Bugfix Semaphores get fail when moving to the next scheduled resync when syncing a large number of entities, using a single event loop for all threads
-
 
 ## 0.10.2 (2024-08-26)
 
@@ -1541,13 +1484,11 @@ Improved resource cleanup and state management after processing
 
 - Reverted last bugfix
 
-
 ## 0.10.1 (2024-08-26)
 
 ### Bug Fixes
 
 - Fixed unhashable type: 'dict' error when trying to delete entities with search identifier/relations
-
 
 ## 0.10.0 (2024-08-19)
 
@@ -1556,13 +1497,11 @@ Improved resource cleanup and state management after processing
 - Add support for reporting the integration resync state to expose more information about the integration state in the portal
 - Fix kafka listener never ending resync loop due to resyncState updates
 
-
 ## 0.9.14 (2024-08-19)
 
 ### Bug Fixes
 
 - Fixed an issue causing the cli to fail in a directory with no pyproject.toml in it
-
 
 ## 0.9.13 (2024-08-13)
 
@@ -1570,16 +1509,13 @@ Improved resource cleanup and state management after processing
 
 - Changed action CREATE route to use new v2 option
 
-
 ## 0.9.12 (2024-08-06)
 
 ### Bug Fixes
 
 - Fixed resync issue when calculating the diff of entities failed due to search identifier in relation mapping
 
-
 ## 0.9.11 (2024-08-05)
-
 
 ### Bug Fixes
 
@@ -1587,30 +1523,23 @@ Improved resource cleanup and state management after processing
 
 ## 0.9.10 (2024-08-04)
 
-
 ### Bug Fixes
 
 - Fixed & Aligned scaffolding files
 
-
 ## 0.9.9 (2024-08-04)
-
 
 ### Bug Fixes
 
-- Fixed an issue where passing an object for OCEAN__INTEGRATION__CONFIG that holds an object might not be parsed correctly and cause validation error for invalid type (#1)
-
+- Fixed an issue where passing an object for OCEAN**INTEGRATION**CONFIG that holds an object might not be parsed correctly and cause validation error for invalid type (#1)
 
 ## 0.9.8 (2024-08-01)
-
 
 ### Bug Fixes
 
 - Fixed an issue where a `ValueError` was raised in `unregister_raw` method due to incorrect unpacking of results from asyncio.gather. The fix involved using zip to properly handle the output and ensure both entities and errors are processed correctly.
 
-
 ## 0.9.7 (2024-07-31)
-
 
 ### Bug Fixes
 
@@ -1618,33 +1547,25 @@ Improved resource cleanup and state management after processing
 - Add python-dateutil to the core dependencies
 - Fix misspelling in the `bump-all.sh` script
 
-
 ## 0.9.6 (2024-07-30)
-
 
 ### Bug Fixes
 
 - Flush all remaining buffered logs when exiting application
 
-
 ## 0.9.5 (2024-07-23)
-
 
 ### Bug Fixes
 
-- Initialize missing _port_app_config
-
+- Initialize missing \_port_app_config
 
 ## 0.9.4 (2024-07-09)
-
 
 ### Bug Fixes
 
 - Handle non existing config mapping for cases where the integration was created by SAAS and the config mapping was not set
 
-
 ## 0.9.3 (2024-07-08)
-
 
 ### Improvements
 
@@ -1652,7 +1573,6 @@ Improved resource cleanup and state management after processing
 - Added log for when receiving invalid port app config mapping
 
 ## 0.9.2 (2024-07-05)
-
 
 ### Improvements
 
@@ -1663,82 +1583,62 @@ Improved resource cleanup and state management after processing
 
 - Fixed an issue where raw results were not being sent if raw data didn't map to any entity
 
-
 ## 0.9.1 (2024-06-23)
-
 
 ### Bug Fixes
 
 - Safely get changelogDestination key instead of accessing it directly
 
-
 ## 0.9.0 (2024-06-19)
-
 
 ### Features
 
 - Added validation of whether the integration can run in the desired runtime
 
-
 ## 0.8.0 (2024-06-16)
-
 
 ### Improvements
 
 - Add search relation support (Allow to to run a search query to find the relation to the entity as part of the mapping)
 
-
 ## 0.7.1 (2024-06-13)
-
 
 ### Bug Fixes
 
 - Fixed values unpack error in register_raw
 
-
 ## 0.7.0 (2024-06-13)
-
 
 ### Improvements
 
 - Added pydantic's dotenv extra to the core dependencies for reading .env files on the integration startup
 - Added .python-version to the repository for easier setup with pyenv install
 
-
 ## 0.6.0 (2024-06-10)
-
 
 ### Improvements
 
 - Changed initialization to always apply default mapping if no other mapping is configured
 
-
 ## 0.5.27 (2024-06-05)
-
 
 ### Bug Fixes
 
 - Fixed incorrect pydantic validation over the integration settings
 
-
 ## 0.5.26 (2024-06-04)
-
 
 ### Bug Fixes
 
 - Fixed an issue causing integrations with no configuration to fail during the initialization process
 
-
 ## 0.5.25 (2024-06-03)
-
 
 ### Bug Fixes
 
 - Fixed faulty error handling caused by gather_and_split_errors_from_results raising errors that are not directly under BaseException (#1)
 
-
 ## 0.5.24 (2024-06-02)
-
 
 ### Improvements
 
@@ -1749,9 +1649,7 @@ Improved resource cleanup and state management after processing
 
 - Fixed unhandled exceptions caused by the entity parsing, resulting in the integration freezing (#1)
 
-
 ## 0.5.23 (2024-05-30)
-
 
 ### Improvements
 
@@ -1759,22 +1657,17 @@ Improved resource cleanup and state management after processing
 
 ## 0.5.22 (2024-05-29)
 
-
 ### Bug Fixes
 
 - Fixed an issue in `send_raw_data_examples` when there are slashes in integration kind
 
-
 ## 0.5.21 (2024-05-26)
-
 
 ### Features
 
 - Added `send_raw_data_examples` integration config to allow sending raw data examples from the third party API to port (on resync), for testing and managing the integration mapping
 
-
 ## 0.5.20 (2024-05-26)
-
 
 ### Improvements
 
@@ -1787,52 +1680,38 @@ Improved resource cleanup and state management after processing
 - Fixed the FastAPI server staying stale after shutdown by using the FastAPI lifespan feature for handling shutdown signals, preventing override of the shutdown process.
 - Fixed issue with integration continuing to run after shutdown by canceling the resync async generator task.
 
-
 ## 0.5.19 (2024-05-16)
-
 
 ### Improvements
 
 - Added caching to port-app-config.yml retrieval from port api (only for live events)
 
-
 ## 0.5.18 (2024-05-12)
-
 
 ### Improvements
 
 - Added a util function that allows to run multiple asynchronous tasks in a bounded way to prevent overload and memory issues
 - Use that utility when calculating JQ mapping for raw entities
 
-
-
 ## 0.5.17 (2024-05-01)
-
 
 ### Bug Fixes
 
 - Fixed an issue in creating a child event context from the parent context by removing an unnecessary line of code
 
-
-
 ## 0.5.16 (2024-05-01)
-
 
 ### Features
 
 - Allowing override of parent event context in ocean's event context manager
 
-
 ## 0.5.15 (2024-04-30)
-
 
 ### Bug Fixes
 
 - Fixed error in `register_raw` when there's no relevant mappings for a specific kind
 
-
 ## 0.5.14 (2024-04-24)
-
 
 ### Improvements
 
@@ -1841,22 +1720,17 @@ Improved resource cleanup and state management after processing
 
 ## 0.5.13 (2024-04-17)
 
-
 ### Features
 
 - Delete entities that doesn't passed the selector on real time events
 
-
 ## 0.5.12 (2024-04-12)
-
 
 ### Features
 
 - Added a util function that allows to iterate over a list of async iterators and stream the results of each iterator as they are available
 
-
 ## 0.5.11 (2024-04-11)
-
 
 ### Improvements
 
@@ -1867,9 +1741,7 @@ Improved resource cleanup and state management after processing
 
 - Added a way to enable request retries for any request even if its request method is not part of the retryable methods
 
-
 ## 0.5.10 (2024-04-10)
-
 
 ### Bug Fixes
 
@@ -1879,73 +1751,55 @@ Improved resource cleanup and state management after processing
 
 - Added integration version label to docker
 
-
 ## 0.5.9 (2024-03-30)
-
 
 ### Bug Fixes
 
 - Fixed a bug where every time after the first token expiration, the framework didn't actually marked that the token got refreshed, causing the token to be refreshed every time when a request is made to Port. (#1)
 
-
 ## 0.5.8 (2024-03-27)
-
 
 ### Bug Fixes
 
 - Fixed a bug in loguru which fails to deserialize an exceptions (#1)
 
-
 ## 0.5.7 (2024-03-20)
-
 
 ### Features
 
 - Added the ability to map entities from raw array attributes by introducing `itemsToParse` key in the mapping configuration
 
-
 ## 0.5.6 (2024-03-17)
-
 
 ### Features
 
 - Added array to possible integration configuration types (PORT-7262)
 
-
 ## 0.5.5 (2024-03-06)
-
 
 ### Bug Fixes
 
 - Changed caching to detect changes in params of function (#1)
 
-
 ## 0.5.4 (2024-03-03)
-
 
 ### Bug Fixes
 
 - Fixed an issue where a failure in the entity processing step might fail the whole resync (#1)
 
-
 ## 0.5.3 (2024-03-03)
-
 
 ### Improvements
 
 - Cahnged the JQ Entity processor to work with async callss to allow better parallelism and async work (#1)
 
-
 ## 0.5.2 (2024-02-21)
-
 
 ### Bug Fixes
 
 - Fixed an issue causing the integration to crash when passing a sensitive configuration with invalid regex characters due to a missing escaping (PORT-6836)
 
-
 ## 0.5.1 (2024-02-20)
-
 
 ### Features
 
@@ -1960,9 +1814,7 @@ Improved resource cleanup and state management after processing
 
 - Fixed an issue causing all the character to be redacted when passing empty string to a sensitive field
 
-
 ## 0.5.0 (2024-02-18)
-
 
 ### Features
 
@@ -1979,42 +1831,32 @@ Improved resource cleanup and state management after processing
 - Fixed an issue where the event listener was causing the application to continue running even after receiving a termination signal. (#1)
 - Fixed a bug that caused some termination signal handlers to not work by consolidating the signal listeners in a single class, as signals can only have one listener. (#2)
 
-
 ## 0.4.17 (2024-01-23)
-
 
 ### Features
 
 - Added sonarcloud files for public integration scaffolding (PORT-6181)
 - Replaced the `remove-docker` option from the `ocean new` cli with `private` & `public` flags (PORT-6181)
 
-
 ## 0.4.16 (2024-01-11)
-
 
 ### Improvements
 
 - Increased the default timeout for requests to 3rd party targets to 30 seconds, and made it configurable (PORT-6074)
 
-
 ## 0.4.15 (2024-01-07)
-
 
 ### Bug Fixes
 
 - Fixed issue causing app config with no team mapping to fail due the core using None when not set (PORT-5938)
 
-
 ## 0.4.14 (2024-01-07)
-
 
 ### Bug Fixes
 
 - Fixed missing team parameter in the port app config model (PORT-5938)
 
-
 ## 0.4.13 (2023-12-31)
-
 
 ### Features
 
@@ -2027,23 +1869,18 @@ Improved resource cleanup and state management after processing
 
 ## 0.4.12 (2023-12-22)
 
-
 ### Bug Fixes
 
 - Fixed `ocean new` scaffolding error `'collections.OrderedDict object' has no attribute 'public_integration'` (PORT-5728)
 
-
 ## 0.4.11 (2023-12-21)
-
 
 ### Improvements
 
 - Added handling for aggregation properties when initializing the integration, so it will patch the aggregation properties after creating the relations (PORT-5717)
 - Changed entity property in the `portResourceConfig` to be required instead of optional, as we don't support creation of blueprints as part of the app config (PORT-4549)
 
-
 ## 0.4.10 (2023-12-21)
-
 
 ### Improvements
 
@@ -2054,25 +1891,19 @@ Improved resource cleanup and state management after processing
 
 - Changed the way we upsert and delete bulk of entities from the catalog to be batched rather than spawning all requests at once
 
-
 ## 0.4.9 (2023-12-19)
-
 
 ### Improvements
 
 - Added a way to create the integration without the Dockerfile and .dockerignore to use the global Docker files when scaffolding a new integration.
 
-
 ## 0.4.8 (2023-12-13)
-
 
 ### Bug Fixes
 
 - Fixed the incorrect search of entities by datasource, which was causing entities from older versions not to be deleted. (PORT-5583)
 
-
 ## 0.4.7 (2023-12-05)
-
 
 ### Improvements
 
@@ -2082,18 +1913,14 @@ Improved resource cleanup and state management after processing
 
 - Changed the default limitations and timeouts for requests to Port in order to handle PoolTimeout error caused by a large amout of requests sent in parallel (PORT-5442)
 
-
 ## 0.4.6 (2023-12-04)
-
 
 ### Bug Fixes
 
 - Fixed a bug that triggered the integration to update during the initialization process when the integration already existed and the organization lacked default blueprints (PORT-5378).
 - Fixed an issue where setting integration type or identifier that contains a capital letter will not show the integration in the UI (PORT-5399)
 
-
 ## 0.4.5 (2023-11-30)
-
 
 ### Features
 
@@ -2104,9 +1931,7 @@ Improved resource cleanup and state management after processing
 
 - Changed the port request options defaults to be constructed in the port app config model instead of setting the defaults in many places (PORT-5369)
 
-
 ## 0.4.4 (2023-11-29)
-
 
 ### Features
 
@@ -2118,9 +1943,7 @@ Improved resource cleanup and state management after processing
 - Removed the retry handler decorator from the port client. Now using the `TokenRetryTransport` (PORT-5333)
 - Handled `CycleError` for cyclic dependency in entities with better error message and ocean exception class (PORT-5333)
 
-
 ## 0.4.3 (2023-11-09)
-
 
 ### Features
 
@@ -2133,7 +1956,6 @@ Improved resource cleanup and state management after processing
 - Fixed a bug where the `retry_every` didn't count failed runs as repetitions (PORT-5161)
 
 ## 0.4.2 (2023-11-04)
-
 
 ### Features
 
@@ -2152,9 +1974,7 @@ Improved resource cleanup and state management after processing
 - Seperated `SyncRawMixin` from `SyncRawMixin` (moved `SyncRawMixin` to `core/integrations/mixins/sync_raw.py`)
 - Improved code readability for `SyncRawMixin`
 
-
 ## 0.4.1 (2023-11-03)
-
 
 ### Bug Fixes
 
@@ -2162,32 +1982,25 @@ Improved resource cleanup and state management after processing
 - Changed default of `initialize-port-resources` to `true`.
 - Catch all exceptions in the resync of ONCE event listener,to make sure the application will exit gracefully
 
-
 ## 0.4.0 (2023-10-31)
-
 
 ### Features
 
 - Added support for running ocean integrations once and new ocean sail options to support it. As part of it we added ImmediateEventListener.
 
-
 ## 0.3.2 (2023-10-29)
-
 
 ### Improvements
 
 - createMissingRelatedEntities + deleteDependentEntities are now defaulted to true
 
-
 ## 0.3.1 (2023-09-27)
-
 
 ### Bug Fixes
 
 - Fix missing user agent when apply default resources on initialization (PORT-4813)
 
 ## 0.3.0 (2023-09-06)
-
 
 ### Deprecations
 
@@ -2213,11 +2026,9 @@ Improved resource cleanup and state management after processing
 
 ## 0.2.3 (2023-08-17)
 
-
 ### Features
 
 - Added the ability to create and clean the defaults of an integration using the following CLI commands: `ocean defaults dock` and `ocean defaults clean` (dock-clean-defaults)
-
 
 ### Improvements
 
@@ -2232,20 +2043,17 @@ Improved resource cleanup and state management after processing
 
 ## 0.2.2 (2023-08-11)
 
-
 ### Bug Fixes
 
 - Fixed an issue causing the config yaml providers to not be parsed
 
 ## 0.2.1 (2023-08-09)
 
-
 ### Bug Fixes
 
 - Fixed an issue causing ocean to convert the integration config objects to camelized objects
 
 ## 0.2.0 (2023-08-09)
-
 
 ### Breaking Changes
 
@@ -2267,13 +2075,11 @@ Improved resource cleanup and state management after processing
 
 ## 0.1.3 (2023-08-02)
 
-
 ### Bug Fixes
 
 - Fixed an issue preventing the setup of an integration with config values passed exclusively as environment variables. This fix also enables the option to deploy an integration to AWS ECS using Terraform (PORT-4379)
 
 ## 0.1.2 (2023-07-27)
-
 
 ### Breaking Changes
 
@@ -2294,7 +2100,6 @@ Improved resource cleanup and state management after processing
 - Fixed a crash when there are no resources in the port-app-config
 
 ## 0.1.1 (2023-07-26)
-
 
 ### Breaking Changes
 
@@ -2318,27 +2123,22 @@ Improved resource cleanup and state management after processing
 
 ## 0.1.0 (2023-07-20)
 
-
 ### Features
 
 - ### First version changelog
 
   #### Added
-
   - Handlers
-
     - Added entities state applier first port HTTP implementation.
     - Added entity processor first jq implementation.
     - Added port app config first port HTTP implementation.
 
   - Event Listeners
-
     - Added KAFKA event listener.
     - Added SAMPLE event listener.
     - Added WEBHOOK event listener.
 
   - Core
-
     - Added Ocean contexts & contexts global variables.
     - Added validation to the integration config according to its `.port/spec.yaml`.
     - Added a way to specify default resources to be created on installation.
