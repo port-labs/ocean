@@ -173,26 +173,6 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
-class GithubUserSelector(Selector):
-    include_bots: bool = Field(
-        title="Include Bots",
-        default=True,
-        alias="includeBots",
-        description="Include bot accounts in the list of users.",
-    )
-
-
-class GithubUserConfig(ResourceConfig):
-    selector: GithubUserSelector = Field(
-        title="User selector",
-        description="Selector for the user resource.",
-    )
-    kind: Literal[ObjectKind.USER] = Field(
-        title="Github User",
-        description="Github user resource kind.",
-    )
-
-
 class GithubFolderResourceConfig(ResourceConfig):
     selector: GithubFolderSelector = Field(
         title="Folder selector",
@@ -596,7 +576,6 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFileResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
-        | GithubUserConfig
         | GithubOrganizationConfig
         | GithubWorkflowConfig
         | GithubWorkflowRunConfig
@@ -604,6 +583,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubTagConfig
         | GithubEnvironmentConfig
         | GithubCollaboratorConfig
+        | ResourceConfig
     ] = Field(
         title="Resources",
         default_factory=list,

@@ -5,37 +5,8 @@ fragment PageInfoFields on PageInfo {
 }
 """
 
-LIST_ORG_MEMBER_GQL = f"""
-{PAGE_INFO_FRAGMENT}
-query OrgMemberQuery(
-  $organization: String!
-  $first: Int = 25
-  $after: String
-) {{
-    organization(login: $organization) {{
-      membersWithRole(
-        first: $first
-        after: $after
-      ) {{
-        nodes {{
-          login
-          ... on User {{
-            email
-            name
-            id
-            databaseId
-            __typename
-          }}
-        }}
-        pageInfo {{
-        ...PageInfoFields
-        }}
-      }}
-    }}
-}}
-"""
 
-LIST_ORG_MEMBER_WITHOUT_BOTS_GQL = f"""
+LIST_ORG_MEMBER_GQL = f"""
 {PAGE_INFO_FRAGMENT}
 query OrgMemberQuery(
   $organization: String!
@@ -52,7 +23,6 @@ query OrgMemberQuery(
               login
               id
               databaseId
-              __typename
               email
               name
             }}
