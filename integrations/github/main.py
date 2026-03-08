@@ -240,9 +240,7 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             if org["type"] == "Organization":
                 tasks.append(
                     exporter.get_paginated_resources(
-                        options=ListUserOptions(
-                            organization=org["login"]
-                        )
+                        options=ListUserOptions(organization=org["login"])
                     )
                 )
                 continue
