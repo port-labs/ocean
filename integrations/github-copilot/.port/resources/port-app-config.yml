@@ -39,7 +39,6 @@ resources:
               | map(select(. != null)) | add
             git_hub_org: .__organization.login
             git_hub_team: .__team.slug
-
   - kind: copilot-organization-metrics
     selector:
       query: '.date != null'
@@ -79,11 +78,10 @@ resources:
               [.copilot_ide_chat.editors[]?.total_engaged_users // 0]
               | map(select(. != null)) | add
             git_hub_org: .__organization.login
-
   - kind: copilot-organization-metrics
     selector:
       query: '.day != null'
-      use_usage_metrics: false
+      use_usage_metrics: true
     port:
       entity:
         mappings:
@@ -93,12 +91,17 @@ resources:
           properties:
             record_date: .day + "T00:00:00Z"
             breakdown: .
-            total_suggestions_count: .code_generation_activity_count // 0
-            total_acceptances_count: .code_acceptance_activity_count // 0
-            total_lines_suggested: .loc_suggested_to_add_sum // 0
-            total_lines_accepted: .loc_added_sum // 0
+            total_suggestions_count: >-
+              [.totals_by_feature[]? | select(.feature == "code_completion") | .code_generation_activity_count] | add // 0
+            total_acceptances_count: >-
+              [.totals_by_feature[]? | select(.feature == "code_completion") | .code_acceptance_activity_count] | add // 0
+            total_lines_suggested: >-
+              [.totals_by_feature[]? | select(.feature == "code_completion") | .loc_suggested_to_add_sum] | add // 0
+            total_lines_accepted: >-
+              [.totals_by_feature[]? | select(.feature == "code_completion") | .loc_added_sum] | add // 0
             total_active_users: .daily_active_users // 0
-            total_chat_acceptances: 0 
+            total_chat_acceptances: >-
+              [.totals_by_feature[]? | select(.feature | startswith("chat_panel")) | .code_acceptance_activity_count] | add // 0
             total_chat_turns: .user_initiated_interaction_count // 0
             total_active_chat_users: .monthly_active_chat_users // 0
             git_hub_org: .__organization.login
