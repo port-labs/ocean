@@ -14,9 +14,6 @@ from loguru import logger
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-if TYPE_CHECKING:
-    pass
-
 
 class ObjectKind(StrEnum):
     COPILOT_TEAM_METRICS = "copilot-team-metrics"
