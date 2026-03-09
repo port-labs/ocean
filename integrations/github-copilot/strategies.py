@@ -30,7 +30,7 @@ class LegacyMetricsStrategy(OrganizationMetricsStrategy):
     ) -> list[dict[str, Any]] | None:
         try:
             logger.warning(
-                f'Feature Flag disabled: Fetching metrics (using Legacy Metrics API) for organization {organization["login"]}.'
+                f'Fetching organization metrics (using Legacy Metrics API) for organization {organization["login"]}.'
             )
             return await github_client.get_legacy_metrics_for_organization(organization)
         except Exception as e:
@@ -50,13 +50,13 @@ class NewUsageMetricsStrategy(OrganizationMetricsStrategy):
         try:
             logger.info(
                 (
-                    f"Feature Flag enabled: Fetching NEW 28-day usage metrics for organization {organization['login']}."
+                    f"Fetching organization usage metrics for organization {organization['login']}."
                 )
             )
             return await github_client.get_organization_usage_metrics(organization)
         except Exception as e:
             logger.error(
-                f"Error fetching new usage metrics for organization {organization['login']}: {e}"
+                f"Error fetching organization usage metrics for organization {organization['login']}: {e}"
             )
             raise e
 
