@@ -32,7 +32,6 @@ from port_ocean.core.models import Entity, ProcessExecutionMode
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
-    RESYNC_EVENT_LISTENER,
     RawEntityDiff,
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,

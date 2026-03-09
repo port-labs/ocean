@@ -139,8 +139,8 @@ class IntegrationFeatureFlag(StrEnum):
 
 
 class LakehouseOperation(StrEnum):
-    UPSERT = "UPSERT"
-    DELETE = "DELETE"
+    UPSERT = "upsert"
+    DELETE = "delete"
 
 
 class RunStatus(StrEnum):
