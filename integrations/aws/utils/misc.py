@@ -158,6 +158,8 @@ def is_resource_type_not_available_exception(e: Exception) -> bool:
         "TypeNotFoundException",
         "CFNRegistryException",
         "UnsupportedActionException",
+        "ResourceNotExistsError",
+        "EndpointConnectionError",
     ]
 
     if hasattr(e, "response") and e.response is not None:

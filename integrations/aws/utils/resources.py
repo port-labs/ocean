@@ -9,6 +9,7 @@ from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
+    is_resource_type_not_available_exception,
     is_resource_not_found_exception,
     CloudControlThrottlingConfig,
     CloudControlClientProtocol,
@@ -616,6 +617,11 @@ async def resync_cloudcontrol(
                 logger.warning(
                     f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
                 )
+            elif is_resource_type_not_available_exception(e):
+                logger.warning(
+                    f"Skipping resyncing {kind} in {region} in account {account_id} because "
+                    f"resource type is not available"
+                )
             else:
                 logger.error(f"Error resyncing {kind} in region {region}: {e}")
-            raise e
+                raise e

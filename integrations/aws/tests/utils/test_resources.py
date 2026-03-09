@@ -72,6 +72,54 @@ async def test_resync_cloudcontrol(
 
 
 @pytest.mark.asyncio
+async def test_resync_cloudcontrol_skips_unavailable_resource_type(
+    mock_account_id: str,
+) -> None:
+    """Test that resync_cloudcontrol does not raise when resource type is not available in a region."""
+    mock_session = AsyncMock()
+    mock_session.region_name = "us-west-2"
+
+    @asynccontextmanager
+    async def mock_client(
+        service_name: str, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
+        client = MagicMock()
+
+        class RaisingPaginatorMock:
+            async def paginate(
+                self, **kwargs: Any
+            ) -> AsyncGenerator[Dict[str, Any], None]:
+                raise ClientError(
+                    {
+                        "Error": {
+                            "Code": "TypeNotFoundException",
+                            "Message": "Type AWS::Foo::Bar not found",
+                        }
+                    },
+                    "ListResources",
+                )
+                yield
+
+        client.get_paginator = MagicMock(return_value=RaisingPaginatorMock())
+        yield client
+
+    mock_session.client = mock_client
+
+    with patch(
+        "utils.resources._session_manager.find_account_id_by_session",
+        return_value=mock_account_id,
+    ):
+        results = []
+        async for result in resync_cloudcontrol(
+            kind="AWS::Foo::Bar",
+            session=mock_session,
+            use_get_resource_api=False,
+        ):
+            results.append(result)
+        assert results == []
+
+
+@pytest.mark.asyncio
 async def test_resync_cloudcontrol_without_get_resource_api(
     mock_session: AsyncMock,
     mock_account_id: str,

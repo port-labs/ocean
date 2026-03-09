@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.5 (2026-03-10)
+
+
+### Bug Fixes
+
+- Added a check in `resync_cloudcontrol` for skipping unavailable resources for a region so syncs can continue to run for other resources within the same region
+
+
 ## 0.3.4 (2026-03-08)
 
 

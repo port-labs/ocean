@@ -103,6 +103,16 @@ def test_unsupported_action_exception() -> None:
     assert is_resource_type_not_available_exception(e)
 
 
+def test_resource_not_exists_error() -> None:
+    e = MockException(response={"Error": {"Code": "ResourceNotExistsError"}})
+    assert is_resource_type_not_available_exception(e)
+
+
+def test_endpoint_connection_error() -> None:
+    e = MockException(response={"Error": {"Code": "EndpointConnectionError"}})
+    assert is_resource_type_not_available_exception(e)
+
+
 def test_type_not_available_with_other_error() -> None:
     e = MockException(response={"Error": {"Code": "InternalServiceError"}})
     assert not is_resource_type_not_available_exception(e)
