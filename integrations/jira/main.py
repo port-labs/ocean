@@ -95,7 +95,7 @@ async def on_resync_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
     async for projects in client.get_paginated_projects():
-        logger.info(f"Fetching versions for {len(projects)} projects concurrently")
+        logger.info(f"Fetching versions for {len(projects)} projects")
         results = await asyncio.gather(
             *[client.fetch_versions(project["key"]) for project in projects]
         )
