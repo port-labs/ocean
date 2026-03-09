@@ -20,6 +20,7 @@ from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
 from port_ocean.core.integrations.mixins.utils import (
     ProcessWrapper,
     clear_http_client_context,
+    is_lakehouse_data_enabled,
     is_resource_supported,
     start_kind_tracking,
     stop_kind_tracking,
@@ -27,7 +28,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, IntegrationFeatureFlag, ProcessExecutionMode
+from port_ocean.core.models import Entity, ProcessExecutionMode
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -222,7 +223,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         ) -> AsyncGenerator[list[Entity], None]:
             # fetch entities from port in batches
             logger.info(
-                f"Fetching entities from port in batches of for diff calculation, using non paginated api",
+                "Fetching entities from port in batches for diff calculation, using non paginated api",
                 batch_size=BATCH_SIZE,
             )
             for start_index in range(0, len(_entities), BATCH_SIZE):
@@ -412,7 +413,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             results, errors = await self._get_resource_raw_results(resource_config)
             async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
             raw_results: RAW_RESULT = []
-            lakehouse_data_enabled = await self._lakehouse_data_enabled()
+            lakehouse_data_enabled = await is_lakehouse_data_enabled()
 
             for result in results:
                 if isinstance(result, dict):
@@ -533,19 +534,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         return passed_entities, errors
 
-    async def _lakehouse_data_enabled(self) -> bool:
-        """Check if lakehouse data is enabled.
-
-        Returns:
-            bool: True if lakehouse data is enabled, False otherwise
-        """
-        flags = await ocean.port_client.get_organization_feature_flags()
-        if (
-            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
-            and ocean.config.lakehouse_enabled
-        ):
-            return True
-        return False
 
     async def register_raw(
         self,

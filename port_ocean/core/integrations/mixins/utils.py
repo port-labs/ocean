@@ -25,6 +25,34 @@ from port_ocean.exceptions.core import (
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.utils.async_http import _http_client
+from port_ocean.core.models import IntegrationFeatureFlag
+
+
+async def is_lakehouse_data_enabled() -> bool:
+    """Check if lakehouse data is enabled.
+
+    This function checks the organization feature flags and config to determine
+    if lakehouse data sending is enabled. It handles errors gracefully since
+    lakehouse sending is intended to be best-effort and should not block core
+    processing flows.
+
+    Returns:
+        bool: True if lakehouse data is enabled, False otherwise (including on error)
+    """
+    try:
+        flags = await ocean.port_client.get_organization_feature_flags()
+        if (
+            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
+            and ocean.config.lakehouse_enabled
+        ):
+            return True
+        return False
+    except Exception as e:
+        logger.warning(
+            f"Failed to check lakehouse feature flags, assuming disabled: {e}"
+        )
+        return False
+
 
 def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
     """
