@@ -1,13 +1,13 @@
 from enum import StrEnum
 
 from port_ocean.context.ocean import ocean
-from clients.github_client import GitHubClient
 from clients.client_factory import create_github_client
 from strategies import (
-    LegacyMetricsStrategy,
-    NewUsageMetricsStrategy,
+    LegacyOrganizationMetricsStrategy,
+    OrganizationUsageMetricsStrategy,
 )
 from loguru import logger
+from utils import resync_organization_metrics
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -45,31 +45,6 @@ async def on_resync_copilot_team_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TY
                     yield team_metrics
 
 
-async def _resync_organization_metrics(
-    github_client: GitHubClient,
-    strategy: NewUsageMetricsStrategy | LegacyMetricsStrategy,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for organizations_batch in github_client.get_organizations():
-        for organization in organizations_batch:
-            organization_metrics = await strategy.fetch_metrics(
-                github_client, organization
-            )
-
-            if not organization_metrics:
-                continue
-
-            strategy._enrich_metrics_with_organization(
-                organization_metrics, organization
-            )
-
-            for metrics in organization_metrics:
-                record_date = strategy._get_record_date_key(metrics)
-                logger.info(
-                    f"Received metrics of day {record_date} for organization {organization['login']}"
-                )
-            yield organization_metrics
-
-
 @ocean.on_resync(ObjectKind.COPILOT_ORGANIZATION_METRICS)
 async def on_resync_copilot_organization_metrics(
     kind: str,
@@ -79,9 +54,9 @@ async def on_resync_copilot_organization_metrics(
         "Please migrate to the 'organization-usage-metrics' kind to use the new 28-day API."
     )
     github_client = create_github_client()
-    strategy = LegacyMetricsStrategy()
+    strategy = LegacyOrganizationMetricsStrategy()
 
-    async for batch in _resync_organization_metrics(github_client, strategy):
+    async for batch in resync_organization_metrics(github_client, strategy):
         yield batch
 
 
@@ -90,8 +65,8 @@ async def on_resync_organization_usage_metrics(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github_client = create_github_client()
-    strategy = NewUsageMetricsStrategy()
-    async for batch in _resync_organization_metrics(github_client, strategy):
+    strategy = OrganizationUsageMetricsStrategy()
+    async for batch in resync_organization_metrics(github_client, strategy):
         yield batch
 
 

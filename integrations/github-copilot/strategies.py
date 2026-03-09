@@ -16,15 +16,12 @@ class OrganizationMetricsStrategy(ABC):
     def _enrich_metrics_with_organization(
         self, metrics: list[dict[str, Any]], organization: dict[str, Any]
     ) -> list[dict[str, Any]]:
-        if not metrics:
-            return []
-
         for metric in metrics:
             metric["__organization"] = organization
         return metrics
 
 
-class LegacyMetricsStrategy(OrganizationMetricsStrategy):
+class LegacyOrganizationMetricsStrategy(OrganizationMetricsStrategy):
     async def fetch_metrics(
         self, github_client: "GitHubClient", organization: dict[str, Any]
     ) -> list[dict[str, Any]] | None:
@@ -43,7 +40,7 @@ class LegacyMetricsStrategy(OrganizationMetricsStrategy):
         return metrics["date"]
 
 
-class NewUsageMetricsStrategy(OrganizationMetricsStrategy):
+class OrganizationUsageMetricsStrategy(OrganizationMetricsStrategy):
     async def fetch_metrics(
         self, github_client, organization
     ) -> list[dict[str, Any]] | None:
@@ -66,5 +63,5 @@ class NewUsageMetricsStrategy(OrganizationMetricsStrategy):
 
 def get_metrics_strategy(use_new_api: bool) -> OrganizationMetricsStrategy:
     if use_new_api:
-        return NewUsageMetricsStrategy()
-    return LegacyMetricsStrategy()
+        return OrganizationUsageMetricsStrategy()
+    return LegacyOrganizationMetricsStrategy()

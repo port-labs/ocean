@@ -68,5 +68,31 @@
     },
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+  "identifier": "github_copilot_organization_usage",
+  "title": "GitHub Copilot Organization Usage",
+  "icon": "Github",
+  "schema": {
+      "properties": {
+          "record_date": { "type": "string", "title": "Record Date", "format": "date-time" },
+          "daily_active_users": { "type": "number", "title": "Daily Active Users" },
+          "code_generation_activity_count": { "type": "number", "title": "Code Generation Activity Count" },
+          "code_acceptance_activity_count": { "type": "number", "title": "Code Acceptance Activity Count" },
+          "loc_suggested_to_add_sum": { "type": "number", "title": "LOC Suggested To Add" },
+          "loc_added_sum": { "type": "number", "title": "LOC Added" },
+          "user_initiated_interaction_count": { "type": "number", "title": "User Initiated Interaction Count" },
+          "git_hub_org": { "type": "string", "title": "GitHub Org" }
+      },
+      "required": []
+  },
+  "calculationProperties": {
+      "acceptance_rate": {
+          "title": "Acceptance Rate",
+          "icon": "DefaultProperty",
+          "calculation": "if (.properties.code_generation_activity_count == 0) then 0 else ((.properties.code_acceptance_activity_count / .properties.code_generation_activity_count) * 100 | round) end",
+          "type": "number"
+      }
   }
+}
 ]
