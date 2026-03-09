@@ -1,7 +1,12 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from botocore.exceptions import ClientError
-from utils.misc import CustomProperties, AsyncPaginator, OPT_IN_REGIONS
+from utils.misc import (
+    CustomProperties,
+    AsyncPaginator,
+    OPT_IN_REGIONS,
+    is_resource_type_not_available_exception,
+)
 from utils.resources import (
     resync_custom_kind,
     resync_cloudcontrol,
@@ -78,6 +83,15 @@ async def test_resync_cloudcontrol_skips_unavailable_resource_type(
     """Test that resync_cloudcontrol does not raise when resource type is not available in a region."""
     mock_session = AsyncMock()
     mock_session.region_name = "us-west-2"
+    exc = ClientError(
+        {
+            "Error": {
+                "Code": "TypeNotFoundException",
+                "Message": "Type AWS::Foo::Bar not found",
+            }
+        },
+        "ListResources",
+    )
 
     @asynccontextmanager
     async def mock_client(
@@ -89,15 +103,7 @@ async def test_resync_cloudcontrol_skips_unavailable_resource_type(
             async def paginate(
                 self, **kwargs: Any
             ) -> AsyncGenerator[Dict[str, Any], None]:
-                raise ClientError(
-                    {
-                        "Error": {
-                            "Code": "TypeNotFoundException",
-                            "Message": "Type AWS::Foo::Bar not found",
-                        }
-                    },
-                    "ListResources",
-                )
+                raise exc
                 yield
 
         client.get_paginator = MagicMock(return_value=RaisingPaginatorMock())
@@ -116,6 +122,7 @@ async def test_resync_cloudcontrol_skips_unavailable_resource_type(
             use_get_resource_api=False,
         ):
             results.append(result)
+        assert is_resource_type_not_available_exception(exc)
         assert results == []
 
 
