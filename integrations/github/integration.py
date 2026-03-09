@@ -173,6 +173,13 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
+class GithubUserConfig(ResourceConfig):
+    kind: Literal[ObjectKind.USER] = Field(
+        title="Github User",
+        description="Github user resource kind.",
+    )
+
+
 class GithubFolderResourceConfig(ResourceConfig):
     selector: GithubFolderSelector = Field(
         title="Folder selector",
@@ -576,6 +583,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFileResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
+        | GithubUserConfig
         | GithubOrganizationConfig
         | GithubWorkflowConfig
         | GithubWorkflowRunConfig
@@ -583,7 +591,6 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubTagConfig
         | GithubEnvironmentConfig
         | GithubCollaboratorConfig
-        | ResourceConfig
     ] = Field(
         title="Resources",
         default_factory=list,
