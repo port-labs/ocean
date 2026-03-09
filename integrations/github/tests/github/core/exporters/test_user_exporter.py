@@ -206,14 +206,15 @@ class TestGraphQLUserExporter:
                     },
                 )
 
-    async def test_fetch_external_identities_modifies_in_place(
+    async def test_enrich_members_with_saml_email_modifies_in_place(
         self, graphql_client: GithubGraphQLClient
     ) -> None:
+        from github.helpers.utils import enrich_members_with_saml_email
+
         initial_users = [
             {"login": "user1", "email": "johndoe@email.com"},
             {"login": "user2"},
         ]
-        users_no_email = {(1, "user2"): initial_users[1]}
 
         mock_external_identities = [
             {
@@ -234,10 +235,7 @@ class TestGraphQLUserExporter:
             "send_paginated_request",
             side_effect=[mock_paginated_request_external_identities()],
         ) as mock_request:
-            exporter = GraphQLUserExporter(graphql_client)
-            await exporter._fetch_external_identities(
-                "test-org", initial_users, users_no_email
-            )
+            await enrich_members_with_saml_email(graphql_client, "test-org", initial_users)
 
             expected_users = [
                 {"login": "user1", "email": "johndoe@email.com"},
