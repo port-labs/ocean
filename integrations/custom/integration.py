@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import ClassVar, Dict, Any, Optional
 from pydantic import Field, BaseModel
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -71,6 +71,7 @@ class HttpServerResourceConfig(ResourceConfig):
 class HttpServerPortAppConfig(PortAppConfig):
     """Port app configuration for HTTP server integration"""
 
+    allow_custom_kinds: ClassVar[bool] = True
     resources: list[HttpServerResourceConfig] = Field(default_factory=list)  # type: ignore[assignment]
 
 

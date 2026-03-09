@@ -23,9 +23,6 @@ class RestResourceExporter(AbstractHttpExporter[HttpServerClient]):
     and data extraction using JQ data_path expressions.
     """
 
-    def __init__(self, client: HttpServerClient) -> None:
-        super().__init__(client)
-
     async def get_paginated_resources(
         self, options: FetchResourceOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -54,22 +51,6 @@ class RestResourceExporter(AbstractHttpExporter[HttpServerClient]):
             ):
                 yield batch
 
-    def _raw_fetch(
-        self,
-        endpoint: str,
-        method: str,
-        query_params: Dict[str, Any],
-        headers: Dict[str, str],
-        body: Any,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        return self.client.fetch_paginated_data(
-            endpoint=endpoint,
-            method=method,
-            query_params=query_params,
-            headers=headers,
-            body=body,
-        )
-
     async def _fetch_endpoint_data(
         self,
         endpoint: str,
@@ -87,7 +68,12 @@ class RestResourceExporter(AbstractHttpExporter[HttpServerClient]):
         cache = get_endpoint_cache()
         fetch_fn: Callable[[], AsyncGenerator[List[Dict[str, Any]], None]] = (
             functools.partial(
-                self._raw_fetch, endpoint, method, query_params, headers, body
+                self.client.fetch_paginated_data,
+                endpoint=endpoint,
+                method=method,
+                query_params=query_params,
+                headers=headers,
+                body=body,
             )
         )
 
