@@ -10,22 +10,6 @@ from port_ocean.exceptions.core import EntityProcessorException
 
 _COMPILED_PATTERNS: dict[str, Any] = {}
 
-# Common keys to probe when trying to identify a raw item in log messages.
-_IDENTIFIER_KEYS = ("identifier", "id", "login", "name", "number", "key", "slug")
-
-
-def _extract_item_identifier(data: dict[str, Any]) -> str | None:
-    """Best-effort extraction of a human-readable identifier from a raw item.
-
-    Used to enrich error logs with context about which source item caused a
-    mapping failure, without dumping the entire raw object.
-    """
-    for key in _IDENTIFIER_KEYS:
-        val = data.get(key)
-        if val is not None:
-            return str(val)
-    return None
-
 
 class JQEntityProcessorSync:
     """Processes and parses entities using JQ expressions.
@@ -34,6 +18,34 @@ class JQEntityProcessorSync:
     parsing entities based on PyJQ queries. It supports compiling and executing PyJQ patterns,
     searching for data in dictionaries, and transforming data based on object mappings.
     """
+
+    @staticmethod
+    def _log_search_failure(
+        field: str | None,
+        pattern: str,
+        exc: Exception,
+        log_level: str = "WARNING",
+    ) -> None:
+        """Log a structured message when a JQ search pattern fails at runtime.
+
+        log_level is WARNING for the sync (subprocess) path and ERROR for the
+        async (main process) path, since async failures reach Port's log ingest.
+        """
+        err_msg = str(exc) or repr(exc) or type(exc).__name__
+        field_info = f" for field '{field}'" if field else ""
+        # Only the first line of the jq error
+        error_summary = err_msg.split("\n")[0]
+        # TODO: check the split and without
+        # Structured fields land in the log record's extra dict, keeping the
+        # message string human-readable while still being machine-filterable in Port.
+        logger.bind(
+            field=field,
+            pattern=pattern,
+            error=err_msg,
+        ).log(
+            log_level,
+            f"Search failed{field_info} - pattern: {pattern}: {error_summary}",
+        )
 
     @staticmethod
     def _format_filter(filter: str) -> str:
@@ -70,50 +82,22 @@ class JQEntityProcessorSync:
     def _search(
         data: dict[str, Any],
         pattern: str,
-        # field and raw_item_identifier are passed through from _search_as_object
-        # so every failure log names the exact mapping field and source item.
         field: str | None = None,
-        raw_item_identifier: str | None = None,
     ) -> Any:
         try:
             compiled_pattern = JQEntityProcessorSync._compile(pattern)
             it = compiled_pattern.input_value(data)
             return next(iter(it), None)
         except Exception as exc:
-            err_msg = str(exc) or repr(exc) or type(exc).__name__
-            field_info = f" for field '{field}'" if field else ""
-            item_info = (
-                f" on item '{raw_item_identifier}'" if raw_item_identifier else ""
-            )
-            # Only the first line of the jq error — multiline messages are noisy.
-            error_summary = err_msg.split("\n")[0]
-            # Structured fields land in the log record's extra dict, keeping the
-            # message string human-readable while still being machine-filterable in Port.
-            logger.bind(
-                field=field,
-                pattern=pattern,
-                error=err_msg,
-                raw_item_identifier=raw_item_identifier,
-            ).warning(
-                f"Search failed{field_info}{item_info} - pattern: {pattern}: {error_summary}"
-            )
+            JQEntityProcessorSync._log_search_failure(field, pattern, exc)
             return None
 
     @staticmethod
     def _search_as_bool(data: dict[str, Any] | str, pattern: str) -> bool:
-        # Wrapped in try/except so a compile or runtime error on the selector
-        # raises EntityProcessorException with the pattern name, rather than
-        # propagating a raw jq exception with no mapping context.
-        try:
-            compiled_pattern = JQEntityProcessorSync._compile(pattern)
-            value = compiled_pattern.input_value(data).first()
-        except Exception as exc:
-            raise EntityProcessorException(
-                f"Selector query failed for pattern {pattern!r}: {exc}"
-            ) from exc
+        compiled_pattern = JQEntityProcessorSync._compile(pattern)
+        value = compiled_pattern.input_value(data).first()
         if isinstance(value, bool):
             return value
-        # Pattern name added so the error shows which selector produced a non-bool.
         raise EntityProcessorException(
             f"Expected boolean value for pattern {pattern!r}, got value:{value} of type: {type(value)} instead"
         )
@@ -123,11 +107,10 @@ class JQEntityProcessorSync:
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
-        # _path is built up recursively to produce dot-notation field names
-        # like "properties.url" instead of just "url" in misconfigurations and logs.
         _path: str = "",
-        raw_item_identifier: str | None = None,
     ) -> dict[str, Any | None]:
+        # _path is built up recursively to produce dot-notation keys
+        # like "properties.url" instead of just "url" in misconfigurations and logs.
         result: dict[str, Any | None | list[Any | None]] = {}
         for key, value in obj.items():
             current_path = f"{_path}.{key}" if _path else key
@@ -140,7 +123,6 @@ class JQEntityProcessorSync:
                             list_item,
                             misconfigurations,
                             _path=current_path,
-                            raw_item_identifier=raw_item_identifier,
                         )
                         cast(list[dict[str, Any | None]], result[key]).append(
                             search_result
@@ -156,7 +138,6 @@ class JQEntityProcessorSync:
                         value,
                         misconfigurations,
                         _path=current_path,
-                        raw_item_identifier=raw_item_identifier,
                     )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
@@ -167,7 +148,6 @@ class JQEntityProcessorSync:
                         data,
                         value,
                         field=current_path,
-                        raw_item_identifier=raw_item_identifier,
                     )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
@@ -189,14 +169,10 @@ class JQEntityProcessorSync:
         should_run = JQEntityProcessorSync._search_as_bool(data, selector_query)
         if parse_all or should_run:
             misconfigurations: dict[str, str] = {}
-            # Extract identifier once and thread it through all nested calls
-            # so every log line for this item shares the same identifier context.
-            raw_item_identifier = _extract_item_identifier(data)
             mapped_entity = JQEntityProcessorSync._search_as_object(
                 data,
                 raw_entity_mappings,
                 misconfigurations,
-                raw_item_identifier=raw_item_identifier,
             )
             return MappedEntity(
                 entity=mapped_entity,

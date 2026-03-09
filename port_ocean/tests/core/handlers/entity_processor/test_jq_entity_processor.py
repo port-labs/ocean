@@ -229,7 +229,7 @@ class TestJQEntityProcessor:
         data = {"foo": "bar"}
         pattern = ".foo."
         messages: list[str] = []
-        logger_id = logger.add(lambda msg: messages.append(str(msg)), level="ERROR")
+        logger_id = logger.add(lambda msg: messages.append(str(msg)), level="WARNING")
         try:
             result = await mocked_processor._search(
                 data, pattern, field="properties.tier"

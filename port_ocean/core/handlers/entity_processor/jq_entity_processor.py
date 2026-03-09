@@ -13,7 +13,6 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
 from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
     JQEntityProcessorSync,
-    _extract_item_identifier,
 )
 from port_ocean.core.handlers.entity_processor.models import MappedEntity
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -82,50 +81,25 @@ class JQEntityProcessor(BaseEntityProcessor):
         self,
         data: dict[str, Any],
         pattern: str,
-        # field and raw_item_identifier are passed through from _search_as_object
-        # so every failure log names the exact mapping field and source item.
         field: str | None = None,
-        raw_item_identifier: str | None = None,
     ) -> Any:
         try:
             compiled_pattern = self._compile(pattern)
             func = compiled_pattern.input_value(data)
             return func.first()
         except Exception as exc:
-            err_msg = str(exc) or repr(exc) or type(exc).__name__
-            field_info = f" for field '{field}'" if field else ""
-            item_info = (
-                f" on item '{raw_item_identifier}'" if raw_item_identifier else ""
-            )
-            # Only the first line of the jq error — multiline messages are noisy.
-            error_summary = err_msg.split("\n")[0]
-            # Structured fields land in the log record's extra dict, keeping the
-            # message string human-readable while still being machine-filterable in Port.
-            logger.bind(
-                field=field,
-                pattern=pattern,
-                error=err_msg,
-                raw_item_identifier=raw_item_identifier,
-            ).warning(
-                f"Search failed{field_info}{item_info} - pattern: {pattern}: {error_summary}"
-            )
+            JQEntityProcessorSync._log_search_failure(field, pattern, exc, log_level="ERROR")
             return None
 
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
-        # Wrapped in try/except so a compile or runtime error on the selector
-        # raises EntityProcessorException with the pattern name, rather than
-        # propagating a raw jq exception with no mapping context.
-        try:
-            compiled_pattern = self._compile(pattern)
-            func = compiled_pattern.input_value(data)
-            value = func.first()
-        except Exception as exc:
-            raise EntityProcessorException(
-                f"Selector query failed for pattern {pattern!r}: {exc}"
-            ) from exc
+
+        compiled_pattern = self._compile(pattern)
+
+        func = compiled_pattern.input_value(data)
+
+        value = func.first()
         if isinstance(value, bool):
             return value
-        # Pattern name added so the error shows which selector produced a non-bool.
         raise EntityProcessorException(
             f"Expected boolean value for pattern {pattern!r}, got value:{value} of type: {type(value)} instead"
         )
@@ -135,31 +109,26 @@ class JQEntityProcessor(BaseEntityProcessor):
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
-        # _path is built up recursively to produce dot-notation field names
-        # like "properties.url" instead of just "url" in misconfigurations and logs.
         _path: str = "",
-        raw_item_identifier: str | None = None,
     ) -> dict[str, Any | None]:
-        """
-        Identify and extract the relevant value for the chosen key and populate it into the entity
+        """Identify and extract the relevant value for each key in obj and populate it into the entity.
+
         :param data: the property itself that holds the key and the value, it is being passed to the task and we get back a task item,
             if the data is a dict, we will recursively call this function again.
         :param obj: the key that we want its value to be mapped into our entity.
         :param misconfigurations: due to the recursive nature of this function,
             we aim to have a dict that represents all of the misconfigured properties and when used recursively,
             we pass this reference to misfoncigured object to add the relevant misconfigured keys.
-        :param _path: dot-separated path of the current field being processed, built up recursively.
-        :param raw_item_identifier: best-effort identifier of the source item, for error log context.
+        :param _path: dot-separated path built up recursively (e.g. "properties.url") used as
+            the key in misconfigurations and log messages instead of just "url".
         :return: Mapped object with found value.
         """
 
         search_tasks: dict[
             str, Task[dict[str, Any | None]] | list[Task[dict[str, Any | None]]]
         ] = {}
-        path_map: dict[str, str] = {}
         for key, value in obj.items():
             current_path = f"{_path}.{key}" if _path else key
-            path_map[key] = current_path
             if isinstance(value, list):
                 search_tasks[key] = [
                     asyncio.create_task(
@@ -168,7 +137,6 @@ class JQEntityProcessor(BaseEntityProcessor):
                             item,
                             misconfigurations,
                             _path=current_path,
-                            raw_item_identifier=raw_item_identifier,
                         )
                     )
                     for item in value
@@ -180,7 +148,6 @@ class JQEntityProcessor(BaseEntityProcessor):
                         value,
                         misconfigurations,
                         _path=current_path,
-                        raw_item_identifier=raw_item_identifier,
                     )
                 )
             else:
@@ -189,13 +156,12 @@ class JQEntityProcessor(BaseEntityProcessor):
                         data,
                         value,
                         field=current_path,
-                        raw_item_identifier=raw_item_identifier,
                     )
                 )
 
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
-            current_path = path_map[key]
+            current_path = f"{_path}.{key}" if _path else key
             try:
                 if isinstance(task, list):
                     result_list = []
@@ -224,14 +190,10 @@ class JQEntityProcessor(BaseEntityProcessor):
         should_run = await self._search_as_bool(data, selector_query)
         if parse_all or should_run:
             misconfigurations: dict[str, str] = {}
-            # Extract identifier once and thread it through all nested calls
-            # so every log line for this item shares the same identifier context.
-            raw_item_identifier = _extract_item_identifier(data)
             mapped_entity = await self._search_as_object(
                 data,
                 raw_entity_mappings,
                 misconfigurations,
-                raw_item_identifier=raw_item_identifier,
             )
             return MappedEntity(
                 entity=mapped_entity,
@@ -312,26 +274,19 @@ class JQEntityProcessor(BaseEntityProcessor):
     @staticmethod
     def _notify_mapping_issues(
         entity_misconfigurations: dict[str, str],
-        has_unmapped_entity_keys: bool,
+        has_skipped_entities: bool,
         entity_mapping_fault_counter: int,
-        required_fields: set[str] | None = None,
+        required_fields: set[str],
     ) -> None:
-        if entity_misconfigurations:
-            resolved = required_fields or set()
+        if len(entity_misconfigurations) > 0:
             for field, reason in entity_misconfigurations.items():
-                # Log required fields as ERROR (entity is incomplete/broken),
-                # optional fields as WARNING (entity is usable but missing data).
-                # If the blueprint couldn't be fetched, required_fields is None
-                # and everything falls back to WARNING.
-                level = "ERROR" if field in resolved else "WARNING"
+                level = "ERROR" if field in required_fields else "WARNING"
                 logger.bind(field=field).log(
                     level,
-                    f" '{field}': {reason} (null, missing, or misconfigured)",
+                    f"Unable to find valid data for: '{field}': {reason} (null, missing, or misconfigured)",
                 )
 
-        if has_unmapped_entity_keys:
-            # Emitted once per batch — the per-item detail is in the warning
-            # logged inside _parse_items when each entity is skipped.
+        if has_skipped_entities:
             logger.bind(
                 entity_mapping_fault_counter=entity_mapping_fault_counter
             ).warning(
@@ -367,6 +322,33 @@ class JQEntityProcessor(BaseEntityProcessor):
             if stripped:
                 return stripped
         return None
+
+    async def _resolve_required_fields(
+        self,
+        mapping: ResourceConfig,
+        entity_misconfigurations: dict[str, str],
+    ) -> set[str]:
+        """Return required field paths for the blueprint referenced in mapping.
+
+        Fetches the blueprint schema so _notify_mapping_issues can log required
+        fields as ERROR and optional fields as WARNING. Returns None when there
+        are no misconfigurations (skips the API call) or when the blueprint
+        can't be fetched (caller falls back to WARNING for all fields).
+        """
+        if not entity_misconfigurations:
+            return set()
+        bp_id = self._extract_blueprint_identifier(mapping)
+        if not bp_id:
+            return set()
+        try:
+            blueprint = await ocean.port_client.get_blueprint(bp_id, should_log=False)
+            return self._get_required_fields(blueprint)
+        except Exception:
+            logger.debug(
+                f"Could not fetch blueprint '{bp_id}' to resolve required fields, "
+                "falling back to WARNING for all misconfigurations"
+            )
+            return set()
 
     @staticmethod
     async def _send_examples(data: list[dict[str, Any]], kind: str) -> None:
@@ -605,10 +587,10 @@ class JQEntityProcessor(BaseEntityProcessor):
         passed_entities = []
         failed_entities = []
         entity_misconfigurations: dict[str, str] = {}
-        has_unmapped_entity_keys: bool = False
+        has_skipped_entities: bool = False
         entity_mapping_fault_counter: int = 0
 
-        for raw_item_index, result in enumerate(calculated_entities_results):
+        for result in calculated_entities_results:
             if len(result.misconfigurations) > 0:
                 entity_misconfigurations |= result.misconfigurations
 
@@ -619,51 +601,18 @@ class JQEntityProcessor(BaseEntityProcessor):
                 else:
                     failed_entities.append(parsed_entity)
             else:
-                has_unmapped_entity_keys = True
+                has_skipped_entities = True
                 entity_mapping_fault_counter += 1
-                raw_item = (
-                    raw_results[raw_item_index]
-                    if raw_item_index < len(raw_results)
-                    else {}
-                )
-                raw_item_identifier = _extract_item_identifier(raw_item)
-                # Per-item warning so the user knows exactly which source item was
-                # dropped and whether identifier or blueprint (or both) were missing.
-                # On main this was a silent counter increment with no item-level detail.
-                logger.bind(
-                    raw_item_index=raw_item_index,
-                    raw_item_identifier=raw_item_identifier,
-                    has_identifier=bool(result.entity.get("identifier")),
-                    has_blueprint=bool(result.entity.get("blueprint")),
-                ).warning(
-                    "Entity transformation produced no identifier or blueprint — skipping item"
-                )
 
         del calculated_entities_results
 
-        required_fields: set[str] | None = None
-        if entity_misconfigurations:
-            # Fetch the blueprint schema to distinguish required vs optional fields,
-            # so _notify_mapping_issues can log them at ERROR vs WARNING respectively.
-            # Only done when there are actually misconfigurations to avoid extra API calls.
-            bp_id = self._extract_blueprint_identifier(mapping)
-            if bp_id:
-                try:
-                    blueprint = await ocean.port_client.get_blueprint(
-                        bp_id, should_log=False
-                    )
-                    required_fields = self._get_required_fields(blueprint)
-                except Exception:
-                    # Non-fatal: if the blueprint can't be fetched we fall back to
-                    # WARNING for all misconfigurations rather than crashing the resync.
-                    logger.debug(
-                        f"Could not fetch blueprint '{bp_id}' to resolve required fields, "
-                        "falling back to WARNING for all misconfigurations"
-                    )
+        required_fields = await self._resolve_required_fields(
+            mapping, entity_misconfigurations
+        )
 
         self._notify_mapping_issues(
             entity_misconfigurations,
-            has_unmapped_entity_keys,
+            has_skipped_entities,
             entity_mapping_fault_counter,
             required_fields,
         )

@@ -147,7 +147,7 @@ class TestJQEntityProcessorSync:
         )
         try:
             mocked_processor._search(data, pattern)
-            assert any("JQ search failed" in m for m in log_messages)
+            assert any("Search failed" in m for m in log_messages)
         finally:
             logger.remove(logger_id)
 
