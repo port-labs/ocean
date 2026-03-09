@@ -7,7 +7,7 @@ from strategies import (
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
-async def resync_organization_metrics(
+async def fetch_organization_metrics(
     github_client: GitHubClient,
     strategy: OrganizationUsageMetricsStrategy | LegacyOrganizationMetricsStrategy,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:

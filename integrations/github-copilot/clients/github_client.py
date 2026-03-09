@@ -192,7 +192,7 @@ class GitHubClient:
                 return None
 
             if ignore_status_code and e.response.status_code in ignore_status_code:
-                logger.info(
+                logger.warning(
                     f"Ignoring status code {e.response.status_code} for {method} request to {path}"
                 )
                 return None

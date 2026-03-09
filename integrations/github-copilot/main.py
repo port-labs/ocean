@@ -7,7 +7,7 @@ from strategies import (
     OrganizationUsageMetricsStrategy,
 )
 from loguru import logger
-from utils import resync_organization_metrics
+from utils import fetch_organization_metrics
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -56,7 +56,7 @@ async def on_resync_copilot_organization_metrics(
     github_client = create_github_client()
     strategy = LegacyOrganizationMetricsStrategy()
 
-    async for batch in resync_organization_metrics(github_client, strategy):
+    async for batch in fetch_organization_metrics(github_client, strategy):
         yield batch
 
 
@@ -66,7 +66,7 @@ async def on_resync_organization_usage_metrics(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github_client = create_github_client()
     strategy = OrganizationUsageMetricsStrategy()
-    async for batch in resync_organization_metrics(github_client, strategy):
+    async for batch in fetch_organization_metrics(github_client, strategy):
         yield batch
 
 
