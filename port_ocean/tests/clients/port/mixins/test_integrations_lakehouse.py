@@ -58,7 +58,7 @@ async def test_post_integration_raw_data_default_operation(
 
         expected_json = call_args[1]["json"]
         assert expected_json["items"] == raw_data
-        assert expected_json["operation"] == "UPSERT"
+        assert expected_json["operation"] == "upsert"
         assert "extractionTimestamp" in expected_json
 
 
@@ -80,7 +80,7 @@ async def test_post_integration_raw_data_with_upsert_operation(
 
         expected_json = call_args[1]["json"]
         assert expected_json["items"] == raw_data
-        assert expected_json["operation"] == "UPSERT"
+        assert expected_json["operation"] == "upsert"
 
 
 async def test_post_integration_raw_data_with_delete_operation(
@@ -101,7 +101,7 @@ async def test_post_integration_raw_data_with_delete_operation(
 
         expected_json = call_args[1]["json"]
         assert expected_json["items"] == raw_data
-        assert expected_json["operation"] == "DELETE"
+        assert expected_json["operation"] == "delete"
 
 
 async def test_post_integration_raw_data_url_construction(
@@ -148,7 +148,7 @@ async def test_post_integration_raw_data_empty_list(
 
         expected_json = call_args[1]["json"]
         assert expected_json["items"] == []
-        assert expected_json["operation"] == "DELETE"
+        assert expected_json["operation"] == "delete"
 
 
 async def test_post_integration_raw_data_extraction_timestamp(
