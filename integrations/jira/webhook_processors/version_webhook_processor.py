@@ -34,7 +34,7 @@ class VersionWebhookProcessor(AbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         version = payload["version"]
-        webhook_event = payload.get("webhookEvent", "")
+        webhook_event = payload["webhookEvent"]
         client = create_jira_client()
 
         if webhook_event == "jira:version_deleted":
