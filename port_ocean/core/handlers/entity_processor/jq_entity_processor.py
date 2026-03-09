@@ -82,6 +82,8 @@ class JQEntityProcessor(BaseEntityProcessor):
         self,
         data: dict[str, Any],
         pattern: str,
+        # field and raw_item_identifier are passed through from _search_as_object
+        # so every failure log names the exact mapping field and source item.
         field: str | None = None,
         raw_item_identifier: str | None = None,
     ) -> Any:
@@ -90,22 +92,29 @@ class JQEntityProcessor(BaseEntityProcessor):
             func = compiled_pattern.input_value(data)
             return func.first()
         except Exception as exc:
+            err_msg = str(exc) or repr(exc) or type(exc).__name__
             field_info = f" for field '{field}'" if field else ""
             item_info = (
                 f" on item '{raw_item_identifier}'" if raw_item_identifier else ""
             )
-            error_summary = str(exc).split("\n")[0]
+            # Only the first line of the jq error — multiline messages are noisy.
+            error_summary = err_msg.split("\n")[0]
+            # Structured fields land in the log record's extra dict, keeping the
+            # message string human-readable while still being machine-filterable in Port.
             logger.bind(
                 field=field,
                 pattern=pattern,
-                error=str(exc),
+                error=err_msg,
                 raw_item_identifier=raw_item_identifier,
-            ).error(
-                f"JQ search failed{field_info}{item_info} - pattern: {pattern}: {error_summary}"
+            ).warning(
+                f"Search failed{field_info}{item_info} - pattern: {pattern}: {error_summary}"
             )
             return None
 
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
+        # Wrapped in try/except so a compile or runtime error on the selector
+        # raises EntityProcessorException with the pattern name, rather than
+        # propagating a raw jq exception with no mapping context.
         try:
             compiled_pattern = self._compile(pattern)
             func = compiled_pattern.input_value(data)
@@ -116,6 +125,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             ) from exc
         if isinstance(value, bool):
             return value
+        # Pattern name added so the error shows which selector produced a non-bool.
         raise EntityProcessorException(
             f"Expected boolean value for pattern {pattern!r}, got value:{value} of type: {type(value)} instead"
         )
@@ -125,6 +135,8 @@ class JQEntityProcessor(BaseEntityProcessor):
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
+        # _path is built up recursively to produce dot-notation field names
+        # like "properties.url" instead of just "url" in misconfigurations and logs.
         _path: str = "",
         raw_item_identifier: str | None = None,
     ) -> dict[str, Any | None]:
@@ -212,6 +224,8 @@ class JQEntityProcessor(BaseEntityProcessor):
         should_run = await self._search_as_bool(data, selector_query)
         if parse_all or should_run:
             misconfigurations: dict[str, str] = {}
+            # Extract identifier once and thread it through all nested calls
+            # so every log line for this item shares the same identifier context.
             raw_item_identifier = _extract_item_identifier(data)
             mapped_entity = await self._search_as_object(
                 data,
@@ -302,16 +316,22 @@ class JQEntityProcessor(BaseEntityProcessor):
         entity_mapping_fault_counter: int,
         required_fields: set[str] | None = None,
     ) -> None:
-        if entity_misconfigurations:  # why remove the entity len check
+        if entity_misconfigurations:
             resolved = required_fields or set()
             for field, reason in entity_misconfigurations.items():
+                # Log required fields as ERROR (entity is incomplete/broken),
+                # optional fields as WARNING (entity is usable but missing data).
+                # If the blueprint couldn't be fetched, required_fields is None
+                # and everything falls back to WARNING.
                 level = "ERROR" if field in resolved else "WARNING"
                 logger.bind(field=field).log(
                     level,
-                    f"Unable to find valid data for '{field}': {reason} (null, missing, or misconfigured)",
+                    f" '{field}': {reason} (null, missing, or misconfigured)",
                 )
 
         if has_unmapped_entity_keys:
+            # Emitted once per batch — the per-item detail is in the warning
+            # logged inside _parse_items when each entity is skipped.
             logger.bind(
                 entity_mapping_fault_counter=entity_mapping_fault_counter
             ).warning(
@@ -320,6 +340,11 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     @staticmethod
     def _get_required_fields(blueprint: Blueprint) -> set[str]:
+        """Return the set of dot-path field names that are required by the blueprint.
+
+        Paths match the format used in misconfigurations keys, e.g.
+        "properties.name" or "relations.owner", so they can be compared directly.
+        """
         required_props = blueprint.properties_schema.get("required", [])
         fields = {f"properties.{name}" for name in required_props}
         for name, relation in blueprint.relations.items():
@@ -329,6 +354,13 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     @staticmethod
     def _extract_blueprint_identifier(mapping: ResourceConfig) -> str | None:
+        """Extract the plain blueprint identifier string from the mapping config.
+
+        The blueprint value in a mapping is a JQ expression like '"githubRepo"'
+        (with inner quotes). This strips both the outer Python string delimiters
+        and the inner JQ string quotes to get the bare identifier.
+        Returns None if the value is dynamic (not a plain string literal).
+        """
         raw = mapping.port.entity.mappings.blueprint
         if isinstance(raw, str):
             stripped = raw.strip().strip("'\"")
@@ -595,6 +627,9 @@ class JQEntityProcessor(BaseEntityProcessor):
                     else {}
                 )
                 raw_item_identifier = _extract_item_identifier(raw_item)
+                # Per-item warning so the user knows exactly which source item was
+                # dropped and whether identifier or blueprint (or both) were missing.
+                # On main this was a silent counter increment with no item-level detail.
                 logger.bind(
                     raw_item_index=raw_item_index,
                     raw_item_identifier=raw_item_identifier,
@@ -608,6 +643,9 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         required_fields: set[str] | None = None
         if entity_misconfigurations:
+            # Fetch the blueprint schema to distinguish required vs optional fields,
+            # so _notify_mapping_issues can log them at ERROR vs WARNING respectively.
+            # Only done when there are actually misconfigurations to avoid extra API calls.
             bp_id = self._extract_blueprint_identifier(mapping)
             if bp_id:
                 try:
@@ -616,6 +654,8 @@ class JQEntityProcessor(BaseEntityProcessor):
                     )
                     required_fields = self._get_required_fields(blueprint)
                 except Exception:
+                    # Non-fatal: if the blueprint can't be fetched we fall back to
+                    # WARNING for all misconfigurations rather than crashing the resync.
                     logger.debug(
                         f"Could not fetch blueprint '{bp_id}' to resolve required fields, "
                         "falling back to WARNING for all misconfigurations"

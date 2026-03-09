@@ -10,11 +10,16 @@ from port_ocean.exceptions.core import EntityProcessorException
 
 _COMPILED_PATTERNS: dict[str, Any] = {}
 
+# Common keys to probe when trying to identify a raw item in log messages.
 _IDENTIFIER_KEYS = ("identifier", "id", "login", "name", "number", "key", "slug")
 
 
 def _extract_item_identifier(data: dict[str, Any]) -> str | None:
-    """Best-effort extraction of a human-readable identifier from a raw item."""
+    """Best-effort extraction of a human-readable identifier from a raw item.
+
+    Used to enrich error logs with context about which source item caused a
+    mapping failure, without dumping the entire raw object.
+    """
     for key in _IDENTIFIER_KEYS:
         val = data.get(key)
         if val is not None:
@@ -65,6 +70,8 @@ class JQEntityProcessorSync:
     def _search(
         data: dict[str, Any],
         pattern: str,
+        # field and raw_item_identifier are passed through from _search_as_object
+        # so every failure log names the exact mapping field and source item.
         field: str | None = None,
         raw_item_identifier: str | None = None,
     ) -> Any:
@@ -78,19 +85,25 @@ class JQEntityProcessorSync:
             item_info = (
                 f" on item '{raw_item_identifier}'" if raw_item_identifier else ""
             )
+            # Only the first line of the jq error — multiline messages are noisy.
             error_summary = err_msg.split("\n")[0]
+            # Structured fields land in the log record's extra dict, keeping the
+            # message string human-readable while still being machine-filterable in Port.
             logger.bind(
                 field=field,
                 pattern=pattern,
                 error=err_msg,
                 raw_item_identifier=raw_item_identifier,
             ).warning(
-                f"JQ search failed{field_info}{item_info} - pattern: {pattern}: {error_summary}"
+                f"Search failed{field_info}{item_info} - pattern: {pattern}: {error_summary}"
             )
             return None
 
     @staticmethod
     def _search_as_bool(data: dict[str, Any] | str, pattern: str) -> bool:
+        # Wrapped in try/except so a compile or runtime error on the selector
+        # raises EntityProcessorException with the pattern name, rather than
+        # propagating a raw jq exception with no mapping context.
         try:
             compiled_pattern = JQEntityProcessorSync._compile(pattern)
             value = compiled_pattern.input_value(data).first()
@@ -100,6 +113,7 @@ class JQEntityProcessorSync:
             ) from exc
         if isinstance(value, bool):
             return value
+        # Pattern name added so the error shows which selector produced a non-bool.
         raise EntityProcessorException(
             f"Expected boolean value for pattern {pattern!r}, got value:{value} of type: {type(value)} instead"
         )
@@ -109,6 +123,8 @@ class JQEntityProcessorSync:
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
+        # _path is built up recursively to produce dot-notation field names
+        # like "properties.url" instead of just "url" in misconfigurations and logs.
         _path: str = "",
         raw_item_identifier: str | None = None,
     ) -> dict[str, Any | None]:
@@ -130,6 +146,8 @@ class JQEntityProcessorSync:
                             search_result
                         )
                         if search_result is None and misconfigurations is not None:
+                            # Use full dot-path as the key so callers can distinguish
+                            # e.g. "properties.labels" from "relations.labels".
                             misconfigurations[current_path] = obj[key]
 
                 elif isinstance(value, dict):
@@ -153,6 +171,8 @@ class JQEntityProcessorSync:
                     )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
+                        # Store the JQ expression (value) rather than the resolved
+                        # result so the misconfiguration log shows what was attempted.
                         misconfigurations[current_path] = value
             except Exception:
                 result[key] = None
@@ -169,6 +189,8 @@ class JQEntityProcessorSync:
         should_run = JQEntityProcessorSync._search_as_bool(data, selector_query)
         if parse_all or should_run:
             misconfigurations: dict[str, str] = {}
+            # Extract identifier once and thread it through all nested calls
+            # so every log line for this item shares the same identifier context.
             raw_item_identifier = _extract_item_identifier(data)
             mapped_entity = JQEntityProcessorSync._search_as_object(
                 data,
