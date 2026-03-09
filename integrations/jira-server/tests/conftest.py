@@ -8,6 +8,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 def mock_ocean_context() -> None | MagicMock:
     """Fixture to initialize the PortOcean context."""
     mock_app = MagicMock()
+    mock_app.is_saas.return_value = False
     mock_app.integration_config = {
         "jira_server_host": "https://jira.example.com",
         "server_url": "https://jira.example.com",
