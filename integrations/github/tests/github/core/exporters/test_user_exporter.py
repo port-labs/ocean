@@ -4,13 +4,14 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
+    Selector,
 )
 import copy
 import pytest
 from unittest.mock import patch
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.user_exporter import GraphQLUserExporter
-from integration import GithubPortAppConfig, GithubUserConfig, GithubUserSelector
+from integration import GithubPortAppConfig, GithubUserConfig
 from port_ocean.context.event import event_context
 from github.core.options import SingleUserOptions, ListUserOptions
 from github.helpers.gql_queries import (
@@ -48,7 +49,7 @@ def mock_port_app_config() -> GithubPortAppConfig:
         resources=[
             GithubUserConfig(
                 kind=ObjectKind.USER,
-                selector=GithubUserSelector(query="true"),
+                selector=Selector(query="true"),
                 port=PortResourceConfig(
                     entity=MappingsConfig(
                         mappings=EntityMapping(
@@ -181,7 +182,7 @@ class TestGraphQLUserExporter:
 
                 users: list[list[dict[str, Any]]] = []
                 async for batch in exporter.get_paginated_resources(
-                    ListUserOptions(organization="test-org", include_bots=True)
+                    ListUserOptions(organization="test-org")
                 ):
                     users.append(batch)
 
