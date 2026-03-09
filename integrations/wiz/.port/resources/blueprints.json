@@ -246,5 +246,304 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "wizVulnerabilityFinding",
+    "description": "This blueprint represents a wiz vulnerability finding",
+    "title": "Wiz Vulnerability Finding",
+    "icon": "Wiz",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "OPEN",
+            "IN_PROGRESS",
+            "RESOLVED",
+            "REJECTED"
+          ],
+          "enumColors": {
+            "OPEN": "red",
+            "IN_PROGRESS": "yellow",
+            "RESOLVED": "green",
+            "REJECTED": "lightGray"
+          }
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL",
+            "NONE"
+          ],
+          "enumColors": {
+            "LOW": "olive",
+            "MEDIUM": "yellow",
+            "HIGH": "red",
+            "CRITICAL": "red",
+            "NONE": "lightGray"
+          }
+        },
+        "categories": {
+          "title": "Categories",
+          "type": "array"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "detectionMethod": {
+          "title": "Detection Method",
+          "type": "string"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "firstDetectedAt": {
+          "title": "First Detected At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "publishedDate": {
+          "title": "Published Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "remediation": {
+          "title": "Remediation",
+          "type": "string"
+        },
+        "environments": {
+          "title": "Environments",
+          "type": "array"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        },
+        "vulnerabilityExternalId": {
+          "title": "Vulnerability External ID",
+          "type": "string"
+        },
+        "portalUrl": {
+          "title": "Portal URL",
+          "type": "string",
+          "format": "url"
+        },
+        "origin": {
+          "title": "Origin",
+          "type": "string"
+        },
+        "CVEDescription": {
+          "title": "CVE Description",
+          "type": "string"
+        },
+        "hasFix": {
+          "title": "Has Fix",
+          "type": "boolean"
+        },
+        "hasExploit": {
+          "title": "Has Exploit",
+          "type": "boolean"
+        },
+        "isHighProfileThreat": {
+          "title": "Is High Profile Threat",
+          "type": "boolean"
+        },
+        "rootComponent": {
+          "title": "Root Component",
+          "type": "object"
+        },
+        "applicationServices": {
+          "title": "Application Services",
+          "type": "array"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "resolvedAt": {
+          "title": "Resolved At",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "projects": {
+        "target": "wizProject",
+        "title": "Projects",
+        "description": "The projects affected by this vulnerability finding",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "wizTechnology",
+    "description": "This blueprint represents a wiz technology",
+    "title": "Wiz Technology",
+    "icon": "Wiz",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "categories": {
+          "title": "Categories",
+          "type": "array"
+        },
+        "usage": {
+          "title": "Usage",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "risk": {
+          "title": "Risk",
+          "type": "string"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        },
+        "ownerName": {
+          "title": "Owner Name",
+          "type": "string"
+        },
+        "businessModel": {
+          "title": "Business Model",
+          "type": "string"
+        },
+        "popularity": {
+          "title": "Popularity",
+          "type": "number"
+        },
+        "projectCount": {
+          "title": "Project Count",
+          "type": "number"
+        },
+        "codeRepoCount": {
+          "title": "Code Repo Count",
+          "type": "number"
+        },
+        "isCloudService": {
+          "title": "Is Cloud Service",
+          "type": "boolean"
+        },
+        "supportedOperatingSystems": {
+          "title": "Supported Operating Systems",
+          "type": "array"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "wizHostedTechnology",
+    "description": "This blueprint represents a wiz hosted technology",
+    "title": "Wiz Hosted Technology",
+    "icon": "Wiz",
+    "schema": {
+      "properties": {
+        "detectionMethods": {
+          "title": "Detection Methods",
+          "type": "array"
+        },
+        "installedPackages": {
+          "title": "Installed Packages",
+          "type": "array"
+        },
+        "firstSeen": {
+          "title": "First Seen",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "cpe": {
+          "title": "CPE",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "technology": {
+        "target": "wizTechnology",
+        "title": "Technology",
+        "description": "The technology that this hosted technology is associated with",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "wizRepository",
+    "description": "This blueprint represents a wiz repository",
+    "title": "Wiz Repository",
+    "icon": "Wiz",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "platform": {
+          "title": "Platform",
+          "type": "string"
+        },
+        "public": {
+          "title": "Public",
+          "type": "boolean"
+        },
+        "archived": {
+          "title": "Archived",
+          "type": "boolean"
+        },
+        "visibility": {
+          "title": "Visibility",
+          "type": "string"
+        },
+        "organization": {
+          "title": "Organization",
+          "type": "string"
+        },
+        "branches": {
+          "title": "Branches",
+          "type": "array"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
   }
 ]

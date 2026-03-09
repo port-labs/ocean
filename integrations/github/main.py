@@ -27,6 +27,9 @@ from github.clients.utils import (
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
 from github.core.exporters.deployment_exporter import RestDeploymentExporter
+from github.core.exporters.deployment_status_exporter import (
+    RestDeploymentStatusExporter,
+)
 from github.core.exporters.environment_exporter import RestEnvironmentExporter
 from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
@@ -57,6 +60,7 @@ from github.core.exporters.organization_exporter import RestOrganizationExporter
 from github.core.options import (
     ListBranchOptions,
     ListDeploymentsOptions,
+    ListDeploymentStatusesOptions,
     ListEnvironmentsOptions,
     ListIssueOptions,
     ListPullRequestOptions,
@@ -94,8 +98,8 @@ from integration import (
     GithubFileResourceConfig,
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
-    GithubUserConfig,
     GithubDeploymentConfig,
+    GithubDeploymentStatusConfig,
     GithubWorkflowConfig,
     GithubWorkflowRunConfig,
 )
@@ -226,8 +230,6 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     graphql_client = create_github_client(GithubClientType.GRAPHQL)
     org_exporter = RestOrganizationExporter(rest_client)
-    user_config = cast(GithubUserConfig, event.resource_config)
-    include_bots = user_config.selector.include_bots
     exporter = GraphQLUserExporter(graphql_client)
 
     async for organizations in org_exporter.get_paginated_resources(
@@ -238,9 +240,7 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             if org["type"] == "Organization":
                 tasks.append(
                     exporter.get_paginated_resources(
-                        options=ListUserOptions(
-                            organization=org["login"], include_bots=include_bots
-                        )
+                        options=ListUserOptions(organization=org["login"])
                     )
                 )
                 continue
@@ -710,6 +710,82 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
                 async for deployments in stream_async_iterators_tasks(*tasks):
                     yield deployments
+
+
+@ocean.on_resync(ObjectKind.DEPLOYMENT_STATUS)
+async def resync_deployment_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all deployment statuses in the organization."""
+    logger.info(f"Starting resync for kind {kind}")
+
+    rest_client = create_github_client()
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    deployment_exporter = RestDeploymentExporter(rest_client)
+    deployment_status_exporter = RestDeploymentStatusExporter(rest_client)
+
+    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
+    config = cast(GithubDeploymentStatusConfig, event.resource_config)
+
+    logger.info(
+        f"Deployment status resync filters: "
+        f"task={config.selector.task}, environment={config.selector.environment}"
+    )
+
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations()
+    ):
+        for org in organizations:
+            org_name = org["login"]
+            org_type = org["type"]
+            logger.debug(f"Processing organization: {org_name} (type={org_type})")
+
+            repo_options = ListRepositoryOptions(
+                organization=org_name,
+                organization_type=org_type,
+                type=port_app_config.repository_type,
+                search_params=config.selector.repo_search,
+            )
+
+            async for repositories in repository_exporter.get_paginated_resources(
+                repo_options
+            ):
+                for repo in repositories:
+                    repo_name = repo["name"]
+                    logger.debug(f"Fetching deployments for {org_name}/{repo_name}")
+                    deployment_options = ListDeploymentsOptions(
+                        organization=org_name,
+                        repo_name=repo_name,
+                        task=config.selector.task,
+                        environment=config.selector.environment,
+                    )
+
+                    async for (
+                        deployments
+                    ) in deployment_exporter.get_paginated_resources(
+                        deployment_options
+                    ):
+                        logger.debug(
+                            f"Found {len(deployments)} deployments in {org_name}/{repo_name}"
+                        )
+                        tasks = []
+                        for deployment in deployments:
+                            deployment_id = str(deployment["id"])
+                            logger.debug(
+                                f"Fetching statuses for deployment {deployment_id} "
+                                f"(task={deployment['task']}, env={deployment['environment']})"
+                            )
+                            tasks.append(
+                                deployment_status_exporter.get_paginated_resources(
+                                    ListDeploymentStatusesOptions(
+                                        organization=org_name,
+                                        repo_name=repo_name,
+                                        deployment_id=deployment_id,
+                                    )
+                                )
+                            )
+
+                        async for statuses in stream_async_iterators_tasks(*tasks):
+                            yield statuses
 
 
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)

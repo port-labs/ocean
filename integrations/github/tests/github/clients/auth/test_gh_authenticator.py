@@ -179,25 +179,16 @@ class TestGithubAuthenticator:
         mock_response.raise_for_status = Mock()
         mock_client.get.return_value = mock_response
 
-        with (
-            patch.object(
-                github_auth,
-                "is_personal_org",
-                AsyncMock(return_value=False),
-            ) as mock_is_personal,
-            patch.object(
-                type(github_auth),
-                "client",
-                new_callable=PropertyMock,
-                return_value=mock_client,
-            ),
+        with patch.object(
+            type(github_auth),
+            "client",
+            new_callable=PropertyMock,
+            return_value=mock_client,
         ):
             installation_id = await github_auth._fetch_installation_id(mock_jwt_token)
 
-            mock_is_personal.assert_called_once()
-
-            expected_url = f"{github_auth.github_host}/orgs/{github_auth.organization}/installation"
-            mock_client.get.assert_called_once_with(
+            expected_url = f"{github_auth.github_host}/users/{github_auth.organization}/installation"
+            mock_client.get.assert_awaited_once_with(
                 expected_url, headers={"Authorization": f"Bearer {mock_jwt_token}"}
             )
 
@@ -215,25 +206,16 @@ class TestGithubAuthenticator:
         mock_response.raise_for_status = Mock()
         mock_client.get.return_value = mock_response
 
-        with (
-            patch.object(
-                github_auth,
-                "is_personal_org",
-                AsyncMock(return_value=True),
-            ) as mock_is_personal,
-            patch.object(
-                type(github_auth),
-                "client",
-                new_callable=PropertyMock,
-                return_value=mock_client,
-            ),
+        with patch.object(
+            type(github_auth),
+            "client",
+            new_callable=PropertyMock,
+            return_value=mock_client,
         ):
             installation_id = await github_auth._fetch_installation_id(mock_jwt_token)
 
-            mock_is_personal.assert_called_once()
-
             expected_url = f"{github_auth.github_host}/users/{github_auth.organization}/installation"
-            mock_client.get.assert_called_once_with(
+            mock_client.get.assert_awaited_once_with(
                 expected_url, headers={"Authorization": f"Bearer {mock_jwt_token}"}
             )
 
@@ -316,6 +298,15 @@ class TestGithubAuthenticator:
                     fake_handle_async_request,
                 ),
                 patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+                patch.object(
+                    github_auth,
+                    "get_headers",
+                    AsyncMock(
+                        return_value=AsyncMock(
+                            as_dict=lambda: {"Authorization": "Bearer test"}
+                        )
+                    ),
+                ),
             ):
                 client = github_auth.client
                 resp = await client.get("https://api.github.com/test")

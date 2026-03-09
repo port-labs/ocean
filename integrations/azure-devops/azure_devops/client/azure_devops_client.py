@@ -4,6 +4,7 @@ import functools
 import json
 import httpx
 from collections import defaultdict
+from itertools import batched
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
 from loguru import logger
@@ -63,6 +64,7 @@ MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
 MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
+MAX_SUBJECTS_PER_LOOKUP = 500
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -330,6 +332,122 @@ class AzureDevopsClient(HTTPBaseClient):
             yield users
 
     @cache_iterator_result()
+    async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate all security groups in the organization."""
+        groups_url = (
+            self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/groups"
+        )
+        async for groups in self._get_paginated_by_top_and_continuation_token(
+            groups_url
+        ):
+            yield groups
+
+    async def _get_group_direct_members(
+        self, group_descriptor: str
+    ) -> Optional[list[dict[str, Any]]]:
+        """Get direct members of a group."""
+        members_url = (
+            self._format_service_url("vssps")
+            + f"/{API_URL_PREFIX}/graph/Memberships/{group_descriptor}"
+        )
+        response = await self.send_request(
+            "GET", members_url, params={"direction": "Down"}
+        )
+        if not response:
+            return None
+        return response.json()["value"]
+
+    async def _lookup_subjects(
+        self, descriptors: list[str]
+    ) -> dict[str, dict[str, Any]]:
+        """Batch lookup subject details for multiple descriptors."""
+        all_results: dict[str, dict[str, Any]] = {}
+        total_batches = (
+            len(descriptors) + MAX_SUBJECTS_PER_LOOKUP - 1
+        ) // MAX_SUBJECTS_PER_LOOKUP
+
+        logger.info(
+            f"Starting subject lookup for {len(descriptors)} descriptors across {total_batches} batch(es)"
+        )
+
+        for batch_num, batch in enumerate(
+            batched(descriptors, MAX_SUBJECTS_PER_LOOKUP), start=1
+        ):
+            request_body = {"lookupKeys": [{"descriptor": d} for d in batch]}
+
+            try:
+                response = await self.send_request(
+                    "POST",
+                    self._format_service_url("vssps")
+                    + f"/{API_URL_PREFIX}/graph/subjectlookup",
+                    data=json.dumps(request_body),
+                    headers={"Content-Type": "application/json"},
+                    params={"api-version": "7.1-preview.1"},
+                )
+
+                if not response:
+                    logger.warning(
+                        f"No response received for subject lookup batch {batch_num} of {total_batches} (descriptors: {batch})"
+                    )
+                    continue
+                all_results.update(response.json()["value"])
+
+            except Exception as e:
+                logger.warning(
+                    f"Failed to look up subjects for batch {batch_num} of {total_batches} "
+                    f"(size: {len(batch)}). Descriptors: {batch}. Error: {e}"
+                )
+                continue
+
+        logger.info(f"Successfully looked up {len(all_results)} subjects")
+        return all_results
+
+    async def generate_group_members(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate direct group memberships (top-level only, no recursion).
+
+        Yields members for each group. Each member includes:
+        - __group: The full group object this member belongs to
+        """
+        async for groups in self.generate_groups():
+            for group in groups:
+                group_descriptor = group["descriptor"]
+
+                memberships = await self._get_group_direct_members(group_descriptor)
+                if not memberships:
+                    logger.info(
+                        f"No membership found for {group_descriptor}, skipping ..."
+                    )
+                    continue
+
+                descriptors = [
+                    membership["memberDescriptor"] for membership in memberships
+                ]
+                subject_details = await self._lookup_subjects(descriptors)
+
+                members = []
+                for membership in memberships:
+                    member_descriptor = membership["memberDescriptor"]
+                    if member_descriptor not in subject_details:
+                        logger.debug(
+                            f"Subject details not found for member '{member_descriptor}' in group '{group_descriptor}'"
+                        )
+                        continue
+                    members.append(
+                        {
+                            **subject_details[member_descriptor],
+                            "__group": group,
+                        }
+                    )
+
+                logger.info(
+                    f"Resolved {len(members)} direct members for group '{group_descriptor}'"
+                )
+                yield members
+
+    @cache_iterator_result()
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
@@ -587,7 +705,8 @@ class AzureDevopsClient(HTTPBaseClient):
         """Yield paginated builds for a single project, enriched with project data."""
         builds_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
         async for builds in self._get_paginated_by_top_and_continuation_token(
-            builds_url
+            builds_url,
+            additional_params={"queryOrder": "queueTimeDescending"},
         ):
             yield self._enrich_builds_with_project_data(builds, project)
 

@@ -448,6 +448,20 @@ class AzureDevopsIterationConfig(ResourceConfig):
     )
 
 
+class AzureDevopsGroupResourceConfig(ResourceConfig):
+    kind: Literal[Kind.GROUP] = Field(
+        title="Azure Devops Group",
+        description="Azure Devops group resource kind.",
+    )
+
+
+class AzureDevopsGroupMemberResourceConfig(ResourceConfig):
+    kind: Literal[Kind.GROUP_MEMBER] = Field(
+        title="Azure Devops Group Member",
+        description="Azure Devops group member resource kind.",
+    )
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -486,6 +500,8 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsReleaseDeploymentConfig
         | AzureDevopsPipelineDeploymentConfig
         | AzureDevopsIterationConfig
+        | AzureDevopsGroupResourceConfig
+        | AzureDevopsGroupMemberResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

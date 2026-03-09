@@ -71,7 +71,7 @@ class SingleUserOptions(SingleOrganizationOptions):
 class ListUserOptions(SingleOrganizationOptions):
     """Options for listing users."""
 
-    include_bots: Required[bool]
+    pass
 
 
 class SingleTeamOptions(SingleOrganizationOptions):
@@ -158,6 +158,19 @@ class ListDeploymentsOptions(RepositoryIdentifier):
 
     task: NotRequired[Optional[str]]
     environment: NotRequired[Optional[str]]
+
+
+class SingleDeploymentStatusOptions(RepositoryIdentifier):
+    """Options for fetching a single deployment status."""
+
+    deployment_id: Required[str]
+    status_id: Required[str]
+
+
+class ListDeploymentStatusesOptions(RepositoryIdentifier):
+    """Options for listing deployment statuses."""
+
+    deployment_id: Required[str]
 
 
 class SingleDependabotAlertOptions(RepositoryIdentifier):

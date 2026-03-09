@@ -27,14 +27,14 @@ _RETRY_CONFIG_CALLBACK: Callable[[], "RetryConfig"] | None = None
 
 
 def register_on_retry_callback(
-    _on_retry_callback: Callable[[httpx.Request], httpx.Request]
+    _on_retry_callback: Callable[[httpx.Request], httpx.Request],
 ) -> None:
     global _ON_RETRY_CALLBACK
     _ON_RETRY_CALLBACK = _on_retry_callback
 
 
 def register_retry_config_callback(
-    retry_config_callback: Callable[[], "RetryConfig"]
+    retry_config_callback: Callable[[], "RetryConfig"],
 ) -> None:
     """Register a callback function that returns a RetryConfig instance.
 
@@ -222,6 +222,73 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             )
 
         self._logger = logger
+
+    async def before_retry_async(
+        self,
+        request: httpx.Request,
+        response: httpx.Response | None,
+        sleep_time: float,
+        attempt: int,
+    ) -> httpx.Request | None:
+        """
+        Lifecycle hook called before sleeping and retrying.
+
+        Override to refresh the request (e.g. new auth headers) before retry.
+        Return a new request to use for the retry, or None to use the original.
+
+        Args:
+            request: The request that failed.
+            response: The response that triggered the retry (or None for connection errors).
+            sleep_time: The calculated sleep duration before retry.
+            attempt: The attempt number (1-based for first retry).
+
+        Returns:
+            A new request to use for retry, or None to use the original.
+        """
+        return None
+
+    async def after_retry_async(
+        self,
+        request: httpx.Request,
+        response: httpx.Response,
+        attempt: int,
+    ) -> None:
+        """
+        Lifecycle hook called when a response is received (whether retrying or not).
+
+        Override to react to the response (e.g. notify rate limiter, update state).
+
+        Args:
+            request: The request that was sent.
+            response: The response received.
+            attempt: The attempt number (1-based).
+        """
+        pass
+
+    def _before_retry(
+        self,
+        request: httpx.Request,
+        response: httpx.Response | None,
+        sleep_time: float,
+        attempt: int,
+    ) -> httpx.Request | None:
+        """
+        Sync lifecycle hook for before_retry. Used in sync retry path.
+        Override in subclasses if sync retry needs request refresh.
+        """
+        return None
+
+    def _after_retry(
+        self,
+        request: httpx.Request,
+        response: httpx.Response,
+        attempt: int,
+    ) -> None:
+        """
+        Sync lifecycle hook for after_retry. Used in sync retry path.
+        Override in subclasses if sync retry needs response handling.
+        """
+        pass
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         """
@@ -531,6 +598,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 sleep_time = self._calculate_sleep(
                     attempts_made, response_headers, status_code
                 )
+                refreshed_request = await self.before_retry_async(
+                    request, response, sleep_time, attempts_made
+                )
+                if refreshed_request is not None:
+                    request = refreshed_request
                 self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
 
@@ -539,6 +611,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             try:
                 response = await send_method(request)
                 response.request = request
+                await self.after_retry_async(request, response, attempts_made + 1)
                 if remaining_attempts < 1 or not (
                     await self._should_retry_async(response)
                 ):
@@ -587,6 +660,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 sleep_time = self._calculate_sleep(
                     attempts_made, response_headers, status_code
                 )
+                refreshed_request = self._before_retry(
+                    request, response, sleep_time, attempts_made
+                )
+                if refreshed_request is not None:
+                    request = refreshed_request
                 self._log_before_retry(request, sleep_time, response, error)
                 time.sleep(sleep_time)
 
@@ -595,6 +673,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             try:
                 response = send_method(request)
                 response.request = request
+                self._after_retry(request, response, attempts_made + 1)
                 if remaining_attempts < 1 or not self._should_retry(response):
                     return response
                 response.close()
