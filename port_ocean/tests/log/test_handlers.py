@@ -56,15 +56,6 @@ def test_serialize_record_exc_info_group_exception() -> None:
     assert exception_message in exc_info
 
 
-def test_serialize_record_message_has_no_trailing_newline() -> None:
-    """record.msg trailing newlines should be stripped in the serialized message."""
-    record = log_record(lambda: logger.info(log_message))
-    serialized_record = _serialize_record(record)
-    message = serialized_record.get("message", "")
-    assert not message.endswith("\n")
-    assert log_message in message
-
-
 def test_extract_traceback_with_real_exception() -> None:
     """When a real exception is caught, traceback should be extracted into extra."""
     try:

@@ -53,7 +53,7 @@ def _http_loguru_handler(level: LogLevelType) -> None:
     logger.add(
         handler,
         level=level.upper(),
-        format=lambda record: "{message}",
+        format=lambda record: "{message}",  # strip loguru decorations (timestamp, level, module) — the HTTP handler builds its own JSON payload
         diagnose=False,  # hide variable values in log backtrace
         enqueue=True,  # process logs in background
         filter=sensitive_log_filter.create_filter(full_hide=True),

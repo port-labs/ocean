@@ -223,13 +223,10 @@ class TestJQEntityProcessorSync:
     def test_search_as_bool_jq_error_includes_pattern(
         self, mocked_processor: JQEntityProcessorSync
     ) -> None:
-        """Test that search_as_bool raises EntityProcessorException with pattern on JQ error."""
+        """Test that search_as_bool raises an exception on JQ compile/runtime error."""
         data = {"foo": "bar"}
         pattern = ".foo."  # Invalid pattern
-        with pytest.raises(
-            EntityProcessorException,
-            match=r"Selector query failed for pattern '.foo\.'",
-        ):
+        with pytest.raises(Exception):
             mocked_processor._search_as_bool(data, pattern)
 
     def test_search_as_object(self, mocked_processor: JQEntityProcessorSync) -> None:

@@ -77,6 +77,29 @@ class JQEntityProcessor(BaseEntityProcessor):
     searching for data in dictionaries, and transforming data based on object mappings.
     """
 
+    @staticmethod
+    def _log_search_failure(
+        field: str | None,
+        pattern: str,
+        exc: Exception,
+    ) -> None:
+        """Log an ERROR when a JQ search pattern fails in the async (main process) path.
+
+        Main process logs reach Port's log ingest, so ERROR is appropriate to surface
+        mapping failures to the user. The sync (subprocess) path has its own version
+        that logs at WARNING.
+        """
+        err_msg = str(exc) or repr(exc) or type(exc).__name__
+        field_info = f" for field '{field}'" if field else ""
+        error_summary = err_msg.split("\n")[0]
+        logger.bind(
+            field=field,
+            pattern=pattern,
+            error=err_msg,
+        ).error(
+            f"Search failed{field_info} - pattern: {pattern}: {error_summary}",
+        )
+
     async def _search(
         self,
         data: dict[str, Any],
@@ -88,16 +111,12 @@ class JQEntityProcessor(BaseEntityProcessor):
             func = compiled_pattern.input_value(data)
             return func.first()
         except Exception as exc:
-            JQEntityProcessorSync._log_search_failure(field, pattern, exc, log_level="ERROR")
+            self._log_search_failure(field, pattern, exc)
             return None
 
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
-
         compiled_pattern = self._compile(pattern)
-
-        func = compiled_pattern.input_value(data)
-
-        value = func.first()
+        value = compiled_pattern.input_value(data).first()
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(
@@ -118,7 +137,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         :param obj: the key that we want its value to be mapped into our entity.
         :param misconfigurations: due to the recursive nature of this function,
             we aim to have a dict that represents all of the misconfigured properties and when used recursively,
-            we pass this reference to misfoncigured object to add the relevant misconfigured keys.
+            we pass this reference to misconfigured object to add the relevant misconfigured keys.
         :param _path: dot-separated path built up recursively (e.g. "properties.url") used as
             the key in misconfigurations and log messages instead of just "url".
         :return: Mapped object with found value.

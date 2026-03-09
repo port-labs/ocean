@@ -24,26 +24,23 @@ class JQEntityProcessorSync:
         field: str | None,
         pattern: str,
         exc: Exception,
-        log_level: str = "WARNING",
     ) -> None:
-        """Log a structured message when a JQ search pattern fails at runtime.
+        """Log a WARNING when a JQ search pattern fails in the subprocess path.
 
-        log_level is WARNING for the sync (subprocess) path and ERROR for the
-        async (main process) path, since async failures reach Port's log ingest.
+        Subprocess logs reach stdout but not Port's log ingest, so WARNING is appropriate.
+        The async path has its own version that logs at ERROR.
         """
         err_msg = str(exc) or repr(exc) or type(exc).__name__
         field_info = f" for field '{field}'" if field else ""
         # Only the first line of the jq error
         error_summary = err_msg.split("\n")[0]
-        # TODO: check the split and without
         # Structured fields land in the log record's extra dict, keeping the
         # message string human-readable while still being machine-filterable in Port.
         logger.bind(
             field=field,
             pattern=pattern,
             error=err_msg,
-        ).log(
-            log_level,
+        ).warning(
             f"Search failed{field_info} - pattern: {pattern}: {error_summary}",
         )
 
@@ -91,6 +88,7 @@ class JQEntityProcessorSync:
         except Exception as exc:
             JQEntityProcessorSync._log_search_failure(field, pattern, exc)
             return None
+
 
     @staticmethod
     def _search_as_bool(data: dict[str, Any] | str, pattern: str) -> bool:

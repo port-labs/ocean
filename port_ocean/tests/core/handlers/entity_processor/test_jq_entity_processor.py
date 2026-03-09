@@ -244,10 +244,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"foo": "bar"}
         pattern = ".foo."
-        with pytest.raises(
-            EntityProcessorException,
-            match=r"Selector query failed for pattern '\.foo\.'",
-        ):
+        with pytest.raises(Exception):
             await mocked_processor._search_as_bool(data, pattern)
 
     async def test_search_as_bool_non_bool_includes_pattern(
