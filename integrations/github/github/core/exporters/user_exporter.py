@@ -8,7 +8,6 @@ from github.core.options import SingleUserOptions, ListUserOptions
 from github.helpers.gql_queries import (
     LIST_EXTERNAL_IDENTITIES_GQL,
     LIST_ORG_MEMBER_GQL,
-    LIST_ORG_MEMBER_WITHOUT_BOTS_GQL,
     FETCH_GITHUB_USER_GQL,
 )
 
@@ -44,12 +43,9 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "organization": organization,
             "__path": "organization.membersWithRole",
         }
-        include_bots = options.get("include_bots")
-        if include_bots:
-            resource = LIST_ORG_MEMBER_GQL
-        else:
-            resource = LIST_ORG_MEMBER_WITHOUT_BOTS_GQL
-        async for users in self.client.send_paginated_request(resource, variables):
+        async for users in self.client.send_paginated_request(
+            LIST_ORG_MEMBER_GQL, variables
+        ):
             users_with_no_email = {
                 (idx, user["login"]): user
                 for idx, user in enumerate(users)
@@ -76,7 +72,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         saml_users = await self._get_saml_identities(organization)
 
-        for (idx, login), user in users_no_email.items():
+        for (idx, login), _ in users_no_email.items():
             if login in saml_users:
                 users[idx]["email"] = saml_users[login]
                 remaining_users.remove((idx, login))

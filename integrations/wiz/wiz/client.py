@@ -8,7 +8,7 @@ from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils import http_async_client
 from port_ocean.utils.misc import get_time
 from pydantic import BaseModel, Field, PrivateAttr
-from wiz.options import IssueOptions, ProjectOptions
+from wiz.options import IssueOptions, ProjectOptions, VulnerabilityFindingOptions
 
 from .constants import (
     AUTH0_URLS,
@@ -231,3 +231,71 @@ class WizClient:
             variables["filterBy"]["type"] = options["type_list"]
 
         return variables
+
+    async def get_vulnerability_findings(
+        self,
+        options: VulnerabilityFindingOptions,
+        page_size: int = PAGE_SIZE,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        variables: dict[str, Any] = {
+            "first": page_size,
+            "filterBy": {},
+        }
+
+        if options.get("status_list"):
+            variables["filterBy"]["status"] = options["status_list"]
+
+        if options.get("severity_list"):
+            variables["filterBy"]["severity"] = options["severity_list"]
+
+        async for findings in self._get_paginated_resources(
+            resource="vulnerabilityFindings",
+            variables=variables,
+            max_pages=options.get("max_pages"),
+        ):
+            yield findings
+
+    async def get_technologies(
+        self,
+        page_size: int = PAGE_SIZE,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        variables: dict[str, Any] = {
+            "first": page_size,
+            "filterBy": {},
+        }
+
+        async for technologies in self._get_paginated_resources(
+            resource="technologies",
+            variables=variables,
+        ):
+            yield technologies
+
+    async def get_hosted_technologies(
+        self,
+        page_size: int = PAGE_SIZE,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        variables: dict[str, Any] = {
+            "first": page_size,
+            "filterBy": {},
+        }
+
+        async for hosted in self._get_paginated_resources(
+            resource="hostedTechnologies",
+            variables=variables,
+        ):
+            yield hosted
+
+    async def get_repositories(
+        self,
+        page_size: int = PAGE_SIZE,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        variables: dict[str, Any] = {
+            "first": page_size,
+            "filterBy": {},
+        }
+
+        async for repos in self._get_paginated_resources(
+            resource="repositories",
+            variables=variables,
+        ):
+            yield repos
