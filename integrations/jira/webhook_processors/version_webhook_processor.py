@@ -1,9 +1,6 @@
-from typing import cast
-
 from loguru import logger
 
 from initialize_client import create_jira_client
-from jira.overrides import JiraProjectResourceConfig
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -22,7 +19,7 @@ class VersionWebhookProcessor(AbstractWebhookProcessor):
         return event.payload.get("webhookEvent", "").startswith("jira:version_")
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [Kinds.PROJECT]
+        return [Kinds.VERSION]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
@@ -36,23 +33,27 @@ class VersionWebhookProcessor(AbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        project_config = cast(JiraProjectResourceConfig, resource_config)
-        if not project_config.selector.include_releases:
-            logger.debug(
-                "Skipping version event: project resource has includeReleases disabled"
+        version = payload["version"]
+        webhook_event = payload.get("webhookEvent", "")
+        client = create_jira_client()
+
+        if webhook_event == "jira:version_deleted":
+            project_id = str(version["projectId"])
+            project = await client.get_single_project(project_id)
+            version["__projectKey"] = project["key"]
+            logger.info(
+                f"Received deletion event for version {version.get('id')} in project {project['key']}"
             )
             return WebhookEventRawResults(
                 updated_raw_results=[],
-                deleted_raw_results=[],
+                deleted_raw_results=[version],
             )
 
-        version = payload["version"]
-        project_identifier = version.get("key") or str(version["projectId"])
-
-        client = create_jira_client()
-        project = await client.get_project_with_releases(project_identifier)
-        logger.info(f"Refreshed project {project['key']} releases after version event")
+        enriched_version = await client.get_single_version(str(version["id"]))
+        logger.info(
+            f"Received upsert event for version {enriched_version.get('id')} in project {enriched_version.get('__projectKey')}"
+        )
         return WebhookEventRawResults(
-            updated_raw_results=[project],
+            updated_raw_results=[enriched_version],
             deleted_raw_results=[],
         )

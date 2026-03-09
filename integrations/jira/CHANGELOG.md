@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for Jira releases (versions) enriched directly on the project payload via an opt-in `includeReleases` selector. When enabled, each project is enriched with a `__releases` field containing its versions (with properties such as `url`, `released`, `archived`, `startDate`, `releaseDate`, `description`). Version webhook events (`jira:version_*`) also trigger an automatic refresh of the parent project's releases, keeping payloads up to date on version create, update, or delete.
+- Added `version` as a standalone kind to sync Jira project releases as entities in Port.
 
 
 ## 0.5.79 (2026-02-24)

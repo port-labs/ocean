@@ -2,8 +2,6 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from jira.overrides import (
     JiraIssueSelector,
-    JiraProjectResourceConfig,
-    JiraProjectSelector,
 )
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
@@ -61,46 +59,6 @@ def resource_config() -> ResourceConfig:
                         "url": ".links.html.href",
                         "defaultBranch": ".main_branch",
                     },
-                    relations={},
-                )
-            )
-        ),
-    )
-
-
-@pytest.fixture
-def project_resource_config() -> JiraProjectResourceConfig:
-    config = JiraProjectResourceConfig(
-        kind="project",
-        selector=JiraProjectSelector(query="true", expand="insight"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".key",
-                    title=".name",
-                    blueprint='"jiraProjectTest"',
-                    properties={},
-                    relations={},
-                )
-            )
-        ),
-    )
-    config.selector.include_releases = True
-    return config
-
-
-@pytest.fixture
-def project_resource_config_no_releases() -> JiraProjectResourceConfig:
-    return JiraProjectResourceConfig(
-        kind="project",
-        selector=JiraProjectSelector(query="true", expand="insight"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".key",
-                    title=".name",
-                    blueprint='"jiraProjectTest"',
-                    properties={},
                     relations={},
                 )
             )
@@ -654,7 +612,7 @@ async def test_handleEvent_issueUpdated_jqlFilterIsWrappedWithParentheses(
 
 
 # ---------------------------------------------------------------------------
-# VersionWebhookProcessor tests (version events refresh project releases)
+# VersionWebhookProcessor tests (version events sync version kind directly)
 # ---------------------------------------------------------------------------
 
 
@@ -686,11 +644,11 @@ async def test_should_process_event_version(
 
 
 @pytest.mark.asyncio
-async def test_get_matching_kinds_version_returns_project(
+async def test_get_matching_kinds_version(
     jiraVersionWebhookProcessor: VersionWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
-    assert await jiraVersionWebhookProcessor.get_matching_kinds(event) == ["project"]
+    assert await jiraVersionWebhookProcessor.get_matching_kinds(event) == ["version"]
 
 
 @pytest.mark.asyncio
@@ -730,61 +688,58 @@ async def test_validate_payload_version_invalid_empty_version(
 
 
 @pytest.mark.asyncio
-async def test_handle_event_version_include_releases_true_refreshes_project(
+async def test_handle_event_version_upsert(
     jiraVersionWebhookProcessor: VersionWebhookProcessor,
-    project_resource_config: JiraProjectResourceConfig,
+    resource_config: ResourceConfig,
 ) -> None:
     payload: dict[str, Any] = {
         "webhookEvent": "jira:version_updated",
         "version": {"id": 1001, "projectId": 10600},
     }
-    mock_project: dict[str, Any] = {
-        "key": "PROJ1",
-        "name": "Test Project",
-        "__releases": [
-            {"id": "1001", "name": "v1.0", "__projectKey": "PROJ1"},
-        ],
-    }
+    mock_version: dict[str, Any] = {"id": 1001, "name": "v1.0", "__projectKey": "PROJ1"}
 
     with patch(
         "webhook_processors.version_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
-        mock_client.get_project_with_releases = AsyncMock(return_value=mock_project)
+        mock_client.get_single_version = AsyncMock(return_value=mock_version)
         mock_create_client.return_value = mock_client
 
         result = await jiraVersionWebhookProcessor.handle_event(
-            payload, project_resource_config
+            payload, resource_config
         )
 
-        mock_client.get_project_with_releases.assert_called_once_with("10600")
+        mock_client.get_single_version.assert_called_once_with("1001")
         assert len(result.updated_raw_results) == 1
         assert len(result.deleted_raw_results) == 0
-        assert result.updated_raw_results[0]["key"] == "PROJ1"
-        assert "__releases" in result.updated_raw_results[0]
-        assert len(result.updated_raw_results[0]["__releases"]) == 1
+        assert result.updated_raw_results[0] == mock_version
 
 
 @pytest.mark.asyncio
-async def test_handle_event_version_include_releases_false_returns_empty(
+async def test_handle_event_version_deleted(
     jiraVersionWebhookProcessor: VersionWebhookProcessor,
-    project_resource_config_no_releases: JiraProjectResourceConfig,
+    resource_config: ResourceConfig,
 ) -> None:
     payload: dict[str, Any] = {
-        "webhookEvent": "jira:version_created",
+        "webhookEvent": "jira:version_deleted",
         "version": {"id": 1002, "projectId": 10601},
     }
+    mock_project: dict[str, Any] = {"key": "PROJ2", "id": 10601}
 
     with patch(
         "webhook_processors.version_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
+        mock_client.get_single_project = AsyncMock(return_value=mock_project)
         mock_create_client.return_value = mock_client
 
         result = await jiraVersionWebhookProcessor.handle_event(
-            payload, project_resource_config_no_releases
+            payload, resource_config
         )
 
-        mock_client.get_project_with_releases.assert_not_called()
+        mock_client.get_single_project.assert_called_once_with("10601")
+        mock_client.get_single_version.assert_not_called()
         assert len(result.updated_raw_results) == 0
-        assert len(result.deleted_raw_results) == 0
+        assert len(result.deleted_raw_results) == 1
+        assert result.deleted_raw_results[0]["id"] == 1002
+        assert result.deleted_raw_results[0]["__projectKey"] == "PROJ2"

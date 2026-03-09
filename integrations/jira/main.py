@@ -38,8 +38,6 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for projects in client.get_paginated_projects(params):
         logger.info(f"Received project batch with {len(projects)} projects")
-        if selector.include_releases:
-            projects = await client.enrich_projects_with_releases(projects)
         yield projects
 
 
@@ -89,6 +87,17 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for users_batch in client.get_paginated_users():
         logger.info(f"Received users batch with {len(users_batch)} users")
         yield users_batch
+
+
+@ocean.on_resync(Kinds.VERSION)
+async def on_resync_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
+
+    async for projects in client.get_paginated_projects():
+        logger.info(f"Received project batch with {len(projects)} projects")
+        for project in projects:
+            async for version_batch in client.get_paginated_versions(project["key"]):
+                yield version_batch
 
 
 # Called once when the integration starts.

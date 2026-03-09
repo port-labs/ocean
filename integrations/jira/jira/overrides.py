@@ -46,14 +46,6 @@ class JiraProjectSelector(Selector):
         description="A comma-separated list of the parameters to expand.",
         default="insight",
     )
-    include_releases: bool = Field(
-        alias="includeReleases",
-        default=False,
-        description=(
-            "Whether to include the releases (versions) of the project in the payload. "
-            "Defaults to false."
-        ),
-    )
 
 
 class JiraProjectResourceConfig(ResourceConfig):
