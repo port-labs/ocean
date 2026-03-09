@@ -461,6 +461,12 @@ class JiraClient(OAuthClient):
                 version["__projectKey"] = project_key
             yield versions
 
+    async def fetch_versions(self, project_key: str) -> list[dict[str, Any]]:
+        versions: list[dict[str, Any]] = []
+        async for batch in self.get_paginated_versions(project_key):
+            versions.extend(batch)
+        return versions
+
     async def get_single_version(self, version_id: str) -> dict[str, Any]:
         """Fetch a version by ID and enrich it with ``__projectKey``."""
         version = await self._send_api_request(
