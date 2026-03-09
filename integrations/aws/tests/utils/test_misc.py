@@ -15,6 +15,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 import pytest
 from unittest.mock import MagicMock, AsyncMock
+from botocore.exceptions import EndpointConnectionError
 
 
 class MockException(Exception):
@@ -109,7 +110,9 @@ def test_resource_not_exists_error() -> None:
 
 
 def test_endpoint_connection_error() -> None:
-    e = MockException(response={"Error": {"Code": "EndpointConnectionError"}})
+    e = EndpointConnectionError(
+        endpoint_url="https://cloudcontrol.us-west-2.amazonaws.com"
+    )
     assert is_resource_type_not_available_exception(e)
 
 
