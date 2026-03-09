@@ -51,7 +51,7 @@ class VersionWebhookProcessor(AbstractWebhookProcessor):
 
         enriched_version = await client.get_single_version(str(version["id"]))
         logger.info(
-            f"Received upsert event for version {enriched_version.get('id')} in project {enriched_version.get('__projectKey')}"
+            f"Received upsert event for version {enriched_version['id']} in project {enriched_version['__projectKey']}"
         )
         return WebhookEventRawResults(
             updated_raw_results=[enriched_version],
