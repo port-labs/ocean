@@ -3,7 +3,7 @@
 import asyncio
 import pytest
 
-from http_server.auth.custom_helpers.lock_manager import LockManager
+from custom.auth.custom_helpers.lock_manager import LockManager
 
 
 @pytest.mark.asyncio

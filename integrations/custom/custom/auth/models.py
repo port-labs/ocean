@@ -1,114 +1,12 @@
-from typing import ClassVar, Dict, Any, Literal, Optional
+from typing import Dict, Any, Literal, Optional
 from pydantic import Field, BaseModel, root_validator
 
-from port_ocean.core.handlers.port_app_config.models import (
-    PortAppConfig,
-    ResourceConfig,
-    Selector,
-)
-from http_server.exceptions import (
+from custom.exceptions import (
     CustomAuthRequestError,
     CustomAuthRequestTemplateError,
 )
 
 HTTP_METHOD = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
-
-
-class ApiPathParameter(BaseModel):
-    """Configuration for API-discovered path parameters"""
-
-    endpoint: str = Field(
-        title="Endpoint", description="API endpoint to discover parameter values"
-    )
-    method: HTTP_METHOD = Field(
-        title="Method",
-        description="HTTP method",
-        default="GET",
-    )
-    query_params: Optional[Dict[str, Any]] = Field(
-        title="Query Parameters",
-        description="Query parameters for discovery endpoint",
-        default=None,
-    )
-    headers: Optional[Dict[str, str]] = Field(
-        title="Headers",
-        description="Headers for discovery endpoint",
-        default=None,
-    )
-    data_path: Optional[str] = Field(
-        title="Data Path",
-        description="JQ path to extract data array from response (e.g., '.tickets', '.data')",
-        default=None,
-    )
-    field: str = Field(
-        title="Field",
-        description="JQ expression to extract parameter value from each record",
-    )
-    filter: Optional[str] = Field(
-        title="Filter",
-        description="JQ boolean expression to filter records",
-        default=None,
-    )
-
-    class Config:
-        extra = "forbid"
-
-
-class HttpServerSelector(Selector):
-    """Selector for HTTP server resources - extends base Selector"""
-
-    endpoint: Optional[str] = Field(
-        title="Endpoint",
-        description="HTTP endpoint path (supports {param} templates)",
-        default=None,
-    )
-    method: str = Field(
-        enum=["GET", "POST", "PUT", "PATCH", "DELETE"],
-        title="Method",
-        description="HTTP method",
-        default="GET",
-    )
-    query_params: Optional[Dict[str, Any]] = Field(
-        title="Query Parameters",
-        description="Query parameters",
-        default=None,
-    )
-    headers: Optional[Dict[str, str]] = Field(
-        title="Headers",
-        description="HTTP headers",
-        default=None,
-    )
-    path_parameters: Optional[Dict[str, ApiPathParameter]] = Field(
-        title="Path Parameters",
-        description="Dynamic path parameters",
-        default=None,
-    )
-    data_path: Optional[str] = Field(
-        title="Data Path",
-        description="JQ path to extract data array from response (e.g., '.members', '.data.items')",
-        default=None,
-    )
-
-    class Config:
-        extra = "allow"  # Allow extra fields from Port API
-        allow_population_by_field_name = True
-
-
-class HttpServerResourceConfig(ResourceConfig):
-    """Resource configuration for HTTP server endpoints
-
-    Kind is the endpoint path (e.g., '/api/v1/users', '/api/conversations.list')
-    This allows each endpoint to be tracked separately in Port's UI.
-    """
-
-    selector: HttpServerSelector = Field(
-        title="Selector",
-        description="Selector for HTTP server resources",
-    )
-    kind: str = Field(
-        title="Custom Kind",
-        description="Endpoint path (e.g., '/api/v1/users', '/api/conversations.list')",
-    )
 
 
 class CustomAuthRequestConfig(BaseModel):
@@ -208,10 +106,3 @@ class CustomAuthRequestTemplateConfig(BaseModel):
     class Config:
         extra = "forbid"
         allow_population_by_field_name = True
-
-
-class HttpServerPortAppConfig(PortAppConfig):
-    """Port app configuration for HTTP server integration"""
-
-    allow_custom_kinds: ClassVar[bool] = True
-    resources: list[HttpServerResourceConfig] = Field(default_factory=list)  # type: ignore[assignment]

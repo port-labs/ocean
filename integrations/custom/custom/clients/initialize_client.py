@@ -1,45 +1,35 @@
-"""
-Ocean Custom Client Factory
-
-Factory function to create HTTP client instances from Ocean configuration.
-Supports shared client singleton for parallel-safe operation.
-"""
-
 import os
 import re
 from typing import Dict, Any, Optional
 
 from pydantic import parse_raw_as
 
-from http_server.client import HttpServerClient
-from http_server.exceptions import CustomAuthConfigError
+from custom.clients.http.client import HttpServerClient
+from custom.exceptions import CustomAuthConfigError
 from port_ocean.context.ocean import ocean
 
 
-# Global client singleton
 _client: Optional[HttpServerClient] = None
 
 
 def _resolve_env_vars(value: str) -> str:
-    """Resolve environment variable references in string (e.g., ${VAR_NAME})"""
+    """Resolve environment variable references in string (e.g., ${VAR_NAME})."""
 
     def replace_env(match: re.Match[str]) -> str:
         var_name = match.group(1)
-        return os.getenv(var_name, match.group(0))  # Return original if not found
+        return os.getenv(var_name, match.group(0))
 
     return re.sub(r"\$\{([^}]+)\}", replace_env, value)
 
 
 def _parse_custom_headers(headers_config: Optional[str]) -> Dict[str, str]:
-    """Parse custom headers JSON using Ocean's Pydantic utilities and resolve environment variable references"""
+    """Parse custom headers JSON and resolve environment variable references."""
     if not headers_config:
         return {}
 
     try:
-        # Use Ocean's Pydantic parse_raw_as (same as used in Ocean's config parsing)
         headers_dict = parse_raw_as(Dict[str, Any], headers_config)
 
-        # Resolve environment variable references in values
         resolved_headers = {}
         for key, value in headers_dict.items():
             if isinstance(value, str):
@@ -53,10 +43,9 @@ def _parse_custom_headers(headers_config: Optional[str]) -> Dict[str, str]:
 
 
 def init_client() -> HttpServerClient:
-    """Initialize Ocean Custom client from Ocean configuration"""
+    """Create a new HTTP client instance from Ocean configuration."""
     config = ocean.integration_config
 
-    # Parse custom headers from config
     custom_headers = _parse_custom_headers(config.get("custom_headers"))
 
     return HttpServerClient(
@@ -70,14 +59,8 @@ def init_client() -> HttpServerClient:
     )
 
 
-async def get_client() -> HttpServerClient:
-    """Get the shared client instance.
-
-    Authentication is handled automatically by httpx.Auth when requests are made.
-
-    Returns:
-        HttpServerClient: The initialized client
-    """
+def get_client() -> HttpServerClient:
+    """Get or create a singleton client instance."""
     global _client
     if _client is None:
         _client = init_client()
