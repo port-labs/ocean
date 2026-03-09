@@ -110,10 +110,10 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
     jq_expression = f". | del({delete_target})"
     batch_size = ocean.config.yield_items_to_parse_batch_size
 
-    while len(result) > 0:
-        item = result.pop(0)
-        entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
-        items_to_parse_data =  await entity_processor._search(item, items_to_parse)
+    entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
+
+    for item in result:
+        items_to_parse_data = await entity_processor._search(item, items_to_parse)
         if event.resource_config.port.items_to_parse_top_level_transform:
             item = await entity_processor._search(item, jq_expression)
         if not isinstance(items_to_parse_data, list):
@@ -123,14 +123,14 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
             )
             continue
         batch = []
-        while len(items_to_parse_data) > 0:
-            if (len(batch) >= batch_size):
+        for parsed_item in items_to_parse_data:
+            if len(batch) >= batch_size:
                 yield batch
                 batch = []
             merged_item = {**item}
-            merged_item[items_to_parse_name] = items_to_parse_data.pop(0)
+            merged_item[items_to_parse_name] = parsed_item
             batch.append(merged_item)
-        if len(batch) > 0:
+        if batch:
             yield batch
 
 async def resync_generator_wrapper(
@@ -146,7 +146,6 @@ async def resync_generator_wrapper(
 
                     if items_to_parse:
                         items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse)
-                        del result
                         async for batch in items_to_parse_generator:
                             yield batch
                     else:
