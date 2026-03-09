@@ -1,6 +1,7 @@
 from utils.misc import (
     is_access_denied_exception,
     is_resource_not_found_exception,
+    is_resource_type_not_available_exception,
     get_matching_kinds_and_blueprints_from_config,
     AsyncPaginator,
 )
@@ -85,6 +86,93 @@ def test_access_denied_wrapped_in_general_service_exception() -> None:
         }
     )
     assert is_access_denied_exception(e)
+
+
+def test_type_not_found_exception() -> None:
+    e = MockException(response={"Error": {"Code": "TypeNotFoundException"}})
+    assert is_resource_type_not_available_exception(e)
+
+
+def test_cfn_registry_exception() -> None:
+    e = MockException(response={"Error": {"Code": "CFNRegistryException"}})
+    assert is_resource_type_not_available_exception(e)
+
+
+def test_unsupported_action_exception() -> None:
+    e = MockException(response={"Error": {"Code": "UnsupportedActionException"}})
+    assert is_resource_type_not_available_exception(e)
+
+
+def test_type_not_available_with_other_error() -> None:
+    e = MockException(response={"Error": {"Code": "InternalServiceError"}})
+    assert not is_resource_type_not_available_exception(e)
+
+
+def test_type_not_available_no_response() -> None:
+    e = Exception("plain error")
+    assert not is_resource_type_not_available_exception(e)
+
+
+def test_type_not_available_general_service_exception() -> None:
+    """GeneralServiceException with 'not available' message is detected."""
+    e = MockException(
+        response={
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "Resource type is not available in this region",
+            }
+        }
+    )
+    assert is_resource_type_not_available_exception(e)
+
+
+def test_type_not_available_general_service_exception_unsupported_unrelated() -> None:
+    e = MockException(
+        response={
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "The operation is unsupported due to a transient backend failure",
+            }
+        }
+    )
+    assert not is_resource_type_not_available_exception(e)
+
+
+def test_type_not_available_general_service_exception_not_available_unrelated() -> None:
+    e = MockException(
+        response={
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "Service not available, please try again later",
+            }
+        }
+    )
+    assert not is_resource_type_not_available_exception(e)
+
+
+def test_type_not_available_general_service_exception_is_not_registered() -> None:
+    e = MockException(
+        response={
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "Type AWS::Foo::Bar is not registered in the CloudFormation registry",
+            }
+        }
+    )
+    assert is_resource_type_not_available_exception(e)
+
+
+def test_type_not_available_general_service_exception_type_not_found() -> None:
+    """GeneralServiceException with 'type not found' message is detected."""
+    e = MockException(
+        response={
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "Resource type not found in this region",
+            }
+        }
+    )
+    assert is_resource_type_not_available_exception(e)
 
 
 class TestGetMatchingKindsAndBlueprintsFromConfig(unittest.TestCase):

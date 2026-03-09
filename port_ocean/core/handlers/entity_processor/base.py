@@ -47,7 +47,7 @@ class BaseEntityProcessor(BaseHandler):
         Returns:
             EntityDiff: The parsed entity differences.
         """
-        with logger.contextualize(kind=mapping.kind):
+        with logger.contextualize(kind=mapping.kind, resource_kind=mapping.kind):
             if not raw_data:
                 return CalculationResult(EntitySelectorDiff([], []), [])
             return await self._parse_items(

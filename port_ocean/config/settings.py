@@ -149,11 +149,14 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(
-        cls, process_execution_mode: ProcessExecutionMode
+        cls,
+        process_execution_mode: ProcessExecutionMode,
+        values: dict[str, Any],
     ) -> ProcessExecutionMode:
         # Check if the system is macos, if so, set the process execution mode to single process since multiprocessing behavior is different on macos and some asyncio error pop up
         is_macos = platform.system() == "Darwin"
-        if is_macos:
+        runtime = values.get("runtime", Runtime.OnPrem)
+        if is_macos or runtime == Runtime.Saas:
             return ProcessExecutionMode.single_process
         return process_execution_mode
 

@@ -173,20 +173,7 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
-class GithubUserSelector(Selector):
-    include_bots: bool = Field(
-        title="Include Bots",
-        default=True,
-        alias="includeBots",
-        description="Include bot accounts in the list of users.",
-    )
-
-
 class GithubUserConfig(ResourceConfig):
-    selector: GithubUserSelector = Field(
-        title="User selector",
-        description="Selector for the user resource.",
-    )
     kind: Literal[ObjectKind.USER] = Field(
         title="Github User",
         description="Github user resource kind.",
@@ -397,6 +384,30 @@ class GithubDeploymentConfig(ResourceConfig):
     )
 
 
+class GithubDeploymentStatusSelector(RepoSearchSelector):
+    task: Optional[str] = Field(
+        title="Task name",
+        description="Filter deployment statuses by deployment task name (e.g. deploy, deploy:migrations).",
+        default=None,
+    )
+    environment: Optional[str] = Field(
+        title="Environment name",
+        description="Filter deployment statuses by deployment environment name (e.g. staging, production).",
+        default=None,
+    )
+
+
+class GithubDeploymentStatusConfig(ResourceConfig):
+    selector: GithubDeploymentStatusSelector = Field(
+        title="Deployment status selector",
+        description="Selector for the deployment status resource.",
+    )
+    kind: Literal[ObjectKind.DEPLOYMENT_STATUS] = Field(
+        title="Github Deployment Status",
+        description="Github deployment status resource kind.",
+    )
+
+
 class GithubSecretScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "resolved", "all"] = Field(
         title="State",
@@ -566,6 +577,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
         | GithubDeploymentConfig
+        | GithubDeploymentStatusConfig
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig

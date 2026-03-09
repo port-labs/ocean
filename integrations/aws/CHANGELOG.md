@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.4 (2026-03-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+## 0.3.3 (2026-03-04)
+
+
+### Bug Fixes
+
+- Improved handling of missing resources in a region so syncs no longer fail on these exceptions.
+
+
+## 0.3.2 (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+## 0.3.1 (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
+
+
+## 0.3.0 (2026-03-02)
+
+
+### Bug Fixes
+
+- Fixed an issue where harmless region errors (like TypeNotFoundException) during multi-region sync could stop cleanup and prevent old entities from being removed, so cleanup now continues and old entities are properly removed while genuine failures still raise an ExceptionGroup to block reconciliation.
+
+
+## 0.2.258 (2026-03-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+## 0.2.257 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+## 0.2.256 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+## 0.2.255 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+## 0.2.254 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
 ## 0.2.253 (2026-02-25)
 
 
