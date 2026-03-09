@@ -563,7 +563,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if not resource_mappings:
             return []
 
-        diffs_tuple, errors_tuple, _, _ = zip(
+        diffs, errors, _, misconfigured_entity_keys = zip(
             *await asyncio.gather(
                 *(
                     self._register_resource_raw(
@@ -576,6 +576,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         diffs = list(diffs)
         errors = sum(errors, [])
+        misconfigured_entity_keys = list(misconfigured_entity_keys)
 
         if errors:
             message = f"Failed to register {len(errors)} entities. Skipping delete phase due to incomplete state"
