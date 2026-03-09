@@ -98,7 +98,6 @@ from integration import (
     GithubFileResourceConfig,
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
-    GithubUserConfig,
     GithubDeploymentConfig,
     GithubDeploymentStatusConfig,
     GithubWorkflowConfig,
@@ -231,8 +230,6 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     graphql_client = create_github_client(GithubClientType.GRAPHQL)
     org_exporter = RestOrganizationExporter(rest_client)
-    user_config = cast(GithubUserConfig, event.resource_config)
-    include_bots = user_config.selector.include_bots
     exporter = GraphQLUserExporter(graphql_client)
 
     async for organizations in org_exporter.get_paginated_resources(
@@ -243,9 +240,7 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             if org["type"] == "Organization":
                 tasks.append(
                     exporter.get_paginated_resources(
-                        options=ListUserOptions(
-                            organization=org["login"], include_bots=include_bots
-                        )
+                        options=ListUserOptions(organization=org["login"])
                     )
                 )
                 continue
