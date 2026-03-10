@@ -11,7 +11,7 @@ from webhook_processors.processors.repository_webhook_processor import (
 async def test_repo_modified_emits_deletion_when_slug_changes() -> None:
     processor = RepositoryWebhookProcessor(MagicMock())
     processor._client = MagicMock()
-    processor._client.get_single_repository = AsyncMock(  # type: ignore[attr-defined]
+    processor._client.get_single_repository = AsyncMock(
         return_value={"slug": "repo-2", "project": {"key": "PROJ"}}
     )
 
@@ -35,7 +35,7 @@ async def test_repo_modified_emits_deletion_when_slug_changes() -> None:
 async def test_repo_modified_emits_deletion_when_project_changes() -> None:
     processor = RepositoryWebhookProcessor(MagicMock())
     processor._client = MagicMock()
-    processor._client.get_single_repository = AsyncMock(  # type: ignore[attr-defined]
+    processor._client.get_single_repository = AsyncMock(
         return_value={"slug": "repo", "project": {"key": "PROJ_B"}}
     )
 
@@ -59,7 +59,7 @@ async def test_repo_modified_emits_deletion_when_project_changes() -> None:
 async def test_repo_modified_does_not_delete_when_identifier_parts_unchanged() -> None:
     processor = RepositoryWebhookProcessor(MagicMock())
     processor._client = MagicMock()
-    processor._client.get_single_repository = AsyncMock(  # type: ignore[attr-defined]
+    processor._client.get_single_repository = AsyncMock(
         return_value={"slug": "repo", "project": {"key": "PROJ"}, "name": "New Name"}
     )
 
@@ -81,7 +81,7 @@ async def test_repo_modified_does_not_delete_when_identifier_parts_unchanged() -
 async def test_repo_refs_changed_never_emits_deletion() -> None:
     processor = RepositoryWebhookProcessor(MagicMock())
     processor._client = MagicMock()
-    processor._client.get_single_repository = AsyncMock(  # type: ignore[attr-defined]
+    processor._client.get_single_repository = AsyncMock(
         return_value={"slug": "repo", "project": {"key": "PROJ"}}
     )
 

@@ -1,3 +1,5 @@
+from typing import Any
+
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -53,7 +55,7 @@ class RepositoryWebhookProcessor(BaseWebhookProcessorMixin):
 
     def _get_deleted_if_renamed_or_moved(
         self, payload: EventPayload, event_key: str
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Return list with old repo if slug or project key changed (rename / move)."""
         if event_key != "repo:modified":
             return []
