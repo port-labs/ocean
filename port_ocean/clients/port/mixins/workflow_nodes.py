@@ -85,7 +85,7 @@ class WorkflowNodesClientMixin:
     ) -> WorkflowNodeRun | None:
         response = await self.client.get(
             f"{self.auth.api_url}/workflows/nodes/runs",
-            headers=await self.auth.headers(),
+            headers={**(await self.auth.headers()), **INTERNAL_WORKFLOW_CLIENT_HEADER},
             params={"external_run_id": external_id, "include": "nodeConfig"},
         )
         handle_port_status_code(response)
