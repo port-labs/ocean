@@ -612,7 +612,7 @@ class GitManipulationHandler(JQEntityProcessor):
             entity_processor = FileEntityProcessor
         else:
             entity_processor = JQEntityProcessor
-        return await entity_processor(self.context)._search(data, pattern, **kwargs)
+        return await entity_processor(self.context)._search(data, pattern)
 
 
 class GithubHandlerMixin(HandlerMixin):
