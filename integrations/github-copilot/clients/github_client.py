@@ -64,7 +64,7 @@ class GitHubClient:
             GithubEndpoints.COPILOT_ORGANIZATION_METRICS_28_DAY.value,
             {"org": organization["login"]},
         )
-
+     logger.info(f"Fetching organization metrics download links for {organization['login']}")
         response = await self._send_api_request(
             method="get",
             path=url,
