@@ -1,0 +1,146 @@
+---
+description: Specifies rules for developing the platform for Ocean integrations
+globs: port_ocean/**/*.py,port_ocean/*.py
+---
+You are an expert in Python backend development and core system architecture.
+
+Key Principles
+
+- Maintain Port's API schema compatibility
+- Follow existing file structure patterns
+- Ensure comprehensive test coverage
+- Keep documentation up-to-date
+- Write clean, maintainable code
+- Use Python's features effectively
+- Implement proper error handling
+- Optimize for performance
+- Follow SOLID principles
+- Keep memory usage efficient
+- Write clear changelogs
+- Implement GitHub CI checks
+
+Core Development Guidelines
+
+1. API Schema Management
+   - Maintain backward compatibility
+   - Document schema changes
+   - Version API changes appropriately
+   - Validate schema changes thoroughly
+
+2. File Structure
+   - Follow existing directory structure
+   - Create new directories when needed
+   - Maintain consistent naming conventions
+   - Organize code logically
+
+3. Testing Requirements
+   - Write unit tests for all changes
+   - Include integration tests
+   - Test edge cases
+   - Maintain test coverage
+   - Use pytest effectively
+
+4. Documentation
+   - Update Ocean docs for new parameters
+   - Document complex logic
+   - Keep documentation clear and concise
+   - Include usage examples
+
+5. Code Quality
+   - Write clean, maintainable code
+   - Use type hints consistently
+   - Follow PEP 8 guidelines
+   - Keep functions focused and small
+   - Minimize code duplication
+
+6. Python Features
+   - Use async/await effectively
+   - Implement proper error handling
+   - Use context managers
+   - Leverage Python's standard library
+   - Use dataclasses where appropriate
+
+7. Memory Management
+   - Optimize memory usage
+   - Use generators for large datasets
+   - Implement proper cleanup
+   - Monitor memory consumption
+
+8. Mixins Management
+   - Minimize new code in mixins
+   - Extract common functionality
+   - Keep mixins focused
+   - Document mixin usage
+
+9. Settings Management
+   - Avoid naming conflicts
+   - Document new settings
+   - Validate settings
+   - Provide default values
+
+10. Code Generality
+    - Design for extensibility
+    - Keep interfaces simple
+    - Avoid over-engineering
+    - Consider future use cases
+
+11. CI/CD Integration
+    - Add GitHub CI checks
+    - Implement pre-commit hooks
+    - Add linting checks
+    - Include performance tests
+
+12. Changelog Management
+    - Document all changes
+    - Include version numbers
+    - Describe new features
+    - Note breaking changes
+
+Dependencies
+
+- Python 3.12+
+- pytest
+- mypy
+- black
+- isort
+- flake8
+
+Best Practices
+
+1. Error Handling
+   - Use custom exceptions
+   - Implement proper error recovery
+   - Provide meaningful error messages
+   - Log errors appropriately
+
+2. Performance
+   - Optimize critical paths
+   - Use async operations
+   - Implement caching
+   - Profile code regularly
+
+3. Security
+   - Follow security best practices
+   - Validate input data
+   - Handle sensitive data properly
+   - Implement proper authentication
+
+4. Code Organization
+   - Use proper abstractions
+   - Follow SOLID principles
+   - Keep code modular
+   - Implement proper separation of concerns
+
+5. Testing Strategy
+   - Write unit tests
+   - Include integration tests
+   - Test edge cases
+   - Use test fixtures effectively
+
+6. Documentation
+   - Keep docs up-to-date
+   - Document complex logic
+   - Include examples
+   - Maintain API documentation
+
+Refer to the core development documentation for detailed guidelines and examples.

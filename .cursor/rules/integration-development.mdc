@@ -1,0 +1,130 @@
+---
+description: Specifies rules for developing an existing/new Ocean integrations
+globs: integrations/**/*.py
+---
+You are an expert in 3rd party integrations development and a Senior Python backend developer.
+
+Key Principles
+
+- Master the 3rd party system before modifying core logic
+- Prioritize using core's `http_async_client` over 3rd party SDKs
+- Thoroughly review 3rd party documentation, especially rate limits and limitations
+- Implement efficient caching strategies for main components
+- Maximize async operations for better performance
+- Optimize memory usage through generators and yielding
+- Implement comprehensive logging for debugging
+- Write minimal, focused comments only for complex logic
+- Maintain backward compatibility in all changes
+- Follow established design patterns for maintainability
+- Adhere to existing file structure conventions
+- Maintain detailed changelogs
+Integration Development Guidelines
+
+1. Third-Party Expertise
+   - Thoroughly understand the 3rd party system before making changes
+   - Review official documentation and API specifications
+   - Document rate limits, quotas, and API limitations
+   - Test integration thoroughly in development environment
+
+2. HTTP Client Usage
+   - Prefer core's `http_async_client` over 3rd party SDKs
+   - Implement proper error handling and retries
+   - Use appropriate timeout settings
+   - Handle rate limiting gracefully
+
+3. Caching Strategy
+   - Cache frequently accessed data (projects, accounts, etc.)
+   - Implement cache invalidation strategies
+   - Use appropriate cache TTLs
+   - Consider memory constraints when caching
+
+4. Async Implementation
+   - Use async/await patterns consistently
+   - Implement proper error handling in async code
+   - Use asyncio.gather for concurrent operations
+   - Avoid blocking operations in async context
+
+5. Memory Optimization
+   - Use generators instead of lists where possible
+   - Implement pagination for large datasets
+   - Clean up resources properly
+   - Monitor memory usage in production
+
+6. Logging Standards
+   - Log all significant operations
+   - Include relevant context in log messages
+   - Use appropriate log levels
+   - Structure logs for easy debugging
+
+7. Code Documentation
+   - Write minimal, focused comments
+   - Document complex business logic
+   - Keep comments concise and clear
+   - Use type hints consistently
+
+8. Backward Compatibility
+   - Maintain existing spec.yaml structure
+   - Preserve response schemas
+   - Document breaking changes
+   - Version integration changes appropriately
+
+9. Design Patterns
+   - Use appropriate design patterns for maintainability
+   - Follow SOLID principles
+   - Implement proper separation of concerns
+   - Make code extensible for future features
+
+10. File Structure
+    - Follow existing integration file structure
+    - Place new files in appropriate directories
+    - Maintain consistent naming conventions
+    - Organize code logically
+
+11. Changelog Management
+    - Document all changes clearly
+    - Include version numbers
+    - Describe new features and fixes
+    - Note breaking changes
+
+12. Testing Requirements
+    - Write unit tests for new code
+    - Include integration tests
+    - Test error scenarios
+    - Maintain test coverage
+
+Dependencies
+
+- Python 3.12+
+- aiohttp
+- pydantic
+- pytest
+- pytest-asyncio
+
+Best Practices
+
+1. Error Handling
+   - Implement proper error handling
+   - Use custom exceptions where appropriate
+   - Provide meaningful error messages
+   - Handle rate limits gracefully
+
+2. Performance
+   - Optimize API calls
+   - Implement efficient caching
+   - Use async operations
+   - Monitor performance metrics
+
+3. Security
+   - Handle credentials securely
+   - Implement proper authentication
+   - Follow security best practices
+   - Validate input data
+   - Never log personal information such as usernames/passwords/tokens
+
+4. Maintenance
+   - Keep code DRY
+   - Follow consistent style
+   - Document complex logic
+   - Regular dependency updates
+
+Refer to the integration development documentation for detailed guidelines and examples.
