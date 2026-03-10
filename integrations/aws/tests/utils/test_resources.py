@@ -80,7 +80,7 @@ async def test_resync_cloudcontrol(
 async def test_resync_cloudcontrol_skips_unavailable_resource_type(
     mock_account_id: str,
 ) -> None:
-    """Test that resync_cloudcontrol does not raise when resource type is not available in a region."""
+    """Test that resync_cloudcontrol raises when resource type is not available in a region."""
     mock_session = AsyncMock()
     mock_session.region_name = "us-west-2"
     exc = ClientError(
@@ -116,13 +116,14 @@ async def test_resync_cloudcontrol_skips_unavailable_resource_type(
         return_value=mock_account_id,
     ):
         results = []
-        async for result in resync_cloudcontrol(
-            kind="AWS::Foo::Bar",
-            session=mock_session,
-            use_get_resource_api=False,
-        ):
-            results.append(result)
-        assert is_resource_type_not_available_exception(exc)
+        with pytest.raises(ClientError) as exc_info:
+            async for result in resync_cloudcontrol(
+                kind="AWS::Foo::Bar",
+                session=mock_session,
+                use_get_resource_api=False,
+            ):
+                results.append(result)
+        assert is_resource_type_not_available_exception(exc_info.value)
         assert results == []
 
 
