@@ -8,7 +8,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 <!-- towncrier release notes start -->
 
 0.2.200-post1 (2026-03-10)
-====================
+==========================
+
+### Improvements
+
+- Propagated `**kwargs` through internal `_search` delegation calls to preserve field context across the call chain
 
 
 ### Improvements

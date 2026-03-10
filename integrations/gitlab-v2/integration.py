@@ -335,7 +335,7 @@ class GitManipulationHandler(JQEntityProcessor):
         else:
             entity_processor = JQEntityProcessor
 
-        return await entity_processor(self.context)._search(data, pattern)
+        return await entity_processor(self.context)._search(data, pattern, **kwargs)
 
 
 class GitlabHandlerMixin(HandlerMixin):

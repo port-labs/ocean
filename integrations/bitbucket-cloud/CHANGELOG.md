@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
+- Propagated `**kwargs` through internal `_search` delegation calls to preserve field context across the call chain
+
 - Updated `_search` method signature to accept `**kwargs` to align with the base `JQEntityProcessor` interface
 
 

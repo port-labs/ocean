@@ -171,7 +171,7 @@ class GitManipulationHandler(JQEntityProcessor):
             entity_processor = FileEntityProcessor
         else:
             entity_processor = JQEntityProcessor
-        return await entity_processor(self.context)._search(data, pattern)
+        return await entity_processor(self.context)._search(data, pattern, **kwargs)
 
 
 class BitbucketHandlerMixin(HandlerMixin):

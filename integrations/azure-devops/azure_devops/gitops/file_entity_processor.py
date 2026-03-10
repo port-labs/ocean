@@ -22,7 +22,7 @@ class GitManipulationHandler(JQEntityProcessor):
             )
             return await self._search_by_file(data, pattern)
 
-        return await super()._search(data, pattern)
+        return await super()._search(data, pattern, **kwargs)
 
     async def _search_by_file(self, data: Dict[str, Any], pattern: str) -> Any:
         client = AzureDevopsClient.create_from_ocean_config_no_cache()
