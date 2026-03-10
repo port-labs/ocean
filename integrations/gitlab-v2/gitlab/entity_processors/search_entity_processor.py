@@ -13,7 +13,7 @@ _semaphore = asyncio.Semaphore(2)
 
 
 class SearchEntityProcessor(JQEntityProcessor):
-    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    async def _search(self, data: Dict[str, Any], pattern: str, **kwargs: Any) -> Any:
         async with _semaphore:
             async with _rate_limiter:
                 client = create_gitlab_client()

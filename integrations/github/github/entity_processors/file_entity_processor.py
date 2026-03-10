@@ -45,7 +45,7 @@ class FileEntityProcessor(JQEntityProcessor):
         )
         return decoded_content
 
-    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+    async def _search(self, data: dict[str, Any], pattern: str, **kwargs: Any) -> Any:
         """
         Search for a file in the repository and return its content.
 

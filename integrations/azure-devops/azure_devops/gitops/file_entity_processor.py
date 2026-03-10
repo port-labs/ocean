@@ -11,7 +11,7 @@ JSON_SUFFIX = ".json"
 
 
 class GitManipulationHandler(JQEntityProcessor):
-    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    async def _search(self, data: Dict[str, Any], pattern: str, **kwargs: Any) -> Any:
         if pattern.startswith(FILE_PROPERTY_PREFIX):
             logger.warning(
                 f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
