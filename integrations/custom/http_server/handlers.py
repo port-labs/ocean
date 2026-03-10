@@ -245,12 +245,54 @@ class CursorPagination(PaginationHandler):
                 break
 
 
+class NextLinkPagination(PaginationHandler):
+    """URL-based pagination for APIs that return a full URL for the next page.
+    The next link URL is used directly for subsequent requests - all query
+    parameters are already embedded in the URL.
+    """
+
+    async def fetch_all(
+        self,
+        url: str,
+        method: str,
+        params: Dict[str, Any],
+        headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenType[List[Dict[str, Any]], None]:
+        next_link_path = self.config.get("next_link_path", "@odata.nextLink")
+
+        current_url = url
+        current_params = params
+
+        while True:
+            response = await self.make_request(
+                current_url, method, current_params, headers, body
+            )
+            response_data = response.json()
+
+            yield [response_data]
+
+            if next_link_path in response_data:
+                next_url = response_data[next_link_path]
+            elif "." in next_link_path:
+                next_url = self.get_nested_value(response_data, next_link_path)
+            else:
+                next_url = None
+
+            if not next_url:
+                break
+
+            current_url = next_url
+            current_params = {}
+
+
 # Registry of available pagination handlers
 PAGINATION_HANDLERS = {
     "none": NonePagination,
     "page": PagePagination,
     "offset": OffsetPagination,
     "cursor": CursorPagination,
+    "next_link": NextLinkPagination,
 }
 
 
