@@ -618,6 +618,11 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
     )
+    # Mock lakehouse as disabled for integration tests
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=False),
+    )
     processed_events: list[WebhookEventRawResults] = []
     mock_upsert.return_value = [entity]
 
@@ -988,6 +993,11 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
     )
+    # Mock lakehouse as disabled for integration tests
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=False),
+    )
     processed_events: list[WebhookEventRawResults] = []
     mock_upsert.return_value = [entity]
 
@@ -1177,6 +1187,11 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
     )
+    # Mock lakehouse as disabled for integration tests
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=False),
+    )
     processed_events: list[WebhookEventRawResults] = []
     mock_upsert.return_value = [entity]
     test_state = {"retry": False}
@@ -1309,6 +1324,11 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     )
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
+    )
+    # Mock lakehouse as disabled for integration tests
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=False),
     )
     processed_events: list[WebhookEventRawResults] = []
     mock_upsert.return_value = [entity]
@@ -1445,6 +1465,11 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
     )
     monkeypatch.setattr(
         "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
+    )
+    # Mock lakehouse as disabled for integration tests
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=False),
     )
     processed_events: list[WebhookEventRawResults] = []
     mock_upsert.return_value = [entity]

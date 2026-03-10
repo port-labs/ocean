@@ -17,6 +17,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.integrations.mixins.utils import (
     extract_jq_deletion_path_revised,
     handle_items_to_parse,
+    resync_generator_wrapper,
 )
 
 class TestExtractJqDeletionPathRevised:
@@ -522,3 +523,74 @@ class TestHandleItemsToParse:
             assert merged_item["keep_this"] == "should stay"
             assert merged_item["also_keep"] == 123
             assert merged_item["item"] == {"sub_id": "a"}
+
+
+class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
+    """Regression test: resync_generator_wrapper must not mutate the lists
+    yielded by integration generators.
+
+    When itemsToParse is enabled, handle_items_to_parse iterates over the
+    result list. The original list reference from the integration's generator
+    must remain intact so the generator can still inspect it (e.g. read
+    len(items) for pagination decisions) after yielding.
+    """
+
+    @pytest.mark.asyncio
+    async def test_items_to_parse_does_not_mutate_original_list(
+        self,
+        mock_context: PortOceanContext,
+        mock_entity_processor: JQEntityProcessor,
+    ) -> None:
+        """Verify that the list yielded by the integration generator is not
+        mutated after handle_items_to_parse processes it."""
+        resource_config = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query="true"),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                ),
+                itemsToParse=".items",
+                itemsToParseName="item",
+            ),
+        )
+
+        # The list that the integration generator yields
+        original_batch = [
+            {"id": "1", "items": [{"sub_id": "a"}]},
+            {"id": "2", "items": [{"sub_id": "b"}]},
+        ]
+        original_length = len(original_batch)
+
+        async def fake_generator(kind: str) -> Any:
+            yield original_batch
+
+        with (
+            patch(
+                "port_ocean.core.integrations.mixins.utils.ocean"
+            ) as mock_ocean_context,
+            patch(
+                "port_ocean.core.integrations.mixins.utils.event",
+                SimpleNamespace(resource_config=resource_config),
+            ),
+        ):
+            mock_ocean_context.config.yield_items_to_parse_batch_size = 100
+            mock_ocean_context.app.integration.entity_processor = mock_entity_processor
+            mock_ocean_context.metrics = mock_context.app.metrics
+
+            async for _batch in resync_generator_wrapper(
+                fake_generator,
+                "test-kind",
+                items_to_parse_name="item",
+                items_to_parse=".items",
+            ):
+                pass
+
+            # The original list must NOT have been mutated
+            assert len(original_batch) == original_length

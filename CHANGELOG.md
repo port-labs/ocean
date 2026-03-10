@@ -7,12 +7,28 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.38.7 (2026-03-05)
+## 0.38.10 (2026-03-10)
 
 ### Improvements
 
 - Added support for items to parse in live events context
 
+## 0.38.9 (2026-03-09)
+
+### Improvements
+
+- Added webhook events to lakehouse integration: webhook raw data (both upserted and deleted) is now sent to lakehouse API with operation metadata (UPSERT/DELETE) before transformation, mirroring the existing resync flow for complete audit trail and data replay capabilities.
+
+## 0.38.8 (2026-03-09)
+
+### Bug fixes
+
+- Resolved an infinite pagination loop caused by `handle_items_to_parse` mutating the original batch list via `.pop(0)`. The function now iterates without mutation, so integration generators retain their yielded
+  list for pagination decisions.
+
+## 0.38.7 (2026-03-08)
+### Improvements
+- Update post URL for lake in order to standartize them
 
 ## 0.38.6 (2026-03-03)
 

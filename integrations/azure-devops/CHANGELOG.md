@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.29 (2026-03-09)
+
+
+### Bug Fixes
+
+- Fixed file kind stopping after encountering a project with no repositories (PORT-17439)
+
+
+## 0.7.28 (2026-03-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+## 0.7.27 (2026-03-08)
+
+
+### Bug Fixes
+
+- Fixed 400 Bad Request error when syncing group-members for large groups
+
+
 ## 0.7.26 (2026-03-03)
 
 

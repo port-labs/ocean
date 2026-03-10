@@ -24,6 +24,34 @@ from port_ocean.exceptions.core import (
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.utils.async_http import _http_client
+from port_ocean.core.models import IntegrationFeatureFlag
+
+
+async def is_lakehouse_data_enabled() -> bool:
+    """Check if lakehouse data is enabled.
+
+    This function checks the organization feature flags and config to determine
+    if lakehouse data sending is enabled. It handles errors gracefully since
+    lakehouse sending is intended to be best-effort and should not block core
+    processing flows.
+
+    Returns:
+        bool: True if lakehouse data is enabled, False otherwise (including on error)
+    """
+    try:
+        flags = await ocean.port_client.get_organization_feature_flags()
+        if (
+            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
+            and ocean.config.lakehouse_enabled
+        ):
+            return True
+        return False
+    except Exception as e:
+        logger.warning(
+            f"Failed to check lakehouse feature flags, assuming disabled: {e}"
+        )
+        return False
+
 
 def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
     """
@@ -109,10 +137,10 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
     jq_expression = f". | del({delete_target})"
     batch_size = ocean.config.yield_items_to_parse_batch_size
 
-    while len(result) > 0:
-        item = result.pop(0)
-        entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
-        items_to_parse_data =  await entity_processor._search(item, items_to_parse)
+    entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
+
+    for item in result:
+        items_to_parse_data = await entity_processor._search(item, items_to_parse)
         if items_to_parse_top_level_transform:
             transformed = await entity_processor._search(item, jq_expression)
             if transformed is None:
@@ -128,14 +156,14 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
             )
             continue
         batch = []
-        while len(items_to_parse_data) > 0:
-            if (len(batch) >= batch_size):
+        for parsed_item in items_to_parse_data:
+            if len(batch) >= batch_size:
                 yield batch
                 batch = []
             merged_item = {**item}
-            merged_item[items_to_parse_name] = items_to_parse_data.pop(0)
+            merged_item[items_to_parse_name] = parsed_item
             batch.append(merged_item)
-        if len(batch) > 0:
+        if batch:
             yield batch
 
 async def resync_generator_wrapper(
