@@ -79,7 +79,7 @@ resources:
             git_hub_org: .__organization.login
   - kind: organization-usage-metrics
     selector:
-      query: '.day != null'
+      query: 'true'
     port:
       entity:
         mappings:
