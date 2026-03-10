@@ -7,12 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.5 (2026-03-09)
+## 0.3.6 (2026-03-09)
 
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.9
+
+
+## 0.3.5 (2026-03-09)
+
+
+### Bug Fixes
+
 - Added a check in `resync_cloudcontrol` for skipping unavailable resources for a region so syncs can continue to run for other resources within the same region
 
 
