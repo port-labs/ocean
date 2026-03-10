@@ -5,6 +5,8 @@ import re
 from loguru import logger
 from port_ocean.utils import http_async_client
 from urllib.parse import parse_qs, urlparse
+import asyncio
+from itertools import batched
 
 from .github_endpoints import GithubEndpoints
 
@@ -58,7 +60,7 @@ class GitHubClient:
 
     async def get_organization_usage_metrics(
         self, organization: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         "Fetches the 28-day usage manifest and downloads metrics from signed URLs."
         logger.info(
             f"Fetching organization metrics download links for {organization['login']}"
@@ -67,28 +69,49 @@ class GitHubClient:
             GithubEndpoints.COPILOT_ORGANIZATION_METRICS_28_DAY.value,
             {"org": organization["login"]},
         )
-        response = await self.send_api_request(
+        response = await self._send_api_request(
             "get",
             url,
             ignore_status_code=[self.forbidden_status_code],
+        ).json()
+
+        if not response or not (download_links := response["download_links"]):
+            logger.info(
+                f"No usage metrics found for organization {organization['login']}"
+            )
+            return None
+
+        logger.info(
+            f"Received len(download_links) report download links for organization {organization['login']}"
         )
-        if not response or isinstance(response, list):
-            return []
 
-        if not (download_links := response.get("download_links", [])):
-            return []
+        for signed_urls in batched(download_links, self.pagination_page_size_limit):
+            reports = await asyncio.gather(
+                *[
+                    self._fetch_report_from_signed_url(signed_url)
+                    for signed_url in signed_urls
+                ]
+            )
+            yield reports
 
-        results = []
-        for signed_url in download_links:
-            report_data = await self._fetch_report_from_signed_url(signed_url)
+    async def fetch_organization_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for organizations_batch in self.get_organizations():
+            for organization in organizations_batch:
+                async for organization_metrics in self.get_organization_usage_metrics(
+                    organization
+                ):
+                    organization_metrics = [
+                        item for item in organization_metrics if item is not None
+                    ]
+                    if not organization_metrics:
+                        continue
 
-            if report_data and "day_totals" in report_data:
-                results.extend(report_data["day_totals"])
-            else:
-                logger.warning(
-                    f"Report data from signed URL {organization["login"]} is missing 'days_totals' key or is empty."
-                )
-        return results
+                    self._enrich_metrics_with_organization(
+                        organization_metrics, organization, record_date_key="day"
+                    )
+                    yield organization_metrics
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
@@ -233,3 +256,16 @@ class GitHubClient:
         :return: A formatted string with placeholders replaced by their corresponding values.
         """
         return endpoint_template.format(**params)
+
+    def _enrich_metrics_with_organization(
+        self,
+        metrics: list[dict[str, Any]],
+        organization: dict[str, Any],
+        record_date_key: str = "date",
+    ) -> list[dict[str, Any]]:
+        for metric in metrics:
+            logger.info(
+                f"Enriching metric {metric} of day {metric[record_date_key]} with organization {organization}"
+            )
+            metric["__organization"] = organization
+        return metrics

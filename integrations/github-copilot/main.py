@@ -2,12 +2,7 @@ from enum import StrEnum
 
 from port_ocean.context.ocean import ocean
 from clients.client_factory import create_github_client
-from strategies import (
-    LegacyOrganizationMetricsStrategy,
-    OrganizationUsageMetricsStrategy,
-)
 from loguru import logger
-from utils import fetch_organization_metrics
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -49,15 +44,26 @@ async def on_resync_copilot_team_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TY
 async def on_resync_copilot_organization_metrics(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    github_client = create_github_client()
     logger.warning(
         "DEPRECATION WARNING: GitHub is sunsetting the legacy Copilot Metrics API on April 2, 2026. "
         "Please migrate to the 'organization-usage-metrics' kind to use the new 28-day API."
     )
-    github_client = create_github_client()
-    strategy = LegacyOrganizationMetricsStrategy()
+    async for organizations_batch in github_client.get_organizations():
+        for organization in organizations_batch:
+            organization_metrics = (
+                await github_client.get_legacy_metrics_for_organization(organization)
+            )
+            if not organization_metrics:
+                continue
 
-    async for batch in fetch_organization_metrics(github_client, strategy):
-        yield batch
+            github_client._enrich_metrics_with_organization(
+                organization_metrics, organization
+            )
+            logger.info(
+                f"Received len(organization_metrics) metrics for organization {organization['login']}"
+            )
+            yield organization_metrics
 
 
 @ocean.on_resync(ObjectKind.ORGANIZATION_USAGE_METRICS)
@@ -65,8 +71,7 @@ async def on_resync_organization_usage_metrics(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github_client = create_github_client()
-    strategy = OrganizationUsageMetricsStrategy()
-    async for batch in fetch_organization_metrics(github_client, strategy):
+    async for batch in github_client.fetch_organization_usage_metrics():
         yield batch
 
 
