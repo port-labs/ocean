@@ -100,7 +100,7 @@ class GitHubClient:
                     for signed_url in signed_urls
                 ]
             )
-            yield reports
+            yield [report for report in reports if report is not None]
 
     async def fetch_organization_usage_metrics(
         self,
@@ -124,7 +124,7 @@ class GitHubClient:
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
-    ) -> dict[str, Any] | list[dict[str, Any]] | None:
+    ) -> dict[str, Any] | None:
         logger.debug("Fetching report from signed URL")
         try:
             response = await self._client.request(method="get", url=signed_url)

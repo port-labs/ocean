@@ -171,9 +171,12 @@ async def test_get_new_usage_metrics_returns_empty_when_manifest_has_empty_links
         "request",
         new=AsyncMock(return_value=empty_manifest_response),
     ):
-        result = await github_client.get_organization_usage_metrics(
-            organizations_response[0]
-        )
+        result = [
+            batch
+            async for batch in github_client.get_organization_usage_metrics(
+                organizations_response[0]
+            )
+        ]
 
     assert result == []
 
@@ -206,10 +209,12 @@ async def test_get_new_usage_metrics_returns_empty_when_api_request_fails(
     with patch.object(
         github_client, "_send_api_request", new=AsyncMock(return_value=None)
     ):
-        result = await github_client.get_organization_usage_metrics(
-            organizations_response[0]
-        )
-        # UPDATED: Assert [] instead of None
+        result = [
+            batch
+            async for batch in github_client.get_organization_usage_metrics(
+                organizations_response[0]
+            )
+        ]
         assert result == []
 
 
@@ -220,7 +225,9 @@ async def test_get_new_usage_metrics_skips_unexpected_schema(
     manifest_response = MagicMock()
     manifest_response.status_code = 200
     manifest_response.json.return_value = {
-        "download_links": ["https://signed.example.com/unexpected.json"]
+        "download_links": ["https://signed.example.com/unexpected.json"],
+        "report_start_day": "2026-02-10",
+        "report_end_day": "2026-03-09",
     }
 
     unexpected_schema_response = MagicMock()
@@ -232,9 +239,10 @@ async def test_get_new_usage_metrics_skips_unexpected_schema(
     )
 
     with patch.object(github_client._client, "request", new=request_mock):
-        result = await github_client.get_organization_usage_metrics(
-            organizations_response[0]
-        )
-
-    # UPDATED: Assert [] instead of None
-    assert result == []
+        result = [
+            batch
+            async for batch in github_client.get_organization_usage_metrics(
+                organizations_response[0]
+            )
+        ]
+    assert result == [[{"unexpected_key": "some_value"}]]
