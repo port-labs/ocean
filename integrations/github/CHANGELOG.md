@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.16 (2026-03-08)
+
+
+### Bug Fixes
+
+- Removed the `includeBots` selector from user sync and always use the standard org members GraphQL query.
+
+
+## 5.1.15 (2026-03-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
 ## 5.1.14 (2026-03-04)
 
 
