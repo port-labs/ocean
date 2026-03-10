@@ -89,7 +89,8 @@ class GitHubClient:
             return
 
         logger.info(
-            f"Received {len(download_links)} report download links for organization {organization['login']}"
+            f"Received {len(download_links)} report download links for organization {organization['login']} "
+            f"covering {response_data['report_start_day']} to {response_data['report_end_day']}"
         )
 
         for signed_urls in batched(download_links, self.pagination_page_size_limit):
