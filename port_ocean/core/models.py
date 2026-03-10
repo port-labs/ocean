@@ -138,6 +138,11 @@ class IntegrationFeatureFlag(StrEnum):
     LAKEHOUSE_ELIGIBLE = "LAKEHOUSE_ELIGIBLE"
 
 
+class LakehouseOperation(StrEnum):
+    UPSERT = "upsert"
+    DELETE = "delete"
+
+
 class RunStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     SUCCESS = "SUCCESS"
