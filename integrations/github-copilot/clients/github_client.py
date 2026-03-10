@@ -58,27 +58,27 @@ class GitHubClient:
 
     async def get_organization_usage_metrics(
         self, organization: dict[str, Any]
-    ) -> list[dict[str, Any]] | None:
+    ) -> list[dict[str, Any]]:
         "Fetches the 28-day usage manifest and downloads metrics from signed URLs."
+        logger.info(
+            f"Fetching organization metrics download links for {organization['login']}"
+        )
         url = self._resolve_route_params(
             GithubEndpoints.COPILOT_ORGANIZATION_METRICS_28_DAY.value,
             {"org": organization["login"]},
         )
-     logger.info(f"Fetching organization metrics download links for {organization['login']}")
-        response = await self._send_api_request(
-            method="get",
-            path=url,
+        response = await self.send_api_request(
+            "get",
+            url,
             ignore_status_code=[self.forbidden_status_code],
         )
+        if not response or isinstance(response, list):
+            return []
 
-        if not response:
-            logger.info(
-                f'No usage metrics found for organization {organization["login"]}'
-            )
-            return None
+        if not (download_links := response.get("download_links", [])):
+            return []
 
-        results: list[dict[str, Any]] = []
-
+        results = []
         for signed_url in download_links:
             report_data = await self._fetch_report_from_signed_url(signed_url)
 
@@ -88,8 +88,7 @@ class GitHubClient:
                 logger.warning(
                     f"Report data from signed URL {organization["login"]} is missing 'days_totals' key or is empty."
                 )
-
-        return results or None
+        return results
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
