@@ -15,7 +15,6 @@ from typing import (
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from collections import deque
 from loguru import logger
-from botocore.exceptions import EndpointConnectionError
 
 if TYPE_CHECKING:
     from aioboto3.client import AioBaseClient  # type: ignore
@@ -155,9 +154,6 @@ def is_resource_not_found_exception(e: Exception) -> bool:
 
 
 def is_resource_type_not_available_exception(e: Exception) -> bool:
-    if isinstance(e, EndpointConnectionError):
-        return True
-
     not_available_error_codes = [
         "TypeNotFoundException",
         "CFNRegistryException",
