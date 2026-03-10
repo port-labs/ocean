@@ -490,20 +490,22 @@ class TestJQEntityProcessor:
 
         lines = logs.strip().split("\n")
         error_lines = [
-            l for l in lines if "ERROR" in l and "null, missing, or misconfigured" in l
+            line
+            for line in lines
+            if "ERROR" in line and "null, missing, or misconfigured" in line
         ]
         warning_lines = [
-            l
-            for l in lines
-            if "WARNING" in l and "null, missing, or misconfigured" in l
+            line
+            for line in lines
+            if "WARNING" in line and "null, missing, or misconfigured" in line
         ]
 
         assert len(error_lines) == 2
         assert len(warning_lines) == 2
-        assert any("properties.url" in l for l in error_lines)
-        assert any("relations.team" in l for l in error_lines)
-        assert any("properties.description" in l for l in warning_lines)
-        assert any("relations.project" in l for l in warning_lines)
+        assert any("properties.url" in line for line in error_lines)
+        assert any("relations.team" in line for line in error_lines)
+        assert any("properties.description" in line for line in warning_lines)
+        assert any("relations.project" in line for line in warning_lines)
 
     async def test_notify_mapping_issues_all_warning_when_blueprint_fetch_fails(
         self, mocked_processor: JQEntityProcessor
@@ -536,9 +538,9 @@ class TestJQEntityProcessor:
 
         logs = stream.getvalue()
         misconfig_lines = [
-            l
-            for l in logs.strip().split("\n")
-            if "null, missing, or misconfigured" in l
+            line
+            for line in logs.strip().split("\n")
+            if "null, missing, or misconfigured" in line
         ]
         assert len(misconfig_lines) >= 1
         for line in misconfig_lines:

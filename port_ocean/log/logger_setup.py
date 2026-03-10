@@ -75,7 +75,9 @@ def _extract_traceback(record: "loguru.Record") -> None:
     if exception is not None and exception.traceback is not None:
         record["extra"]["traceback"] = "".join(
             traceback.format_exception(
-                type(exception.value), exception.value, exception.traceback
+                type(exception.value) if exception.value is not None else None,
+                exception.value,
+                exception.traceback,
             )
         )
 

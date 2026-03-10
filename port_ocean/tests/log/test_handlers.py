@@ -63,11 +63,11 @@ def test_extract_traceback_with_real_exception() -> None:
     except ValueError:
         exc_type, exc_value, exc_tb = sys.exc_info()
 
-    record: dict = {
+    record: dict[str, Any] = {
         "extra": {},
         "exception": _RecordException(exc_type, exc_value, exc_tb),
     }
-    _extract_traceback(record)
+    _extract_traceback(record)  # type: ignore[arg-type]
 
     assert "traceback" in record["extra"]
     assert "ValueError" in record["extra"]["traceback"]
@@ -77,19 +77,19 @@ def test_extract_traceback_with_real_exception() -> None:
 def test_extract_traceback_without_traceback() -> None:
     """Manually created exception (no traceback) should not set extra['traceback']."""
     exc_value = ValueError("manual error")
-    record: dict = {
+    record: dict[str, Any] = {
         "extra": {},
         "exception": _RecordException(ValueError, exc_value, None),
     }
-    _extract_traceback(record)
+    _extract_traceback(record)  # type: ignore[arg-type]
 
     assert "traceback" not in record["extra"]
 
 
 def test_extract_traceback_no_exception() -> None:
     """When there is no exception, extra should remain unchanged."""
-    record: dict = {"extra": {}, "exception": None}
-    _extract_traceback(record)
+    record: dict[str, Any] = {"extra": {}, "exception": None}
+    _extract_traceback(record)  # type: ignore[arg-type]
 
     assert "traceback" not in record["extra"]
 
