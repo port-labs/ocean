@@ -1,4 +1,3 @@
-import asyncio
 import typing
 from typing import cast
 
@@ -9,6 +8,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from jira.overrides import (
     JiraIssueConfig,
@@ -95,13 +95,10 @@ async def on_resync_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
     async for projects in client.get_paginated_projects():
-        logger.info(f"Fetching versions for {len(projects)} projects")
-        results = await asyncio.gather(
-            *[client.fetch_versions(project["key"]) for project in projects]
-        )
-        for versions in results:
-            if versions:
-                yield versions
+        logger.info(f"Fetching versions for {len(projects)} projects concurrently")
+        version_streams = [client.get_paginated_versions(project["key"]) for project in projects]
+        async for version_batch in stream_async_iterators_tasks(*version_streams):
+            yield version_batch
 
 
 # Called once when the integration starts.
