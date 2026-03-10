@@ -26,7 +26,7 @@ class ProjectWebhookProcessor(BaseWebhookProcessorMixin):
         project_key = payload["new"]["key"]
         logger.info(f"Handling project webhook event for project: {project_key}")
 
-        project_details = await self._client.get_single_project(project_key)
+        project_details = await self.client.get_single_project(project_key)
 
         return WebhookEventRawResults(
             updated_raw_results=[project_details],

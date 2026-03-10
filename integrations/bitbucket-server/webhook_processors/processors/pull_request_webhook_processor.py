@@ -36,7 +36,7 @@ class PullRequestWebhookProcessor(BaseWebhookProcessorMixin):
                 deleted_raw_results=[payload["pullRequest"]],
             )
 
-        pull_request_details = await self._client.get_single_pull_request(
+        pull_request_details = await self.client.get_single_pull_request(
             project_key=project_key, repo_slug=repository_id, pr_key=pull_request_id
         )
 

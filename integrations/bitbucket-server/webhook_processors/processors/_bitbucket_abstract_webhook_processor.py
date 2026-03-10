@@ -6,11 +6,20 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from webhook_processors.webhook_client import init_webhook_client
+from webhook_processors.webhook_client import (
+    BitbucketServerWebhookClient,
+    init_webhook_client,
+)
 
 
 class BaseWebhookProcessorMixin(AbstractWebhookProcessor):
-    _client = init_webhook_client()
+    _client: BitbucketServerWebhookClient | None = None
+
+    @property
+    def client(self) -> BitbucketServerWebhookClient:
+        if self._client is None:
+            self._client = init_webhook_client()
+        return self._client
 
     async def authenticate(
         self, payload: dict[str, Any], headers: dict[str, str]
@@ -24,7 +33,7 @@ class BaseWebhookProcessorMixin(AbstractWebhookProcessor):
         if not (event._original_request and await self._should_process_event(event)):
             return False
 
-        return await self._client.verify_webhook_signature(event._original_request)
+        return await self.client.verify_webhook_signature(event._original_request)
 
     async def validate_payload(self, payload: dict[str, Any]) -> bool:
         return True
