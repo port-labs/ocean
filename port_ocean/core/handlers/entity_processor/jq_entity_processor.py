@@ -107,14 +107,19 @@ class JQEntityProcessor(BaseEntityProcessor):
         field: str | None = kwargs.get("field")
         try:
             compiled_pattern = self._compile(pattern)
-            return next(iter(compiled_pattern.input_value(data)), None)
+            func = compiled_pattern.input_value(data)
+            return func.first()
         except Exception as exc:
             self._log_search_failure(field, pattern, exc)
             return None
 
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
+
         compiled_pattern = self._compile(pattern)
-        value = compiled_pattern.input_value(data).first()
+
+        func = compiled_pattern.input_value(data)
+
+        value = func.first()
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(
