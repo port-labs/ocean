@@ -629,4 +629,4 @@ async def resync_cloudcontrol(
                 )
             else:
                 logger.error(f"Error resyncing {kind} in region {region}: {e}")
-                raise e
+            raise e
