@@ -73,16 +73,23 @@ class GitHubClient:
             "get",
             url,
             ignore_status_code=[self.forbidden_status_code],
-        ).json()
+        )
 
-        if not response or not (download_links := response["download_links"]):
+        if not response:
             logger.info(
                 f"No usage metrics found for organization {organization['login']}"
             )
-            return None
+            return
+
+        response_data = response.json()
+        if not (download_links := response_data["download_links"]):
+            logger.info(
+                f"No usage metrics found for organization {organization['login']}"
+            )
+            return
 
         logger.info(
-            f"Received len(download_links) report download links for organization {organization['login']}"
+            f"Received {len(download_links)} report download links for organization {organization['login']}"
         )
 
         for signed_urls in batched(download_links, self.pagination_page_size_limit):
@@ -99,19 +106,20 @@ class GitHubClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for organizations_batch in self.get_organizations():
             for organization in organizations_batch:
-                async for organization_metrics in self.get_organization_usage_metrics(
-                    organization
-                ):
-                    organization_metrics = [
-                        item for item in organization_metrics if item is not None
+                async for reports in self.get_organization_usage_metrics(organization):
+                    day_totals = [
+                        day
+                        for report in reports
+                        if report and "day_totals" in report
+                        for day in report["day_totals"]
                     ]
-                    if not organization_metrics:
+                    if not day_totals:
                         continue
 
                     self._enrich_metrics_with_organization(
-                        organization_metrics, organization, record_date_key="day"
+                        day_totals, organization, record_date_key="day"
                     )
-                    yield organization_metrics
+                    yield day_totals
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
