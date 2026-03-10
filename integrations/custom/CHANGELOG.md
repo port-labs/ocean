@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.12-beta (2026-03-10)
+
+
+### Features
+
+- Added NextLinkPagination handler for URL-based pagination
+
+
 ## 0.4.11-beta (2026-03-08)
 
 

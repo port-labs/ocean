@@ -20,7 +20,9 @@ class TestNextLinkPagination:
 
     @pytest.fixture
     def mock_extract_items(self) -> MagicMock:
-        return MagicMock(side_effect=lambda data: data if isinstance(data, list) else [data])
+        return MagicMock(
+            side_effect=lambda data: data if isinstance(data, list) else [data]
+        )
 
     @pytest.fixture
     def mock_get_nested_value(self) -> MagicMock:
@@ -33,6 +35,7 @@ class TestNextLinkPagination:
                 else:
                     return None
             return value
+
         return MagicMock(side_effect=_get_nested)
 
     async def test_single_page_no_next_link(
@@ -140,8 +143,14 @@ class TestNextLinkPagination:
         assert results[2] == [page3]
 
         assert captured_urls[0] == "https://graph.microsoft.com/v1.0/applications"
-        assert captured_urls[1] == "https://graph.microsoft.com/v1.0/applications?$skiptoken=abc123"
-        assert captured_urls[2] == "https://graph.microsoft.com/v1.0/applications?$skiptoken=def456"
+        assert (
+            captured_urls[1]
+            == "https://graph.microsoft.com/v1.0/applications?$skiptoken=abc123"
+        )
+        assert (
+            captured_urls[2]
+            == "https://graph.microsoft.com/v1.0/applications?$skiptoken=def456"
+        )
 
         assert captured_params[0] == {"$top": "100"}
         assert captured_params[1] == {}
