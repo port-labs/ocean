@@ -77,8 +77,6 @@ class GitHubClient:
             )
             return None
 
-        report_manifest = response.json()
-        download_links: list[str] = report_manifest.get("download_links", [])
         results: list[dict[str, Any]] = []
 
         for signed_url in download_links:
