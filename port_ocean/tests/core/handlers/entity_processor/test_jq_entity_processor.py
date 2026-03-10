@@ -193,6 +193,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"foo": "bar"}
         pattern = ".foo."
+        # _search raises on JQ error; _search catches and returns None
         result = await mocked_processor._search(data, pattern)
         assert result is None
 

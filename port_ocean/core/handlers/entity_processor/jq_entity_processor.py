@@ -101,15 +101,13 @@ class JQEntityProcessor(BaseEntityProcessor):
         )
 
     async def _search(
-        self,
-        data: dict[str, Any],
-        pattern: str,
-        field: str | None = None,
+        self, data: dict[str, Any], pattern: str, **kwargs: Any
     ) -> Any:
+        """Execute a JQ pattern against data, logging a structured ERROR with field context on failure."""
+        field: str | None = kwargs.get("field")
         try:
             compiled_pattern = self._compile(pattern)
-            func = compiled_pattern.input_value(data)
-            return func.first()
+            return next(iter(compiled_pattern.input_value(data)), None)
         except Exception as exc:
             self._log_search_failure(field, pattern, exc)
             return None
@@ -210,9 +208,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         if parse_all or should_run:
             misconfigurations: dict[str, str] = {}
             mapped_entity = await self._search_as_object(
-                data,
-                raw_entity_mappings,
-                misconfigurations,
+                data, raw_entity_mappings, misconfigurations
             )
             return MappedEntity(
                 entity=mapped_entity,
