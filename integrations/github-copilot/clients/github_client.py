@@ -273,7 +273,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         for metric in metrics:
             logger.info(
-                f"Enriching metric {metric} of day {metric[record_date_key]} with organization {organization}"
+                f"Enriching metric of day {metric[record_date_key]} with organization {organization}"
             )
             metric["__organization"] = organization
         return metrics
