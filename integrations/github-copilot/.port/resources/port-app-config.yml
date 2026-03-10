@@ -85,13 +85,13 @@ resources:
         mappings:
           identifier: (.__organization.login + "@" + .day)
           title: (.__organization.login + " copilot-metrics " + .day)
-          blueprint: '"github_copilot_organization_usage"'
+          blueprint: '"githubCopilotOrganizationUsage"'
           properties:
             record_date: .day + "T00:00:00Z"
-            daily_active_users: .daily_active_users // 0
-            code_generation_activity_count: .code_generation_activity_count // 0
-            code_acceptance_activity_count: .code_acceptance_activity_count // 0
-            loc_suggested_to_add_sum: .loc_suggested_to_add_sum // 0
-            loc_added_sum: .loc_added_sum // 0
-            user_initiated_interaction_count: .user_initiated_interaction_count // 0
+            daily_active_users: .daily_active_users
+            code_generation_activity_count: .code_generation_activity_count
+            code_acceptance_activity_count: .code_acceptance_activity_count
+            loc_suggested_to_add_sum: .loc_suggested_to_add_sum
+            loc_added_sum: .loc_added_sum
+            user_initiated_interaction_count: .user_initiated_interaction_count
             git_hub_org: .__organization.login

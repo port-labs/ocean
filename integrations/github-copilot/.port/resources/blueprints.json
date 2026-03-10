@@ -70,7 +70,7 @@
     "relations": {}
   },
   {
-    "identifier": "github_copilot_organization_usage",
+    "identifier": "githubCopilotOrganizationUsage",
     "title": "GitHub Copilot Organization Usage",
     "icon": "Github",
     "schema": {
