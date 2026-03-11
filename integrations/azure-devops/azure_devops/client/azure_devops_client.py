@@ -896,61 +896,97 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
+
+        Uses ID-range pagination to fetch all work items when a project exceeds the WIQL API limit
+        of 20,000 results per query.
         """
         async for projects in self.generate_projects():
             for project in projects:
-                # Execute WIQL query to get work item IDs
-                work_item_ids = await self._fetch_work_item_ids(project, wiql)
-                logger.info(
-                    f"Found {len(work_item_ids)} work item IDs for project {project['name']}"
-                )
-                # Fetch work items using the IDs (in batches if needed)
-                async for work_items_batch in self._fetch_work_items_in_batches(
-                    project["id"],
-                    work_item_ids,
-                    query_params={"$expand": expand},
+                # Execute WIQL queries with ID-range pagination to get all work item IDs
+                async for work_item_ids in self._fetch_work_item_id_batches(
+                    project, wiql
                 ):
-                    logger.debug(f"Received {len(work_items_batch)} work items")
-                    # Enrich each work item with project details before yielding
-                    yield self._add_project_details_to_work_items(
-                        work_items_batch, project
+                    if not work_item_ids:
+                        continue
+                    logger.info(
+                        f"Fetched batch of {len(work_item_ids)} work item IDs for project {project['name']}"
                     )
+                    # Fetch work items using the IDs (in batches of 200 per API call)
+                    async for work_items_batch in self._fetch_work_items_in_batches(
+                        project["id"],
+                        work_item_ids,
+                        query_params={"$expand": expand},
+                    ):
+                        logger.debug(f"Received {len(work_items_batch)} work items")
+                        # Enrich each work item with project details before yielding
+                        yield self._add_project_details_to_work_items(
+                            work_items_batch, project
+                        )
 
-    async def _fetch_work_item_ids(
+    async def _fetch_work_item_id_batches(
         self, project: dict[str, Any], wiql: Optional[str]
-    ) -> list[int]:
+    ) -> AsyncGenerator[list[int], None]:
         """
-        Executes a WIQL query to fetch work item IDs for a given project.
+        Executes WIQL queries with ID-range pagination to fetch all work item IDs for a project.
 
-        :param project_id: The ID of the project.
-        :return: A list of work item IDs.
+        Azure DevOps WIQL API returns at most 20,000 results per query. When a project has more
+        work items, we paginate by running multiple queries with [System.Id] > last_id until
+        we receive fewer than the limit.
+
+        :param project: The project dict containing id and name.
+        :param wiql: Optional user-provided WIQL filter to append to the WHERE clause.
+        :yield: Batches of work item IDs (each batch up to MAX_WORK_ITEMS_RESULTS_PER_PROJECT).
         """
-        wiql_query = f"SELECT [Id] from WorkItems WHERE [System.TeamProject] = '{project['name']}'"
-
+        last_id = 0
+        wiql_base = (
+            f"SELECT [Id] FROM WorkItems WHERE [System.TeamProject] = '{project['name']}'"
+        )
         if wiql:
-            # Append the user-provided wiql to the WHERE clause
-            wiql_query += f" AND {wiql}"
-            logger.info(f"Found and appended WIQL filter: {wiql}")
+            wiql_base += f" AND {wiql}"
+            logger.info(f"Using WIQL filter: {wiql}")
 
         wiql_url = (
             f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
         )
-        logger.info(
-            f"Fetching work item IDs for project {project['name']} using WIQL query {wiql_query}"
-        )
-        wiql_response = await self.send_request(
-            "POST",
-            wiql_url,
-            params={
-                "api-version": "7.1-preview.2",
-                "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
-            },
-            data=json.dumps({"query": wiql_query}),
-            headers={"Content-Type": "application/json"},
-        )
-        if not wiql_response:
-            return []
-        return [item["id"] for item in wiql_response.json()["workItems"]]
+
+        while True:
+            wiql_query = wiql_base
+            if last_id > 0:
+                wiql_query += f" AND [System.Id] > {last_id}"
+            wiql_query += " ORDER BY [System.Id] Asc"
+
+            logger.debug(
+                f"Fetching work item IDs for project {project['name']} (last_id={last_id})"
+            )
+            wiql_response = await self.send_request(
+                "POST",
+                wiql_url,
+                params={
+                    "api-version": "7.1-preview.2",
+                    "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
+                },
+                data=json.dumps({"query": wiql_query}),
+                headers={"Content-Type": "application/json"},
+            )
+            if not wiql_response:
+                break
+
+            work_items = wiql_response.json().get("workItems", [])
+            work_item_ids = [item["id"] for item in work_items]
+
+            if not work_item_ids:
+                break
+
+            yield work_item_ids
+
+            if len(work_item_ids) < MAX_WORK_ITEMS_RESULTS_PER_PROJECT:
+                logger.info(
+                    f"Completed work item ID fetch for project {project['name']} "
+                    f"(total batches, last batch had {len(work_item_ids)} items)"
+                )
+                break
+
+            last_id = max(work_item_ids)
 
     async def _fetch_work_items_in_batches(
         self,
