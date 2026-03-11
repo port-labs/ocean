@@ -394,17 +394,27 @@ async def test_sync_raw_results_one_raw_result_entity_upserted(
 ) -> None:
     """Test synchronizing raw webhook event results"""
     # Setup mocks
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse = AsyncMock()  # type: ignore
     mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(return_value=([entity], []))  # type: ignore
     mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
     mock_live_events_mixin.entities_state_applier.delete = AsyncMock()  # type: ignore
     mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
 
-    # Call the method
-    await mock_live_events_mixin.sync_raw_results(
+    # Call the method with lakehouse enabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_live_events_mixin.sync_raw_results(
+            [one_webhook_event_raw_results_for_creation]
+        )
+
+    # Verify lakehouse called BEFORE parsing (with raw data)
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_called_once_with(
         [one_webhook_event_raw_results_for_creation]
     )
 
-    # Verify the method calls
+    # Verify parsing and Port operations happened after
     mock_live_events_mixin._parse_raw_event_results_to_entities.assert_called_once_with(
         [one_webhook_event_raw_results_for_creation]
     )
@@ -412,3 +422,320 @@ async def test_sync_raw_results_one_raw_result_entity_upserted(
         [entity], UserAgentType.exporter
     )
     mock_live_events_mixin.entities_state_applier.delete.assert_not_called()
+
+
+file_resource_config_with_items_to_parse = ResourceConfig(
+    kind="file",
+    selector=Selector(query="true"),
+    port=PortResourceConfig(
+        entity=MappingsConfig(
+            mappings=EntityMapping(
+                identifier=".item.identifier",
+                title=".item.title",
+                blueprint='"fileBlueprint"',
+                properties={"repoName": ".repo.name"},
+                relations={},
+            )
+        ),
+        itemsToParse=".file.content",
+    ),
+)
+
+file_raw_item_with_array = {
+    "file": {
+        "path": "port.yml",
+        "content": [
+            {"identifier": "svc-one", "title": "Service One"},
+            {"identifier": "svc-two", "title": "Service Two"},
+        ],
+    },
+    "repo": {"name": "my-repo"},
+}
+
+
+@pytest.mark.asyncio
+async def test_expand_raw_item_without_items_to_parse(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    """When itemsToParse is not configured, _expand_raw_item yields the original item unchanged"""
+    resource = ResourceConfig(
+        kind="repository",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".name",
+                    title=".name",
+                    blueprint='"service"',
+                    properties={},
+                    relations={},
+                )
+            )
+        ),
+    )
+    raw_item = {"name": "my-repo", "url": "https://example.com/my-repo"}
+
+    batches: list[Any] = []
+    async for batch in mock_live_events_mixin._expand_raw_item(raw_item, resource):
+        batches.extend(batch)
+
+    assert batches == [raw_item]
+
+
+@pytest.mark.asyncio
+async def test_expand_raw_item_with_items_to_parse(
+    mock_live_events_mixin: LiveEventsMixin,
+    mock_context: PortOceanContext,
+) -> None:
+    """When itemsToParse is configured, _expand_raw_item fans out array elements into separate items"""
+    mock_ocean_utils = MagicMock()
+    mock_ocean_utils.config.yield_items_to_parse_batch_size = 100
+    mock_ocean_utils.app.integration.entity_processor = JQEntityProcessor(mock_context)
+
+    with patch("port_ocean.core.integrations.mixins.utils.ocean", mock_ocean_utils):
+        batches: list[Any] = []
+        async for batch in mock_live_events_mixin._expand_raw_item(
+            file_raw_item_with_array, file_resource_config_with_items_to_parse
+        ):
+            batches.extend(batch)
+
+    assert len(batches) == 2
+    assert batches[0]["item"] == {"identifier": "svc-one", "title": "Service One"}
+    assert batches[1]["item"] == {"identifier": "svc-two", "title": "Service Two"}
+    assert "content" not in batches[0].get("file", {})
+    assert batches[0]["repo"] == {"name": "my-repo"}
+
+
+@pytest.mark.asyncio
+async def test_parse_raw_event_results_items_to_parse_expansion(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    """When itemsToParse is configured, _parse_raw_event_results_to_entities produces one entity per array element"""
+    expanded_item_one = {
+        "file": {"path": "port.yml"},
+        "repo": {"name": "my-repo"},
+        "item": {"identifier": "svc-one", "title": "Service One"},
+    }
+    expanded_item_two = {
+        "file": {"path": "port.yml"},
+        "repo": {"name": "my-repo"},
+        "item": {"identifier": "svc-two", "title": "Service Two"},
+    }
+
+    entity_one = Entity(
+        identifier="svc-one",
+        blueprint="fileBlueprint",
+        title="Service One",
+        team=[],
+        properties={"repoName": "my-repo"},
+        relations={},
+    )
+    entity_two = Entity(
+        identifier="svc-two",
+        blueprint="fileBlueprint",
+        title="Service Two",
+        team=[],
+        properties={"repoName": "my-repo"},
+        relations={},
+    )
+
+    async def mock_expand(raw_item: Any, resource: Any) -> Any:
+        yield [expanded_item_one]
+        yield [expanded_item_two]
+
+    mock_live_events_mixin._expand_raw_item = mock_expand  # type: ignore
+
+    def make_calculation_result(passed: list[Entity]) -> CalculationResult:
+        return CalculationResult(
+            entity_selector_diff=EntitySelectorDiff(passed=passed, failed=[]),
+            errors=[],
+            misconfigured_entity_keys={},
+        )
+
+    mock_live_events_mixin.entity_processor.parse_items = AsyncMock(  # type: ignore
+        side_effect=[
+            make_calculation_result([entity_one]),
+            make_calculation_result([entity_two]),
+        ]
+    )
+
+    webhook_result = WebhookEventRawResults(
+        updated_raw_results=[file_raw_item_with_array],
+        deleted_raw_results=[],
+    )
+    webhook_result.resource = file_resource_config_with_items_to_parse
+
+    entities_to_create, entities_to_delete = (
+        await mock_live_events_mixin._parse_raw_event_results_to_entities(
+            [webhook_result]
+        )
+    )
+
+    assert len(entities_to_create) == 2
+    assert entities_to_create[0].identifier == "svc-one"
+    assert entities_to_create[1].identifier == "svc-two"
+    assert entities_to_delete == []
+    assert mock_live_events_mixin.entity_processor.parse_items.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_results_entity_deleted(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    """Test synchronizing webhook event with entity deletion"""
+    # Setup mocks
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse = AsyncMock()  # type: ignore
+    mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(return_value=([], [entity]))  # type: ignore
+    mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
+
+    # Call the method with lakehouse enabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_live_events_mixin.sync_raw_results(
+            [one_webhook_event_raw_results_for_deletion]
+        )
+
+    # Verify lakehouse called with raw data BEFORE parsing
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_called_once_with(
+        [one_webhook_event_raw_results_for_deletion]
+    )
+
+    # Verify the method calls
+    mock_live_events_mixin.entities_state_applier.upsert.assert_not_called()
+    mock_live_events_mixin._delete_entities.assert_called_once_with([entity])
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_results_entity_deletion_raw_data_sent_regardless(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    """Test that raw data is sent to lakehouse even if entity doesn't exist in Port"""
+    # Setup mocks
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse = AsyncMock()  # type: ignore
+    mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(return_value=([], [entity]))  # type: ignore
+    mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
+
+    # Call the method with lakehouse enabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_live_events_mixin.sync_raw_results(
+            [one_webhook_event_raw_results_for_deletion]
+        )
+
+    # Verify lakehouse called with raw data (before we know if entity exists)
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_called_once_with(
+        [one_webhook_event_raw_results_for_deletion]
+    )
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_results_both_upsert_and_delete(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    """Test webhook event with both upserts and deletes"""
+    entity_to_delete = Entity(
+        identifier="repo-two",
+        blueprint="service",
+        title="repo-two",
+        team=[],
+        properties={},
+        relations={},
+    )
+
+    # Setup mocks
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse = AsyncMock()  # type: ignore[method-assign]
+    mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(  # type: ignore[method-assign]
+        return_value=([entity], [entity_to_delete])
+    )
+    mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore[method-assign]
+    mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore[method-assign]
+
+    webhook_results = WebhookEventRawResults(
+        updated_raw_results=[{"name": "repo-one"}],
+        deleted_raw_results=[{"name": "repo-two"}],
+    )
+    webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
+
+    # Call the method with lakehouse enabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_live_events_mixin.sync_raw_results([webhook_results])
+
+    # Verify lakehouse called with raw data
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_called_once_with(
+        [webhook_results]
+    )
+
+    # Verify both operations executed
+    mock_live_events_mixin.entities_state_applier.upsert.assert_called_once()
+    mock_live_events_mixin._delete_entities.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_results_empty_results(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    """Test webhook event with no raw data sends nothing to lakehouse"""
+    # Setup mocks
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse = AsyncMock()  # type: ignore
+    mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(return_value=([], []))  # type: ignore
+    mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
+
+    webhook_results = WebhookEventRawResults(
+        updated_raw_results=[],
+        deleted_raw_results=[],
+    )
+    webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
+
+    # Call the method with lakehouse enabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=True),
+    ):
+        await mock_live_events_mixin.sync_raw_results([webhook_results])
+
+    # Verify lakehouse still called (will skip sending internally if no data)
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_called_once_with(
+        [webhook_results]
+    )
+
+    # Verify nothing sent to Port
+    mock_live_events_mixin.entities_state_applier.upsert.assert_not_called()
+    mock_live_events_mixin._delete_entities.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_sync_raw_results_lakehouse_disabled(
+    mock_live_events_mixin: LiveEventsMixin,
+) -> None:
+    """Test that lakehouse is not called when disabled"""
+    # Setup mocks
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse = AsyncMock()  # type: ignore
+    mock_live_events_mixin._parse_raw_event_results_to_entities = AsyncMock(return_value=([entity], []))  # type: ignore
+    mock_live_events_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
+    mock_live_events_mixin._delete_entities = AsyncMock()  # type: ignore
+
+    # Call the method with lakehouse disabled
+    with patch(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=False),
+    ):
+        await mock_live_events_mixin.sync_raw_results(
+            [one_webhook_event_raw_results_for_creation]
+        )
+
+    # Verify lakehouse not called when disabled
+    mock_live_events_mixin._send_webhook_raw_data_to_lakehouse.assert_not_called()
+
+    # Verify parsing and Port operations still happened
+    mock_live_events_mixin._parse_raw_event_results_to_entities.assert_called_once()
+    mock_live_events_mixin.entities_state_applier.upsert.assert_called_once()

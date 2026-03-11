@@ -138,6 +138,11 @@ class IntegrationFeatureFlag(StrEnum):
     LAKEHOUSE_ELIGIBLE = "LAKEHOUSE_ELIGIBLE"
 
 
+class LakehouseOperation(StrEnum):
+    UPSERT = "upsert"
+    DELETE = "delete"
+
+
 class RunStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     SUCCESS = "SUCCESS"
@@ -184,14 +189,31 @@ class ActionRun(BaseModel):
 class WorkflowNodeRun(BaseModel):
     identifier: str
     status: WorkflowNodeRunStatus
-    node: dict[str, Any]
-    config: dict[str, Any]
-    result: WorkflowNodeRunResult | None = None
-    output: dict[str, Any] = Field(default_factory=dict)
+    node: dict[str, Any] | None = None
 
     @property
     def id(self) -> str:
         return self.identifier
+
+    @property
+    def action_type(self) -> str:
+        if not self.node:
+            return ""
+        return self.node.get("config", {}).get("integrationInvocationType", "")
+
+    @property
+    def execution_properties(self) -> dict[str, Any]:
+        if not self.node:
+            return {}
+        return self.node.get("config", {}).get(
+            "integrationActionExecutionProperties", {}
+        )
+
+
+class ClaimedWorkflowNodeRun(WorkflowNodeRun):
+    config: dict[str, Any]
+    result: WorkflowNodeRunResult | None = None
+    output: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def action_type(self) -> str:

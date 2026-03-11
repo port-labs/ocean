@@ -7,6 +7,60 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.11 (2026-03-11)
+
+### Improvements
+
+- Added support for items to parse in live events context
+
+
+## 0.38.10 (2026-03-10)
+
+### Improvements
+
+- Added `externalRunId` support for workflow node runs.
+
+## 0.38.9 (2026-03-09)
+
+### Improvements
+
+- Added webhook events to lakehouse integration: webhook raw data (both upserted and deleted) is now sent to lakehouse API with operation metadata (UPSERT/DELETE) before transformation, mirroring the existing resync flow for complete audit trail and data replay capabilities.
+
+## 0.38.8 (2026-03-09)
+
+### Bug fixes
+
+- Resolved an infinite pagination loop caused by `handle_items_to_parse` mutating the original batch list via `.pop(0)`. The function now iterates without mutation, so integration generators retain their yielded
+  list for pagination decisions.
+
+## 0.38.7 (2026-03-08)
+### Improvements
+- Update post URL for lake in order to standartize them
+
+## 0.38.6 (2026-03-03)
+
+### Bug fixes
+
+- Fixed race condition between live events and resync reconciliation: entities created or updated by live events during a running resync are no longer incorrectly deleted. Reconciliation now fetches entities from Port with an `updatedAt` filter (not after resync start time) so only entities that existed before the resync are considered for deletion.
+- JQ entity processor sync (`jq_entity_processor_sync`): `_search` now uses `next(iter(it), None)` instead of `.first()` for robust iteration over jq results, and search failures are logged as warnings with structured fields (`pattern`, `error`) instead of full error logs.
+
+
+## 0.38.5 (2026-03-03)
+
+### Improvements
+
+- Added structured `etl_phase` log context (`extract`, `transform`, `load`, `reconciliation`) across the resync pipeline for better observability
+- Consolidated `resource_kind` in both sync raw and entity processor log context.
+- Removed dead no-op `logger.contextualize` call in `_collect_resync_functions`
+
+
+## 0.38.4 (2026-03-02)
+
+### Improvements
+
+- Changed Saas integration to use single process.
+
+
 ## 0.38.3 (2026-03-01)
 
 ### Improvements

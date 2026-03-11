@@ -3,7 +3,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from client import TerraformClient, CacheKeys, TERRAFORM_WEBHOOK_EVENTS
+from client import (
+    TerraformClient,
+    CacheKeys,
+    TERRAFORM_WEBHOOK_EVENTS,
+    WorkspaceRunEvents,
+    HealthAssessmentEvents,
+)
 
 
 @pytest.fixture
@@ -615,14 +621,37 @@ class TestGetStateFileForSingleWorkspace:
             assert result[0] == state_file_content
 
 
+class TestGetHealthAssessmentsForSingleWorkspace:
+    @pytest.mark.asyncio
+    async def test_get_current_health_assessment_for_workspace_success(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+
+            mock_send.return_value = {"data": {"id": "assessment-1"}}
+
+            assessment = (
+                await terraform_client.get_current_health_assessment_for_workspace(
+                    "test-workspace"
+                )
+            )
+
+            assert assessment == {"id": "assessment-1"}
+
+
 class TestTerraformWebhookEvents:
     def test_webhook_events_constant(self) -> None:
         expected_events = [
-            "run:applying",
-            "run:completed",
-            "run:created",
-            "run:errored",
-            "run:needs_attention",
-            "run:planning",
+            WorkspaceRunEvents.APPLYING,
+            WorkspaceRunEvents.COMPLETED,
+            WorkspaceRunEvents.CREATED,
+            WorkspaceRunEvents.ERRORED,
+            WorkspaceRunEvents.NEEDS_ATTENTION,
+            WorkspaceRunEvents.PLANNING,
+            HealthAssessmentEvents.DRIFTED,
+            HealthAssessmentEvents.CHECK_FAILURE,
+            HealthAssessmentEvents.FAILED,
         ]
         assert TERRAFORM_WEBHOOK_EVENTS == expected_events
