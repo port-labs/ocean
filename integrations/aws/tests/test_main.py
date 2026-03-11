@@ -35,7 +35,13 @@ def _real_error(code: str = "InternalServiceError") -> ClientError:
     return ClientError(
         {
             "Error": {"Code": code, "Message": "Something went wrong"},
-            "ResponseMetadata": {"HTTPStatusCode": 400},
+            "ResponseMetadata": {
+                "HTTPStatusCode": 400,
+                "RequestId": "",
+                "HostId": "",
+                "HTTPHeaders": {},
+                "RetryAttempts": 0,
+            },
         },
         "ListResources",
     )
@@ -329,7 +335,13 @@ async def test_safe_iterate_suppresses_server_error() -> None:
         {"Error": {"Code": "ServiceException", "Message": "Internal error"}},
         "ListResources",
     )
-    err.response["ResponseMetadata"] = {"HTTPStatusCode": 500}
+    err.response["ResponseMetadata"] = {
+        "HTTPStatusCode": 500,
+        "RequestId": "",
+        "HostId": "",
+        "HTTPHeaders": {},
+        "RetryAttempts": 0,
+    }
 
     async def gen() -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield []

@@ -11,6 +11,7 @@ from utils.misc import (
     is_access_denied_exception,
     is_resource_type_not_available_exception,
     is_resource_not_found_exception,
+    is_server_error,
     CloudControlThrottlingConfig,
     CloudControlClientProtocol,
     AsyncPaginator,
@@ -539,9 +540,21 @@ async def resync_custom_kind(
                     break
                 elif is_resource_type_not_available_exception(e):
                     logger.warning(
-                        f"Skipping resyncing {kind} due to missing resource availaibility in region {region}"
+                        f"Skipping resyncing {kind} due to missing resource availability in region {region}"
                     )
                     break
+                elif is_resource_not_found_exception(e):
+                    logger.bind(traceback=e, kind=kind, region=region).warning(
+                        f"{region} skipped during resync of {kind}: "
+                        f"resource not found in this region"
+                    )
+                    return
+                elif is_server_error(e):
+                    logger.bind(traceback=e, kind=kind, region=region).warning(
+                        f"{region} skipped during resync of {kind}: "
+                        f"server error from AWS"
+                    )
+                    return
                 else:
                     raise e
 
