@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.5 (2026-03-11)
+
+
+### Improvements
+
+- Added `sbomPackage` blueprint and configuration, and extended the response of the `vulnerability-finding` kind
+
+
 ## 0.2.4 (2026-03-11)
 
 

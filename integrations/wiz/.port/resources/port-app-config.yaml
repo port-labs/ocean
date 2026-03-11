@@ -98,6 +98,8 @@ resources:
             origin: .origin
             vulnerabilityExternalId: .vulnerabilityExternalId
             CVEDescription: .CVEDescription
+            detailedName: .detailedName
+            artifactMetadata: .artifactType
             hasFix: .hasFix
             hasExploit: .hasExploit
             isHighProfileThreat: .isHighProfileThreat
@@ -109,6 +111,21 @@ resources:
             applicationServices: .applicationServices
           relations:
             projects: .projects | map(.id)
+  - kind: vulnerability-finding
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .detailedName + "-" + .version  | gsub("[^\\p{L}0-9@_.+:\\/=-]"; "")
+          title: .detailedName + "-" + .version  | gsub("[^\\p{L}0-9@_.+:\\/=-]"; "")
+          blueprint: '"sbomPackage"'
+          properties:
+            version: .version
+            package: .detailedName
+            manager: >-
+              .artifactType.osPackageManager //
+              .artifactType.codeLibraryLanguage
   - kind: technology
     selector:
       query: 'true'
