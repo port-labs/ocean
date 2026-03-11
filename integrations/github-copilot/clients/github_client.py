@@ -5,6 +5,8 @@ import re
 from loguru import logger
 from port_ocean.utils import http_async_client
 from urllib.parse import parse_qs, urlparse
+import asyncio
+from itertools import batched
 
 from .github_endpoints import GithubEndpoints
 
@@ -39,9 +41,10 @@ class GitHubClient:
         ):
             yield teams
 
-    async def get_metrics_for_organization(
+    async def get_legacy_metrics_for_organization(
         self, organization: dict[str, Any]
     ) -> list[dict[str, Any]] | None:
+        """Fetches the legacy inline-JSON metrics."""
         url = self._resolve_route_params(
             GithubEndpoints.COPILOT_ORGANIZATION_METRICS.value,
             {"org": organization["login"]},
@@ -54,6 +57,82 @@ class GitHubClient:
                 self.forbidden_status_code,
             ],
         )
+
+    async def get_organization_usage_metrics(
+        self, organization: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        "Fetches the 28-day usage manifest and downloads metrics from signed URLs."
+        logger.info(
+            f"Fetching organization metrics download links for {organization['login']}"
+        )
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_ORGANIZATION_METRICS_28_DAY.value,
+            {"org": organization["login"]},
+        )
+        response = await self._send_api_request(
+            "get",
+            url,
+            ignore_status_code=[self.forbidden_status_code],
+        )
+
+        if not response:
+            logger.info(
+                f"No usage metrics found for organization {organization['login']}"
+            )
+            return
+
+        response_data = response.json()
+        if not (download_links := response_data["download_links"]):
+            logger.info(
+                f"No usage metrics found for organization {organization['login']}"
+            )
+            return
+
+        logger.info(
+            f"Received {len(download_links)} report download links for organization {organization['login']} "
+            f"covering {response_data['report_start_day']} to {response_data['report_end_day']}"
+        )
+
+        for signed_urls in batched(download_links, self.pagination_page_size_limit):
+            reports = await asyncio.gather(
+                *[
+                    self._fetch_report_from_signed_url(signed_url)
+                    for signed_url in signed_urls
+                ]
+            )
+            yield [report for report in reports if report is not None]
+
+    async def fetch_organization_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for organizations_batch in self.get_organizations():
+            for organization in organizations_batch:
+                async for reports in self.get_organization_usage_metrics(organization):
+                    day_totals = [
+                        day
+                        for report in reports
+                        if report and "day_totals" in report
+                        for day in report["day_totals"]
+                    ]
+                    if not day_totals:
+                        continue
+
+                    self._enrich_metrics_with_organization(
+                        day_totals, organization, record_date_key="day"
+                    )
+                    yield day_totals
+
+    async def _fetch_report_from_signed_url(
+        self, signed_url: str
+    ) -> dict[str, Any] | None:
+        logger.debug("Fetching report from signed URL")
+        try:
+            response = await self._client.request(method="get", url=signed_url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error fetching report from signed URL: {e}")
+            return None
 
     async def get_metrics_for_team(
         self, organization: dict[str, Any], team: dict[str, Any]
@@ -142,7 +221,7 @@ class GitHubClient:
                 return None
 
             if ignore_status_code and e.response.status_code in ignore_status_code:
-                logger.info(
+                logger.warning(
                     f"Ignoring status code {e.response.status_code} for {method} request to {path}"
                 )
                 return None
@@ -186,3 +265,16 @@ class GitHubClient:
         :return: A formatted string with placeholders replaced by their corresponding values.
         """
         return endpoint_template.format(**params)
+
+    def _enrich_metrics_with_organization(
+        self,
+        metrics: list[dict[str, Any]],
+        organization: dict[str, Any],
+        record_date_key: str = "date",
+    ) -> list[dict[str, Any]]:
+        for metric in metrics:
+            logger.info(
+                f"Enriching metric of day {metric[record_date_key]} with organization {organization}"
+            )
+            metric["__organization"] = organization
+        return metrics
