@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added `sbomPackage` blueprint and configuration, and extended the response of the `vulnerability-finding` kind
+- Added `sbomPackage` blueprint and configuration to integration default, and extended the response of the `vulnerability-finding` kind
 
 
 ## 0.2.4 (2026-03-11)
