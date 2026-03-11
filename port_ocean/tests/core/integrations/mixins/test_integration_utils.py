@@ -543,24 +543,6 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
     ) -> None:
         """Verify that the list yielded by the integration generator is not
         mutated after handle_items_to_parse processes it."""
-        resource_config = ResourceConfig(
-            kind="test-kind",
-            selector=Selector(query="true"),
-            port=PortResourceConfig(
-                entity=MappingsConfig(
-                    mappings=EntityMapping(
-                        identifier=".id",
-                        title=".name",
-                        blueprint='"test"',
-                        properties={},
-                        relations={},
-                    )
-                ),
-                itemsToParse=".items",
-                itemsToParseName="item",
-            ),
-        )
-
         # The list that the integration generator yields
         original_batch = [
             {"id": "1", "items": [{"sub_id": "a"}]},
@@ -571,15 +553,9 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
         async def fake_generator(kind: str) -> Any:
             yield original_batch
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
             mock_ocean_context.metrics = mock_context.app.metrics
