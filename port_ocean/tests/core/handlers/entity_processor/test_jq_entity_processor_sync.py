@@ -129,7 +129,7 @@ class TestJQEntityProcessorSync:
             lambda msg: log_messages.append(str(msg)), level="WARNING"
         )
         try:
-            result = mocked_processor._search(data, pattern, field="properties.tier")
+            result = mocked_processor._search(data, pattern, "properties.tier")
             assert result is None
             assert any("properties.tier" in m for m in log_messages)
         finally:

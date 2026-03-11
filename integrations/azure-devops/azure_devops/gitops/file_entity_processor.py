@@ -11,7 +11,7 @@ JSON_SUFFIX = ".json"
 
 
 class GitManipulationHandler(JQEntityProcessor):
-    async def _search(self, data: Dict[str, Any], pattern: str, **kwargs: Any) -> Any:
+    async def _search(self, data: Dict[str, Any], pattern: str, field: str | None = None) -> Any:
         if pattern.startswith(FILE_PROPERTY_PREFIX):
             logger.warning(
                 f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
@@ -22,7 +22,7 @@ class GitManipulationHandler(JQEntityProcessor):
             )
             return await self._search_by_file(data, pattern)
 
-        return await super()._search(data, pattern, **kwargs)
+        return await super()._search(data, pattern, field)
 
     async def _search_by_file(self, data: Dict[str, Any], pattern: str) -> Any:
         client = AzureDevopsClient.create_from_ocean_config_no_cache()

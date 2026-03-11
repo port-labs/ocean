@@ -76,9 +76,8 @@ class JQEntityProcessorSync:
         return compiled_pattern
 
     @staticmethod
-    def _search(data: dict[str, Any], pattern: str, **kwargs: Any) -> Any:
+    def _search(data: dict[str, Any], pattern: str, field: str | None = None) -> Any:
         """Execute a JQ pattern against data, logging a structured WARNING with field context on failure."""
-        field: str | None = kwargs.get("field")
         try:
             compiled_pattern = JQEntityProcessorSync._compile(pattern)
             it = compiled_pattern.input_value(data)

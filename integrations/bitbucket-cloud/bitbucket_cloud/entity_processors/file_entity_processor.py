@@ -25,7 +25,7 @@ class FileEntityProcessor(JQEntityProcessor):
             )
             return None
 
-    async def _search(self, data: dict[str, Any], pattern: str, **kwargs: Any) -> Any:
+    async def _search(self, data: dict[str, Any], pattern: str, field: str | None = None) -> Any:
         """
         Search for a file in the repository and return its content.
 

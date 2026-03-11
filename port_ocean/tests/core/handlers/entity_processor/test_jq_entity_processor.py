@@ -233,7 +233,7 @@ class TestJQEntityProcessor:
         logger_id = logger.add(lambda msg: messages.append(str(msg)), level="WARNING")
         try:
             result = await mocked_processor._search(
-                data, pattern, field="properties.tier"
+                data, pattern, "properties.tier"
             )
         finally:
             logger.remove(logger_id)

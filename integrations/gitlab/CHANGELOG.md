@@ -7,15 +7,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-0.2.202-post1 (2026-03-12)
-====================
-
-
-### Improvements
-
-- Updated `_search` method signature to accept `**kwargs` to align with the base `JQEntityProcessor` interface
-
-
 0.2.201-post1 (2026-03-11)
 ==========================
 
@@ -29,12 +20,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Propagated `**kwargs` through internal `_search` delegation calls to preserve field context across the call chain
-
-
-### Improvements
-
-- Updated `_search` method signature to accept `**kwargs` to align with the base `JQEntityProcessor` interface
+- Bumped ocean version to ^0.38.10
 
 
 0.2.199-post1 (2026-03-09)
