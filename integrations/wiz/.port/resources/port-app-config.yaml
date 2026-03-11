@@ -113,7 +113,7 @@ resources:
             projects: .projects | map(.id)
   - kind: vulnerability-finding
     selector:
-      query: 'true'
+      query: '.detailedName != null and .version != null'
     port:
       entity:
         mappings:
@@ -123,9 +123,7 @@ resources:
           properties:
             version: .version
             package: .detailedName
-            manager: >-
-              .artifactType.osPackageManager //
-              .artifactType.codeLibraryLanguage
+            manager: .artifactType.osPackageManager // .artifactType.codeLibraryLanguage
   - kind: technology
     selector:
       query: 'true'
