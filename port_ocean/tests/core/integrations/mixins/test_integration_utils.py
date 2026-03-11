@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -266,20 +265,14 @@ class TestHandleItemsToParse:
             }
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_with_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", True):
                 batches.append(batch)
 
             assert len(batches) == 1
@@ -311,20 +304,14 @@ class TestHandleItemsToParse:
             }
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_no_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", False):
                 batches.append(batch)
 
             assert len(batches) == 1
@@ -376,21 +363,15 @@ class TestHandleItemsToParse:
             }
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_with_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
             async for batch in handle_items_to_parse(
-                raw_data, "item", ".data.nested.items"
+                raw_data, "item", ".data.nested.items", True
             ):
                 batches.append(batch)
 
@@ -419,20 +400,14 @@ class TestHandleItemsToParse:
             {"id": "2", "items": [{"sub_id": "b"}, {"sub_id": "c"}]},
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_with_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             all_items: list[dict[str, Any]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", True):
                 all_items.extend(batch)
 
             assert len(all_items) == 3
@@ -460,17 +435,13 @@ class TestHandleItemsToParse:
             patch(
                 "port_ocean.core.integrations.mixins.utils.ocean"
             ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_with_transform),
-            ),
             patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger,
         ):
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", True):
                 batches.append(batch)
 
             # Should have no batches since item was skipped
@@ -496,20 +467,14 @@ class TestHandleItemsToParse:
             }
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_with_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", True):
                 batches.append(batch)
 
             assert len(batches) == 1
@@ -539,20 +504,14 @@ class TestHandleItemsToParse:
             }
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_no_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", False):
                 batches.append(batch)
 
             assert len(batches) == 1
@@ -584,24 +543,6 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
     ) -> None:
         """Verify that the list yielded by the integration generator is not
         mutated after handle_items_to_parse processes it."""
-        resource_config = ResourceConfig(
-            kind="test-kind",
-            selector=Selector(query="true"),
-            port=PortResourceConfig(
-                entity=MappingsConfig(
-                    mappings=EntityMapping(
-                        identifier=".id",
-                        title=".name",
-                        blueprint='"test"',
-                        properties={},
-                        relations={},
-                    )
-                ),
-                itemsToParse=".items",
-                itemsToParseName="item",
-            ),
-        )
-
         # The list that the integration generator yields
         original_batch = [
             {"id": "1", "items": [{"sub_id": "a"}]},
@@ -612,15 +553,9 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
         async def fake_generator(kind: str) -> Any:
             yield original_batch
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
             mock_ocean_context.metrics = mock_context.app.metrics
