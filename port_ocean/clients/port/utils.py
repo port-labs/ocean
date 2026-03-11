@@ -1,6 +1,9 @@
 from typing import TYPE_CHECKING
 
 import httpx
+
+from port_ocean.context.event import EventType, event
+from port_ocean.exceptions.context import EventContextNotFoundError
 from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
@@ -60,6 +63,18 @@ def get_internal_http_client(port_client: "PortClient") -> httpx.AsyncClient:
         )
 
     return _port_internal_async_client
+
+
+def get_event_context_params() -> dict[str, str]:
+    """Get eventType and resyncId query params when in an event context."""
+    try:
+        params: dict[str, str] = {"eventType": event.event_type}
+        if event.event_type == EventType.RESYNC:
+            params["resyncId"] = event.id
+        return params
+    except EventContextNotFoundError:
+        pass
+    return {}
 
 
 def handle_port_status_code(
