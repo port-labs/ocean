@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.37 (2026-03-11)
+
+
+### Improvements
+
+- Updated `_search` method signature to accept `**kwargs` to align with the base `JQEntityProcessor` interface
+
+
+## 0.4.36 (2026-03-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
 ## 0.4.35 (2026-03-10)
 
 
