@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.12 (2026-03-11)
+
+### Improvements
+
+- Added `eventType` and `resyncId` (when applicable) to Port API requests for entity-related operations.
+
+
 ## 0.38.11 (2026-03-11)
 
 ### Improvements
