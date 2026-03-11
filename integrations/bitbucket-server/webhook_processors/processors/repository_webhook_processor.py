@@ -44,7 +44,7 @@ class RepositoryWebhookProcessor(BaseWebhookProcessorMixin):
             f"Handling repository webhook event ({event_key}) for project: {project_key} and repository: {repository_slug}"
         )
 
-        repository = await self.client.get_single_repository(
+        repository = await self._client.get_single_repository(
             project_key=project_key, repo_slug=repository_slug
         )
 
