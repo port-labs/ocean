@@ -102,6 +102,7 @@ fragment TeamMemberFields on Team {
       login
       name
       isSiteAdmin
+      email
     }
     pageInfo {
       ...PageInfoFields
