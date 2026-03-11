@@ -13,18 +13,30 @@ from port_ocean.clients.port.utils import (
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
     handle_port_status_code,
 )
+from port_ocean.context.event import EventType, event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import (
     BulkUpsertResponse,
     Entity,
     PortAPIErrorMessage,
 )
+from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 
 ENTITIES_BULK_SAMPLES_SIZE = 10
 ENTITIES_BULK_ESTIMATED_SIZE_MULTIPLIER = 1.5
 ENTITIES_BULK_MINIMUM_BATCH_SIZE = 1
 ENTITIES_BULK_UPSERT_CONCURRENCY = 5
+
+
+def _get_resync_id_params() -> dict[str, str]:
+    """Get resyncId query param when in a resync event context."""
+    try:
+        if event.event_type == EventType.RESYNC:
+            return {"resyncId": event.id}
+    except EventContextNotFoundError:
+        pass
+    return {}
 
 
 class EntityClientMixin:
@@ -107,18 +119,20 @@ class EntityClientMixin:
                 f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
             headers = await self.auth.headers(user_agent_type)
+            params = {
+                "upsert": "true",
+                "merge": str(request_options["merge"]).lower(),
+                "create_missing_related_entities": str(
+                    request_options["create_missing_related_entities"]
+                ).lower(),
+                "validation_only": str(validation_only).lower(),
+                **_get_resync_id_params(),
+            }
             response = await self.client.post(
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities",
                 json=entity.dict(exclude_unset=True, by_alias=True),
                 headers=headers,
-                params={
-                    "upsert": "true",
-                    "merge": str(request_options["merge"]).lower(),
-                    "create_missing_related_entities": str(
-                        request_options["create_missing_related_entities"]
-                    ).lower(),
-                    "validation_only": str(validation_only).lower(),
-                },
+                params=params,
                 extensions={"retryable": True},
             )
         if response.is_error:
@@ -206,6 +220,15 @@ class EntityClientMixin:
                 f"{'Validating' if validation_only else 'Upserting'} {len(entities)} of blueprint: {blueprint}"
             )
             headers = await self.auth.headers(user_agent_type)
+            params = {
+                "upsert": "true",
+                "merge": str(request_options["merge"]).lower(),
+                "create_missing_related_entities": str(
+                    request_options["create_missing_related_entities"]
+                ).lower(),
+                "validation_only": str(validation_only).lower(),
+                **_get_resync_id_params(),
+            }
             response = await self.client.post(
                 f"{self.auth.api_url}/blueprints/{blueprint}/entities/bulk",
                 json={
@@ -215,14 +238,7 @@ class EntityClientMixin:
                     ]
                 },
                 headers=headers,
-                params={
-                    "upsert": "true",
-                    "merge": str(request_options["merge"]).lower(),
-                    "create_missing_related_entities": str(
-                        request_options["create_missing_related_entities"]
-                    ).lower(),
-                    "validation_only": str(validation_only).lower(),
-                },
+                params=params,
                 extensions={"retryable": True},
             )
         if response.is_error:
@@ -453,14 +469,16 @@ class EntityClientMixin:
             logger.info(
                 f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
+            params = {
+                "delete_dependents": str(
+                    request_options["delete_dependent_entities"]
+                ).lower(),
+                **_get_resync_id_params(),
+            }
             response = await self.client.delete(
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
                 headers=await self.auth.headers(user_agent_type),
-                params={
-                    "delete_dependents": str(
-                        request_options["delete_dependent_entities"]
-                    ).lower()
-                },
+                params=params,
             )
 
             if response.is_error:
