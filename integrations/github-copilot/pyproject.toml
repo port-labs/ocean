@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "github-copilot"
-version = "0.1.145"
+version = "0.2.0"
 description = "Github Copilot Metrics integration for Port Ocean"
 authors = ["Niv Meshorer <nivm@getport.io>"]
 
