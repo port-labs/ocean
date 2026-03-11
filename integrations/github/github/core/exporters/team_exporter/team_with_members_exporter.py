@@ -10,6 +10,7 @@ from github.helpers.gql_queries import (
     FETCH_TEAM_WITH_MEMBERS_GQL,
     LIST_TEAM_MEMBERS_GQL,
 )
+from github.helpers.utils import enrich_members_with_saml_email
 
 
 class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]):
@@ -57,6 +58,10 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
         del team["members"]["pageInfo"]
 
+        await enrich_members_with_saml_email(
+            self.client, organization, team["members"]["nodes"]
+        )
+
         return team
 
     async def get_paginated_resources[
@@ -89,6 +94,10 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
                     team["members"]["nodes"] = all_member_nodes_for_team
 
                 del team["members"]["pageInfo"]
+
+                await enrich_members_with_saml_email(
+                    self.client, organization, team["members"]["nodes"]
+                )
 
                 teams_buffer.append(team)
 
