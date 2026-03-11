@@ -374,6 +374,17 @@ async def safe_iterate(
                 f"resource type not available"
             )
             return
+        if is_resource_not_found_exception(e):
+            logger.bind(traceback=e, kind=kind, region=region).warning(
+                f"{region} skipped during resync of {kind}: "
+                f"resource not found in this region"
+            )
+            return
+        if is_server_error(e):
+            logger.bind(traceback=e, kind=kind, region=region).warning(
+                f"{region} skipped during resync of {kind}: " f"server error from AWS"
+            )
+            return
         logger.bind(traceback=e, kind=kind, region=region).error(
             f"{region} encountered an error during resync of {kind}"
         )

@@ -33,7 +33,10 @@ def _type_not_found_error() -> ClientError:
 
 def _real_error(code: str = "InternalServiceError") -> ClientError:
     return ClientError(
-        {"Error": {"Code": code, "Message": "Something went wrong"}},
+        {
+            "Error": {"Code": code, "Message": "Something went wrong"},
+            "ResponseMetadata": {"HTTPStatusCode": 400},
+        },
         "ListResources",
     )
 
@@ -300,3 +303,41 @@ async def test_multiple_failures_collected_across_merge() -> None:
     assert [{"region": "eu-west-1", "data": "ok"}] in results
     assert len(errors) == 2
     assert set(failed) == {"us-east-1", "ap-south-1"}
+
+
+async def test_safe_iterate_suppresses_resource_not_found() -> None:
+    """ResourceNotFoundException is suppressed."""
+
+    async def gen() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield [{"a": 1}]
+        raise ClientError(
+            {"Error": {"Code": "ResourceNotFoundException", "Message": "Not found"}},
+            "ListResources",
+        )
+
+    errors: list[Exception] = []
+    results = []
+    async for batch in safe_iterate(gen(), "ap-southeast-4", "TestKind", errors, []):
+        results.append(batch)
+    assert results == [[{"a": 1}]]
+    assert errors == []
+
+
+async def test_safe_iterate_suppresses_server_error() -> None:
+    """Server errors (5xx) are suppressed."""
+    err = ClientError(
+        {"Error": {"Code": "ServiceException", "Message": "Internal error"}},
+        "ListResources",
+    )
+    err.response["ResponseMetadata"] = {"HTTPStatusCode": 500}
+
+    async def gen() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield []
+        raise err
+
+    errors: list[Exception] = []
+    results = []
+    async for batch in safe_iterate(gen(), "ap-southeast-4", "TestKind", errors, []):
+        results.append(batch)
+    assert results == []
+    assert errors == []
