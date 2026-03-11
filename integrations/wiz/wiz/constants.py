@@ -302,6 +302,10 @@ query RepositoriesTable(
         id
         name
       }
+      projects {
+        id
+        name
+      }
       branches {
         id
         name
