@@ -1,0 +1,131 @@
+name: Check Schema Diff
+description: Checks out the repo, installs dependencies, extracts the port-app-config schema, and compares it against the base schema from main.
+
+inputs:
+  integration_folder:
+    description: The integration folder
+    required: true
+  aws_access_key_id:
+    description: The AWS access key ID
+    required: true
+  aws_secret_access_key:
+    description: The AWS secret access key
+    required: true
+  aws_region:
+    description: The AWS region
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v5
+
+    - name: Configure AWS Credentials 🔒
+      id: aws-credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws_access_key_id }}
+        aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - name: Install poetry
+      shell: bash
+      run: pipx install 'poetry>=1.0.0,<2.0.0'
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.integration_folder }}
+      run: |
+        make install
+
+    - name: Install Diff tool
+      uses: baptiste0928/cargo-install@v3
+      with:
+        crate: json-schema-diff
+
+    - name: Compare Schemas and Report
+      shell: bash
+      working-directory: ${{ inputs.integration_folder }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        integration_type=$(grep -E '^name = ".*"' "pyproject.toml" | cut -d'"' -f2)
+        poetry run ocean port-app-config schema . -o "$integration_type.revision.json"
+        aws s3 cp "s3://ocean-registry/$integration_type/port_app_config.json" "$integration_type.base.json"
+
+        DIFF_OUTPUT=$(json-schema-diff "$integration_type.base.json" "$integration_type.revision.json" 2>&1) || true
+
+        if [ -z "$DIFF_OUTPUT" ]; then
+          echo "✅ No schema changes detected for ${integration_type}"
+          exit 0
+        fi
+
+        HAS_BREAKING=false
+        BREAKING_ROWS=""
+        NON_BREAKING_ROWS=""
+
+        while IFS= read -r line; do
+          [ -z "$line" ] && continue
+
+          path=$(echo "$line" | jq -r '.path')
+          change_type=$(echo "$line" | jq -r '.change | keys[0]')
+          details=$(echo "$line" | jq -c '.change | to_entries[0].value')
+          is_breaking=$(echo "$line" | jq -r '.is_breaking')
+
+          row="| \`${path}\` | \`${change_type}\` | \`${details}\` |"
+
+          if [ "$is_breaking" = "true" ]; then
+            HAS_BREAKING=true
+            BREAKING_ROWS+="${row}"$'\n'
+          else
+            NON_BREAKING_ROWS+="${row}"$'\n'
+          fi
+        done <<< "$DIFF_OUTPUT"
+
+        {
+          echo "## 🔍 Port App Config Schema Changes — \`${integration_type}\`"
+          echo ""
+
+          if [ -n "$BREAKING_ROWS" ]; then
+            echo "### ⚠️ Breaking Changes"
+            echo ""
+            echo "| Path | Change | Details |"
+            echo "|------|--------|---------|"
+            echo -n "$BREAKING_ROWS"
+            echo ""
+          fi
+
+          if [ -n "$NON_BREAKING_ROWS" ]; then
+            echo "### ✅ Non-Breaking Changes"
+            echo ""
+            echo "| Path | Change | Details |"
+            echo "|------|--------|---------|"
+            echo -n "$NON_BREAKING_ROWS"
+            echo ""
+          fi
+
+          if [ "$HAS_BREAKING" = "true" ]; then
+            echo "---"
+            echo "> **⚠️ Action Required:** This PR introduces breaking changes to the \`${integration_type}\` port-app-config schema."
+            echo "> Please verify these changes are intentional and check the **Breaking change** checkbox in the PR description to acknowledge."
+          fi
+        } > /tmp/schema-diff-comment.md
+
+        cat /tmp/schema-diff-comment.md
+
+        if [ -n "${{ github.event.pull_request.number }}" ]; then
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --body-file /tmp/schema-diff-comment.md
+        fi
+
+        if [ "$HAS_BREAKING" = "true" ]; then
+          echo "::error::Breaking schema changes detected for $integration_type"
+          exit 1
+        fi

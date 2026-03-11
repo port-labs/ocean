@@ -99,7 +99,7 @@ jobs:
           fi
 
       - name: Build Docker Image
-        uses: ./.github/workflows/actions/build-docker-image
+        uses: ./.github/actions/build-docker-image
         with:
           dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}
           platforms: linux/amd64,linux/arm64
