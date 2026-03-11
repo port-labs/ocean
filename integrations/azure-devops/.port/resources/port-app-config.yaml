@@ -82,7 +82,7 @@ resources:
           properties:
             type: .fields."System.WorkItemType"
             state: .fields."System.State"
-            effort: .fields."Microsoft.VSTS.Scheduling.Effort"
+            effort: .fields."Microsoft.VSTS.Scheduling.Effort" // -1
             description: .fields."System.Description"
             link: .url
             reason: .fields."System.Reason"
