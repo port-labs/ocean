@@ -14,6 +14,7 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
     GROUP_WITH_MEMBERS = "group-with-members"
+    PROJECT_WITH_MEMBERS = "project-with-members"
     MEMBER = "member"
     FILE = "file"
     PIPELINE = "pipeline"
