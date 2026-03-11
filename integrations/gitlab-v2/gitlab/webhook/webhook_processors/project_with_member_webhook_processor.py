@@ -28,7 +28,12 @@ class ProjectWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
     hooks = ["Project Hook", "Member Hook"]
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return not ({"project_id", "event_name"} - payload.keys())
+        if {"project_id", "event_name"} - payload.keys():
+            return False
+        if payload.get("event_name") in ("project_create", "project_destroy"):
+            if {"name", "path", "path_with_namespace"} - payload.keys():
+                return False
+        return True
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.PROJECT_WITH_MEMBERS]

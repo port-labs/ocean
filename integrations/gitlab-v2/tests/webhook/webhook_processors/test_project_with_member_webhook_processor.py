@@ -261,11 +261,41 @@ class TestProjectWithMemberWebhookProcessor:
     async def test_validate_payload(
         self, processor: ProjectWithMemberWebhookProcessor
     ) -> None:
-        valid_payload = {"project_id": 74, "event_name": "project_create"}
-        assert await processor.validate_payload(valid_payload) is True
+        valid_project_payload = {
+            "project_id": 74,
+            "event_name": "project_create",
+            "name": "my-project",
+            "path": "my-project",
+            "path_with_namespace": "group1/my-project",
+        }
+        assert await processor.validate_payload(valid_project_payload) is True
+
+        valid_member_payload = {
+            "project_id": 74,
+            "event_name": "user_add_to_team",
+            "user_username": "jsmith",
+        }
+        assert await processor.validate_payload(valid_member_payload) is True
 
         missing_project_id = {"event_name": "project_create"}
         assert await processor.validate_payload(missing_project_id) is False
 
         missing_event_name = {"project_id": 74}
         assert await processor.validate_payload(missing_event_name) is False
+
+        destroy_missing_name = {
+            "project_id": 74,
+            "event_name": "project_destroy",
+            "path": "my-project",
+            "path_with_namespace": "group1/my-project",
+        }
+        assert await processor.validate_payload(destroy_missing_name) is False
+
+        valid_destroy_payload = {
+            "project_id": 74,
+            "event_name": "project_destroy",
+            "name": "my-project-deleted-74",
+            "path": "my-project-deleted-74",
+            "path_with_namespace": "group1/my-project-deleted-74",
+        }
+        assert await processor.validate_payload(valid_destroy_payload) is True
