@@ -100,7 +100,9 @@ class JQEntityProcessor(BaseEntityProcessor):
             f"Search failed{field_info} - pattern: {pattern}: {error_summary}",
         )
 
-    async def _search(self, data: dict[str, Any], pattern: str, field: str | None = None) -> Any:
+    async def _search(
+        self, data: dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
         """Execute a JQ pattern against data, logging a structured ERROR with field context on failure."""
         try:
             compiled_pattern = self._compile(pattern)
