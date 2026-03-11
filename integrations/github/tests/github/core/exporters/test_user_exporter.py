@@ -235,7 +235,9 @@ class TestGraphQLUserExporter:
             "send_paginated_request",
             side_effect=[mock_paginated_request_external_identities()],
         ) as mock_request:
-            await enrich_members_with_saml_email(graphql_client, "test-org", initial_users)
+            await enrich_members_with_saml_email(
+                graphql_client, "test-org", initial_users
+            )
 
             expected_users = [
                 {"login": "user1", "email": "johndoe@email.com"},
