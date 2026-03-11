@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.20 (2026-03-11)
+
+
+### Improvements
+
+- Enrich team members with their SAML identity email when available
+
+
 ## 5.1.19 (2026-03-11)
 
 

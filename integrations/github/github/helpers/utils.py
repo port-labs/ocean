@@ -14,10 +14,12 @@ from typing import (
 from loguru import logger
 
 from port_ocean.utils import cache
+from port_ocean.utils.cache import cache_coroutine_result
 
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
+    from github.clients.http.graphql_client import GithubGraphQLClient
 
 
 BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE
@@ -225,3 +227,72 @@ def has_exhausted_rate_limit_headers(headers: Any) -> bool:
 def matches_glob_pattern(path: str, pattern: str, flags: int = 0) -> bool:
     combined_flags = BASE_GLOB_FLAGS | flags
     return glob.globmatch(path, pattern, flags=combined_flags)
+
+
+@cache_coroutine_result()
+async def get_saml_identities(
+    client: "GithubGraphQLClient", organization: str
+) -> dict[str, str]:
+    """Fetch and cache SAML identities for an organization.
+
+    Returns a mapping of GitHub login -> SAML nameId (email).
+    """
+    from github.helpers.gql_queries import LIST_EXTERNAL_IDENTITIES_GQL
+
+    variables = {
+        "organization": organization,
+        "first": 100,
+        "__path": "organization.samlIdentityProvider.externalIdentities",
+        "__node_key": "edges",
+    }
+
+    saml_users: dict[str, str] = {}
+
+    logger.info(f"Starting SAML identity fetch for organization '{organization}'")
+
+    try:
+        async for identity_batch in client.send_paginated_request(
+            LIST_EXTERNAL_IDENTITIES_GQL,
+            variables,
+        ):
+            for user in identity_batch:
+                if user["node"].get("user"):
+                    login = user["node"]["user"]["login"]
+                    name_id = user["node"]["samlIdentity"]["nameId"]
+                    saml_users[login] = name_id
+
+        logger.info(
+            f"SAML fetch complete for '{organization}': {len(saml_users)} identities"
+        )
+    except TypeError:
+        logger.info(f"SAML not enabled for organization '{organization}'")
+
+    return saml_users
+
+
+async def enrich_members_with_saml_email(
+    client: "GithubGraphQLClient",
+    organization: str,
+    members: list[dict[str, Any]],
+) -> None:
+    """Enrich members in-place with SAML email where email is missing."""
+    members_without_email = [m for m in members if not m.get("email")]
+    if not members_without_email:
+        return
+
+    logger.info(
+        f"Found {len(members_without_email)} members without email, "
+        f"fetching from SAML for organization '{organization}'"
+    )
+    saml_users = await get_saml_identities(client, organization)
+
+    enriched = 0
+    for member in members_without_email:
+        if member["login"] in saml_users:
+            member["email"] = saml_users[member["login"]]
+            enriched += 1
+
+    logger.info(
+        f"Enriched {enriched}/{len(members_without_email)} members with SAML email "
+        f"for organization '{organization}'"
+    )

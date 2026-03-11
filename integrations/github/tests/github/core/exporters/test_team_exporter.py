@@ -24,6 +24,7 @@ from github.helpers.gql_queries import (
     LIST_TEAM_MEMBERS_GQL,
     FETCH_TEAM_WITH_MEMBERS_GQL,
     SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
+    LIST_EXTERNAL_IDENTITIES_GQL,
 )
 
 
@@ -373,6 +374,162 @@ class TestGraphQLTeamExporter:
                 initial_member_nodes=TEAM_ALPHA_MEMBERS_PAGE1_NODES,
                 member_page_size=MEMBER_PAGE_SIZE_IN_EXPORTER,
             )
+
+
+TEAM_NO_EMAIL_MEMBER_NODES = [
+    {
+        "id": "MEMBER_NO_EMAIL_1",
+        "login": "member_no_email_1",
+        "isSiteAdmin": False,
+    },
+    {
+        "id": "MEMBER_NO_EMAIL_2",
+        "login": "member_no_email_2",
+        "email": "member_with_email@example.com",
+        "isSiteAdmin": False,
+    },
+]
+
+SAML_IDENTITIES_MOCK = [
+    {
+        "node": {
+            "user": {"login": "member_no_email_1"},
+            "samlIdentity": {"nameId": "member_no_email_1@saml.example.com"},
+        }
+    }
+]
+
+
+@pytest.mark.asyncio
+class TestGraphQLTeamWithMembersExporterSamlEnrichment:
+    @pytest.fixture(autouse=True)
+    def patch_page_size(self) -> Iterator[None]:
+        with patch.object(
+            GraphQLTeamWithMembersExporter,
+            "MEMBER_PAGE_SIZE",
+            MEMBER_PAGE_SIZE_IN_EXPORTER,
+        ):
+            yield
+
+    async def test_get_resource_enriches_members_without_email(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        team_initial = {
+            "id": "T_NOEMAIL",
+            "slug": "team-noemail",
+            "name": "Team NoEmail",
+            "description": "Team with members missing email",
+            "privacy": "VISIBLE",
+            "notificationSetting": "NOTIFICATIONS_ENABLED",
+            "url": "https://github.com/org/test-org/teams/team-noemail",
+            "members": {
+                "nodes": copy.deepcopy(TEAM_NO_EMAIL_MEMBER_NODES),
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            },
+        }
+
+        async def mock_saml_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield SAML_IDENTITIES_MOCK
+
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+
+        with (
+            patch.object(
+                graphql_client,
+                "send_api_request",
+                new=AsyncMock(
+                    return_value={"data": {"organization": {"team": team_initial}}}
+                ),
+            ),
+            patch.object(
+                graphql_client,
+                "send_paginated_request",
+                side_effect=mock_saml_paginated_request,
+            ) as mock_paginated,
+        ):
+            team = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-noemail")
+            )
+
+        assert team is not None
+        members = team["members"]["nodes"]
+        assert members[0]["login"] == "member_no_email_1"
+        assert members[0]["email"] == "member_no_email_1@saml.example.com"
+        assert members[1]["email"] == "member_with_email@example.com"
+
+        mock_paginated.assert_called_once_with(
+            LIST_EXTERNAL_IDENTITIES_GQL,
+            {
+                "organization": "test-org",
+                "first": 100,
+                "__path": "organization.samlIdentityProvider.externalIdentities",
+                "__node_key": "edges",
+            },
+        )
+
+    async def test_get_paginated_resources_enriches_members_without_email(
+        self,
+        graphql_client: GithubGraphQLClient,
+    ) -> None:
+        team_initial = {
+            "id": "T_NOEMAIL",
+            "slug": "team-noemail",
+            "name": "Team NoEmail",
+            "description": "Team with members missing email",
+            "privacy": "VISIBLE",
+            "notificationSetting": "NOTIFICATIONS_ENABLED",
+            "url": "https://github.com/org/test-org/teams/team-noemail",
+            "members": {
+                "nodes": copy.deepcopy(TEAM_NO_EMAIL_MEMBER_NODES),
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            },
+        }
+
+        async def mock_teams_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [copy.deepcopy(team_initial)]
+
+        async def mock_saml_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield SAML_IDENTITIES_MOCK
+
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+
+        with patch.object(
+            graphql_client,
+            "send_paginated_request",
+            side_effect=[
+                mock_teams_paginated_request(),
+                mock_saml_paginated_request(),
+            ],
+        ) as mock_paginated:
+            async with event_context("test_event"):
+                result_batches: list[list[dict[str, Any]]] = [
+                    batch
+                    async for batch in exporter.get_paginated_resources(
+                        ListTeamOptions(organization="test-org")
+                    )
+                ]
+
+        assert len(result_batches) == 1
+        members = result_batches[0][0]["members"]["nodes"]
+        assert members[0]["login"] == "member_no_email_1"
+        assert members[0]["email"] == "member_no_email_1@saml.example.com"
+        assert members[1]["email"] == "member_with_email@example.com"
+
+        mock_paginated.assert_any_call(
+            LIST_EXTERNAL_IDENTITIES_GQL,
+            {
+                "organization": "test-org",
+                "first": 100,
+                "__path": "organization.samlIdentityProvider.externalIdentities",
+                "__node_key": "edges",
+            },
+        )
 
 
 class TestGraphQLTeamMembersAndReposExporter:
