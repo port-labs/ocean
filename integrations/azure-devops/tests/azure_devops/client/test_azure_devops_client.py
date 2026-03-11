@@ -1442,6 +1442,75 @@ async def test_generate_work_items_will_skip_404(mock_event_context: MagicMock) 
 
 
 @pytest.mark.asyncio
+async def test_generate_work_items_paginates_when_exceeding_20k_limit(
+    mock_event_context: MagicMock,
+) -> None:
+    """
+    Tests that work items are paginated correctly when a project has more than 20K items.
+    Simulates: first WIQL returns 19999 IDs, second WIQL returns 100 IDs (final batch).
+    """
+    from azure_devops.client.azure_devops_client import (
+        MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
+    )
+
+    client = AzureDevopsClient(
+        "https://fake_org_url.com", "fake_pat", "fake_username"
+    )
+    test_project = {"id": "proj1", "name": "Test Project"}
+
+    # First WIQL batch: 19999 IDs, second WIQL batch: 100 IDs
+    wiql_responses = [
+        {"workItems": [{"id": i} for i in range(1, MAX_WORK_ITEMS_RESULTS_PER_PROJECT + 1)]},
+        {"workItems": [{"id": i} for i in range(MAX_WORK_ITEMS_RESULTS_PER_PROJECT + 1, MAX_WORK_ITEMS_RESULTS_PER_PROJECT + 101)]},
+    ]
+    wiql_call_count = 0
+
+    def create_work_item(wi_id: int) -> Dict[str, Any]:
+        return {"id": wi_id, "fields": {"System.Title": f"Work Item {wi_id}"}}
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        nonlocal wiql_call_count
+        if "wit/wiql" in url:
+            response_data = wiql_responses[wiql_call_count]
+            wiql_call_count += 1
+            return Response(
+                status_code=200,
+                request=Request(method, url),
+                json=response_data,
+            )
+        if "wit/workitems" in url:
+            params = kwargs.get("params", {})
+            ids_param = params.get("ids", "")
+            ids = [int(x) for x in ids_param.split(",") if x]
+            work_items = [create_work_item(wi_id) for wi_id in ids]
+            return Response(
+                status_code=200,
+                request=Request(method, url),
+                json={"value": work_items},
+            )
+        return Response(status_code=404, request=Request(method, url))
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [test_project]
+
+    async with event_context("test_event"):
+        with (
+            patch.object(client, "generate_projects", side_effect=mock_generate_projects),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            collected_items: List[Dict[str, Any]] = []
+            async for item_batch in client.generate_work_items(wiql=None, expand="All"):
+                collected_items.extend(item_batch)
+
+            # Should have 19999 + 100 = 20099 work items total
+            expected_total = MAX_WORK_ITEMS_RESULTS_PER_PROJECT + 100
+            assert len(collected_items) == expected_total
+            assert wiql_call_count == 2, "Should make 2 WIQL calls for pagination"
+
+
+@pytest.mark.asyncio
 async def test_get_columns_will_skip_404(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
