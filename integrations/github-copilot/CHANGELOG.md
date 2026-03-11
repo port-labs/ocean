@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.144 (2026-03-11)
+
+
+### Improvements
+
+- Implement GitHub Copilot new usage metrics API (28-day report)
+
 ## 0.1.143 (2026-03-10)
 
 
