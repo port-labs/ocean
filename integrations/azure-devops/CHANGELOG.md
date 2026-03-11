@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed work items sync capped at 20K per project: added ID-range pagination to fetch all work items when a project exceeds the Azure DevOps WIQL API limit of 20,000 results per query
 
 
+## 0.7.32 (2026-03-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
 ## 0.7.31 (2026-03-10)
 
 
