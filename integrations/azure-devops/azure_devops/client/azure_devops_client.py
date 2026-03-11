@@ -938,11 +938,9 @@ class AzureDevopsClient(HTTPBaseClient):
         :yield: Batches of work item IDs (each batch up to MAX_WORK_ITEMS_RESULTS_PER_PROJECT).
         """
         last_id = 0
-        wiql_base = (
-            f"SELECT [Id] FROM WorkItems WHERE [System.TeamProject] = '{project['name']}'"
-        )
+        wiql_base = f"SELECT [Id] FROM WorkItems WHERE [System.TeamProject] = '{project['name']}'"
         if wiql:
-            wiql_base += f" AND {wiql}"
+            wiql_base += f" AND ({wiql})"
             logger.info(f"Using WIQL filter: {wiql}")
 
         wiql_url = (
