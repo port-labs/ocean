@@ -564,6 +564,7 @@
   },
   {
     "identifier": "sbomPackage",
+    "description": "This blueprint represents a software bill of materials (SBOM) package",
     "title": "SBOM Package",
     "icon": "Package",
     "schema": {
