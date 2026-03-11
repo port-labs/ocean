@@ -12,7 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Bumped version to 0.2.0
+- Bumped github-copilot version to 0.2.0
+
+
+## 0.1.145 (2026-03-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
 
 
 ## 0.1.144 (2026-03-11)
