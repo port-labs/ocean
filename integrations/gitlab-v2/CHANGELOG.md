@@ -7,12 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.5.58 (2026-03-11)
+## 0.5.59 (2026-03-12)
 
 
 ### Features
 
 - Added support for project members (direct and inherited) via a new `project-with-members` kind, using GitLab's `/projects/:id/members` and `/projects/:id/members/all` API endpoints
+
+
+## 0.5.58 (2026-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+- Updated `_search` method signature to accept `field` to align with the base `JQEntityProcessor` interface
 
 
 ## 0.5.57 (2026-03-11)

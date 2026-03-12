@@ -335,7 +335,9 @@ class GitlabPortAppConfig(PortAppConfig):
 
 
 class GitManipulationHandler(JQEntityProcessor):
-    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+    async def _search(
+        self, data: dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
         entity_processor: Type[JQEntityProcessor]
 
         if pattern.startswith(FILE_PROPERTY_PREFIX):
@@ -359,7 +361,7 @@ class GitManipulationHandler(JQEntityProcessor):
         else:
             entity_processor = JQEntityProcessor
 
-        return await entity_processor(self.context)._search(data, pattern)
+        return await entity_processor(self.context)._search(data, pattern, field)
 
 
 class GitlabHandlerMixin(HandlerMixin):
