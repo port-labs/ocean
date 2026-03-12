@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed base client to handle NOT_FOUND errors properly
+- Updated base client GraphQL error filtering to ignore errors with type "NOT_FOUND" by default
 
 
 ## 5.1.21 (2026-03-12)
