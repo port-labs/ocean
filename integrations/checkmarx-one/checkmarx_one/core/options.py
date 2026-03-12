@@ -47,6 +47,7 @@ class ListScanResultOptions(TypedDict):
 
     type: str
     scan_id: Required[str]
+    project_id: NotRequired[Optional[str]]
     severity: NotRequired[
         Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
     ]

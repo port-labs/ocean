@@ -358,6 +358,11 @@
           "type": "string",
           "title": "Similarity ID",
           "description": "The similarity ID used to group similar SCA findings together."
+        },
+        "projectId": {
+          "type": "string",
+          "title": "Project ID",
+          "description": "The identifier of the Checkmarx project this finding belongs to."
         }
       },
       "required": []
@@ -369,6 +374,12 @@
       "scan": {
         "title": "Scan",
         "target": "checkmarxScan",
+        "required": false,
+        "many": false
+      },
+      "project": {
+        "title": "Project",
+        "target": "checkmarxProject",
         "required": false,
         "many": false
       }
@@ -490,6 +501,11 @@
           "type": "string",
           "title": "Similarity ID",
           "description": "The similarity ID used to group similar container security findings together."
+        },
+        "projectId": {
+          "type": "string",
+          "title": "Project ID",
+          "description": "The identifier of the Checkmarx project this finding belongs to."
         }
       },
       "required": []
@@ -501,6 +517,12 @@
       "scan": {
         "title": "Scan",
         "target": "checkmarxScan",
+        "required": false,
+        "many": false
+      },
+      "project": {
+        "title": "Project",
+        "target": "checkmarxProject",
         "required": false,
         "many": false
       }

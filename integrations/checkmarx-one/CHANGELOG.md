@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.25 (2026-03-12)
+
+
+### Improvements
+
+- Updated `enrich_scan_result` to include `project_id` for scan result resource kinds (`sca` & `containers`)
+
+
 ## 0.2.24 (2026-03-12)
 
 

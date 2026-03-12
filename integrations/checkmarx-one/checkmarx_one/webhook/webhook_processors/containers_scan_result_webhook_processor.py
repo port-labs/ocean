@@ -44,6 +44,7 @@ class ContainersScanResultWebhookProcessor(ScanWebhookProcessor):
         options = ListScanResultOptions(
             type=ScanResultObjectKind.CONTAINERS,
             scan_id=scan_id,
+            project_id=project_id,
             severity=selector.severity,
             state=selector.state,
             status=selector.status,

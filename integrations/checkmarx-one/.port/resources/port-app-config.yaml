@@ -87,8 +87,10 @@ resources:
             packageData: .data.packageData
             cweId: .vulnerabilityDetails.cweId
             similarityId: .similarityId
+            projectId: .__project_id
           relations:
             scan: .__scan_id
+            project: .__project_id
   - kind: containers
     selector:
       query: 'true'
@@ -113,8 +115,10 @@ resources:
             imageFilePath: .data.imageFilePath
             cweId: .vulnerabilityDetails.cweId
             similarityId: .similarityId
+            projectId: .__project_id
           relations:
             scan: .__scan_id
+            project: .__project_id
   - kind: kics
     selector:
       query: 'true'
