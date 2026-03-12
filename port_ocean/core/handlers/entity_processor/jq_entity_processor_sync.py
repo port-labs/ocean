@@ -21,9 +21,9 @@ class JQEntityProcessorSync:
 
     @staticmethod
     def _log_search_failure(
-        field: str | None,
         pattern: str,
         exc: Exception,
+        field: str | None = None,
     ) -> None:
         """Log a WARNING when a JQ search pattern fails in the subprocess path.
 
