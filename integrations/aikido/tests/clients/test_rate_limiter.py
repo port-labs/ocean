@@ -31,16 +31,15 @@ class TestAikidoRateLimiter:
         """Tests that acquire() waits when minimum interval has not elapsed."""
         rate_limiter = AikidoRateLimiter(min_interval=4.0)
 
-        # Simulate a previous request was made recently
         current_time = time.monotonic()
-        rate_limiter._last_request_time = current_time - 1.0  # 1 second ago
+        rate_limiter._last_request_time = current_time - 1.0
 
         with patch("time.monotonic", return_value=current_time):
             await rate_limiter.acquire()
 
         mock_sleep.assert_awaited_once()
         sleep_duration = mock_sleep.call_args[0][0]
-        assert abs(sleep_duration - 3.0) < 0.01  # Should wait ~3 seconds
+        assert abs(sleep_duration - 3.0) < 0.01
 
     @pytest.mark.asyncio
     @patch("asyncio.sleep", new_callable=AsyncMock)
@@ -50,9 +49,8 @@ class TestAikidoRateLimiter:
         """Tests that acquire() does not wait when minimum interval has elapsed."""
         rate_limiter = AikidoRateLimiter(min_interval=4.0)
 
-        # Simulate a previous request was made long ago
         current_time = time.monotonic()
-        rate_limiter._last_request_time = current_time - 10.0  # 10 seconds ago
+        rate_limiter._last_request_time = current_time - 10.0
 
         with patch("time.monotonic", return_value=current_time):
             await rate_limiter.acquire()
@@ -67,7 +65,6 @@ class TestAikidoRateLimiter:
         """Tests that first request (last_request_time=0) does not wait."""
         rate_limiter = AikidoRateLimiter(min_interval=4.0)
 
-        # First request - _last_request_time is 0
         assert rate_limiter._last_request_time == 0.0
 
         await rate_limiter.acquire()
@@ -108,7 +105,6 @@ class TestAikidoRateLimiter:
             async with rate_limiter:
                 raise ValueError("Test exception")
 
-        # Should be able to use again after exception
         async with rate_limiter:
             pass
 
@@ -120,8 +116,6 @@ class TestAikidoRateLimiter:
         for _ in range(3):
             async with rate_limiter:
                 pass
-
-        # All should complete without error
 
     @pytest.mark.asyncio
     async def test_concurrent_requests_are_serialized(self) -> None:
@@ -137,11 +131,9 @@ class TestAikidoRateLimiter:
                     execution_order.append(worker_id)
                 await asyncio.sleep(0.01)
 
-        # Start multiple workers concurrently
         tasks = [asyncio.create_task(worker(i)) for i in range(3)]
         await asyncio.gather(*tasks)
 
-        # All workers should have executed
         assert len(execution_order) == 3
         assert set(execution_order) == {0, 1, 2}
 
@@ -165,11 +157,10 @@ class TestAikidoRateLimiter:
         """Tests that wait time is calculated as min_interval - elapsed."""
         rate_limiter = AikidoRateLimiter(min_interval=5.0)
 
-        # Simulate different elapsed times
         test_cases = [
-            (1.0, 4.0),  # 1s elapsed, should wait 4s
-            (2.5, 2.5),  # 2.5s elapsed, should wait 2.5s
-            (4.9, 0.1),  # 4.9s elapsed, should wait 0.1s
+            (1.0, 4.0),
+            (2.5, 2.5),
+            (4.9, 0.1),
         ]
 
         for elapsed, expected_wait in test_cases:
