@@ -125,7 +125,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
-        _path: str = "",
+        path: str = "",
     ) -> dict[str, Any | None]:
         """Identify and extract the relevant value for each key in obj and populate it into the entity.
 
@@ -135,7 +135,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         :param misconfigurations: due to the recursive nature of this function,
             we aim to have a dict that represents all of the misconfigured properties and when used recursively,
             we pass this reference to misconfigured object to add the relevant misconfigured keys.
-        :param _path: dot-separated path built up recursively (e.g. "properties.url") used as
+        :param path: dot-separated path built up recursively (e.g. "properties.url") used as
             the key in misconfigurations and log messages instead of just "url".
         :return: Mapped object with found value.
         """
@@ -144,7 +144,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             str, Task[dict[str, Any | None]] | list[Task[dict[str, Any | None]]]
         ] = {}
         for key, value in obj.items():
-            current_path = f"{_path}.{key}" if _path else key
+            current_path = f"{path}.{key}" if path else key
             if isinstance(value, list):
                 search_tasks[key] = [
                     asyncio.create_task(
@@ -152,7 +152,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                             data,
                             item,
                             misconfigurations,
-                            _path=current_path,
+                            path=current_path,
                         )
                     )
                     for item in value
@@ -163,7 +163,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                         data,
                         value,
                         misconfigurations,
-                        _path=current_path,
+                        path=current_path,
                     )
                 )
             else:
@@ -177,7 +177,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
-            current_path = f"{_path}.{key}" if _path else key
+            current_path = f"{path}.{key}" if path else key
             try:
                 if isinstance(task, list):
                     result_list = []

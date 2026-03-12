@@ -97,13 +97,13 @@ class JQEntityProcessorSync:
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
-        _path: str = "",
+        path: str = "",
     ) -> dict[str, Any | None]:
-        # _path is built up recursively to produce dot-notation keys
+        # path is built up recursively to produce dot-notation keys
         # like "properties.url" instead of just "url" in misconfigurations and logs.
         result: dict[str, Any | None | list[Any | None]] = {}
         for key, value in obj.items():
-            current_path = f"{_path}.{key}" if _path else key
+            current_path = f"{path}.{key}" if path else key
             try:
                 if isinstance(value, list):
                     result[key] = []
@@ -112,7 +112,7 @@ class JQEntityProcessorSync:
                             data,
                             list_item,
                             misconfigurations,
-                            _path=current_path,
+                            path=current_path,
                         )
                         cast(list[dict[str, Any | None]], result[key]).append(
                             search_result
@@ -127,7 +127,7 @@ class JQEntityProcessorSync:
                         data,
                         value,
                         misconfigurations,
-                        _path=current_path,
+                        path=current_path,
                     )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
