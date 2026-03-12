@@ -32,19 +32,25 @@ from integration import GithubFilePattern, RepositoryBranchMapping
 TEST_FILE_CONTENT = "Hello, World!"
 TEST_FILE_CONTENT_BASE64 = base64.b64encode(TEST_FILE_CONTENT.encode()).decode()
 
-TEST_FILE_RESPONSE = {
-    "type": "file",
-    "encoding": "base64",
-    "size": 13,
-    "name": "test.txt",
-    "path": "test.txt",
-    "content": TEST_FILE_CONTENT_BASE64,
-    "sha": "abc123",
-    "url": "https://api.github.com/repos/test-org/repo1/contents/test.txt",
-    "git_url": "https://api.github.com/repos/test-org/repo1/git/blobs/abc123",
-    "html_url": "https://github.com/test-org/repo1/blob/main/test.txt",
-    "download_url": "https://raw.githubusercontent.com/test-org/repo1/main/test.txt",
-}
+def make_file_response() -> Dict[str, Any]:
+    """Return a fresh copy each time — prevents pop("content") mutations from
+    bleeding between parallel pytest-xdist workers that share module globals."""
+    return {
+        "type": "file",
+        "encoding": "base64",
+        "size": 13,
+        "name": "test.txt",
+        "path": "test.txt",
+        "content": TEST_FILE_CONTENT_BASE64,
+        "sha": "abc123",
+        "url": "https://api.github.com/repos/test-org/repo1/contents/test.txt",
+        "git_url": "https://api.github.com/repos/test-org/repo1/git/blobs/abc123",
+        "html_url": "https://github.com/test-org/repo1/blob/main/test.txt",
+        "download_url": "https://raw.githubusercontent.com/test-org/repo1/main/test.txt",
+    }
+
+
+TEST_FILE_RESPONSE = make_file_response()
 
 TEST_REPO_METADATA = {
     "id": 1,
@@ -92,7 +98,7 @@ class TestRestFileExporter:
         exporter = RestFileExporter(rest_client)
 
         with patch.object(
-            rest_client, "send_api_request", AsyncMock(return_value=TEST_FILE_RESPONSE)
+            rest_client, "send_api_request", AsyncMock(return_value=make_file_response())
         ) as mock_request:
             file_data = await exporter.get_resource(
                 FileContentOptions(
@@ -407,7 +413,7 @@ class TestRestFileExporter:
 
         with (
             patch.object(
-                exporter, "get_resource", AsyncMock(return_value=TEST_FILE_RESPONSE)
+                exporter, "get_resource", AsyncMock(return_value=make_file_response())
             ),
             patch(
                 "github.core.exporters.file_exporter.core.get_repository_metadata",
@@ -522,6 +528,377 @@ class TestRestFileExporter:
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/{organization}/repo1/compare/before-sha...after-sha"
             )
+
+
+@pytest.mark.asyncio
+class TestRestFileExporterRepoNotFound:
+    """
+    Tests that every code path that calls get_repository_metadata correctly
+    skips work when the repo returns 404 (empty dict — falsy).
+    """
+
+    # ── collect_matched_files ────────────────────────────────────────────────
+
+    async def test_collect_matched_files_skips_when_repo_404(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """When get_repository_metadata returns {} (404), the pattern is skipped
+        and no files are queued."""
+        exporter = RestFileExporter(rest_client)
+
+        with patch(
+            "github.core.exporters.file_exporter.core.get_repository_metadata",
+            AsyncMock(return_value={}),  # 404 → empty dict
+        ):
+            graphql_files, rest_files = await exporter.collect_matched_files(
+                "deleted-repo",
+                [
+                    FileSearchOptions(
+                        organization="test-org",
+                        path="**/*.yaml",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+            )
+
+        assert graphql_files == []
+        assert rest_files == []
+
+    async def test_collect_matched_files_skips_404_continues_valid_repos(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """When iterating multiple patterns, a 404 on one repo does not prevent
+        the next (valid) repo from being processed."""
+        exporter = RestFileExporter(rest_client)
+
+        call_count = 0
+
+        async def repo_metadata_side_effect(
+            client: Any, org: str, repo: str
+        ) -> Dict[str, Any]:
+            nonlocal call_count
+            call_count += 1
+            # First call → 404, second call → valid metadata
+            if call_count == 1:
+                return {}
+            return TEST_REPO_METADATA
+
+        patterns = [
+            FileSearchOptions(
+                organization="test-org",
+                path="**/*.yaml",
+                skip_parsing=False,
+                branch="main",
+            ),
+            FileSearchOptions(
+                organization="test-org",
+                path="*.txt",
+                skip_parsing=False,
+                branch="main",
+            ),
+        ]
+
+        with (
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                side_effect=repo_metadata_side_effect,
+            ),
+            patch.object(
+                exporter,
+                "get_tree_recursive",
+                AsyncMock(return_value=TEST_TREE_ENTRIES),
+            ),
+        ):
+            graphql_files, rest_files = await exporter.collect_matched_files(
+                "mixed-repo", patterns
+            )
+
+        # First pattern was 404'd — no files. Second pattern matched test.txt.
+        assert len(graphql_files) == 1
+        assert graphql_files[0]["file_path"] == "test.txt"
+
+    # ── process_rest_api_files ───────────────────────────────────────────────
+
+    async def test_process_rest_api_files_skips_when_repo_404(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """A 404 on the repo lookup inside process_rest_api_files means the
+        file is silently skipped and no items are yielded."""
+        exporter = RestFileExporter(rest_client)
+
+        files = [
+            {
+                "organization": "test-org",
+                "repo_name": "gone-repo",
+                "file_path": "config.yaml",
+                "skip_parsing": False,
+                "branch": "main",
+            }
+        ]
+
+        with (
+            patch.object(
+                exporter, "get_resource", AsyncMock(return_value=make_file_response())
+            ),
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                AsyncMock(return_value={}),  # 404
+            ),
+        ):
+            results: List[Any] = []
+            async for batch in exporter.process_rest_api_files(files):
+                results.extend(batch)
+
+        assert results == []
+
+    async def test_process_rest_api_files_repo_404_does_not_stop_other_files(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """If the first file's repo is 404, the second file (valid repo) is
+        still processed and yielded."""
+        exporter = RestFileExporter(rest_client)
+
+        files = [
+            {
+                "organization": "test-org",
+                "repo_name": "gone-repo",
+                "file_path": "config.yaml",
+                "skip_parsing": False,
+                "branch": "main",
+            },
+            {
+                "organization": "test-org",
+                "repo_name": "live-repo",
+                "file_path": "test.txt",
+                "skip_parsing": False,
+                "branch": "main",
+            },
+        ]
+
+        call_count = 0
+
+        async def repo_metadata_side_effect(
+            client: Any, org: str, repo: str
+        ) -> Dict[str, Any]:
+            nonlocal call_count
+            call_count += 1
+            return {} if repo == "gone-repo" else TEST_REPO_METADATA
+
+        mock_file_obj = MagicMock()
+        mock_file_obj.__iter__ = MagicMock(
+            return_value=iter([("name", "test.txt"), ("path", "test.txt")])
+        )
+
+        # make_file_response() returns a fresh dict each call, so pop("content")
+        # in one iteration never affects the next.
+        async def fresh_get_resource(options: Any) -> Dict[str, Any]:
+            return make_file_response()
+
+        with (
+            patch.object(exporter, "get_resource", side_effect=fresh_get_resource),
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                side_effect=repo_metadata_side_effect,
+            ),
+            patch.object(
+                exporter.file_processor,
+                "process_file",
+                AsyncMock(return_value=mock_file_obj),
+            ),
+        ):
+            results: List[Any] = []
+            async for batch in exporter.process_rest_api_files(files):
+                results.extend(batch)
+
+        # Only the live-repo file should be in the output
+        assert len(results) == 1
+
+    # ── process_graphql_files ────────────────────────────────────────────────
+
+    async def test_process_graphql_files_skips_when_repo_404(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """A 404 on the repo lookup inside process_graphql_files means the
+        entire batch is skipped."""
+        exporter = RestFileExporter(rest_client)
+
+        async def mock_batches() -> AsyncGenerator[Dict[str, Any], None]:
+            yield {
+                "organization": "test-org",
+                "repo": "gone-repo",
+                "branch": "main",
+                "file_data": {"repository": {}},
+                "batch_files": [],
+            }
+
+        with (
+            patch.object(
+                exporter,
+                "process_files_in_batches",
+                return_value=mock_batches(),
+            ),
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                AsyncMock(return_value={}),  # 404
+            ),
+        ):
+            results: List[Any] = []
+            async for batch in exporter.process_graphql_files([]):
+                results.extend(batch)
+
+        assert results == []
+
+    # ── get_paginated_resources (integration of the full loop) ───────────────
+
+    async def test_get_paginated_resources_skips_404_repo(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """get_paginated_resources runs real collect_matched_files which calls
+        get_repository_metadata — a 404 there means nothing is queued, so both
+        downstream generators receive empty lists and yield nothing."""
+        exporter = RestFileExporter(rest_client)
+
+        options = [
+            ListFileSearchOptions(
+                organization="test-org",
+                repo_name="gone-repo",
+                files=[
+                    FileSearchOptions(
+                        organization="test-org",
+                        path="**/*.yaml",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+            )
+        ]
+
+        # Patch only at the HTTP boundary — get_repository_metadata runs for real
+        # and returns {} (404), which causes collect_matched_files to skip the repo,
+        # leaving graphql_files=[] and rest_files=[] for the downstream generators.
+        with (
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                AsyncMock(return_value={}),  # 404
+            ),
+        ):
+            async with event_context("test_event"):
+                results: List[Any] = []
+                async for batch in exporter.get_paginated_resources(options):
+                    results.extend(batch)
+
+        assert results == []
+
+    async def test_get_paginated_resources_mixed_404_and_valid_repos(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """When iterating multiple repos, a 404 on one should not prevent
+        files from the valid repo being returned.
+
+        Real code path:
+          get_paginated_resources → collect_matched_files (real)
+            → get_repository_metadata (mocked per-repo)
+            → get_tree_recursive (mocked)
+          → process_graphql_files (real) → process_files_in_batches (mocked)
+            → get_repository_metadata again for the valid repo (real guard)
+        """
+        exporter = RestFileExporter(rest_client)
+
+        options = [
+            ListFileSearchOptions(
+                organization="test-org",
+                repo_name="gone-repo",
+                files=[
+                    FileSearchOptions(
+                        organization="test-org",
+                        path="*.yaml",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+            ),
+            ListFileSearchOptions(
+                organization="test-org",
+                repo_name="live-repo",
+                files=[
+                    FileSearchOptions(
+                        organization="test-org",
+                        path="*.txt",
+                        skip_parsing=False,
+                        branch="main",
+                    )
+                ],
+            ),
+        ]
+
+        # One small txt file in the live-repo tree (GraphQL-sized)
+        live_tree = [{"type": "blob", "path": "readme.txt", "size": 10, "sha": "aaa"}]
+
+        async def repo_metadata_side_effect(
+            client: Any, org: str, repo: str
+        ) -> Dict[str, Any]:
+            # gone-repo → 404 (falsy empty dict), live-repo → real metadata
+            return {} if repo == "gone-repo" else TEST_REPO_METADATA
+
+        async def tree_side_effect(
+            org: str, repo: str, branch: str
+        ) -> List[Dict[str, Any]]:
+            return [] if repo == "gone-repo" else live_tree
+
+        # Stub the GraphQL network call only (process_files_in_batches internals)
+        fake_gql_response = {
+            "data": {
+                "repository": {
+                    "file_0": {"text": "hello", "__typename": "Blob"}
+                }
+            }
+        }
+
+        async def mock_batches(
+            matched_file_entries: Any, batch_size: int = 7
+        ) -> AsyncGenerator[Dict[str, Any], None]:
+            yield {
+                "organization": "test-org",
+                "repo": "live-repo",
+                "branch": "main",
+                "file_data": fake_gql_response["data"],
+                "batch_files": [
+                    {
+                        "organization": "test-org",
+                        "repo_name": "live-repo",
+                        "file_path": "readme.txt",
+                        "skip_parsing": False,
+                        "branch": "main",
+                    }
+                ],
+            }
+
+        with (
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
+                side_effect=repo_metadata_side_effect,
+            ),
+            patch.object(
+                exporter, "get_tree_recursive", side_effect=tree_side_effect
+            ),
+            patch.object(
+                exporter, "process_files_in_batches", side_effect=mock_batches
+            ),
+            patch.object(
+                exporter.file_processor,
+                "process_file",
+                AsyncMock(return_value={"name": "readme.txt", "content": "hello"}),
+            ),
+        ):
+            async with event_context("test_event"):
+                results: List[Any] = []
+                async for batch in exporter.get_paginated_resources(options):
+                    results.extend(batch)
+
+        # gone-repo was 404'd and contributed nothing; live-repo's file came through
+        assert len(results) == 1
+        assert results[0]["name"] == "readme.txt"
 
 
 class TestFileExporterUtils:
