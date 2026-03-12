@@ -196,7 +196,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> RAW_ITEM:
         """Return repository ruleset rules for a branch (404/403 ignored by client).
 
-        Uses the Repository Rules API:
+        Uses the Repository Rules API (paginated, returns an array):
         GET /repos/{owner}/{repo}/rules/branches/{branch}
         https://docs.github.com/en/rest/repos/rules#get-rules-for-a-branch
         """
@@ -207,11 +207,14 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             f"{organization}/{repo_name}/rules/branches/{quote(branch_name)}"
         )
 
-        branch_rules = await self.client.send_api_request(endpoint)
-        branch["__branch_rules"] = branch_rules
+        all_rules: list[dict[str, Any]] = []
+        async for rules_page in self.client.send_paginated_request(endpoint):
+            all_rules.extend(rules_page)
+
+        branch["__branch_rules"] = all_rules
 
         logger.debug(
-            f"Fetched branch rules (rulesets) for branch '{branch_name}' in repo '{repo_name}'."
+            f"Fetched {len(all_rules)} branch rules (rulesets) for branch '{branch_name}' in repo '{repo_name}'."
         )
 
         return branch
