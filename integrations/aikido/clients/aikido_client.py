@@ -2,6 +2,7 @@ from typing import Any, AsyncGenerator, List, Dict, Optional
 from httpx import HTTPStatusError, AsyncClient
 from clients.auth_client import AikidoAuth
 from clients.options import ListRepositoriesOptions, ListContainersOptions
+from clients.rate_limiter import AikidoRateLimiter
 from loguru import logger
 from port_ocean.utils import http_async_client
 
@@ -28,6 +29,7 @@ class AikidoClient:
         self.base_url = base_url.rstrip("/")
         self.http_client: AsyncClient = http_async_client
         self.auth = AikidoAuth(base_url, client_id, client_secret, self.http_client)
+        self.rate_limiter = AikidoRateLimiter()
 
     async def _send_api_request(
         self,
@@ -38,7 +40,11 @@ class AikidoClient:
     ) -> Dict[str, Any]:
         """
         Send an authenticated API request to the Aikido API.
+        Rate limited to stay under Aikido's 20 req/min limit.
         """
+        # Acquire rate limit slot before making request
+        await self.rate_limiter.acquire()
+
         token = await self.auth.get_token()
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
 
