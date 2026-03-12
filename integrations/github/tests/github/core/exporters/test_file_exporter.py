@@ -32,6 +32,7 @@ from integration import GithubFilePattern, RepositoryBranchMapping
 TEST_FILE_CONTENT = "Hello, World!"
 TEST_FILE_CONTENT_BASE64 = base64.b64encode(TEST_FILE_CONTENT.encode()).decode()
 
+
 def make_file_response() -> Dict[str, Any]:
     """Return a fresh copy each time — prevents pop("content") mutations from
     bleeding between parallel pytest-xdist workers that share module globals."""
@@ -98,7 +99,9 @@ class TestRestFileExporter:
         exporter = RestFileExporter(rest_client)
 
         with patch.object(
-            rest_client, "send_api_request", AsyncMock(return_value=make_file_response())
+            rest_client,
+            "send_api_request",
+            AsyncMock(return_value=make_file_response()),
         ) as mock_request:
             file_data = await exporter.get_resource(
                 FileContentOptions(
@@ -848,11 +851,7 @@ class TestRestFileExporterRepoNotFound:
 
         # Stub the GraphQL network call only (process_files_in_batches internals)
         fake_gql_response = {
-            "data": {
-                "repository": {
-                    "file_0": {"text": "hello", "__typename": "Blob"}
-                }
-            }
+            "data": {"repository": {"file_0": {"text": "hello", "__typename": "Blob"}}}
         }
 
         async def mock_batches(
@@ -879,9 +878,7 @@ class TestRestFileExporterRepoNotFound:
                 "github.core.exporters.file_exporter.core.get_repository_metadata",
                 side_effect=repo_metadata_side_effect,
             ),
-            patch.object(
-                exporter, "get_tree_recursive", side_effect=tree_side_effect
-            ),
+            patch.object(exporter, "get_tree_recursive", side_effect=tree_side_effect),
             patch.object(
                 exporter, "process_files_in_batches", side_effect=mock_batches
             ),

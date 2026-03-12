@@ -328,7 +328,6 @@ class TestAbstractGithubClient:
                 headers=await client.headers(),
             )
 
-
     async def test_send_api_request_404_returns_empty_dict_not_raises(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -404,9 +403,9 @@ class TestAbstractGithubClient:
             accessed_key = True
             _ = repo_obj["name"]  # would KeyError on a real 404 if guard is broken
 
-        assert not accessed_key, (
-            "Guard `if not repo_obj` must fire for a 404 so key access is skipped"
-        )
+        assert (
+            not accessed_key
+        ), "Guard `if not repo_obj` must fire for a 404 so key access is skipped"
 
 
 class TestAbstractGithubClientClientProperty:
