@@ -12,7 +12,7 @@ import asyncio
 import time
 from loguru import logger
 
-DEFAULT_MIN_REQUEST_INTERVAL = 4.0  # seconds between requests
+DEFAULT_MIN_REQUEST_INTERVAL = 4.0
 
 
 class AikidoRateLimiter:

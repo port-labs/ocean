@@ -42,7 +42,6 @@ class AikidoClient:
         Send an authenticated API request to the Aikido API.
         Rate limited to stay under Aikido's 20 req/min limit.
         """
-        # Acquire rate limit slot before making request
         await self.rate_limiter.acquire()
 
         token = await self.auth.get_token()
