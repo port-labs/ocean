@@ -33,8 +33,8 @@ _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
 FIVE_MINUETS = 60 * 5
 
-# Prefix for eventMetadata query params (eventMetadata_eventType, eventMetadata_resyncId)
-EVENT_METADATA_PREFIX = "eventMetadata_"
+# Prefix for ocean info query params (ocean_info_event_type, ocean_info_resync_id)
+OCEAN_INFO_PREFIX = "ocean_info_"
 
 
 def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
@@ -69,16 +69,15 @@ def get_internal_http_client(port_client: "PortClient") -> httpx.AsyncClient:
 
 
 def get_event_context_params() -> dict[str, str]:
-    """Get eventMetadata query params when in an event context.
+    """Get ocean info query params when in an event context.
 
-    Uses underscore prefix notation (eventMetadata_eventType, eventMetadata_resyncId)
-    so the Port API receives eventMetadata as an object per its schema.
+    Uses underscore prefix notation (ocean_info_event_type, ocean_info_resync_id).
     resyncId is only included for RESYNC events.
     """
     try:
-        params: dict[str, str] = {f"{EVENT_METADATA_PREFIX}eventType": event.event_type}
+        params: dict[str, str] = {f"{OCEAN_INFO_PREFIX}event_type": event.event_type}
         if event.event_type == EventType.RESYNC:
-            params[f"{EVENT_METADATA_PREFIX}resyncId"] = event.id
+            params[f"{OCEAN_INFO_PREFIX}resync_id"] = event.id
         return params
     except EventContextNotFoundError:
         pass
