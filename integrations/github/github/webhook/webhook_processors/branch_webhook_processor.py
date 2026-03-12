@@ -97,6 +97,7 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
                 repo_name=repo_name,
                 branch_name=branch_name,
                 protection_rules=selector.protection_rules,
+                branch_rules=selector.branch_rules,
                 repo=repo,
             )
         )
