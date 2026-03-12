@@ -296,6 +296,14 @@
           "title": "Version",
           "type": "string"
         },
+        "detailedName": {
+          "type": "string",
+          "title": "Detailed Name"
+        },
+        "artifactMetadata": {
+          "type": "object",
+          "title": "Artifact Metadata"
+        },
         "detectionMethod": {
           "title": "Detection Method",
           "type": "string"
@@ -544,6 +552,47 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
+    "relations": {
+      "projects": {
+        "target": "wizProject",
+        "title": "Projects",
+        "description": "The projects that this repository is associated with",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "sbomPackage",
+    "description": "This blueprint represents a software bill of materials (SBOM) package",
+    "title": "SBOM Package",
+    "icon": "Package",
+    "schema": {
+      "properties": {
+        "package": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Package"
+        },
+        "version": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Version"
+        },
+        "manager": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Manager"
+        }
+      },
+      "required": [
+        "package",
+        "version"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {}
   }
 ]
