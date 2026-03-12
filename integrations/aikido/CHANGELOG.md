@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.106-beta (2026-03-12)
 
 
+### Features
+
+- Add proactive rate limiting to Aikido integration
+
+
+## 0.1.106-beta (2026-03-12)
+
+
 ### Improvements
 
 - Bumped ocean version to ^0.38.12
