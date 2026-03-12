@@ -16,9 +16,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from azure_devops.enrichments.included_files import (
-                IncludedFilesEnricher,
-                RepositoryIncludedFilesStrategy,
-            )
+    IncludedFilesEnricher,
+    RepositoryIncludedFilesStrategy,
+)
+
 
 class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
