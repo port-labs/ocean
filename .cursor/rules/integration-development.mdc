@@ -92,6 +92,11 @@ Integration Development Guidelines
     - Test error scenarios
     - Maintain test coverage
 
+13. Versioning
+    - Each feature branch need to bump the latest version
+    - In case of merge conflict take the version from the merged branch and bump it
+    - Don't merge versions! existing version need to reamain as it is and each branch creates its own version
+
 Dependencies
 
 - Python 3.12+
