@@ -31,6 +31,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, organization, params = parse_github_options(dict(options))
         branch_name = params["branch_name"]
         protection_rules = bool(params["protection_rules"])
+        branch_rules = bool(params.get("branch_rules", False))
         repo_name = cast(str, repo_name)
         repo = params.pop("repo")
 
@@ -43,6 +44,11 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
         if protection_rules:
             response = await self._enrich_branch_with_protection_rules(
+                repo_name, response, organization
+            )
+
+        if branch_rules:
+            response = await self._enrich_branch_with_branch_rules(
                 repo_name, response, organization
             )
 
@@ -62,6 +68,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, organization, params = parse_github_options(dict(options))
         detailed = bool(params.pop("detailed"))
         protection_rules = bool(params.pop("protection_rules"))
+        branch_rules = bool(params.pop("branch_rules", False))
         repo_name = cast(str, repo_name)
         repo = params.pop("repo")
         branch_names = params.pop("branch_names", [])
@@ -97,6 +104,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
                     branch,
                     is_explicit or detailed,
                     protection_rules,
+                    branch_rules,
                     batch_concurrency_limit,
                 )
                 for branch in branches
@@ -112,6 +120,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         branch: dict[str, Any],
         detailed: bool,
         protection_rules: bool,
+        branch_rules: bool,
         batch_concurrency_limit: asyncio.Semaphore,
     ) -> Optional[dict[str, Any]]:
         async with batch_concurrency_limit:
@@ -121,6 +130,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
                 branch,
                 detailed,
                 protection_rules,
+                branch_rules,
             )
 
     async def _hydrate_branch(
@@ -130,6 +140,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         branch: dict[str, Any],
         detailed: bool,
         protection_rules: bool,
+        branch_rules: bool = False,
     ) -> Optional[dict[str, Any]]:
         repo_name = repo["name"]
         branch_name = branch["name"]
@@ -148,6 +159,11 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
         if protection_rules:
             branch = await self._enrich_branch_with_protection_rules(
+                repo_name, branch, organization
+            )
+
+        if branch_rules:
+            branch = await self._enrich_branch_with_branch_rules(
                 repo_name, branch, organization
             )
 
@@ -171,6 +187,31 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
         logger.debug(
             f"Fetched protection rules for branch '{branch_name}' in repo '{repo_name}'."
+        )
+
+        return branch
+
+    async def _enrich_branch_with_branch_rules(
+        self, repo_name: str, branch: dict[str, Any], organization: str
+    ) -> RAW_ITEM:
+        """Return repository ruleset rules for a branch (404/403 ignored by client).
+
+        Uses the Repository Rules API:
+        GET /repos/{owner}/{repo}/rules/branches/{branch}
+        https://docs.github.com/en/rest/repos/rules#get-rules-for-a-branch
+        """
+        branch_name = branch["name"]
+
+        endpoint = (
+            f"{self.client.base_url}/repos/"
+            f"{organization}/{repo_name}/rules/branches/{quote(branch_name)}"
+        )
+
+        branch_rules = await self.client.send_api_request(endpoint)
+        branch["__branch_rules"] = branch_rules
+
+        logger.debug(
+            f"Fetched branch rules (rulesets) for branch '{branch_name}' in repo '{repo_name}'."
         )
 
         return branch

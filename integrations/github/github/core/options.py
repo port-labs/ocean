@@ -126,12 +126,14 @@ class SingleBranchOptions(RepositoryIdentifier):
 
     branch_name: Required[str]
     protection_rules: Optional[bool]
+    branch_rules: Optional[bool]
 
 
 class ListBranchOptions(RepositoryIdentifier):
     """Options for listing branches."""
 
     protection_rules: Required[bool]
+    branch_rules: Required[bool]
     detailed: Required[bool]
     branch_names: NotRequired[Optional[list[str]]]
     default_branch_only: NotRequired[bool]
