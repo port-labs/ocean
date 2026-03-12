@@ -52,6 +52,7 @@ class AbstractGithubClient(ABC):
         IgnoredError(
             status=404,
             message="Resource not found at endpoint",
+            type="NOT_FOUND",
         ),
     ]
 
