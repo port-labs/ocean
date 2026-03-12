@@ -25,11 +25,7 @@ class JQEntityProcessorSync:
         exc: Exception,
         field: str | None = None,
     ) -> None:
-        """Log a WARNING when a JQ search pattern fails in the subprocess path.
-
-        Subprocess logs reach stdout but not Port's log ingest, so WARNING is appropriate.
-        The async path has its own version that logs at ERROR.
-        """
+        """Log a WARNING when a JQ search pattern fails in the subprocess path."""
         err_msg = str(exc) or repr(exc) or type(exc).__name__
         field_info = f" for field '{field}'" if field else ""
         # Only the first line of the jq error
@@ -83,7 +79,7 @@ class JQEntityProcessorSync:
             it = compiled_pattern.input_value(data)
             return next(iter(it), None)
         except Exception as exc:
-            JQEntityProcessorSync._log_search_failure(field, pattern, exc)
+            JQEntityProcessorSync._log_search_failure(pattern, exc, field)
             return None
 
     @staticmethod

@@ -81,14 +81,9 @@ class JQEntityProcessor(BaseEntityProcessor):
     def _log_search_failure(
         pattern: str,
         exc: Exception,
-        field: str | None= None,
+        field: str | None = None,
     ) -> None:
-        """Log an ERROR when a JQ search pattern fails in the async (main process) path.
-
-        Main process logs reach Port's log ingest, so ERROR is appropriate to surface
-        mapping failures to the user. The sync (subprocess) path has its own version
-        that logs at WARNING.
-        """
+        """Log a WARNING when a JQ search pattern fails in the async (main process) path."""
         err_msg = str(exc) or repr(exc) or type(exc).__name__
         field_info = f" for field '{field}'" if field else ""
         error_summary = err_msg.split("\n")[0]
@@ -96,7 +91,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             field=field,
             pattern=pattern,
             error=err_msg,
-        ).error(
+        ).warning(
             f"Search failed{field_info} - pattern: {pattern}: {error_summary}",
         )
 
@@ -109,7 +104,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             func = compiled_pattern.input_value(data)
             return func.first()
         except Exception as exc:
-            self._log_search_failure(field, pattern, exc)
+            self._log_search_failure(pattern, exc, field)
             return None
 
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
