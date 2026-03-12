@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.12 (2026-03-10)
+
+### Improvements
+
+- Improved logging observability for JQ entity mapping failures: structured context fields (field, pattern, error) are now included in search failure logs, and stack traces are no longer embedded in log messages.
+
+
 ## 0.38.11 (2026-03-11)
 
 ### Improvements
