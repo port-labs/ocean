@@ -15,7 +15,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-
+from azure_devops.enrichments.included_files import (
+                IncludedFilesEnricher,
+                RepositoryIncludedFilesStrategy,
+            )
 
 class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -49,11 +52,6 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         selector = cast(AzureDevopsRepositoryResourceConfig, resource_config).selector
         included_files = selector.included_files or []
         if included_files:
-            from azure_devops.enrichments.included_files import (
-                IncludedFilesEnricher,
-                RepositoryIncludedFilesStrategy,
-            )
-
             enricher = IncludedFilesEnricher(
                 client=client,
                 strategy=RepositoryIncludedFilesStrategy(included_files=included_files),

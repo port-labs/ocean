@@ -14,6 +14,10 @@ from azure_devops.misc import (
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
 )
+from azure_devops.enrichments.included_files import (
+    IncludedFilesEnricher,
+    FolderIncludedFilesStrategy,
+)
 from azure_devops.webhooks.events import PushEvents
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 import fnmatch
@@ -129,11 +133,6 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         updated_folders = created_folders + modified_folders
         if included_files and updated_folders:
-            from azure_devops.enrichments.included_files import (
-                IncludedFilesEnricher,
-                FolderIncludedFilesStrategy,
-            )
-
             enricher = IncludedFilesEnricher(
                 client=client,
                 strategy=FolderIncludedFilesStrategy(
