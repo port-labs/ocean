@@ -79,9 +79,9 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     @staticmethod
     def _log_search_failure(
-        field: str | None,
         pattern: str,
         exc: Exception,
+        field: str | None= None,
     ) -> None:
         """Log an ERROR when a JQ search pattern fails in the async (main process) path.
 
