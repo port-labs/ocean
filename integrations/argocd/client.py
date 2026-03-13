@@ -179,8 +179,10 @@ class ArgocdClient:
         tasks = [
             semaphore_async_iterator(
                 semaphore,
-                lambda name=name: self.get_paginated_resources(
-                    url, params={"cluster": name}
+                functools.partial(
+                    self.get_paginated_resources,
+                    url,
+                    params={"cluster": name},
                 ),
             )
             for name in cluster_names

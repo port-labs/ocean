@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Improved performance of resources fetched per cluster by introducing a semaphore for concurrency
+- Optimized cluster resource retrieval throughput by introducing semaphore-controlled concurrent fetch operations.
 
 
 ## 0.2.19 (2026-03-12)
