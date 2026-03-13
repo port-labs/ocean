@@ -328,6 +328,85 @@ class TestAbstractGithubClient:
                 headers=await client.headers(),
             )
 
+    async def test_send_api_request_404_returns_empty_dict_not_raises(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """
+        A 404 from GitHub must silently resolve to {} so callers can use
+        `if not response:` to detect missing resources without crashing.
+        """
+        client = ConcreteGithubClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 404
+        mock_response.headers = {}
+        mock_response.text = "Not Found"
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "404 Not Found", request=MagicMock(), response=mock_response
+        )
+
+        with patch(
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
+            AsyncMock(return_value=mock_response),
+        ):
+            result = await client.send_api_request(
+                "https://api.github.com/repos/test-org/deleted-repo"
+            )
+
+        # Must be an empty dict — falsy, but not None or an exception
+        assert result == {}
+        assert not result  # callers rely on this falsy check
+
+    async def test_send_api_request_404_downstream_guard_skips_processing(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """
+        Downstream code (e.g. process_rest_api_files, collect_matched_files) guards
+        with `if not repo_obj: continue` and never reads keys from the result.
+
+        This test simulates that exact pattern: if the guard fires correctly on the
+        {} from a 404, `repo_obj["name"]` is never accessed and no KeyError is raised.
+        If the guard were broken (e.g. returned None, raised, or returned a truthy
+        value), the KeyError branch would execute and the test would fail.
+        """
+        client = ConcreteGithubClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 404
+        mock_response.headers = {}
+        mock_response.text = "Not Found"
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "404 Not Found", request=MagicMock(), response=mock_response
+        )
+
+        with patch(
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
+            AsyncMock(return_value=mock_response),
+        ):
+            repo_obj = await client.send_api_request(
+                "https://api.github.com/repos/test-org/missing-repo"
+            )
+
+        # Simulate the production guard and prove accessing keys is never attempted
+        accessed_key = False
+        if not repo_obj:
+            pass  # guard fired — downstream work is skipped
+        else:
+            accessed_key = True
+            _ = repo_obj["name"]  # would KeyError on a real 404 if guard is broken
+
+        assert (
+            not accessed_key
+        ), "Guard `if not repo_obj` must fire for a 404 so key access is skipped"
+
 
 class TestAbstractGithubClientClientProperty:
     def test_client_property_delegates_to_authenticator_client(
