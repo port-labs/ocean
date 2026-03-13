@@ -16,12 +16,11 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         self,
         scan_result: Dict[str, Any],
         scan_id: str,
-        project_id: Optional[str] = None,
+        project_id: str,
     ) -> dict[str, Any]:
         """Enrich scan result with scan ID and optional project ID."""
         scan_result["__scan_id"] = scan_id
-        if project_id:
-            scan_result["__project_id"] = project_id
+        scan_result["__project_id"] = project_id
         return scan_result
 
     async def get_resource(self, options: Any) -> RAW_ITEM:
