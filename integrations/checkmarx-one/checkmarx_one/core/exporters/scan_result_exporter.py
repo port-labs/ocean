@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
@@ -18,7 +18,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         scan_id: str,
         project_id: str,
     ) -> dict[str, Any]:
-        """Enrich scan result with scan ID and optional project ID."""
+        """Enrich scan result with scan ID and project ID."""
         scan_result["__scan_id"] = scan_id
         scan_result["__project_id"] = project_id
         return scan_result
@@ -69,7 +69,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
                 self._enrich_scan_result(
                     result,
                     options["scan_id"],
-                    options.get("project_id"),
+                    options["project_id"],
                 )
                 for result in results
                 if result["type"] == options["type"]
