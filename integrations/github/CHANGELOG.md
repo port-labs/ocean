@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.23 (2026-03-13)
+
+
+### Bug Fixes
+
+- Configured HTTP client to follow redirects by default to handle renamed or moved GitHub repositories
+
+
+## 5.1.22 (2026-03-12)
+
+
+### Bug Fixes
+
+- Updated base client GraphQL error filtering to ignore errors with type "NOT_FOUND" by default
+
+
+## 5.1.21 (2026-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+- Updated `_search` method signature to accept `field` to align with the base `JQEntityProcessor` interface
+
+
 ## 5.1.20 (2026-03-11)
 
 

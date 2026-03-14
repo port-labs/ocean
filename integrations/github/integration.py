@@ -599,7 +599,9 @@ class GithubPortAppConfig(PortAppConfig):
 
 
 class GitManipulationHandler(JQEntityProcessor):
-    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+    async def _search(
+        self, data: dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
         entity_processor: Type[JQEntityProcessor]
         if pattern.startswith(FILE_PROPERTY_PREFIX):
             logger.warning(
@@ -612,7 +614,7 @@ class GitManipulationHandler(JQEntityProcessor):
             entity_processor = FileEntityProcessor
         else:
             entity_processor = JQEntityProcessor
-        return await entity_processor(self.context)._search(data, pattern)
+        return await entity_processor(self.context)._search(data, pattern, field)
 
 
 class GithubHandlerMixin(HandlerMixin):

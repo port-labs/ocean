@@ -16,7 +16,7 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
 )
 from port_ocean.core.handlers.entity_processor.models import MappedEntity
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Blueprint, Entity
 from port_ocean.core.ocean_types import (
     RAW_ITEM,
     CalculationResult,
@@ -77,15 +77,34 @@ class JQEntityProcessor(BaseEntityProcessor):
     searching for data in dictionaries, and transforming data based on object mappings.
     """
 
-    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+    @staticmethod
+    def _log_search_failure(
+        pattern: str,
+        exc: Exception,
+        field: str | None = None,
+    ) -> None:
+        """Log a WARNING when a JQ search pattern fails in the async (main process) path."""
+        err_msg = str(exc) or repr(exc) or type(exc).__name__
+        field_info = f" for field '{field}'" if field else ""
+        error_summary = err_msg.split("\n")[0]
+        logger.bind(
+            field=field,
+            pattern=pattern,
+            error=err_msg,
+        ).warning(
+            f"Search failed{field_info} - pattern: {pattern}: {error_summary}",
+        )
+
+    async def _search(
+        self, data: dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
+        """Execute a JQ pattern against data, logging a structured ERROR with field context on failure."""
         try:
             compiled_pattern = self._compile(pattern)
             func = compiled_pattern.input_value(data)
             return func.first()
         except Exception as exc:
-            logger.error(
-                f"Search failed for pattern '{pattern}' in data: {data}, Error: {exc}"
-            )
+            self._log_search_failure(pattern, exc, field)
             return None
 
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
@@ -98,7 +117,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(
-            f"Expected boolean value, got value:{value} of type: {type(value)} instead"
+            f"Expected boolean value for pattern {pattern!r}, got value:{value} of type: {type(value)} instead"
         )
 
     async def _search_as_object(
@@ -106,15 +125,18 @@ class JQEntityProcessor(BaseEntityProcessor):
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
+        path: str = "",
     ) -> dict[str, Any | None]:
-        """
-        Identify and extract the relevant value for the chosen key and populate it into the entity
+        """Identify and extract the relevant value for each key in obj and populate it into the entity.
+
         :param data: the property itself that holds the key and the value, it is being passed to the task and we get back a task item,
             if the data is a dict, we will recursively call this function again.
         :param obj: the key that we want its value to be mapped into our entity.
         :param misconfigurations: due to the recursive nature of this function,
             we aim to have a dict that represents all of the misconfigured properties and when used recursively,
-            we pass this reference to misfoncigured object to add the relevant misconfigured keys.
+            we pass this reference to misconfigured object to add the relevant misconfigured keys.
+        :param path: dot-separated path built up recursively (e.g. "properties.url") used as
+            the key in misconfigurations and log messages instead of just "url".
         :return: Mapped object with found value.
         """
 
@@ -122,36 +144,53 @@ class JQEntityProcessor(BaseEntityProcessor):
             str, Task[dict[str, Any | None]] | list[Task[dict[str, Any | None]]]
         ] = {}
         for key, value in obj.items():
+            current_path = f"{path}.{key}" if path else key
             if isinstance(value, list):
                 search_tasks[key] = [
                     asyncio.create_task(
-                        self._search_as_object(data, obj, misconfigurations)
+                        self._search_as_object(
+                            data,
+                            item,
+                            misconfigurations,
+                            path=current_path,
+                        )
                     )
-                    for obj in value
+                    for item in value
                 ]
-
             elif isinstance(value, dict):
                 search_tasks[key] = asyncio.create_task(
-                    self._search_as_object(data, value, misconfigurations)
+                    self._search_as_object(
+                        data,
+                        value,
+                        misconfigurations,
+                        path=current_path,
+                    )
                 )
             else:
-                search_tasks[key] = asyncio.create_task(self._search(data, value))
+                search_tasks[key] = asyncio.create_task(
+                    self._search(
+                        data,
+                        value,
+                        field=current_path,
+                    )
+                )
 
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
+            current_path = f"{path}.{key}" if path else key
             try:
                 if isinstance(task, list):
                     result_list = []
-                    for task in task:
-                        task_result = await task
+                    for t in task:
+                        task_result = await t
                         if task_result is None and misconfigurations is not None:
-                            misconfigurations[key] = obj[key]
+                            misconfigurations[current_path] = obj[key]
                         result_list.append(task_result)
                     result[key] = result_list
                 else:
                     task_result = await task
                     if task_result is None and misconfigurations is not None:
-                        misconfigurations[key] = obj[key]
+                        misconfigurations[current_path] = obj[key]
                     result[key] = task_result
             except Exception:
                 result[key] = None
@@ -249,17 +288,81 @@ class JQEntityProcessor(BaseEntityProcessor):
     @staticmethod
     def _notify_mapping_issues(
         entity_misconfigurations: dict[str, str],
-        missing_required_fields: bool,
+        has_skipped_entities: bool,
         entity_mapping_fault_counter: int,
+        required_fields: set[str],
     ) -> None:
         if len(entity_misconfigurations) > 0:
-            logger.error(
-                f"Unable to find valid data for: {entity_misconfigurations} (null, missing, or misconfigured)"
-            )
-        if missing_required_fields:
-            logger.error(
+            for field, reason in entity_misconfigurations.items():
+                level = "ERROR" if field in required_fields else "WARNING"
+                logger.bind(field=field).log(
+                    level,
+                    f"Unable to find valid data for: '{field}': {reason} (null, missing, or misconfigured)",
+                )
+
+        if has_skipped_entities:
+            logger.bind(
+                entity_mapping_fault_counter=entity_mapping_fault_counter
+            ).warning(
                 f"{entity_mapping_fault_counter} transformations of batch failed due to empty, null or missing values"
             )
+
+    @staticmethod
+    def _get_required_fields(blueprint: Blueprint) -> set[str]:
+        """Return the set of dot-path field names that are required by the blueprint.
+
+        Paths match the format used in misconfigurations keys, e.g.
+        "properties.name" or "relations.owner", so they can be compared directly.
+        """
+        required_props = blueprint.properties_schema.get("required", [])
+        fields = {f"properties.{name}" for name in required_props}
+        for name, relation in blueprint.relations.items():
+            if relation.required:
+                fields.add(f"relations.{name}")
+        return fields
+
+    @staticmethod
+    def _extract_blueprint_identifier(mapping: ResourceConfig) -> str | None:
+        """Extract the plain blueprint identifier string from the mapping config.
+
+        The blueprint value in a mapping is a JQ expression like '"githubRepo"'
+        (with inner quotes). This strips both the outer Python string delimiters
+        and the inner JQ string quotes to get the bare identifier.
+        Returns None if the value is dynamic (not a plain string literal).
+        """
+        raw = mapping.port.entity.mappings.blueprint
+        if isinstance(raw, str):
+            stripped = raw.strip().strip("'\"")
+            if stripped:
+                return stripped
+        return None
+
+    async def _resolve_required_fields(
+        self,
+        mapping: ResourceConfig,
+        entity_misconfigurations: dict[str, str],
+    ) -> set[str]:
+        """Return required field paths for the blueprint referenced in mapping.
+
+        Fetches the blueprint schema so _notify_mapping_issues can log required
+        fields as ERROR and optional fields as WARNING. Returns None when there
+        are no misconfigurations (skips the API call) or when the blueprint
+        can't be fetched (caller falls back to WARNING for all fields).
+        """
+        if not entity_misconfigurations:
+            return set()
+        bp_id = self._extract_blueprint_identifier(mapping)
+        if not bp_id:
+            return set()
+        try:
+            blueprint = await ocean.port_client.get_blueprint(bp_id, should_log=False)
+            return self._get_required_fields(blueprint)
+        except Exception:
+            logger.debug(
+                f"Could not fetch blueprint '{bp_id}' to resolve required fields, "
+                "falling back to WARNING for all misconfigurations"
+            )
+            return set()
 
     @staticmethod
     async def _send_examples(data: list[dict[str, Any]], kind: str) -> None:
@@ -498,7 +601,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         passed_entities = []
         failed_entities = []
         entity_misconfigurations: dict[str, str] = {}
-        missing_required_fields: bool = False
+        has_skipped_entities: bool = False
         entity_mapping_fault_counter: int = 0
 
         for result in calculated_entities_results:
@@ -512,15 +615,20 @@ class JQEntityProcessor(BaseEntityProcessor):
                 else:
                     failed_entities.append(parsed_entity)
             else:
-                missing_required_fields = True
+                has_skipped_entities = True
                 entity_mapping_fault_counter += 1
 
         del calculated_entities_results
 
+        required_fields = await self._resolve_required_fields(
+            mapping, entity_misconfigurations
+        )
+
         self._notify_mapping_issues(
             entity_misconfigurations,
-            missing_required_fields,
+            has_skipped_entities,
             entity_mapping_fault_counter,
+            required_fields,
         )
 
         return CalculationResult(
