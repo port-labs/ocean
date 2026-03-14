@@ -33,6 +33,7 @@ class EntityFieldsType(str):
 class DynatraceEntitySelector(Selector):
     entity_types: list[str] = Field(
         default=["APPLICATION", "SERVICE"],
+        title="Entity Types",
         description="List of entity types to be fetched",
         alias="entityTypes",
     )
@@ -44,26 +45,58 @@ class DynatraceEntitySelector(Selector):
 
 class SLOSelector(Selector):
     attach_related_entities: bool = Field(
-        description="Whether to attach related entities to SLO. Th default is false",
+        title="Attach Related Entities",
+        description="Whether to attach related entities to SLO. The default is false",
         alias="attachRelatedEntities",
         default=False,
     )
 
 
 class DynatraceResourceConfig(ResourceConfig):
-    selector: DynatraceEntitySelector
-    kind: Literal["entity"]
+    selector: DynatraceEntitySelector = Field(
+        title="Entity Selector",
+        description="Selector for the Dynatrace entity resource.",
+    )
+    kind: Literal["entity"] = Field(
+        title="Dynatrace Entity",
+        description="Dynatrace entity resource kind.",
+    )
 
 
 class DynatraceSLOConfig(ResourceConfig):
-    selector: SLOSelector
-    kind: Literal["slo"]
+    selector: SLOSelector = Field(
+        title="SLO Selector",
+        description="Selector for the Dynatrace SLO resource.",
+    )
+    kind: Literal["slo"] = Field(
+        title="Dynatrace SLO",
+        description="Dynatrace SLO resource kind.",
+    )
+
+
+class DynatraceProblemResourceConfig(ResourceConfig):
+    kind: Literal["problem"] = Field(
+        title="Dynatrace Problem",
+        description="Dynatrace problem resource kind.",
+    )
+
+
+class DynatraceTeamResourceConfig(ResourceConfig):
+    kind: Literal["team"] = Field(
+        title="Dynatrace Team",
+        description="Dynatrace team resource kind.",
+    )
 
 
 class DynatracePortAppConfig(PortAppConfig):
-    resources: list[DynatraceResourceConfig | DynatraceSLOConfig | ResourceConfig] = (
-        Field(default_factory=list)
-    )
+    resources: list[
+        DynatraceResourceConfig
+        | DynatraceSLOConfig
+        | DynatraceProblemResourceConfig
+        | DynatraceTeamResourceConfig
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
 
 
 class DynatraceIntegration(BaseIntegration):
