@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.75 (2026-03-14)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions and dedicated resource config models to `JenkinsPortAppConfig` for schema validation compliance
+
+
 ## 0.2.74 (2026-03-12)
 
 
