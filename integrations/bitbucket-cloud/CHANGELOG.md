@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Refactored includedFiles enrichment to use strategy-based architecture with dedicated enricher, fetcher, and strategy components for better maintainability and consistency with other integrations
-- Bumped ocean version to ^0.38.14
 
 
 ## 0.4.38 (2026-03-15)
