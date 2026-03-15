@@ -9,7 +9,10 @@ from pydantic import Field
 
 
 class JenkinsBuildSelector(Selector):
-    query: str = Field(title="Query", description="The query to fetch Jenkins builds.")
+    query: str = Field(
+        title="Query",
+        description="JQ filter expression that selects Jenkins builds to ingest.",
+    )
     max_builds_per_job: int = Field(
         alias="maxBuildsPerJob",
         default=100,
@@ -20,7 +23,10 @@ class JenkinsBuildSelector(Selector):
 
 
 class JenkinsStageSelector(Selector):
-    query: str = Field(title="Query", description="The query to fetch Jenkins stages.")
+    query: str = Field(
+        title="Query",
+        description="JQ filter expression that selects Jenkins stages to ingest.",
+    )
     job_url: str = Field(
         alias="jobUrl",
         title="Job URL",
