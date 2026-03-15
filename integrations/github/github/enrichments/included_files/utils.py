@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Iterable, Optional, Sequence
+from typing import Iterable, Optional
 
 from port_ocean.core.utils.included_files import (
     repo_branch_matches,
