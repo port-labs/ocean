@@ -9,6 +9,7 @@ from port_ocean.context.ocean import PortOceanContext, ocean
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
+from port_ocean.core.models import Blueprint, BlueprintRelation
 from port_ocean.core.ocean_types import RAW_ITEM, CalculationResult
 from port_ocean.exceptions.core import EntityProcessorException
 
@@ -192,6 +193,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"foo": "bar"}
         pattern = ".foo."
+        # _search raises on JQ error; _search catches and returns None
         result = await mocked_processor._search(data, pattern)
         assert result is None
 
@@ -218,14 +220,46 @@ class TestJQEntityProcessor:
         pattern = ".foo"
         with pytest.raises(
             EntityProcessorException,
-            match="Expected boolean value, got value:bar of type: <class 'str'> instead",
+            match=r"Expected boolean value for pattern '\.foo'",
+        ):
+            await mocked_processor._search_as_bool(data, pattern)
+
+    async def test_search_logs_field_name_on_error(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"foo": "bar"}
+        pattern = ".foo."
+        messages: list[str] = []
+        logger_id = logger.add(lambda msg: messages.append(str(msg)), level="WARNING")
+        try:
+            result = await mocked_processor._search(data, pattern, "properties.tier")
+        finally:
+            logger.remove(logger_id)
+        assert result is None
+        assert any("properties.tier" in m for m in messages)
+
+    async def test_search_as_bool_jq_error_includes_pattern(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"foo": "bar"}
+        pattern = ".foo."
+        with pytest.raises(Exception):
+            await mocked_processor._search_as_bool(data, pattern)
+
+    async def test_search_as_bool_non_bool_includes_pattern(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"foo": "bar"}
+        pattern = ".foo"
+        with pytest.raises(
+            EntityProcessorException,
+            match=r"Expected boolean value for pattern '\.foo'",
         ):
             await mocked_processor._search_as_bool(data, pattern)
 
     @pytest.mark.parametrize(
         "pattern, expected",
         [
-            ('.parameters[] | select(.name == "not_exists") | .value', None),
             (
                 '.parameters[] | select(.name == "parameter_name") | .value',
                 "parameter_value",
@@ -233,6 +267,10 @@ class TestJQEntityProcessor:
             (
                 '.parameters[] | select(.name == "another_parameter") | .value',
                 "another_value",
+            ),
+            (
+                '.parameters[] | select(.name == "not_exists") | .value',
+                None,
             ),
         ],
     )
@@ -248,6 +286,19 @@ class TestJQEntityProcessor:
         }
         result = await mocked_processor._search(data, pattern)
         assert result == expected
+
+    async def test_search_returns_none_on_no_match(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {
+            "parameters": [
+                {"name": "parameter_name", "value": "parameter_value"},
+                {"name": "another_parameter", "value": "another_value"},
+            ]
+        }
+        pattern = '.parameters[] | select(.name == "not_exists") | .value'
+        result = await mocked_processor._search(data, pattern)
+        assert result is None
 
     async def test_return_a_list_of_values(
         self, mocked_processor: JQEntityProcessor
@@ -327,9 +378,9 @@ class TestJQEntityProcessor:
             assert len(result.misconfigured_entity_keys) == 4
             assert result.misconfigured_entity_keys == {
                 "identifier": ".ark",
-                "description": ".bazbar",
-                "url": ".foobar",
-                "defaultBranch": ".bar.baz",
+                "properties.description": ".bazbar",
+                "properties.url": ".foobar",
+                "properties.defaultBranch": ".bar.baz",
             }
             assert mock_send_examples.await_args is not None, "mock was not awaited"
             args, _ = mock_send_examples.await_args
@@ -373,10 +424,126 @@ class TestJQEntityProcessor:
             "2 transformations of batch failed due to empty, null or missing values"
             in logs_captured
         )
-        assert (
-            "{'blueprint': '.bar', 'identifier': '.foo'} (null, missing, or misconfigured)"
-            in logs_captured
+        assert "'blueprint': .bar (null, missing, or misconfigured)" in logs_captured
+        assert "'identifier': .foo (null, missing, or misconfigured)" in logs_captured
+
+    async def test_notify_mapping_issues_error_for_required_warning_for_optional(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        mock_blueprint = Blueprint(
+            identifier="testBlueprint",
+            title="Test",
+            team=None,
+            schema={
+                "properties": {
+                    "url": {"type": "string"},
+                    "description": {"type": "string"},
+                },
+                "required": ["url"],
+            },
+            relations={
+                "team": BlueprintRelation(
+                    many=False, required=True, target="team", title="Team"
+                ),
+                "project": BlueprintRelation(
+                    many=False, required=False, target="project", title="Project"
+                ),
+            },
         )
+
+        mapping = Mock()
+        mapping.port.entity.mappings.dict.return_value = {
+            "identifier": ".id",
+            "blueprint": '"testBlueprint"',
+            "properties": {
+                "url": ".missing_url",
+                "description": ".missing_desc",
+            },
+            "relations": {
+                "team": ".missing_team",
+                "project": ".missing_project",
+            },
+        }
+        mapping.port.entity.mappings.blueprint = '"testBlueprint"'
+        mapping.port.items_to_parse = None
+        mapping.selector.query = "true"
+
+        raw_results: list[dict[Any, Any]] = [
+            {"id": "entity-1"},
+        ]
+
+        stream = StringIO()
+        sink_id = logger.add(stream, level="DEBUG")
+        try:
+            with patch.object(
+                ocean.port_client,
+                "get_blueprint",
+                new=AsyncMock(return_value=mock_blueprint),
+            ):
+                await mocked_processor._parse_items(mapping, raw_results)
+        finally:
+            logger.remove(sink_id)
+
+        logs = stream.getvalue()
+
+        lines = logs.strip().split("\n")
+        error_lines = [
+            line
+            for line in lines
+            if "ERROR" in line and "null, missing, or misconfigured" in line
+        ]
+        warning_lines = [
+            line
+            for line in lines
+            if "WARNING" in line and "null, missing, or misconfigured" in line
+        ]
+
+        assert len(error_lines) == 2
+        assert len(warning_lines) == 2
+        assert any("properties.url" in line for line in error_lines)
+        assert any("relations.team" in line for line in error_lines)
+        assert any("properties.description" in line for line in warning_lines)
+        assert any("relations.project" in line for line in warning_lines)
+
+    async def test_notify_mapping_issues_all_warning_when_blueprint_fetch_fails(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        mapping = Mock()
+        mapping.port.entity.mappings.dict.return_value = {
+            "identifier": ".id",
+            "blueprint": '"missingBlueprint"',
+            "properties": {
+                "url": ".missing_url",
+            },
+        }
+        mapping.port.entity.mappings.blueprint = '"missingBlueprint"'
+        mapping.port.items_to_parse = None
+        mapping.selector.query = "true"
+
+        raw_results: list[dict[Any, Any]] = [{"id": "entity-1"}]
+
+        stream = StringIO()
+        sink_id = logger.add(stream, level="DEBUG")
+        try:
+            with patch.object(
+                ocean.port_client,
+                "get_blueprint",
+                new=AsyncMock(side_effect=Exception("not found")),
+            ):
+                await mocked_processor._parse_items(mapping, raw_results)
+        finally:
+            logger.remove(sink_id)
+
+        logs = stream.getvalue()
+        misconfig_lines = [
+            line
+            for line in logs.strip().split("\n")
+            if "null, missing, or misconfigured" in line
+        ]
+        assert len(misconfig_lines) >= 1
+        for line in misconfig_lines:
+            assert "WARNING" in line
+            assert "ERROR" not in line
 
     async def test_examples_sent_even_when_transformation_fails(
         self, mocked_processor: JQEntityProcessor
