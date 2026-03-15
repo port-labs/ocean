@@ -1,4 +1,5 @@
-from typing import Any
+import asyncio
+from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, patch
 import json
 
@@ -6,6 +7,7 @@ import pytest
 from client import (
     ArgocdClient,
     ClusterState,
+    MAXIMUM_CONCURRENT_CLUSTER_SIZE,
     ObjectKind,
 )
 
@@ -700,3 +702,120 @@ def test_argocd_client_without_custom_headers() -> None:
 
     assert client.http_client.headers["Authorization"] == "Bearer test_token"
     assert "X-Custom-Header" not in client.http_client.headers
+
+
+@pytest.mark.asyncio
+async def test_get_resources_for_available_clusters_multiple_clusters_yields_all_batches(
+    mock_argocd_client: ArgocdClient,
+) -> None:
+    """Test that all batches from multiple clusters are yielded."""
+    cluster_names = [f"cluster-{i}" for i in range(5)]
+    mock_clusters = [{"name": name} for name in cluster_names]
+
+    # Each cluster returns 2 batches of items
+    cluster_items: dict[str, list[list[dict[str, Any]]]] = {
+        name: [
+            [{"name": f"{name}-item-{j}"} for j in range(3)],
+            [{"name": f"{name}-item-{j}"} for j in range(3, 5)],
+        ]
+        for name in cluster_names
+    }
+
+    async def fake_get_paginated(
+        url: str, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        cluster_name = params["cluster"]  # type: ignore[index]
+        for batch in cluster_items[cluster_name]:
+            yield batch
+
+    with patch.object(
+        mock_argocd_client, "get_available_clusters", new_callable=AsyncMock
+    ) as mock_get_clusters:
+        mock_get_clusters.return_value = mock_clusters
+
+        with patch.object(
+            mock_argocd_client,
+            "get_paginated_resources",
+            side_effect=fake_get_paginated,
+        ):
+            all_resources: list[dict[str, Any]] = []
+            async for batch in mock_argocd_client.get_resources_for_available_clusters(
+                resource_kind=ObjectKind.APPLICATION
+            ):
+                all_resources.extend(batch)
+
+    # Every item from every cluster must appear
+    assert len(all_resources) == 5 * 5  # 5 clusters × 5 items each
+    for name in cluster_names:
+        for j in range(5):
+            assert {"name": f"{name}-item-{j}"} in all_resources
+
+
+@pytest.mark.asyncio
+async def test_get_resources_for_available_clusters_concurrency_is_bounded() -> None:
+    """Test that the semaphore limits the number of concurrent get_paginated_resources iterators."""
+    concurrency_limit = MAXIMUM_CONCURRENT_CLUSTER_SIZE
+    # Use more clusters than the concurrency limit to actually test bounding
+    num_clusters = concurrency_limit + 10
+    cluster_names = [f"cluster-{i}" for i in range(num_clusters)]
+    mock_clusters = [{"name": name} for name in cluster_names]
+
+    in_flight = 0
+    max_in_flight = 0
+    lock = asyncio.Lock()
+
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=True,
+        allow_insecure=True,
+        use_streaming=True,
+    )
+
+    async def fake_get_paginated(
+        url: str, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        nonlocal in_flight, max_in_flight
+
+        async with lock:
+            in_flight += 1
+            if in_flight > max_in_flight:
+                max_in_flight = in_flight
+
+        # Simulate async I/O so other iterators can be scheduled concurrently
+        await asyncio.sleep(0.01)
+        yield [{"name": f"{params['cluster']}-item"}]  # type: ignore[index]
+
+        async with lock:
+            in_flight -= 1
+
+    with patch.object(
+        client, "get_available_clusters", new_callable=AsyncMock
+    ) as mock_get_clusters:
+        mock_get_clusters.return_value = mock_clusters
+
+        with patch.object(
+            client,
+            "get_paginated_resources",
+            side_effect=fake_get_paginated,
+        ):
+            all_resources: list[dict[str, Any]] = []
+            async for batch in client.get_resources_for_available_clusters(
+                resource_kind=ObjectKind.APPLICATION
+            ):
+                all_resources.extend(batch)
+
+    # All clusters produced results
+    assert len(all_resources) == num_clusters
+
+    # Concurrency never exceeded the semaphore limit
+    assert max_in_flight <= concurrency_limit, (
+        f"Max in-flight iterators ({max_in_flight}) exceeded "
+        f"semaphore limit ({concurrency_limit})"
+    )
+    # Concurrency was actually used (not purely sequential)
+    assert (
+        max_in_flight > 1
+    ), f"Expected concurrent execution but max in-flight was {max_in_flight}"
+    # All iterators finished
+    assert in_flight == 0
