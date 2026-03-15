@@ -278,7 +278,9 @@ class TerraformClient:
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
 
-        logger.info("Fetching state files for state versions with hosted download url")
+        logger.info(
+            "Fetching state files for state versions with hosted state download URLs"
+        )
 
         async for state_version_batch in self.get_paginated_state_versions():
 
@@ -286,9 +288,7 @@ class TerraformClient:
                 self.download_state_file(state_version)
                 for state_version in state_version_batch
             ]
-
             results = await asyncio.gather(*tasks)
-
             combined = list(filter(None, results))
 
             logger.info(
