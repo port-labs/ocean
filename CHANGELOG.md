@@ -12,6 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Added `resolve_included_file_path` in `port_ocean.core.utils.included_files` for resolving configured includedFiles paths to repo-relative paths. Integrations can use this shared utility instead of duplicating the logic.
+- Added `repo_branch_matches` in `port_ocean.core.utils.included_files` for matching repo/branch against selector repos mapping (supports explicit branch, `None` for default branch, and `"default"` literal). Uses `RepoBranchMappingLike` protocol so any integration mapping type works.
 
 ## 0.38.12 (2026-03-10)
 

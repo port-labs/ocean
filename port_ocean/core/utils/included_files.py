@@ -1,6 +1,52 @@
-"""Utilities for resolving included-files paths in repo-relative form."""
+"""Utilities for resolving included-files paths and repo/branch matching."""
 
 import posixpath
+from typing import Optional, Protocol, Sequence
+
+
+class RepoBranchMappingLike(Protocol):
+    """Protocol for repo/branch mapping (e.g. selector.repos items)."""
+
+    name: str
+    branch: Optional[str]
+
+
+def repo_branch_matches(
+    *,
+    repos: Optional[Sequence[RepoBranchMappingLike]],
+    repo_name: str,
+    branch: Optional[str],
+    default_branch: Optional[str],
+) -> bool:
+    """
+    Return True if the given repo/branch is allowed by the repos mapping.
+
+    - When repos is None or empty, returns True only for the default branch.
+    - When repos is set, returns True if repo_name matches a mapping and either:
+      - mapping.branch is "default" and branch is the default branch, or
+      - mapping.branch equals branch, or
+      - mapping.branch is None and branch is the default branch.
+    """
+    is_default = branch is not None and branch == default_branch
+
+    if not repos:
+        return is_default
+
+    for mapping in repos:
+        if mapping.name != repo_name:
+            continue
+
+        if mapping.branch == "default":
+            if is_default:
+                return True
+        elif mapping.branch is not None:
+            if branch == mapping.branch:
+                return True
+        else:
+            if is_default:
+                return True
+
+    return False
 
 
 def resolve_included_file_path(requested_path: str, base_path: str) -> str:

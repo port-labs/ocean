@@ -1,4 +1,100 @@
-from port_ocean.core.utils.included_files import resolve_included_file_path
+from dataclasses import dataclass
+
+from port_ocean.core.utils.included_files import (
+    repo_branch_matches,
+    resolve_included_file_path,
+)
+
+
+@dataclass
+class _RepoMapping:
+    name: str
+    branch: str | None
+
+
+class TestRepoBranchMatches:
+    def test_default_branch_only_when_no_repos_mapping(self) -> None:
+        assert (
+            repo_branch_matches(
+                repos=None,
+                repo_name="Port",
+                branch="main",
+                default_branch="main",
+            )
+            is True
+        )
+        assert (
+            repo_branch_matches(
+                repos=None,
+                repo_name="Port",
+                branch="dev",
+                default_branch="main",
+            )
+            is False
+        )
+
+    def test_explicit_branch_mapping(self) -> None:
+        repos = [_RepoMapping(name="Port", branch="dev")]
+        assert (
+            repo_branch_matches(
+                repos=repos,
+                repo_name="Port",
+                branch="dev",
+                default_branch="main",
+            )
+            is True
+        )
+        assert (
+            repo_branch_matches(
+                repos=repos,
+                repo_name="Port",
+                branch="main",
+                default_branch="main",
+            )
+            is False
+        )
+
+    def test_none_branch_mapping_means_default_branch(self) -> None:
+        repos = [_RepoMapping(name="Port", branch=None)]
+        assert (
+            repo_branch_matches(
+                repos=repos,
+                repo_name="Port",
+                branch="main",
+                default_branch="main",
+            )
+            is True
+        )
+        assert (
+            repo_branch_matches(
+                repos=repos,
+                repo_name="Port",
+                branch="dev",
+                default_branch="main",
+            )
+            is False
+        )
+
+    def test_default_branch_special_value(self) -> None:
+        repos = [_RepoMapping(name="Port", branch="default")]
+        assert (
+            repo_branch_matches(
+                repos=repos,
+                repo_name="Port",
+                branch="main",
+                default_branch="main",
+            )
+            is True
+        )
+        assert (
+            repo_branch_matches(
+                repos=repos,
+                repo_name="Port",
+                branch="dev",
+                default_branch="main",
+            )
+            is False
+        )
 
 
 class TestResolveIncludedFilePath:
