@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.34 (2026-03-12)
+
+
+### Bug Fixes
+
+- Added default values for work_item kind for effort and description fields
+- Added missing Enum values for work_item blueprint
+- Fixed ingestion issues with work_item kind
+
+## 0.7.33 (2026-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+- Updated `_search` method signature to accept `field` to align with the base `JQEntityProcessor` interface
+
+
 ## 0.7.32 (2026-03-11)
 
 

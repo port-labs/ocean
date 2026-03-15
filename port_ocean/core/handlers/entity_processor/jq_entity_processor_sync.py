@@ -20,6 +20,27 @@ class JQEntityProcessorSync:
     """
 
     @staticmethod
+    def _log_search_failure(
+        pattern: str,
+        exc: Exception,
+        field: str | None = None,
+    ) -> None:
+        """Log a WARNING when a JQ search pattern fails in the subprocess path."""
+        err_msg = str(exc) or repr(exc) or type(exc).__name__
+        field_info = f" for field '{field}'" if field else ""
+        # Only the first line of the jq error
+        error_summary = err_msg.split("\n")[0]
+        # Structured fields land in the log record's extra dict, keeping the
+        # message string human-readable while still being machine-filterable in Port.
+        logger.bind(
+            field=field,
+            pattern=pattern,
+            error=err_msg,
+        ).warning(
+            f"Search failed{field_info} - pattern: {pattern}: {error_summary}",
+        )
+
+    @staticmethod
     def _format_filter(filter: str) -> str:
         """
         Convert single quotes to double quotes in JQ expressions.
@@ -51,18 +72,14 @@ class JQEntityProcessorSync:
         return compiled_pattern
 
     @staticmethod
-    def _search(data: dict[str, Any], pattern: str) -> Any:
+    def _search(data: dict[str, Any], pattern: str, field: str | None = None) -> Any:
+        """Execute a JQ pattern against data, logging a structured WARNING with field context on failure."""
         try:
             compiled_pattern = JQEntityProcessorSync._compile(pattern)
             it = compiled_pattern.input_value(data)
             return next(iter(it), None)
         except Exception as exc:
-            err_msg = str(exc) or repr(exc) or type(exc).__name__
-            logger.warning(
-                f"Search failed for pattern {pattern!r}: {err_msg}",
-                pattern=pattern,
-                error=exc,
-            )
+            JQEntityProcessorSync._log_search_failure(pattern, exc, field)
             return None
 
     @staticmethod
@@ -72,7 +89,7 @@ class JQEntityProcessorSync:
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(
-            f"Expected boolean value, got value:{value} of type: {type(value)} instead"
+            f"Expected boolean value for pattern {pattern!r}, got value:{value} of type: {type(value)} instead"
         )
 
     @staticmethod
@@ -80,35 +97,53 @@ class JQEntityProcessorSync:
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
+        path: str = "",
     ) -> dict[str, Any | None]:
+        # path is built up recursively to produce dot-notation keys
+        # like "properties.url" instead of just "url" in misconfigurations and logs.
         result: dict[str, Any | None | list[Any | None]] = {}
         for key, value in obj.items():
+            current_path = f"{path}.{key}" if path else key
             try:
                 if isinstance(value, list):
                     result[key] = []
                     for list_item in value:
                         search_result = JQEntityProcessorSync._search_as_object(
-                            data, list_item, misconfigurations
+                            data,
+                            list_item,
+                            misconfigurations,
+                            path=current_path,
                         )
                         cast(list[dict[str, Any | None]], result[key]).append(
                             search_result
                         )
                         if search_result is None and misconfigurations is not None:
-                            misconfigurations[key] = obj[key]
+                            # Use full dot-path as the key so callers can distinguish
+                            # e.g. "properties.labels" from "relations.labels".
+                            misconfigurations[current_path] = obj[key]
 
                 elif isinstance(value, dict):
                     search_result = JQEntityProcessorSync._search_as_object(
-                        data, value, misconfigurations
+                        data,
+                        value,
+                        misconfigurations,
+                        path=current_path,
                     )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
-                        misconfigurations[key] = obj[key]
+                        misconfigurations[current_path] = obj[key]
 
                 else:
-                    search_result = JQEntityProcessorSync._search(data, value)
+                    search_result = JQEntityProcessorSync._search(
+                        data,
+                        value,
+                        field=current_path,
+                    )
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
-                        misconfigurations[key] = obj[key]
+                        # Store the JQ expression (value) rather than the resolved
+                        # result so the misconfiguration log shows what was attempted.
+                        misconfigurations[current_path] = value
             except Exception:
                 result[key] = None
 
@@ -125,7 +160,9 @@ class JQEntityProcessorSync:
         if parse_all or should_run:
             misconfigurations: dict[str, str] = {}
             mapped_entity = JQEntityProcessorSync._search_as_object(
-                data, raw_entity_mappings, misconfigurations
+                data,
+                raw_entity_mappings,
+                misconfigurations,
             )
             return MappedEntity(
                 entity=mapped_entity,
