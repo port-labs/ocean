@@ -7,7 +7,7 @@ import pytest
 from client import (
     ArgocdClient,
     ClusterState,
-    MAXIMUM_CONCURRENT_CLUSTER_SIZE,
+    MAXIMUM_CONCURRENT_CLUSTER_REQUESTS,
     ObjectKind,
 )
 
@@ -754,7 +754,7 @@ async def test_get_resources_for_available_clusters_multiple_clusters_yields_all
 @pytest.mark.asyncio
 async def test_get_resources_for_available_clusters_concurrency_is_bounded() -> None:
     """Test that the semaphore limits the number of concurrent get_paginated_resources iterators."""
-    concurrency_limit = MAXIMUM_CONCURRENT_CLUSTER_SIZE
+    concurrency_limit = MAXIMUM_CONCURRENT_CLUSTER_REQUESTS
     # Use more clusters than the concurrency limit to actually test bounding
     num_clusters = concurrency_limit + 10
     cluster_names = [f"cluster-{i}" for i in range(num_clusters)]

@@ -31,7 +31,7 @@ class ResourceKindsWithSpecialHandling(StrEnum):
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
 
 PAGE_SIZE = 100
-MAXIMUM_CONCURRENT_CLUSTER_SIZE = 50
+MAXIMUM_CONCURRENT_CLUSTER_REQUESTS = 50
 
 
 class ClusterState(StrEnum):
@@ -175,7 +175,7 @@ class ArgocdClient:
         cluster_names = [cluster["name"] for cluster in available_clusters]
         url = f"{self.api_url}/{resource_kind}s"
 
-        semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_CLUSTER_SIZE)
+        semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_CLUSTER_REQUESTS)
         tasks = [
             semaphore_async_iterator(
                 semaphore,
