@@ -11,6 +11,7 @@ from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
 from port_ocean.clients.port.utils import (
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
+    get_event_context_params,
     handle_port_status_code,
 )
 from port_ocean.context.ocean import ocean
@@ -107,18 +108,20 @@ class EntityClientMixin:
                 f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
             headers = await self.auth.headers(user_agent_type)
+            params = {
+                "upsert": "true",
+                "merge": str(request_options["merge"]).lower(),
+                "create_missing_related_entities": str(
+                    request_options["create_missing_related_entities"]
+                ).lower(),
+                "validation_only": str(validation_only).lower(),
+                **get_event_context_params(),
+            }
             response = await self.client.post(
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities",
                 json=entity.dict(exclude_unset=True, by_alias=True),
                 headers=headers,
-                params={
-                    "upsert": "true",
-                    "merge": str(request_options["merge"]).lower(),
-                    "create_missing_related_entities": str(
-                        request_options["create_missing_related_entities"]
-                    ).lower(),
-                    "validation_only": str(validation_only).lower(),
-                },
+                params=params,
                 extensions={"retryable": True},
             )
         if response.is_error:
@@ -206,6 +209,15 @@ class EntityClientMixin:
                 f"{'Validating' if validation_only else 'Upserting'} {len(entities)} of blueprint: {blueprint}"
             )
             headers = await self.auth.headers(user_agent_type)
+            params = {
+                "upsert": "true",
+                "merge": str(request_options["merge"]).lower(),
+                "create_missing_related_entities": str(
+                    request_options["create_missing_related_entities"]
+                ).lower(),
+                "validation_only": str(validation_only).lower(),
+                **get_event_context_params(),
+            }
             response = await self.client.post(
                 f"{self.auth.api_url}/blueprints/{blueprint}/entities/bulk",
                 json={
@@ -215,14 +227,7 @@ class EntityClientMixin:
                     ]
                 },
                 headers=headers,
-                params={
-                    "upsert": "true",
-                    "merge": str(request_options["merge"]).lower(),
-                    "create_missing_related_entities": str(
-                        request_options["create_missing_related_entities"]
-                    ).lower(),
-                    "validation_only": str(validation_only).lower(),
-                },
+                params=params,
                 extensions={"retryable": True},
             )
         if response.is_error:
@@ -453,14 +458,16 @@ class EntityClientMixin:
             logger.info(
                 f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
+            params = {
+                "delete_dependents": str(
+                    request_options["delete_dependent_entities"]
+                ).lower(),
+                **get_event_context_params(),
+            }
             response = await self.client.delete(
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
                 headers=await self.auth.headers(user_agent_type),
-                params={
-                    "delete_dependents": str(
-                        request_options["delete_dependent_entities"]
-                    ).lower()
-                },
+                params=params,
             )
 
             if response.is_error:
