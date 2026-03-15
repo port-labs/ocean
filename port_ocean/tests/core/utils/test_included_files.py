@@ -1,5 +1,3 @@
-import pytest
-
 from port_ocean.core.utils.included_files import resolve_included_file_path
 
 
