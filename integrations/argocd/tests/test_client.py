@@ -1,7 +1,7 @@
 import asyncio
+import json
 from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, patch
-import json
 
 import pytest
 from client import (
@@ -88,7 +88,7 @@ async def test_get_resources_for_available_clusters(
                 mock_stream.assert_called_with(
                     url=f"{mock_argocd_client.api_url}/{kind}s",
                     target_items_path="items",
-                    params={"cluster": "test-cluster"},
+                    params={"selector": "cluster=test-cluster"},
                 )
             mock_clusters.assert_called_once()
 
@@ -624,7 +624,7 @@ async def test_get_resources_for_available_clusters_with_streaming_disabled() ->
                 # Should use direct API request, not streaming
                 mock_request.assert_called_once_with(
                     url=f"{client.api_url}/applications",
-                    query_params={"cluster": "test-cluster"},
+                    query_params={"selector": "cluster=test-cluster"},
                 )
                 mock_stream.assert_not_called()
                 assert len(resources) == 2
@@ -724,7 +724,7 @@ async def test_get_resources_for_available_clusters_multiple_clusters_yields_all
     async def fake_get_paginated(
         url: str, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        cluster_name = params["cluster"]  # type: ignore[index]
+        cluster_name = params["selector"].split("=")[1]  # type: ignore[index]
         for batch in cluster_items[cluster_name]:
             yield batch
 
@@ -784,7 +784,7 @@ async def test_get_resources_for_available_clusters_concurrency_is_bounded() -> 
 
         # Simulate async I/O so other iterators can be scheduled concurrently
         await asyncio.sleep(0.01)
-        yield [{"name": f"{params['cluster']}-item"}]  # type: ignore[index]
+        yield [{"name": f"{params['selector']}-item"}]  # type: ignore[index]
 
         async with lock:
             in_flight -= 1

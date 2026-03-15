@@ -31,7 +31,7 @@ class ResourceKindsWithSpecialHandling(StrEnum):
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
 
 PAGE_SIZE = 100
-MAXIMUM_CONCURRENT_CLUSTER_REQUESTS = 50
+MAXIMUM_CONCURRENT_CLUSTER_REQUESTS = 10
 
 
 class ClusterState(StrEnum):
@@ -182,7 +182,7 @@ class ArgocdClient:
                 functools.partial(
                     self.get_paginated_resources,
                     url,
-                    params={"cluster": name},
+                    params={"selector": f"cluster={name}"},
                 ),
             )
             for name in cluster_names
