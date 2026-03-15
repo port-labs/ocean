@@ -1315,7 +1315,7 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         repository: dict[str, Any],
         paths: list[str],
-    ) -> AsyncGenerator[list[dict[str, Any] | None], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             f"Checking repository {repository['name']} for files matching {paths}"
         )
@@ -1370,7 +1370,9 @@ class AzureDevopsClient(HTTPBaseClient):
         )
 
         for file in downloaded_files:
-            yield [file] if file else []
+            if file is None:
+                continue
+            yield [file]
 
     async def _get_files_by_explicit_paths(
         self,
