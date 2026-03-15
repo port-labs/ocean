@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.107-beta (2026-03-12)
+## 0.1.107-beta (2026-03-15)
 
 
-### Features
+### Improvements
 
-- Add proactive rate limiting to Aikido integration
+- Bumped ocean version to ^0.38.14
 
 
 ## 0.1.106-beta (2026-03-12)

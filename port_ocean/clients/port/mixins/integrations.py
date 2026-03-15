@@ -283,20 +283,25 @@ class IntegrationClientMixin:
         sync_id: str,
         kind: str,
         operation: LakehouseOperation = LakehouseOperation.UPSERT,
+        data_type: str | None = None,
     ) -> None:
         logger.debug(
             "starting POST raw data request", raw_data=raw_data, operation=operation
         )
         headers = await self.auth.headers()
 
+        body: dict[str, Any] = {
+            "items": raw_data,
+            "extractionTimestamp": int(datetime.now().timestamp() * 1000),
+            "operation": operation.value,
+        }
+        if data_type is not None:
+            body["type"] = data_type
+
         response = await self.client.post(
             f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",
             headers=headers,
-            json={
-                "items": raw_data,
-                "extractionTimestamp": int(datetime.now().timestamp() * 1000),
-                "operation": operation.value,
-            },
+            json=body,
         )
         handle_port_status_code(response, should_raise=False, should_log=True)
         logger.debug("Finished POST raw data request")
