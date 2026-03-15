@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.39.12 (2026-03-15)
+
+### Improvements
+
+- Add type:live_event in body to signify live_event ingested data in lakehouse
+
 ## 0.38.12 (2026-03-10)
 
 ### Improvements
