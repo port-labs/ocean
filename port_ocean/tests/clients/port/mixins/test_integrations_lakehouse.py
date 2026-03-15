@@ -199,17 +199,21 @@ async def test_post_integration_raw_data_with_data_type(
         assert expected_json["type"] == "live-event"
 
 
-async def test_post_integration_raw_data_without_data_type(
+async def test_post_integration_raw_data_with_resync_data_type(
     lakehouse_integration_client: IntegrationClientMixin,
 ) -> None:
-    """Test post_integration_raw_data without data_type (sync/resync) has no type field."""
+    """Test post_integration_raw_data with data_type parameter for resync."""
     raw_data = [{"name": "test-entity"}]
     sync_id = "resync-123"
     kind = "repository"
 
     with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
         await lakehouse_integration_client.post_integration_raw_data(
-            raw_data, sync_id, kind, operation=LakehouseOperation.UPSERT
+            raw_data,
+            sync_id,
+            kind,
+            operation=LakehouseOperation.UPSERT,
+            data_type="resync",
         )
 
         lakehouse_integration_client.client.post.assert_called_once()
@@ -218,4 +222,4 @@ async def test_post_integration_raw_data_without_data_type(
         expected_json = call_args[1]["json"]
         assert expected_json["items"] == raw_data
         assert expected_json["operation"] == "upsert"
-        assert "type" not in expected_json
+        assert expected_json["type"] == "resync"

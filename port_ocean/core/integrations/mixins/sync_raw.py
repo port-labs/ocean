@@ -424,7 +424,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             if lakehouse_data_enabled and raw_results:
                 await ocean.port_client.post_integration_raw_data(
-                    raw_results, event.id, resource_config.kind
+                    raw_results, event.id, resource_config.kind, data_type="resync"
                 )
 
             logger.info(
@@ -467,7 +467,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     batch_index += 1
                     if lakehouse_data_enabled:
                         await ocean.port_client.post_integration_raw_data(
-                            items, event.id, resource_config.kind
+                            items, event.id, resource_config.kind, data_type="resync"
                         )
                     number_of_raw_results += len(items)
                     if send_raw_data_examples_amount > 0:
