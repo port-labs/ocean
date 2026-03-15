@@ -52,6 +52,7 @@ class AbstractGithubClient(ABC):
         IgnoredError(
             status=404,
             message="Resource not found at endpoint",
+            type="NOT_FOUND",
         ),
     ]
 
@@ -112,6 +113,7 @@ class AbstractGithubClient(ABC):
                     params=params,
                     json=json_data,
                     headers=await self.headers(**(authenticator_headers_params or {})),
+                    follow_redirects=True,
                 )
                 response.raise_for_status()
 
