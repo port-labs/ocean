@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.140-beta (2026-03-15)
+
+
+### Bug Fixes
+
+- Delete the old repository entity on `repo:modified` when a repository is moved between projects or renamed, preventing orphan repositories in Port.
+
+
 ## 0.1.139-beta (2026-03-12)
 
 
