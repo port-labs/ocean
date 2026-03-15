@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.25 (2026-03-15)
+
+
+### Improvements
+
+- Use port_ocean for included_files repo_branch_matches and resolve_included_file_path
+- Bumped ocean version to ^0.38.14
+
+
 ## 5.1.24 (2026-03-15)
 
 
