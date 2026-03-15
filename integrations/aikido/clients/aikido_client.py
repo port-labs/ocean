@@ -1,8 +1,8 @@
 from typing import Any, AsyncGenerator, List, Dict, Optional
 from httpx import HTTPStatusError, AsyncClient
+from aiolimiter import AsyncLimiter
 from clients.auth_client import AikidoAuth
 from clients.options import ListRepositoriesOptions, ListContainersOptions
-from clients.rate_limiter import AikidoRateLimiter
 from loguru import logger
 from port_ocean.utils import http_async_client
 
@@ -10,6 +10,7 @@ API_VERSION = "v1"
 FIRST_PAGE = 0
 PAGE_SIZE = 20
 REPOSITORIES_PAGE_SIZE = 100
+REQUESTS_PER_MINUTE = 15
 
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
 ISSUE_DETAILS_ENDPOINT = f"api/public/{API_VERSION}/issues"
@@ -29,7 +30,7 @@ class AikidoClient:
         self.base_url = base_url.rstrip("/")
         self.http_client: AsyncClient = http_async_client
         self.auth = AikidoAuth(base_url, client_id, client_secret, self.http_client)
-        self.rate_limiter = AikidoRateLimiter()
+        self.rate_limiter = AsyncLimiter(REQUESTS_PER_MINUTE, 60)
 
     async def _send_api_request(
         self,
@@ -42,39 +43,38 @@ class AikidoClient:
         Send an authenticated API request to the Aikido API.
         Rate limited to stay under Aikido's 20 req/min limit.
         """
-        await self.rate_limiter.acquire()
+        async with self.rate_limiter:
+            token = await self.auth.get_token()
+            url = f"{self.base_url}/{endpoint.lstrip('/')}"
 
-        token = await self.auth.get_token()
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            }
 
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
-
-        try:
-            response = await self.http_client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json_data,
-                headers=headers,
-                timeout=30,
-            )
-            response.raise_for_status()
-            return response.json()
-        except HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning(
-                    f"Requested resource not found: {url}; message: {str(e)}"
+            try:
+                response = await self.http_client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_data,
+                    headers=headers,
+                    timeout=30,
                 )
-                return {}
-            logger.error(f"API request failed for {url}: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error during API request to {url}: {e}")
-            raise
+                response.raise_for_status()
+                return response.json()
+            except HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    logger.warning(
+                        f"Requested resource not found: {url}; message: {str(e)}"
+                    )
+                    return {}
+                logger.error(f"API request failed for {url}: {e}")
+                raise
+            except Exception as e:
+                logger.error(f"Unexpected error during API request to {url}: {e}")
+                raise
 
     async def get_paginated_resource(
         self,
