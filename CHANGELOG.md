@@ -11,8 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added `eventType` and `resyncId` (when applicable) to Port API requests for entity-related operations.
-
+- Add type:live_event in body to signify live_event ingested data in lakehouse
 
 ## 0.38.14 (2026-03-15)
 
