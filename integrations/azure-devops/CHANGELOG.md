@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Refactored includedFiles enrichment to use strategy-based architecture with dedicated enricher, fetcher, and strategy components for better maintainability and consistency with other integrations
 
+### Bug Fixes
+
+- Added default values for work_item kind for effort and description fields
+- Added missing Enum values for work_item blueprint
+- Fixed ingestion issues with work_item kind
 
 ## 0.7.33 (2026-03-12)
 

@@ -60,6 +60,7 @@ class _DummyAuthenticator:
         params: Optional[dict[str, Any]] = None,
         json: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, str]] = None,
+        follow_redirects: bool = False,
     ) -> httpx.Response:
         return self._response
 

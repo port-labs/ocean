@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from enum import StrEnum
-import posixpath
 from typing import Iterable, Optional, Sequence
 
-
-from integration import RepositoryBranchMapping
+from port_ocean.core.utils.included_files import (
+    repo_branch_matches,
+    resolve_included_file_path,
+)
 
 
 @dataclass(frozen=True)
@@ -52,52 +53,13 @@ def unique_preserve_order(items: Iterable[str]) -> list[str]:
     return result
 
 
-def repo_branch_matches(
-    *,
-    repos: Optional[Sequence[RepositoryBranchMapping]],
-    repo_name: str,
-    branch: Optional[str],
-    default_branch: Optional[str],
-) -> bool:
-    is_default = branch is not None and branch == default_branch
-
-    if not repos:
-        return is_default
-
-    for mapping in repos:
-        if mapping.name != repo_name:
-            continue
-
-        if mapping.branch is not None:
-            if branch == mapping.branch:
-                return True
-        else:
-            if is_default:
-                return True
-
-    return False
-
-
-def resolve_included_file_path(requested_path: str, base_path: str) -> str:
-    """
-    Resolve a configured includedFiles path into a repo-relative file path.
-
-    Rules:
-    - Leading '/' does not force repo-root if base_path is set.
-    - All paths are ultimately repo-relative.
-    - Prevent double-joining when requested already includes base_path.
-    """
-
-    if not requested_path:
-        return requested_path
-
-    clean_requested = requested_path.lstrip("/")
-    clean_base = (base_path or "").strip("/")
-
-    if not clean_base:
-        return clean_requested
-
-    if clean_requested.startswith(f"{clean_base}/"):
-        return clean_requested
-
-    return posixpath.join(clean_base, clean_requested)
+# Re-export for backward compatibility; implementation from port_ocean
+__all__ = [
+    "IncludedFilesEntityContext",
+    "FolderIncludedFilesRequests",
+    "IncludedFilesTarget",
+    "IncludedFilesPlanItem",
+    "unique_preserve_order",
+    "repo_branch_matches",
+    "resolve_included_file_path",
+]
