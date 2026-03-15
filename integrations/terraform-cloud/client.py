@@ -329,13 +329,13 @@ class TerraformClient:
             workspace_name, organization_name
         ):
             tasks = [
-                self.send_api_request(
-                    state_version["attributes"]["hosted-state-download-url"],
-                    follow_redirects=True,
-                )
+                self.download_state_file(state_version)
                 for state_version in state_versions
             ]
-            yield list(await asyncio.gather(*tasks))
+            results = await asyncio.gather(*tasks)
+            combined = list(filter(None, results))
+            if combined:
+                yield combined
 
     async def process_workspace_runs(
         self, workspace: dict[str, Any]
