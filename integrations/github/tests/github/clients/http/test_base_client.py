@@ -97,6 +97,7 @@ class TestAbstractGithubClient:
                 params=params,
                 json=json_data,
                 headers=await client.headers(),
+                follow_redirects=True,
             )
 
     async def test_send_api_request_404_error_ignored(
@@ -282,6 +283,7 @@ class TestAbstractGithubClient:
                 params=None,
                 json=None,
                 headers=await client.headers(),
+                follow_redirects=True,
             )
 
             # Test POST
@@ -293,6 +295,7 @@ class TestAbstractGithubClient:
                 params=None,
                 json=None,
                 headers=await client.headers(),
+                follow_redirects=True,
             )
 
             # Test PUT
@@ -304,6 +307,7 @@ class TestAbstractGithubClient:
                 params=None,
                 json=None,
                 headers=await client.headers(),
+                follow_redirects=True,
             )
 
             # Test PATCH
@@ -315,6 +319,7 @@ class TestAbstractGithubClient:
                 params=None,
                 json=None,
                 headers=await client.headers(),
+                follow_redirects=True,
             )
 
             # Test DELETE
@@ -326,6 +331,7 @@ class TestAbstractGithubClient:
                 params=None,
                 json=None,
                 headers=await client.headers(),
+                follow_redirects=True,
             )
 
     async def test_send_api_request_404_returns_empty_dict_not_raises(
