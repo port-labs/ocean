@@ -54,4 +54,12 @@ def unique_preserve_order(items: Iterable[str]) -> list[str]:
     return result
 
 
-# repo_branch_matches and resolve_included_file_path from port_ocean (re-exported for backward compatibility)
+__all__ = [
+    "IncludedFilesEntityContext",
+    "FolderIncludedFilesRequests",
+    "IncludedFilesTarget",
+    "IncludedFilesPlanItem",
+    "unique_preserve_order",
+    "repo_branch_matches",
+    "resolve_included_file_path",
+]
