@@ -1370,7 +1370,7 @@ class AzureDevopsClient(HTTPBaseClient):
         )
 
         for file in downloaded_files:
-            yield [file]
+            yield [file] if file else []
 
     async def _get_files_by_explicit_paths(
         self,
