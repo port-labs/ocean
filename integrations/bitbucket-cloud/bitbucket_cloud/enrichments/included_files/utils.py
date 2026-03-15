@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Iterable, Optional
 
-from port_ocean.core.utils.included_files import (  # type: ignore[import-not-found]
+from port_ocean.core.utils.included_files import (
     RepoBranchMappingLike,
     repo_branch_matches,
     resolve_included_file_path,
