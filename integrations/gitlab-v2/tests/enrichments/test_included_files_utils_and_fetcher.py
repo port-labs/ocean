@@ -60,7 +60,7 @@ class TestRepoBranchMatches:
         repos = [RepositoryBranchMapping(name="test-project", branch="dev")]
         assert (
             repo_branch_matches(
-                repos=repos,
+                repos=repos,  # type: ignore[arg-type]
                 repo_name="test-project",
                 branch="dev",
                 default_branch="main",
@@ -69,7 +69,7 @@ class TestRepoBranchMatches:
         )
         assert (
             repo_branch_matches(
-                repos=repos,
+                repos=repos,  # type: ignore[arg-type]
                 repo_name="test-project",
                 branch="main",
                 default_branch="main",
@@ -82,7 +82,7 @@ class TestRepoBranchMatches:
         repos = [RepositoryBranchMapping(name="test-project", branch="default")]
         assert (
             repo_branch_matches(
-                repos=repos,
+                repos=repos,  # type: ignore[arg-type]
                 repo_name="test-project",
                 branch="main",
                 default_branch="main",
@@ -91,7 +91,7 @@ class TestRepoBranchMatches:
         )
         assert (
             repo_branch_matches(
-                repos=repos,
+                repos=repos,  # type: ignore[arg-type]
                 repo_name="test-project",
                 branch="dev",
                 default_branch="main",

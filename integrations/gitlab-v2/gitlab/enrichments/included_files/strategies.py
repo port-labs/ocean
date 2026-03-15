@@ -120,7 +120,7 @@ class FolderIncludedFilesStrategy:
         folder_paths: list[str] = []
         for selector in self._selectors:
             if not repo_branch_matches(
-                repos=selector.repos,
+                repos=selector.repos,  # type: ignore[arg-type]
                 repo_name=project_path,
                 branch=ctx.branch,
                 default_branch=default_branch,

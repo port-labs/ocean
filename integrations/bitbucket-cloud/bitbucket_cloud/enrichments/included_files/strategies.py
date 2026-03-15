@@ -1,6 +1,6 @@
 import fnmatch
 from pathlib import PurePosixPath
-from typing import Any, Protocol, Sequence
+from typing import Any, Protocol, Sequence, cast
 
 from integration import FolderPattern
 
@@ -9,6 +9,7 @@ from bitbucket_cloud.enrichments.included_files.utils import (
     IncludedFilesEntityContext,
     IncludedFilesPlanItem,
     IncludedFilesTarget,
+    RepoBranchMappingLike,
     repo_branch_matches,
     unique_preserve_order,
 )
@@ -123,7 +124,7 @@ class FolderIncludedFilesStrategy:
         folder_paths: list[str] = []
         for selector in self._selectors:
             if not repo_branch_matches(
-                repos=selector.repos,
+                repos=cast(Sequence[RepoBranchMappingLike] | None, selector.repos),
                 repo_name=ctx.repo_name,
                 branch=ctx.branch,
                 default_branch=default_branch,

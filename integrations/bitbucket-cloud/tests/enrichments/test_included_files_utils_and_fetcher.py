@@ -1,4 +1,5 @@
 import asyncio
+from typing import Sequence, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -8,6 +9,7 @@ from bitbucket_cloud.enrichments.included_files.fetcher import (
     IncludedFilesFetcher,
 )
 from bitbucket_cloud.enrichments.included_files.utils import (
+    RepoBranchMappingLike,
     repo_branch_matches,
     resolve_included_file_path,
 )
@@ -60,7 +62,7 @@ class TestRepoBranchMatches:
         repos = [RepositoryBranchMapping(name="test-repo", branch="dev")]
         assert (
             repo_branch_matches(
-                repos=repos,
+                repos=cast(Sequence[RepoBranchMappingLike], repos),
                 repo_name="test-repo",
                 branch="dev",
                 default_branch="main",
@@ -69,7 +71,7 @@ class TestRepoBranchMatches:
         )
         assert (
             repo_branch_matches(
-                repos=repos,
+                repos=cast(Sequence[RepoBranchMappingLike], repos),
                 repo_name="test-repo",
                 branch="main",
                 default_branch="main",
@@ -82,7 +84,7 @@ class TestRepoBranchMatches:
         repos = [RepositoryBranchMapping(name="test-repo", branch="default")]
         assert (
             repo_branch_matches(
-                repos=repos,
+                repos=cast(Sequence[RepoBranchMappingLike], repos),
                 repo_name="test-repo",
                 branch="main",
                 default_branch="main",
@@ -91,7 +93,7 @@ class TestRepoBranchMatches:
         )
         assert (
             repo_branch_matches(
-                repos=repos,
+                repos=cast(Sequence[RepoBranchMappingLike], repos),
                 repo_name="test-repo",
                 branch="dev",
                 default_branch="main",

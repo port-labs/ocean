@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Iterable, Optional
 
-from port_ocean.core.utils.included_files import (
+from port_ocean.core.utils.included_files import (  # type: ignore[import-not-found]
+    RepoBranchMappingLike,
     repo_branch_matches,
     resolve_included_file_path,
 )
@@ -57,8 +58,9 @@ def unique_preserve_order(items: Iterable[str]) -> list[str]:
 __all__ = [
     "IncludedFilesEntityContext",
     "FolderIncludedFilesRequests",
-    "IncludedFilesTarget",
     "IncludedFilesPlanItem",
+    "IncludedFilesTarget",
+    "RepoBranchMappingLike",
     "unique_preserve_order",
     "repo_branch_matches",
     "resolve_included_file_path",
