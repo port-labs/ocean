@@ -107,7 +107,7 @@ lint:
 
 lint/fix:
 	$(ACTIVATE) && \
-	black .
+	black . && \
 	ruff check --fix .
 
 # Development commands
