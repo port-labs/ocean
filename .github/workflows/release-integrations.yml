@@ -288,6 +288,8 @@ jobs:
               port_app_config_ui_schema_dest="$version_folder/$port_app_config_ui_schema"
               port_app_config_ui_schema_latest_dest="$integration_folder/$port_app_config_ui_schema"
 
+              static_examples_folder_dest="$integration_folder/examples/"
+
               # Convert YAML to JSON
               yq -o json "$file" >"$temp_file"
 
@@ -330,6 +332,12 @@ jobs:
                     # Upload global index file to s3
                     aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
                     echo "Successfully uploaded $index_file to s3 bucket."
+
+                    # Upload Static Examples to s3
+                    if [[ -d "$integration_dir/examples" ]]; then
+                        aws s3 cp "$integration_dir/examples" "s3://$aws_s3_bucket/$static_examples_folder_dest" --recursive
+                        echo "Successfully uploaded $type/examples/ to s3 bucket."
+                    fi
                   fi
 
                   SCHEMA_CLI_COMMANDS=(
