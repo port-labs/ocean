@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
+import json
 import re
 from loguru import logger
 from port_ocean.utils import http_async_client
@@ -100,7 +101,7 @@ class GitHubClient:
                     for signed_url in signed_urls
                 ]
             )
-            yield [report for report in reports if report is not None]
+            yield [record for report in reports if report for record in report]
 
     async def fetch_organization_usage_metrics(
         self,
@@ -124,12 +125,13 @@ class GitHubClient:
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
-    ) -> dict[str, Any] | None:
+    ) -> list[dict[str, Any]] | None:
         logger.debug("Fetching report from signed URL")
         try:
             response = await self._client.request(method="get", url=signed_url)
             response.raise_for_status()
-            return response.json()
+            lines = [line for line in response.text.splitlines() if line.strip()]
+            return [json.loads(line) for line in lines]
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching report from signed URL: {e}")
             return None
