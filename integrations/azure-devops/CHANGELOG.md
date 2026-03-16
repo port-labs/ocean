@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.36 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+## 0.7.35 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+## 0.7.34 (2026-03-12)
+
+
+### Bug Fixes
+
+- Added default values for work_item kind for effort and description fields
+- Added missing Enum values for work_item blueprint
+- Fixed ingestion issues with work_item kind
+
+## 0.7.33 (2026-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+- Updated `_search` method signature to accept `field` to align with the base `JQEntityProcessor` interface
+
+
+## 0.7.32 (2026-03-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
+## 0.7.31 (2026-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.10
+
+
+## 0.7.30 (2026-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.9
+
+
+## 0.7.29 (2026-03-09)
+
+
+### Bug Fixes
+
+- Fixed file kind stopping after encountering a project with no repositories (PORT-17439)
+
+
+## 0.7.28 (2026-03-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+## 0.7.27 (2026-03-08)
+
+
+### Bug Fixes
+
+- Fixed 400 Bad Request error when syncing group-members for large groups
+
+
 ## 0.7.26 (2026-03-03)
 
 

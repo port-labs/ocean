@@ -8,7 +8,7 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.models import CreatePortResourcesOrigin
+from port_ocean.core.models import CreatePortResourcesOrigin, LakehouseOperation
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 
@@ -278,17 +278,30 @@ class IntegrationClientMixin:
         return response.json()
 
     async def post_integration_raw_data(
-        self, raw_data: list[dict[Any, Any]], sync_id: str, kind: str
+        self,
+        raw_data: list[dict[Any, Any]],
+        sync_id: str,
+        kind: str,
+        operation: LakehouseOperation = LakehouseOperation.UPSERT,
+        data_type: str | None = None,
     ) -> None:
-        logger.debug("starting POST raw data request", raw_data=raw_data)
+        logger.debug(
+            "starting POST raw data request", raw_data=raw_data, operation=operation
+        )
         headers = await self.auth.headers()
+
+        body: dict[str, Any] = {
+            "items": raw_data,
+            "extractionTimestamp": int(datetime.now().timestamp() * 1000),
+            "operation": operation.value,
+        }
+        if data_type is not None:
+            body["type"] = data_type
+
         response = await self.client.post(
-            f"{self.auth.ingest_url}/lakehouse/integration-type/{self.auth.integration_type}/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
+            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",
             headers=headers,
-            json={
-                "items": raw_data,
-                "extractionTimestamp": int(datetime.now().timestamp() * 1000),
-            },
+            json=body,
         )
         handle_port_status_code(response, should_raise=False, should_log=True)
         logger.debug("Finished POST raw data request")

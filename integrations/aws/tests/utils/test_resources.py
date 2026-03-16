@@ -1,7 +1,12 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from botocore.exceptions import ClientError
-from utils.misc import CustomProperties, AsyncPaginator, OPT_IN_REGIONS
+from utils.misc import (
+    CustomProperties,
+    AsyncPaginator,
+    OPT_IN_REGIONS,
+    is_resource_type_not_available_exception,
+)
 from utils.resources import (
     resync_custom_kind,
     resync_cloudcontrol,
@@ -69,6 +74,57 @@ async def test_resync_cloudcontrol(
                 assert resource[CustomProperties.ACCOUNT_ID.value] == mock_account_id
                 assert resource[CustomProperties.REGION.value] == "us-west-2"
                 assert "Properties" in resource
+
+
+@pytest.mark.asyncio
+async def test_resync_cloudcontrol_skips_unavailable_resource_type(
+    mock_account_id: str,
+) -> None:
+    """Test that resync_cloudcontrol raises when resource type is not available in a region."""
+    mock_session = AsyncMock()
+    mock_session.region_name = "us-west-2"
+    exc = ClientError(
+        {
+            "Error": {
+                "Code": "TypeNotFoundException",
+                "Message": "Type AWS::Foo::Bar not found",
+            }
+        },
+        "ListResources",
+    )
+
+    @asynccontextmanager
+    async def mock_client(
+        service_name: str, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
+        client = MagicMock()
+
+        class RaisingPaginatorMock:
+            async def paginate(
+                self, **kwargs: Any
+            ) -> AsyncGenerator[Dict[str, Any], None]:
+                raise exc
+                yield
+
+        client.get_paginator = MagicMock(return_value=RaisingPaginatorMock())
+        yield client
+
+    mock_session.client = mock_client
+
+    with patch(
+        "utils.resources._session_manager.find_account_id_by_session",
+        return_value=mock_account_id,
+    ):
+        results = []
+        with pytest.raises(ClientError) as exc_info:
+            async for result in resync_cloudcontrol(
+                kind="AWS::Foo::Bar",
+                session=mock_session,
+                use_get_resource_api=False,
+            ):
+                results.append(result)
+        assert is_resource_type_not_available_exception(exc_info.value)
+        assert results == []
 
 
 @pytest.mark.asyncio

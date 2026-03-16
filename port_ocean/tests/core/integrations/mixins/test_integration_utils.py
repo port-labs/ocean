@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -18,6 +17,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.integrations.mixins.utils import (
     extract_jq_deletion_path_revised,
     handle_items_to_parse,
+    resync_generator_wrapper,
 )
 
 class TestExtractJqDeletionPathRevised:
@@ -265,20 +265,14 @@ class TestHandleItemsToParse:
             }
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_with_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", True):
                 batches.append(batch)
 
             assert len(batches) == 1
@@ -310,20 +304,14 @@ class TestHandleItemsToParse:
             }
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_no_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", False):
                 batches.append(batch)
 
             assert len(batches) == 1
@@ -375,21 +363,15 @@ class TestHandleItemsToParse:
             }
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_with_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
             async for batch in handle_items_to_parse(
-                raw_data, "item", ".data.nested.items"
+                raw_data, "item", ".data.nested.items", True
             ):
                 batches.append(batch)
 
@@ -418,20 +400,14 @@ class TestHandleItemsToParse:
             {"id": "2", "items": [{"sub_id": "b"}, {"sub_id": "c"}]},
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_with_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             all_items: list[dict[str, Any]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", True):
                 all_items.extend(batch)
 
             assert len(all_items) == 3
@@ -459,17 +435,13 @@ class TestHandleItemsToParse:
             patch(
                 "port_ocean.core.integrations.mixins.utils.ocean"
             ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_with_transform),
-            ),
             patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger,
         ):
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", True):
                 batches.append(batch)
 
             # Should have no batches since item was skipped
@@ -495,20 +467,14 @@ class TestHandleItemsToParse:
             }
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_with_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", True):
                 batches.append(batch)
 
             assert len(batches) == 1
@@ -538,20 +504,14 @@ class TestHandleItemsToParse:
             }
         ]
 
-        with (
-            patch(
-                "port_ocean.core.integrations.mixins.utils.ocean"
-            ) as mock_ocean_context,
-            patch(
-                "port_ocean.core.integrations.mixins.utils.event",
-                SimpleNamespace(resource_config=resource_config_no_transform),
-            ),
-        ):
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
             mock_ocean_context.config.yield_items_to_parse_batch_size = 100
             mock_ocean_context.app.integration.entity_processor = mock_entity_processor
 
             batches: list[list[dict[str, Any]]] = []
-            async for batch in handle_items_to_parse(raw_data, "item", ".items"):
+            async for batch in handle_items_to_parse(raw_data, "item", ".items", False):
                 batches.append(batch)
 
             assert len(batches) == 1
@@ -563,3 +523,50 @@ class TestHandleItemsToParse:
             assert merged_item["keep_this"] == "should stay"
             assert merged_item["also_keep"] == 123
             assert merged_item["item"] == {"sub_id": "a"}
+
+
+class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
+    """Regression test: resync_generator_wrapper must not mutate the lists
+    yielded by integration generators.
+
+    When itemsToParse is enabled, handle_items_to_parse iterates over the
+    result list. The original list reference from the integration's generator
+    must remain intact so the generator can still inspect it (e.g. read
+    len(items) for pagination decisions) after yielding.
+    """
+
+    @pytest.mark.asyncio
+    async def test_items_to_parse_does_not_mutate_original_list(
+        self,
+        mock_context: PortOceanContext,
+        mock_entity_processor: JQEntityProcessor,
+    ) -> None:
+        """Verify that the list yielded by the integration generator is not
+        mutated after handle_items_to_parse processes it."""
+        # The list that the integration generator yields
+        original_batch = [
+            {"id": "1", "items": [{"sub_id": "a"}]},
+            {"id": "2", "items": [{"sub_id": "b"}]},
+        ]
+        original_length = len(original_batch)
+
+        async def fake_generator(kind: str) -> Any:
+            yield original_batch
+
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.yield_items_to_parse_batch_size = 100
+            mock_ocean_context.app.integration.entity_processor = mock_entity_processor
+            mock_ocean_context.metrics = mock_context.app.metrics
+
+            async for _batch in resync_generator_wrapper(
+                fake_generator,
+                "test-kind",
+                items_to_parse_name="item",
+                items_to_parse=".items",
+            ):
+                pass
+
+            # The original list must NOT have been mutated
+            assert len(original_batch) == original_length

@@ -53,7 +53,7 @@ resources:
             breakdown: .
             total_suggestions_count: >-
               [.copilot_ide_code_completions.editors[]?.models[]?.languages[]?.total_code_suggestions]
-              | map(select(. != null) ) | add
+              | map(select(. != null)) | add
             total_acceptances_count: >-
               [.copilot_ide_code_completions.editors[]?.models[]?.languages[]?.total_code_acceptances]
               | map(select(. != null)) | add
@@ -76,4 +76,22 @@ resources:
             total_active_chat_users: >-
               [.copilot_ide_chat.editors[]?.total_engaged_users // 0]
               | map(select(. != null)) | add
+            git_hub_org: .__organization.login
+  - kind: organization-usage-metrics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.__organization.login + "@" + .day)
+          title: (.__organization.login + " copilot-metrics " + .day)
+          blueprint: '"githubCopilotOrganizationUsage"'
+          properties:
+            record_date: .day + "T00:00:00Z"
+            daily_active_users: .daily_active_users
+            code_generation_activity_count: .code_generation_activity_count
+            code_acceptance_activity_count: .code_acceptance_activity_count
+            loc_suggested_to_add_sum: .loc_suggested_to_add_sum
+            loc_added_sum: .loc_added_sum
+            user_initiated_interaction_count: .user_initiated_interaction_count
             git_hub_org: .__organization.login

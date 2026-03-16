@@ -22,7 +22,9 @@ from port_ocean.core.handlers.port_app_config.models import (
 class FileEntityProcessor(JQEntityProcessor):
     prefix = FILE_PROPERTY_PREFIX
 
-    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    async def _search(
+        self, data: Dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
         project_id, ref, base_path = _validate_project_scope(data)
         project = _get_project_from_cache(project_id)
 
@@ -42,7 +44,9 @@ class SearchEntityProcessor(JQEntityProcessor):
     prefix = SEARCH_PROPERTY_PREFIX
     separation_symbol = "&&"
 
-    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    async def _search(
+        self, data: Dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
         """
         Handles entity mapping for search:// pattern
         :param data: project data
@@ -96,7 +100,9 @@ class SearchEntityProcessor(JQEntityProcessor):
 
 
 class GitManipulationHandler(JQEntityProcessor):
-    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    async def _search(
+        self, data: Dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
         entity_processor: Type[JQEntityProcessor]
         if pattern.startswith(FILE_PROPERTY_PREFIX):
             logger.warning(
@@ -118,7 +124,7 @@ class GitManipulationHandler(JQEntityProcessor):
             entity_processor = SearchEntityProcessor
         else:
             entity_processor = JQEntityProcessor
-        return await entity_processor(self.context)._search(data, pattern)
+        return await entity_processor(self.context)._search(data, pattern, field)
 
 
 class FoldersSelector(BaseModel):

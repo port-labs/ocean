@@ -7,6 +7,63 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.204-post1 (2026-03-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+0.2.203-post1 (2026-03-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+0.2.202-post1 (2026-03-12)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+- Updated `_search` method signature to accept `field` to align with the base `JQEntityProcessor` interface
+
+
+0.2.201-post1 (2026-03-11)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
+0.2.200-post1 (2026-03-10)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.10
+
+
+0.2.199-post1 (2026-03-09)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.9
+
+
+0.2.198-post1 (2026-03-08)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
 0.2.197-post1 (2026-03-03)
 ==========================
 
