@@ -1,0 +1,16 @@
+{
+  "id": "/subscriptions/ea2eb4a4-a075-484a-bfb1-5fd2a62/resourceGroups/test/providers/Microsoft.KeyVault/vaults/test11111tanki",
+  "type": "microsoft.keyvault/vaults",
+  "name": "test11111tanki",
+  "location": "eastus",
+  "tags": {
+    "ayo": "welcome",
+    "now": "done",
+    "tagKey": "tagValue1"
+  },
+  "subscriptionId": "ea2eb4a4-a075-bfb1-5fd2a62b",
+  "resourceGroup": "test",
+  "rgTags": {
+    "RGTag": "RGTagValue"
+  }
+}

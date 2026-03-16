@@ -1,0 +1,9 @@
+{
+  "id": "/subscriptions/ea2eb4a4-a075-484a-bfb1-5fd2a/resourceGroups/test-terraform-rg",
+  "type": "microsoft.resources/subscriptions/resourcegroups",
+  "name": "test-terraform-rg",
+  "location": "eastus",
+  "tags": {},
+  "subscriptionId": "ea2eb4a4-a075-484a-bfb1-5fd2a",
+  "resourceGroup": "test-terraform-rg"
+}
