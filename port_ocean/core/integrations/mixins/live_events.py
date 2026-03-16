@@ -118,6 +118,7 @@ class LiveEventsMixin(HandlerMixin):
                             event_id,
                             kind,
                             operation=LakehouseOperation.UPSERT,
+                            data_type="live-event",
                         )
                     except Exception as e:
                         logger.warning(
@@ -138,6 +139,7 @@ class LiveEventsMixin(HandlerMixin):
                             event_id,
                             kind,
                             operation=LakehouseOperation.DELETE,
+                            data_type="live-event",
                         )
                     except Exception as e:
                         logger.warning(

@@ -7,6 +7,53 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.18 (2026-03-16)
+
+### Improvements
+
+- UI schema normalization: single-schema `allOf` is now flattened into the parent object when generating port-app-config UI schema.
+- Release workflow: upload integration `.port/examples/` to the registry bucket.
+
+## 0.38.17 (2026-03-16)
+
+### Improvements
+
+- Added integration tests infrastructure for resync process
+
+## 0.38.16 (2026-03-15)
+
+### Improvements
+
+- Added `eventType` and `resyncId` (when applicable) to Port API requests for entity-related operations.
+
+## 0.38.15 (2026-03-15)
+
+### Improvements
+
+- Add type:live_event in body to signify live_event ingested data in lakehouse
+
+## 0.38.14 (2026-03-15)
+
+### Improvements
+
+- Added `resolve_included_file_path` in `port_ocean.core.utils.included_files` for resolving configured includedFiles paths to repo-relative paths. Integrations can use this shared utility instead of duplicating the logic.
+- Added `repo_branch_matches` in `port_ocean.core.utils.included_files` for matching repo/branch against selector repos mapping (supports explicit branch, `None` for default branch, and `"default"` literal). Uses `RepoBranchMappingLike` protocol so any integration mapping type works.
+
+## 0.38.13 (2026-03-15)
+
+### Improvements
+
+- Added progress logs in the reconciliation phase: logs are now emitted before fetching current entity state from Port and before the delete diff, showing counts of entities at Port, synced, and to be deleted.
+- Added `success` metric initialization for the reconciliation `syncing` state, ensuring `syncKindsMetrics` won't be stuck on pending state until completion.
+- Changed reconciliation completed/failed metric reporting to use PUT (update existing document) instead of POST (create new document), so the syncing document is updated in-place rather than creating a duplicate.
+
+## 0.38.12 (2026-03-10)
+
+### Improvements
+
+- Improved logging observability for JQ entity mapping failures: structured context fields (field, pattern, error) are now included in search failure logs, and stack traces are no longer embedded in log messages.
+
+
 ## 0.38.11 (2026-03-11)
 
 ### Improvements

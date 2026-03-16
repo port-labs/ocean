@@ -8,6 +8,7 @@ from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
+from loguru import logger
 
 from port_ocean.core.handlers.entity_processor import jq_entity_processor_sync
 from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
@@ -111,11 +112,44 @@ class TestJQEntityProcessorSync:
     def test_search_returns_none_on_error(
         self, mocked_processor: JQEntityProcessorSync
     ) -> None:
-        """Test that search returns None on JQ errors."""
+        """Test that search returns None and logs a warning on JQ errors."""
         data = {"foo": "bar"}
         pattern = ".foo."  # Invalid pattern
         result = mocked_processor._search(data, pattern)
         assert result is None
+
+    def test_search_logs_field_name_on_error(
+        self, mocked_processor: JQEntityProcessorSync
+    ) -> None:
+        """Test that search includes the field name in the warning log when provided."""
+        data = {"foo": "bar"}
+        pattern = ".foo."  # Invalid pattern
+        log_messages: list[str] = []
+        logger_id = logger.add(
+            lambda msg: log_messages.append(str(msg)), level="WARNING"
+        )
+        try:
+            result = mocked_processor._search(data, pattern, "properties.tier")
+            assert result is None
+            assert any("properties.tier" in m for m in log_messages)
+        finally:
+            logger.remove(logger_id)
+
+    def test_search_logs_pattern_without_field(
+        self, mocked_processor: JQEntityProcessorSync
+    ) -> None:
+        """Test that search logs the pattern even when no field name is provided."""
+        data = {"foo": "bar"}
+        pattern = ".foo."
+        log_messages: list[str] = []
+        logger_id = logger.add(
+            lambda msg: log_messages.append(str(msg)), level="WARNING"
+        )
+        try:
+            mocked_processor._search(data, pattern)
+            assert any("Search failed" in m for m in log_messages)
+        finally:
+            logger.remove(logger_id)
 
     def test_search_with_double_quotes(
         self, mocked_processor: JQEntityProcessorSync
@@ -178,13 +212,21 @@ class TestJQEntityProcessorSync:
     def test_search_as_bool_failure(
         self, mocked_processor: JQEntityProcessorSync
     ) -> None:
-        """Test that search_as_bool raises exception for non-boolean values."""
+        """Test that search_as_bool raises exception for non-boolean values, including pattern."""
         data = {"foo": "bar"}
         pattern = ".foo"
         with pytest.raises(
-            EntityProcessorException,
-            match="Expected boolean value, got value:bar of type: <class 'str'> instead",
+            EntityProcessorException, match=r"Expected boolean value for pattern '.foo'"
         ):
+            mocked_processor._search_as_bool(data, pattern)
+
+    def test_search_as_bool_jq_error_includes_pattern(
+        self, mocked_processor: JQEntityProcessorSync
+    ) -> None:
+        """Test that search_as_bool raises an exception on JQ compile/runtime error."""
+        data = {"foo": "bar"}
+        pattern = ".foo."  # Invalid pattern
+        with pytest.raises(Exception):
             mocked_processor._search_as_bool(data, pattern)
 
     def test_search_as_object(self, mocked_processor: JQEntityProcessorSync) -> None:
