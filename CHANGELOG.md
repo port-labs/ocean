@@ -7,6 +7,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.18 (2026-03-16)
+
+### Improvements
+
+- UI schema normalization: single-schema `allOf` is now flattened into the parent object when generating port-app-config UI schema.
+- Release workflow: upload integration `.port/examples/` to the registry bucket.
+
+## 0.38.17 (2026-03-16)
+
+### Improvements
+
+- Added integration tests infrastructure for resync process
+
 ## 0.38.16 (2026-03-15)
 
 ### Improvements
