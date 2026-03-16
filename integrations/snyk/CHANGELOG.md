@@ -7,12 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.41 (2026-03-15)
+## 0.3.43 (2026-03-16)
 
 
 ### Improvements
 
 - Added Literal kind definitions to `SnykPortAppConfig` for schema validation compliance
+
+
+## 0.3.42 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.3.41 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
 
 ## 0.3.40 (2026-03-15)
 
