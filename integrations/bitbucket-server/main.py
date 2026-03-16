@@ -6,7 +6,8 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from integration import (
-    BitbucketGenericResourceConfig,
+    BitbucketProjectResourceConfig,
+    BitbucketRepositoryResourceConfig,
     BitbucketPullRequestResourceConfig,
     ObjectKind,
 )
@@ -21,7 +22,7 @@ from webhook_processors.webhook_client import init_webhook_client
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    selector = cast(BitbucketGenericResourceConfig, event.resource_config).selector
+    selector = cast(BitbucketProjectResourceConfig, event.resource_config).selector
     logger.info(f"Resyncing projects with filter: {selector.projects}")
     client = init_client()
     async for project_batch in client.get_projects(
@@ -34,7 +35,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    selector = cast(BitbucketGenericResourceConfig, event.resource_config).selector
+    selector = cast(BitbucketRepositoryResourceConfig, event.resource_config).selector
     logger.info(f"Resyncing repositories for projects: {selector.projects}")
     client = init_client()
     async for repo_batch in client.get_repositories(

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.145-beta (2026-03-16)
+
+
+### Improvements
+
+-  Split multi-value Literal kind definitions into dedicated resource config models in `BitbucketAppConfig` for schema validation compliance
+
+
 ## 0.1.144-beta (2026-03-16)
 
 
