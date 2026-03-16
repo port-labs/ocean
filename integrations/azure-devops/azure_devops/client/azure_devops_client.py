@@ -1371,6 +1371,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
         for file in downloaded_files:
             if file is None:
+                logger.warning(
+                    f"A file in repository {repository['name']} could not be downloaded or processed and will be skipped."
+                )
                 continue
             yield [file]
 
