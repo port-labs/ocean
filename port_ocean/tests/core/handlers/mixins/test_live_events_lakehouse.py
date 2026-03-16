@@ -211,6 +211,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
             "test-event-id",
             "repository",
             operation=LakehouseOperation.UPSERT,
+            data_type="live-event",
         )
 
 
@@ -251,6 +252,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
             "test-event-id",
             "repository",
             operation=LakehouseOperation.DELETE,
+            data_type="live-event",
         )
 
 
@@ -356,12 +358,14 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
                     "test-event-id",
                     "repository",
                     operation=LakehouseOperation.UPSERT,
+                    data_type="live-event",
                 ),
                 call(
                     delete_data,
                     "test-event-id",
                     "repository",
                     operation=LakehouseOperation.DELETE,
+                    data_type="live-event",
                 ),
             ]
         )
