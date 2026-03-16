@@ -534,6 +534,87 @@ class TestGetPaginatedStateVersions:
             assert len(result) == 1
 
 
+class TestDownloadStateFile:
+    @pytest.mark.asyncio
+    async def test_download_state_file_success(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        state_version = {
+            "id": "sv-1",
+            "attributes": {
+                "hosted-state-download-url": "https://archivist.terraform.io/state1",
+                "status": "finalized",
+            },
+            "relationships": {
+                "workspace": {"data": {"id": "ws-123", "type": "workspaces"}},
+            },
+        }
+        state_file_content = {"version": 4, "resources": []}
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+            mock_send.return_value = state_file_content
+
+            result = await terraform_client.download_state_file(state_version)
+
+            assert result is not None
+            assert result["__state_version_id"] == "sv-1"
+            assert result["__workspace"] == {
+                "data": {"id": "ws-123", "type": "workspaces"}
+            }
+            assert result["version"] == 4
+            mock_send.assert_called_once_with(
+                "https://archivist.terraform.io/state1", follow_redirects=True
+            )
+
+    @pytest.mark.asyncio
+    async def test_download_state_file_returns_none_when_url_is_null(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        state_version = {
+            "id": "sv-1",
+            "attributes": {
+                "hosted-state-download-url": None,
+                "status": "pending",
+            },
+            "relationships": {
+                "workspace": {"data": {"id": "ws-123", "type": "workspaces"}},
+            },
+        }
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+            result = await terraform_client.download_state_file(state_version)
+
+            assert result is None
+            mock_send.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_download_state_file_returns_none_when_url_is_empty_string(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        state_version = {
+            "id": "sv-2",
+            "attributes": {
+                "hosted-state-download-url": "",
+                "status": "pending",
+            },
+            "relationships": {
+                "workspace": {"data": {"id": "ws-456", "type": "workspaces"}},
+            },
+        }
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+            result = await terraform_client.download_state_file(state_version)
+
+            assert result is None
+            mock_send.assert_not_called()
+
+
 class TestGetPaginatedStateFiles:
     @pytest.mark.asyncio
     async def test_get_paginated_state_files_success(
@@ -543,7 +624,8 @@ class TestGetPaginatedStateFiles:
             {
                 "id": "sv-1",
                 "attributes": {
-                    "hosted-state-download-url": "https://archivist.terraform.io/state1"
+                    "hosted-state-download-url": "https://archivist.terraform.io/state1",
+                    "status": "finalized",
                 },
                 "relationships": {
                     "workspace": {"data": {"id": "ws-123", "type": "workspaces"}},
@@ -580,6 +662,97 @@ class TestGetPaginatedStateFiles:
             assert result[0]["resources"] == state_file_content["resources"]
             mock_send.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_get_paginated_state_files_skips_null_download_urls(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        """Test that state versions with null hosted-state-download-url are skipped."""
+        state_versions = [
+            {
+                "id": "sv-1",
+                "attributes": {
+                    "hosted-state-download-url": None,
+                    "status": "pending",
+                },
+                "relationships": {
+                    "workspace": {"data": {"id": "ws-123", "type": "workspaces"}},
+                },
+            },
+            {
+                "id": "sv-2",
+                "attributes": {
+                    "hosted-state-download-url": "https://archivist.terraform.io/state2",
+                    "status": "finalized",
+                },
+                "relationships": {
+                    "workspace": {"data": {"id": "ws-456", "type": "workspaces"}},
+                },
+            },
+        ]
+        state_file_content = {"version": 4, "resources": []}
+
+        with (
+            patch.object(
+                terraform_client, "get_paginated_state_versions"
+            ) as mock_versions,
+            patch.object(
+                terraform_client, "send_api_request", new_callable=AsyncMock
+            ) as mock_send,
+        ):
+
+            async def version_generator() -> Any:
+                yield state_versions
+
+            mock_versions.return_value = version_generator()
+            mock_send.return_value = state_file_content
+
+            result = []
+            async for batch in terraform_client.get_paginated_state_files():
+                result.extend(batch)
+
+            assert len(result) == 1
+            assert result[0]["__state_version_id"] == "sv-2"
+            mock_send.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_paginated_state_files_all_null_urls_yields_nothing(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        """Test that when all state versions have null URLs, no state files are yielded."""
+        state_versions = [
+            {
+                "id": "sv-1",
+                "attributes": {
+                    "hosted-state-download-url": None,
+                    "status": "pending",
+                },
+                "relationships": {
+                    "workspace": {"data": {"id": "ws-123", "type": "workspaces"}},
+                },
+            },
+        ]
+
+        with (
+            patch.object(
+                terraform_client, "get_paginated_state_versions"
+            ) as mock_versions,
+            patch.object(
+                terraform_client, "send_api_request", new_callable=AsyncMock
+            ) as mock_send,
+        ):
+
+            async def version_generator() -> Any:
+                yield state_versions
+
+            mock_versions.return_value = version_generator()
+
+            result = []
+            async for batch in terraform_client.get_paginated_state_files():
+                result.extend(batch)
+
+            assert len(result) == 0
+            mock_send.assert_not_called()
+
 
 class TestGetStateFileForSingleWorkspace:
     @pytest.mark.asyncio
@@ -590,7 +763,11 @@ class TestGetStateFileForSingleWorkspace:
             {
                 "id": "sv-1",
                 "attributes": {
-                    "hosted-state-download-url": "https://archivist.terraform.io/state1"
+                    "hosted-state-download-url": "https://archivist.terraform.io/state1",
+                    "status": "finalized",
+                },
+                "relationships": {
+                    "workspace": {"data": {"id": "ws-123", "type": "workspaces"}},
                 },
             }
         ]
@@ -618,7 +795,103 @@ class TestGetStateFileForSingleWorkspace:
                 result.extend(batch)
 
             assert len(result) == 1
-            assert result[0] == state_file_content
+            assert result[0]["__state_version_id"] == "sv-1"
+            assert result[0]["version"] == 4
+
+    @pytest.mark.asyncio
+    async def test_get_state_file_for_single_workspace_skips_null_download_urls(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        """Test that state versions with null hosted-state-download-url are skipped."""
+        state_versions = [
+            {
+                "id": "sv-1",
+                "attributes": {
+                    "hosted-state-download-url": None,
+                    "status": "pending",
+                },
+                "relationships": {
+                    "workspace": {"data": {"id": "ws-123", "type": "workspaces"}},
+                },
+            },
+            {
+                "id": "sv-2",
+                "attributes": {
+                    "hosted-state-download-url": "https://archivist.terraform.io/state2",
+                    "status": "finalized",
+                },
+                "relationships": {
+                    "workspace": {"data": {"id": "ws-123", "type": "workspaces"}},
+                },
+            },
+        ]
+        state_file_content = {"version": 4, "resources": []}
+
+        with (
+            patch.object(
+                terraform_client, "get_state_versions_for_single_workspace"
+            ) as mock_versions,
+            patch.object(
+                terraform_client, "send_api_request", new_callable=AsyncMock
+            ) as mock_send,
+        ):
+
+            async def version_generator() -> Any:
+                yield state_versions
+
+            mock_versions.return_value = version_generator()
+            mock_send.return_value = state_file_content
+
+            result = []
+            async for batch in terraform_client.get_state_file_for_single_workspace(
+                "test-workspace", "test-org"
+            ):
+                result.extend(batch)
+
+            assert len(result) == 1
+            assert result[0]["__state_version_id"] == "sv-2"
+            mock_send.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_state_file_for_single_workspace_all_null_urls_yields_nothing(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        """Test that when all state versions have null URLs, no state files are yielded."""
+        state_versions = [
+            {
+                "id": "sv-1",
+                "attributes": {
+                    "hosted-state-download-url": None,
+                    "status": "pending",
+                },
+                "relationships": {
+                    "workspace": {"data": {"id": "ws-123", "type": "workspaces"}},
+                },
+            },
+        ]
+
+        with (
+            patch.object(
+                terraform_client, "get_state_versions_for_single_workspace"
+            ) as mock_versions,
+            patch.object(
+                terraform_client, "send_api_request", new_callable=AsyncMock
+            ) as mock_send,
+        ):
+
+            async def version_generator() -> Any:
+                yield state_versions
+
+            mock_versions.return_value = version_generator()
+
+            result = []
+            async for batch in terraform_client.get_state_file_for_single_workspace(
+                "test-workspace", "test-org"
+            ):
+                result.extend(batch)
+
+            assert len(result) == 0
+            mock_send.assert_not_called()
 
 
 class TestGetHealthAssessmentsForSingleWorkspace:

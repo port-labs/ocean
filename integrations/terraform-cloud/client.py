@@ -277,28 +277,47 @@ class TerraformClient:
     async def get_paginated_state_files(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+
+        logger.info(
+            "Fetching state files for state versions with hosted state download URLs"
+        )
+
         async for state_version_batch in self.get_paginated_state_versions():
+
             tasks = [
-                self.send_api_request(
-                    state_version["attributes"]["hosted-state-download-url"],
-                    follow_redirects=True,
-                )
+                self.download_state_file(state_version)
                 for state_version in state_version_batch
             ]
-            state_file_batch = list(await asyncio.gather(*tasks))
-            combined = []
-            for state_version, content in zip(state_version_batch, state_file_batch):
-                workspace_data = (state_version.get("relationships") or {}).get(
-                    "workspace"
-                )
-                state_version_id = state_version.get("id")
-                item = {
-                    **content,
-                    "__workspace": workspace_data,
-                    "__state_version_id": state_version_id,
-                }
-                combined.append(item)
+            results = await asyncio.gather(*tasks)
+            combined = list(filter(None, results))
+
+            logger.info(
+                f"Successfully downloaded {len(combined)} state files for batch of {len(state_version_batch)} after filtering out state versions with no hosted state download url"
+            )
+
             yield combined
+
+    async def download_state_file(
+        self, state_version: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        url = state_version["attributes"]["hosted-state-download-url"]
+        if not url:
+            logger.info(
+                f"Skipping state file for state version {state_version['id']} with state {state_version['attributes']['status']} because it has no hosted state download url"
+            )
+            return None
+
+        content = await self.send_api_request(url, follow_redirects=True)
+        logger.debug(
+            f"Successfully downloaded state file for state version {state_version['id']}"
+        )
+        workspace_data = (state_version.get("relationships") or {}).get("workspace")
+
+        return {
+            **content,
+            "__workspace": workspace_data,
+            "__state_version_id": state_version.get("id"),
+        }
 
     async def get_state_file_for_single_workspace(
         self, workspace_name: str, organization_name: str
@@ -310,13 +329,13 @@ class TerraformClient:
             workspace_name, organization_name
         ):
             tasks = [
-                self.send_api_request(
-                    state_version["attributes"]["hosted-state-download-url"],
-                    follow_redirects=True,
-                )
+                self.download_state_file(state_version)
                 for state_version in state_versions
             ]
-            yield list(await asyncio.gather(*tasks))
+            results = await asyncio.gather(*tasks)
+            combined = list(filter(None, results))
+            if combined:
+                yield combined
 
     async def process_workspace_runs(
         self, workspace: dict[str, Any]
