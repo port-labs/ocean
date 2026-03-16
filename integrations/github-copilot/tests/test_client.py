@@ -256,11 +256,7 @@ async def test_get_new_usage_metrics_skips_unexpected_schema(
 async def test_fetch_report_from_signed_url_parses_single_line_json(
     github_client: GitHubClient,
 ) -> None:
-    """Small orgs with little Copilot activity produce a single JSON object.
-    response.json() handles this correctly and the current code passes.
-
-    Contrast with test_fetch_report_from_signed_url_parses_ndjson which FAILS.
-    """
+    """_fetch_report_from_signed_url handles a single-line JSON report."""
     import json
 
     signed_url = "https://signed.example.com/copilot-report-single.json"
@@ -272,7 +268,9 @@ async def test_fetch_report_from_signed_url_parses_single_line_json(
     expected = [json.loads(mock_single_json_signed_url_content)]
 
     with patch.object(
-        github_client._client, "request", new=AsyncMock(return_value=single_json_response)
+        github_client._client,
+        "request",
+        new=AsyncMock(return_value=single_json_response),
     ):
         result = await github_client._fetch_report_from_signed_url(signed_url)
         assert result == expected
@@ -282,15 +280,7 @@ async def test_fetch_report_from_signed_url_parses_single_line_json(
 async def test_fetch_report_from_signed_url_parses_ndjson(
     github_client: GitHubClient,
 ) -> None:
-    """Failing test: GitHub signed URLs return NDJSON (multiple JSON objects separated
-    by newlines). The current implementation calls response.json() which crashes with
-    JSONDecodeError('Extra data') on the second line, dropping all but the first record.
-
-    This test asserts the correct behavior — all records returned as a list.
-    It will FAIL until _fetch_report_from_signed_url is fixed to parse NDJSON.
-
-    See: https://getport.zendesk.com/agent/tickets/7743
-    """
+    """_fetch_report_from_signed_url parses NDJSON with one JSON object per line."""
     signed_url = "https://signed.example.com/copilot-report-ndjson.json"
     ndjson_response = httpx.Response(
         status_code=200,
@@ -302,12 +292,26 @@ async def test_fetch_report_from_signed_url_parses_ndjson(
         {
             "report_start_day": "2026-02-01",
             "report_end_day": "2026-02-28",
-            "day_totals": [{"org": "acme-corp-test-org", "daily_active_users": 5, "day": "2026-02-01", "code_generation_activity_count": 100}],
+            "day_totals": [
+                {
+                    "org": "acme-corp-test-org",
+                    "daily_active_users": 5,
+                    "day": "2026-02-01",
+                    "code_generation_activity_count": 100,
+                }
+            ],
         },
         {
             "report_start_day": "2026-02-01",
             "report_end_day": "2026-02-28",
-            "day_totals": [{"org": "acme-corp-test-org", "daily_active_users": 42, "day": "2026-03-05", "code_generation_activity_count": 150}],
+            "day_totals": [
+                {
+                    "org": "acme-corp-test-org",
+                    "daily_active_users": 42,
+                    "day": "2026-03-05",
+                    "code_generation_activity_count": 150,
+                }
+            ],
         },
     ]
 
