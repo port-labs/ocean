@@ -60,14 +60,12 @@ def _flatten_single_allof(obj: Any) -> Any:
         for k, v in obj.items()
         if k != "allOf"
     }
-    return (
-        {**_flatten_single_allof(allof[0]), **out}
-        if (allof := obj.get("allOf"))
-        and isinstance(allof, list)
-        and len(allof) == 1
-        and isinstance(allof[0], dict)
-        else out
-    )
+    allof = obj.get("allOf")
+    if isinstance(allof, list) and len(allof) == 1 and isinstance(allof[0], dict):
+        return {**_flatten_single_allof(allof[0]), **out}
+    if allof is not None:
+        out["allOf"] = _flatten_single_allof(allof)
+    return out
 
 
 def _normalize_schema(result: dict[str, Any]) -> dict[str, Any]:
