@@ -7,7 +7,6 @@ from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
 from loguru import logger
 
 from port_ocean.clients.port.utils import _http_client as _port_http_client
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.ocean_types import (
@@ -133,7 +132,7 @@ async def resync_function_wrapper(
         results = await fn(kind)
         return validate_result(results)
 
-async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, items_to_parse: str | None = None) -> AsyncGenerator[list[dict[str, Any]], None]:
+async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, items_to_parse: str | None = None, items_to_parse_top_level_transform: bool = True) -> AsyncGenerator[list[dict[str, Any]], None]:
     delete_target = extract_jq_deletion_path_revised(items_to_parse) or '.'
     jq_expression = f". | del({delete_target})"
     batch_size = ocean.config.yield_items_to_parse_batch_size
@@ -142,8 +141,14 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
 
     for item in result:
         items_to_parse_data = await entity_processor._search(item, items_to_parse)
-        if event.resource_config.port.items_to_parse_top_level_transform:
-            item = await entity_processor._search(item, jq_expression)
+        if items_to_parse_top_level_transform:
+            transformed = await entity_processor._search(item, jq_expression)
+            if transformed is None:
+                logger.warning(
+                    f"Top-level transform '{jq_expression}' returned None for item, skipping..."
+                )
+                continue
+            item = transformed
         if not isinstance(items_to_parse_data, list):
             logger.warning(
                 f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items_to_parse_data)}."
@@ -162,7 +167,7 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
             yield batch
 
 async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None, items_to_parse_top_level_transform: bool = True
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
     errors = []
@@ -173,7 +178,8 @@ async def resync_generator_wrapper(
                     result = validate_result(await anext(generator))
 
                     if items_to_parse:
-                        items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse)
+                        items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse, items_to_parse_top_level_transform)
+                        del result
                         async for batch in items_to_parse_generator:
                             yield batch
                     else:
