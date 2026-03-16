@@ -13,11 +13,21 @@ class RegionPolicy(BaseModel):
 
 
 class AWSDescribeResourcesSelector(Selector):
-    use_get_resource_api: bool = Field(alias="useGetResourceAPI", default=False)
-    region_policy: RegionPolicy = Field(
-        alias="regionPolicy", default_factory=RegionPolicy
+    use_get_resource_api: bool = Field(
+        alias="useGetResourceAPI",
+        default=False,
+        description="When enabled, uses the AWS Cloud Control GetResource API to fetch full resource details instead of relying solely on list results.",
     )
-    list_group_resources: bool = Field(alias="listGroupResources", default=False)
+    region_policy: RegionPolicy = Field(
+        alias="regionPolicy",
+        default_factory=RegionPolicy,
+        description="Controls which AWS regions are included or excluded when syncing resources. Uses allow/deny lists to filter regions.",
+    )
+    list_group_resources: bool = Field(
+        alias="listGroupResources",
+        default=False,
+        description="When enabled, lists resources belonging to AWS Resource Groups instead of querying all resources of the given type.",
+    )
 
     def is_region_allowed(self, region: str) -> bool:
         """
@@ -59,3 +69,4 @@ class AWSResourceConfig(ResourceConfig):
 
 class AWSPortAppConfig(PortAppConfig):
     resources: list[AWSResourceConfig] = Field(default_factory=list)  # type: ignore
+    allow_custom_kinds = True
