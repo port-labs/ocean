@@ -28,7 +28,7 @@ class TestNextLinkPagination:
     def mock_get_nested_value(self) -> MagicMock:
         def _get_nested(data: Dict[str, Any], path: str) -> Any:
             keys = path.split(".")
-            value = data
+            value: Any = data
             for key in keys:
                 if isinstance(value, dict):
                     value = value.get(key)
