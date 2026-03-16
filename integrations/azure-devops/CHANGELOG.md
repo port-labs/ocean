@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.39 (2026-03-16)
+
+
+### Improvements
+
+- Use port_ocean for included_files repo_branch_matches and resolve_included_file_path
+
+
+## 0.7.38 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.7.37 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
 ## 0.7.36 (2026-03-15)
 
 
@@ -25,6 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.7.34 (2026-03-12)
 
+
+### Improvements
+
+- Refactored includedFiles enrichment to use strategy-based architecture with dedicated enricher, fetcher, and strategy components for better maintainability and consistency with other integrations
 
 ### Bug Fixes
 

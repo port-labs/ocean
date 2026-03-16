@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.63 (2026-03-16)
+
+
+### Improvements
+
+- Refactored includedFiles enrichment to use strategy-based architecture with dedicated enricher, fetcher, and strategy components for better maintainability and consistency with other integrations
+
+
+## 0.5.62 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.5.61 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
 ## 0.5.60 (2026-03-15)
 
 
