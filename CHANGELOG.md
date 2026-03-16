@@ -7,6 +7,23 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.20 (2026-03-16)
+
+### Bug Fixes
+
+- Fixed overall sync status being stuck as `Syncing` instead of `Failed` when a resync fails during the transform phase of a specific kind. Initialized `__runtime__` and `__reconciliation__` success metrics to `0` before processing begins so their documents exist in the DB when `handle_resync_abortion` is triggered. Moved `metric_resource_context` stack `pop()` into a `finally` block to guarantee context cleanup on error, preventing stale kind context from being used in subsequent metric updates.
+
+## 0.38.19 (2026-03-16)
+
+### Bug Fixes
+
+- Fixed overall sync status being stuck as `Syncing` instead of `Failed` when a resync fails during the transform phase. Reconciliation `success` metric is now initialized to `0` before processing begins (ensuring the document exists when `handle_resync_abortion` runs), and reconciliation metric reporting now uses `report_kind_sync_metrics` (PUT) instead of `report_sync_metrics` (POST) so the reconciliation document is updated in-place and remains the last-written document in the DB — preventing the failed kind metric from being read as the latest state.
+
+### Improvements
+
+- Added structured log lines before fetching entity state from Port and before the delete diff, surfacing `entities_at_port`, `entities_synced`, and `entities_to_delete` counts.
+- Fixed `entities_to_delete` going negative when Port has fewer entities than were synced.
+
 ## 0.38.18 (2026-03-16)
 
 ### Improvements

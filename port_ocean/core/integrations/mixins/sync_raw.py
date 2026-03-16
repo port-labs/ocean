@@ -1133,6 +1133,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ocean.metrics.initialize_metrics(kinds)
             await ocean.metrics.report_sync_metrics(kinds=kinds, blueprints=blueprints)
 
+            for special_kind in [MetricResourceKind.RUNTIME, MetricResourceKind.RECONCILIATION]:
+                ocean.metrics.set_metric(
+                    name=MetricType.SUCCESS_NAME,
+                    labels=[special_kind, MetricPhase.RESYNC],
+                    value=0,
+                )
+                await ocean.metrics.report_sync_metrics(kinds=[special_kind])
+
             async with metric_resource_context(MetricResourceKind.RUNTIME):
                 ocean.metrics.sync_state = SyncState.SYNCING
                 await ocean.metrics.send_metrics_to_webhook(
@@ -1190,11 +1198,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else:
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
                     ocean.metrics.sync_state = SyncState.SYNCING
-                    ocean.metrics.set_metric(
-                        name=MetricType.SUCCESS_NAME,
-                        labels=[MetricResourceKind.RECONCILIATION, MetricPhase.RESYNC],
-                        value=0,
-                    )
                     await ocean.metrics.send_metrics_to_webhook(
                         kind=MetricResourceKind.RECONCILIATION
                     )
