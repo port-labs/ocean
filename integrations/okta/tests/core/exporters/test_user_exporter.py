@@ -37,14 +37,15 @@ class TestOktaUserExporter:
         mock_groups: List[Dict[str, Any]] = [{"id": "group1", "name": "Group 1"}]
 
         async def mock_get_users(
-            *args: Any, **kwargs: Any
+            endpoint: str, *args: Any, **kwargs: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-            yield mock_users
+            if endpoint == "users":
+                yield mock_users
+            elif "groups" in endpoint:
+                yield mock_groups
 
         # Assign async generator function to mock attribute
         object.__setattr__(mock_client, "send_paginated_request", mock_get_users)
-
-        cast(Any, mock_client).send_api_request = AsyncMock(side_effect=[mock_groups])
 
         options: ListUserOptions = {"include_groups": True, "fields": "id,profile"}
         users: List[Dict[str, Any]] = []
@@ -69,12 +70,15 @@ class TestOktaUserExporter:
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
             yield mock_users
 
-        object.__setattr__(mock_client, "send_paginated_request", mock_get_users)
+        async def mock_get_enrichment(
+            endpoint: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            if endpoint == "users":
+                yield mock_users
+            else:
+                raise Exception("API Error")
 
-        async def raise_error(*args: Any, **kwargs: Any) -> Any:
-            raise Exception("API Error")
-
-        cast(Any, mock_client).send_api_request = AsyncMock(side_effect=raise_error)
+        object.__setattr__(mock_client, "send_paginated_request", mock_get_enrichment)
 
         options: ListUserOptions = {"include_groups": True, "fields": "id,profile"}
         users: List[Dict[str, Any]] = []
@@ -96,10 +100,17 @@ class TestOktaUserExporter:
         mock_user = {"id": "user1", "profile": {"email": "user1@example.com"}}
         mock_groups = [{"id": "group1", "name": "Group 1"}]
 
-        # Mock the client methods
-        cast(Any, mock_client).send_api_request = AsyncMock(
-            side_effect=[mock_user, mock_groups]
-        )
+        # send_api_request is used for fetching the user itself
+        cast(Any, mock_client).send_api_request = AsyncMock(return_value=mock_user)
+
+        # send_paginated_request is used for enrichment (groups/apps)
+        async def mock_paginated(
+            endpoint: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            if "groups" in endpoint:
+                yield mock_groups
+
+        object.__setattr__(mock_client, "send_paginated_request", mock_paginated)
 
         options: GetUserOptions = {"user_id": "user1", "include_groups": True}
 
@@ -107,3 +118,49 @@ class TestOktaUserExporter:
 
         assert user["id"] == "user1"
         assert user["groups"] == mock_groups
+
+    @pytest.mark.asyncio
+    async def test_fetch_user_groups_paginates_all_pages(self) -> None:
+        """Test that _fetch_user_groups collects all pages, not just the first."""
+        mock_client: OktaClient = Mock(spec=OktaClient)
+        exporter = OktaUserExporter(mock_client)
+
+        page1 = [{"id": f"group{i}"} for i in range(200)]
+        page2 = [{"id": f"group{i}"} for i in range(200, 350)]
+
+        async def mock_paginated(
+            endpoint: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield page1
+            yield page2
+
+        object.__setattr__(mock_client, "send_paginated_request", mock_paginated)
+
+        groups = await exporter._fetch_user_groups("user1")
+
+        assert len(groups) == 350
+        assert groups[0]["id"] == "group0"
+        assert groups[199]["id"] == "group199"
+        assert groups[200]["id"] == "group200"
+        assert groups[349]["id"] == "group349"
+
+    @pytest.mark.asyncio
+    async def test_fetch_user_apps_paginates_all_pages(self) -> None:
+        """Test that _fetch_user_apps collects all pages, not just the first."""
+        mock_client: OktaClient = Mock(spec=OktaClient)
+        exporter = OktaUserExporter(mock_client)
+
+        page1 = [{"id": f"app{i}"} for i in range(200)]
+        page2 = [{"id": f"app{i}"} for i in range(200, 250)]
+
+        async def mock_paginated(
+            endpoint: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield page1
+            yield page2
+
+        object.__setattr__(mock_client, "send_paginated_request", mock_paginated)
+
+        apps = await exporter._fetch_user_apps("user1")
+
+        assert len(apps) == 250

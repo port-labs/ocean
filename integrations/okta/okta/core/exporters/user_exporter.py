@@ -1,7 +1,5 @@
-"""User exporter for Okta integration."""
-
 import asyncio
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, cast
 from loguru import logger
 
 from okta.clients.http.client import OktaClient
@@ -19,16 +17,18 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
         return cast(RAW_ITEM, await self.client.send_api_request(f"users/{user_id}"))
 
     async def _fetch_user_groups(self, user_id: str) -> list[dict[str, Any]]:
-        return cast(
-            List[RAW_ITEM],
-            await self.client.send_api_request(f"users/{user_id}/groups"),
-        )
+        all_groups: list[dict[str, Any]] = []
+        async for page in self.client.send_paginated_request(f"users/{user_id}/groups"):
+            all_groups.extend(page)
+        return all_groups
 
     async def _fetch_user_apps(self, user_id: str) -> list[RAW_ITEM]:
-        return cast(
-            List[RAW_ITEM],
-            await self.client.send_api_request(f"users/{user_id}/appLinks"),
-        )
+        all_apps: list[RAW_ITEM] = []
+        async for page in self.client.send_paginated_request(
+            f"users/{user_id}/appLinks"
+        ):
+            all_apps.extend(page)
+        return all_apps
 
     async def _fetch_enrichments(
         self, user_id: str, include_groups: bool, include_applications: bool
