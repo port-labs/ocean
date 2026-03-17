@@ -52,12 +52,16 @@ class TestCheckmarxDastScanResultExporter:
 
     @pytest.fixture
     def basic_options(self) -> ListDastScanResultOptions:
-        return ListDastScanResultOptions(dast_scan_id="scan-1")
+        return ListDastScanResultOptions(
+            dast_scan_id="scan-1",
+            dast_project_id="project-1",
+        )
 
     @pytest.fixture
     def options_with_filters(self) -> ListDastScanResultOptions:
         return ListDastScanResultOptions(
             dast_scan_id="scan-1",
+            dast_project_id="project-1",
             severity=["CRITICAL", "HIGH"],
             status=["NEW", "RECURRENT"],
             state=["TO_VERIFY", "CONFIRMED"],
@@ -247,20 +251,22 @@ class TestCheckmarxDastScanResultExporter:
         assert params == {}
 
     @pytest.mark.asyncio
-    async def test_enrich_scan_result_with_dast_scan_id(
+    async def test_enrich_scan_result_with_dast_scan_info(
         self, exporter: CheckmarxDastScanResultExporter
     ) -> None:
         """Test enriching scan result with DAST scan ID."""
         dast_scan_result = {"resultId": "result-1", "severity": "high"}
         dast_scan_id = "scan-1"
+        dast_project_id = "project-1"
 
-        result = exporter._enrich_scan_result_with_dast_scan_id(
-            dast_scan_result, dast_scan_id
+        result = exporter._enrich_scan_result_with_dast_scan_info(
+            dast_scan_result, dast_scan_id, dast_project_id
         )
 
         assert result["resultId"] == "result-1"
         assert result["severity"] == "high"
-        assert result["__dast_scan_id"] == "scan-1"
+        assert result["__dast_scan_id"] == dast_scan_id
+        assert result["__dast_project_id"] == dast_project_id
 
     @pytest.mark.asyncio
     async def test_enrich_scan_result_preserves_existing_data(
@@ -275,9 +281,10 @@ class TestCheckmarxDastScanResultExporter:
             "createdAt": "2023-01-01T00:00:00Z",
         }
         dast_scan_id = "scan-1"
+        dast_project_id = "project-1"
 
-        result = exporter._enrich_scan_result_with_dast_scan_id(
-            dast_scan_result, dast_scan_id
+        result = exporter._enrich_scan_result_with_dast_scan_info(
+            dast_scan_result, dast_scan_id, dast_project_id
         )
 
         assert result["resultId"] == "result-1"
@@ -285,7 +292,8 @@ class TestCheckmarxDastScanResultExporter:
         assert result["status"] == "new"
         assert result["state"] == "to_verify"
         assert result["createdAt"] == "2023-01-01T00:00:00Z"
-        assert result["__dast_scan_id"] == "scan-1"
+        assert result["__dast_scan_id"] == dast_scan_id
+        assert result["__dast_project_id"] == dast_project_id
 
     @pytest.mark.asyncio
     async def test_multiple_batches_handling(

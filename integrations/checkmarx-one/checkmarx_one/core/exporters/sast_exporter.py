@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
@@ -9,6 +9,14 @@ from checkmarx_one.utils import sast_visible_columns
 
 class CheckmarxSastExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One SAST results."""
+
+    def _enrich_sast_result_with_scan_info(
+        self, result: Dict[str, Any], scan_id: str, project_id: str
+    ):
+        """Enrich a SAST result with the scan ID and project ID."""
+        result["__scan_id"] = scan_id
+        result["__project_id"] = project_id
+        return result
 
     async def get_resource(self, options: Any) -> RAW_ITEM:
 
@@ -38,7 +46,12 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
             logger.info(
                 f"Fetched batch of {len(results)} SAST results for scan {options['scan_id']}"
             )
-            yield results
+            yield [
+                self._enrich_sast_result_with_scan_info(
+                    result, options["scan_id"], options["project_id"]
+                )
+                for result in results
+            ]
 
     def _build_paginated_resource_params(
         self, options: ListSastOptions

@@ -84,7 +84,8 @@ class TestCheckmarxSastExporter:
     ) -> None:
         """Test getting paginated SAST results with single batch."""
         scan_id = "scan-123"
-        options: ListSastOptions = {"scan_id": scan_id}
+        project_id = "project-1"
+        options: ListSastOptions = {"scan_id": scan_id, "project_id": project_id}
         mock_results = [
             {"result-id": "1", "query-name": "Vulnerability 1"},
             {"result-id": "2", "query-name": "Vulnerability 2"},
@@ -104,6 +105,8 @@ class TestCheckmarxSastExporter:
         assert len(results) == 1
         assert len(results[0]) == 2
         assert results[0][0]["result-id"] == "1"
+        assert results[0][0]["__project_id"] == project_id
+        assert results[0][0]["__scan_id"] == scan_id
         assert results[0][0]["query-name"] == "Vulnerability 1"
         assert results[0][1]["result-id"] == "2"
         assert results[0][1]["query-name"] == "Vulnerability 2"
@@ -114,7 +117,8 @@ class TestCheckmarxSastExporter:
     ) -> None:
         """Test getting paginated SAST results with multiple batches."""
         scan_id = "scan-123"
-        options: ListSastOptions = {"scan_id": scan_id}
+        project_id = "project-1"
+        options: ListSastOptions = {"scan_id": scan_id, "project_id": project_id}
         batch1 = [{"result-id": "1", "query-name": "Vulnerability 1"}]
         batch2 = [{"result-id": "2", "query-name": "Vulnerability 2"}]
 
@@ -134,6 +138,7 @@ class TestCheckmarxSastExporter:
         assert len(results[0]) == 1
         assert len(results[1]) == 1
         assert results[0][0]["result-id"] == "1"
+        assert results[0][0]["__project_id"] == project_id
         assert results[0][0]["query-name"] == "Vulnerability 1"
         assert results[1][0]["result-id"] == "2"
         assert results[1][0]["query-name"] == "Vulnerability 2"
@@ -144,7 +149,7 @@ class TestCheckmarxSastExporter:
     ) -> None:
         """Test that paginated request uses correct endpoint and params."""
         scan_id = "scan-789"
-        options: ListSastOptions = {"scan_id": scan_id}
+        options: ListSastOptions = {"scan_id": scan_id, "project_id": "project-1"}
         mock_results = [{"result-id": "1", "query-name": "Test Vulnerability"}]
 
         call_args: dict[str, Any] = {}
