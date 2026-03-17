@@ -30,6 +30,13 @@ class SentrySelector(Selector):
     )
 
 
+class UserResourceConfig(ResourceConfig):
+    kind: Literal["user"] = Field(
+        title="Sentry User",
+        description="Sentry user resource kind.",
+    )
+
+
 class TeamSelector(Selector):
     include_members: bool = Field(
         alias="includeMembers",
@@ -108,6 +115,7 @@ class SentryPortAppConfig(PortAppConfig):
         SentryResourceConfig
         | SentryProjectTagResourceConfig
         | TeamResourceConfig
+        | UserResourceConfig
         | IssueResourceConfig
         | IssueTagResourceConfig
     ] = Field(
