@@ -331,14 +331,13 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             base64_payload = base64.b64encode(
                 json.dumps(webhook_event.payload).encode("utf-8")
             ).decode("utf-8")
+            logger.debug(
+                "Got webhook event",
+                webhook_event=base64_payload,
+                trace_id=webhook_event.trace_id,
+            )
         except Exception as e:
             logger.error(f"Error logging webhook event: {str(e)}")
-            return
-        logger.debug(
-            "Got webhook event",
-            webhook_event=base64_payload,
-            trace_id=webhook_event.trace_id,
-        )
 
     async def _cancel_all_event_processors(
         self,
