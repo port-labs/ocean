@@ -90,9 +90,7 @@ class OktaClient:
         Raises:
             httpx.HTTPError: If the request fails after all retries
         """
-        normalized_endpoint = endpoint.lstrip("/")
-        base = self.base_url.rstrip("/")
-        url = f"{base}/{normalized_endpoint}"
+        url = self._normalize_url(endpoint)
 
         request_headers: Dict[str, str] = {
             "Authorization": f"SSWS {self.api_token}",
@@ -194,3 +192,12 @@ class OktaClient:
 
             endpoint = next_url.replace(self.base_url.rstrip("/"), "").lstrip("/")
             params = None
+
+    def _normalize_url(self, endpoint: str) -> str:
+        base = self.base_url.rstrip("/")
+        normalized_endpoint = endpoint.lstrip("/")
+        if normalized_endpoint.startswith("http"):
+            url = normalized_endpoint
+        else:
+            url = f"{base}/{normalized_endpoint}"
+        return url
