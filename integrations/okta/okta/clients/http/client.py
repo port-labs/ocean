@@ -78,7 +78,7 @@ class OktaClient:
         """Perform an HTTP request to the Okta API and return the raw response.
 
         Args:
-            endpoint: The API endpoint (e.g., '/users')
+            endpoint: The API endpoint path (e.g., '/users') or an absolute URL (e.g., 'https://{your-domain}.okta.com/api/v1/users')
             method: HTTP method (GET, POST, PUT, DELETE)
             params: Query parameters
             json_data: JSON payload for POST/PUT requests
