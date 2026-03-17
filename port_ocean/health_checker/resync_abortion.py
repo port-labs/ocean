@@ -52,13 +52,13 @@ def _get_integration(
 
 def _get_latest_resync_id(
     client: httpx.Client,
-    ingest_url: str,
+    api_url: str,
     integration_internal_id: str,
     token: str,
 ) -> Optional[str]:
     try:
         response = client.get(
-            f"{ingest_url}/integration/{quote_plus(integration_internal_id)}/syncsMetadata",
+            f"{api_url}/integration/{quote_plus(integration_internal_id)}/syncsMetadata",
             headers={"Authorization": token},
         )
         response.raise_for_status()
@@ -83,13 +83,11 @@ def report_resync_aborted_to_port(config: HealthCheckerSettings) -> None:
         or not config.port_client_id
         or not config.port_client_secret
         or not config.integration_identifier
-        or not config.ingest_url
     ):
         return
 
     base_url = config.port_base_url.rstrip("/")
     api_url = f"{base_url}/v1"
-    ingest_url = config.ingest_url.rstrip("/")
 
     client = _get_port_client()
     try:
@@ -105,14 +103,14 @@ def report_resync_aborted_to_port(config: HealthCheckerSettings) -> None:
         if not integration:
             return
 
-        resync_id = _get_latest_resync_id(client, ingest_url, integration["_id"], token)
+        resync_id = _get_latest_resync_id(client, api_url, integration["_id"], token)
         if not resync_id:
             return
 
         logger.info("Latest resyncId: {}", resync_id)
 
         url = (
-            f"{ingest_url}/metrics/integration/"
+            f"{api_url}/integration/"
             f"{quote_plus(config.integration_identifier)}/resync/{resync_id}/abort"
         )
         try:
