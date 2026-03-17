@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.29 (2026-03-17)
+
+
+### Improvements
+
+- Pre-compute `__is_default_branch` on branch entities during hydration to avoid expensive JQ comparisons at scale
+
+
 ## 5.1.28 (2026-03-16)
 
 
