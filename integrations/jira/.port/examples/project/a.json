@@ -1,0 +1,24 @@
+{
+  "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+  "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/project/10183",
+  "id": "10183",
+  "key": "AI",
+  "name": "AI Agentic Demo",
+  "avatarUrls": {
+    "48x48": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10407",
+    "24x24": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10407?size=small",
+    "16x16": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10407?size=xsmall",
+    "32x32": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10407?size=medium"
+  },
+  "projectTypeKey": "software",
+  "simplified": true,
+  "style": "next-gen",
+  "isPrivate": false,
+  "properties": {},
+  "entityId": "907655ca-0f35-4af8-bcc4-f735166a4b46",
+  "uuid": "907655ca-0f35-4af8-bcc4-f735166a4b46",
+  "insight": {
+    "totalIssueCount": 20,
+    "lastIssueUpdateTime": "2026-01-21T19:09:27.365+0200"
+  }
+}

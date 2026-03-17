@@ -1,0 +1,15 @@
+{
+  "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-82cc-1dd5ebfeece8/rest/api/3/user?accountId=6233087e66b6de0068",
+  "accountId": "6233087e66b6de0068",
+  "accountType": "atlassian",
+  "emailAddress": "jdoe@getport.io",
+  "avatarUrls": {
+    "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/6233087e66b6de0068/e28ac4af-ac84-42c1-b223-b78bdabc3c10/48",
+    "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/6233087e66b6de0068/e28ac4af-ac84-42c1-b223-b78bdabc3c10/24",
+    "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/6233087e66b6de0068/e28ac4af-ac84-42c1-b223-b78bdabc3c10/16",
+    "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/6233087e66b6de0068/e28ac4af-ac84-42c1-b223-b78bdabc3c10/32"
+  },
+  "displayName": "John Doe",
+  "active": true,
+  "locale": "en_US"
+}

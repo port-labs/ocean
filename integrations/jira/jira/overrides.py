@@ -17,7 +17,7 @@ class TeamSelector(Selector):
 
 
 class TeamResourceConfig(ResourceConfig):
-    kind: Literal["team"]
+    kind: Literal["team"] = Field(title="Team Kind", description="A Jira team")
     selector: TeamSelector
 
 
@@ -38,7 +38,7 @@ class JiraIssueSelector(Selector):
 
 class JiraIssueConfig(ResourceConfig):
     selector: JiraIssueSelector
-    kind: Literal["issue"]
+    kind: Literal["issue"] = Field(title="Issue Kind", description="A Jira issue")
 
 
 class JiraProjectSelector(Selector):
@@ -50,13 +50,8 @@ class JiraProjectSelector(Selector):
 
 class JiraProjectResourceConfig(ResourceConfig):
     selector: JiraProjectSelector
-    kind: Literal["project"]
+    kind: Literal["project"] = Field(title="Project Kind", description="A Jira project")
 
 
 class JiraPortAppConfig(PortAppConfig):
-    resources: list[
-        TeamResourceConfig
-        | JiraIssueConfig
-        | JiraProjectResourceConfig
-        | ResourceConfig
-    ]
+    resources: list[TeamResourceConfig | JiraIssueConfig | JiraProjectResourceConfig]
