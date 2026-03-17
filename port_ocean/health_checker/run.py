@@ -2,7 +2,8 @@
 Health checker for Ocean integrations.
 
 Polls the /isHealthy route at a configurable interval. After a configurable number
-of consecutive failures, logs a message and handles the health check as a failure.
+of consecutive failures, optionally calls integ-service to abort the resync, then
+logs and exits with code 1.
 """
 
 import sys
@@ -12,10 +13,11 @@ import httpx
 from loguru import logger
 
 from port_ocean.health_checker.config import HealthCheckerSettings
+from port_ocean.health_checker.resync_abortion import report_resync_aborted_to_port
 
 
 def run_health_checker(settings: HealthCheckerSettings | None = None) -> None:
-    """Poll the health endpoint; after consecutive failures exceed threshold, log and exit 1."""
+    """Poll the health endpoint; after consecutive failures exceed threshold, call integ-service to abort resync (if configured), log and exit 1."""
     config = settings or HealthCheckerSettings()
     consecutive_failures = 0
 
@@ -30,6 +32,7 @@ def run_health_checker(settings: HealthCheckerSettings | None = None) -> None:
         except Exception as e:
             consecutive_failures += 1
             if consecutive_failures >= config.failure_threshold:
+                report_resync_aborted_to_port(config)
                 logger.error(
                     "Health check failed {} times in a row (url={}). Integration appears unhealthy: {}",
                     config.failure_threshold,
