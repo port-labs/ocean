@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.41 (2026-03-17)
+
+
+### Bug Fixes
+
+- Fixed `_get_repository_files` to skip `None` results from `download_single_file` instead of yielding `[None]`
+
+
+## 0.7.40 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
 ## 0.7.39 (2026-03-16)
 
 
