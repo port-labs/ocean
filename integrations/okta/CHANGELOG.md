@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.83 (2026-03-17)
+## 0.1.84 (2026-03-17)
 
 
 ### Bug Fixes
 
 - Fixed user group and app enrichment to paginate through all results instead of returning only the first 200
 - Fixed pagination URL handling when using an Okta admin domain whose Link header returns a different subdomain
+
+
+## 0.1.83 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
 
 
 ## 0.1.82 (2026-03-17)
