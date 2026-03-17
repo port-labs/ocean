@@ -1,0 +1,464 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "73987",
+  "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebf/rest/api/3/issue/73987",
+  "key": "SEC-108",
+  "fields": {
+    "statuscategorychangedate": "2026-01-26T01:39:15.510+0200",
+    "issuetype": {
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/issuetype/10095",
+      "id": "10095",
+      "description": "Tasks track small, distinct pieces of work.",
+      "iconUrl": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/2/universal_avatar/view/type/issuetype/avatar/10318?size=medium",
+      "name": "Task",
+      "subtask": false,
+      "avatarId": 10318,
+      "entityId": "a698acf5-aead-44a9-b7b7-9d4eb7adef3c",
+      "hierarchyLevel": 0
+    },
+    "components": [],
+    "timespent": null,
+    "timeoriginalestimate": null,
+    "project": {
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/project/10084",
+      "id": "10084",
+      "key": "SEC",
+      "name": "SECURITY",
+      "projectTypeKey": "software",
+      "simplified": true,
+      "avatarUrls": {
+        "48x48": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10423",
+        "24x24": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10423?size=small",
+        "16x16": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10423?size=xsmall",
+        "32x32": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10423?size=medium"
+      }
+    },
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Description",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ": This bucket/blob container/storage account has an overly permissive policy allowing anonymous read access (\"*\")."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "In order to access the relevant resource, an attacker simply needs to be familiar with its name, which is public information. It could be configured to allow unauthenticated access, or limit access to any user of the relevant cloud service provider (but since anyone can sign up for free, this is equivalent to unauthenticated access)."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Publicly exposed resources are more easily accessible for an attacker than internal ones. Therefore, a publicly exposed bucket can be more easily compromised by an attacker. Any attacker familiar with the bucket's endpoint can exfiltrate whatever data it contains."
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Status",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ": OPEN"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Created",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ": 2026-01-25T23:39:07.31201Z"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Severity",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ": HIGH"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Project",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ": "
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "—"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Resource",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ":\tadvance-templates"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Type",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ": bucket"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Cloud Platform",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": ": AWS"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Cloud Resource URL:",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " "
+            },
+            {
+              "type": "text",
+              "text": "https://console.aws.amazon.com/s3/buckets/advance-templates?region=eu-west-1",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://console.aws.amazon.com/s3/buckets/advance-templates?region=eu-west-1"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Subscription Name (ID):",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " Main (185657066287)"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Region:",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " eu-west-1"
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Risks:",
+              "marks": [
+                {
+                  "type": "strong"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": " EXTERNAL_ATTACK_SURFACE, UNPROTECTED_DATA, UNPROTECTED_PRINCIPAL, "
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "View Wiz issue",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://app.wiz.io/issues#~(issue~'dad1a316-77e1-48ab-9ae6-b03e2979c1da)"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "hardBreak"
+            },
+            {
+              "type": "text",
+              "text": "Source Automation Rule: High or Critical finding discovered"
+            }
+          ]
+        }
+      ]
+    },
+    "fixVersions": [],
+    "aggregatetimespent": null,
+    "statusCategory": {
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/statuscategory/2",
+      "id": 2,
+      "key": "new",
+      "colorName": "blue-gray",
+      "name": "To Do"
+    },
+    "resolution": null,
+    "timetracking": {},
+    "customfield_10015": null,
+    "security": null,
+    "attachment": [
+      {
+        "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/attachment/24535",
+        "id": "24535",
+        "filename": "evidence_dad1a316-77e1-48ab-9ae6-b03e2979c1da.csv",
+        "author": {
+          "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/user?accountId=712020%3Abaa21d13-8c87-441b-a3c9-748c89270356",
+          "accountId": "712020:baa21d13-8c87-441b-a3c9-748c89270356",
+          "emailAddress": "jira-security-wiz-integration@port.io",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+            "24x24": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+            "16x16": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+            "32x32": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png"
+          },
+          "displayName": "Wiz Integration",
+          "active": true,
+          "timeZone": "Asia/Jerusalem",
+          "accountType": "atlassian"
+        },
+        "created": "2026-01-26T01:39:16.050+0200",
+        "size": 1227,
+        "mimeType": "text/csv",
+        "content": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/attachment/content/24535"
+      }
+    ],
+    "aggregatetimeestimate": null,
+    "resolutiondate": null,
+    "workratio": -1,
+    "summary": "Wiz Issue: Publicly readable bucket (allows direct anonymous read access)",
+    "issuerestriction": {
+      "issuerestrictions": {},
+      "shouldDisplay": true
+    },
+    "watches": {
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/issue/SEC-108/watchers",
+      "watchCount": 1,
+      "isWatching": false
+    },
+    "lastViewed": null,
+    "creator": {
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/user?accountId=712020%3Abaa21d13-8c87-441b-a3c9-748c89270356",
+      "accountId": "712020:baa21d13-8c87-441b-a3c9-748c89270356",
+      "emailAddress": "jira-security-wiz-integration@port.io",
+      "avatarUrls": {
+        "48x48": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "24x24": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "16x16": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "32x32": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png"
+      },
+      "displayName": "Wiz Integration",
+      "active": true,
+      "timeZone": "Asia/Jerusalem",
+      "accountType": "atlassian"
+    },
+    "subtasks": [],
+    "created": "2026-01-26T01:39:15.250+0200",
+    "customfield_10020": null,
+    "customfield_10021": null,
+    "reporter": {
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/user?accountId=712020%3Abaa21d13-8c87-441b-a3c9-748c892",
+      "accountId": "712020:baa21d13-8c87-441b-a3c9-748c89270356",
+      "emailAddress": "jira-security-wiz-integration@port.io",
+      "avatarUrls": {
+        "48x48": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "24x24": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "16x16": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "32x32": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png"
+      },
+      "displayName": "Wiz Integration",
+      "active": true,
+      "timeZone": "Asia/Jerusalem",
+      "accountType": "atlassian"
+    },
+    "aggregateprogress": {
+      "progress": 0,
+      "total": 0
+    },
+    "customfield_10000": "{}",
+    "priority": {
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/priority/3",
+      "iconUrl": "https://getport.atlassian.net/images/icons/priorities/medium_new.svg",
+      "name": "Medium",
+      "id": "3"
+    },
+    "customfield_10001": null,
+    "labels": [
+      "security"
+    ],
+    "customfield_10016": null,
+    "environment": null,
+    "customfield_10019": "0|i06jcf:",
+    "timeestimate": null,
+    "aggregatetimeoriginalestimate": null,
+    "versions": [],
+    "duedate": null,
+    "progress": {
+      "progress": 0,
+      "total": 0
+    },
+    "issuelinks": [],
+    "votes": {
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/issue/SEC-108/votes",
+      "votes": 0,
+      "hasVoted": false
+    },
+    "comment": {
+      "comments": [],
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/issue/73987/comment",
+      "maxResults": 0,
+      "total": 0,
+      "startAt": 0
+    },
+    "assignee": {
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/user?accountId=712020%3A0c6fd01e-b553-44e6-8f36-32221f50aff3",
+      "accountId": "712020:0c6fd01e-b553-44e6-8f36-32221f50aff3",
+      "emailAddress": "asafa@port.io",
+      "avatarUrls": {
+        "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:0c6fd01e-b553-44e6-8f36-32221f50aff3/7b6b6ac9-fca8-4907-8b82-d416c04cd793/48",
+        "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:0c6fd01e-b553-44e6-8f36-32221f50aff3/7b6b6ac9-fca8-4907-8b82-d416c04cd793/24",
+        "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:0c6fd01e-b553-44e6-8f36-32221f50aff3/7b6b6ac9-fca8-4907-8b82-d416c04cd793/16",
+        "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:0c6fd01e-b553-44e6-8f36-32221f50aff3/7b6b6ac9-fca8-4907-8b82-d416c04cd793/32"
+      },
+      "displayName": "Asaf Apelbaum",
+      "active": true,
+      "timeZone": "Asia/Jerusalem",
+      "accountType": "atlassian"
+    },
+    "worklog": {
+      "startAt": 0,
+      "maxResults": 20,
+      "total": 0,
+      "worklogs": []
+    },
+    "updated": "2026-01-26T01:39:16.439+0200",
+    "status": {
+      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/status/10107",
+      "description": "",
+      "iconUrl": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/",
+      "name": "To Do",
+      "id": "10107",
+      "statusCategory": {
+        "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/statuscategory/2",
+        "id": 2,
+        "key": "new",
+        "colorName": "blue-gray",
+        "name": "To Do"
+      }
+    }
+  }
+}
