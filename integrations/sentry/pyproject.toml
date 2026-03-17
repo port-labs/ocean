@@ -1,10 +1,6 @@
 [tool.poetry]
 name = "sentry"
-<<<<<<< task_tboeow/sentry_selector_propagation
-version = "0.3.32"
-=======
-version = "0.3.37"
->>>>>>> main
+version = "0.3.38"
 description = "Sentry Integration"
 authors = ["Dvir Segev <dvir@getport.io>","Matan Geva <matang@getport.io>"]
 
