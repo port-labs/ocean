@@ -1135,6 +1135,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             async with metric_resource_context(MetricResourceKind.RUNTIME):
                 ocean.metrics.sync_state = SyncState.SYNCING
+                ocean.metrics.set_metric(
+                    name=MetricType.SUCCESS_NAME,
+                    labels=[MetricResourceKind.RUNTIME, MetricPhase.RESYNC],
+                    value=0,
+                )
+
                 await ocean.metrics.send_metrics_to_webhook(
                     kind=MetricResourceKind.RUNTIME
                 )

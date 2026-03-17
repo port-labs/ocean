@@ -7,11 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.38.19 (2026-03-17)
+## 0.38.20 (2026-03-17)
 
 ### Features
 
 - Added `originalWebhook` to lakehouse live events: the raw webhook payload is now included in `kafkaMetadata` when sending live event data to the lakehouse, enabling audit trails and debugging.
+
+## 0.38.19 (2026-03-16)
+
+### Bug Fixes
+
+- Fixed overall sync status being stuck as `Syncing` instead of `Failed` when a resync fails during the transform phase of a specific kind. Initialized `__runtime__` and `__reconciliation__` success metrics to `0` before processing begins so their documents exist in the DB when `handle_resync_abortion` is triggered. Moved `metric_resource_context` and `resource_context` stacks `pop()` into `finally` blocks to guarantee context cleanup on error, preventing stale kind context from being used in subsequent metric updates.
 
 ## 0.38.18 (2026-03-16)
 
