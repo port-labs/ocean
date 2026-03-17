@@ -173,6 +173,8 @@ class TestNextLinkPagination:
 
         responses = [page1, page2]
         response_index = 0
+        captured_urls: List[str] = []
+        captured_params: List[Dict[str, Any]] = []
 
         async def mock_make_request(
             url: str,
@@ -182,6 +184,8 @@ class TestNextLinkPagination:
             body: Dict[str, Any] | None = None,
         ) -> MagicMock:
             nonlocal response_index
+            captured_urls.append(url)
+            captured_params.append(params)
             mock_response = MagicMock()
             mock_response.json.return_value = responses[response_index]
             response_index += 1
@@ -204,12 +208,20 @@ class TestNextLinkPagination:
         async for batch in handler.fetch_all(
             url="https://api.example.com/items",
             method="GET",
-            params={},
+            params={"initial": "param"},
             headers={},
         ):
             results.append(batch)
 
         assert len(results) == 2
+        assert results[0] == [page1]
+        assert results[1] == [page2]
+
+        assert captured_urls[0] == "https://api.example.com/items"
+        assert captured_urls[1] == "https://api.example.com/items?page=2"
+
+        assert captured_params[0] == {"initial": "param"}
+        assert captured_params[1] == {}
 
 
 class TestPaginationHandlerRegistry:

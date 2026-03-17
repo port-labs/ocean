@@ -272,12 +272,12 @@ class NextLinkPagination(PaginationHandler):
 
             yield [response_data]
 
-            if next_link_path in response_data:
-                next_url = response_data[next_link_path]
-            elif "." in next_link_path:
-                next_url = self.get_nested_value(response_data, next_link_path)
-            else:
-                next_url = None
+            next_url = None
+            if isinstance(response_data, dict):
+                if next_link_path in response_data:
+                    next_url = response_data[next_link_path]
+                elif "." in next_link_path:
+                    next_url = self.get_nested_value(response_data, next_link_path)
 
             if not next_url:
                 break
