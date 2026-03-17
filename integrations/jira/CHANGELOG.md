@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.100 (2026-03-17)
+
+
+### Bug Fixes
+
+- Fix selector propagation for Jira
+
+
 ## 0.5.99 (2026-03-17)
 
 
