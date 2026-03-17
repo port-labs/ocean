@@ -202,11 +202,27 @@ class SelectorWithApiFilters(CustomSelector):
 
 class CustomResourceConfig(ResourceConfig):
     selector: CustomSelector
-    kind: Literal[
-        "analysis",
-        "saas_analysis",
-        "portfolios",
-    ]
+
+
+class SonarQubeAnalysisResourceConfig(CustomResourceConfig):
+    kind: Literal["analysis"] = Field(  # type: ignore
+        title="Analysis",
+        description="SonarQube project analysis",
+    )
+
+
+class SonarQubeSaasAnalysisResourceConfig(CustomResourceConfig):
+    kind: Literal["saas_analysis"] = Field(  # type: ignore
+        title="SaaS Analysis",
+        description="SonarQube SaaS project analysis",
+    )
+
+
+class SonarQubePortfoliosResourceConfig(CustomResourceConfig):
+    kind: Literal["portfolios"] = Field(  # type: ignore
+        title="Portfolios",
+        description="SonarQube portfolios",
+    )
 
 
 class SonarQubeComponentProjectSelector(
@@ -216,7 +232,10 @@ class SonarQubeComponentProjectSelector(
 
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
-    kind: Literal["projects"]  # type: ignore
+    kind: Literal["projects"] = Field(
+        title="Projects",
+        description="SonarQube projects",
+    )
     selector: SonarQubeComponentProjectSelector
 
 
@@ -225,12 +244,18 @@ class SonarQubeGAProjectSelector(SonarQubeMetricsSelector):
 
 
 class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
-    kind: Literal["projects_ga"]  # type: ignore
+    kind: Literal["projects_ga"] = Field(  # type: ignore
+        title="Projects (GA)",
+        description="SonarQube projects using the General Availability API",
+    )
     selector: SonarQubeGAProjectSelector
 
 
 class SonarQubeIssueSelector(SelectorWithApiFilters):
-    api_filters: SonarQubeIssueApiFilter | None = Field(alias="apiFilters")
+    api_filters: SonarQubeIssueApiFilter | None = Field(
+        alias="apiFilters",
+        description="Query parameters to filter the issues to retrieve. For example, you can use the 'assigned' parameter to retrieve only assigned or unassigned issues.",
+    )
     project_api_filters: SonarQubeGAProjectAPIFilter | None = Field(
         alias="projectApiFilters",
         description="Allows users to control which projects to query the issues for",
@@ -238,7 +263,10 @@ class SonarQubeIssueSelector(SelectorWithApiFilters):
 
 
 class SonarQubeIssueResourceConfig(CustomResourceConfig):
-    kind: Literal["issues"]  # type: ignore
+    kind: Literal["issues"] = Field(
+        title="Issues",
+        description="SonarQube issues",
+    )
     selector: SonarQubeIssueSelector
 
 
@@ -246,24 +274,23 @@ class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector): ...
 
 
 class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):
-    kind: Literal["onprem_analysis"]  # type: ignore
+    kind: Literal["onprem_analysis"] = Field(  # type: ignore
+        title="On-Premise Analysis",
+        description="SonarQube on-premise project analysis",
+    )
     selector: SonarQubeOnPremAnalysisSelector
 
 
-SonarResourcesConfig = Annotated[
-    Union[
-        SonarQubeProjectResourceConfig,
-        SonarQubeIssueResourceConfig,
-        SonarQubeGAProjectResourceConfig,
-        SonarQubeOnPremAnalysisResourceConfig,
-        CustomResourceConfig,
-    ],
-    Field(discriminator="kind"),
-]
-
-
 class SonarQubePortAppConfig(PortAppConfig):
-    resources: list[SonarResourcesConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[
+        SonarQubeProjectResourceConfig
+        | SonarQubeIssueResourceConfig
+        | SonarQubeOnPremAnalysisResourceConfig
+        | SonarQubeGAProjectResourceConfig
+        | SonarQubeAnalysisResourceConfig
+        | SonarQubeSaasAnalysisResourceConfig
+        | SonarQubePortfoliosResourceConfig
+    ] = Field(default_factory=list)  # type: ignore
 
 
 class SonarQubeIntegration(BaseIntegration):

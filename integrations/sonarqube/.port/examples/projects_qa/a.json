@@ -1,0 +1,74 @@
+{
+  "key": "sonarqube-integration",
+  "name": "sonarqube-integration",
+  "qualifier": "TRK",
+  "visibility": "public",
+  "lastAnalysisDate": "2025-10-16T08:10:52+0000",
+  "revision": "dd74564927c8a9a2ab966e6d7e3acb2f5aabbaa9",
+  "managed": false,
+  "__measures": [
+    {
+      "metric": "coverage",
+      "value": "0.0",
+      "bestValue": false
+    },
+    {
+      "metric": "bugs",
+      "value": "0",
+      "bestValue": true
+    },
+    {
+      "metric": "code_smells",
+      "value": "20",
+      "bestValue": false
+    },
+    {
+      "metric": "new_violations",
+      "period": {
+        "index": 1,
+        "value": "0",
+        "bestValue": true
+      }
+    },
+    {
+      "metric": "duplicated_files",
+      "value": "1",
+      "bestValue": false
+    },
+    {
+      "metric": "vulnerabilities",
+      "value": "0",
+      "bestValue": true
+    },
+    {
+      "metric": "security_hotspots",
+      "value": "17",
+      "bestValue": false
+    }
+  ],
+  "__branches": [
+    {
+      "name": "main",
+      "isMain": true,
+      "type": "BRANCH",
+      "status": {
+        "qualityGateStatus": "OK"
+      },
+      "analysisDate": "2025-10-16T08:10:52+0000",
+      "excludedFromPurge": true,
+      "branchId": "fb707756-8fa5-41cf-8a74-1f32e892f0dc"
+    }
+  ],
+  "__branch": {
+    "name": "main",
+    "isMain": true,
+    "type": "BRANCH",
+    "status": {
+      "qualityGateStatus": "OK"
+    },
+    "analysisDate": "2025-10-16T08:10:52+0000",
+    "excludedFromPurge": true,
+    "branchId": "fb707756-8fa5-41cf-8a74-1f32e892f0dc"
+  },
+  "__link": "https://devtools-sonarqube-apps-01.stg-01-internal.getport.io/dashboard?id=sonarqube-integration"
+}
