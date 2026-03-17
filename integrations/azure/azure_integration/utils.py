@@ -11,6 +11,8 @@ from azure_integration.overrides import (
     AzureCloudResourceConfig,
     AzureCloudResourceSelector,
     AzureSpecificKindSelector,
+    AzureResourceGroupResourceConfig,
+    AzureSubscriptionResourceConfig,
 )
 
 BATCH_SIZE = 20
@@ -77,10 +79,20 @@ def resolve_resource_type_from_resource_uri(resource_uri: str) -> str:
 def get_resource_configs_with_resource_kind(
     resource_kind: str,
     resource_configs: typing.List[
-        typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
+        typing.Union[
+            AzureResourceGroupResourceConfig,
+            AzureSubscriptionResourceConfig,
+            AzureCloudResourceConfig,
+            AzureSpecificKindsResourceConfig,
+        ]
     ],
-) -> typing.List[
-    typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
+) -> list[
+    typing.Union[
+        AzureResourceGroupResourceConfig,
+        AzureSubscriptionResourceConfig,
+        AzureCloudResourceConfig,
+        AzureSpecificKindsResourceConfig,
+    ]
 ]:
     """
     Returns the resource configs that have the resource kind
