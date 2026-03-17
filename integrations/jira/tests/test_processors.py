@@ -117,9 +117,7 @@ async def test_authenticate_logs_webhook_headers_and_issue_key(
         "x-atlassian-webhook-flow": "sync",
         "x-atlassian-webhook-retry": "1",
     }
-    with patch(
-        "webhook_processors.issue_webhook_processor.logger"
-    ) as mock_logger:
+    with patch("webhook_processors.issue_webhook_processor.logger") as mock_logger:
         result = await jiraIssueWebhookProcessor.authenticate(payload, headers)
     assert result is True
     mock_logger.info.assert_called_once()
@@ -137,9 +135,7 @@ async def test_authenticate_with_missing_headers_uses_defaults(
     """Verify authenticate handles missing headers and defaults retry to 0."""
     payload = {"issue": {"key": "KEY-1", "id": "999"}}
     headers = {}
-    with patch(
-        "webhook_processors.issue_webhook_processor.logger"
-    ) as mock_logger:
+    with patch("webhook_processors.issue_webhook_processor.logger") as mock_logger:
         result = await jiraIssueWebhookProcessor.authenticate(payload, headers)
     assert result is True
     mock_logger.info.assert_called_once()
