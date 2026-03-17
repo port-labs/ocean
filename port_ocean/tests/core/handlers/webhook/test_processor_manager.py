@@ -537,6 +537,75 @@ def test_registerProcessor_invalidHandlerRegistration_throwsError(
         processor_manager.register_processor("/test", object)  # type: ignore
 
 
+def test_log_webhook_event_logs_base64_payload_and_trace_id(
+    processor_manager: LiveEventsProcessorManager,
+    webhook_event: WebhookEvent,
+) -> None:
+    """Test that _log_webhook_event logs webhook with base64-encoded payload and trace_id for traceability."""
+    import base64
+    import json
+
+    with patch(
+        "port_ocean.core.handlers.webhook.processor_manager.logger"
+    ) as mock_logger:
+        processor_manager._log_webhook_event(webhook_event)
+
+    expected_b64 = base64.b64encode(
+        json.dumps(webhook_event.payload).encode("utf-8")
+    ).decode("utf-8")
+    mock_logger.debug.assert_called_once_with(
+        "Got webhook event",
+        webhook_event=expected_b64,
+        trace_id=webhook_event.trace_id,
+    )
+
+
+def test_log_webhook_event_with_payload_logs_correct_base64(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    """Test that _log_webhook_event base64-encodes the payload correctly."""
+    import base64
+    import json
+
+    event = WebhookEvent(
+        trace_id="trace-123",
+        payload={"event": "issue_created", "id": 42},
+        headers={},
+    )
+    with patch(
+        "port_ocean.core.handlers.webhook.processor_manager.logger"
+    ) as mock_logger:
+        processor_manager._log_webhook_event(event)
+
+    expected_b64 = base64.b64encode(json.dumps(event.payload).encode("utf-8")).decode(
+        "utf-8"
+    )
+    mock_logger.debug.assert_called_once_with(
+        "Got webhook event",
+        webhook_event=expected_b64,
+        trace_id="trace-123",
+    )
+
+
+def test_log_webhook_event_on_serialization_error_logs_error_and_returns(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    """Test that _log_webhook_event catches serialization errors and logs without raising."""
+    # payload with non-JSON-serializable value (e.g. object)
+    event = WebhookEvent(
+        trace_id="trace-456",
+        payload={"bad": object()},
+        headers={},
+    )
+    with patch(
+        "port_ocean.core.handlers.webhook.processor_manager.logger"
+    ) as mock_logger:
+        processor_manager._log_webhook_event(event)
+
+    mock_logger.error.assert_called_once()
+    mock_logger.debug.assert_not_called()
+
+
 @pytest.mark.asyncio
 async def test_processWebhookRequest_successfulProcessing(
     processor: MockWebhookHandlerForProcessWebhookRequest,
