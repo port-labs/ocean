@@ -255,6 +255,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 if resource is not None:
                     webhook_event_raw_results.resource = resource
                 webhook_event_raw_results._webhook_trace_id = processor.event.trace_id
+                webhook_event_raw_results.original_webhook = payload
                 break
 
             except Exception as e:

@@ -223,3 +223,59 @@ async def test_post_integration_raw_data_with_resync_data_type(
         assert expected_json["items"] == raw_data
         assert expected_json["operation"] == "upsert"
         assert expected_json["type"] == "resync"
+
+
+async def test_post_integration_raw_data_with_kafka_metadata(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    """Test post_integration_raw_data with kafka_metadata parameter."""
+    raw_data = [{"name": "test-entity"}]
+    sync_id = "webhook-event-456"
+    kind = "repository"
+    kafka_metadata = {"originalWebhook": {"event": "push", "repository": "my-repo"}}
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data(
+            raw_data,
+            sync_id,
+            kind,
+            operation=LakehouseOperation.UPSERT,
+            data_type="live-event",
+            kafka_metadata=kafka_metadata,
+        )
+
+        lakehouse_integration_client.client.post.assert_called_once()
+        call_args = lakehouse_integration_client.client.post.call_args
+
+        expected_json = call_args[1]["json"]
+        assert expected_json["items"] == raw_data
+        assert expected_json["operation"] == "upsert"
+        assert expected_json["type"] == "live-event"
+        assert expected_json["kafkaMetadata"] == kafka_metadata
+
+
+async def test_post_integration_raw_data_without_kafka_metadata(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    """Test post_integration_raw_data without kafka_metadata parameter."""
+    raw_data = [{"name": "test-entity"}]
+    sync_id = "webhook-event-789"
+    kind = "repository"
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data(
+            raw_data,
+            sync_id,
+            kind,
+            operation=LakehouseOperation.UPSERT,
+            data_type="live-event",
+        )
+
+        lakehouse_integration_client.client.post.assert_called_once()
+        call_args = lakehouse_integration_client.client.post.call_args
+
+        expected_json = call_args[1]["json"]
+        assert expected_json["items"] == raw_data
+        assert expected_json["operation"] == "upsert"
+        assert expected_json["type"] == "live-event"
+        assert "kafkaMetadata" not in expected_json

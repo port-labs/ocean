@@ -106,6 +106,10 @@ class LiveEventsMixin(HandlerMixin):
                     continue
                 kind = webhook_event_raw_result.resource.kind
 
+                kafka_metadata = None
+                if webhook_event_raw_result.original_webhook:
+                    kafka_metadata = {"originalWebhook": webhook_event_raw_result.original_webhook}
+
                 if webhook_event_raw_result.updated_raw_results:
                     logger.debug(
                         f"Sending {len(webhook_event_raw_result.updated_raw_results)} upserted raw items to lakehouse",
@@ -119,6 +123,7 @@ class LiveEventsMixin(HandlerMixin):
                             kind,
                             operation=LakehouseOperation.UPSERT,
                             data_type="live-event",
+                            kafka_metadata=kafka_metadata,
                         )
                     except Exception as e:
                         logger.warning(
@@ -140,6 +145,7 @@ class LiveEventsMixin(HandlerMixin):
                             kind,
                             operation=LakehouseOperation.DELETE,
                             data_type="live-event",
+                            kafka_metadata=kafka_metadata,
                         )
                     except Exception as e:
                         logger.warning(

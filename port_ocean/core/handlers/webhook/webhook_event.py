@@ -119,6 +119,15 @@ class WebhookEventRawResults:
         self._updated_raw_results = updated_raw_results
         self._deleted_raw_results = deleted_raw_results
         self._webhook_trace_id = webhook_trace_id
+        self._original_webhook: EventPayload | None = None
+
+    @property
+    def original_webhook(self) -> EventPayload | None:
+        return self._original_webhook
+
+    @original_webhook.setter
+    def original_webhook(self, value: EventPayload) -> None:
+        self._original_webhook = value
 
     @property
     def resource(self) -> ResourceConfig:
