@@ -7,13 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+<<<<<<< task_tboeow/sentry_selector_propagation
 
 ## 0.3.32 (2026-03-14)
+=======
+## 0.3.37 (2026-03-17)
 
 
 ### Improvements
 
+- Bumped ocean version to ^0.38.20
+
+
+## 0.3.36 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.3.35 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.3.34 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+## 0.3.33 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+## 0.3.32 (2026-03-15)
+>>>>>>> main
+
+
+### Improvements
+
+<<<<<<< task_tboeow/sentry_selector_propagation
 - Added explicit resource config models to `SentryPortAppConfig` for schema validation compliance
+=======
+- Bumped ocean version to ^0.38.14
+>>>>>>> main
 
 
 ## 0.3.31 (2026-03-12)
