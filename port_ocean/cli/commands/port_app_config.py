@@ -50,13 +50,34 @@ def _load_integration_class(path: str) -> Type[BaseIntegration]:
             sys.path.remove(path)
 
 
-def _dereference_schema(result: dict[str, Any]) -> dict[str, Any]:
-    """Dereference all $ref in the UI schema and remove definitions. Uses jsonref."""
+def _flatten_single_allof(obj: Any) -> Any:
+    if isinstance(obj, list):
+        return [_flatten_single_allof(x) for x in obj]
+    if not isinstance(obj, dict):
+        return obj
+    out = {
+        k: _flatten_single_allof(v) if isinstance(v, (dict, list)) else v
+        for k, v in obj.items()
+        if k != "allOf"
+    }
+    allof = obj.get("allOf")
+    if isinstance(allof, list) and len(allof) == 1 and isinstance(allof[0], dict):
+        return {**_flatten_single_allof(allof[0]), **out}
+    if allof is not None:
+        out["allOf"] = _flatten_single_allof(allof)
+    return out
+
+
+def _normalize_schema(result: dict[str, Any]) -> dict[str, Any]:
+    """Normalize the UI schema: resolve $refs, drop definitions, flatten single allOf."""
     for kind_data in result.get("kinds", {}).values():
         selectors = kind_data.get("selectors")
-        if isinstance(selectors, dict) and "definitions" in selectors:
+        if not isinstance(selectors, dict):
+            continue
+        if "definitions" in selectors:
             kind_data["selectors"] = replace_refs(selectors, proxies=False)
             kind_data["selectors"].pop("definitions", None)
+        kind_data["selectors"] = _flatten_single_allof(kind_data["selectors"])
     return result
 
 
@@ -134,7 +155,7 @@ def port_app_config_schema(
             result = config_class.schema()
         case "ui":
             result = validate_and_get_config_schema(config_class)
-            result = _dereference_schema(result)
+            result = _normalize_schema(result)
         case _:
             click.echo(f"Invalid format: {format}", err=True)
             sys.exit(1)

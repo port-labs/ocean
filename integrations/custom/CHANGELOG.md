@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.4.19-beta (2026-03-16)
 
 
-### Features
+### Improvements
 
-- Added NextLinkPagination handler for URL-based pagination
+- Bumped ocean version to ^0.38.18
 
 
 ## 0.4.18-beta (2026-03-16)
