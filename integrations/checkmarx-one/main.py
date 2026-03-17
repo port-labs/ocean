@@ -253,6 +253,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for scan_data in scan_data_list:
             options = ListScanResultOptions(
                 scan_id=scan_data["id"],
+                project_id=scan_data["projectId"],
                 type=kind,
                 severity=selector.severity,
                 state=selector.state,

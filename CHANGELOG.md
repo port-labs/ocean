@@ -7,6 +7,37 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.19 (2026-03-16)
+
+### Bug Fixes
+
+- Fixed overall sync status being stuck as `Syncing` instead of `Failed` when a resync fails during the transform phase of a specific kind. Initialized `__runtime__` and `__reconciliation__` success metrics to `0` before processing begins so their documents exist in the DB when `handle_resync_abortion` is triggered. Moved `metric_resource_context` and `resource_context` stacks `pop()` into `finally` blocks to guarantee context cleanup on error, preventing stale kind context from being used in subsequent metric updates.
+
+## 0.38.18 (2026-03-16)
+
+### Improvements
+
+- UI schema normalization: single-schema `allOf` is now flattened into the parent object when generating port-app-config UI schema.
+- Release workflow: upload integration `.port/examples/` to the registry bucket.
+
+## 0.38.17 (2026-03-16)
+
+### Improvements
+
+- Added integration tests infrastructure for resync process
+
+## 0.38.16 (2026-03-15)
+
+### Improvements
+
+- Added `eventType` and `resyncId` (when applicable) to Port API requests for entity-related operations.
+
+## 0.38.15 (2026-03-15)
+
+### Improvements
+
+- Add type:live_event in body to signify live_event ingested data in lakehouse
+
 ## 0.38.14 (2026-03-15)
 
 ### Improvements

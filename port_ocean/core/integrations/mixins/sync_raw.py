@@ -424,7 +424,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             if lakehouse_data_enabled and raw_results:
                 await ocean.port_client.post_integration_raw_data(
-                    raw_results, event.id, resource_config.kind
+                    raw_results, event.id, resource_config.kind, data_type="resync"
                 )
 
             logger.info(
@@ -467,7 +467,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     batch_index += 1
                     if lakehouse_data_enabled:
                         await ocean.port_client.post_integration_raw_data(
-                            items, event.id, resource_config.kind
+                            items, event.id, resource_config.kind, data_type="resync"
                         )
                     number_of_raw_results += len(items)
                     if send_raw_data_examples_amount > 0:
@@ -1135,6 +1135,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             async with metric_resource_context(MetricResourceKind.RUNTIME):
                 ocean.metrics.sync_state = SyncState.SYNCING
+                ocean.metrics.set_metric(
+                    name=MetricType.SUCCESS_NAME,
+                    labels=[MetricResourceKind.RUNTIME, MetricPhase.RESYNC],
+                    value=0,
+                )
+
                 await ocean.metrics.send_metrics_to_webhook(
                     kind=MetricResourceKind.RUNTIME
                 )
