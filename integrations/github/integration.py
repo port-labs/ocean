@@ -449,7 +449,13 @@ class GithubBranchSelector(RepoSearchSelector):
         title="Protection Rules",
         default=False,
         alias="protectionRules",
-        description="Whether to include branch protection rules for each branch.",
+        description="Whether to include classic branch protection rules for each branch.",
+    )
+    branch_rules: bool = Field(
+        title="Branch Rules",
+        default=False,
+        alias="branchRules",
+        description="Whether to include repository ruleset rules for each branch.",
     )
     branch_names: List[str] = Field(
         title="Branch Names",

@@ -79,6 +79,7 @@ class TestRestBranchExporter:
                     organization="test-org",
                     repo_name="repo1",
                     protection_rules=False,
+                    branch_rules=False,
                     detailed=False,
                     repo={"name": "repo1"},
                 )

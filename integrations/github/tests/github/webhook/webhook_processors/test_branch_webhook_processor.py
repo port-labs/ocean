@@ -154,6 +154,7 @@ class TestBranchWebhookProcessor:
                     repo_name="test-repo",
                     branch_name=branch_name,
                     protection_rules=protection_rules,
+                    branch_rules=resource_config.selector.branch_rules,
                     repo={"name": "test-repo"},
                 )
             )
