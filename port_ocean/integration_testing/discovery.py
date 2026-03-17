@@ -2,7 +2,8 @@
 and writes a structured JSON report of all captured requests.
 
 Usage (from an integration directory):
-    python -m port_ocean.integration_testing.discover
+    make test/integration/discover
+    # or: python -m port_ocean.integration_testing.discovery
 """
 
 import asyncio
