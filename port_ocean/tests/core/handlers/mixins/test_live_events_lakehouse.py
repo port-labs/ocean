@@ -212,7 +212,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
             "repository",
             operation=LakehouseOperation.UPSERT,
             data_type="live-event",
-            kafka_metadata=None,
+            kafka_metadata={},
         )
 
 
@@ -254,7 +254,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
             "repository",
             operation=LakehouseOperation.DELETE,
             data_type="live-event",
-            kafka_metadata=None,
+            kafka_metadata={},
         )
 
 
@@ -361,7 +361,7 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
                     "repository",
                     operation=LakehouseOperation.UPSERT,
                     data_type="live-event",
-                    kafka_metadata=None,
+                    kafka_metadata={},
                 ),
                 call(
                     delete_data,
@@ -369,7 +369,7 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
                     "repository",
                     operation=LakehouseOperation.DELETE,
                     data_type="live-event",
-                    kafka_metadata=None,
+                    kafka_metadata={},
                 ),
             ]
         )
