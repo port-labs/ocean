@@ -1,3 +1,4 @@
+import sys
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
@@ -10,6 +11,10 @@ import asyncio
 from itertools import batched
 
 from .github_endpoints import GithubEndpoints
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+
+
+MAX_REPORT_SIZE_MB = 1048576  # 1MB
 
 
 class GitHubClient:
@@ -94,14 +99,24 @@ class GitHubClient:
             f"covering {response_data['report_start_day']} to {response_data['report_end_day']}"
         )
 
-        for signed_urls in batched(download_links, self.pagination_page_size_limit):
-            reports = await asyncio.gather(
-                *[
-                    self._fetch_report_from_signed_url(signed_url)
-                    for signed_url in signed_urls
-                ]
-            )
-            yield [record for report in reports if report for record in report]
+        # for signed_urls in batched(download_links, self.pagination_page_size_limit):
+        #     reports = await asyncio.gather(
+        #         *[
+        #             self._fetch_report_from_signed_url(signed_url)
+        #             for signed_url in signed_urls
+        #         ]
+        #     )
+        #     yield [record for report in reports if report for record in report]
+
+        for signed_urls_batch in batched(
+            download_links, self.pagination_page_size_limit
+        ):
+            tasks = [
+                self._fetch_report_from_signed_url(signed_url)
+                for signed_url in signed_urls_batch
+            ]
+            async for reports in stream_async_iterators_tasks(*tasks):
+                yield [record for report in reports if report for record in report]
 
     async def fetch_organization_usage_metrics(
         self,
@@ -125,13 +140,20 @@ class GitHubClient:
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
-    ) -> list[dict[str, Any]] | None:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.debug("Fetching report from signed URL")
+        batch = []
         try:
-            response = await self._client.request(method="get", url=signed_url)
-            response.raise_for_status()
-            lines = [line for line in response.text.splitlines() if line.strip()]
-            return [json.loads(line) for line in lines]
+            async with self._client.stream(method="get", url=signed_url) as response:
+                async for line in response.aiter_lines():
+                    line = line.strip()
+                    if line:
+                        batch.append(json.loads(line))
+                        if sys.getsizeof(batch) >= MAX_REPORT_SIZE_MB:
+                            yield batch
+                            batch = []
+                if batch:
+                    yield batch
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching report from signed URL: {e}")
             return None
