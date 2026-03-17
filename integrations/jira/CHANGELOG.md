@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.100 (2026-03-17)
+
+
+### Improvements
+
+- Issue webhook: log Jira webhook headers (x-atlassian-webhook-identifier, flow, retry) and issue key for traceability when authenticating.
+
+
 ## 0.5.99 (2026-03-17)
 
 
