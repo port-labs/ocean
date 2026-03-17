@@ -4315,3 +4315,117 @@ async def test_get_pipeline_stage() -> None:
             mock_fetch_stages.assert_called_once_with(
                 project, EXPECTED_SINGLE_PIPELINE_RUN
             )
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_skips_none_downloads() -> None:
+    """When download_single_file returns None, no [None] batch should be yielded."""
+    mock_repo = {
+        "name": "repo1",
+        "id": "repo1-id",
+        "defaultBranch": "refs/heads/main",
+        "project": {"id": "project1-id"},
+    }
+
+    client = AzureDevopsClient("https://dev.azure.com/test", "token")
+
+    async def mock_generate_repositories(
+        include_disabled_repositories: bool = True,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield [mock_repo]
+
+    async def mock__get_files_by_descriptors(
+        repository: dict[str, Any], descriptors: list[PathDescriptor], branch: str
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                "path": "/src/main.py",
+                "objectId": "abc123",
+                "gitObjectType": "blob",
+                "isFolder": False,
+                "commitId": "commit123",
+            }
+        ]
+
+    async def mock_download_single_file(
+        file: dict[str, Any], repository: dict[str, Any], branch: str
+    ) -> dict[str, Any] | None:
+        # Simulate a failed/skipped download
+        return None
+
+    client.generate_repositories = mock_generate_repositories  # type: ignore
+    client._get_files_by_descriptors = mock__get_files_by_descriptors  # type: ignore
+    client.download_single_file = mock_download_single_file  # type: ignore
+
+    results = []
+    async for batch in client.generate_files(["src/main.py"]):
+        results.extend(batch)
+
+    assert results == [], "Expected no results when all downloads return None"
+
+
+@pytest.mark.asyncio
+async def test_get_repository_files_mixed_none_and_valid_downloads() -> None:
+    """Only non-None download results should be yielded; None results must be skipped."""
+    mock_repo = {
+        "name": "repo1",
+        "id": "repo1-id",
+        "defaultBranch": "refs/heads/main",
+        "project": {"id": "project1-id"},
+    }
+
+    client = AzureDevopsClient("https://dev.azure.com/test", "token")
+
+    async def mock_generate_repositories(
+        include_disabled_repositories: bool = True,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield [mock_repo]
+
+    async def mock__get_files_by_descriptors(
+        repository: dict[str, Any], descriptors: list[PathDescriptor], branch: str
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                "path": "/src/good.py",
+                "objectId": "good123",
+                "gitObjectType": "blob",
+                "isFolder": False,
+                "commitId": "commit123",
+            },
+            {
+                "path": "/src/bad.py",
+                "objectId": "bad123",
+                "gitObjectType": "blob",
+                "isFolder": False,
+                "commitId": "commit123",
+            },
+        ]
+
+    async def mock_download_single_file(
+        file: dict[str, Any], repository: dict[str, Any], branch: str
+    ) -> dict[str, Any] | None:
+        if file["path"] == "/src/bad.py":
+            return None
+        return {
+            "file": {
+                "path": file["path"],
+                "content": {"raw": "# good", "parsed": {}},
+                "size": 10,
+                "objectId": file["objectId"],
+                "isFolder": False,
+            },
+            "repo": repository,
+        }
+
+    client.generate_repositories = mock_generate_repositories  # type: ignore
+    client._get_files_by_descriptors = mock__get_files_by_descriptors  # type: ignore
+    client.download_single_file = mock_download_single_file  # type: ignore
+
+    results = []
+    async for batch in client.generate_files(["src/good.py", "src/bad.py"]):
+        results.extend(batch)
+
+    assert len(results) == 1, "Expected only 1 result; None download must be skipped"
+    assert results[0]["file"]["path"] == "/src/good.py"
+    # Verify None was not included
+    assert all(r is not None for r in results)
