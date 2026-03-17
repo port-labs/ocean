@@ -43,9 +43,20 @@ class AzureResourceGraphSelector(Selector):
     )
 
 
-class AzureResourceGraphConfig(ResourceConfig):
+class AzureResourceConfig(ResourceConfig):
     selector: AzureResourceGraphSelector
-    kind: Literal["resource", "resourceContainer"]
+    kind: Literal["resource"] = Field(
+        title="Azure Resource",
+        description="An Azure resource queried via the Resource Graph",
+    )
+
+
+class AzureResourceContainerConfig(ResourceConfig):
+    selector: AzureResourceGraphSelector
+    kind: Literal["resourceContainer"] = Field(
+        title="Azure Resource Container",
+        description="An Azure resource container (e.g. subscription, resource group) queried via the Resource Graph",
+    )
 
 
 class AzureSubscriptionSelector(Selector, AzureSubscriptionParams): ...
@@ -53,12 +64,17 @@ class AzureSubscriptionSelector(Selector, AzureSubscriptionParams): ...
 
 class AzureSubscriptionResourceConfig(ResourceConfig):
     selector: AzureSubscriptionSelector
-    kind: Literal["subscription"]
+    kind: Literal["subscription"] = Field(
+        title="Azure Subscription",
+        description="An Azure subscription",
+    )
 
 
 class AzurePortAppConfig(PortAppConfig):
     resources: list[
-        AzureResourceGraphConfig | AzureSubscriptionResourceConfig | ResourceConfig
+        AzureResourceConfig
+        | AzureResourceContainerConfig
+        | AzureSubscriptionResourceConfig
     ] = Field(default_factory=list)
 
 

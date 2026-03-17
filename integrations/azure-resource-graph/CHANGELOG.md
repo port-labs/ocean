@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.78-beta (2026-03-16)
+
+
+### Bug Fixes
+
+- Fix selector and kind propagation
+
+
 ## 0.2.77-beta (2026-03-16)
 
 
