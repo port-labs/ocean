@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.20 (2026-03-17)
+
+### Features
+
+- Added `originalWebhook` to lakehouse live events: the raw webhook payload is deep-copied before processing and included in `kafkaMetadata` when sending live event data to the lakehouse, ensuring the original inbound payload is preserved regardless of any mutations during processing.
+
 ## 0.38.19 (2026-03-16)
 
 ### Bug Fixes
