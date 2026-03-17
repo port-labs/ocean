@@ -298,7 +298,7 @@ class IntegrationClientMixin:
         }
         if data_type is not None:
             body["type"] = data_type
-        if kafka_metadata is not None:
+        if kafka_metadata:
             body["kafkaMetadata"] = kafka_metadata
 
         response = await self.client.post(

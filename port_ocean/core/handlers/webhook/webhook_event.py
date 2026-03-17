@@ -120,6 +120,7 @@ class WebhookEventRawResults:
         self._deleted_raw_results = deleted_raw_results
         self._webhook_trace_id = webhook_trace_id
         self._original_webhook: EventPayload | None = None
+        self._original_headers: EventHeaders | None = None
 
     @property
     def original_webhook(self) -> EventPayload | None:
@@ -128,6 +129,14 @@ class WebhookEventRawResults:
     @original_webhook.setter
     def original_webhook(self, value: EventPayload) -> None:
         self._original_webhook = value
+
+    @property
+    def original_headers(self) -> EventHeaders | None:
+        return self._original_headers
+
+    @original_headers.setter
+    def original_headers(self, value: EventHeaders) -> None:
+        self._original_headers = value
 
     @property
     def resource(self) -> ResourceConfig:
