@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
--  Split multi-value Literal kind definitions into dedicated resource config models in `BitbucketAppConfig` for schema validation compliance
+- Split multi-value Literal kind definitions into dedicated resource config models in `BitbucketAppConfig` for schema validation compliance
 
 
 ## 0.1.146-beta (2026-03-17)
