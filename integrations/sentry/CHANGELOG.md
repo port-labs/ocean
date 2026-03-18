@@ -56,16 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.3.32 (2026-03-15)
->>>>>>> main
 
 
 ### Improvements
 
-<<<<<<< task_tboeow/sentry_selector_propagation
-- Added explicit resource config models to `SentryPortAppConfig` for schema validation compliance
-=======
 - Bumped ocean version to ^0.38.14
->>>>>>> main
 
 
 ## 0.3.31 (2026-03-12)
