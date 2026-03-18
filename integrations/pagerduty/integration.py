@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -151,7 +151,7 @@ class PagerdutyIncidentAPIQueryParams(BaseModel):
 class PagerdutyIncidentResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
         api_query_params: PagerdutyIncidentAPIQueryParams | None = Field(
-            alias="apiQueryParams"
+            alias="apiQueryParams", description="API query params to include."
         )
         incident_analytics: bool = Field(
             default=False,
@@ -171,7 +171,7 @@ class PagerdutyIncidentResourceConfig(ResourceConfig):
 class PagerdutyServiceResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
         api_query_params: PagerdutyServiceAPIQueryParams | None = Field(
-            alias="apiQueryParams"
+            alias="apiQueryParams", description="API query params to include"
         )
         service_analytics: bool = Field(
             default=True,
@@ -237,6 +237,7 @@ class PagerdutyPortAppConfig(PortAppConfig):
         | PagerdutyEscalationPolicyResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
+    allow_custom_kinds: ClassVar[bool] = True
 
 
 class PagerdutyIntegration(BaseIntegration):
