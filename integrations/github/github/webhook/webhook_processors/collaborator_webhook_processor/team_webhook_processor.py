@@ -4,13 +4,19 @@ from github.clients.client_factory import create_github_client
 from github.core.exporters.team_exporter import (
     GraphQLTeamMembersAndReposExporter,
 )
-from github.helpers.utils import GithubClientType, ObjectKind
+from github.helpers.utils import (
+    GithubClientType,
+    ObjectKind,
+    enrich_with_organization,
+    enrich_with_repository,
+)
 from github.webhook.events import (
     TEAM_COLLABORATOR_EVENTS,
 )
-from github.webhook.webhook_processors.base_repository_webhook_processor import (
-    BaseRepositoryWebhookProcessor,
+from github.webhook.webhook_processors.collaborator_webhook_processor.base_collaborator_webhook_processor import (
+    BaseCollaboratorWebhookProcessor,
 )
+from integration import GithubCollaboratorConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -18,10 +24,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from github.core.options import SingleTeamOptions
+from typing import Any, Dict, List, Optional, cast
 
 
-class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
-
+class CollaboratorTeamWebhookProcessor(BaseCollaboratorWebhookProcessor):
     async def _validate_payload(self, payload: EventPayload) -> bool:
 
         has_required_fields = not (
@@ -50,6 +56,8 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
         action = payload["action"]
         team_slug = payload["team"]["slug"]
         organization = self.get_webhook_payload_organization(payload)["login"]
+        config = cast(GithubCollaboratorConfig, resource_config)
+        affiliation = config.selector.affiliation
 
         logger.info(
             f"Handling team event: {action} for team {team_slug} of organization: {organization}"
@@ -77,22 +85,112 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        data_to_upsert = [
-            {
-                "id": member["id"],
-                "login": member["login"],
-                "name": member["name"],
-                "site_admin": member["isSiteAdmin"],
-                "__repository": repo["name"],
-            }
-            for member in team_data["members"]["nodes"]
-            for repo in team_data["repositories"]["nodes"]
-        ]
+        members: List[Dict[str, Any]] = team_data.get("members", {}).get("nodes", [])
+        repos: List[Dict[str, Any]] = team_data.get("repositories", {}).get("nodes", [])
+        repo_cache: Dict[str, set[str]] = {}
+
+        filtered_repos: List[Dict[str, Any]] = []
+        for repo in repos:
+            visibility = repo.get("visibility")
+            if visibility and not await self.validate_repository_visibility(visibility):
+                logger.info(
+                    f"Skipping repository {repo.get('name')} due to visibility validation of organization: {organization}"
+                )
+                continue
+            filtered_repos.append(repo)
+
+        if affiliation == "all":
+            updated_raw_results, deleted_raw_results = (
+                self._build_enriched_collaborator_data(
+                    repos=filtered_repos,
+                    members=members,
+                    organization=organization,
+                )
+            )
+        else:
+            updated_raw_results: list[dict[str, Any]] = []
+            deleted_raw_results: list[dict[str, Any]] = []
+
+            for repo in filtered_repos:
+                repo_name = repo["name"]
+                matching_members: list[dict[str, Any]] = []
+                non_matching_members: list[dict[str, Any]] = []
+
+                for member in members:
+                    member_login = member.get("login")
+                    if not member_login:
+                        continue
+
+                    if await self.affiliation_matches(
+                        organization=organization,
+                        repo_name=repo_name,
+                        username=member_login,
+                        affiliation=affiliation,
+                        repo_collaborators_cache=repo_cache,
+                    ):
+                        matching_members.append(member)
+                    else:
+                        non_matching_members.append(member)
+
+                u, d = self._build_enriched_collaborator_data(
+                    repos=[repo],
+                    members=matching_members,
+                    organization=organization,
+                    non_matching_members=non_matching_members,
+                )
+                updated_raw_results.extend(u)
+                deleted_raw_results.extend(d)
 
         logger.info(
-            f"Upserting {len(data_to_upsert)} collaborators for team {team_slug} of organization: {organization}"
+            f"Affiliation selector='{affiliation}' for team {team_slug} of {organization}: "
+            f"upserts={len(updated_raw_results)}, deletions={len(deleted_raw_results)}"
         )
 
         return WebhookEventRawResults(
-            updated_raw_results=data_to_upsert, deleted_raw_results=[]
+            updated_raw_results=updated_raw_results,
+            deleted_raw_results=deleted_raw_results,
         )
+
+    def _build_enriched_collaborator_data(
+        self,
+        repos: List[Dict[str, Any]],
+        members: List[Dict[str, Any]],
+        organization: str,
+        non_matching_members: Optional[List[Dict[str, Any]]] = None,
+    ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        if non_matching_members is None:
+            non_matching_members = []
+
+        updated_raw_results: List[Dict[str, Any]] = []
+        deleted_raw_results: List[Dict[str, Any]] = []
+
+        for repo in repos:
+            repo_name = repo["name"]
+
+            for member in members:
+                collaborator = {
+                    "id": member["id"],
+                    "login": member["login"],
+                    "name": member.get("name"),
+                    "site_admin": member.get("isSiteAdmin"),
+                }
+
+                updated_raw_results.append(
+                    enrich_with_organization(
+                        enrich_with_repository(collaborator, repo_name, repo=repo),
+                        organization,
+                    )
+                )
+
+            for member in non_matching_members:
+                deleted_raw_results.append(
+                    self.collaborator_delete_payload(
+                        organization=organization,
+                        repo_name=repo_name,
+                        repository=repo,
+                        username=member["login"],
+                        user_id=member["id"],
+                    )
+                )
+
+        return updated_raw_results, deleted_raw_results

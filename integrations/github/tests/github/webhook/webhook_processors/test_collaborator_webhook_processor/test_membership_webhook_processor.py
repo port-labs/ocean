@@ -1,13 +1,16 @@
-from integration import GithubPortAppConfig
+from integration import (
+    GithubCollaboratorConfig,
+    GithubCollaboratorSelector,
+    GithubPortAppConfig,
+)
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
     PortResourceConfig,
     ResourceConfig,
-    Selector,
 )
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 from github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor import (
     CollaboratorMembershipWebhookProcessor,
 )
@@ -26,7 +29,7 @@ VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS: dict[str, Any] = {
     "repository": {"name": "test-repo"},
     "organization": {"login": "test-org"},
     "team": {"name": "test-team", "slug": "test-team"},
-    "member": {"login": "test-user"},
+    "member": {"login": "test-user", "id": 123},
 }
 
 INVALID_MEMBERSHIP_COLLABORATOR_PAYLOADS: dict[str, Any] = {
@@ -70,10 +73,10 @@ INVALID_MEMBERSHIP_COLLABORATOR_PAYLOADS: dict[str, Any] = {
 
 
 @pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+def resource_config() -> GithubCollaboratorConfig:
+    return GithubCollaboratorConfig(
         kind=ObjectKind.COLLABORATOR,
-        selector=Selector(query="true"),
+        selector=GithubCollaboratorSelector(query="true", affiliation="all"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -241,23 +244,92 @@ class TestCollaboratorMembershipWebhookProcessor:
                     # For non-upsert events, no repositories should be fetched
                     mock_team_exporter.get_team_repositories_by_slug.assert_not_called()
 
-    async def test_enrich_collaborators_with_repositories(
-        self, membership_webhook_processor: CollaboratorMembershipWebhookProcessor
+    @pytest.mark.parametrize(
+        "affiliation,is_outside,expected_updated,expected_deleted",
+        [
+            ("outside", True, True, False),
+            ("outside", False, False, True),
+            ("direct", True, False, True),
+            ("direct", False, True, False),
+        ],
+    )
+    async def test_handle_event_membership_events_affiliation_filter(
+        self,
+        membership_webhook_processor: CollaboratorMembershipWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+        mock_port_app_config: GithubPortAppConfig,
+        affiliation: str,
+        is_outside: bool,
+        expected_updated: bool,
+        expected_deleted: bool,
     ) -> None:
-        """Test the helper method that enriches collaborators with repository information."""
-        member_data = {"login": "test-user", "name": "Test User"}
-        repositories = [
-            {"name": "repo1", "full_name": "org/repo1"},
-            {"name": "repo2", "full_name": "org/repo2"},
+        cfg = resource_config.copy(deep=True)
+        cfg.selector.affiliation = affiliation  # type: ignore[attr-defined]
+
+        payload = VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "added"
+
+        mock_repositories = [
+            {
+                "name": "repo1",
+                "full_name": "org/repo1",
+                "visibility": "public",
+                "owner": {"type": "Organization"},
+            },
+            {
+                "name": "repo2",
+                "full_name": "org/repo2",
+                "visibility": "public",
+                "owner": {"type": "Organization"},
+            },
         ]
 
-        result = membership_webhook_processor._enrich_collaborators_with_repositories(
-            member_data, repositories, "test-org"
+        membership_webhook_processor.affiliation_matches = AsyncMock(
+            return_value=(
+                (affiliation == "outside" and is_outside)
+                or (affiliation == "direct" and not is_outside)
+            )
         )
 
-        assert len(result) == 2
-        assert result[0]["login"] == "test-user"
-        assert result[0]["__repository"] == "repo1"
-        assert result[1]["login"] == "test-user"
-        assert result[1]["__repository"] == "repo2"
-        assert all(item["__organization"] == "test-org" for item in result)
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.create_github_client"
+        ) as mock_create_client:
+            mock_client = MagicMock()
+            mock_create_client.return_value = mock_client
+
+            with patch(
+                "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.RestTeamExporter"
+            ) as mock_team_exporter_class:
+                mock_team_exporter = MagicMock()
+                mock_team_exporter_class.return_value = mock_team_exporter
+
+                async def mock_get_team_repositories() -> (
+                    AsyncGenerator[list[dict[str, Any]], None]
+                ):
+                    yield mock_repositories
+
+                mock_team_exporter.get_team_repositories_by_slug.return_value = (
+                    mock_get_team_repositories()
+                )
+
+                async with event_context("test_event") as event_context_obj:
+                    event_context_obj.port_app_config = mock_port_app_config
+                    result = await membership_webhook_processor.handle_event(
+                        payload, cfg
+                    )
+
+        assert bool(result.updated_raw_results) is expected_updated
+        assert bool(result.deleted_raw_results) is expected_deleted
+
+        if expected_updated:
+            assert {r["__repository"] for r in result.updated_raw_results} == {
+                "repo1",
+                "repo2",
+            }
+        if expected_deleted:
+            assert {r["__repository"] for r in result.deleted_raw_results} == {
+                "repo1",
+                "repo2",
+            }
+
+        assert membership_webhook_processor.affiliation_matches.await_count == 2

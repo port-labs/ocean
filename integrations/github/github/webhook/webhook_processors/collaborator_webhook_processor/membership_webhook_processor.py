@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 from loguru import logger
 
@@ -8,7 +8,6 @@ from github.core.exporters.team_exporter import (
 )
 from github.core.options import SingleTeamOptions
 from github.helpers.utils import (
-    ObjectKind,
     enrich_with_repository,
     enrich_with_organization,
 )
@@ -16,9 +15,10 @@ from github.webhook.events import (
     COLLABORATOR_EVENTS,
     COLLABORATOR_UPSERT_EVENTS,
 )
-from github.webhook.webhook_processors.base_repository_webhook_processor import (
-    BaseRepositoryWebhookProcessor,
+from github.webhook.webhook_processors.collaborator_webhook_processor.base_collaborator_webhook_processor import (
+    BaseCollaboratorWebhookProcessor,
 )
+from integration import GithubCollaboratorConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -27,7 +27,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
+class CollaboratorMembershipWebhookProcessor(BaseCollaboratorWebhookProcessor):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         return await self._validate_payload(payload)
@@ -52,9 +52,6 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
             and event.payload.get("action") in COLLABORATOR_EVENTS
         )
 
-    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.COLLABORATOR]
-
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
@@ -65,6 +62,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         team_slug = payload["team"]["slug"]
         member_login = member["login"]
         organization = self.get_webhook_payload_organization(payload)["login"]
+        config = cast(GithubCollaboratorConfig, resource_config)
 
         logger.info(
             f"Handling membership event: {action} for {member_login} in team {team_slug}"
@@ -94,34 +92,43 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
                     continue
                 repositories.append(repo)
 
-        list_data_to_upsert = self._enrich_collaborators_with_repositories(
-            member, repositories, organization
-        )
+        affiliation = config.selector.affiliation
+        updated_raw_results: List[Dict[str, Any]] = []
+        deleted_raw_results: List[Dict[str, Any]] = []
+        repo_cache: Dict[str, set[str]] = {}
+
+        for repo in repositories:
+            repo_name = repo["name"]
+            if await self.affiliation_matches(
+                organization=organization,
+                repo_name=repo_name,
+                username=member_login,
+                affiliation=affiliation,
+                repo_collaborators_cache=repo_cache,
+            ):
+                updated_raw_results.append(
+                    enrich_with_organization(
+                        enrich_with_repository(member.copy(), repo_name, repo=repo),
+                        organization,
+                    )
+                )
+            else:
+                deleted_raw_results.append(
+                    self.collaborator_delete_payload(
+                        organization=organization,
+                        repo_name=repo_name,
+                        repository=repo,
+                        username=member_login,
+                        user_id=member["id"],
+                    )
+                )
 
         logger.info(
-            f"Upserting {len(list_data_to_upsert)} collaborators for member {member_login} in team {team_slug} of organization: {organization}"
+            f"Affiliation selector='{affiliation}' for {member_login} in team {team_slug} of {organization}: "
+            f"upserts={len(updated_raw_results)}, deletions={len(deleted_raw_results)}"
         )
 
         return WebhookEventRawResults(
-            updated_raw_results=list_data_to_upsert, deleted_raw_results=[]
+            updated_raw_results=updated_raw_results,
+            deleted_raw_results=deleted_raw_results,
         )
-
-    def _enrich_collaborators_with_repositories(
-        self,
-        response: Dict[str, Any],
-        repositories: List[Dict[str, Any]],
-        organization: str,
-    ) -> List[Dict[str, Any]]:
-        """Helper function to enrich response with repository information."""
-        list_of_collaborators = []
-        for repository in repositories:
-            collaborator_copy = response.copy()
-            list_of_collaborators.append(
-                enrich_with_organization(
-                    enrich_with_repository(
-                        collaborator_copy, repository["name"], repo=repository
-                    ),
-                    organization,
-                )
-            )
-        return list_of_collaborators

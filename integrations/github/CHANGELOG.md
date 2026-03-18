@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.32 (2026-03-19)
+
+
+### Bug Fixes
+
+- Respect collaborator `affiliation` selector in live-events (member/membership/team webhooks) and emit deletions when collaborators no longer match the configured affiliation filter.
+- Align webhook collaborator affiliation checks with resync by using the repository collaborators API with the configured `affiliation`, and expand test coverage for `outside` and `direct`.
+
+
 ## 5.1.31 (2026-03-17)
 
 
