@@ -1,5 +1,6 @@
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+import httpx
 
 import pytest
 
@@ -961,16 +962,41 @@ class TestGetCurrentStateVersionForWorkspace:
     async def test_get_current_state_version_for_workspace_no_state(
         self, terraform_client: TerraformClient
     ) -> None:
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+
         with patch.object(
             terraform_client, "send_api_request", new_callable=AsyncMock
         ) as mock_send:
-            mock_send.side_effect = Exception("Not found")
+            mock_send.side_effect = httpx.HTTPStatusError(
+                "Not found", request=MagicMock(), response=mock_response
+            )
 
             result = await terraform_client.get_current_state_version_for_workspace(
                 "ws-no-state"
             )
 
             assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_current_state_version_for_workspace_raises_on_other_errors(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+            mock_send.side_effect = httpx.HTTPStatusError(
+                "Server error", request=MagicMock(), response=mock_response
+            )
+
+            with pytest.raises(httpx.HTTPStatusError):
+                await terraform_client.get_current_state_version_for_workspace(
+                    "ws-error"
+                )
 
 
 class TestGetCurrentStateFiles:

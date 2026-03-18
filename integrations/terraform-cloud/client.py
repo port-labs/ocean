@@ -2,6 +2,8 @@ import asyncio
 from enum import StrEnum
 from urllib.parse import urlparse
 from typing import Any, AsyncGenerator, Optional
+
+import httpx
 from aiolimiter import AsyncLimiter
 from loguru import logger
 
@@ -375,8 +377,10 @@ class TerraformClient:
                 f"workspaces/{workspace_id}/current-state-version"
             )
             return response.get("data")
-        except Exception:
-            return None
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return None
+            raise
 
     async def get_current_state_files(
         self,
@@ -387,24 +391,21 @@ class TerraformClient:
         logger.info("Fetching current state files for all workspaces")
 
         async for workspaces in self.get_paginated_workspaces():
-            state_versions = []
-
-            for workspace in workspaces:
-                workspace_id = workspace["id"]
-                state_version = await self.get_current_state_version_for_workspace(
-                    workspace_id
-                )
-                if state_version:
-                    state_versions.append(state_version)
+            version_tasks = [
+                self.get_current_state_version_for_workspace(ws["id"])
+                for ws in workspaces
+            ]
+            version_results = await asyncio.gather(*version_tasks)
+            state_versions = [sv for sv in version_results if sv is not None]
 
             if not state_versions:
                 continue
 
-            tasks = [
+            download_tasks = [
                 self._download_state_file_with_semaphore(sv, semaphore)
                 for sv in state_versions
             ]
-            results = await asyncio.gather(*tasks)
+            results = await asyncio.gather(*download_tasks)
             combined = list(filter(None, results))
 
             logger.info(
