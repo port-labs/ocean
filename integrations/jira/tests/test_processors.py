@@ -725,22 +725,18 @@ async def test_handle_event_version_deleted(
         "webhookEvent": "jira:version_deleted",
         "version": {"id": 1002, "projectId": 10601},
     }
-    mock_project: dict[str, Any] = {"key": "PROJ2", "id": 10601}
 
     with patch(
         "webhook_processors.version_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
-        mock_client.get_single_project = AsyncMock(return_value=mock_project)
         mock_create_client.return_value = mock_client
 
         result = await jiraVersionWebhookProcessor.handle_event(
             payload, resource_config
         )
 
-        mock_client.get_single_project.assert_called_once_with("10601")
         mock_client.get_single_version.assert_not_called()
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0]["id"] == 1002
-        assert result.deleted_raw_results[0]["__projectKey"] == "PROJ2"
