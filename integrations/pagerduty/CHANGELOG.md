@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.25 (2026-03-18)
+
+
+### Improvements
+
+- Add static examples for Pagerduty
+
+### Bug Fixes
+
+- Fix selector and kind propagation
+
+
 ## 0.5.24 (2026-03-17)
 
 
