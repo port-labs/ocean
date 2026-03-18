@@ -299,10 +299,10 @@ class TestResync(BaseIntegrationTest):
                 "type": "azure-devops",
                 "config": {
                     "organization_url": f"https://dev.azure.com/{AzureDevOpsTransport.org}",
-                    "personalAccessToken": "test-value",
-                    "appHost": "https://placeholder.example.com",
-                    "webhookSecret": "test-value",
-                    "webhookAuthUsername": "test-value",
+                    "personal_access_token": "test-value",
+                    "app_host": "https://placeholder.example.com",
+                    "webhook_secret": "test-value",
+                    "webhook_auth_username": "test-value",
                 },
             }
         }
