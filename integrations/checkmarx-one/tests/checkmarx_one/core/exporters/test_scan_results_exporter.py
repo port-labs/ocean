@@ -25,16 +25,33 @@ def exporter(mock_client: MagicMock) -> CheckmarxScanResultExporter:
     return exporter
 
 
-def test_enrich_scan_result_with_scan_id(exporter: CheckmarxScanResultExporter) -> None:
+def test_enrich_scan_result(exporter: CheckmarxScanResultExporter) -> None:
     scan_result: Dict[str, Any] = {"foo": "bar"}
-    enriched: Dict[str, Any] = exporter._enrich_scan_result_with_scan_id(
-        scan_result, "scan-123"
+    enriched: Dict[str, Any] = exporter._enrich_scan_result(
+        scan_result, "scan-123", "proj_456"
     )
 
     assert enriched["foo"] == "bar"
     assert enriched["__scan_id"] == "scan-123"
+    assert "__project_id" in enriched
     # Ensure it mutates the original dict
     assert scan_result["__scan_id"] == "scan-123"
+    assert scan_result["__project_id"] == "proj_456"
+
+
+def test_enrich_scan_result_and_project_id(
+    exporter: CheckmarxScanResultExporter,
+) -> None:
+    scan_result: Dict[str, Any] = {"foo": "bar"}
+    enriched: Dict[str, Any] = exporter._enrich_scan_result(
+        scan_result, "scan-123", project_id="project-456"
+    )
+
+    assert enriched["foo"] == "bar"
+    assert enriched["__scan_id"] == "scan-123"
+    assert enriched["__project_id"] == "project-456"
+    # Ensure it mutates the original dict
+    assert scan_result["__project_id"] == "project-456"
 
 
 @pytest.mark.asyncio
@@ -67,20 +84,64 @@ async def test_get_paginated_resources_filters_and_enriches(
         ]
     )
 
-    options: ListScanResultOptions = {"scan_id": "scan-123", "type": "sast"}
+    options: ListScanResultOptions = {
+        "scan_id": "scan-123",
+        "type": "sast",
+        "project_id": "proj_456",
+    }
     batches: List[Dict[str, Any]] = []
     async for batch in exporter.get_paginated_resources(options):
         batches.extend(batch)
 
     assert batches == [
-        {"id": "1", "type": "sast", "__scan_id": "scan-123"},
-        {"id": "3", "type": "sast", "__scan_id": "scan-123"},
+        {
+            "id": "1",
+            "type": "sast",
+            "__scan_id": "scan-123",
+            "__project_id": "proj_456",
+        },
+        {
+            "id": "3",
+            "type": "sast",
+            "__scan_id": "scan-123",
+            "__project_id": "proj_456",
+        },
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_resources_enriches_with_project_id(
+    exporter: CheckmarxScanResultExporter, mock_client: MagicMock
+) -> None:
+    mock_client.send_paginated_request.return_value = _async_gen(
+        [
+            [{"id": "1", "type": "sca"}, {"id": "2", "type": "containers"}],
+        ]
+    )
+
+    options: ListScanResultOptions = {
+        "scan_id": "scan-123",
+        "project_id": "project-456",
+        "type": "sca",
+    }
+    batches: List[Dict[str, Any]] = []
+    async for batch in exporter.get_paginated_resources(options):
+        batches.extend(batch)
+
+    assert batches == [
+        {
+            "id": "1",
+            "type": "sca",
+            "__scan_id": "scan-123",
+            "__project_id": "project-456",
+        },
     ]
 
 
 def test_get_params_with_all_options(exporter: CheckmarxScanResultExporter) -> None:
     options: ListScanResultOptions = {
         "scan_id": "scan-123",
+        "project_id": "proj_456",
         "type": "sast",
         "severity": ["HIGH"],
         "state": ["CONFIRMED"],
