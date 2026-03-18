@@ -38,14 +38,16 @@ class VersionWebhookProcessor(AbstractWebhookProcessor):
         client = create_jira_client()
 
         if webhook_event == "jira:version_deleted":
-            project_id = str(version["projectId"])
-            project = await client.get_single_project(project_id)
-            version["__projectKey"] = project["key"]
-            logger.info(
-                f"Received deletion event for version {version.get('id')} in project {project['key']}"
-            )
+            logger.info(f"Received deletion event for version {version.get('id')}")
+            updated_results = []
+            # A merge fires as jira:version_deleted but includes a mergedTo field
+            if "mergedTo" in payload:
+                destination_version = await client.get_single_version(
+                    str(payload["mergedTo"]["id"])
+                )
+                updated_results = [destination_version]
             return WebhookEventRawResults(
-                updated_raw_results=[],
+                updated_raw_results=updated_results,
                 deleted_raw_results=[version],
             )
 

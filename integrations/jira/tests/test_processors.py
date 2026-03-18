@@ -626,6 +626,7 @@ async def test_should_process_event_version(
         "jira:version_deleted",
         "jira:version_released",
         "jira:version_unreleased",
+        "jira:version_moved",
     ):
         event = WebhookEvent(
             trace_id="test-trace-id",

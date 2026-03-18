@@ -24,10 +24,7 @@ WEBHOOK_EVENTS = [
     "jira:version_deleted",
     "jira:version_released",
     "jira:version_unreleased",
-    "jira:version_archived",
-    "jira:version_unarchived",
     "jira:version_moved",
-    "jira:version_merged",
     "project_created",
     "project_updated",
     "project_deleted",
@@ -44,6 +41,12 @@ OAUTH2_WEBHOOK_EVENTS = [
     "jira:issue_created",
     "jira:issue_updated",
     "jira:issue_deleted",
+    "jira:version_created",
+    "jira:version_updated",
+    "jira:version_deleted",
+    "jira:version_released",
+    "jira:version_unreleased",
+    "jira:version_moved",
 ]
 
 
