@@ -8,7 +8,7 @@ from port_ocean.context.event import event
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from overrides import JenkinStagesResourceConfig, JenkinsBuildResourceConfig
+from overrides import JenkinsStagesResourceConfig, JenkinsBuildResourceConfig
 from webhook.webhook_processors import BuildWebhookProcessor, JobWebhookProcessor
 from utils import ObjectKind
 
@@ -51,7 +51,7 @@ async def on_resync_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     stages_count = 0
     max_stages = 10000
 
-    stages_selector = cast(JenkinStagesResourceConfig, event.resource_config)
+    stages_selector = cast(JenkinsStagesResourceConfig, event.resource_config)
     job_url = stages_selector.selector.job_url
 
     logger.info(f"Syncing stages for job {job_url}")

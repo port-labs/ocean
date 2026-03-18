@@ -6,13 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-## 0.1.145-beta (2026-03-16)
+## 0.1.147-beta (2026-03-18)
 
 
 ### Improvements
 
 -  Split multi-value Literal kind definitions into dedicated resource config models in `BitbucketAppConfig` for schema validation compliance
+
+
+## 0.1.146-beta (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.1.145-beta (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
 
 
 ## 0.1.144-beta (2026-03-16)
