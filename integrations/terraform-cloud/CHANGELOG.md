@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Added `currentOnly` selector option for `state-file` kind to fetch only the current state file per workspace
-- Added semaphore-bounded concurrency for state file downloads
 
 
 ## 0.2.67 (2026-03-17)
