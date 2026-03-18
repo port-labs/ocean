@@ -7,14 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.6.0 (2026-03-18)
-
-
-### Improvements
-
-- Switched issue search to POST `/rest/api/3/search/jql` to avoid URL length limits
-- Unified reconcile and paginated issue search into `get_paginated_issues`
-
 ## 0.5.99 (2026-03-17)
 
 
