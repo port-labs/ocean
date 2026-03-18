@@ -1,3 +1,4 @@
+import copy
 from typing import Dict, Tuple, Type, Set, List
 
 from fastapi import APIRouter, Request
@@ -239,6 +240,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
         payload = processor.event.payload
         headers = processor.event.headers
+        # Capture immutable copy of original payload before any processing
+        original_payload = copy.deepcopy(payload)
 
         if not await processor.authenticate(payload, headers):
             raise ValueError("Authentication failed")
@@ -255,6 +258,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 if resource is not None:
                     webhook_event_raw_results.resource = resource
                 webhook_event_raw_results._webhook_trace_id = processor.event.trace_id
+                webhook_event_raw_results.original_webhook = original_payload
+                webhook_event_raw_results.original_headers = headers
                 break
 
             except Exception as e:
