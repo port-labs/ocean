@@ -91,8 +91,7 @@ def build_search_query(search_path: str) -> str:
     if "/" not in search_path:
         keyword = search_path.replace("*", "")
         return f"{keyword} filename:{search_path}"
-    filename = search_path.rsplit("/", 1)[-1]
-    directory = search_path.rsplit("/", 1)[0]
+    directory, filename = search_path.rsplit("/", 1)
     keyword = filename.replace("*", "")
     return f"{keyword} path:{directory} filename:{filename}"
 
