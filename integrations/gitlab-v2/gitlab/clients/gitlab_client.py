@@ -11,7 +11,7 @@ from port_ocean.utils.async_iterators import (
 from urllib.parse import quote
 from wcmatch import glob
 
-from gitlab.helpers.utils import parse_file_content
+from gitlab.helpers.utils import parse_file_content, build_search_query
 
 from gitlab.clients.rest_client import RestClient
 
@@ -382,6 +382,7 @@ class GitLabClient:
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         search_query = f"path:{path}"
+        search_query = build_search_query(path)
         logger.info(f"Starting file search with path pattern: '{path}'")
 
         if repositories:
@@ -424,6 +425,7 @@ class GitLabClient:
         each one individually using the Projects API.
         """
         search_query = f"path:{path}"
+        search_query = build_search_query(path)
         logger.info(
             f"Starting project-level file search with path pattern: '{path}' using params: {params}"
         )

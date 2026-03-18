@@ -73,6 +73,14 @@ def parse_file_content(
         return content
 
 
+def build_search_query(search_path: str) -> str:
+    if "/" not in search_path:
+        return f"{search_path} filename:{search_path}"
+    filename = search_path.rsplit("/", 1)[-1]
+    directory = search_path.rsplit("/", 1)[0]
+    return f"{filename} path:{directory}"
+
+
 def enrich_resources_with_project(
     resources: list[dict[str, Any]], project_map: dict[str, Any]
 ) -> list[dict[str, Any]]:

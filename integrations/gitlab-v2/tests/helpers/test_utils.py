@@ -1,4 +1,5 @@
 from gitlab.helpers.utils import (
+    build_search_query,
     enrich_resources_with_project,
 )
 
@@ -29,3 +30,35 @@ class TestUtils:
         assert result[1]["__project"]["path_with_namespace"] == "group/project-b"
         assert result[2]["id"] == 3
         assert result[2]["__project"]["path_with_namespace"] == "group/project-c"
+
+
+class TestBuildSearchQuery:
+    def test_single_filename(self) -> None:
+        assert build_search_query("readme.md") == "readme.md filename:readme.md"
+
+    def test_single_filename_no_extension(self) -> None:
+        assert build_search_query("Makefile") == "Makefile filename:Makefile"
+
+    def test_simple_path(self) -> None:
+        assert build_search_query("home/file.yaml") == "file.yaml path:home"
+
+    def test_wildcard_path(self) -> None:
+        assert build_search_query("home/*/file.yaml") == "file.yaml path:home/*"
+
+    def test_nested_path(self) -> None:
+        assert (
+            build_search_query("src/config/settings.json")
+            == "settings.json path:src/config"
+        )
+
+    def test_glob_filename(self) -> None:
+        assert build_search_query("*.yaml") == "*.yaml filename:*.yaml"
+
+    def test_dotfile_single(self) -> None:
+        assert (
+            build_search_query(".gitlab-ci.yml")
+            == ".gitlab-ci.yml filename:.gitlab-ci.yml"
+        )
+
+    def test_dotfile_in_path(self) -> None:
+        assert build_search_query("ci/.gitlab-ci.yml") == ".gitlab-ci.yml path:ci"
