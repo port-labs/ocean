@@ -107,6 +107,44 @@ async def test_authenticate(
 
 
 @pytest.mark.asyncio
+async def test_authenticate_logs_webhook_headers_and_issue_key(
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
+) -> None:
+    """Verify authenticate logs Jira webhook headers and issue key for traceability."""
+    payload = {"issue": {"key": "PROJ-42", "id": "10001"}}
+    headers = {
+        "x-atlassian-webhook-identifier": "wh-identifier-123",
+        "x-atlassian-webhook-flow": "sync",
+        "x-atlassian-webhook-retry": "1",
+    }
+    with patch("webhook_processors.issue_webhook_processor.logger") as mock_logger:
+        result = await jiraIssueWebhookProcessor.authenticate(payload, headers)
+    assert result is True
+    mock_logger.info.assert_called_once()
+    call_args = mock_logger.info.call_args[0][0]
+    assert "wh-identifier-123" in call_args
+    assert "sync" in call_args
+    assert "1" in call_args
+    assert "PROJ-42" in call_args
+
+
+@pytest.mark.asyncio
+async def test_authenticate_with_missing_headers_uses_defaults(
+    jiraIssueWebhookProcessor: IssueWebhookProcessor,
+) -> None:
+    """Verify authenticate handles missing headers and defaults retry to 0."""
+    payload = {"issue": {"key": "KEY-1", "id": "999"}}
+    headers: dict[str, str] = {}
+    with patch("webhook_processors.issue_webhook_processor.logger") as mock_logger:
+        result = await jiraIssueWebhookProcessor.authenticate(payload, headers)
+    assert result is True
+    mock_logger.info.assert_called_once()
+    call_args = mock_logger.info.call_args[0][0]
+    assert "retry: 0" in call_args or "0" in call_args
+    assert "KEY-1" in call_args
+
+
+@pytest.mark.asyncio
 async def test_validate_payload(
     jiraIssueWebhookProcessor: IssueWebhookProcessor,
 ) -> None:
