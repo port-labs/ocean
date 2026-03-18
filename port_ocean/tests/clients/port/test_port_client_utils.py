@@ -1,11 +1,16 @@
-from unittest.mock import MagicMock, patch
 from io import StringIO
+from unittest.mock import MagicMock, patch
 
 import pytest
 import httpx
 from loguru import logger
 
-from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.clients.port.utils import (
+    OCEAN_INFO_PREFIX,
+    get_event_context_params,
+    handle_port_status_code,
+)
+from port_ocean.context.event import EventType, event_context
 
 
 class TestHandlePortStatusCode:
@@ -186,3 +191,47 @@ class TestHandlePortStatusCode:
             pytest.fail(f"KeyError was raised (bug not fixed or fix was removed): {e}")
         finally:
             logger.remove(logger_id)
+
+
+class TestGetEventContextParams:
+    """Tests for get_event_context_params function."""
+
+    def test_get_event_context_params_outside_event_context_returns_empty_dict(
+        self,
+    ) -> None:
+        """Test that outside an event context, the function returns empty dict."""
+        result = get_event_context_params()
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_get_event_context_params_inside_event_context_returns_ocean_info(
+        self,
+    ) -> None:
+        """Test that inside an event context, the function returns oceanInfo with eventType (underscore prefix notation)."""
+        async with event_context(EventType.START, trigger_type="manual"):
+            result = get_event_context_params()
+        assert result == {f"{OCEAN_INFO_PREFIX}event_type": EventType.START}
+        assert f"{OCEAN_INFO_PREFIX}resync_id" not in result
+
+    @pytest.mark.asyncio
+    async def test_get_event_context_params_http_request_returns_ocean_info(
+        self,
+    ) -> None:
+        """Test that inside an HTTP_REQUEST event context, the function returns oceanInfo without resyncId."""
+        async with event_context(EventType.HTTP_REQUEST, trigger_type="request"):
+            result = get_event_context_params()
+        assert result == {f"{OCEAN_INFO_PREFIX}event_type": EventType.HTTP_REQUEST}
+        assert f"{OCEAN_INFO_PREFIX}resync_id" not in result
+
+    @pytest.mark.asyncio
+    async def test_get_event_context_params_resync_includes_resync_id(
+        self,
+    ) -> None:
+        """Test that inside a RESYNC event context, the function returns oceanInfo with eventType and resyncId."""
+        event_id: str | None = None
+        async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+            result = get_event_context_params()
+            event_id = event.id
+        assert result[f"{OCEAN_INFO_PREFIX}event_type"] == EventType.RESYNC
+        assert f"{OCEAN_INFO_PREFIX}resync_id" in result
+        assert result[f"{OCEAN_INFO_PREFIX}resync_id"] == event_id

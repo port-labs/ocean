@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 import uuid
 from logging import LogRecord
 from logging.handlers import QueueHandler, QueueListener
@@ -41,7 +42,7 @@ def _stdout_loguru_handler(level: LogLevelType) -> None:
         diagnose=False,  # hide variable values in log backtrace
         filter=sensitive_log_filter.create_filter(),
     )
-    logger.configure(patcher=exception_deserializer)
+    logger.configure(patcher=_combined_patcher)
 
 
 def _http_loguru_handler(level: LogLevelType) -> None:
@@ -52,12 +53,12 @@ def _http_loguru_handler(level: LogLevelType) -> None:
     logger.add(
         handler,
         level=level.upper(),
-        format="{message}",
+        format=lambda record: "{message}",  # strip loguru decorations (timestamp, level, module) — the HTTP handler builds its own JSON payload
         diagnose=False,  # hide variable values in log backtrace
         enqueue=True,  # process logs in background
         filter=sensitive_log_filter.create_filter(full_hide=True),
     )
-    logger.configure(patcher=exception_deserializer)
+    logger.configure(patcher=_combined_patcher)
 
     http_memory_handler = HTTPMemoryHandler()
     signal_handler.register(
@@ -67,6 +68,23 @@ def _http_loguru_handler(level: LogLevelType) -> None:
 
     queue_listener = QueueListener(queue, http_memory_handler)
     queue_listener.start()
+
+
+def _extract_traceback(record: "loguru.Record") -> None:
+    exception: loguru.RecordException | None = record["exception"]
+    if exception is not None and exception.traceback is not None:
+        record["extra"]["traceback"] = "".join(
+            traceback.format_exception(
+                type(exception.value) if exception.value is not None else None,
+                exception.value,
+                exception.traceback,
+            )
+        )
+
+
+def _combined_patcher(record: "loguru.Record") -> None:
+    _extract_traceback(record)
+    exception_deserializer(record)
 
 
 def exception_deserializer(record: "loguru.Record") -> None:

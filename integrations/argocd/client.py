@@ -1,3 +1,5 @@
+import asyncio
+import functools
 from enum import StrEnum
 from itertools import batched
 from typing import Any, Optional, AsyncGenerator
@@ -8,6 +10,10 @@ import json
 
 from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.utils import http_async_client
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+    semaphore_async_iterator,
+)
 
 
 class ObjectKind(StrEnum):
@@ -25,6 +31,7 @@ class ResourceKindsWithSpecialHandling(StrEnum):
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
 
 PAGE_SIZE = 100
+MAXIMUM_CONCURRENT_CLUSTER_REQUESTS = 10
 
 
 class ClusterState(StrEnum):
@@ -168,10 +175,21 @@ class ArgocdClient:
         cluster_names = [cluster["name"] for cluster in available_clusters]
         url = f"{self.api_url}/{resource_kind}s"
 
-        for cluster_name in cluster_names:
-            params = {"cluster": cluster_name}
-            async for resources in self.get_paginated_resources(url, params=params):
-                yield resources
+        semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_CLUSTER_REQUESTS)
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                functools.partial(
+                    self.get_paginated_resources,
+                    url,
+                    params={"selector": f"cluster={name}"},
+                ),
+            )
+            for name in cluster_names
+        ]
+
+        async for resources in stream_async_iterators_tasks(*tasks):
+            yield resources
 
     async def get_application_by_name(
         self, name: str, namespace: Optional[str] = None
