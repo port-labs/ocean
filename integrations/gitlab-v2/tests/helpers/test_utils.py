@@ -40,19 +40,34 @@ class TestBuildSearchQuery:
         assert build_search_query("Makefile") == "Makefile filename:Makefile"
 
     def test_simple_path(self) -> None:
-        assert build_search_query("home/file.yaml") == "file.yaml path:home"
+        assert (
+            build_search_query("home/file.yaml")
+            == "file.yaml path:home filename:file.yaml"
+        )
 
     def test_wildcard_path(self) -> None:
-        assert build_search_query("home/*/file.yaml") == "file.yaml path:home/*"
+        assert (
+            build_search_query("home/*/file.yaml")
+            == "file.yaml path:home/* filename:file.yaml"
+        )
 
     def test_nested_path(self) -> None:
         assert (
             build_search_query("src/config/settings.json")
-            == "settings.json path:src/config"
+            == "settings.json path:src/config filename:settings.json"
         )
 
     def test_glob_filename(self) -> None:
-        assert build_search_query("*.yaml") == "*.yaml filename:*.yaml"
+        assert build_search_query("*.yaml") == ".yaml filename:*.yaml"
+
+    def test_glob_filename_in_path(self) -> None:
+        assert (
+            build_search_query("home/directory/*.txt")
+            == ".txt path:home/directory filename:*.txt"
+        )
+
+    def test_glob_in_path_and_filename(self) -> None:
+        assert build_search_query("home/*/*.txt") == ".txt path:home/* filename:*.txt"
 
     def test_dotfile_single(self) -> None:
         assert (
@@ -61,4 +76,7 @@ class TestBuildSearchQuery:
         )
 
     def test_dotfile_in_path(self) -> None:
-        assert build_search_query("ci/.gitlab-ci.yml") == ".gitlab-ci.yml path:ci"
+        assert (
+            build_search_query("ci/.gitlab-ci.yml")
+            == ".gitlab-ci.yml path:ci filename:.gitlab-ci.yml"
+        )

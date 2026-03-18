@@ -75,10 +75,12 @@ def parse_file_content(
 
 def build_search_query(search_path: str) -> str:
     if "/" not in search_path:
-        return f"{search_path} filename:{search_path}"
+        keyword = search_path.replace("*", "")
+        return f"{keyword} filename:{search_path}"
     filename = search_path.rsplit("/", 1)[-1]
     directory = search_path.rsplit("/", 1)[0]
-    return f"{filename} path:{directory}"
+    keyword = filename.replace("*", "")
+    return f"{keyword} path:{directory} filename:{filename}"
 
 
 def enrich_resources_with_project(
