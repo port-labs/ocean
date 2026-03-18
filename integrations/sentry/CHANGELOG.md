@@ -7,10 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-<<<<<<< task_tboeow/sentry_selector_propagation
+## 0.3.38 (2026-03-18)
 
-## 0.3.32 (2026-03-14)
-=======
+
+### Improvements
+
+- Split multi-value Literal kind definitions and added explicit resource config models to `SentryPortAppConfig`
+
+
 ## 0.3.37 (2026-03-17)
 
 
