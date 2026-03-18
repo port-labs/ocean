@@ -77,8 +77,8 @@ configurations:
     required: false
     type: string
     default: "none"
-    description: "Pagination method: none, offset, page, or cursor"
-    enum: ["offset", "page", "cursor", "none"]
+    description: "Pagination method: none, offset, page, cursor, or next_link"
+    enum: ["offset", "page", "cursor", "next_link", "none"]
   - name: pageSize
     required: false
     type: string
@@ -141,6 +141,17 @@ configurations:
           in: ["offset", "page", "cursor"]
         then:
           required: false
+  - name: nextLinkPath
+    required: false
+    type: string
+    default: "@odata.nextLink"
+    description: "Path to the next page URL in the response (e.g., '@odata.nextLink', 'links.next', 'nextRecordsUrl'). Used with next_link pagination type."
+    dependencies:
+      - on: paginationType
+        when:
+          equals: next_link
+        then:
+          required: false
   - name: timeout
     required: false
     type: string
@@ -187,6 +198,7 @@ interface:
         - startPage
         - cursorPath
         - hasMorePath
+        - nextLinkPath
         - timeout
         - verifySsl
         - maxConcurrentRequests

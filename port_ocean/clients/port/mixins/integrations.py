@@ -284,6 +284,7 @@ class IntegrationClientMixin:
         kind: str,
         operation: LakehouseOperation = LakehouseOperation.UPSERT,
         data_type: str | None = None,
+        kafka_metadata: dict[str, Any] | None = None,
     ) -> None:
         logger.debug(
             "starting POST raw data request", raw_data=raw_data, operation=operation
@@ -297,6 +298,8 @@ class IntegrationClientMixin:
         }
         if data_type is not None:
             body["type"] = data_type
+        if kafka_metadata:
+            body["kafkaMetadata"] = kafka_metadata
 
         response = await self.client.post(
             f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",
