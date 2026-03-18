@@ -19,7 +19,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from typing import Any
+from typing import Any, Literal
 from port_ocean.context.event import event_context
 
 
@@ -280,14 +280,14 @@ class TestCollaboratorTeamWebhookProcessor:
         self,
         team_webhook_processor: CollaboratorTeamWebhookProcessor,
         resource_config: GithubCollaboratorConfig,
-        affiliation: str,
+        affiliation: Literal["outside", "direct"],
         is_outside: bool,
         expected_updated: bool,
         expected_deleted: bool,
     ) -> None:
         cfg = resource_config.copy(deep=True)
-        cfg.selector.affiliation = affiliation  # type: ignore[attr-defined]
-        team_webhook_processor.affiliation_matches = AsyncMock(
+        cfg.selector.affiliation = affiliation
+        affiliation_matches_mock = AsyncMock(
             return_value=(
                 (affiliation == "outside" and is_outside)
                 or (affiliation == "direct" and not is_outside)
@@ -333,7 +333,12 @@ class TestCollaboratorTeamWebhookProcessor:
                     return_value=mock_team_data
                 )
 
-                result = await team_webhook_processor.handle_event(payload, cfg)
+                with patch.object(
+                    team_webhook_processor,
+                    "affiliation_matches",
+                    new=affiliation_matches_mock,
+                ):
+                    result = await team_webhook_processor.handle_event(payload, cfg)
 
         assert bool(result.updated_raw_results) is expected_updated
         assert bool(result.deleted_raw_results) is expected_deleted
@@ -349,7 +354,7 @@ class TestCollaboratorTeamWebhookProcessor:
                 "repo2",
             }
 
-        assert team_webhook_processor.affiliation_matches.await_count == 2
+        assert affiliation_matches_mock.await_count == 2
 
     async def test_handle_event_no_team_data(
         self,

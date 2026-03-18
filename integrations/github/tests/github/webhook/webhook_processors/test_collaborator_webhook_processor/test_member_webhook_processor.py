@@ -20,7 +20,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from github.core.options import SingleCollaboratorOptions
-from typing import Any
+from typing import Any, Literal
 from port_ocean.context.event import event_context
 
 
@@ -221,13 +221,13 @@ class TestCollaboratorMemberWebhookProcessor:
         self,
         member_webhook_processor: CollaboratorMemberWebhookProcessor,
         resource_config: GithubCollaboratorConfig,
-        affiliation: str,
+        affiliation: Literal["outside", "direct"],
         is_outside: bool,
         expected_updated: bool,
         expected_deleted: bool,
     ) -> None:
         cfg = resource_config.copy(deep=True)
-        cfg.selector.affiliation = affiliation  # type: ignore[attr-defined]
+        cfg.selector.affiliation = affiliation
 
         payload = VALID_MEMBER_COLLABORATOR_PAYLOADS.copy()
         payload["action"] = "added"
@@ -236,7 +236,7 @@ class TestCollaboratorMemberWebhookProcessor:
             "owner": {"type": "Organization"},
         }
 
-        member_webhook_processor.affiliation_matches = AsyncMock(
+        affiliation_matches_mock = AsyncMock(
             return_value=(
                 (affiliation == "outside" and is_outside)
                 or (affiliation == "direct" and not is_outside)
@@ -264,7 +264,12 @@ class TestCollaboratorMemberWebhookProcessor:
                     return_value=mock_collaborator_data
                 )
 
-                result = await member_webhook_processor.handle_event(payload, cfg)
+                with patch.object(
+                    member_webhook_processor,
+                    "affiliation_matches",
+                    new=affiliation_matches_mock,
+                ):
+                    result = await member_webhook_processor.handle_event(payload, cfg)
 
         assert bool(result.updated_raw_results) is expected_updated
         assert bool(result.deleted_raw_results) is expected_deleted

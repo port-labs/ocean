@@ -20,7 +20,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from github.core.options import SingleTeamOptions
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Literal
 from port_ocean.context.event import event_context
 
 
@@ -258,13 +258,13 @@ class TestCollaboratorMembershipWebhookProcessor:
         membership_webhook_processor: CollaboratorMembershipWebhookProcessor,
         resource_config: GithubCollaboratorConfig,
         mock_port_app_config: GithubPortAppConfig,
-        affiliation: str,
+        affiliation: Literal["outside", "direct"],
         is_outside: bool,
         expected_updated: bool,
         expected_deleted: bool,
     ) -> None:
         cfg = resource_config.copy(deep=True)
-        cfg.selector.affiliation = affiliation  # type: ignore[attr-defined]
+        cfg.selector.affiliation = affiliation
 
         payload = VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS.copy()
         payload["action"] = "added"
@@ -284,7 +284,7 @@ class TestCollaboratorMembershipWebhookProcessor:
             },
         ]
 
-        membership_webhook_processor.affiliation_matches = AsyncMock(
+        affiliation_matches_mock = AsyncMock(
             return_value=(
                 (affiliation == "outside" and is_outside)
                 or (affiliation == "direct" and not is_outside)
@@ -312,11 +312,16 @@ class TestCollaboratorMembershipWebhookProcessor:
                     mock_get_team_repositories()
                 )
 
-                async with event_context("test_event") as event_context_obj:
-                    event_context_obj.port_app_config = mock_port_app_config
-                    result = await membership_webhook_processor.handle_event(
-                        payload, cfg
-                    )
+                with patch.object(
+                    membership_webhook_processor,
+                    "affiliation_matches",
+                    new=affiliation_matches_mock,
+                ):
+                    async with event_context("test_event") as event_context_obj:
+                        event_context_obj.port_app_config = mock_port_app_config
+                        result = await membership_webhook_processor.handle_event(
+                            payload, cfg
+                        )
 
         assert bool(result.updated_raw_results) is expected_updated
         assert bool(result.deleted_raw_results) is expected_deleted
@@ -332,4 +337,4 @@ class TestCollaboratorMembershipWebhookProcessor:
                 "repo2",
             }
 
-        assert membership_webhook_processor.affiliation_matches.await_count == 2
+        assert affiliation_matches_mock.await_count == 2

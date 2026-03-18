@@ -99,28 +99,26 @@ class CollaboratorTeamWebhookProcessor(BaseCollaboratorWebhookProcessor):
                 continue
             filtered_repos.append(repo)
 
+        updated_raw_results: list[dict[str, Any]] = []
+        deleted_raw_results: list[dict[str, Any]] = []
+
         if affiliation == "all":
-            updated_raw_results, deleted_raw_results = (
-                self._build_enriched_collaborator_data(
-                    repos=filtered_repos,
-                    members=members,
-                    organization=organization,
-                )
+            (
+                updated_raw_results,
+                deleted_raw_results,
+            ) = self._build_enriched_collaborator_data(
+                repos=filtered_repos,
+                members=members,
+                organization=organization,
             )
         else:
-            updated_raw_results: list[dict[str, Any]] = []
-            deleted_raw_results: list[dict[str, Any]] = []
-
             for repo in filtered_repos:
                 repo_name = repo["name"]
                 matching_members: list[dict[str, Any]] = []
                 non_matching_members: list[dict[str, Any]] = []
 
                 for member in members:
-                    member_login = member.get("login")
-                    if not member_login:
-                        continue
-
+                    member_login = member["login"]
                     if await self.affiliation_matches(
                         organization=organization,
                         repo_name=repo_name,

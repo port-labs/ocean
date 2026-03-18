@@ -460,7 +460,7 @@ class GithubBranchSelector(RepoSearchSelector):
 
 
 class GithubCollaboratorSelector(RepoSearchSelector):
-    affiliation: Literal["all", "direct"] = Field(
+    affiliation: Literal["all", "direct", "outside"] = Field(
         title="Affiliation",
         default="all",
         description="Filter collaborators by affiliation (all, direct, outside).",
