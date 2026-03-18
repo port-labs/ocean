@@ -186,7 +186,7 @@ async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
             async for results_batch in sast_exporter.get_paginated_resources(options):
                 logger.info(
-                    f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']} and project {scan_data["projectId"]}"
+                    f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']} and project {scan_data['projectId']}"
                 )
                 yield results_batch
 
@@ -221,7 +221,7 @@ async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
             async for results_batch in kics_exporter.get_paginated_resources(options):
                 logger.info(
-                    f"Received batch with {len(results_batch)} KICS results for scan {scan_data['id']} and project {scan_data["projectId"]}"
+                    f"Received batch with {len(results_batch)} KICS results for scan {scan_data['id']} and project {scan_data['projectId']}"
                 )
                 yield results_batch
 
