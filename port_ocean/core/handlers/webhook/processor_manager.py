@@ -312,7 +312,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             try:
                 webhook_event = await WebhookEvent.from_request(request)
                 webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
-                self._log_webhook_event(webhook_event)
+                if ocean.config.events_debug_logging:
+                    self._log_webhook_event(webhook_event)
                 await self._event_queues[path].put(webhook_event)
                 return {"status": "ok"}
             except Exception as e:
@@ -331,7 +332,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             base64_payload = base64.b64encode(
                 json.dumps(webhook_event.payload).encode("utf-8")
             ).decode("utf-8")
-            logger.debug(
+            logger.info(
                 "Got webhook event",
                 webhook_event=base64_payload,
                 trace_id=webhook_event.trace_id,
