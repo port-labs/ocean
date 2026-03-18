@@ -1,5 +1,4 @@
-import re
-from typing import Literal
+from typing import Literal, Annotated
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -8,30 +7,31 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic.fields import Field
+from pydantic import Field
 
 
-class EntityFieldsType(str):
-    @classmethod
-    def validate(cls, value: str) -> None:
-        # Regular expression to validate the format of the aggregation value
-        regex = (
+EntityFieldsType = Annotated[
+    str,
+    Field(
+        pattern=(
             r"^(\+?(firstSeenTms|lastSeenTms|tags|fromRelationships|icon"
             r"|managementZones|properties|toRelationships|properties\.\d+)"
             r"(,\+?(firstSeenTms|lastSeenTms|tags|fromRelationships|icon|"
             r"managementZones|properties|toRelationships|properties\.\w+))*)*$"
-        )
-        if not re.match(regex, value):
-            raise ValueError(
-                "Invalid entity field format. Use 'firstSeenTms', 'lastSeenTms', 'tags', "
-                "'fronRelationships', 'icon', 'managementZones', 'properties', "
-                "'toRelationships', 'properties.FIELD' or comma-separated list"
-                " of specified values. Values can be prefixed with '+'."
-            )
+        ),
+        title="Entity Fields",
+        description="Comma-separated list of fields to include in each entity. Values can be prefixed with '+'.",
+    ),
+]
 
 
 class DynatraceEntitySelector(Selector):
-    entity_types: list[str] = Field(
+    entity_types: list[
+        Literal[
+            "APPLICATION",
+            "SERVICE",
+        ]
+    ] = Field(
         default=["APPLICATION", "SERVICE"],
         title="Entity Types",
         description="List of entity types to be fetched",
@@ -95,7 +95,9 @@ class DynatracePortAppConfig(PortAppConfig):
         | DynatraceProblemResourceConfig
         | DynatraceTeamResourceConfig
     ] = Field(
-        default_factory=list
+        title="Resources",
+        description="List of Dynatrace resources to configure for this integration.",
+        default_factory=list,
     )  # type: ignore[assignment]
 
 
