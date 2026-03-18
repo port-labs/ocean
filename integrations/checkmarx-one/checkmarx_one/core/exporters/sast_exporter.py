@@ -12,7 +12,7 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
 
     def _enrich_sast_result_with_scan_info(
         self, result: Dict[str, Any], scan_id: str, project_id: str
-    ):
+    ) -> Dict[str, Any]:
         """Enrich a SAST result with the scan ID and project ID."""
         result["__scan_id"] = scan_id
         result["__project_id"] = project_id

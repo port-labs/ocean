@@ -211,6 +211,7 @@ class TestCheckmarxDastScanResultExporter:
         """Test building parameters with all filters."""
         options = ListDastScanResultOptions(
             dast_scan_id="scan-1",
+            dast_project_id="project-1",
             severity=["CRITICAL", "HIGH"],
             status=["NEW"],
             state=["TO_VERIFY", "CONFIRMED"],
@@ -230,7 +231,11 @@ class TestCheckmarxDastScanResultExporter:
     ) -> None:
         """Test building parameters with only some filters."""
         options = ListDastScanResultOptions(
-            dast_scan_id="scan-1", severity=["CRITICAL"], status=None, state=None
+            dast_scan_id="scan-1",
+            dast_project_id="project-1",
+            severity=["CRITICAL"],
+            status=None,
+            state=None,
         )
 
         params = exporter._build_params(options)
@@ -243,7 +248,11 @@ class TestCheckmarxDastScanResultExporter:
     ) -> None:
         """Test building parameters with no filters."""
         options = ListDastScanResultOptions(
-            dast_scan_id="scan-1", severity=None, status=None, state=None
+            dast_scan_id="scan-1",
+            dast_project_id="project-1",
+            severity=None,
+            status=None,
+            state=None,
         )
 
         params = exporter._build_params(options)

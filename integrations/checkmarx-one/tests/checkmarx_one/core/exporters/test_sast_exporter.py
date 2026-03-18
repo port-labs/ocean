@@ -50,7 +50,7 @@ class TestCheckmarxSastExporter:
 
     def test_build_params_minimal(self, exporter: CheckmarxSastExporter) -> None:
         """Test building params with minimal options."""
-        options: ListSastOptions = {"scan_id": "scan-123"}
+        options: ListSastOptions = {"scan_id": "scan-123", "project_id": "project-1"}
 
         params = exporter._build_paginated_resource_params(options)
 
@@ -200,7 +200,7 @@ class TestCheckmarxSastExporter:
     ) -> None:
         """Test getting paginated SAST results with empty batch."""
         scan_id = "scan-123"
-        options: ListSastOptions = {"scan_id": scan_id}
+        options: ListSastOptions = {"scan_id": scan_id, "project_id": "project-1"}
         mock_results: List[dict[str, Any]] = []
 
         async def mock_paginated_resources(
@@ -223,7 +223,7 @@ class TestCheckmarxSastExporter:
     ) -> None:
         """Test getting paginated SAST results with no batches."""
         scan_id = "scan-123"
-        options: ListSastOptions = {"scan_id": scan_id}
+        options: ListSastOptions = {"scan_id": scan_id, "project_id": "project-1"}
 
         async def mock_paginated_resources(
             endpoint: str, object_key: str, params: dict[str, Any] | None = None
@@ -244,7 +244,10 @@ class TestCheckmarxSastExporter:
         self, exporter: CheckmarxSastExporter
     ) -> None:
         """Test building params with different scan ID."""
-        options: ListSastOptions = {"scan_id": "different-scan-456"}
+        options: ListSastOptions = {
+            "scan_id": "different-scan-456",
+            "project_id": "project-1",
+        }
 
         params = exporter._build_paginated_resource_params(options)
 
@@ -256,7 +259,7 @@ class TestCheckmarxSastExporter:
         self, exporter: CheckmarxSastExporter
     ) -> None:
         """Test that visible columns always includes scan-id."""
-        options: ListSastOptions = {"scan_id": "scan-123"}
+        options: ListSastOptions = {"scan_id": "scan-123", "project_id": "project-1"}
 
         params = exporter._build_paginated_resource_params(options)
 
@@ -267,7 +270,7 @@ class TestCheckmarxSastExporter:
         self, exporter: CheckmarxSastExporter
     ) -> None:
         """Test that visible columns contains all expected SAST result fields."""
-        options: ListSastOptions = {"scan_id": "scan-123"}
+        options: ListSastOptions = {"scan_id": "scan-123", "project_id": "project-1"}
 
         params = exporter._build_paginated_resource_params(options)
         visible_columns = params["visible-columns"]
