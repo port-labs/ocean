@@ -84,7 +84,7 @@ report_resync_aborted_to_port() {
 
   local abort_url="${api_url}/integration/${integ_id_encoded}/resync/${resync_id}/abort"
   local abort_code
-  abort_code=$(curl -sf -o /dev/null -w '%{http_code}' --max-time 10 -X POST "$abort_url" \
+  abort_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST "$abort_url" \
     -H "Authorization: $auth_header" 2>/dev/null) || abort_code=000
   if [[ "$abort_code" =~ ^2[0-9][0-9]$ ]]; then
     log_info "Reported resync aborted to integ-service (integrationIdentifier=$INTEGRATION_IDENTIFIER)"
