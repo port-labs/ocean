@@ -138,4 +138,6 @@ class WizPortAppConfig(PortAppConfig):
         | ServiceTicketResourceConfig
         | ProjectResourceConfig
         | VulnerabilityFindingResourceConfig
-    ] = Field(default_factory=list)
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
