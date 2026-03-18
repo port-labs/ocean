@@ -1,10 +1,13 @@
-from integration import GithubPortAppConfig
+from integration import (
+    GithubCollaboratorConfig,
+    GithubCollaboratorSelector,
+    GithubPortAppConfig,
+)
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
     PortResourceConfig,
     ResourceConfig,
-    Selector,
 )
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
@@ -17,7 +20,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from github.core.options import SingleCollaboratorOptions
-from typing import Any
+from typing import Any, Literal
 from port_ocean.context.event import event_context
 
 
@@ -45,10 +48,10 @@ INVALID_MEMBER_COLLABORATOR_PAYLOADS: dict[str, Any] = {
 
 
 @pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+def resource_config() -> GithubCollaboratorConfig:
+    return GithubCollaboratorConfig(
         kind=ObjectKind.COLLABORATOR,
-        selector=Selector(query="true"),
+        selector=GithubCollaboratorSelector(query="true", affiliation="all"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -204,3 +207,85 @@ class TestCollaboratorMemberWebhookProcessor:
                     }
                     assert result.deleted_raw_results == [expected_deleted_data]
                     mock_exporter.get_resource.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "affiliation,is_outside,expected_updated,expected_deleted",
+        [
+            ("outside", True, True, False),
+            ("outside", False, False, True),
+            ("direct", True, False, True),
+            ("direct", False, True, False),
+        ],
+    )
+    async def test_handle_event_member_events_affiliation_filter(
+        self,
+        member_webhook_processor: CollaboratorMemberWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+        affiliation: Literal["outside", "direct"],
+        is_outside: bool,
+        expected_updated: bool,
+        expected_deleted: bool,
+    ) -> None:
+        cfg = resource_config.copy(deep=True)
+        cfg.selector.affiliation = affiliation
+
+        payload = VALID_MEMBER_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "added"
+        payload["repository"] = {
+            "name": "test-repo",
+            "owner": {"type": "Organization"},
+        }
+
+        affiliation_matches_mock = AsyncMock(
+            return_value=(
+                (affiliation == "outside" and is_outside)
+                or (affiliation == "direct" and not is_outside)
+            )
+        )
+
+        mock_collaborator_data = {
+            "login": "test-user",
+            "name": "Test User",
+            "email": "test@example.com",
+        }
+
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.member_webhook_processor.create_github_client"
+        ) as mock_create_client:
+            mock_client = MagicMock()
+            mock_create_client.return_value = mock_client
+
+            with patch(
+                "github.webhook.webhook_processors.collaborator_webhook_processor.member_webhook_processor.RestCollaboratorExporter"
+            ) as mock_exporter_class:
+                mock_exporter = MagicMock()
+                mock_exporter_class.return_value = mock_exporter
+                mock_exporter.get_resource = AsyncMock(
+                    return_value=mock_collaborator_data
+                )
+
+                with patch.object(
+                    member_webhook_processor,
+                    "affiliation_matches",
+                    new=affiliation_matches_mock,
+                ):
+                    result = await member_webhook_processor.handle_event(payload, cfg)
+
+        assert bool(result.updated_raw_results) is expected_updated
+        assert bool(result.deleted_raw_results) is expected_deleted
+
+        if expected_updated:
+            assert result.updated_raw_results == [mock_collaborator_data]
+        if expected_deleted:
+            assert result.deleted_raw_results == [
+                {
+                    "login": "test-user",
+                    "id": 1,
+                    "__repository": "test-repo",
+                    "__repository_object": {
+                        "name": "test-repo",
+                        "owner": {"type": "Organization"},
+                    },
+                    "__organization": "test-org",
+                }
+            ]

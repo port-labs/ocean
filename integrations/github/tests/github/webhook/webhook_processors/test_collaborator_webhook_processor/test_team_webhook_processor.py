@@ -1,10 +1,13 @@
-from integration import GithubPortAppConfig
+from integration import (
+    GithubCollaboratorConfig,
+    GithubCollaboratorSelector,
+    GithubPortAppConfig,
+)
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
     PortResourceConfig,
     ResourceConfig,
-    Selector,
 )
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
@@ -16,7 +19,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from typing import Any
+from typing import Any, Literal
 from port_ocean.context.event import event_context
 
 
@@ -62,10 +65,10 @@ INVALID_TEAM_COLLABORATOR_PAYLOADS: dict[str, Any] = {
 
 
 @pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+def resource_config() -> GithubCollaboratorConfig:
+    return GithubCollaboratorConfig(
         kind=ObjectKind.COLLABORATOR,
-        selector=Selector(query="true"),
+        selector=GithubCollaboratorSelector(query="true", affiliation="all"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -235,6 +238,8 @@ class TestCollaboratorTeamWebhookProcessor:
                             "name": "Test User",
                             "site_admin": False,
                             "__repository": "repo1",
+                            "__repository_object": {"name": "repo1"},
+                            "__organization": "test-org",
                         },
                         {
                             "id": "user1",
@@ -242,6 +247,8 @@ class TestCollaboratorTeamWebhookProcessor:
                             "name": "Test User",
                             "site_admin": False,
                             "__repository": "repo2",
+                            "__repository_object": {"name": "repo2"},
+                            "__organization": "test-org",
                         },
                     ]
                     assert result.updated_raw_results == expected_team_data
@@ -259,6 +266,95 @@ class TestCollaboratorTeamWebhookProcessor:
                     # For unsupported events, no exporters should be called
                     mock_create_client.assert_not_called()
                     mock_graphql_team_exporter.get_resource.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "affiliation,is_outside,expected_updated,expected_deleted",
+        [
+            ("outside", True, True, False),
+            ("outside", False, False, True),
+            ("direct", True, False, True),
+            ("direct", False, True, False),
+        ],
+    )
+    async def test_handle_event_team_events_affiliation_filter(
+        self,
+        team_webhook_processor: CollaboratorTeamWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+        affiliation: Literal["outside", "direct"],
+        is_outside: bool,
+        expected_updated: bool,
+        expected_deleted: bool,
+    ) -> None:
+        cfg = resource_config.copy(deep=True)
+        cfg.selector.affiliation = affiliation
+        affiliation_matches_mock = AsyncMock(
+            return_value=(
+                (affiliation == "outside" and is_outside)
+                or (affiliation == "direct" and not is_outside)
+            )
+        )
+
+        payload = VALID_TEAM_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "added_to_repository"
+
+        mock_team_data = {
+            "members": {
+                "nodes": [
+                    {
+                        "id": "user1",
+                        "login": "test-user",
+                        "name": "Test User",
+                        "isSiteAdmin": False,
+                    }
+                ]
+            },
+            "repositories": {
+                "nodes": [
+                    {"name": "repo1"},
+                    {"name": "repo2"},
+                ]
+            },
+        }
+
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client"
+        ) as mock_create_client:
+            mock_client = MagicMock()
+            mock_create_client.return_value = mock_client
+
+            with patch(
+                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.GraphQLTeamMembersAndReposExporter"
+            ) as mock_graphql_team_exporter_class:
+                mock_graphql_team_exporter = MagicMock()
+                mock_graphql_team_exporter_class.return_value = (
+                    mock_graphql_team_exporter
+                )
+                mock_graphql_team_exporter.get_resource = AsyncMock(
+                    return_value=mock_team_data
+                )
+
+                with patch.object(
+                    team_webhook_processor,
+                    "affiliation_matches",
+                    new=affiliation_matches_mock,
+                ):
+                    result = await team_webhook_processor.handle_event(payload, cfg)
+
+        assert bool(result.updated_raw_results) is expected_updated
+        assert bool(result.deleted_raw_results) is expected_deleted
+
+        if expected_updated:
+            assert {r["__repository"] for r in result.updated_raw_results} == {
+                "repo1",
+                "repo2",
+            }
+        if expected_deleted:
+            assert {r["__repository"] for r in result.deleted_raw_results} == {
+                "repo1",
+                "repo2",
+            }
+
+        assert affiliation_matches_mock.await_count == 2
 
     async def test_handle_event_no_team_data(
         self,

@@ -9,6 +9,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListCollaboratorOptions, SingleCollaboratorOptions
 from github.clients.http.rest_client import GithubRestClient
+from port_ocean.utils.cache import cache_iterator_result
 
 
 class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
@@ -35,6 +36,7 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(collaborator, cast(str, repo_name)), organization
         )
 
+    @cache_iterator_result()
     async def get_paginated_resources[
         ExporterOptionsT: ListCollaboratorOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:

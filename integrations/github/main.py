@@ -994,7 +994,9 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     tasks.append(
                         collaborator_exporter.get_paginated_resources(
                             ListCollaboratorOptions(
-                                organization=org_name, repo_name=repo["name"]
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                affiliation=config.selector.affiliation,
                             )
                         )
                     )

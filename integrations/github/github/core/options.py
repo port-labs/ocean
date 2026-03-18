@@ -251,6 +251,8 @@ class SingleCollaboratorOptions(RepositoryIdentifier):
 class ListCollaboratorOptions(RepositoryIdentifier):
     """Options for listing collaborators."""
 
+    affiliation: Required[str]
+
 
 class BaseSecretScanningAlertOptions(RepositoryIdentifier):
     """Base options for secret scanning alerts."""
