@@ -7,14 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.5.93 (2026-03-11)
-
-
-### Features
-
-- Added `version` as a standalone kind to sync Jira project releases as entities in Port.
-
-
 ## 0.5.92 (2026-03-11)
 
 
