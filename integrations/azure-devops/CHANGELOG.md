@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.43 (2026-03-18)
+
+
+### Improvements
+
+- Updated HTTP client to use Ocean's core `client_timeout` configuration (default 60s) instead of hardcoded 5-second timeout, improving reliability for large Azure DevOps organizations
+
+
 ## 0.7.42 (2026-03-17)
 
 
