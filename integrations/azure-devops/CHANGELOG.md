@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated HTTP client to use Ocean's core `client_timeout` configuration 
+- Updated HTTP client to use Ocean's core `client_timeout` configuration
 
 
 ## 0.7.42 (2026-03-17)
