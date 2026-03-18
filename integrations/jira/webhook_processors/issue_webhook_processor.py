@@ -44,11 +44,16 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         if config.selector.jql:
             jql = f"({config.selector.jql}) AND key = {issue_key}"
 
-        issues = await client.get_reconciled_issues(
-            jql=jql,
-            issue_ids=[issue_id],
-            fields=config.selector.fields,
-        )
+        issues = []
+        async for batch in client.get_paginated_issues(
+            params={
+                "jql": jql,
+                "fields": config.selector.fields,
+                "expand": config.selector.expand,
+                "reconcileIssues": [issue_id],
+            }
+        ):
+            issues.extend(batch)
 
         data_to_update = []
         data_to_delete = []

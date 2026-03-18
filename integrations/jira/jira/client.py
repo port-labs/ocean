@@ -315,21 +315,38 @@ class JiraClient(OAuthClient):
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
         return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
+    @staticmethod
+    def _build_issue_search_body(
+        jql: str,
+        fields: str | None = None,
+        expand: str | None = None,
+        reconcile_issues: list[int] | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "jql": jql,
+            "maxResults": len(reconcile_issues) if reconcile_issues else PAGE_SIZE,
+        }
+        if fields:
+            body["fields"] = (
+                ["*all"]
+                if fields == "*all"
+                else [f.strip() for f in fields.split(",") if f.strip()]
+            )
+        if expand:
+            body["expand"] = expand
+        if reconcile_issues:
+            body["reconcileIssues"] = reconcile_issues
+        return body
+
     async def _get_paginated_data_using_next_page_token(
         self,
         url: str,
+        body: dict[str, Any],
         extract_key: str | None = None,
-        initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get paginated data using token-based pagination for JQL endpoints."""
-        params = initial_params or {}
-        next_page_token = None
-
+        """Get paginated data via POST using token-based pagination for JQL endpoints."""
         while True:
-            if next_page_token:
-                params["nextPageToken"] = next_page_token
-
-            response_data = await self._send_api_request("GET", url, params=params)
+            response_data = await self._send_api_request("POST", url, json=body)
             items = response_data.get(extract_key, []) if extract_key else response_data
 
             if not items:
@@ -341,6 +358,8 @@ class JiraClient(OAuthClient):
             if not next_page_token:
                 break
 
+            body = {**body, "nextPageToken": next_page_token}
+
     async def get_paginated_issues(
         self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -349,36 +368,17 @@ class JiraClient(OAuthClient):
         logger.info(f"Using JQL filter: {params['jql']}")
         url = f"{self.api_url}/search/jql"
 
+        body = self._build_issue_search_body(
+            jql=params["jql"],
+            fields=params.get("fields"),
+            expand=params.get("expand"),
+            reconcile_issues=params.get("reconcileIssues"),
+        )
+
         async for issues in self._get_paginated_data_using_next_page_token(
-            url, "issues", initial_params=params
+            url, body, "issues"
         ):
             yield issues
-
-    async def get_reconciled_issues(
-        self,
-        jql: str,
-        issue_ids: list[int],
-        fields: str | None = None,
-    ) -> list[dict[str, Any]]:
-        """Filter known issues against a JQL query with read-after-write consistency."""
-        url = f"{self.api_url}/search/jql"
-        fields_list = (
-            ["*all"]
-            if not fields or fields == "*all"
-            else [field.strip() for field in fields.split(",") if field.strip()]
-        )
-        body = {
-            "jql": jql,
-            "fields": fields_list,
-            "reconcileIssues": issue_ids,
-            "maxResults": len(issue_ids),
-        }
-        response_data = await self._send_api_request("POST", url, json=body)
-        issues = response_data["issues"]
-        logger.info(
-            f"Found {len(issues)} issues matching JQL filter for issue IDs: {issue_ids}"
-        )
-        return issues
 
     async def get_single_user(self, account_id: str) -> dict[str, Any]:
         return await self._send_api_request(
