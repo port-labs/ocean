@@ -50,13 +50,14 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     branch_name="main",
                     protection_rules=False,
-                    repo={"name": "repo1"},
+                    repo={"name": "repo1", "default_branch": "main"},
                 )
             )
 
             assert branch is not None
             assert branch["__repository"] == "repo1"  # Check repository is enriched
             assert branch["name"] == "main"  # Check name is preserved
+            assert branch["__is_default_branch"] is True
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/repo1/branches/main"
@@ -80,7 +81,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     protection_rules=False,
                     detailed=False,
-                    repo={"name": "repo1"},
+                    repo={"name": "repo1", "default_branch": "main"},
                 )
                 exporter = RestBranchExporter(rest_client)
 
@@ -94,6 +95,9 @@ class TestRestBranchExporter:
                 # Check each branch is properly enriched
                 for branch in branches[0]:
                     assert "__repository" in branch
+
+                assert branches[0][0]["__is_default_branch"] is True
+                assert branches[0][1]["__is_default_branch"] is False
 
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/test-org/repo1/branches",
@@ -126,7 +130,7 @@ class TestRestBranchExporter:
                     branch_names=["main", "develop"],
                     protection_rules=False,
                     detailed=False,  # ignored when branch_names is provided
-                    repo={"name": "repo1"},
+                    repo={"name": "repo1", "default_branch": "main"},
                 )
 
                 batches = [
@@ -254,7 +258,7 @@ class TestRestBranchExporter:
                         repo_name="repo1",
                         branch_name="main",
                         protection_rules=True,
-                        repo={"name": "repo1"},
+                        repo={"name": "repo1", "default_branch": "main"},
                     )
                 )
 
@@ -295,7 +299,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     detailed=True,
                     protection_rules=False,
-                    repo={"name": "repo1"},
+                    repo={"name": "repo1", "default_branch": "main"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -341,7 +345,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     detailed=False,
                     protection_rules=True,
-                    repo={"name": "repo1"},
+                    repo={"name": "repo1", "default_branch": "main"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -395,7 +399,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     detailed=True,
                     protection_rules=True,
-                    repo={"name": "repo1"},
+                    repo={"name": "repo1", "default_branch": "main"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
