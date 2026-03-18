@@ -5,10 +5,8 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 
 from integration import (
-    CloudCostV1Selector,
-    CloudCostV2Selector,
-    KubecostV1Selector,
-    KubecostV2Selector,
+    CloudCostSelector,
+    KubecostSelector,
 )
 
 KUBECOST_API_VERSION_1 = "v1"
@@ -22,19 +20,14 @@ class KubeCostClient:
 
     def generate_params(
         self,
-        selector: (
-            CloudCostV1Selector
-            | CloudCostV2Selector
-            | KubecostV1Selector
-            | KubecostV2Selector
-        ),
+        selector: CloudCostSelector | KubecostSelector,
     ) -> dict[str, str]:
         params = selector.dict(exclude_unset=True, by_alias=True)
         params.pop("query")
         return params
 
     async def get_kubesystem_cost_allocation(
-        self, selector: KubecostV1Selector | KubecostV2Selector
+        self, selector: KubecostSelector
     ) -> list[dict[str, Any]]:
         """Calls the Kubecost allocation endpoint to return data for cost and usage
         https://docs.kubecost.com/apis/apis-overview/api-allocation
@@ -62,7 +55,7 @@ class KubeCostClient:
             raise
 
     async def get_cloud_cost_allocation(
-        self, selector: CloudCostV1Selector | CloudCostV2Selector
+        self, selector: CloudCostSelector
     ) -> list[dict[str, Any]]:
         """Calls the Kubecost cloud  allocation API. It uses the Aggregate endpoint which returns detailed cloud cost data
         https://docs.kubecost.com/apis/apis-overview/cloud-cost-api
