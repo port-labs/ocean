@@ -49,7 +49,6 @@ class CacheKeys(StrEnum):
 PAGE_SIZE = 100
 NUMBER_OF_REQUESTS = 25
 NUMBER_OF_SECONDS = 1
-MAX_CONCURRENT_STATE_FILE_DOWNLOADS = 5
 
 
 class TerraformClient:
@@ -280,15 +279,15 @@ class TerraformClient:
     async def get_paginated_state_files(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_STATE_FILE_DOWNLOADS)
 
         logger.info(
             "Fetching all historical state files for state versions with hosted state download URLs"
         )
 
         async for state_version_batch in self.get_paginated_state_versions():
+
             tasks = [
-                self._download_state_file_with_semaphore(state_version, semaphore)
+                self.download_state_file(state_version)
                 for state_version in state_version_batch
             ]
             results = await asyncio.gather(*tasks)
@@ -321,14 +320,6 @@ class TerraformClient:
             "__workspace": workspace_data,
             "__state_version_id": state_version.get("id"),
         }
-
-    async def _download_state_file_with_semaphore(
-        self,
-        state_version: dict[str, Any],
-        semaphore: asyncio.BoundedSemaphore,
-    ) -> dict[str, Any] | None:
-        async with semaphore:
-            return await self.download_state_file(state_version)
 
     async def get_state_file_for_single_workspace(
         self, workspace_name: str, organization_name: str
@@ -379,6 +370,9 @@ class TerraformClient:
             return response.get("data")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
+                logger.warning(
+                    f"Workspace {workspace_id} has no state version yet (never applied)"
+                )
                 return None
             raise
 
@@ -386,24 +380,29 @@ class TerraformClient:
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch only the current state file for each workspace."""
-        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_STATE_FILE_DOWNLOADS)
-
         logger.info("Fetching current state files for all workspaces")
 
         async for workspaces in self.get_paginated_workspaces():
             version_tasks = [
-                self.get_current_state_version_for_workspace(ws["id"])
-                for ws in workspaces
+                self.get_current_state_version_for_workspace(workspace["id"])
+                for workspace in workspaces
             ]
             version_results = await asyncio.gather(*version_tasks)
-            state_versions = [sv for sv in version_results if sv is not None]
+            state_versions = [
+                state_version
+                for state_version in version_results
+                if state_version is not None
+            ]
 
             if not state_versions:
+                logger.debug(
+                    f"No state versions found for batch of {len(workspaces)} workspaces, skipping"
+                )
                 continue
 
             download_tasks = [
-                self._download_state_file_with_semaphore(sv, semaphore)
-                for sv in state_versions
+                self.download_state_file(state_version)
+                for state_version in state_versions
             ]
             results = await asyncio.gather(*download_tasks)
             combined = list(filter(None, results))
