@@ -43,16 +43,19 @@ class RepositorySelector(Selector):
     user_role: Optional[UserRole] = Field(
         default=None,
         alias="userRole",
+        title="User Role",
         description="Filter repositories by authenticated user's role: member, contributor, admin, or owner",
     )
     repo_query: Optional[str] = Field(
         default=None,
         alias="repoQuery",
+        title="Repository Query",
         description='Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
     )
     included_files: list[str] = Field(
         alias="includedFiles",
         default_factory=list,
+        title="Included Files",
         description=(
             "List of file paths to fetch from the repository and attach to "
             "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
@@ -64,6 +67,7 @@ class PullRequestSelector(RepositorySelector):
     pull_request_query: str = Field(
         default='state="OPEN"',
         alias="pullRequestQuery",
+        title="Pull Request Query",
         description='Query string to narrow pull requests as per Bitbucket filtering (e.g., state="OPEN")',
     )
 
@@ -82,16 +86,22 @@ class FolderPattern(BaseModel):
 
 
 class BitbucketFolderSelector(RepositorySelector):
-    query: str = Field(default="", description="Query string to filter folders")
+    query: str = Field(
+        default="", title="Query", description="Query string to filter folders"
+    )
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
+        title="Folders",
         description="Specify the repositories, branches and folders to include under this relative path",
     )
 
 
 class BitbucketFolderResourceConfig(ResourceConfig):
-    kind: Literal["folder"]
+    kind: Literal["folder"] = Field(
+        title="Bitbucket Folder",
+        description="A folder within a Bitbucket repository, scoped to specific branches and paths",
+    )
     selector: BitbucketFolderSelector
     port: PortResourceConfig
 
@@ -129,18 +139,34 @@ class BitbucketFileSelector(Selector):
 
 
 class BitbucketFileResourceConfig(ResourceConfig):
-    kind: Literal["file"]
+    kind: Literal["file"] = Field(
+        title="Bitbucket File",
+        description="A file within a Bitbucket repository, matched by path and filename patterns",
+    )
     selector: BitbucketFileSelector
 
 
 class RepositoryResourceConfig(ResourceConfig):
-    kind: Literal["repository"]
+    kind: Literal["repository"] = Field(
+        title="Bitbucket Repository",
+        description="A Bitbucket repository synced from your workspace",
+    )
     selector: RepositorySelector
 
 
 class PullRequestResourceConfig(ResourceConfig):
-    kind: Literal["pull-request"]
+    kind: Literal["pull-request"] = Field(
+        title="Bitbucket Pull Request",
+        description="A pull request in a Bitbucket repository",
+    )
     selector: PullRequestSelector
+
+
+class ProjectResourceConfig(ResourceConfig):
+    kind: Literal["project"] = Field(
+        title="Bitbucket Project",
+        description="A Bitbucket project that groups repositories within a workspace",
+    )
 
 
 class BitbucketAppConfig(PortAppConfig):
@@ -149,12 +175,12 @@ class BitbucketAppConfig(PortAppConfig):
         | BitbucketFileResourceConfig
         | PullRequestResourceConfig
         | RepositoryResourceConfig
-        | ResourceConfig
+        | ProjectResourceConfig
     ] = Field(
         default_factory=list,
         alias="resources",
         description="Specify the resources to include in the sync",
-    )
+    )  # type: ignore[assignment]
 
 
 class GitManipulationHandler(JQEntityProcessor):
@@ -167,8 +193,8 @@ class GitManipulationHandler(JQEntityProcessor):
                 f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
                 f"Pattern: '{pattern}'. "
                 f"Use the 'includedFiles' selector instead. Example: "
-                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
-                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
+                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX) :]}'] "
+                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX) :]}"]'
             )
             entity_processor = FileEntityProcessor
         else:
