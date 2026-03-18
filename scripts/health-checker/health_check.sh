@@ -53,7 +53,7 @@ report_resync_aborted_to_port() {
   local token_resp
   token_resp=$(curl -sf --max-time 10 -X POST "${api_url}/auth/access_token" \
     -H "Content-Type: application/json" \
-    -d "{\"clientId\":\"$PORT_CLIENT_ID\",\"clientSecret\":\"$PORT_CLIENT_SECRET\"}" 2>/dev/null) || return 0
+    -d "$(jq -n --arg clientId "$PORT_CLIENT_ID" --arg clientSecret "$PORT_CLIENT_SECRET" '{clientId:$clientId,clientSecret:$clientSecret}')" 2>/dev/null) || return 0
   local token_type token_value
   token_type=$(echo "$token_resp" | jq -r '.tokenType // "Bearer"')
   token_value=$(echo "$token_resp" | jq -r '.accessToken')
