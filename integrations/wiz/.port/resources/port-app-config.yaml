@@ -124,6 +124,29 @@ resources:
             version: .version
             package: .detailedName
             manager: .artifactType.osPackageManager // .artifactType.codeLibraryLanguage
+  - kind: sbom-artifact
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name + "-" + (.version // "unknown") | gsub("[^\\p{L}0-9@_.+:\\/=-]"; "")
+          blueprint: '"sbomArtifact"'
+          properties:
+            name: .name
+            version: .version
+            packageEcosystem: .__groupTypeMetadata.osPackageManager // .__groupTypeMetadata.codeLibraryLanguage // .__groupTypeMetadata.plugin // .__groupTypeMetadata.custom // .__groupTypeMetadata.ciComponent // null
+            packageType: .__groupTypeMetadata.group // null
+            filePath: .filePath
+            transitivity: .transitivity
+            validatedInRuntime: .validatedInRuntime
+            usedInCodeResult: .usedInCodeResult
+            licenses: (.licenses // []) | map(.name)
+            assetType: (.asset // {}).__typename
+            asset: .asset
+          relations:
+            repository: if (.asset // {}).__typename == "SBOMArtifactAssetRepositoryBranch" then .asset.repositoryId else null end
   - kind: technology
     selector:
       query: 'true'

@@ -563,36 +563,84 @@
     }
   },
   {
-    "identifier": "sbomPackage",
-    "description": "This blueprint represents a software bill of materials (SBOM) package",
-    "title": "SBOM Package",
+    "identifier": "sbomArtifact",
+    "description": "This blueprint represents a Wiz SBOM artifact",
+    "title": "SBOM Artifact",
     "icon": "Package",
     "schema": {
       "properties": {
-        "package": {
+        "name": {
           "icon": "DefaultProperty",
           "type": "string",
-          "title": "Package"
+          "title": "Name"
         },
         "version": {
           "icon": "DefaultProperty",
           "type": "string",
           "title": "Version"
         },
-        "manager": {
+        "packageType": {
           "icon": "DefaultProperty",
           "type": "string",
-          "title": "Manager"
+          "title": "Package Type"
+        },
+        "packageEcosystem": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Package Ecosystem"
+        },
+        "filePath": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "File Path"
+        },
+        "transitivity": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Transitivity"
+        },
+        "validatedInRuntime": {
+          "icon": "DefaultProperty",
+          "type": "boolean",
+          "title": "Validated In Runtime"
+        },
+        "usedInCodeResult": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Used In Code Result"
+        },
+        "licenses": {
+          "icon": "DefaultProperty",
+          "type": "array",
+          "title": "Licenses"
+        },
+        "assetType": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Asset Type"
+        },
+        "asset": {
+          "icon": "DefaultProperty",
+          "type": "object",
+          "title": "Asset"
         }
       },
       "required": [
-        "package",
+        "name",
         "version"
       ]
     },
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "repository": {
+        "target": "wizRepository",
+        "title": "Repository",
+        "description": "The repository linked to this SBOM artifact when the asset type is a repository branch",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

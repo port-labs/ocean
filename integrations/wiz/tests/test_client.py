@@ -5,7 +5,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from wiz.client import WizClient
-from wiz.options import VulnerabilityFindingOptions
+from wiz.options import SbomArtifactOptions, VulnerabilityFindingOptions
 
 
 def mock_paginated_generator(
@@ -256,3 +256,109 @@ async def test_get_repositories(mock_wiz_client: WizClient) -> None:
             variables={"first": 100, "filterBy": {}},
         )
         assert results == mock_repos
+
+
+@pytest.mark.asyncio
+async def test_build_sbom_artifact_type_filter_selects_only_one_key(
+    mock_wiz_client: WizClient,
+) -> None:
+    sbom_type = {
+        "codeLibraryLanguage": "PYTHON",
+        "osPackageManager": None,
+        "plugin": None,
+        "custom": None,
+        "ciComponent": None,
+    }
+
+    assert mock_wiz_client._build_sbom_artifact_type_filter(sbom_type) == {
+        "codeLibraryLanguage": ["PYTHON"]
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_sbom_artifacts_filters_groups_and_caps_max_pages(
+    mock_wiz_client: WizClient,
+) -> None:
+    options: SbomArtifactOptions = {
+        "group_list": ["CODE_LIBRARY"],
+        "max_pages": 999,
+    }
+    grouped_nodes = [
+        {
+            "id": "group-1",
+            "name": "pandas",
+            "type": {"group": "CODE_LIBRARY", "codeLibraryLanguage": "PYTHON"},
+            "artifacts": {"totalCount": 2},
+        },
+        {
+            "id": "group-2",
+            "name": "dpkg-pkg",
+            "type": {"group": "OS_PACKAGE", "osPackageManager": "DPKG"},
+            "artifacts": {"totalCount": 1},
+        },
+    ]
+
+    with (
+        patch.object(
+            mock_wiz_client,
+            "_get_paginated_resources",
+        ) as mock_paginated,
+        patch.object(
+            mock_wiz_client,
+            "_get_sbom_artifacts_for_grouped_name",
+        ) as mock_grouped_fetch,
+    ):
+        mock_paginated.return_value = mock_paginated_generator(grouped_nodes)
+
+        def _grouped_fetch_side_effect(
+            grouped_node: dict[str, Any], page_size: int, max_pages: int
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            return mock_paginated_generator(
+                [{"id": f"{grouped_node['id']}-artifact", "name": grouped_node["name"]}]
+            )
+
+        mock_grouped_fetch.side_effect = _grouped_fetch_side_effect
+
+        results: list[dict[str, Any]] = []
+        async for batch in mock_wiz_client.get_sbom_artifacts(options):
+            results.extend(batch)
+
+        mock_paginated.assert_called_once_with(
+            resource="sbomArtifactsGroupedByName",
+            variables={"first": 100},
+            max_pages=500,
+        )
+        mock_grouped_fetch.assert_called_once_with(
+            grouped_node=grouped_nodes[0],
+            page_size=100,
+            max_pages=500,
+        )
+        assert results == [{"id": "group-1-artifact", "name": "pandas"}]
+
+
+@pytest.mark.asyncio
+async def test_get_sbom_artifacts_for_grouped_name_enriches_type_metadata(
+    mock_wiz_client: WizClient,
+) -> None:
+    grouped_node = {
+        "id": "group-1",
+        "name": "pandas",
+        "type": {"group": "CODE_LIBRARY", "codeLibraryLanguage": "PYTHON"},
+        "artifacts": {"totalCount": 2},
+    }
+    artifact_nodes = [
+        {"id": "artifact-1", "name": "pandas", "version": "1.5.1"},
+    ]
+
+    with patch.object(
+        mock_wiz_client, "_get_paginated_resources"
+    ) as mock_paginated_resources:
+        mock_paginated_resources.return_value = mock_paginated_generator(artifact_nodes)
+
+        results: list[dict[str, Any]] = []
+        async for batch in mock_wiz_client._get_sbom_artifacts_for_grouped_name(
+            grouped_node=grouped_node, page_size=100, max_pages=500
+        ):
+            results.extend(batch)
+
+        assert results[0]["__groupTypeMetadata"] == grouped_node["type"]
