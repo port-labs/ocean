@@ -3,12 +3,17 @@
 Run with:
     pytest integration_tests/test_integration_resync.py -v
 """
+
 import os
 from typing import Any
 
 import pytest
 import yaml
-from port_ocean.integration_testing import BaseIntegrationTest, InterceptTransport, ResyncResult
+from port_ocean.integration_testing import (
+    BaseIntegrationTest,
+    InterceptTransport,
+    ResyncResult,
+)
 
 _DEFAULT_MAPPING_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../.port/resources/port-app-config.yaml")
@@ -109,8 +114,12 @@ class AzureDevOpsTransport:
                 "json": {
                     **cls._project(),
                     "_links": {
-                        "self": {"href": f"{cls.base_url}/_apis/projects/{cls.project_id}"},
-                        "collection": {"href": f"{cls.base_url}/_apis/projectCollections/collection-001"},
+                        "self": {
+                            "href": f"{cls.base_url}/_apis/projects/{cls.project_id}"
+                        },
+                        "collection": {
+                            "href": f"{cls.base_url}/_apis/projectCollections/collection-001"
+                        },
                         "web": {"href": f"{cls.base_url}/{cls.project_name}"},
                     },
                     "defaultTeam": {
@@ -202,7 +211,13 @@ class AzureDevOpsTransport:
                             "columnType": "outgoing",
                         },
                     ],
-                    "rows": [{"id": "00000000-0000-0000-0000-000000000000", "name": None, "color": None}],
+                    "rows": [
+                        {
+                            "id": "00000000-0000-0000-0000-000000000000",
+                            "name": None,
+                            "color": None,
+                        }
+                    ],
                     "isValid": True,
                     "canEdit": True,
                 },
@@ -254,7 +269,6 @@ class AzureDevOpsTransport:
 
 
 class TestResync(BaseIntegrationTest):
-    integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
     def create_third_party_transport(self) -> InterceptTransport:
         return AzureDevOpsTransport.build()
