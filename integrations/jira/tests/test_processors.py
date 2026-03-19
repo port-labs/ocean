@@ -687,7 +687,7 @@ async def test_get_matching_kinds_version(
     jiraVersionWebhookProcessor: VersionWebhookProcessor,
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
-    assert await jiraVersionWebhookProcessor.get_matching_kinds(event) == ["version"]
+    assert await jiraVersionWebhookProcessor.get_matching_kinds(event) == ["release"]
 
 
 @pytest.mark.asyncio
