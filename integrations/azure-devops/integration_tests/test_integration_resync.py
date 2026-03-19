@@ -7,7 +7,12 @@ import os
 from typing import Any
 
 import pytest
+import yaml
 from port_ocean.integration_testing import BaseIntegrationTest, InterceptTransport, ResyncResult
+
+_DEFAULT_MAPPING_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../.port/resources/port-app-config.yaml")
+)
 
 # ── Fake constants ─────────────────────────────────────────────────────────────
 _ORG = "test-org"
@@ -87,6 +92,13 @@ class AzureDevOpsTransport:
                     ],
                 },
             },
+            times=1,
+        )
+        # Fallback teams route — returns empty page to stop pagination after the first page
+        t.add_route(
+            "GET",
+            f"/_apis/projects/{cls.project_id}/teams",
+            {"status_code": 200, "json": {"count": 0, "value": []}},
         )
         # Project detail  (UUID-specific)
         t.add_route(
@@ -199,7 +211,7 @@ class AzureDevOpsTransport:
         # Board list  (broader substring — registered after board detail)
         t.add_route(
             "GET",
-            f"/{cls.project_id}/_apis/work/boards",
+            f"/{cls.project_id}/{cls.team_id}/_apis/work/boards",
             {
                 "status_code": 200,
                 "json": {
@@ -248,49 +260,8 @@ class TestResync(BaseIntegrationTest):
         return AzureDevOpsTransport.build()
 
     def create_mapping_config(self) -> dict[str, Any]:
-        return {
-            "deleteDependentEntities": True,
-            "createMissingRelatedEntities": True,
-            "resources": [
-                {
-                    "kind": "project",
-                    "selector": {"query": "true", "defaultTeam": "true"},
-                    "port": {
-                        "entity": {
-                            "mappings": {
-                                "identifier": '.id | gsub(" "; "")',
-                                "title": ".name",
-                                "blueprint": '"azureDevopsProject"',
-                                "properties": {
-                                    "state": ".state",
-                                    "revision": ".revision",
-                                    "visibility": ".visibility",
-                                    "defaultTeam": ".defaultTeam.name",
-                                    "link": '.url | gsub("_apis/projects/"; "")',
-                                },
-                            }
-                        }
-                    },
-                },
-                {
-                    "kind": "repository",
-                    "selector": {"query": "true"},
-                    "port": {
-                        "entity": {
-                            "mappings": {
-                                "identifier": ".id",
-                                "title": ".name",
-                                "blueprint": '"azureDevopsRepository"',
-                                "properties": {"url": ".remoteUrl"},
-                                "relations": {
-                                    "project": '.project.id | gsub(" "; "")'
-                                },
-                            }
-                        }
-                    },
-                },
-            ],
-        }
+        with open(_DEFAULT_MAPPING_PATH) as f:
+            return yaml.safe_load(f)
 
     def create_integration_config(self) -> dict[str, Any]:
         return {
