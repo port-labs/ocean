@@ -1,5 +1,5 @@
 PAGE_SIZE = 100
-MAX_SBOM_ARTIFACT_ENTITIES = 50_000
+MAX_SBOM_ARTIFACT_ENTITIES = 500
 AUTH0_URLS = ["https://auth.wiz.io/oauth/token", "https://auth0.gov.wiz.io/oauth/token"]
 COGNITO_URLS = [
     "https://auth.app.wiz.io/oauth/token",

@@ -626,8 +626,7 @@
         }
       },
       "required": [
-        "name",
-        "version"
+        "name"
       ]
     },
     "mirrorProperties": {},
