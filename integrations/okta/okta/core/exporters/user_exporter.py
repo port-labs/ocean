@@ -6,12 +6,13 @@ from okta.clients.http.client import OktaClient
 from okta.core.exporters.abstract_exporter import AbstractOktaExporter
 from okta.core.options import ListUserOptions, GetUserOptions
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-
+from itertools import batched
 
 class OktaUserExporter(AbstractOktaExporter[OktaClient]):
     """Exporter for Okta users."""
 
     ENRICH_CONCURRENCY: int = 10
+    SUB_BATCH_SIZE: int = 50
 
     async def _fetch_user(self, user_id: str) -> RAW_ITEM:
         return cast(RAW_ITEM, await self.client.send_api_request(f"users/{user_id}"))
@@ -96,9 +97,10 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
         params: Dict[str, Any] = {"fields": options["fields"]}
         async for users in self.client.send_paginated_request("users", params):
             semaphore = asyncio.Semaphore(self.ENRICH_CONCURRENCY)
-            tasks = [
-                asyncio.create_task(self._enrich_single_user(user, semaphore, options))
-                for user in users
-            ]
-            enriched_users = await asyncio.gather(*tasks)
-            yield list(enriched_users)
+            for users_batch in batched(users, self.SUB_BATCH_SIZE):
+                tasks = [
+                    asyncio.create_task(self._enrich_single_user(user, semaphore, options))
+                    for user in users_batch
+                ]
+                enriched = await asyncio.gather(*tasks)
+                yield list(enriched)
