@@ -6,10 +6,8 @@ from port_ocean.context.ocean import ocean
 
 from client import KubeCostClient
 from integration import (
-    CloudCostV1ResourceConfig,
-    CloudCostV2ResourceConfig,
-    KubecostV1ResourceConfig,
-    KubecostV2ResourceConfig,
+    CloudCostResourceConfig,
+    KubecostResourceConfig,
 )
 
 
@@ -23,9 +21,7 @@ def init_client() -> KubeCostClient:
 @ocean.on_resync("kubesystem")
 async def on_kubesystem_cost_resync(kind: str) -> list[dict[Any, Any]]:
     client = init_client()
-    selector = typing.cast(
-        KubecostV1ResourceConfig | KubecostV2ResourceConfig, event.resource_config
-    ).selector
+    selector = typing.cast(KubecostResourceConfig, event.resource_config).selector
     data = await client.get_kubesystem_cost_allocation(selector)
     return [value for item in data if item is not None for value in item.values()]
 
@@ -33,9 +29,7 @@ async def on_kubesystem_cost_resync(kind: str) -> list[dict[Any, Any]]:
 @ocean.on_resync("cloud")
 async def on_cloud_cost_resync(kind: str) -> list[dict[Any, Any]]:
     client = init_client()
-    selector = typing.cast(
-        CloudCostV1ResourceConfig | CloudCostV2ResourceConfig, event.resource_config
-    ).selector
+    selector = typing.cast(CloudCostResourceConfig, event.resource_config).selector
     data = await client.get_cloud_cost_allocation(selector)
     results: list[dict[str, Any]] = []
     for item in data:
