@@ -555,7 +555,7 @@ def test_log_webhook_event_logs_base64_payload_and_trace_id(
     ).decode("utf-8")
     mock_logger.info.assert_called_once_with(
         "Got webhook event",
-        webhook_event=expected_b64,
+        base64_masked_webhook_debug_payload=expected_b64,
         trace_id=webhook_event.trace_id,
     )
 
@@ -582,9 +582,41 @@ def test_log_webhook_event_with_payload_logs_correct_base64(
     )
     mock_logger.info.assert_called_once_with(
         "Got webhook event",
-        webhook_event=expected_b64,
+        base64_masked_webhook_debug_payload=expected_b64,
         trace_id="trace-123",
     )
+
+
+def test_log_webhook_event_truncates_json_when_over_1mb(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    """JSON before base64 is capped at 1 MiB; log marks truncation."""
+    import base64
+
+    # Patch limit to keep the test fast; production cap is 1 MiB.
+    small_limit = 128
+    padding = "x" * 200
+    event = WebhookEvent(
+        trace_id="trace-huge",
+        payload={"data": padding},
+        headers={},
+    )
+    with (
+        patch(
+            "port_ocean.core.handlers.webhook.processor_manager._WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES",
+            small_limit,
+        ),
+        patch(
+            "port_ocean.core.handlers.webhook.processor_manager.logger"
+        ) as mock_logger,
+    ):
+        processor_manager._log_webhook_event(event)
+
+    call_kwargs = mock_logger.info.call_args.kwargs
+    assert call_kwargs["trace_id"] == "trace-huge"
+    assert call_kwargs["webhook_debug_log_json_truncated"] is True
+    decoded = base64.b64decode(call_kwargs["base64_masked_webhook_debug_payload"])
+    assert len(decoded) == small_limit
 
 
 def test_log_webhook_event_on_serialization_error_logs_error_and_returns(

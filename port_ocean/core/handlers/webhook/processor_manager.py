@@ -29,6 +29,19 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import LocalQueue
 
+# Cap JSON UTF-8 size before base64 when logging under events_debug_logging (1 MiB).
+_WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES = 1024 * 1024
+
+
+def _truncate_utf8_bytes_for_webhook_debug_log(data: bytes, max_len: int) -> bytes:
+    """Truncate UTF-8 for webhook debug log lines without splitting a code point."""
+    if len(data) <= max_len:
+        return data
+    truncated = data[:max_len]
+    while truncated and (truncated[-1] & 0b11000000) == 0b10000000:
+        truncated = truncated[:-1]
+    return truncated
+
 
 class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     """Manages webhook processors and their routes"""
@@ -333,14 +346,19 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             webhook_event_masked = sensitive_log_filter.mask_object(
                 webhook_event.payload, full_hide=True
             )
-            base64_payload = base64.b64encode(
-                json.dumps(webhook_event_masked).encode("utf-8")
-            ).decode("utf-8")
-            logger.info(
-                "Got webhook event",
-                webhook_event=base64_payload,
-                trace_id=webhook_event.trace_id,
+            json_bytes = json.dumps(webhook_event_masked).encode("utf-8")
+            payload_truncated = len(json_bytes) > _WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES
+            json_bytes = _truncate_utf8_bytes_for_webhook_debug_log(
+                json_bytes, _WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES
             )
+            base64_payload = base64.b64encode(json_bytes).decode("utf-8")
+            log_kwargs: Dict[str, str | bool] = {
+                "base64_masked_webhook_debug_payload": base64_payload,
+                "trace_id": webhook_event.trace_id,
+            }
+            if payload_truncated:
+                log_kwargs["webhook_debug_log_json_truncated"] = True
+            logger.info("Got webhook event", **log_kwargs)
         except Exception as e:
             logger.error("Error logging webhook event", error=str(e))
 
