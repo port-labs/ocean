@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.43 (2026-03-18)
+
+
+### Improvements
+
+- Updated HTTP client to use Ocean's core `client_timeout` configuration
+
+
+## 0.7.42 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.7.41 (2026-03-17)
+
+
+### Bug Fixes
+
+- Fixed `_get_repository_files` to skip `None` results from `download_single_file` instead of yielding `[None]`
+
+
+## 0.7.40 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.7.39 (2026-03-16)
+
+
+### Improvements
+
+- Use port_ocean for included_files repo_branch_matches and resolve_included_file_path
+
+
+## 0.7.38 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.7.37 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+## 0.7.36 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
 ## 0.7.35 (2026-03-15)
 
 
@@ -17,6 +81,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.7.34 (2026-03-12)
 
+
+### Improvements
+
+- Refactored includedFiles enrichment to use strategy-based architecture with dedicated enricher, fetcher, and strategy components for better maintainability and consistency with other integrations
 
 ### Bug Fixes
 
