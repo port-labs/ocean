@@ -18,12 +18,12 @@ from webhook.processors.release_project_processor import (
 from webhook.processors.vulnerability_processor import (
     VulnerabilityWebhookProcessor,
 )
-from integration import ServiceNowResourceConfig
+from integration import ResourceSelector
 
 
 @ocean.on_resync()
 async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing Servicenow resource: {kind}")
+    logger.info(f"Listing Servicenow resource: {str(kind)}")
     servicenow_client = initialize_client(
         servicenow_url=ocean.integration_config["servicenow_url"],
         client_id=ocean.integration_config.get("servicenow_client_id"),
@@ -32,13 +32,13 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         password=ocean.integration_config.get("servicenow_password"),
     )
     api_query_params = {}
-    selector = cast(ServiceNowResourceConfig, event.resource_config).selector
+    selector = cast(ResourceSelector, event.resource_config.selector)
     if selector.api_query_params:
         api_query_params = selector.api_query_params.generate_request_params()
     async for records in servicenow_client.get_paginated_resource(
         resource_kind=kind, api_query_params=api_query_params
     ):
-        logger.info(f"Received {kind} batch with {len(records)} records")
+        logger.info(f"Received {str(kind)} batch with {len(records)} records")
         yield records
 
 
