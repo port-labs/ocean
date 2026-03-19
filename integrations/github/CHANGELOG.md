@@ -10,10 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 5.1.32 (2026-03-19)
 
 
-### Bug Fixes
+### Improvements
 
-- Respect collaborator `affiliation` selector in live-events (member/membership/team webhooks) and emit deletions when collaborators no longer match the configured affiliation filter.
-- Align webhook collaborator affiliation checks with resync by using the repository collaborators API with the configured `affiliation`, and expand test coverage for `outside` and `direct`.
+- Add `selector.affiliation` support for the Collaborator kind (`all`/`direct`/`outside`) and apply it consistently across resync and collaborator live-events (member/membership/team).
+- Emit collaborator deletions from live-events when events no longer match the configured affiliation selector, and expand test coverage for `outside` and `direct`.
 
 
 ## 5.1.31 (2026-03-17)
