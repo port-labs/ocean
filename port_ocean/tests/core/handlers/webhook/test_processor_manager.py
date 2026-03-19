@@ -553,7 +553,7 @@ def test_log_webhook_event_logs_base64_payload_and_trace_id(
     expected_b64 = base64.b64encode(
         json.dumps(webhook_event.payload).encode("utf-8")
     ).decode("utf-8")
-    mock_logger.debug.assert_called_once_with(
+    mock_logger.info.assert_called_once_with(
         "Got webhook event",
         webhook_event=expected_b64,
         trace_id=webhook_event.trace_id,
@@ -580,7 +580,7 @@ def test_log_webhook_event_with_payload_logs_correct_base64(
     expected_b64 = base64.b64encode(json.dumps(event.payload).encode("utf-8")).decode(
         "utf-8"
     )
-    mock_logger.debug.assert_called_once_with(
+    mock_logger.info.assert_called_once_with(
         "Got webhook event",
         webhook_event=expected_b64,
         trace_id="trace-123",
@@ -603,7 +603,70 @@ def test_log_webhook_event_on_serialization_error_logs_error_and_returns(
         processor_manager._log_webhook_event(event)
 
     mock_logger.error.assert_called_once()
-    mock_logger.debug.assert_not_called()
+    mock_logger.info.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_handle_webhook_calls_log_webhook_event_when_events_debug_logging_enabled(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    """Test that _log_webhook_event is called when events_debug_logging is True."""
+    test_path = "/webhook-debug-log"
+    processor_manager.register_processor(test_path, MockProcessor)
+    app = FastAPI()
+    app.include_router(processor_manager._router)
+
+    with (
+        patch("port_ocean.core.handlers.webhook.processor_manager.ocean") as mock_ocean,
+        patch.object(
+            processor_manager,
+            "_log_webhook_event",
+            new_callable=MagicMock,
+        ) as mock_log_webhook_event,
+    ):
+        mock_ocean.config.events_debug_logging = True
+        client = TestClient(app)
+        response = client.post(
+            test_path,
+            json={"event": "test"},
+            headers={"Content-Type": "application/json"},
+        )
+
+    assert response.status_code == 200
+    mock_log_webhook_event.assert_called_once()
+    call_args = mock_log_webhook_event.call_args[0][0]
+    assert isinstance(call_args, WebhookEvent)
+    assert call_args.payload == {"event": "test"}
+
+
+@pytest.mark.asyncio
+async def test_handle_webhook_does_not_call_log_webhook_event_when_events_debug_logging_disabled(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    """Test that _log_webhook_event is not called when events_debug_logging is False."""
+    test_path = "/webhook-no-debug-log"
+    processor_manager.register_processor(test_path, MockProcessor)
+    app = FastAPI()
+    app.include_router(processor_manager._router)
+
+    with (
+        patch("port_ocean.core.handlers.webhook.processor_manager.ocean") as mock_ocean,
+        patch.object(
+            processor_manager,
+            "_log_webhook_event",
+            new_callable=MagicMock,
+        ) as mock_log_webhook_event,
+    ):
+        mock_ocean.config.events_debug_logging = False
+        client = TestClient(app)
+        response = client.post(
+            test_path,
+            json={"event": "test"},
+            headers={"Content-Type": "application/json"},
+        )
+
+    assert response.status_code == 200
+    mock_log_webhook_event.assert_not_called()
 
 
 @pytest.mark.asyncio
