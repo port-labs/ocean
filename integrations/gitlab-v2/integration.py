@@ -43,6 +43,7 @@ class GroupSelector(Selector):
     include_only_active_groups: Optional[bool] = Field(
         default=None,
         alias="includeOnlyActiveGroups",
+        title="Include Only Active Groups",
         description="Filter groups by active status",
     )
 
@@ -50,17 +51,20 @@ class GroupSelector(Selector):
 class ProjectSelector(Selector):
     include_languages: bool = Field(
         alias="includeLanguages",
+        title="Include Languages",
         default=False,
         description="Whether to include the languages of the project, defaults to false",
     )
     include_only_active_projects: Optional[bool] = Field(
         default=None,
         alias="includeOnlyActiveProjects",
+        title="Include Only Active Projects",
         description="Filter projects by active status",
     )
     search_queries: list[SearchQuery] = Field(
         alias="searchQueries",
         default_factory=list,
+        title="Search Queries",
         description=(
             "List of search queries to execute against each project during enrichment. "
             "Results are stored under __searchQueries[<name>] as a boolean (True if matches found)."
@@ -68,42 +72,69 @@ class ProjectSelector(Selector):
     )
     included_files: list[str] = Field(
         alias="includedFiles",
+        title="Included Files",
         default_factory=list,
         description="List of file paths to fetch from the repository and attach to the project data under __includedFiles",
     )
 
 
 class ProjectResourceConfig(ResourceConfig):
-    kind: Literal["project"]
-    selector: ProjectSelector
+    kind: Literal["project"] = Field(
+        title="GitLab Project",
+        description="GitLab project resource kind.",
+    )
+    selector: ProjectSelector = Field(
+        title="Project Selector",
+        description="Selector for the GitLab project resource.",
+    )
 
 
 class GroupResourceConfig(ResourceConfig):
-    kind: Literal["group"]
-    selector: GroupSelector
+    kind: Literal["group"] = Field(
+        title="GitLab Group",
+        description="GitLab group resource kind.",
+    )
+    selector: GroupSelector = Field(
+        title="Group Selector",
+        description="Selector for the GitLab group resource.",
+    )
 
 
 class GitlabMemberSelector(GroupSelector):
     include_bot_members: bool = Field(
         alias="includeBotMembers",
+        title="Include Bot Members",
         default=False,
         description="If set to false, bots will be filtered out from the members list. Default value is false",
     )
     include_inherited_members: bool = Field(
         alias="includeInheritedMembers",
+        title="Include Inherited Members",
         default=False,
         description="If set to true, the integration will include inherited members in the group members list. Default value is false",
     )
 
 
 class GitlabGroupWithMembersResourceConfig(ResourceConfig):
-    kind: Literal["group-with-members"]
-    selector: GitlabMemberSelector
+    kind: Literal["group-with-members"] = Field(
+        title="GitLab Group With Members",
+        description="GitLab group with members resource kind.",
+    )
+    selector: GitlabMemberSelector = Field(
+        title="Group With Members Selector",
+        description="Selector for the GitLab group with members resource.",
+    )
 
 
 class GitlabMemberResourceConfig(ResourceConfig):
-    kind: Literal["member"]
-    selector: GitlabMemberSelector
+    kind: Literal["member"] = Field(
+        title="GitLab Member",
+        description="GitLab member resource kind.",
+    )
+    selector: GitlabMemberSelector = Field(
+        title="Member Selector",
+        description="Selector for the GitLab member resource.",
+    )
 
 
 class FilesSelector(BaseModel):
@@ -125,14 +156,21 @@ class GitLabFilesSelector(GroupSelector):
     files: FilesSelector
     included_files: list[str] = Field(
         alias="includedFiles",
+        title="Included Files",
         default_factory=list,
         description="List of file paths to fetch and attach to the file entity",
     )
 
 
 class GitLabFilesResourceConfig(ResourceConfig):
-    selector: GitLabFilesSelector
-    kind: Literal["file"]
+    kind: Literal["file"] = Field(
+        title="GitLab File",
+        description="GitLab file resource kind.",
+    )
+    selector: GitLabFilesSelector = Field(
+        title="File Selector",
+        description="Selector for the GitLab file resource.",
+    )
 
 
 class RepositoryBranchMapping(BaseModel):
@@ -164,6 +202,7 @@ class GitlabFolderSelector(ProjectSelector):
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
+        title="Folders",
         description="Specify the repositories, branches and folders to include under this relative path",
     )
 
@@ -171,11 +210,13 @@ class GitlabFolderSelector(ProjectSelector):
 class GitlabMergeRequestSelector(GroupSelector):
     states: List[Literal["opened", "closed", "merged"]] = Field(
         alias="states",
+        title="States",
         description="Specify the state of the merge request to match. Allowed values: opened, closed, merged",
         default=["opened"],
     )
     updated_after: float = Field(
         alias="updatedAfter",
+        title="Updated After (Days)",
         description="Specify the number of days to look back for merge requests (e.g. 90 for last 90 days)",
         default=90,
     )
@@ -187,49 +228,78 @@ class GitlabMergeRequestSelector(GroupSelector):
 
 
 class GitlabMergeRequestResourceConfig(ResourceConfig):
-    selector: GitlabMergeRequestSelector
-    kind: Literal["merge-request"]
+    kind: Literal["merge-request"] = Field(
+        title="GitLab Merge Request",
+        description="GitLab merge request resource kind.",
+    )
+    selector: GitlabMergeRequestSelector = Field(
+        title="Merge Request Selector",
+        description="Selector for the GitLab merge request resource.",
+    )
 
 
 class TagResourceConfig(ResourceConfig):
-    kind: Literal["tag"]
-    selector: ProjectSelector
+    kind: Literal["tag"] = Field(
+        title="GitLab Tag",
+        description="GitLab tag resource kind.",
+    )
+    selector: ProjectSelector = Field(
+        title="Tag Selector",
+        description="Selector for the GitLab tag resource.",
+    )
 
 
 class ReleaseResourceConfig(ResourceConfig):
-    kind: Literal["release"]
-    selector: ProjectSelector
+    kind: Literal["release"] = Field(
+        title="GitLab Release",
+        description="GitLab release resource kind.",
+    )
+    selector: ProjectSelector = Field(
+        title="Release Selector",
+        description="Selector for the GitLab release resource.",
+    )
 
 
 class GitLabFoldersResourceConfig(ResourceConfig):
-    selector: GitlabFolderSelector
-    kind: Literal["folder"]
+    kind: Literal["folder"] = Field(
+        title="GitLab Folder",
+        description="GitLab folder resource kind.",
+    )
+    selector: GitlabFolderSelector = Field(
+        title="Folder Selector",
+        description="Selector for the GitLab folder resource.",
+    )
 
 
 class IssueSelector(GroupSelector):
     issue_type: Optional[Literal["issue", "incident", "test_case", "task"]] = Field(
         default=None,
         alias="issueType",
+        title="Issue Type",
         description="Filter issues by type",
     )
     labels: Optional[str] = Field(
         default=None,
         alias="labels",
+        title="Labels",
         description="Filter issues by labels",
     )
     non_archived: bool = Field(
         default=True,
         alias="nonArchived",
+        title="Non Archived",
         description="Return issues from non archived projects. Default value is true",
     )
     state: Optional[Literal["opened", "closed"]] = Field(
         default=None,
         alias="state",
+        title="State",
         description="Filter issues by state",
     )
     updated_after: Optional[float] = Field(
         default=None,
         alias="updatedAfter",
+        title="Updated After (Days)",
         description="Filter issues updated on or after the given time in days",
     )
 
@@ -244,8 +314,14 @@ class IssueSelector(GroupSelector):
 
 
 class GitlabIssueResourceConfig(ResourceConfig):
-    selector: IssueSelector
-    kind: Literal["issue"]
+    kind: Literal["issue"] = Field(
+        title="GitLab Issue",
+        description="GitLab issue resource kind.",
+    )
+    selector: IssueSelector = Field(
+        title="Issue Selector",
+        description="Selector for the GitLab issue resource.",
+    )
 
 
 class GitlabVisibilityConfig(BaseModel):
@@ -278,13 +354,25 @@ class GitlabVisibilityConfig(BaseModel):
 
 
 class PipelineResourceConfig(ResourceConfig):
-    kind: Literal["pipeline"]
-    selector: ProjectSelector
+    kind: Literal["pipeline"] = Field(
+        title="GitLab Pipeline",
+        description="GitLab pipeline resource kind.",
+    )
+    selector: ProjectSelector = Field(
+        title="Pipeline Selector",
+        description="Selector for the GitLab pipeline resource.",
+    )
 
 
 class JobResourceConfig(ResourceConfig):
-    kind: Literal["job"]
-    selector: ProjectSelector
+    kind: Literal["job"] = Field(
+        title="GitLab Job",
+        description="GitLab job resource kind.",
+    )
+    selector: ProjectSelector = Field(
+        title="Job Selector",
+        description="Selector for the GitLab job resource.",
+    )
 
 
 class GitlabPortAppConfig(PortAppConfig):
@@ -306,8 +394,11 @@ class GitlabPortAppConfig(PortAppConfig):
         | ReleaseResourceConfig
         | PipelineResourceConfig
         | JobResourceConfig
-        | ResourceConfig
-    ] = Field(default_factory=list)
+    ] = Field(
+        default_factory=list,
+        title="Resources",
+        description="The list of resource configurations to sync from GitLab.",
+    )  # type: ignore[assignment]
 
 
 class GitManipulationHandler(JQEntityProcessor):
