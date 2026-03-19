@@ -23,7 +23,7 @@ from integration import ResourceSelector
 
 @ocean.on_resync()
 async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing Servicenow resource: {str(kind)}")
+    logger.info(f"Listing Servicenow resource: {kind}")
     servicenow_client = initialize_client(
         servicenow_url=ocean.integration_config["servicenow_url"],
         client_id=ocean.integration_config.get("servicenow_client_id"),
@@ -38,7 +38,7 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for records in servicenow_client.get_paginated_resource(
         resource_kind=kind, api_query_params=api_query_params
     ):
-        logger.info(f"Received {str(kind)} batch with {len(records)} records")
+        logger.info(f"Received {kind} batch with {len(records)} records")
         yield records
 
 
