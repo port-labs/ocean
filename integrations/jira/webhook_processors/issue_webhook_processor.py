@@ -68,6 +68,13 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         )
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+        webhook_identifier = headers.get("x-atlassian-webhook-identifier")
+        jira_webhook_flow = headers.get("x-atlassian-webhook-flow")
+        jira_webhook_retry = headers.get("x-atlassian-webhook-retry", "0")
+        jira_webhook_key = payload.get("issue", {}).get("key")
+        logger.info(
+            f"got issue webhook event with identifier: {webhook_identifier}, flow: {jira_webhook_flow}, retry: {jira_webhook_retry}, key: {jira_webhook_key}"
+        )
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
