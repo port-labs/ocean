@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, AsyncGenerator, List, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
@@ -362,3 +363,60 @@ async def test_get_sbom_artifacts_for_grouped_name_enriches_type_metadata(
             results.extend(batch)
 
         assert results[0]["__groupTypeMetadata"] == grouped_node["type"]
+
+
+@pytest.mark.asyncio
+async def test_get_sbom_artifacts_wraps_group_fetches_with_semaphore(
+    mock_wiz_client: WizClient,
+) -> None:
+    options: SbomArtifactOptions = {
+        "group_list": ["CODE_LIBRARY"],
+        "max_pages": 1,
+    }
+    grouped_nodes = [
+        {
+            "id": "group-1",
+            "name": "pandas",
+            "type": {"group": "CODE_LIBRARY", "codeLibraryLanguage": "PYTHON"},
+            "artifacts": {"totalCount": 1},
+        },
+        {
+            "id": "group-2",
+            "name": "numpy",
+            "type": {"group": "CODE_LIBRARY", "codeLibraryLanguage": "PYTHON"},
+            "artifacts": {"totalCount": 1},
+        },
+    ]
+
+    def _semaphore_passthrough(
+        semaphore: asyncio.BoundedSemaphore, fetcher: Any
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        return fetcher()
+
+    with (
+        patch.object(
+            mock_wiz_client,
+            "_get_paginated_resources",
+        ) as mock_paginated,
+        patch(
+            "wiz.client.semaphore_async_iterator",
+            side_effect=_semaphore_passthrough,
+        ) as mock_semaphore_wrapper,
+        patch.object(
+            mock_wiz_client,
+            "_get_sbom_artifacts_for_grouped_name",
+        ) as mock_grouped_fetch,
+    ):
+        mock_paginated.return_value = mock_paginated_generator(grouped_nodes)
+        mock_grouped_fetch.side_effect = lambda **kwargs: mock_paginated_generator(
+            [{"id": kwargs["grouped_node"]["id"]}]
+        )
+
+        results: list[dict[str, Any]] = []
+        async for batch in mock_wiz_client.get_sbom_artifacts(options):
+            results.extend(batch)
+
+        assert len(results) == 2
+        assert mock_semaphore_wrapper.call_count == 2
+        for call in mock_semaphore_wrapper.call_args_list:
+            assert isinstance(call.args[0], asyncio.BoundedSemaphore)
