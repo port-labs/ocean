@@ -338,7 +338,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 trace_id=webhook_event.trace_id,
             )
         except Exception as e:
-            logger.error(f"Error logging webhook event: {str(e)}")
+            logger.error("Error logging webhook event", error=str(e))
 
     async def _cancel_all_event_processors(
         self,
