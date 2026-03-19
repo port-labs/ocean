@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.69 (2026-03-19)
 
 
-### Features
+### Breaking Changes
 
 - Set `currentOnly` selector option for `state-file` kind to true by default.
 
