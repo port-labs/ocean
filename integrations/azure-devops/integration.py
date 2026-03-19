@@ -418,6 +418,7 @@ class AzureDevopsEnvironmentConfig(ResourceConfig):
 class AzureDevopsReleaseDeploymentConfig(ResourceConfig):
     kind: Literal[Kind.RELEASE_DEPLOYMENT] = Field(
         default=Kind.RELEASE_DEPLOYMENT,
+        title="Azure Devops Release Deployment",
         description="Resource kind (release-deployment).",
     )
     selector: AzureDevopsSelector = Field(
