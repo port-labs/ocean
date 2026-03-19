@@ -20,6 +20,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     LiveEventTimestamp,
 )
 from port_ocean.context.event import event
+from port_ocean.log.sensetive import sensitive_log_filter
 
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -329,8 +330,11 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     def _log_webhook_event(self, webhook_event: WebhookEvent) -> None:
         """Log a webhook event"""
         try:
+            webhook_event_masked = sensitive_log_filter.mask_object(
+                webhook_event.payload, full_hide=True
+            )
             base64_payload = base64.b64encode(
-                json.dumps(webhook_event.payload).encode("utf-8")
+                json.dumps(webhook_event_masked).encode("utf-8")
             ).decode("utf-8")
             logger.info(
                 "Got webhook event",
