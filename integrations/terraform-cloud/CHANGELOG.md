@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- set `currentOnly` selector option for `state-file` kind to true by default
+- Set `currentOnly` selector option for `state-file` kind to true by default.
 
 
 ## 0.2.68 (2026-03-18)
