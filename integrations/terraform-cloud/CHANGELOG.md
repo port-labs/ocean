@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.68 (2026-03-18)
+
+
+### Features
+
+- Added `currentOnly` selector option for `state-file` kind to fetch only the current state file per workspace
+
+
+## 0.2.67 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.2.66 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.2.65 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.2.64 (2026-03-16)
+
+
+### Bug Fixes
+
+- Exclude fetching state versions for state files with with no hosted state download links   
+
+
+## 0.2.63 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
 ## 0.2.62 (2026-03-15)
 
 

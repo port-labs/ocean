@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "fake-integration"
-version = "0.1.212-dev"
+version = "0.1.217-dev"
 description = "A useless fake integration that helps us test the Ocean Core"
 authors = ["Erik Zaadi <erik@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.38.16", extras = ["cli"]}
+port_ocean = {version = "^0.38.20", extras = ["cli"]}
 faker = "^28.0.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -68,6 +68,7 @@ build-backend = "poetry.core.masonry.api"
 exclude = [
     'venv',
     '.venv',
+    'integration_tests',  # Requires local port_ocean with integration framework
 ]
 plugins = [
     "pydantic.mypy"

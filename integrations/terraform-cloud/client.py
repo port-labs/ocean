@@ -2,6 +2,8 @@ import asyncio
 from enum import StrEnum
 from urllib.parse import urlparse
 from typing import Any, AsyncGenerator, Optional
+
+import httpx
 from aiolimiter import AsyncLimiter
 from loguru import logger
 
@@ -277,28 +279,47 @@ class TerraformClient:
     async def get_paginated_state_files(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+
+        logger.info(
+            "Fetching all historical state files for state versions with hosted state download URLs"
+        )
+
         async for state_version_batch in self.get_paginated_state_versions():
+
             tasks = [
-                self.send_api_request(
-                    state_version["attributes"]["hosted-state-download-url"],
-                    follow_redirects=True,
-                )
+                self.download_state_file(state_version)
                 for state_version in state_version_batch
             ]
-            state_file_batch = list(await asyncio.gather(*tasks))
-            combined = []
-            for state_version, content in zip(state_version_batch, state_file_batch):
-                workspace_data = (state_version.get("relationships") or {}).get(
-                    "workspace"
-                )
-                state_version_id = state_version.get("id")
-                item = {
-                    **content,
-                    "__workspace": workspace_data,
-                    "__state_version_id": state_version_id,
-                }
-                combined.append(item)
+            results = await asyncio.gather(*tasks)
+            combined = list(filter(None, results))
+
+            logger.info(
+                f"Successfully downloaded {len(combined)} state files for batch of {len(state_version_batch)} after filtering out state versions with no hosted state download url"
+            )
+
             yield combined
+
+    async def download_state_file(
+        self, state_version: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        url = state_version["attributes"]["hosted-state-download-url"]
+        if not url:
+            logger.info(
+                f"Skipping state file for state version {state_version['id']} with state {state_version['attributes']['status']} because it has no hosted state download url"
+            )
+            return None
+
+        content = await self.send_api_request(url, follow_redirects=True)
+        logger.debug(
+            f"Successfully downloaded state file for state version {state_version['id']}"
+        )
+        workspace_data = (state_version.get("relationships") or {}).get("workspace")
+
+        return {
+            **content,
+            "__workspace": workspace_data,
+            "__state_version_id": state_version.get("id"),
+        }
 
     async def get_state_file_for_single_workspace(
         self, workspace_name: str, organization_name: str
@@ -310,13 +331,13 @@ class TerraformClient:
             workspace_name, organization_name
         ):
             tasks = [
-                self.send_api_request(
-                    state_version["attributes"]["hosted-state-download-url"],
-                    follow_redirects=True,
-                )
+                self.download_state_file(state_version)
                 for state_version in state_versions
             ]
-            yield list(await asyncio.gather(*tasks))
+            results = await asyncio.gather(*tasks)
+            combined = list(filter(None, results))
+            if combined:
+                yield combined
 
     async def process_workspace_runs(
         self, workspace: dict[str, Any]
@@ -337,3 +358,56 @@ class TerraformClient:
     async def get_single_health_assessment(self, assessment_id: str) -> dict[str, Any]:
         assessment = await self.send_api_request(f"assessment-results/{assessment_id}")
         return assessment.get("data", {})
+
+    async def get_current_state_version_for_workspace(
+        self, workspace_id: str
+    ) -> dict[str, Any] | None:
+        """Fetch only the current state version for a workspace."""
+        try:
+            response = await self.send_api_request(
+                f"workspaces/{workspace_id}/current-state-version"
+            )
+            return response.get("data")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(
+                    f"Workspace {workspace_id} has no state version yet (never applied)"
+                )
+                return None
+            raise
+
+    async def get_current_state_files(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch only the current state file for each workspace."""
+        logger.info("Fetching current state files for all workspaces")
+
+        async for workspaces in self.get_paginated_workspaces():
+            version_tasks = [
+                self.get_current_state_version_for_workspace(workspace["id"])
+                for workspace in workspaces
+            ]
+            version_results = await asyncio.gather(*version_tasks)
+            state_versions = [
+                state_version
+                for state_version in version_results
+                if state_version is not None
+            ]
+
+            if not state_versions:
+                logger.debug(
+                    f"No state versions found for batch of {len(workspaces)} workspaces, skipping"
+                )
+                continue
+
+            download_tasks = [
+                self.download_state_file(state_version)
+                for state_version in state_versions
+            ]
+            results = await asyncio.gather(*download_tasks)
+            combined = list(filter(None, results))
+
+            logger.info(
+                f"Downloaded {len(combined)} current state files for batch of {len(workspaces)} workspaces"
+            )
+            yield combined
