@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.85 (2026-03-19)
+
+
+### Improvements
+
+Added explicit Literal kind definitions, introduced OktaGroupResourceConfig, removed bare ResourceConfig from the union, and added title metadata to all selector fields in OktaAppConfig for schema validation compliance
+
+
 ## 0.1.84 (2026-03-19)
 
 

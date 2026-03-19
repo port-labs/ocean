@@ -39,14 +39,17 @@ class OktaUserSelector(Selector):
 
     include_groups: bool = Field(
         default=True,
+        title="Include Groups",
         description="Include user groups in the response",
     )
     include_applications: bool = Field(
         default=True,
+        title="Include Applications",
         description="Include user applications in the response",
     )
     fields: str = Field(
         default_factory=get_default_user_fields,
+        title="Fields",
         description="Comma-separated list of user fields to retrieve. Profile attributes should be contained within a profile:(field1,field2,...) directive.",
     )
 
@@ -54,17 +57,31 @@ class OktaUserSelector(Selector):
 class OktaUserConfig(ResourceConfig):
     """Configuration for Okta users."""
 
-    selector: OktaUserSelector
-    kind: Literal["okta-user"]
+    kind: Literal["okta-user"] = Field(
+        title="Okta User",
+        description="Okta user resource kind.",
+    )
+    selector: OktaUserSelector = Field(
+        title="User Selector",
+        description="Selector for the Okta user resource.",
+    )
+
+
+class OktaGroupResourceConfig(ResourceConfig):
+    kind: Literal["okta-group"] = Field(
+        title="Okta Group",
+        description="Okta group resource kind.",
+    )
 
 
 class OktaAppConfig(PortAppConfig):
     """Port app configuration for Okta integration."""
 
-    resources: list[OktaUserConfig | ResourceConfig] = Field(
+    resources: list[OktaUserConfig | OktaGroupResourceConfig] = Field(
         default_factory=list,
+        title="Resources",
         description="Specify the resources to include in the sync",
-    )
+    )  # type: ignore[assignment]
 
 
 class OktaHandlerMixin(HandlerMixin):
