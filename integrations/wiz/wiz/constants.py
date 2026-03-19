@@ -170,6 +170,15 @@ query VulnerabilityFindingsTable(
       origin
       CVEDescription
       name
+      detailedName
+      artifactType {
+        group
+        ciComponent
+        custom
+        plugin
+        osPackageManager
+        codeLibraryLanguage
+      }
       hasFix
       hasExploit
       isHighProfileThreat
@@ -290,6 +299,10 @@ query RepositoriesTable(
       archived
       visibility
       organization {
+        id
+        name
+      }
+      projects {
         id
         name
       }

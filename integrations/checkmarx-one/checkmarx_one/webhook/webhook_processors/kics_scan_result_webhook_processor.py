@@ -45,6 +45,7 @@ class KicsScanResultWebhookProcessor(ScanWebhookProcessor):
 
         options = ListKicsOptions(
             scan_id=scan_id,
+            project_id=project_id,
             severity=selector.severity,
             status=selector.status,
         )
