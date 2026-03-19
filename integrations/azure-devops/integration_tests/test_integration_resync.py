@@ -27,6 +27,7 @@ _PROJECT_NAME = "test-project"
 _TEAM_ID = "aabbccdd-0002-0000-0000-000000000001"
 _BOARD_ID = "aabbccdd-0003-0000-0000-000000000001"
 _REPO_ID = "aabbccdd-0004-0000-0000-000000000001"
+_WORK_ITEM_ID = 42
 
 
 class AzureDevOpsTransport:
@@ -47,6 +48,7 @@ class AzureDevOpsTransport:
     team_id: str = _TEAM_ID
     board_id: str = _BOARD_ID
     repo_id: str = _REPO_ID
+    work_item_id: int = _WORK_ITEM_ID
 
     @classmethod
     def build(cls) -> InterceptTransport:
@@ -254,7 +256,35 @@ class AzureDevOpsTransport:
                     "queryResultType": "workItem",
                     "asOf": "2026-01-01T00:00:00.000Z",
                     "columns": [{"referenceName": "System.Id", "name": "ID"}],
-                    "workItems": [],
+                    "workItems": [{"id": cls.work_item_id}],
+                },
+            },
+        )
+        t.add_route(
+            "GET",
+            f"/{cls.project_id}/_apis/wit/workitems",
+            {
+                "status_code": 200,
+                "json": {
+                    "count": 1,
+                    "value": [
+                        {
+                            "id": cls.work_item_id,
+                            "url": f"{cls.base_url}/{cls.project_id}/_apis/wit/workItems/{cls.work_item_id}",
+                            "fields": {
+                                "System.Title": "Test work item",
+                                "System.WorkItemType": "User Story",
+                                "System.State": "Active",
+                                "System.Reason": "Moved to state Active",
+                                "System.CreatedBy": {"displayName": "Test User"},
+                                "System.ChangedBy": {"displayName": "Test User"},
+                                "System.CreatedDate": "2026-01-01T00:00:00.000Z",
+                                "System.ChangedDate": "2026-01-01T00:00:00.000Z",
+                                "System.Description": "A test work item",
+                                "System.BoardColumn": "Active",
+                            },
+                        }
+                    ],
                 },
             },
         )
@@ -292,8 +322,59 @@ class TestResync(BaseIntegrationTest):
             }
         }
 
+    def _entities_by_blueprint(
+        self, resync: ResyncResult, blueprint: str
+    ) -> list[dict[str, Any]]:
+        return [e for e in resync.upserted_entities if e.get("blueprint") == blueprint]
+
     @pytest.mark.asyncio
     async def test_resync_creates_entities(self, resync: ResyncResult) -> None:
         """Smoke test: resync should produce entities without errors."""
         assert len(resync.errors) == 0, f"Resync had errors: {resync.errors}"
         assert len(resync.upserted_entities) > 0, "Expected entities to be upserted"
+
+    @pytest.mark.asyncio
+    async def test_resync_project_entity(self, resync: ResyncResult) -> None:
+        projects = self._entities_by_blueprint(resync, "azureDevopsProject")
+        assert len(projects) == 1
+        project = projects[0]
+        assert project["identifier"] == _PROJECT_ID
+        assert project["title"] == _PROJECT_NAME
+        assert project["properties"]["state"] == "wellFormed"
+        assert project["properties"]["visibility"] == "private"
+
+    @pytest.mark.asyncio
+    async def test_resync_repository_entity(self, resync: ResyncResult) -> None:
+        repos = self._entities_by_blueprint(resync, "azureDevopsRepository")
+        assert len(repos) == 1
+        repo = repos[0]
+        assert repo["identifier"] == _REPO_ID
+        assert repo["title"] == "test-repo"
+        assert repo["relations"]["project"] == _PROJECT_ID
+
+    @pytest.mark.asyncio
+    async def test_resync_board_entity(self, resync: ResyncResult) -> None:
+        boards = self._entities_by_blueprint(resync, "azureDevopsBoard")
+        assert len(boards) == 1
+        board = boards[0]
+        assert board["identifier"] == _BOARD_ID
+        assert board["title"] == "Stories"
+
+    @pytest.mark.asyncio
+    async def test_resync_work_item_entity(self, resync: ResyncResult) -> None:
+        work_items = self._entities_by_blueprint(resync, "azureDevopsWorkItem")
+        assert len(work_items) == 1
+        work_item = work_items[0]
+        assert work_item["identifier"] == f"{_PROJECT_ID}/{_WORK_ITEM_ID}"
+        assert work_item["title"] == "Test work item"
+        assert work_item["properties"]["type"] == "User Story"
+        assert work_item["properties"]["state"] == "Active"
+        assert work_item["relations"]["project"] == _PROJECT_ID
+
+    @pytest.mark.asyncio
+    async def test_resync_column_entities(self, resync: ResyncResult) -> None:
+        columns = self._entities_by_blueprint(resync, "azureDevopsColumn")
+        # Three columns defined in the board stub: New, Active, Closed
+        assert len(columns) == 3
+        column_titles = {c["title"] for c in columns}
+        assert column_titles == {"New", "Active", "Closed"}
