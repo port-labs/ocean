@@ -32,9 +32,10 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         password=ocean.integration_config.get("servicenow_password"),
     )
     api_query_params = {}
-    selector = cast(ResourceSelector, event.resource_config.selector)
-    if selector.api_query_params:
-        api_query_params = selector.api_query_params.generate_request_params()
+    if event.resource_config:
+        selector = cast(ResourceSelector, event.resource_config.selector)
+        if selector.api_query_params:
+            api_query_params = selector.api_query_params.generate_request_params()
     async for records in servicenow_client.get_paginated_resource(
         resource_kind=kind, api_query_params=api_query_params
     ):
