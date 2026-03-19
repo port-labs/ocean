@@ -462,11 +462,11 @@ class GitlabIntegration(BaseIntegration):
 
 def test_gitlab_port_app_config_schema_generation() -> None:
     """
-    Small regression test to ensure that schema generation for GitlabPortAppConfig
-   _succeeds and that the expected resource kinds are present in the schema.
+     Small regression test to ensure that schema generation for GitlabPortAppConfig
+    _succeeds and that the expected resource kinds are present in the schema.
 
-    This helps catch issues such as accidentally reintroducing ResourceConfig into
-    the resources union or removing one of the supported resource kinds.
+     This helps catch issues such as accidentally reintroducing ResourceConfig into
+     the resources union or removing one of the supported resource kinds.
     """
     schema = validate_and_get_config_schema(GitlabPortAppConfig)
 
