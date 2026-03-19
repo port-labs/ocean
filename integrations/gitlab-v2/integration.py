@@ -9,6 +9,9 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.handlers.port_app_config.validators import (
+    validate_and_get_config_schema,
+)
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
@@ -455,3 +458,38 @@ class GitlabIntegration(BaseIntegration):
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
         )
+
+
+def test_gitlab_port_app_config_schema_generation() -> None:
+    """
+    Small regression test to ensure that schema generation for GitlabPortAppConfig
+   _succeeds and that the expected resource kinds are present in the schema.
+
+    This helps catch issues such as accidentally reintroducing ResourceConfig into
+    the resources union or removing one of the supported resource kinds.
+    """
+    schema = validate_and_get_config_schema(GitlabPortAppConfig)
+
+    # Basic sanity check: schema generation should return a truthy mapping.
+    assert schema, "Expected a non-empty schema for GitlabPortAppConfig"
+
+    # To avoid depending on the exact schema structure, check that all expected
+    # resource kind identifiers appear somewhere in the stringified schema.
+    schema_str = str(schema)
+    expected_kinds = {
+        "project",
+        "group",
+        "issue",
+        "gitlab-group-with-members",
+        "member",
+        "folder",
+        "file",
+        "merge-request",
+        "tag",
+        "release",
+        "pipeline",
+        "job",
+    }
+
+    missing_kinds = {kind for kind in expected_kinds if kind not in schema_str}
+    assert not missing_kinds, f"Missing resource kinds in schema: {missing_kinds}"

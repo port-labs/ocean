@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added explicit Literal kind definitions, removed bare ResourceConfig from the union, and added title/description metadata to all selector fields in GitlabPortAppConfig for schema validation compliance
+- Added explicit Literal kind definitions, removed bare ResourceConfig from the union, and added title/description metadata to selector fields in GitlabPortAppConfig for improved schema validation compliance
 
 
 ## 0.5.66 (2026-03-19)
