@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.299 (2026-03-19)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions, introduced NewRelicSelector, enabled custom kinds support, and added title/description metadata to `NewRelicPortAppConfig` for schema validation compliance
+
+
 ## 0.1.298 (2026-03-17)
 
 

@@ -2,13 +2,26 @@ import typing
 
 import jinja2
 from port_ocean.context.event import event
+from newrelic_integration.overrides import (
+    NewRelicPortAppConfig,
+    NewRelicResourceConfig,
+    NewRelicAlertResourceConfig,
+    NewRelicServiceLevelResourceConfig,
+    NewRelicAlertConditionResourceConfig,
+)
 
-from newrelic_integration.overrides import NewRelicPortAppConfig, NewRelicResourceConfig
+
+NewRelicAnyResourceConfig = (
+    NewRelicAlertResourceConfig
+    | NewRelicServiceLevelResourceConfig
+    | NewRelicAlertConditionResourceConfig
+    | NewRelicResourceConfig
+)
 
 
 async def get_port_resource_configuration_by_port_kind(
     kind: str,
-) -> NewRelicResourceConfig | None:
+) -> NewRelicAnyResourceConfig | None:
     """
     This function is used to get the port resource configuration by the given kind.
     """
@@ -21,7 +34,7 @@ async def get_port_resource_configuration_by_port_kind(
 
 async def get_port_resource_configuration_by_newrelic_entity_type(
     entity_type: str,
-) -> NewRelicResourceConfig | None:
+) -> NewRelicAnyResourceConfig | None:
     app_config = typing.cast(NewRelicPortAppConfig, event.port_app_config)
     for resource in app_config.resources:
         if (
