@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.1 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.6.0 (2026-03-11)
+
+
+### Features
+
+- Added `version` as a standalone kind to sync Jira project releases as entities in Port.
+
+
+## 0.5.100 (2026-03-17)
+
+
+### Improvements
+
+- Issue webhook: log Jira webhook headers (x-atlassian-webhook-identifier, flow, retry) and issue key for traceability when authenticating.
+
+
+## 0.5.99 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.5.98 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.5.97 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.5.96 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+## 0.5.95 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+## 0.5.94 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
 ## 0.5.93 (2026-03-12)
 
 

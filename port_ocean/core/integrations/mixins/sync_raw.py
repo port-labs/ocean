@@ -424,7 +424,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             if lakehouse_data_enabled and raw_results:
                 await ocean.port_client.post_integration_raw_data(
-                    raw_results, event.id, resource_config.kind
+                    raw_results, event.id, resource_config.kind, data_type="resync"
                 )
 
             logger.info(
@@ -467,7 +467,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     batch_index += 1
                     if lakehouse_data_enabled:
                         await ocean.port_client.post_integration_raw_data(
-                            items, event.id, resource_config.kind
+                            items, event.id, resource_config.kind, data_type="resync"
                         )
                     number_of_raw_results += len(items)
                     if send_raw_data_examples_amount > 0:
@@ -738,7 +738,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         except OceanAbortException as ocean_abort:
             logger.info(
-                f"Failed topological sort of failed to upsert entites - trying to upsert unordered {event.entity_topological_sorter.get_entities_count()} entities.",
+                f"Failed topological sort of failed to upsert entities - trying to upsert unordered {event.entity_topological_sorter.get_entities_count()} entities.",
                 failed_topological_sort_entities_count=event.entity_topological_sorter.get_entities_count(),
             )
             if isinstance(ocean_abort.__cause__, CycleError):
@@ -963,10 +963,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         },
                     ],
                 }
+            logger.info(
+                "Fetching current entity state from Port",
+                entities_synced=len(generated_entities),
+            )
             entities_at_port = await ocean.port_client.search_entities(
                 user_agent_type, query
             )
-            entities_to_delete = len(entities_at_port) - len(generated_entities)
+            entities_to_delete = max(0, len(entities_at_port) - len(generated_entities))
+            logger.info(
+                "Calculating diff and deleting stale entities",
+                entities_at_port=len(entities_at_port),
+                entities_synced=len(generated_entities),
+                entities_to_delete=entities_to_delete,
+            )
 
             await self.entities_state_applier.delete_diff(
                 {"before": entities_at_port, "after": generated_entities},
@@ -978,7 +988,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 "Reconciliation phase complete",
                 entities_at_port=len(entities_at_port),
                 entities_synced=len(generated_entities),
-                entities_to_delete=max(0, entities_to_delete),
+                entities_to_delete=entities_to_delete,
             )
 
             logger.info("Resync finished successfully")
@@ -1125,6 +1135,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             async with metric_resource_context(MetricResourceKind.RUNTIME):
                 ocean.metrics.sync_state = SyncState.SYNCING
+                ocean.metrics.set_metric(
+                    name=MetricType.SUCCESS_NAME,
+                    labels=[MetricResourceKind.RUNTIME, MetricPhase.RESYNC],
+                    value=0,
+                )
+
                 await ocean.metrics.send_metrics_to_webhook(
                     kind=MetricResourceKind.RUNTIME
                 )
@@ -1180,6 +1196,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else:
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
                     ocean.metrics.sync_state = SyncState.SYNCING
+                    ocean.metrics.set_metric(
+                        name=MetricType.SUCCESS_NAME,
+                        labels=[MetricResourceKind.RECONCILIATION, MetricPhase.RESYNC],
+                        value=0,
+                    )
                     await ocean.metrics.send_metrics_to_webhook(
                         kind=MetricResourceKind.RECONCILIATION
                     )
@@ -1199,11 +1220,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     ocean.metrics.sync_state = (
                         SyncState.COMPLETED if success else SyncState.FAILED
                     )
+                    ocean.metrics.set_metric(
+                        name=MetricType.SUCCESS_NAME,
+                        labels=[MetricResourceKind.RECONCILIATION, MetricPhase.RESYNC],
+                        value=1 if success else 0,
+                    )
                     await ocean.metrics.send_metrics_to_webhook(
                         kind=MetricResourceKind.RECONCILIATION
                     )
-                    await ocean.metrics.report_sync_metrics(
-                        kinds=[MetricResourceKind.RECONCILIATION]
+                    await ocean.metrics.report_kind_sync_metrics(
+                        kind=MetricResourceKind.RECONCILIATION
                     )
 
                 return success
