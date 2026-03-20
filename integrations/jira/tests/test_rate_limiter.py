@@ -7,6 +7,8 @@ import httpx
 import pytest
 from jira.rate_limiter import (
     JiraRateLimiter,
+    JiraRateLimitInfo,
+    is_rate_limit_response,
     MAX_CONCURRENT_REQUESTS,
     MINIMUM_LIMIT_REMAINING,
 )
@@ -18,6 +20,46 @@ def mock_client() -> AsyncMock:
     return AsyncMock(spec=httpx.AsyncClient)
 
 
+class TestJiraRateLimitInfo:
+    """Tests for the JiraRateLimitInfo dataclass."""
+
+    def test_seconds_until_reset_future(self) -> None:
+        info = JiraRateLimitInfo(limit=100, remaining=50, reset_time=time.time() + 60)
+        assert 59 <= info.seconds_until_reset <= 60
+
+    def test_seconds_until_reset_past(self) -> None:
+        info = JiraRateLimitInfo(limit=100, remaining=50, reset_time=time.time() - 60)
+        assert info.seconds_until_reset == 0.0
+
+    def test_is_expired_true(self) -> None:
+        info = JiraRateLimitInfo(limit=100, remaining=50, reset_time=time.time() - 1)
+        assert info.is_expired is True
+
+    def test_is_expired_false(self) -> None:
+        info = JiraRateLimitInfo(limit=100, remaining=50, reset_time=time.time() + 60)
+        assert info.is_expired is False
+
+
+class TestIsRateLimitResponse:
+    """Tests for the is_rate_limit_response helper."""
+
+    def test_429_is_rate_limited(self) -> None:
+        response = httpx.Response(429)
+        assert is_rate_limit_response(response) is True
+
+    def test_200_is_not_rate_limited(self) -> None:
+        response = httpx.Response(200)
+        assert is_rate_limit_response(response) is False
+
+    def test_403_is_not_rate_limited(self) -> None:
+        response = httpx.Response(403)
+        assert is_rate_limit_response(response) is False
+
+    def test_500_is_not_rate_limited(self) -> None:
+        response = httpx.Response(500)
+        assert is_rate_limit_response(response) is False
+
+
 class TestJiraRateLimiter:
     """Test suite for the JiraRateLimiter."""
 
@@ -25,17 +67,12 @@ class TestJiraRateLimiter:
         """Tests that JiraRateLimiter initializes with correct default values."""
         rate_limiter = JiraRateLimiter()
 
-        assert (
-            rate_limiter._semaphore._value == MAX_CONCURRENT_REQUESTS
-        )  # default max_concurrent
-        assert (
-            rate_limiter._minimum_limit_remaining == MINIMUM_LIMIT_REMAINING
-        )  # default minimum_limit_remaining
-        assert rate_limiter._limit is None
-        assert rate_limiter._remaining is None
+        assert rate_limiter._semaphore._value == MAX_CONCURRENT_REQUESTS
+        assert rate_limiter._minimum_limit_remaining == MINIMUM_LIMIT_REMAINING
+        assert rate_limiter._rate_limit_info is None
         assert rate_limiter._near_limit is False
-        assert rate_limiter._reset_time is None
         assert rate_limiter._retry_after is None
+        assert rate_limiter._initialized is False
 
     def test_initialization_with_custom_values(self) -> None:
         """Tests that JiraRateLimiter initializes with custom values."""
@@ -44,200 +81,191 @@ class TestJiraRateLimiter:
         assert rate_limiter._semaphore._value == 10
         assert rate_limiter._minimum_limit_remaining == 5
 
-    def test_seconds_until_reset_with_no_reset_time(self) -> None:
-        """Tests seconds_until_reset returns 0 when reset_time is None."""
+    def test_seconds_until_reset_with_no_info(self) -> None:
+        """Tests seconds_until_reset returns 0 when no rate limit info exists."""
         rate_limiter = JiraRateLimiter()
-
         assert rate_limiter.seconds_until_reset == 0.0
 
     def test_seconds_until_reset_with_future_reset_time(self) -> None:
         """Tests seconds_until_reset calculates correctly for future reset time."""
         rate_limiter = JiraRateLimiter()
-        future_time = time.time() + 60
-        rate_limiter._reset_time = future_time
-
-        seconds_until_reset = rate_limiter.seconds_until_reset
-        assert 59 <= seconds_until_reset <= 60  # Allow for small timing differences
+        rate_limiter._rate_limit_info = JiraRateLimitInfo(
+            limit=100, remaining=50, reset_time=time.time() + 60
+        )
+        seconds = rate_limiter.seconds_until_reset
+        assert 59 <= seconds <= 60
 
     def test_seconds_until_reset_with_past_reset_time(self) -> None:
         """Tests seconds_until_reset returns 0 for past reset time."""
         rate_limiter = JiraRateLimiter()
-        past_time = time.time() - 60
-        rate_limiter._reset_time = past_time
-
+        rate_limiter._rate_limit_info = JiraRateLimitInfo(
+            limit=100, remaining=50, reset_time=time.time() - 60
+        )
         assert rate_limiter.seconds_until_reset == 0.0
 
-    @pytest.mark.asyncio
-    async def test_update_rate_limit_headers_standard_headers(self) -> None:
-        """Tests update_rate_limit_headers with standard Jira headers when well within limits."""
-        rate_limiter = JiraRateLimiter()
-
-        headers = httpx.Headers(
-            {
-                "x-ratelimit-limit": "100",
-                "x-ratelimit-remaining": "50",
-                "x-ratelimit-nearlimit": "false",
-                "x-ratelimit-reset": "2024-01-01T12:00:00Z",
-                "retry-after": "30",
-            }
-        )
-
-        await rate_limiter.update_rate_limit_headers(headers)
-
-        # remaining (50) > MINIMUM_LIMIT_REMAINING (1), so only limit and remaining are updated
-        assert rate_limiter._limit == 100
-        assert rate_limiter._remaining == 50
-        assert rate_limiter._near_limit is False
-        assert rate_limiter._reset_time is None
-        assert rate_limiter._retry_after is None
+    # --- on_response tests (replaces update_rate_limit_headers tests) ---
 
     @pytest.mark.asyncio
-    async def test_update_rate_limit_headers_near_limit(self) -> None:
-        """Tests update_rate_limit_headers parses all fields when remaining is at or below threshold."""
+    async def test_on_response_initializes_from_normal_response(self) -> None:
+        """Tests on_response initializes rate limit state from a normal response."""
         rate_limiter = JiraRateLimiter()
-        reset_time_iso = "2024-01-01T12:00:00Z"
+        reset_time_iso = "2099-01-01T12:00:00Z"
         expected_timestamp = datetime.fromisoformat(
             reset_time_iso.replace("Z", "+00:00")
         ).timestamp()
 
-        headers = httpx.Headers(
-            {
+        response = httpx.Response(
+            200,
+            headers={
                 "x-ratelimit-limit": "100",
-                "x-ratelimit-remaining": "0",
-                "x-ratelimit-nearlimit": "true",
+                "x-ratelimit-remaining": "50",
+                "x-ratelimit-nearlimit": "false",
                 "x-ratelimit-reset": reset_time_iso,
-                "retry-after": "30",
-                "ratelimit-reason": "jira-burst-based",
-            }
+            },
         )
 
-        await rate_limiter.update_rate_limit_headers(headers)
+        await rate_limiter.on_response(response)
 
-        assert rate_limiter._limit == 100
-        assert rate_limiter._remaining == 0
-        assert rate_limiter._near_limit is True
-        assert (
-            rate_limiter._reset_time
-            and abs(rate_limiter._reset_time - expected_timestamp) < 0.01
-        )
-        assert rate_limiter._retry_after == 30.0
+        assert rate_limiter._rate_limit_info is not None
+        assert rate_limiter._rate_limit_info.limit == 100
+        assert rate_limiter._rate_limit_info.remaining == 50
+        assert abs(rate_limiter._rate_limit_info.reset_time - expected_timestamp) < 0.01
+        assert rate_limiter._near_limit is False
+        assert rate_limiter._initialized is True
 
     @pytest.mark.asyncio
-    async def test_update_rate_limit_headers_no_rate_limit_headers(self) -> None:
-        """Tests update_rate_limit_headers is a no-op when no rate limit headers are present."""
+    async def test_on_response_no_headers_is_noop(self) -> None:
+        """Tests on_response is a no-op when no rate limit headers are present."""
         rate_limiter = JiraRateLimiter()
 
-        # Set some pre-existing state to verify it is not cleared
-        rate_limiter._limit = 100
-        rate_limiter._remaining = 50
-
-        headers = httpx.Headers(
-            {
+        response = httpx.Response(
+            200,
+            headers={
                 "content-type": "application/json",
-                "x-request-id": "abc123",
-            }
+            },
         )
 
-        await rate_limiter.update_rate_limit_headers(headers)
+        await rate_limiter.on_response(response)
 
-        # Pre-existing state should be preserved
-        assert rate_limiter._limit == 100
-        assert rate_limiter._remaining == 50
-        assert rate_limiter._near_limit is False
-        assert rate_limiter._retry_after is None
-        assert rate_limiter._reset_time is None
+        assert rate_limiter._rate_limit_info is None
+        assert rate_limiter._initialized is False
 
     @pytest.mark.asyncio
-    async def test_update_rate_limit_headers_partial_headers(self) -> None:
-        """Tests update_rate_limit_headers correctly handles partial rate limit headers."""
+    async def test_on_response_handles_429_rate_limit(self) -> None:
+        """Tests on_response correctly handles a 429 rate-limited response."""
         rate_limiter = JiraRateLimiter()
 
-        # Only remaining and near-limit headers present
-        headers = httpx.Headers(
-            {
-                "x-ratelimit-remaining": "5",
-                "x-ratelimit-nearlimit": "true",
-            }
-        )
-
-        await rate_limiter.update_rate_limit_headers(headers)
-
-        # Missing x-ratelimit-limit causes early return — no state updated
-        assert rate_limiter._limit is None
-        assert rate_limiter._remaining is None
-        assert rate_limiter._near_limit is False
-        assert rate_limiter._reset_time is None
-        assert rate_limiter._retry_after is None
-
-    @pytest.mark.asyncio
-    @patch("jira.rate_limiter.logger")
-    async def test_update_rate_limit_headers_with_reason(
-        self, mock_logger: AsyncMock
-    ) -> None:
-        """Tests update_rate_limit_headers logs rate limit reason when present."""
-        rate_limiter = JiraRateLimiter()
-
-        headers = httpx.Headers(
-            {
+        response = httpx.Response(
+            429,
+            headers={
                 "x-ratelimit-limit": "100",
                 "x-ratelimit-remaining": "0",
-                "x-ratelimit-nearlimit": "true",
-                "x-ratelimit-reset": "2024-01-01T12:00:00Z",
-                "ratelimit-reason": "jira-quota-based",
+                "x-ratelimit-reset": "2099-01-01T12:00:00Z",
                 "retry-after": "30",
-            }
+            },
         )
 
-        await rate_limiter.update_rate_limit_headers(headers)
+        await rate_limiter.on_response(response)
 
-        # The rate limiter should log a warning when the ratelimit-reason header is present
-        mock_logger.warning.assert_called_once_with(
-            "Rate limit breached for this reason: jira-quota-based"
+        assert rate_limiter._rate_limit_info is not None
+        assert rate_limiter._rate_limit_info.remaining == 0
+        assert rate_limiter._retry_after == 30.0
+        assert rate_limiter._initialized is True
+
+    @pytest.mark.asyncio
+    async def test_on_response_429_with_only_retry_after(self) -> None:
+        """Tests 429 response with only retry-after header (no rate limit headers)."""
+        rate_limiter = JiraRateLimiter()
+
+        response = httpx.Response(
+            429,
+            headers={
+                "retry-after": "60",
+            },
         )
+
+        await rate_limiter.on_response(response)
+
+        assert rate_limiter._rate_limit_info is not None
+        assert rate_limiter._rate_limit_info.remaining == 0
+        assert rate_limiter._retry_after == 60.0
+        # reset_time should be ~60s from now
+        assert rate_limiter._rate_limit_info.seconds_until_reset > 55
 
     @pytest.mark.asyncio
     @patch("jira.rate_limiter.logger")
-    async def test_update_rate_limit_headers_handles_exceptions(
+    async def test_on_response_429_logs_with_reason(
         self, mock_logger: AsyncMock
     ) -> None:
-        """Tests update_rate_limit_headers handles parsing exceptions gracefully."""
+        """Tests that 429 response logs the rate limit reason."""
         rate_limiter = JiraRateLimiter()
 
-        # Headers with invalid values that will cause parsing errors
-        headers = httpx.Headers(
-            {
-                "x-ratelimit-limit": "invalid_number",
-                "x-ratelimit-remaining": "also_invalid",
-            }
+        response = httpx.Response(
+            429,
+            headers={
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-reset": "2099-01-01T12:00:00Z",
+                "retry-after": "30",
+                "ratelimit-reason": "jira-quota-based",
+            },
         )
 
-        await rate_limiter.update_rate_limit_headers(headers)
+        await rate_limiter.on_response(response)
 
-        mock_logger.error.assert_called_once()
-        assert "Failed to update rate limit headers:" in str(
-            mock_logger.error.call_args
+        # The bound logger's warning should have been called with the reason
+        mock_logger.bind.return_value.warning.assert_called_once()
+        call_args = str(mock_logger.bind.return_value.warning.call_args)
+        assert "jira-quota-based" in call_args
+
+    @pytest.mark.asyncio
+    async def test_on_response_does_not_regress_reset_time(self) -> None:
+        """Tests that a 429 with an older reset time does not overwrite a newer one."""
+        rate_limiter = JiraRateLimiter()
+
+        # First, set a future reset time
+        future_reset = time.time() + 120
+        rate_limiter._rate_limit_info = JiraRateLimitInfo(
+            limit=100, remaining=0, reset_time=future_reset
         )
+        rate_limiter._initialized = True
+
+        # Now send a 429 with an older reset time
+        response = httpx.Response(
+            429,
+            headers={
+                "retry-after": "5",
+            },
+        )
+
+        await rate_limiter.on_response(response)
+
+        # The reset time should NOT have regressed
+        assert rate_limiter._rate_limit_info.reset_time == future_reset
+
+    # --- __aenter__ / enforce_rate_limit tests ---
 
     @pytest.mark.asyncio
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_proactive_wait_when_near_limit_flag_set(
-        self, mock_sleep: AsyncMock, mock_client: AsyncMock
+        self, mock_sleep: AsyncMock
     ) -> None:
         """Tests proactive sleep when near_limit flag is set."""
         reset_time = time.time() + 10.0
         rate_limiter = JiraRateLimiter()
 
-        # Set near_limit flag and reset time
         rate_limiter._near_limit = True
-        rate_limiter._reset_time = reset_time
+        rate_limiter._initialized = True
+        rate_limiter._rate_limit_info = JiraRateLimitInfo(
+            limit=100, remaining=50, reset_time=reset_time
+        )
 
-        with patch("time.time", return_value=reset_time - 10.0):
-            async with rate_limiter:
-                pass
+        async with rate_limiter:
+            pass
 
         mock_sleep.assert_awaited_once()
         calculated_sleep_duration = mock_sleep.call_args[0][0]
-        assert abs(calculated_sleep_duration - 10.0) < 0.01
+        assert abs(calculated_sleep_duration - 10.0) < 1.0
 
     @pytest.mark.asyncio
     @patch("asyncio.sleep", new_callable=AsyncMock)
@@ -248,18 +276,17 @@ class TestJiraRateLimiter:
         reset_time = time.time() + 5.0
         rate_limiter = JiraRateLimiter(minimum_limit_remaining=10)
 
-        # Set remaining below threshold
-        rate_limiter._limit = 100
-        rate_limiter._remaining = 5  # Below threshold of 10
-        rate_limiter._reset_time = reset_time
+        rate_limiter._initialized = True
+        rate_limiter._rate_limit_info = JiraRateLimitInfo(
+            limit=100, remaining=5, reset_time=reset_time
+        )
 
-        with patch("time.time", return_value=reset_time - 5.0):
-            async with rate_limiter:
-                pass
+        async with rate_limiter:
+            pass
 
         mock_sleep.assert_awaited_once()
         calculated_sleep_duration = mock_sleep.call_args[0][0]
-        assert abs(calculated_sleep_duration - 5.0) < 0.01
+        assert abs(calculated_sleep_duration - 5.0) < 1.0
 
     @pytest.mark.asyncio
     @patch("asyncio.sleep", new_callable=AsyncMock)
@@ -269,9 +296,10 @@ class TestJiraRateLimiter:
         """Tests no proactive sleep when remaining requests are above threshold."""
         rate_limiter = JiraRateLimiter(minimum_limit_remaining=5)
 
-        # Set remaining above threshold
-        rate_limiter._limit = 100
-        rate_limiter._remaining = 10
+        rate_limiter._initialized = True
+        rate_limiter._rate_limit_info = JiraRateLimitInfo(
+            limit=100, remaining=10, reset_time=time.time() + 60
+        )
         rate_limiter._near_limit = False
 
         async with rate_limiter:
@@ -281,21 +309,78 @@ class TestJiraRateLimiter:
 
     @pytest.mark.asyncio
     @patch("asyncio.sleep", new_callable=AsyncMock)
-    async def test_no_proactive_wait_when_reset_time_in_past(
+    async def test_no_proactive_wait_when_not_initialized(
         self, mock_sleep: AsyncMock
     ) -> None:
-        """Tests no proactive sleep when reset time is in the past."""
-        rate_limiter = JiraRateLimiter(minimum_limit_remaining=5)
-
-        # Set conditions that would normally trigger sleep, but with past reset time
-        rate_limiter._limit = 100
-        rate_limiter._remaining = 1
-        rate_limiter._reset_time = time.time() - 60
+        """Tests no proactive sleep when rate limiter has not been initialized."""
+        rate_limiter = JiraRateLimiter()
 
         async with rate_limiter:
             pass
 
         mock_sleep.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    async def test_stale_state_reset_when_epoch_passes(
+        self, mock_sleep: AsyncMock
+    ) -> None:
+        """Tests that stale state is cleared when the rate limit window expires."""
+        rate_limiter = JiraRateLimiter()
+
+        # Set state as if we were rate limited, but the window has expired
+        rate_limiter._initialized = True
+        rate_limiter._near_limit = True
+        rate_limiter._retry_after = 30.0
+        rate_limiter._rate_limit_info = JiraRateLimitInfo(
+            limit=100, remaining=0, reset_time=time.time() - 10
+        )
+
+        async with rate_limiter:
+            pass
+
+        # Transient flags should be reset, but initialized and limit stay
+        mock_sleep.assert_not_awaited()
+        assert rate_limiter._initialized is True
+        assert rate_limiter._near_limit is False
+        assert rate_limiter._retry_after is None
+        assert rate_limiter._rate_limit_info.remaining == 100  # restored to limit
+
+    @pytest.mark.asyncio
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    async def test_retry_after_triggers_sleep(self, mock_sleep: AsyncMock) -> None:
+        """Tests that a non-zero retry_after causes a sleep."""
+        rate_limiter = JiraRateLimiter()
+
+        rate_limiter._initialized = True
+        rate_limiter._retry_after = 15.0
+        rate_limiter._rate_limit_info = JiraRateLimitInfo(
+            limit=100, remaining=0, reset_time=time.time() + 30
+        )
+
+        async with rate_limiter:
+            pass
+
+        mock_sleep.assert_awaited_once_with(15.0)
+        # After sleeping, retry_after should be cleared but state preserved
+        assert rate_limiter._retry_after is None
+        assert rate_limiter._initialized is True
+
+    @pytest.mark.asyncio
+    async def test_remaining_decremented_locally(self) -> None:
+        """Tests that remaining is decremented after __aenter__."""
+        rate_limiter = JiraRateLimiter()
+
+        rate_limiter._initialized = True
+        rate_limiter._rate_limit_info = JiraRateLimitInfo(
+            limit=100, remaining=50, reset_time=time.time() + 60
+        )
+
+        async with rate_limiter:
+            pass
+
+        # remaining should have been decremented by 1
+        assert rate_limiter._rate_limit_info.remaining == 49
 
     @pytest.mark.asyncio
     async def test_concurrent_requests_are_limited_by_semaphore(self) -> None:
@@ -319,7 +404,6 @@ class TestJiraRateLimiter:
                 async with lock:
                     active_tasks -= 1
 
-        # Create more tasks than the concurrent limit
         tasks = [worker() for _ in range(concurrent_limit + 2)]
         await asyncio.gather(*tasks)
 
@@ -330,15 +414,12 @@ class TestJiraRateLimiter:
         """Tests that semaphore is released even when exception occurs."""
         rate_limiter = JiraRateLimiter(max_concurrent=1)
 
-        # First, verify semaphore is available
         assert rate_limiter._semaphore._value == 1
 
-        # Use context manager with exception
         with pytest.raises(ValueError):
             async with rate_limiter:
                 raise ValueError("Test exception")
 
-        # Verify semaphore was released
         assert rate_limiter._semaphore._value == 1
 
     @pytest.mark.asyncio
@@ -346,51 +427,118 @@ class TestJiraRateLimiter:
         """Tests that multiple sequential uses of context manager work correctly."""
         rate_limiter = JiraRateLimiter(max_concurrent=1)
 
-        # Use context manager multiple times sequentially
         for i in range(3):
             async with rate_limiter:
                 assert rate_limiter._semaphore._value == 0
             assert rate_limiter._semaphore._value == 1
+
+    # --- Tiered logging tests ---
+
+    @pytest.mark.asyncio
+    @patch("jira.rate_limiter.logger")
+    async def test_log_rate_limit_status_debug_when_healthy(
+        self, mock_logger: AsyncMock
+    ) -> None:
+        """Tests debug logging when rate limit is healthy."""
+        rate_limiter = JiraRateLimiter()
+
+        response = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "80",
+                "x-ratelimit-reset": "2099-01-01T12:00:00Z",
+            },
+        )
+
+        await rate_limiter.on_response(response)
+
+        mock_logger.bind.return_value.debug.assert_called_once()
+        call_args = str(mock_logger.bind.return_value.debug.call_args)
+        assert "Status" in call_args
+
+    @pytest.mark.asyncio
+    @patch("jira.rate_limiter.logger")
+    async def test_log_rate_limit_status_warning_when_near_exhaustion(
+        self, mock_logger: AsyncMock
+    ) -> None:
+        """Tests warning logging when rate limit is near exhaustion (<= 10%)."""
+        rate_limiter = JiraRateLimiter()
+
+        response = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "5",
+                "x-ratelimit-reset": "2099-01-01T12:00:00Z",
+            },
+        )
+
+        await rate_limiter.on_response(response)
+
+        mock_logger.bind.return_value.warning.assert_called_once()
+        call_args = str(mock_logger.bind.return_value.warning.call_args)
+        assert "Near exhaustion" in call_args
+
+    @pytest.mark.asyncio
+    @patch("jira.rate_limiter.logger")
+    async def test_log_rate_limit_status_warning_when_exhausted(
+        self, mock_logger: AsyncMock
+    ) -> None:
+        """Tests warning logging when rate limit is exhausted."""
+        rate_limiter = JiraRateLimiter()
+
+        response = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-reset": "2099-01-01T12:00:00Z",
+            },
+        )
+
+        await rate_limiter.on_response(response)
+
+        mock_logger.bind.return_value.warning.assert_called_once()
+        call_args = str(mock_logger.bind.return_value.warning.call_args)
+        assert "Exhausted" in call_args
 
     @pytest.mark.asyncio
     async def test_reset_time_parsing_with_different_iso_formats(self) -> None:
         """Tests reset time parsing with different ISO 8601 formats."""
         rate_limiter = JiraRateLimiter()
 
-        # Test with Z suffix (remaining=0 to pass the threshold guard)
-        headers_z = httpx.Headers(
-            {
-                "x-ratelimit-reset": "2024-01-01T12:00:00Z",
+        # Test with Z suffix
+        response_z = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-reset": "2099-01-01T12:00:00Z",
                 "x-ratelimit-limit": "100",
-                "x-ratelimit-remaining": "0",
-                "x-ratelimit-nearlimit": "true",
-                "retry-after": "30",
-            }
+                "x-ratelimit-remaining": "50",
+            },
         )
 
-        await rate_limiter.update_rate_limit_headers(headers_z)
+        await rate_limiter.on_response(response_z)
         expected_timestamp = datetime(
-            2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc
+            2099, 1, 1, 12, 0, 0, tzinfo=timezone.utc
         ).timestamp()
-        assert (
-            rate_limiter._reset_time
-            and abs(rate_limiter._reset_time - expected_timestamp) < 0.01
-        )
+        assert rate_limiter._rate_limit_info is not None
+        assert abs(rate_limiter._rate_limit_info.reset_time - expected_timestamp) < 0.01
 
-        # Test with +00:00 suffix (remaining=0 to pass the threshold guard)
-        rate_limiter._reset_time = None  # Reset for second assertion
-        headers_offset = httpx.Headers(
-            {
-                "x-ratelimit-reset": "2024-01-01T12:00:00+00:00",
+        # Reset for next test
+        rate_limiter._initialized = False
+        rate_limiter._rate_limit_info = None
+
+        # Test with +00:00 suffix
+        response_offset = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-reset": "2099-01-01T12:00:00+00:00",
                 "x-ratelimit-limit": "100",
-                "x-ratelimit-remaining": "0",
-                "x-ratelimit-nearlimit": "true",
-                "retry-after": "30",
-            }
+                "x-ratelimit-remaining": "50",
+            },
         )
 
-        await rate_limiter.update_rate_limit_headers(headers_offset)
-        assert (
-            rate_limiter._reset_time
-            and abs(rate_limiter._reset_time - expected_timestamp) < 0.01
-        )
+        await rate_limiter.on_response(response_offset)
+        assert rate_limiter._rate_limit_info is not None
+        assert abs(rate_limiter._rate_limit_info.reset_time - expected_timestamp) < 0.01

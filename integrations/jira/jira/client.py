@@ -102,6 +102,7 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
     ) -> Any:
+        response: httpx.Response | None = None
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
@@ -110,16 +111,23 @@ class JiraClient(OAuthClient):
                 response.raise_for_status()
                 return response.json()
         except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Jira API request failed with status {e.response.status_code}: {method} {url}"
+            response = e.response
+            is_rate_limit = self._rate_limiter.is_rate_limit_response(response)
+            logger.bind(
+                status_code=response.status_code,
+                method=method,
+                url=url,
+                is_rate_limit=is_rate_limit,
+            ).error(
+                f"Jira API request failed with status {response.status_code}: {method} {url}"
             )
             raise
         except httpx.RequestError as e:
             logger.error(f"Failed to connect to Jira API: {method} {url} - {str(e)}")
             raise
         finally:
-            if "response" in locals() and response:
-                await self._rate_limiter.update_rate_limit_headers(response.headers)
+            if response is not None:
+                await self._rate_limiter.on_response(response)
 
     async def _get_paginated_data(
         self,
