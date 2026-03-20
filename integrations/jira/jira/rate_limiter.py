@@ -53,12 +53,17 @@ class JiraRateLimiter:
         async with self._lock:
             try:
                 limit_value = headers.get("x-ratelimit-limit")
-                if limit_value is not None:
-                    self._limit = int(limit_value)
+                if limit_value is None:
+                    return
+                self._limit = int(limit_value)
 
                 remaining_value = headers.get("x-ratelimit-remaining")
-                if remaining_value is not None:
-                    self._remaining = int(remaining_value)
+                if remaining_value is None:
+                    return
+                self._remaining = int(remaining_value)
+
+                if self._remaining > MINIMUM_LIMIT_REMAINING:
+                    return
 
                 self._near_limit = headers.get("x-ratelimit-nearlimit") == "true"
 

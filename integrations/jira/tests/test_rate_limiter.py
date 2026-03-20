@@ -69,7 +69,31 @@ class TestJiraRateLimiter:
 
     @pytest.mark.asyncio
     async def test_update_rate_limit_headers_standard_headers(self) -> None:
-        """Tests update_rate_limit_headers with standard Jira headers."""
+        """Tests update_rate_limit_headers with standard Jira headers when well within limits."""
+        rate_limiter = JiraRateLimiter()
+
+        headers = httpx.Headers(
+            {
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "50",
+                "x-ratelimit-nearlimit": "false",
+                "x-ratelimit-reset": "2024-01-01T12:00:00Z",
+                "retry-after": "30",
+            }
+        )
+
+        await rate_limiter.update_rate_limit_headers(headers)
+
+        # remaining (50) > MINIMUM_LIMIT_REMAINING (1), so only limit and remaining are updated
+        assert rate_limiter._limit == 100
+        assert rate_limiter._remaining == 50
+        assert rate_limiter._near_limit is False
+        assert rate_limiter._reset_time is None
+        assert rate_limiter._retry_after is None
+
+    @pytest.mark.asyncio
+    async def test_update_rate_limit_headers_near_limit(self) -> None:
+        """Tests update_rate_limit_headers parses all fields when remaining is at or below threshold."""
         rate_limiter = JiraRateLimiter()
         reset_time_iso = "2024-01-01T12:00:00Z"
         expected_timestamp = datetime.fromisoformat(
@@ -79,18 +103,19 @@ class TestJiraRateLimiter:
         headers = httpx.Headers(
             {
                 "x-ratelimit-limit": "100",
-                "x-ratelimit-remaining": "50",
-                "x-ratelimit-nearlimit": "false",
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-nearlimit": "true",
                 "x-ratelimit-reset": reset_time_iso,
                 "retry-after": "30",
+                "ratelimit-reason": "jira-burst-based",
             }
         )
 
         await rate_limiter.update_rate_limit_headers(headers)
 
         assert rate_limiter._limit == 100
-        assert rate_limiter._remaining == 50
-        assert rate_limiter._near_limit is False
+        assert rate_limiter._remaining == 0
+        assert rate_limiter._near_limit is True
         assert (
             rate_limiter._reset_time
             and abs(rate_limiter._reset_time - expected_timestamp) < 0.01
@@ -137,9 +162,10 @@ class TestJiraRateLimiter:
 
         await rate_limiter.update_rate_limit_headers(headers)
 
+        # Missing x-ratelimit-limit causes early return — no state updated
         assert rate_limiter._limit is None
-        assert rate_limiter._remaining == 5
-        assert rate_limiter._near_limit is True
+        assert rate_limiter._remaining is None
+        assert rate_limiter._near_limit is False
         assert rate_limiter._reset_time is None
         assert rate_limiter._retry_after is None
 
@@ -331,13 +357,13 @@ class TestJiraRateLimiter:
         """Tests reset time parsing with different ISO 8601 formats."""
         rate_limiter = JiraRateLimiter()
 
-        # Test with Z suffix
+        # Test with Z suffix (remaining=0 to pass the threshold guard)
         headers_z = httpx.Headers(
             {
                 "x-ratelimit-reset": "2024-01-01T12:00:00Z",
                 "x-ratelimit-limit": "100",
-                "x-ratelimit-remaining": "50",
-                "x-ratelimit-nearlimit": "false",
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-nearlimit": "true",
                 "retry-after": "30",
             }
         )
@@ -351,13 +377,14 @@ class TestJiraRateLimiter:
             and abs(rate_limiter._reset_time - expected_timestamp) < 0.01
         )
 
-        # Test with +00:00 suffix
+        # Test with +00:00 suffix (remaining=0 to pass the threshold guard)
+        rate_limiter._reset_time = None  # Reset for second assertion
         headers_offset = httpx.Headers(
             {
                 "x-ratelimit-reset": "2024-01-01T12:00:00+00:00",
                 "x-ratelimit-limit": "100",
-                "x-ratelimit-remaining": "50",
-                "x-ratelimit-nearlimit": "false",
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-nearlimit": "true",
                 "retry-after": "30",
             }
         )
