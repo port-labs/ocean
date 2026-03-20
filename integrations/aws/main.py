@@ -39,6 +39,7 @@ from utils.misc import (
     OPT_IN_REGIONS,
     is_access_denied_exception,
     is_resource_type_not_available_exception,
+    is_region_not_enabled_exception,
     is_server_error,
     safe_iterate,
 )
@@ -87,6 +88,12 @@ async def _handle_global_resource_resync(
                 logger.warning(
                     f"Skipping global resource {kind} in region {region}: "
                     f"resource type not available in this region"
+                )
+                continue
+            elif is_region_not_enabled_exception(e):
+                logger.warning(
+                    f"Skipping global resource {kind} in region "
+                    f"{region}: region not enabled (opt-in region)"
                 )
                 continue
             else:

@@ -178,6 +178,31 @@ def is_resource_type_not_available_exception(e: Exception) -> bool:
     return False
 
 
+def is_region_not_enabled_exception(e: Exception) -> bool:
+    """Check if the exception indicates an opt-in region that hasn't been enabled."""
+    region_not_enabled_error_codes = [
+        "InvalidClientTokenId",
+        "AuthFailure",
+        "RegionDisabledException",
+    ]
+
+    if hasattr(e, "response") and e.response is not None:
+        error_code = e.response.get("Error", {}).get("Code")
+
+        if error_code in region_not_enabled_error_codes:
+            return True
+
+        region_disabled_patterns = [
+            "region is disabled",
+            "region has not been enabled",
+            "opt-in required",
+        ]
+        if _check_general_service_exception(e, region_disabled_patterns):
+            return True
+
+    return False
+
+
 def get_matching_kinds_and_blueprints_from_config(
     kind: str, region: str, resource_configs: List[AWSResourceConfig]
 ) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
@@ -372,6 +397,12 @@ async def safe_iterate(
             logger.bind(traceback=e, kind=kind, region=region).warning(
                 f"{region} skipped during resync of {kind}: "
                 f"resource type not available"
+            )
+            return
+        if is_region_not_enabled_exception(e):
+            logger.bind(traceback=e, kind=kind, region=region).warning(
+                f"{region} skipped during resync of {kind}: "
+                f"region not enabled (opt-in region)"
             )
             return
         logger.bind(traceback=e, kind=kind, region=region).error(

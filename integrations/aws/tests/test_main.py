@@ -31,6 +31,15 @@ def _type_not_found_error() -> ClientError:
     )
 
 
+def _region_not_enabled_error(
+    code: str = "InvalidClientTokenId",
+) -> ClientError:
+    return ClientError(
+        {"Error": {"Code": code, "Message": "Token is not valid"}},
+        "AssumeRole",
+    )
+
+
 def _real_error(code: str = "InternalServiceError") -> ClientError:
     return ClientError(
         {"Error": {"Code": code, "Message": "Something went wrong"}},
@@ -300,3 +309,63 @@ async def test_multiple_failures_collected_across_merge() -> None:
     assert [{"region": "eu-west-1", "data": "ok"}] in results
     assert len(errors) == 2
     assert set(failed) == {"us-east-1", "ap-south-1"}
+
+
+async def test_safe_iterate_suppresses_region_not_enabled() -> None:
+    """InvalidClientTokenId from opt-in regions is suppressed."""
+
+    async def gen() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield [{"a": 1}]
+        raise _region_not_enabled_error("InvalidClientTokenId")
+
+    errors: list[Exception] = []
+    failed: list[str] = []
+    results = []
+    async for batch in safe_iterate(gen(), "af-south-1", "TestKind", errors, failed):
+        results.append(batch)
+    assert results == [[{"a": 1}]]
+    assert errors == []
+    assert failed == []
+
+
+async def test_safe_iterate_suppresses_region_disabled() -> None:
+    """RegionDisabledException is suppressed."""
+
+    async def gen() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield []
+        raise _region_not_enabled_error("RegionDisabledException")
+
+    errors: list[Exception] = []
+    failed: list[str] = []
+    results = []
+    async for batch in safe_iterate(
+        gen(), "ap-southeast-4", "TestKind", errors, failed
+    ):
+        results.append(batch)
+    assert results == []
+    assert errors == []
+    assert failed == []
+
+
+async def test_global_resync_skips_region_not_enabled() -> None:
+    """Global resync skips a region that raises InvalidClientTokenId."""
+    from main import _handle_global_resource_resync
+
+    call_log: list[str] = []
+
+    async def resync_func(kind: str, session: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        region = session.region_name
+        call_log.append(region)
+        if region == "af-south-1":
+            raise _region_not_enabled_error("InvalidClientTokenId")
+        yield [{"id": "from-" + region}]
+
+    credentials = MockCredentials(["af-south-1", "eu-west-1"])
+    results = []
+    async for batch in _handle_global_resource_resync(
+        "AWS::IAM::Role", credentials, resync_func, ["af-south-1", "eu-west-1"]  # type: ignore[arg-type]
+    ):
+        results.append(batch)
+
+    assert call_log == ["af-south-1", "eu-west-1"]
+    assert results == [[{"id": "from-eu-west-1"}]]
