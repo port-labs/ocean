@@ -1,0 +1,33 @@
+{
+  "type": "containers",
+  "id": "CVE-2021-3487",
+  "alternateId": "55727301",
+  "similarityId": "CVE-2021-3487",
+  "status": "RECURRENT",
+  "state": "TO_VERIFY",
+  "severity": "INFO",
+  "confidenceLevel": 0,
+  "created": "2025-09-10T12:02:15Z",
+  "firstFoundAt": "2025-08-21T10:39:19Z",
+  "foundAt": "2025-09-10T12:02:15Z",
+  "firstScanId": "777d0393-5990-46a0-a835-eea725c37a2d",
+  "description": "Rejected reason: Non Security Issue. See the binutils security policy for more details, https://sourceware.org/cgit/binutils-gdb/tree/binutils/SECURITY.txt",
+  "data": {
+    "packageName": "binutils",
+    "packageVersion": "2.32-r0",
+    "imageName": "lacion/alpine-golang-buildimage",
+    "imageTag": "1.13",
+    "imageFilePath": "Dockerfile",
+    "imageOrigin": "Dockerfile"
+  },
+  "comments": {
+    "comments": ""
+  },
+  "vulnerabilityDetails": {
+    "cvssScore": 0,
+    "cveName": "CVE-2021-3487",
+    "cweId": "",
+    "cvss": null
+  },
+  "__scan_id": "838c9e28-d88e-4464-92c8-754b9e21d49e"
+}

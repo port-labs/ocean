@@ -1,0 +1,44 @@
+{
+  "type": "containers",
+  "id": "CVE-2020-11080",
+  "alternateId": "110601111",
+  "similarityId": "CVE-2020-11080",
+  "status": "RECURRENT",
+  "state": "TO_VERIFY",
+  "severity": "LOW",
+  "confidenceLevel": 0,
+  "created": "2025-09-10T12:02:15Z",
+  "firstFoundAt": "2025-08-21T10:39:19Z",
+  "foundAt": "2025-09-10T12:02:15Z",
+  "firstScanId": "777d0393-5990-46a0-a835-eea725c37a2d",
+  "description": "In nghttp2 before version 1.41.0, the overly large HTTP/2 SETTINGS frame payload causes denial of service. The proof of concept attack involves a malicious client constructing a SETTINGS frame with a length of 14,400 bytes (2400 individual settings entries) over and over again. The attack causes the CPU to spike at 100%. nghttp2 v1.41.0 fixes this vulnerability. There is a workaround to this vulnerability. Implement nghttp2_on_frame_recv_callback callback, and if received frame is SETTINGS frame and the number of settings entries are large (e.g., > 32), then drop the connection.",
+  "data": {
+    "packageName": "nghttp2",
+    "packageVersion": "1.39.2-r0",
+    "imageName": "lacion/alpine-golang-buildimage",
+    "imageTag": "1.13",
+    "imageFilePath": "Dockerfile",
+    "imageOrigin": "Dockerfile"
+  },
+  "comments": {
+    "comments": ""
+  },
+  "vulnerabilityDetails": {
+    "cvssScore": 3.7,
+    "cveName": "CVE-2020-11080",
+    "cweId": "CWE-707",
+    "cvss": {
+      "scope": "UNCHANGED",
+      "score": "3.7",
+      "severity": "Low",
+      "attack_vector": "NETWORK",
+      "integrity_impact": "NONE",
+      "user_interaction": "NONE",
+      "attack_complexity": "HIGH",
+      "availability_impact": "LOW",
+      "privileges_required": "NONE",
+      "confidentiality_impact": "NONE"
+    }
+  },
+  "__scan_id": "838c9e28-d88e-4464-92c8-754b9e21d49e"
+}

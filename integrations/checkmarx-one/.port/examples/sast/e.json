@@ -1,0 +1,68 @@
+{
+  "compliances": [
+    "MOIS(KISA) Secure Coding 2021",
+    "OWASP ASVS",
+    "OWASP Top 10 2021",
+    "SANS top 25",
+    "Top Tier",
+    "ASA Premium",
+    "CWE top 25"
+  ],
+  "confidenceLevel": 0,
+  "cweID": 502,
+  "firstFoundAt": "2025-09-02T21:57:56Z",
+  "firstScanID": "d7f73679-0b80-4478-abd8-69dad4de54a1",
+  "group": "Python_High_Risk",
+  "languageName": "python",
+  "nodes": [
+    {
+      "column": 20,
+      "fileName": "/api_security_risks.py",
+      "fullName": "request.data",
+      "length": 4,
+      "line": 34,
+      "methodLine": 33,
+      "name": "data",
+      "nodeID": 1114
+    },
+    {
+      "column": 5,
+      "fileName": "/api_security_risks.py",
+      "fullName": "data",
+      "length": 4,
+      "line": 34,
+      "methodLine": 33,
+      "name": "data",
+      "nodeID": 1115
+    },
+    {
+      "column": 24,
+      "fileName": "/api_security_risks.py",
+      "fullName": "data",
+      "length": 4,
+      "line": 36,
+      "methodLine": 33,
+      "name": "data",
+      "nodeID": 1125
+    },
+    {
+      "column": 18,
+      "fileName": "/api_security_risks.py",
+      "fullName": "pickle.loads",
+      "length": 5,
+      "line": 36,
+      "methodLine": 33,
+      "name": "loads",
+      "nodeID": 1121
+    }
+  ],
+  "pathSystemID": "8+/x3f09AT4CQ6lAbAZ5FQmIohc=",
+  "queryID": 9372117855007486000,
+  "queryName": "Deserialization_of_Untrusted_Data",
+  "resultHash": "8+/x3f09AT4CQ6lAbAZ5FQmIohc=",
+  "scanID": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "severity": "HIGH",
+  "similarityID": -777918680,
+  "state": "TO_VERIFY",
+  "status": "RECURRENT"
+}
