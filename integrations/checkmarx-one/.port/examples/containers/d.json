@@ -15,7 +15,7 @@
   "data": {
     "packageName": "nghttp2",
     "packageVersion": "1.39.2-r0",
-    "imageName": "lacion/alpine-golang-buildimage",
+    "imageName": "example-user/example-image",
     "imageTag": "1.13",
     "imageFilePath": "Dockerfile",
     "imageOrigin": "Dockerfile"

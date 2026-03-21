@@ -1,7 +1,7 @@
 {
   "id": "6ace8769-7ad3-4812-8990-0d4111ba0156",
-  "name": "Chukwuemeka-Test-Org/test-repo-0-174769878_herein",
-  "tenantId": "4652a169-1dbd-4e75-98b5-4233da292d7b",
+  "name": "john-doe-org/example-repo",
+  "tenantId": "b3c4d5e6-f7a8-9012-bcde-f01234567891",
   "createdAt": "2025-09-02T21:34:30.415771Z",
   "updatedAt": "2025-09-02T21:34:30.415771Z",
   "groups": [],
@@ -9,10 +9,10 @@
   "repoUrl": "",
   "mainBranch": "",
   "origin": "GitHub",
-  "scmRepoId": "test-repo-0-174769878_herein",
-  "repoId": 15709,
+  "scmRepoId": "example-repo",
+  "repoId": 12345,
   "criticality": 0,
   "privatePackage": false,
-  "imported_proj_name": "Chukwuemeka-Test-Org/test-repo-0-174769878_herein",
+  "imported_proj_name": "john-doe-org/example-repo",
   "applicationIds": []
 }

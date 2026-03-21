@@ -50,9 +50,9 @@
   "createdAt": "2025-10-14T12:04:34.497428Z",
   "updatedAt": "2025-10-14T12:06:47.110846Z",
   "projectId": "6ace8769-7ad3-4812-8990-0d4111ba0156",
-  "projectName": "Chukwuemeka-Test-Org/test-repo-0-174769878_herein",
+  "projectName": "john-doe-org/example-repo",
   "userAgent": "grpc-java-netty/1.63.0",
-  "initiator": "emekanwaoma",
+  "initiator": "johndoe",
   "tags": {},
   "metadata": {
     "id": "80664dab-f640-40ac-8bf1-9ba59e3a2c33",
@@ -60,7 +60,7 @@
     "Handler": {
       "GitHandler": {
         "branch": "main",
-        "repo_url": "https://github.com/Chukwuemeka-Test-Org/test-repo-0-174769878_herein",
+        "repo_url": "https://github.com/john-doe-org/example-repo",
         "credentials": {
           "type": "apiKey",
           "value": "*****",

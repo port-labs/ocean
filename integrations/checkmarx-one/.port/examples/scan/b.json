@@ -50,7 +50,7 @@
   "createdAt": "2025-10-06T14:01:47.619056Z",
   "updatedAt": "2025-10-06T15:02:00.042064Z",
   "projectId": "6ace8769-7ad3-4812-8990-0d4111ba0156",
-  "projectName": "Chukwuemeka-Test-Org/test-repo-0-174769878_herein",
+  "projectName": "john-doe-org/example-repo",
   "userAgent": "grpc-java-netty/1.63.0",
   "initiator": "dependabot[bot]",
   "tags": {},
@@ -60,7 +60,7 @@
     "Handler": {
       "GitHandler": {
         "branch": "dependabot/pip/django-5.2.7",
-        "repo_url": "https://github.com/Chukwuemeka-Test-Org/test-repo-0-174769878_herein",
+        "repo_url": "https://github.com/john-doe-org/example-repo",
         "credentials": {
           "type": "apiKey",
           "value": "*****",

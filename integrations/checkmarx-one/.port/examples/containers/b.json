@@ -15,7 +15,7 @@
   "data": {
     "packageName": "golang.org/x/crypto",
     "packageVersion": "v0.0.0-20190611184440-5c40567a22f8",
-    "imageName": "lacion/alpine-golang-buildimage",
+    "imageName": "example-user/example-image",
     "imageTag": "1.13",
     "imageFilePath": "Dockerfile",
     "imageOrigin": "Dockerfile"
