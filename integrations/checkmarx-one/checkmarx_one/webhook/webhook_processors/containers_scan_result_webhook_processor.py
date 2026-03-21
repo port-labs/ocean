@@ -14,7 +14,7 @@ from checkmarx_one.exporter_factory import (
     create_scan_result_exporter,
 )
 from checkmarx_one.utils import ScanResultObjectKind
-from integration import CheckmarxOneScanResultResourcesConfig
+from integration import CheckmarxOneContainersResourcesConfig
 from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
     ScanWebhookProcessor,
 )
@@ -39,7 +39,7 @@ class ContainersScanResultWebhookProcessor(ScanWebhookProcessor):
         )
 
         scan_result_exporter = create_scan_result_exporter()
-        selector = cast(CheckmarxOneScanResultResourcesConfig, resource_config).selector
+        selector = cast(CheckmarxOneContainersResourcesConfig, resource_config).selector
 
         options = ListScanResultOptions(
             type=ScanResultObjectKind.CONTAINERS,

@@ -31,7 +31,7 @@ from integration import (
     CheckmarxOneSastResourcesConfig,
     CheckmarxOneScanResourcesConfig,
     CheckmarxOneKicsResourcesConfig,
-    CheckmarxOneScanResultResourcesConfig,
+    CheckmarxOneScaResourcesConfig,
     CheckmarxOneApiSecResourcesConfig,
     CheckmarxOneDastScanResourcesConfig,
     CheckmarxOneApplicationResourcesConfig,
@@ -241,7 +241,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     scan_exporter = create_scan_exporter()
     scan_result_exporter = create_scan_result_exporter()
     selector = cast(
-        CheckmarxOneScanResultResourcesConfig, event.resource_config
+        CheckmarxOneScaResourcesConfig, event.resource_config
     ).selector
 
     scan_options = ListScanOptions(
