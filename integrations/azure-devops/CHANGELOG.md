@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.45 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.7.44 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.7.43 (2026-03-18)
+
+
+### Improvements
+
+- Updated HTTP client to use Ocean's core `client_timeout` configuration
+
+
 ## 0.7.42 (2026-03-17)
 
 
