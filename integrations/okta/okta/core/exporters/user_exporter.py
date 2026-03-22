@@ -1,17 +1,13 @@
 import asyncio
 from itertools import batched
-import json
 from typing import Any, Dict, cast
 
-import aiofiles
 from loguru import logger
 
 from okta.clients.http.client import OktaClient
 from okta.core.exporters.abstract_exporter import AbstractOktaExporter
 from okta.core.options import ListUserOptions, GetUserOptions
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-
-SPILL_DIR = "/tmp/ocean/okta_enrichment"
 
 
 class OktaUserExporter(AbstractOktaExporter[OktaClient]):
@@ -24,16 +20,18 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
 
     async def _fetch_user_groups(self, user_id: str) -> list[dict[str, Any]]:
         all_groups: list[dict[str, Any]] = []
-        async for page in self.client.send_paginated_request(f"users/{user_id}/groups"):
-            all_groups.extend(page)
+        async for groups in self.client.send_paginated_request(
+            f"users/{user_id}/groups"
+        ):
+            all_groups.extend(groups)
         return all_groups
 
     async def _fetch_user_apps(self, user_id: str) -> list[RAW_ITEM]:
         all_apps: list[RAW_ITEM] = []
-        async for page in self.client.send_paginated_request(
+        async for apps in self.client.send_paginated_request(
             f"users/{user_id}/appLinks"
         ):
-            all_apps.extend(page)
+            all_apps.extend(apps)
         return all_apps
 
     async def _fetch_enrichments(
@@ -63,18 +61,6 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
             logger.warning(f"Failed to enrich user {user.get('id', 'unknown')}: {exc}")
         return user
 
-    async def _enrich_and_spill(
-        self,
-        user: dict[str, Any],
-        write_lock: asyncio.Lock,
-        options: ListUserOptions,
-        fh: Any,
-    ) -> None:
-        enriched = await self._enrich_single_user(user, options)
-        line = json.dumps(enriched, separators=(",", ":")) + "\n"
-        async with write_lock:
-            await fh.write(line)
-
     async def get_resource(self, options: GetUserOptions) -> RAW_ITEM:
         """Get a single user resource."""
         user_task = self._fetch_user(options["user_id"])
@@ -88,21 +74,6 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
             user |= enrichments
 
         return user
-
-    async def _read_batches_from_disk(
-        self, file_path: str
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        batch: list[dict[str, Any]] = []
-        async with aiofiles.open(file_path, mode="r") as fh:
-            async for line in fh:
-                stripped = line.strip()
-                if stripped:
-                    batch.append(json.loads(stripped))
-                    if len(batch) >= self.SUB_BATCH_SIZE:
-                        yield batch
-                        batch = []
-        if batch:
-            yield batch
 
     async def get_paginated_resources(
         self, options: ListUserOptions
