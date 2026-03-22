@@ -59,8 +59,6 @@ class JiraUserConfig(ResourceConfig):
 
 
 class JiraServerPortAppConfig(PortAppConfig):
-    resources: list[
-        JiraIssueConfig | JiraProjectConfig | JiraUserConfig
-    ] = Field(
+    resources: list[JiraIssueConfig | JiraProjectConfig | JiraUserConfig] = Field(
         default_factory=list
     )  # type: ignore[assignment]
