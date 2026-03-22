@@ -2264,13 +2264,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.38.21"
+version = "0.38.22"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.38.21-py3-none-any.whl", hash = "sha256:f00b67601668c582037e0a21a0122fb94a383a91de04a34a2425b7d71bbc1b71"},
-    {file = "port_ocean-0.38.21.tar.gz", hash = "sha256:294bc48691ed7d34d7758682b893fa655ee65e29f59712d4e82a830081842129"},
+    {file = "port_ocean-0.38.22-py3-none-any.whl", hash = "sha256:61ed1ec22cab5a5fb839da1cf1b61835d99737da182ea90afd961b532694968b"},
+    {file = "port_ocean-0.38.22.tar.gz", hash = "sha256:d16ecf0d70f310657b82b277d3fa507c14c44ea2e56f4f9df395f1bee65e0c70"},
 ]
 
 [package.dependencies]
@@ -3866,4 +3866,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "3b33e28cdf58075d17abde1b515793c404faf4e6cd8ab066787092be1a8b1582"
+content-hash = "912963b7cb9c60c8b4453066e413b1a04f9240844606f93b855b8d5303bd43c6"

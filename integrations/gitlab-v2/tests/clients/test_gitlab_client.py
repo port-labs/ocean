@@ -513,7 +513,7 @@ class TestGitLabClient:
                 assert results[0]["path"] == "test.json"
                 assert results[0]["content"] == {"key": "value"}
                 mock_search_repo.assert_called_once_with(
-                    "group/project", "blobs", "path:test.json", False
+                    "group/project", "blobs", "test.json filename:test.json", False
                 )
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
@@ -555,7 +555,7 @@ class TestGitLabClient:
                         params={"min_access_level": 30}
                     )
                     mock_search_group.assert_called_once_with(
-                        "1", "blobs", "path:test.yaml", False
+                        "1", "blobs", "test.yaml filename:test.yaml", False
                     )
 
     async def test_get_file_content(self, client: GitLabClient) -> None:
