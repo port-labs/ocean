@@ -63,7 +63,7 @@ class CollaboratorMemberWebhookProcessor(BaseRepositoryWebhookProcessor):
             }
 
             data_to_delete = enrich_with_organization(
-                enrich_with_repository(constructed_payload, repo_name, repo=repository),
+                enrich_with_repository(constructed_payload, repo_name),
                 organization,
             )
             return WebhookEventRawResults(
