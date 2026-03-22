@@ -115,6 +115,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         )
     )
     event_workers_count: int = 1
+    events_debug_logging: bool = False
     # If an identifier or type is not provided, it will be generated based on the integration name
     integration: IntegrationSettings = Field(
         default_factory=lambda: IntegrationSettings(type="", identifier="")
