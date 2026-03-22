@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.22 (2026-03-19)
+
+### Features
+
+- Traceable webhook retrieval: log incoming webhooks with base64-encoded payload and trace_id for debugging.
+
 ## 0.38.21 (2026-03-19)
 
 ### Features

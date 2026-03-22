@@ -7,13 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.1.33 (2026-03-20)
+## 5.1.35 (2026-03-22)
 
 
 ### Bug Fixes
 
 - Fixed `team` collaborator webhook processing by iterating REST team-members pagination correctly and mapping REST payload fields.
-- Standardized collaborator webhook enrichment to avoid emitting `__repository_object` in webhook upserts/deletes.
+- Standardized collaborator webhook enrichment to avoid emitting multiple repository-enriched data in webhook upserts/deletes.
+
+
+## 5.1.34 (2026-03-22)
+
+
+### Improvements
+
+- Refined selectors descriptions
+
+
+## 5.1.33 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
 
 
 ## 5.1.32 (2026-03-19)
