@@ -7,11 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-0.1.304 (2026-03-18)
+
+0.1.306 (2026-03-22)
 
 ### Improvements
 
 - Added explicit Literal kind definitions, dedicated resource config models for Azure kinds and enabled custom kinds support in `AzurePortAppConfig` for schema validation
+
+
+0.1.305 (2026-03-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+0.1.304 (2026-03-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
 
 
 0.1.303 (2026-03-17)
