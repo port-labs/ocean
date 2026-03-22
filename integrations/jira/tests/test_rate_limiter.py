@@ -98,47 +98,50 @@ class TestJiraRateLimiter:
         assert rate_limiter._retry_after == 30.0
 
     @pytest.mark.asyncio
-    async def test_update_rate_limit_headers_beta_headers(self) -> None:
-        """Tests update_rate_limit_headers with beta-prefixed Jira headers."""
+    async def test_update_rate_limit_headers_no_rate_limit_headers(self) -> None:
+        """Tests update_rate_limit_headers is a no-op when no rate limit headers are present."""
         rate_limiter = JiraRateLimiter()
-        reset_time_iso = "2024-01-01T12:00:00Z"
+
+        # Set some pre-existing state to verify it is not cleared
+        rate_limiter._limit = 100
+        rate_limiter._remaining = 50
 
         headers = httpx.Headers(
             {
-                "x-beta-ratelimit-limit": "200",
-                "x-beta-ratelimit-remaining": "25",
-                "x-beta-ratelimit-nearlimit": "true",
-                "x-beta-ratelimit-reset": reset_time_iso,
-                "beta-retry-after": "60",
+                "content-type": "application/json",
+                "x-request-id": "abc123",
             }
         )
 
         await rate_limiter.update_rate_limit_headers(headers)
 
-        assert rate_limiter._limit == 200
-        assert rate_limiter._remaining == 25
-        assert rate_limiter._near_limit is True
-        assert rate_limiter._retry_after == 60.0
+        # Pre-existing state should be preserved
+        assert rate_limiter._limit == 100
+        assert rate_limiter._remaining == 50
+        assert rate_limiter._near_limit is False
+        assert rate_limiter._retry_after is None
+        assert rate_limiter._reset_time is None
 
     @pytest.mark.asyncio
-    async def test_update_rate_limit_headers_mixed_headers(self) -> None:
-        """Tests update_rate_limit_headers prefers standard over beta headers."""
+    async def test_update_rate_limit_headers_partial_headers(self) -> None:
+        """Tests update_rate_limit_headers correctly handles partial rate limit headers."""
         rate_limiter = JiraRateLimiter()
 
+        # Only remaining and near-limit headers present
         headers = httpx.Headers(
             {
-                "x-ratelimit-limit": "100",
-                "x-beta-ratelimit-limit": "200",
-                "x-beta-ratelimit-remaining": "25",
-                "x-ratelimit-nearlimit": "false",
+                "x-ratelimit-remaining": "5",
+                "x-ratelimit-nearlimit": "true",
             }
         )
 
         await rate_limiter.update_rate_limit_headers(headers)
 
-        assert rate_limiter._limit == 100
-        assert rate_limiter._remaining == 25
-        assert rate_limiter._near_limit is False
+        assert rate_limiter._limit is None
+        assert rate_limiter._remaining == 5
+        assert rate_limiter._near_limit is True
+        assert rate_limiter._reset_time is None
+        assert rate_limiter._retry_after is None
 
     @pytest.mark.asyncio
     @patch("jira.rate_limiter.logger")
@@ -161,7 +164,7 @@ class TestJiraRateLimiter:
 
         await rate_limiter.update_rate_limit_headers(headers)
 
-        # The rate limiter always calls warning if the reason_key exists (which it always does)
+        # The rate limiter should log a warning when the ratelimit-reason header is present
         mock_logger.warning.assert_called_once_with(
             "Rate limit breached for this reason: jira-quota-based"
         )
