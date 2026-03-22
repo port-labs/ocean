@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.46 (2026-03-22)
+
+
+### Bug Fixes
+
+- Fixed test runs ingestion pagination to use `$skip/$top` for the Test Runs List endpoint (instead of continuation tokens), preventing missing test runs in large projects/orgs.
+
+
 ## 0.7.45 (2026-03-22)
 
 

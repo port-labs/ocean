@@ -3499,13 +3499,13 @@ async def test_fetch_test_runs(mock_event_context: MagicMock) -> None:
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [{"id": "proj1", "name": "Project One"}]
 
-    async def mock_get_paginated_by_top_and_continuation_token(
-        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if "test/runs" in url and "/results" not in url:
             # Verify that includeRunDetails is set to True
-            assert additional_params is not None
-            assert additional_params.get("includeRunDetails") is True
+            assert params is not None
+            assert params.get("includeRunDetails") is True
             yield EXPECTED_TEST_RUNS
         else:
             yield []
@@ -3516,8 +3516,8 @@ async def test_fetch_test_runs(mock_event_context: MagicMock) -> None:
         ):
             with patch.object(
                 client,
-                "_get_paginated_by_top_and_continuation_token",
-                side_effect=mock_get_paginated_by_top_and_continuation_token,
+                "_get_paginated_by_top_and_skip",
+                side_effect=mock_get_paginated_by_top_and_skip,
             ):
                 # ACT
                 test_runs: List[Dict[str, Any]] = []
@@ -3565,33 +3565,50 @@ async def test_fetch_test_runs_with_results(mock_event_context: MagicMock) -> No
         with patch.object(
             client, "generate_projects", side_effect=mock_generate_projects
         ):
+
+            async def mock_get_paginated_by_top_and_skip(
+                url: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any
+            ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+                if "test/runs" in url and "/results" not in url:
+                    # Verify that includeRunDetails is set to True
+                    assert params is not None
+                    assert params.get("includeRunDetails") is True
+                    yield EXPECTED_TEST_RUNS
+                else:
+                    yield []
+
             with patch.object(
                 client,
                 "_get_paginated_by_top_and_continuation_token",
                 side_effect=mock_get_paginated_by_top_and_continuation_token,
             ):
-                # ACT
-                test_runs: List[Dict[str, Any]] = []
-                async for test_run_batch in client.fetch_test_runs(
-                    include_results=True
+                with patch.object(
+                    client,
+                    "_get_paginated_by_top_and_skip",
+                    side_effect=mock_get_paginated_by_top_and_skip,
                 ):
-                    test_runs.extend(test_run_batch)
+                    # ACT
+                    test_runs: List[Dict[str, Any]] = []
+                    async for test_run_batch in client.fetch_test_runs(
+                        include_results=True
+                    ):
+                        test_runs.extend(test_run_batch)
 
-                # ASSERT
-                assert len(test_runs) == 2
-                assert test_runs[0]["id"] == 1
-                assert test_runs[0]["name"] == "Test Run 1"
-                assert test_runs[0]["project"]["id"] == "proj1"
-                assert "__testResults" in test_runs[0]
-                assert len(test_runs[0]["__testResults"]) == 1
-                assert test_runs[0]["__testResults"][0]["id"] == 100000
+                    # ASSERT
+                    assert len(test_runs) == 2
+                    assert test_runs[0]["id"] == 1
+                    assert test_runs[0]["name"] == "Test Run 1"
+                    assert test_runs[0]["project"]["id"] == "proj1"
+                    assert "__testResults" in test_runs[0]
+                    assert len(test_runs[0]["__testResults"]) == 1
+                    assert test_runs[0]["__testResults"][0]["id"] == 100000
 
-                assert test_runs[1]["id"] == 2
-                assert test_runs[1]["name"] == "Test Run 2"
-                assert test_runs[1]["project"]["id"] == "proj1"
-                assert "__testResults" in test_runs[1]
-                assert len(test_runs[1]["__testResults"]) == 1
-                assert test_runs[1]["__testResults"][0]["id"] == 100001
+                    assert test_runs[1]["id"] == 2
+                    assert test_runs[1]["name"] == "Test Run 2"
+                    assert test_runs[1]["project"]["id"] == "proj1"
+                    assert "__testResults" in test_runs[1]
+                    assert len(test_runs[1]["__testResults"]) == 1
+                    assert test_runs[1]["__testResults"][0]["id"] == 100001
 
 
 @pytest.mark.asyncio
