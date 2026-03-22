@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.279 (2026-03-19)
+## 0.1.281 (2026-03-22)
 
 
 ### Improvements
 
 - Added explicit Literal kind definitions for known GCP asset types, enabled custom kinds support, and added title/description metadata to `GCPPortAppConfig` for schema validation compliance
+
+
+## 0.1.280 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.1.279 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
 
 
 ## 0.1.278 (2026-03-17)
