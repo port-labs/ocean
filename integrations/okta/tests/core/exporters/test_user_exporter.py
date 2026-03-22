@@ -1,9 +1,11 @@
 """Tests for OktaUserExporter."""
 
 import pytest
+from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, cast
 from unittest.mock import AsyncMock, Mock
 
+import okta.core.exporters.user_exporter as user_exporter_mod
 from okta.core.exporters.user_exporter import OktaUserExporter
 from okta.core.options import (
     ListUserOptions,
@@ -44,7 +46,6 @@ class TestOktaUserExporter:
             elif "groups" in endpoint:
                 yield mock_groups
 
-        # Assign async generator function to mock attribute
         object.__setattr__(mock_client, "send_paginated_request", mock_get_users)
 
         options: ListUserOptions = {"include_groups": True, "fields": "id,profile"}
@@ -85,10 +86,8 @@ class TestOktaUserExporter:
         async for user_batch in exporter.get_paginated_resources(options):
             users.extend(user_batch)
 
-        # Should still return the user even if enrichment fails (exceptions are swallowed)
         assert len(users) == 1
         assert users[0]["id"] == "user1"
-        # User should not have groups since enrichment failed
         assert "groups" not in users[0]
 
     @pytest.mark.asyncio
@@ -100,10 +99,8 @@ class TestOktaUserExporter:
         mock_user = {"id": "user1", "profile": {"email": "user1@example.com"}}
         mock_groups = [{"id": "group1", "name": "Group 1"}]
 
-        # send_api_request is used for fetching the user itself
         cast(Any, mock_client).send_api_request = AsyncMock(return_value=mock_user)
 
-        # send_paginated_request is used for enrichment (groups/apps)
         async def mock_paginated(
             endpoint: str, *args: Any, **kwargs: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -164,3 +161,104 @@ class TestOktaUserExporter:
         apps = await exporter._fetch_user_apps("user1")
 
         assert len(apps) == 250
+
+    @pytest.mark.asyncio
+    async def test_disk_spill_cleans_up_temp_files(
+        self,
+        exporter: OktaUserExporter,
+        mock_client: Any,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that temp NDJSON files are cleaned up after yielding."""
+        monkeypatch.setattr(user_exporter_mod, "SPILL_DIR", str(tmp_path))
+
+        mock_users = [
+            {"id": "user1", "profile": {"email": "u1@test.com"}},
+        ]
+
+        async def mock_paginated(
+            endpoint: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            if endpoint == "users":
+                yield mock_users
+            elif "groups" in endpoint:
+                yield [{"id": "g1"}]
+
+        object.__setattr__(mock_client, "send_paginated_request", mock_paginated)
+
+        options: ListUserOptions = {"include_groups": True, "fields": "id,profile"}
+        async for _ in exporter.get_paginated_resources(options):
+            pass
+
+        remaining = list(tmp_path.glob("*.ndjson"))
+        assert len(remaining) == 0, f"Temp files not cleaned up: {remaining}"
+
+    @pytest.mark.asyncio
+    async def test_disk_spill_cleans_up_on_error(
+        self,
+        exporter: OktaUserExporter,
+        mock_client: Any,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that temp files are cleaned up even when enrichment errors occur."""
+        monkeypatch.setattr(user_exporter_mod, "SPILL_DIR", str(tmp_path))
+
+        mock_users = [
+            {"id": f"user{i}", "profile": {"email": f"u{i}@test.com"}} for i in range(5)
+        ]
+
+        async def mock_paginated(
+            endpoint: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            if endpoint == "users":
+                yield mock_users
+            elif "groups" in endpoint:
+                raise Exception("API Error")
+
+        object.__setattr__(mock_client, "send_paginated_request", mock_paginated)
+
+        options: ListUserOptions = {"include_groups": True, "fields": "id,profile"}
+        async for _ in exporter.get_paginated_resources(options):
+            pass
+
+        remaining = list(tmp_path.glob("*.ndjson"))
+        assert len(remaining) == 0, f"Temp files not cleaned up: {remaining}"
+
+    @pytest.mark.asyncio
+    async def test_disk_spill_sub_batching(
+        self,
+        exporter: OktaUserExporter,
+        mock_client: Any,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that disk spill yields correct sub-batch sizes."""
+        monkeypatch.setattr(user_exporter_mod, "SPILL_DIR", str(tmp_path))
+
+        mock_users = [
+            {"id": f"user{i}", "profile": {"email": f"u{i}@test.com"}}
+            for i in range(120)
+        ]
+
+        async def mock_paginated(
+            endpoint: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            if endpoint == "users":
+                yield mock_users
+
+        object.__setattr__(mock_client, "send_paginated_request", mock_paginated)
+
+        options: ListUserOptions = {"fields": "id,profile"}
+        batches: List[List[Dict[str, Any]]] = []
+        async for batch in exporter.get_paginated_resources(options):
+            batches.append(batch)
+
+        assert len(batches) == 3
+        assert len(batches[0]) == 50
+        assert len(batches[1]) == 50
+        assert len(batches[2]) == 20
+
+        all_ids = {u["id"] for batch in batches for u in batch}
+        assert all_ids == {f"user{i}" for i in range(120)}

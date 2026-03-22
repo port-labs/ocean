@@ -1,12 +1,20 @@
 import asyncio
+import json
+import os
+import tempfile
+from pathlib import Path
 from typing import Any, Dict, cast
+
+import aiofiles
 from loguru import logger
 
 from okta.clients.http.client import OktaClient
 from okta.core.exporters.abstract_exporter import AbstractOktaExporter
 from okta.core.options import ListUserOptions, GetUserOptions
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-from itertools import batched
+
+SPILL_DIR = "/tmp/ocean/okta_enrichment"
+
 
 class OktaUserExporter(AbstractOktaExporter[OktaClient]):
     """Exporter for Okta users."""
@@ -62,15 +70,21 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
                 )
             return user
 
+    async def _enrich_and_spill(
+        self,
+        user: dict[str, Any],
+        semaphore: asyncio.Semaphore,
+        write_lock: asyncio.Lock,
+        options: ListUserOptions,
+        fh: Any,
+    ) -> None:
+        enriched = await self._enrich_single_user(user, semaphore, options)
+        line = json.dumps(enriched, separators=(",", ":")) + "\n"
+        async with write_lock:
+            await fh.write(line)
+
     async def get_resource(self, options: GetUserOptions) -> RAW_ITEM:
-        """Get a single user resource.
-
-        Args:
-            options: Options for the request
-
-        Returns:
-            User data
-        """
+        """Get a single user resource."""
         user_task = self._fetch_user(options["user_id"])
         enrich_task = self._fetch_enrichments(
             options["user_id"],
@@ -83,24 +97,53 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
 
         return user
 
+    async def _read_batches_from_disk(
+        self, file_path: str
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        batch: list[dict[str, Any]] = []
+        async with aiofiles.open(file_path, mode="r") as fh:
+            async for line in fh:
+                stripped = line.strip()
+                if stripped:
+                    batch.append(json.loads(stripped))
+                    if len(batch) >= self.SUB_BATCH_SIZE:
+                        yield batch
+                        batch = []
+        if batch:
+            yield batch
+
     async def get_paginated_resources(
         self, options: ListUserOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get users with pagination support.
 
-        Args:
-            options: Options for the request
-
-        Yields:
-            List of users from each page
+        Enriched users are spilled to a temporary NDJSON file on disk so that
+        only the in-flight enrichments (bounded by semaphore) and one yield
+        batch live in memory at any time.
         """
         params: Dict[str, Any] = {"fields": options["fields"]}
+        Path(SPILL_DIR).mkdir(parents=True, exist_ok=True)
+
         async for users in self.client.send_paginated_request("users", params):
-            semaphore = asyncio.Semaphore(self.ENRICH_CONCURRENCY)
-            for users_batch in batched(users, self.SUB_BATCH_SIZE):
-                tasks = [
-                    asyncio.create_task(self._enrich_single_user(user, semaphore, options))
-                    for user in users_batch
-                ]
-                enriched = await asyncio.gather(*tasks)
-                yield list(enriched)
+            tmp_fd, tmp_path = tempfile.mkstemp(suffix=".ndjson", dir=SPILL_DIR)
+            os.close(tmp_fd)
+            try:
+                semaphore = asyncio.Semaphore(self.ENRICH_CONCURRENCY)
+                write_lock = asyncio.Lock()
+
+                async with aiofiles.open(tmp_path, mode="w") as fh:
+                    tasks = [
+                        asyncio.create_task(
+                            self._enrich_and_spill(
+                                user, semaphore, write_lock, options, fh
+                            )
+                        )
+                        for user in users
+                    ]
+                    await asyncio.gather(*tasks)
+
+                async for batch in self._read_batches_from_disk(tmp_path):
+                    yield batch
+
+            finally:
+                Path(tmp_path).unlink(missing_ok=True)
