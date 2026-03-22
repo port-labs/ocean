@@ -37,7 +37,13 @@ class NewRelicSelector(Selector):
 class NewRelicResourceConfig(ResourceConfig):
     kind: str = Field(
         title="Custom Kind",
-        description="Use this to map NewRelic entities by setting the kind name to the NewRelic entity type.\n\nExample: APM_APPLICATION",
+        description=(
+            "Port resource kind name to use for NewRelic entities. This can be any custom kind "
+            '(for example, "newRelicService") and may map to one or more NewRelic entity types '
+            "configured via selector.newRelicTypes.\n\n"
+            "If you prefer a separate Port kind per NewRelic entity type, you can also set the "
+            'kind name to the NewRelic entity type itself (for example, "APM_APPLICATION").'
+        ),
     )
     selector: NewRelicSelector = Field(
         title="Selector",
@@ -87,5 +93,7 @@ class NewRelicPortAppConfig(PortAppConfig):
         | NewRelicAlertConditionResourceConfig
         | NewRelicResourceConfig
     ] = Field(
-        title="Resources", default_factory=list
+        title="Resources",
+        description="List of NewRelic resources to sync into Port (alerts, service levels, alert conditions, and other NewRelic entities).",
+        default_factory=list,
     )  # type: ignore[assignment]
