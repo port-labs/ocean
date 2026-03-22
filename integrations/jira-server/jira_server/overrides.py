@@ -51,7 +51,7 @@ class JiraProjectConfig(ResourceConfig):
     )
 
 
-class JiraUserResourceConfig(ResourceConfig):
+class JiraUserConfig(ResourceConfig):
     kind: Literal["user"] = Field(
         title="Jira User",
         description="Jira Server user resource kind.",
@@ -60,7 +60,7 @@ class JiraUserResourceConfig(ResourceConfig):
 
 class JiraServerPortAppConfig(PortAppConfig):
     resources: list[
-        JiraIssueConfig | JiraProjectConfig | JiraUserResourceConfig
+        JiraIssueConfig | JiraProjectConfig | JiraUserConfig
     ] = Field(
         default_factory=list
     )  # type: ignore[assignment]
