@@ -96,6 +96,17 @@ Core Development Guidelines
     - Describe new features
     - Note breaking changes
 
+13. Versioning
+    - Each feature branch need to bump the latest version
+    - In case of merge conflict take the version from the merged branch and bump it
+    - Don't merge versions! existing version need to remain as it is and each branch creates its own version
+    - Don't bump the version on the integrations pyproject.toml
+
+14. Code Quality
+    - run `make lint` command on the port_ocean folder before any commit
+    - run `make test` command on the port_ocean folder before any commit
+
+
 Dependencies
 
 - Python 3.12+
