@@ -1,4 +1,4 @@
-from typing import Literal, Optional, List
+from typing import ClassVar, Literal, Optional, List
 from pydantic import BaseModel
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -140,21 +140,39 @@ class CheckmarxOneApiSecSelector(Selector):
 
 
 class CheckmarxOneApiSecResourcesConfig(ResourceConfig):
-    kind: Literal["api-security"]
-    selector: CheckmarxOneApiSecSelector
+    kind: Literal["api-security"] = Field(
+        title="Checkmarx API Security Result",
+        description="An API security vulnerability result from a Checkmarx One scan",
+    )
+    selector: CheckmarxOneApiSecSelector = Field(
+        title="API Security Selector",
+        description="Selector for filtering API security vulnerability results",
+    )
 
 
 class CheckmarxOneScanSelector(Selector, CheckmarxOneScanModel): ...
 
 
 class CheckmarxOneScanResourcesConfig(ResourceConfig):
-    kind: Literal["scan"]
-    selector: CheckmarxOneScanSelector
+    kind: Literal["scan"] = Field(
+        title="Checkmarx Scan",
+        description="A scan executed in Checkmarx One",
+    )
+    selector: CheckmarxOneScanSelector = Field(
+        title="Scan Selector",
+        description="Selector for filtering scans",
+    )
 
 
 class CheckmarxOneSastResourcesConfig(ResourceConfig):
-    kind: Literal["sast"]
-    selector: CheckmarxOneSastSelector
+    kind: Literal["sast"] = Field(
+        title="Checkmarx SAST Result",
+        description="A static application security testing (SAST) vulnerability result from a Checkmarx One scan",
+    )
+    selector: CheckmarxOneSastSelector = Field(
+        title="SAST Selector",
+        description="Selector for filtering SAST vulnerability results",
+    )
 
 
 class CheckmarxOneKicsSelector(Selector):
@@ -175,13 +193,47 @@ class CheckmarxOneKicsSelector(Selector):
 
 
 class CheckmarxOneKicsResourcesConfig(ResourceConfig):
-    kind: Literal["kics"]
-    selector: CheckmarxOneKicsSelector
+    kind: Literal["kics"] = Field(
+        title="Checkmarx KICS Result",
+        description="A KICS (Keeping Infrastructure as Code Secure) vulnerability result from a Checkmarx One scan",
+    )
+    selector: CheckmarxOneKicsSelector = Field(
+        title="KICS Selector",
+        description="Selector for filtering KICS vulnerability results",
+    )
 
 
-class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
-    kind: Literal["sca", "containers", "dast_scan_result"]
-    selector: CheckmarxOneResultSelector
+class CheckmarxOneScaResourcesConfig(ResourceConfig):
+    kind: Literal["sca"] = Field(
+        title="Checkmarx SCA Result",
+        description="A software composition analysis (SCA) vulnerability result from a Checkmarx One scan",
+    )
+    selector: CheckmarxOneResultSelector = Field(
+        title="SCA Selector",
+        description="Selector for filtering SCA vulnerability results",
+    )
+
+
+class CheckmarxOneContainersResourcesConfig(ResourceConfig):
+    kind: Literal["containers"] = Field(
+        title="Checkmarx Container Security Result",
+        description="A container security vulnerability result from a Checkmarx One scan",
+    )
+    selector: CheckmarxOneResultSelector = Field(
+        title="Container Security Selector",
+        description="Selector for filtering container security vulnerability results",
+    )
+
+
+class CheckmarxOneDastScanResultLegacyResourcesConfig(ResourceConfig):
+    kind: Literal["dast_scan_result"] = Field(
+        title="Checkmarx DAST Scan Result (Legacy)",
+        description="A dynamic application security testing (DAST) vulnerability result from a Checkmarx One scan (legacy kind)",
+    )
+    selector: CheckmarxOneResultSelector = Field(
+        title="DAST Scan Result Selector",
+        description="Selector for filtering DAST scan results",
+    )
 
 
 class CheckmarxOneDastScanModel(BaseModel):
@@ -217,8 +269,14 @@ class CheckmarxOneDastScanSelector(Selector, CheckmarxOneDastScanModel): ...
 
 
 class CheckmarxOneDastScanResourcesConfig(ResourceConfig):
-    kind: Literal["dast-scan"]
-    selector: CheckmarxOneDastScanSelector
+    kind: Literal["dast-scan"] = Field(
+        title="Checkmarx DAST Scan",
+        description="A dynamic application security testing (DAST) scan from Checkmarx One",
+    )
+    selector: CheckmarxOneDastScanSelector = Field(
+        title="DAST Scan Selector",
+        description="Selector for filtering DAST scans",
+    )
 
 
 class CheckmarxOneDastScanResultFilter(BaseModel):
@@ -260,8 +318,14 @@ class CheckmarxOneDastScanResultSelector(Selector):
 
 
 class CheckmarxOneDastScanResultResourcesConfig(ResourceConfig):
-    kind: Literal["dast-scan-result"]
-    selector: CheckmarxOneDastScanResultSelector
+    kind: Literal["dast-scan-result"] = Field(
+        title="Checkmarx DAST Scan Result",
+        description="A dynamic application security testing (DAST) vulnerability result from a Checkmarx One scan",
+    )
+    selector: CheckmarxOneDastScanResultSelector = Field(
+        title="DAST Scan Result Selector",
+        description="Selector for filtering DAST scan results",
+    )
 
 
 class CheckmarxOneApplicationSelector(Selector):
@@ -280,8 +344,18 @@ class CheckmarxOneApplicationSelector(Selector):
 
 
 class CheckmarxOneApplicationResourcesConfig(ResourceConfig):
-    kind: Literal["application"]
-    selector: CheckmarxOneApplicationSelector
+    kind: Literal["application"] = Field(
+        title="Checkmarx Application",
+        description="An application defined in Checkmarx One",
+    )
+    selector: CheckmarxOneApplicationSelector = Field(
+        title="Application Selector",
+        description="Selector for filtering applications",
+    )
+
+
+class CustomResourceConfig(ResourceConfig):
+    kind: str = Field(title="Custom CheckmarxOne kinds", description="")
 
 
 class CheckmarxOnePortAppConfig(PortAppConfig):
@@ -290,12 +364,15 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         | CheckmarxOneApiSecResourcesConfig
         | CheckmarxOneSastResourcesConfig
         | CheckmarxOneKicsResourcesConfig
-        | CheckmarxOneScanResultResourcesConfig
+        | CheckmarxOneScaResourcesConfig
+        | CheckmarxOneContainersResourcesConfig
+        | CheckmarxOneDastScanResultLegacyResourcesConfig
         | CheckmarxOneDastScanResourcesConfig
         | CheckmarxOneDastScanResultResourcesConfig
         | CheckmarxOneApplicationResourcesConfig
-        | ResourceConfig
+        | CustomResourceConfig
     ] = Field(default_factory=list)
+    allow_custom_kinds: ClassVar[bool] = True
 
 
 class CheckmarxOneIntegration(BaseIntegration):

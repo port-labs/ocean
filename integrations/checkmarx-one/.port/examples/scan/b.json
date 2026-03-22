@@ -1,0 +1,113 @@
+{
+  "id": "7f435b95-d5c8-4344-aef0-4e63af377dfb",
+  "status": "Partial",
+  "statusDetails": [
+    {
+      "name": "general",
+      "status": "Completed",
+      "details": "",
+      "startDate": "2025-10-06T14:01:47.619056Z",
+      "endDate": "2025-10-06T15:02:00.042064Z"
+    },
+    {
+      "name": "sast",
+      "status": "Completed",
+      "details": "",
+      "loc": 15821,
+      "startDate": "2025-10-06T14:01:56.265458Z",
+      "endDate": "2025-10-06T14:02:29.310015Z"
+    },
+    {
+      "name": "sca",
+      "status": "Completed",
+      "details": "",
+      "startDate": "2025-10-06T14:01:56.265719Z",
+      "endDate": "2025-10-06T14:05:06.966247Z"
+    },
+    {
+      "name": "containers",
+      "status": "Failed",
+      "details": "Scan Timed out after 60 minutes (or more)",
+      "startDate": "2025-10-06T14:01:56.262288Z",
+      "endDate": "2025-10-06T15:01:59.799043Z"
+    },
+    {
+      "name": "kics",
+      "status": "Completed",
+      "details": "",
+      "startDate": "2025-10-06T14:01:56.263481Z",
+      "endDate": "2025-10-06T14:02:00.51403Z"
+    },
+    {
+      "name": "apisec",
+      "status": "Completed",
+      "details": "",
+      "startDate": "2025-10-06T14:02:29.311991Z",
+      "endDate": "2025-10-06T14:02:30.02172Z"
+    }
+  ],
+  "branch": "dependabot/pip/django-5.2.7",
+  "createdAt": "2025-10-06T14:01:47.619056Z",
+  "updatedAt": "2025-10-06T15:02:00.042064Z",
+  "projectId": "6ace8769-7ad3-4812-8990-0d4111ba0156",
+  "projectName": "john-doe-org/example-repo",
+  "userAgent": "grpc-java-netty/1.63.0",
+  "initiator": "dependabot[bot]",
+  "tags": {},
+  "metadata": {
+    "id": "7f435b95-d5c8-4344-aef0-4e63af377dfb",
+    "type": "git",
+    "Handler": {
+      "GitHandler": {
+        "branch": "dependabot/pip/django-5.2.7",
+        "repo_url": "https://github.com/john-doe-org/example-repo",
+        "credentials": {
+          "type": "apiKey",
+          "value": "*****",
+          "username": "*****"
+        }
+      }
+    },
+    "configs": [
+      {
+        "type": "sast",
+        "value": {
+          "baseBranch": "main",
+          "presetName": "",
+          "incremental": "false"
+        }
+      },
+      {
+        "type": "kics"
+      },
+      {
+        "type": "apisec"
+      },
+      {
+        "type": "containers"
+      },
+      {
+        "type": "sca",
+        "value": {
+          "enableContainersScan": "false"
+        }
+      }
+    ],
+    "project": {
+      "id": "6ace8769-7ad3-4812-8990-0d4111ba0156"
+    },
+    "created_at": {
+      "nanos": 306765565,
+      "seconds": 1759759307
+    }
+  },
+  "engines": [
+    "sast",
+    "kics",
+    "apisec",
+    "containers",
+    "sca"
+  ],
+  "sourceType": "github",
+  "sourceOrigin": "PR Webhook"
+}

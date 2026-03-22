@@ -1,0 +1,15 @@
+{
+  "id": "693816cd-c935-4c9c-a7f9-acc6d2df9772",
+  "name": "Easy Buggy",
+  "tenantId": "b3c4d5e6-f7a8-9012-bcde-f01234567891",
+  "createdAt": "2025-09-08T10:56:35.671243Z",
+  "updatedAt": "2025-09-08T10:56:35.671243Z",
+  "groups": [],
+  "tags": {},
+  "repoUrl": "",
+  "mainBranch": "",
+  "criticality": 3,
+  "privatePackage": false,
+  "imported_proj_name": "",
+  "applicationIds": []
+}
