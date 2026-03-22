@@ -369,3 +369,22 @@ async def test_global_resync_skips_region_not_enabled() -> None:
 
     assert call_log == ["af-south-1", "eu-west-1"]
     assert results == [[{"id": "from-eu-west-1"}]]
+
+
+async def test_safe_iterate_suppresses_unrecognized_client_in_opt_in_region() -> None:
+    """UnrecognizedClientException from opt-in regions is suppressed as region-not-supported."""
+
+    async def gen() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield []
+        raise _region_not_enabled_error("UnrecognizedClientException")
+
+    errors: list[Exception] = []
+    failed: list[str] = []
+    results = []
+    async for batch in safe_iterate(
+        gen(), "ap-southeast-4", "AWS::ResourceGroups::Group", errors, failed
+    ):
+        results.append(batch)
+    assert results == []
+    assert errors == []
+    assert failed == []

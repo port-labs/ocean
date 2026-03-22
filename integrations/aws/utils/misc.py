@@ -153,52 +153,55 @@ def is_resource_not_found_exception(e: Exception) -> bool:
     return False
 
 
-def is_resource_type_not_available_exception(e: Exception) -> bool:
+def is_region_not_supported_exception(e: Exception, region: str) -> bool:
+    """Check if the exception indicates the resource or region is not supported.
+
+    This covers two scenarios:
+    1. The resource type is not available/registered in the region.
+    2. An opt-in region that hasn't been enabled in the account.
+    """
+    if not hasattr(e, "response") or e.response is None:
+        return False
+
+    error_code = e.response.get("Error", {}).get("Code")
+
+    # Resource type not available (applies to all regions)
     not_available_error_codes = [
         "TypeNotFoundException",
         "CFNRegistryException",
         "UnsupportedActionException",
         "ResourceNotExistsError",
     ]
+    if error_code in not_available_error_codes:
+        return True
 
-    if hasattr(e, "response") and e.response is not None:
-        error_code = e.response.get("Error", {}).get("Code")
+    not_available_patterns = [
+        "type not found",
+        "is not registered",
+        "resource type is not available in this region",
+    ]
+    if _check_general_service_exception(e, not_available_patterns):
+        return True
 
-        if error_code in not_available_error_codes:
-            return True
+    if region not in OPT_IN_REGIONS:
+        return False
 
-        not_available_patterns = [
-            "type not found",
-            "is not registered",
-            "resource type is not available in this region",
-        ]
-        if _check_general_service_exception(e, not_available_patterns):
-            return True
-
-    return False
-
-
-def is_region_not_enabled_exception(e: Exception) -> bool:
-    """Check if the exception indicates an opt-in region that hasn't been enabled."""
     region_not_enabled_error_codes = [
         "InvalidClientTokenId",
         "AuthFailure",
         "RegionDisabledException",
+        "UnrecognizedClientException",
     ]
+    if error_code in region_not_enabled_error_codes:
+        return True
 
-    if hasattr(e, "response") and e.response is not None:
-        error_code = e.response.get("Error", {}).get("Code")
-
-        if error_code in region_not_enabled_error_codes:
-            return True
-
-        region_disabled_patterns = [
-            "region is disabled",
-            "region has not been enabled",
-            "opt-in required",
-        ]
-        if _check_general_service_exception(e, region_disabled_patterns):
-            return True
+    region_disabled_patterns = [
+        "region is disabled",
+        "region has not been enabled",
+        "opt-in required",
+    ]
+    if _check_general_service_exception(e, region_disabled_patterns):
+        return True
 
     return False
 
@@ -393,16 +396,10 @@ async def safe_iterate(
                 f"{region} failed during resync of {kind}, skipping..."
             )
             return
-        if is_resource_type_not_available_exception(e):
+        if is_region_not_supported_exception(e, region):
             logger.bind(traceback=e, kind=kind, region=region).warning(
                 f"{region} skipped during resync of {kind}: "
-                f"resource type not available"
-            )
-            return
-        if is_region_not_enabled_exception(e):
-            logger.bind(traceback=e, kind=kind, region=region).warning(
-                f"{region} skipped during resync of {kind}: "
-                f"region not enabled (opt-in region)"
+                f"resource or region not supported"
             )
             return
         logger.bind(traceback=e, kind=kind, region=region).error(

@@ -1,8 +1,7 @@
 from utils.misc import (
     is_access_denied_exception,
     is_resource_not_found_exception,
-    is_resource_type_not_available_exception,
-    is_region_not_enabled_exception,
+    is_region_not_supported_exception,
     get_matching_kinds_and_blueprints_from_config,
     AsyncPaginator,
 )
@@ -91,32 +90,32 @@ def test_access_denied_wrapped_in_general_service_exception() -> None:
 
 def test_type_not_found_exception() -> None:
     e = MockException(response={"Error": {"Code": "TypeNotFoundException"}})
-    assert is_resource_type_not_available_exception(e)
+    assert is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_cfn_registry_exception() -> None:
     e = MockException(response={"Error": {"Code": "CFNRegistryException"}})
-    assert is_resource_type_not_available_exception(e)
+    assert is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_unsupported_action_exception() -> None:
     e = MockException(response={"Error": {"Code": "UnsupportedActionException"}})
-    assert is_resource_type_not_available_exception(e)
+    assert is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_resource_not_exists_error() -> None:
     e = MockException(response={"Error": {"Code": "ResourceNotExistsError"}})
-    assert is_resource_type_not_available_exception(e)
+    assert is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_type_not_available_with_other_error() -> None:
     e = MockException(response={"Error": {"Code": "InternalServiceError"}})
-    assert not is_resource_type_not_available_exception(e)
+    assert not is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_type_not_available_no_response() -> None:
     e = Exception("plain error")
-    assert not is_resource_type_not_available_exception(e)
+    assert not is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_type_not_available_general_service_exception() -> None:
@@ -129,7 +128,7 @@ def test_type_not_available_general_service_exception() -> None:
             }
         }
     )
-    assert is_resource_type_not_available_exception(e)
+    assert is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_type_not_available_general_service_exception_unsupported_unrelated() -> None:
@@ -141,7 +140,7 @@ def test_type_not_available_general_service_exception_unsupported_unrelated() ->
             }
         }
     )
-    assert not is_resource_type_not_available_exception(e)
+    assert not is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_type_not_available_general_service_exception_not_available_unrelated() -> None:
@@ -153,7 +152,7 @@ def test_type_not_available_general_service_exception_not_available_unrelated() 
             }
         }
     )
-    assert not is_resource_type_not_available_exception(e)
+    assert not is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_type_not_available_general_service_exception_is_not_registered() -> None:
@@ -165,7 +164,7 @@ def test_type_not_available_general_service_exception_is_not_registered() -> Non
             }
         }
     )
-    assert is_resource_type_not_available_exception(e)
+    assert is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_type_not_available_general_service_exception_type_not_found() -> None:
@@ -178,37 +177,37 @@ def test_type_not_available_general_service_exception_type_not_found() -> None:
             }
         }
     )
-    assert is_resource_type_not_available_exception(e)
+    assert is_region_not_supported_exception(e, "us-east-1")
 
 
 def test_region_not_enabled_invalid_client_token_id() -> None:
     e = MockException(response={"Error": {"Code": "InvalidClientTokenId"}})
-    assert is_region_not_enabled_exception(e)
+    assert is_region_not_supported_exception(e, "af-south-1")
 
 
 def test_region_not_enabled_auth_failure() -> None:
     e = MockException(response={"Error": {"Code": "AuthFailure"}})
-    assert is_region_not_enabled_exception(e)
+    assert is_region_not_supported_exception(e, "ap-east-1")
 
 
 def test_region_not_enabled_region_disabled() -> None:
     e = MockException(response={"Error": {"Code": "RegionDisabledException"}})
-    assert is_region_not_enabled_exception(e)
+    assert is_region_not_supported_exception(e, "me-south-1")
 
 
 def test_region_not_enabled_other_error() -> None:
     e = MockException(response={"Error": {"Code": "InternalServiceError"}})
-    assert not is_region_not_enabled_exception(e)
+    assert not is_region_not_supported_exception(e, "af-south-1")
 
 
 def test_region_not_enabled_no_response() -> None:
     e = Exception("plain error")
-    assert not is_region_not_enabled_exception(e)
+    assert not is_region_not_supported_exception(e, "af-south-1")
 
 
 def test_region_not_enabled_none_response() -> None:
     e = MockException(response=None)
-    assert not is_region_not_enabled_exception(e)
+    assert not is_region_not_supported_exception(e, "af-south-1")
 
 
 def test_region_not_enabled_general_service_exception_opt_in_required() -> None:
@@ -220,7 +219,64 @@ def test_region_not_enabled_general_service_exception_opt_in_required() -> None:
             }
         }
     )
-    assert is_region_not_enabled_exception(e)
+    assert is_region_not_supported_exception(e, "eu-south-1")
+
+
+def test_region_not_enabled_non_opt_in_region_returns_false() -> None:
+    """Non-opt-in regions should always return False regardless of error code."""
+    e = MockException(response={"Error": {"Code": "InvalidClientTokenId"}})
+    assert not is_region_not_supported_exception(e, "us-east-1")
+
+
+def test_region_not_enabled_non_opt_in_region_general_service_exception() -> None:
+    """Non-opt-in regions return False even with GeneralServiceException."""
+    e = MockException(
+        response={
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "opt-in required for this region",
+            }
+        }
+    )
+    assert not is_region_not_supported_exception(e, "us-west-2")
+
+
+def test_region_not_enabled_general_service_exception_region_disabled() -> None:
+    """GeneralServiceException with 'region has not been enabled' message is detected."""
+    e = MockException(
+        response={
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "The region has not been enabled",
+            }
+        }
+    )
+    assert is_region_not_supported_exception(e, "ap-southeast-3")
+
+
+def test_region_not_enabled_general_service_exception_region_is_disabled() -> None:
+    """GeneralServiceException with 'region is disabled' message is detected."""
+    e = MockException(
+        response={
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "This region is disabled",
+            }
+        }
+    )
+    assert is_region_not_supported_exception(e, "il-central-1")
+
+
+def test_region_not_enabled_unrecognized_client_exception() -> None:
+    """UnrecognizedClientException in opt-in region is detected as region-not-supported."""
+    e = MockException(response={"Error": {"Code": "UnrecognizedClientException"}})
+    assert is_region_not_supported_exception(e, "ap-southeast-4")
+
+
+def test_region_not_enabled_unrecognized_client_non_opt_in_region() -> None:
+    """UnrecognizedClientException in non-opt-in region is NOT treated as region-not-supported."""
+    e = MockException(response={"Error": {"Code": "UnrecognizedClientException"}})
+    assert not is_region_not_supported_exception(e, "us-east-1")
 
 
 class TestGetMatchingKindsAndBlueprintsFromConfig(unittest.TestCase):
