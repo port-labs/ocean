@@ -67,7 +67,7 @@ class OktaUserConfig(ResourceConfig):
     )
 
 
-class OktaGroupResourceConfig(ResourceConfig):
+class OktaGroupConfig(ResourceConfig):
     kind: Literal["okta-group"] = Field(
         title="Okta Group",
         description="Okta group resource kind.",
@@ -77,7 +77,7 @@ class OktaGroupResourceConfig(ResourceConfig):
 class OktaAppConfig(PortAppConfig):
     """Port app configuration for Okta integration."""
 
-    resources: list[OktaUserConfig | OktaGroupResourceConfig] = Field(
+    resources: list[OktaUserConfig | OktaGroupConfig] = Field(
         default_factory=list,
         title="Resources",
         description="Specify the resources to include in the sync",
