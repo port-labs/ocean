@@ -200,8 +200,11 @@ def is_region_not_supported_exception(e: Exception, region: str) -> bool:
         "region has not been enabled",
         "opt-in required",
     ]
-    if _check_general_service_exception(e, region_disabled_patterns):
-        return True
+    if is_general_exception := _check_general_service_exception(
+        e, region_disabled_patterns
+    ):
+        logger.debug(f"Region {region} not enabled: {is_general_exception}")
+        return is_general_exception
 
     return False
 
@@ -398,12 +401,12 @@ async def safe_iterate(
             return
         if is_region_not_supported_exception(e, region):
             logger.bind(traceback=e, kind=kind, region=region).warning(
-                f"{region} skipped during resync of {kind}: "
+                f"{region} skipped during resync of {kind}: {e}"
                 f"resource or region not supported"
             )
             return
         logger.bind(traceback=e, kind=kind, region=region).error(
-            f"{region} encountered an error during resync of {kind}"
+            f"{region} encountered an error during resync of {kind}: {e}"
         )
         errors.append(e)
         failed_regions.append(region)

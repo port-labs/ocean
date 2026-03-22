@@ -5,7 +5,6 @@ from aiobotocore.credentials import (
 )
 from aiobotocore.session import get_session
 from loguru import logger
-from utils.misc import OPT_IN_REGIONS
 
 from datetime import datetime, timezone, timedelta
 
@@ -54,9 +53,7 @@ class AwsCredentials:
                 if region["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
             ]
 
-    def _create_refresh_function(
-        self, region: Optional[str] = None
-    ) -> Callable[[], Awaitable[Dict[str, Any]]]:
+    def _create_refresh_function(self) -> Callable[[], Awaitable[Dict[str, Any]]]:
         """
         Returns a callable that fetches new credentials when the current credentials are close to expiry.
         """
@@ -72,11 +69,7 @@ class AwsCredentials:
                 logger.debug(
                     f"Refreshing AWS credentials for role {self.role_arn} in account {self.account_id}"
                 )
-                sts_kwargs: Dict[str, Any] = {}
-                if region and region in OPT_IN_REGIONS:
-                    sts_kwargs["endpoint_url"] = f"https://sts.{region}.amazonaws.com"
-                    sts_kwargs["region_name"] = region
-                async with default_session.client("sts", **sts_kwargs) as sts_client:
+                async with default_session.client("sts") as sts_client:
                     response = await sts_client.assume_role(
                         RoleArn=str(self.role_arn),
                         RoleSessionName=str(self.session_name),
@@ -121,7 +114,7 @@ class AwsCredentials:
             f"Creating a refreshable session for role {self.role_arn} in account {self.account_id} for region {region}"
         )
 
-        refresh_func = self._create_refresh_function(region)
+        refresh_func = self._create_refresh_function()
 
         credentials = AioRefreshableCredentials.create_from_metadata(
             metadata=await refresh_func(),
