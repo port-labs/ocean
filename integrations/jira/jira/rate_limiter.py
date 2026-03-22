@@ -5,7 +5,6 @@ from datetime import datetime
 import httpx
 from loguru import logger
 
-
 MAX_CONCURRENT_REQUESTS = 10
 MINIMUM_LIMIT_REMAINING = 1
 
@@ -34,6 +33,47 @@ class JiraRateLimiter:
 
         self._minimum_limit_remaining = minimum_limit_remaining
 
+    def _get_header_key(self, headers: httpx.Headers, header_type: str) -> str:
+        """
+        Factory method to get the appropriate header key based on type and availability.
+        Prefers standard headers over beta-prefixed ones.
+        """
+        match header_type:
+            case "x-ratelimit-limit":
+                return (
+                    "x-ratelimit-limit"
+                    if "x-ratelimit-limit" in headers
+                    else "x-beta-ratelimit-limit"
+                )
+            case "x-ratelimit-remaining":
+                return (
+                    "x-ratelimit-remaining"
+                    if "x-ratelimit-remaining" in headers
+                    else "x-beta-ratelimit-remaining"
+                )
+            case "x-ratelimit-nearlimit":
+                return (
+                    "x-ratelimit-nearlimit"
+                    if "x-ratelimit-nearlimit" in headers
+                    else "x-beta-ratelimit-nearlimit"
+                )
+            case "x-ratelimit-reset":
+                return (
+                    "x-ratelimit-reset"
+                    if "x-ratelimit-reset" in headers
+                    else "x-beta-ratelimit-reset"
+                )
+            case "retry-after":
+                return "retry-after" if "retry-after" in headers else "beta-retry-after"
+            case "ratelimit-reason":
+                return (
+                    "ratelimit-reason"
+                    if "ratelimit-reason" in headers
+                    else "x-beta-ratelimit-reason"
+                )
+            case _:
+                raise ValueError(f"Unknown header type: {header_type}")
+
     @property
     def seconds_until_reset(self) -> float:
         """Time in seconds until the current rate limit window resets."""
@@ -47,33 +87,32 @@ class JiraRateLimiter:
         Updates the internal rate limit status from response headers. This should
         be called by the client after every request, including failed ones.
 
-        Only updates fields whose corresponding headers are present in the response.
-        Headers may be absent on normal (non-rate-limited) responses.
+        Handles both standard and beta-prefixed headers, preferring standard.
+        On 429, sets remaining to 0 and prioritizes Retry-After for reset calculation.
         """
         async with self._lock:
             try:
-                limit_value = headers.get("x-ratelimit-limit")
-                if limit_value is not None:
-                    self._limit = int(limit_value)
+                limit_key = self._get_header_key(headers, "x-ratelimit-limit")
+                remaining_key = self._get_header_key(headers, "x-ratelimit-remaining")
+                near_limit_key = self._get_header_key(headers, "x-ratelimit-nearlimit")
+                reset_key = self._get_header_key(headers, "x-ratelimit-reset")
+                retry_after_key = self._get_header_key(headers, "retry-after")
 
-                remaining_value = headers.get("x-ratelimit-remaining")
-                if remaining_value is not None:
-                    self._remaining = int(remaining_value)
+                self._limit = int(headers.get(limit_key))
+                self._remaining = int(headers.get(remaining_key))
+                self._near_limit = headers.get(near_limit_key) == "true"
+                self._retry_after = float(headers.get(retry_after_key, 0.0))
 
-                self._near_limit = headers.get("x-ratelimit-nearlimit") == "true"
-
-                reset_time_str = headers.get("x-ratelimit-reset")
+                reset_time_str = headers.get(reset_key)
                 if reset_time_str:
                     dt = datetime.fromisoformat(reset_time_str.replace("Z", "+00:00"))
                     self._reset_time = dt.timestamp()
 
-                retry_after_value = headers.get("retry-after")
-                if retry_after_value is not None:
-                    self._retry_after = float(retry_after_value)
-
-                reason = headers.get("ratelimit-reason")
-                if reason:
-                    logger.warning(f"Rate limit breached for this reason: {reason}")
+                reason_key = self._get_header_key(headers, "ratelimit-reason")
+                if headers.get(reason_key):
+                    logger.warning(
+                        f"Rate limit breached for this reason: {headers.get(reason_key)}"
+                    )
             except Exception as e:
                 logger.error(f"Failed to update rate limit headers: {e}")
 
