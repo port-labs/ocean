@@ -124,7 +124,7 @@ class GCPPortAppConfig(PortAppConfig):
     ] = Field(
         title="Resources",
         description="Configuration of resources to be synchronized by this app.",
-        default_factory=list
+        default_factory=list,
     )  # type: ignore[assignment]
 
 
