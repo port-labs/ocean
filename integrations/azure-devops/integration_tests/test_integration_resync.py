@@ -1,0 +1,380 @@
+"""Integration tests for Azure DevOps resync.
+
+Run with:
+    pytest integration_tests/test_integration_resync.py -v
+"""
+
+import os
+from typing import Any
+
+import pytest
+import yaml
+from port_ocean.integration_testing import (
+    BaseIntegrationTest,
+    InterceptTransport,
+    ResyncResult,
+)
+
+_DEFAULT_MAPPING_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../.port/resources/port-app-config.yaml")
+)
+
+# ── Fake constants ─────────────────────────────────────────────────────────────
+_ORG = "test-org"
+_BASE_URL = f"https://dev.azure.com/{_ORG}"
+_PROJECT_ID = "aabbccdd-0001-0000-0000-000000000001"
+_PROJECT_NAME = "test-project"
+_TEAM_ID = "aabbccdd-0002-0000-0000-000000000001"
+_BOARD_ID = "aabbccdd-0003-0000-0000-000000000001"
+_REPO_ID = "aabbccdd-0004-0000-0000-000000000001"
+_WORK_ITEM_ID = 42
+
+
+class AzureDevOpsTransport:
+    """Builds an InterceptTransport pre-loaded with minimal Azure DevOps API stubs.
+
+    Subclass or extend by calling ``build()`` and adding more routes:
+
+        transport = AzureDevOpsTransport.build()
+        transport.add_route("GET", "/extra/path", {"json": {...}})
+
+    Override class attributes to use different IDs across test modules.
+    """
+
+    org: str = _ORG
+    base_url: str = _BASE_URL
+    project_id: str = _PROJECT_ID
+    project_name: str = _PROJECT_NAME
+    team_id: str = _TEAM_ID
+    board_id: str = _BOARD_ID
+    repo_id: str = _REPO_ID
+    work_item_id: int = _WORK_ITEM_ID
+
+    @classmethod
+    def build(cls) -> InterceptTransport:
+        transport = InterceptTransport(strict=False)
+        cls._add_project_routes(transport)
+        cls._add_repository_routes(transport)
+        cls._add_board_routes(transport)
+        cls._add_work_item_routes(transport)
+        cls._add_release_routes(transport)
+        return transport
+
+    # ── private builders ───────────────────────────────────────────────────────
+
+    @classmethod
+    def _project(cls) -> dict[str, Any]:
+        return {
+            "id": cls.project_id,
+            "name": cls.project_name,
+            "description": "Test project",
+            "url": f"{cls.base_url}/_apis/projects/{cls.project_id}",
+            "state": "wellFormed",
+            "revision": 1,
+            "visibility": "private",
+            "lastUpdateTime": "2026-01-01T00:00:00.000Z",
+        }
+
+    @classmethod
+    def _add_project_routes(cls, t: InterceptTransport) -> None:
+        # Route patterns are substrings of the full URL (query params are appended by the
+        # client). More-specific patterns are registered first so they win over broader ones.
+        # Project teams  (most specific — contains UUID + /teams)
+        t.add_route(
+            "GET",
+            f"/_apis/projects/{cls.project_id}/teams",
+            {
+                "status_code": 200,
+                "json": {
+                    "count": 1,
+                    "value": [
+                        {
+                            "id": cls.team_id,
+                            "name": f"{cls.project_name} Team",
+                            "url": f"{cls.base_url}/_apis/projects/{cls.project_id}/teams/{cls.team_id}",
+                            "description": "Default project team",
+                            "projectName": cls.project_name,
+                            "projectId": cls.project_id,
+                        }
+                    ],
+                },
+            },
+            times=1,
+        )
+        # Fallback teams route — returns empty page to stop pagination after the first page
+        t.add_route(
+            "GET",
+            f"/_apis/projects/{cls.project_id}/teams",
+            {"status_code": 200, "json": {"count": 0, "value": []}},
+        )
+        # Project detail  (UUID-specific)
+        t.add_route(
+            "GET",
+            f"/_apis/projects/{cls.project_id}",
+            {
+                "status_code": 200,
+                "json": {
+                    **cls._project(),
+                    "_links": {
+                        "self": {
+                            "href": f"{cls.base_url}/_apis/projects/{cls.project_id}"
+                        },
+                        "collection": {
+                            "href": f"{cls.base_url}/_apis/projectCollections/collection-001"
+                        },
+                        "web": {"href": f"{cls.base_url}/{cls.project_name}"},
+                    },
+                    "defaultTeam": {
+                        "id": cls.team_id,
+                        "name": f"{cls.project_name} Team",
+                        "url": f"{cls.base_url}/_apis/projects/{cls.project_id}/teams/{cls.team_id}",
+                    },
+                },
+            },
+        )
+        # Projects list  (most general — must be last)
+        t.add_route(
+            "GET",
+            "/_apis/projects",
+            {"status_code": 200, "json": {"count": 1, "value": [cls._project()]}},
+        )
+
+    @classmethod
+    def _add_repository_routes(cls, t: InterceptTransport) -> None:
+        t.add_route(
+            "GET",
+            f"/{cls.project_id}/_apis/git/repositories",
+            {
+                "status_code": 200,
+                "json": {
+                    "count": 1,
+                    "value": [
+                        {
+                            "id": cls.repo_id,
+                            "name": "test-repo",
+                            "url": f"{cls.base_url}/{cls.project_id}/_apis/git/repositories/{cls.repo_id}",
+                            "project": {
+                                "id": cls.project_id,
+                                "name": cls.project_name,
+                                "state": "wellFormed",
+                                "visibility": "private",
+                            },
+                            "defaultBranch": "refs/heads/main",
+                            "size": 1024,
+                            "remoteUrl": f"https://{cls.org}@dev.azure.com/{cls.org}/{cls.project_name}/_git/test-repo",
+                            "webUrl": f"{cls.base_url}/{cls.project_name}/_git/test-repo",
+                            "isDisabled": False,
+                        }
+                    ],
+                },
+            },
+        )
+        t.add_route(
+            "GET",
+            f"/{cls.project_id}/_apis/git/policy/configurations",
+            {"status_code": 200, "json": {"count": 0, "value": []}},
+        )
+
+    @classmethod
+    def _add_board_routes(cls, t: InterceptTransport) -> None:
+        # Board detail first (more specific), board list last (broader substring).
+        t.add_route(
+            "GET",
+            f"/{cls.project_id}/{cls.team_id}/_apis/work/boards/{cls.board_id}",
+            {
+                "status_code": 200,
+                "json": {
+                    "id": cls.board_id,
+                    "url": f"{cls.base_url}/{cls.project_id}/{cls.team_id}/_apis/work/boards/{cls.board_id}",
+                    "name": "Stories",
+                    "revision": 1,
+                    "columns": [
+                        {
+                            "id": "col-001",
+                            "name": "New",
+                            "itemLimit": 0,
+                            "stateMappings": {"User Story": "New"},
+                            "columnType": "incoming",
+                        },
+                        {
+                            "id": "col-002",
+                            "name": "Active",
+                            "itemLimit": 5,
+                            "stateMappings": {"User Story": "Active"},
+                            "isSplit": False,
+                            "description": "",
+                            "columnType": "inProgress",
+                        },
+                        {
+                            "id": "col-003",
+                            "name": "Closed",
+                            "itemLimit": 0,
+                            "stateMappings": {"User Story": "Closed"},
+                            "columnType": "outgoing",
+                        },
+                    ],
+                    "rows": [
+                        {
+                            "id": "00000000-0000-0000-0000-000000000000",
+                            "name": None,
+                            "color": None,
+                        }
+                    ],
+                    "isValid": True,
+                    "canEdit": True,
+                },
+            },
+        )
+        # Board list  (broader substring — registered after board detail)
+        t.add_route(
+            "GET",
+            f"/{cls.project_id}/{cls.team_id}/_apis/work/boards",
+            {
+                "status_code": 200,
+                "json": {
+                    "count": 1,
+                    "value": [
+                        {
+                            "id": cls.board_id,
+                            "url": f"{cls.base_url}/{cls.project_id}/{cls.team_id}/_apis/work/boards/{cls.board_id}",
+                            "name": "Stories",
+                        }
+                    ],
+                },
+            },
+        )
+
+    @classmethod
+    def _add_work_item_routes(cls, t: InterceptTransport) -> None:
+        t.add_route(
+            "POST",
+            f"/{cls.project_id}/_apis/wit/wiql",
+            {
+                "status_code": 200,
+                "json": {
+                    "queryType": "flat",
+                    "queryResultType": "workItem",
+                    "asOf": "2026-01-01T00:00:00.000Z",
+                    "columns": [{"referenceName": "System.Id", "name": "ID"}],
+                    "workItems": [{"id": cls.work_item_id}],
+                },
+            },
+        )
+        t.add_route(
+            "GET",
+            f"/{cls.project_id}/_apis/wit/workitems",
+            {
+                "status_code": 200,
+                "json": {
+                    "count": 1,
+                    "value": [
+                        {
+                            "id": cls.work_item_id,
+                            "url": f"{cls.base_url}/{cls.project_id}/_apis/wit/workItems/{cls.work_item_id}",
+                            "fields": {
+                                "System.Title": "Test work item",
+                                "System.WorkItemType": "User Story",
+                                "System.State": "Active",
+                                "System.Reason": "Moved to state Active",
+                                "System.CreatedBy": {"displayName": "Test User"},
+                                "System.ChangedBy": {"displayName": "Test User"},
+                                "System.CreatedDate": "2026-01-01T00:00:00.000Z",
+                                "System.ChangedDate": "2026-01-01T00:00:00.000Z",
+                                "System.Description": "A test work item",
+                                "System.BoardColumn": "Active",
+                            },
+                        }
+                    ],
+                },
+            },
+        )
+
+    @classmethod
+    def _add_release_routes(cls, t: InterceptTransport) -> None:
+        t.add_route(
+            "GET",
+            f"/{cls.project_id}/_apis/release/releases",
+            {"status_code": 200, "json": {"count": 0, "value": []}},
+        )
+
+
+class TestResync(BaseIntegrationTest):
+
+    def create_third_party_transport(self) -> InterceptTransport:
+        return AzureDevOpsTransport.build()
+
+    def create_mapping_config(self) -> dict[str, Any]:
+        with open(_DEFAULT_MAPPING_PATH) as f:
+            return yaml.safe_load(f)
+
+    def create_integration_config(self) -> dict[str, Any]:
+        return {
+            "integration": {
+                "identifier": "test-azure-devops",
+                "type": "azure-devops",
+                "config": {
+                    "organization_url": f"https://dev.azure.com/{AzureDevOpsTransport.org}",
+                    "personal_access_token": "test-value",
+                    "app_host": "https://placeholder.example.com",
+                    "webhook_secret": "test-value",
+                    "webhook_auth_username": "test-value",
+                },
+            }
+        }
+
+    def _entities_by_blueprint(
+        self, resync: ResyncResult, blueprint: str
+    ) -> list[dict[str, Any]]:
+        return [e for e in resync.upserted_entities if e.get("blueprint") == blueprint]
+
+    @pytest.mark.asyncio
+    async def test_resync_creates_entities(self, resync: ResyncResult) -> None:
+        """Smoke test: resync should produce entities without errors."""
+        assert len(resync.errors) == 0, f"Resync had errors: {resync.errors}"
+        assert len(resync.upserted_entities) > 0, "Expected entities to be upserted"
+
+    @pytest.mark.asyncio
+    async def test_resync_project_entity(self, resync: ResyncResult) -> None:
+        projects = self._entities_by_blueprint(resync, "azureDevopsProject")
+        assert len(projects) == 1
+        project = projects[0]
+        assert project["identifier"] == _PROJECT_ID
+        assert project["title"] == _PROJECT_NAME
+        assert project["properties"]["state"] == "wellFormed"
+        assert project["properties"]["visibility"] == "private"
+
+    @pytest.mark.asyncio
+    async def test_resync_repository_entity(self, resync: ResyncResult) -> None:
+        repos = self._entities_by_blueprint(resync, "azureDevopsRepository")
+        assert len(repos) == 1
+        repo = repos[0]
+        assert repo["identifier"] == _REPO_ID
+        assert repo["title"] == "test-repo"
+        assert repo["relations"]["project"] == _PROJECT_ID
+
+    @pytest.mark.asyncio
+    async def test_resync_board_entity(self, resync: ResyncResult) -> None:
+        boards = self._entities_by_blueprint(resync, "azureDevopsBoard")
+        assert len(boards) == 1
+        board = boards[0]
+        assert board["identifier"] == _BOARD_ID
+        assert board["title"] == "Stories"
+
+    @pytest.mark.asyncio
+    async def test_resync_work_item_entity(self, resync: ResyncResult) -> None:
+        work_items = self._entities_by_blueprint(resync, "azureDevopsWorkItem")
+        assert len(work_items) == 1
+        work_item = work_items[0]
+        assert work_item["identifier"] == f"{_PROJECT_ID}/{_WORK_ITEM_ID}"
+        assert work_item["title"] == "Test work item"
+        assert work_item["properties"]["type"] == "User Story"
+        assert work_item["properties"]["state"] == "Active"
+        assert work_item["relations"]["project"] == _PROJECT_ID
+
+    @pytest.mark.asyncio
+    async def test_resync_column_entities(self, resync: ResyncResult) -> None:
+        columns = self._entities_by_blueprint(resync, "azureDevopsColumn")
+        # Three columns defined in the board stub: New, Active, Closed
+        assert len(columns) == 3
+        column_titles = {c["title"] for c in columns}
+        assert column_titles == {"New", "Active", "Closed"}
