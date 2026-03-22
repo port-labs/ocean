@@ -1,11 +1,15 @@
 import asyncio
+from typing import cast
+
 from loguru import logger
 from itertools import batched
 
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from utils import ObjectKind, init_terraform_client
+from integration import StateFileResourceConfig
 from helpers.state_version_enricher import enrich_state_versions_with_output_data
 from helpers.workspace_enricher import enrich_workspaces_with_tags
 from webhook_processors.run_webhook_processor import RunWebhookProcessor
@@ -80,10 +84,18 @@ async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.STATE_FILE)
 async def resync_state_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
+    selector = cast(StateFileResourceConfig, event.resource_config).selector
 
-    async for state_files_batch in terraform_client.get_paginated_state_files():
-        logger.info(f"Received batch of {len(state_files_batch)} {kind}")
-        yield state_files_batch
+    if selector.current_only:
+        logger.info("Fetching only current state files (currentOnly=true)")
+        async for state_files_batch in terraform_client.get_current_state_files():
+            logger.info(f"Received batch of {len(state_files_batch)} current {kind}")
+            yield state_files_batch
+    else:
+        logger.info("Fetching all historical state files (currentOnly=false)")
+        async for state_files_batch in terraform_client.get_paginated_state_files():
+            logger.info(f"Received batch of {len(state_files_batch)} {kind}")
+            yield state_files_batch
 
 
 @ocean.on_resync(ObjectKind.HEALTH_ASSESSMENT)
