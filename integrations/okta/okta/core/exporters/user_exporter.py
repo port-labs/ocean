@@ -80,9 +80,11 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get users with pagination support.
 
-        Enriched users are spilled to a temporary NDJSON file on disk so that
-        only the in-flight enrichments (bounded by semaphore) and one yield
-        batch live in memory at any time.
+        Args:
+            options: Options for the request
+
+        Yields:
+            List of users from each page
         """
         params: Dict[str, Any] = {"fields": options["fields"]}
 
