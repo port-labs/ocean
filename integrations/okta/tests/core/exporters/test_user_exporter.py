@@ -1,11 +1,9 @@
 """Tests for OktaUserExporter."""
 
 import pytest
-from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, cast
 from unittest.mock import AsyncMock, Mock
 
-import okta.core.exporters.user_exporter as user_exporter_mod
 from okta.core.exporters.user_exporter import OktaUserExporter
 from okta.core.options import (
     ListUserOptions,
@@ -163,83 +161,13 @@ class TestOktaUserExporter:
         assert len(apps) == 250
 
     @pytest.mark.asyncio
-    async def test_disk_spill_cleans_up_temp_files(
-        self,
-        exporter: OktaUserExporter,
-        mock_client: Any,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+    async def test_sub_batching(
+        self, exporter: OktaUserExporter, mock_client: Any
     ) -> None:
-        """Test that temp NDJSON files are cleaned up after yielding."""
-        monkeypatch.setattr(user_exporter_mod, "SPILL_DIR", str(tmp_path))
-
-        mock_users = [
-            {"id": "user1", "profile": {"email": "u1@test.com"}},
-        ]
-
-        async def mock_paginated(
-            endpoint: str, *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-            if endpoint == "users":
-                yield mock_users
-            elif "groups" in endpoint:
-                yield [{"id": "g1"}]
-
-        object.__setattr__(mock_client, "send_paginated_request", mock_paginated)
-
-        options: ListUserOptions = {"include_groups": True, "fields": "id,profile"}
-        async for _ in exporter.get_paginated_resources(options):
-            pass
-
-        remaining = list(tmp_path.glob("*.ndjson"))
-        assert len(remaining) == 0, f"Temp files not cleaned up: {remaining}"
-
-    @pytest.mark.asyncio
-    async def test_disk_spill_cleans_up_on_error(
-        self,
-        exporter: OktaUserExporter,
-        mock_client: Any,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that temp files are cleaned up even when enrichment errors occur."""
-        monkeypatch.setattr(user_exporter_mod, "SPILL_DIR", str(tmp_path))
-
-        mock_users = [
-            {"id": f"user{i}", "profile": {"email": f"u{i}@test.com"}} for i in range(5)
-        ]
-
-        async def mock_paginated(
-            endpoint: str, *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-            if endpoint == "users":
-                yield mock_users
-            elif "groups" in endpoint:
-                raise Exception("API Error")
-
-        object.__setattr__(mock_client, "send_paginated_request", mock_paginated)
-
-        options: ListUserOptions = {"include_groups": True, "fields": "id,profile"}
-        async for _ in exporter.get_paginated_resources(options):
-            pass
-
-        remaining = list(tmp_path.glob("*.ndjson"))
-        assert len(remaining) == 0, f"Temp files not cleaned up: {remaining}"
-
-    @pytest.mark.asyncio
-    async def test_disk_spill_sub_batching(
-        self,
-        exporter: OktaUserExporter,
-        mock_client: Any,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that disk spill yields correct sub-batch sizes."""
-        monkeypatch.setattr(user_exporter_mod, "SPILL_DIR", str(tmp_path))
-
+        """Test that get_paginated_resources yields correct sub-batch sizes."""
         mock_users = [
             {"id": f"user{i}", "profile": {"email": f"u{i}@test.com"}}
-            for i in range(120)
+            for i in range(25)
         ]
 
         async def mock_paginated(
@@ -256,9 +184,9 @@ class TestOktaUserExporter:
             batches.append(batch)
 
         assert len(batches) == 3
-        assert len(batches[0]) == 50
-        assert len(batches[1]) == 50
-        assert len(batches[2]) == 20
+        assert len(batches[0]) == 10
+        assert len(batches[1]) == 10
+        assert len(batches[2]) == 5
 
         all_ids = {u["id"] for batch in batches for u in batch}
-        assert all_ids == {f"user{i}" for i in range(120)}
+        assert all_ids == {f"user{i}" for i in range(25)}

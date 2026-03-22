@@ -1,8 +1,6 @@
 import asyncio
+from itertools import batched
 import json
-import os
-import tempfile
-from pathlib import Path
 from typing import Any, Dict, cast
 
 import aiofiles
@@ -19,8 +17,7 @@ SPILL_DIR = "/tmp/ocean/okta_enrichment"
 class OktaUserExporter(AbstractOktaExporter[OktaClient]):
     """Exporter for Okta users."""
 
-    ENRICH_CONCURRENCY: int = 10
-    SUB_BATCH_SIZE: int = 50
+    SUB_BATCH_SIZE: int = 10
 
     async def _fetch_user(self, user_id: str) -> RAW_ITEM:
         return cast(RAW_ITEM, await self.client.send_api_request(f"users/{user_id}"))
@@ -52,33 +49,28 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
     async def _enrich_single_user(
         self,
         user: dict[str, Any],
-        semaphore: asyncio.Semaphore,
         options: ListUserOptions,
     ) -> dict[str, Any]:
-        async with semaphore:
-            try:
-                enrichments = await self._fetch_enrichments(
-                    user["id"],
-                    bool(options.get("include_groups")),
-                    bool(options.get("include_applications")),
-                )
-                if enrichments:
-                    user |= enrichments
-            except Exception as exc:
-                logger.warning(
-                    f"Failed to enrich user {user.get('id', 'unknown')}: {exc}"
-                )
-            return user
+        try:
+            enrichments = await self._fetch_enrichments(
+                user["id"],
+                bool(options.get("include_groups")),
+                bool(options.get("include_applications")),
+            )
+            if enrichments:
+                user |= enrichments
+        except Exception as exc:
+            logger.warning(f"Failed to enrich user {user.get('id', 'unknown')}: {exc}")
+        return user
 
     async def _enrich_and_spill(
         self,
         user: dict[str, Any],
-        semaphore: asyncio.Semaphore,
         write_lock: asyncio.Lock,
         options: ListUserOptions,
         fh: Any,
     ) -> None:
-        enriched = await self._enrich_single_user(user, semaphore, options)
+        enriched = await self._enrich_single_user(user, options)
         line = json.dumps(enriched, separators=(",", ":")) + "\n"
         async with write_lock:
             await fh.write(line)
@@ -122,28 +114,13 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
         batch live in memory at any time.
         """
         params: Dict[str, Any] = {"fields": options["fields"]}
-        Path(SPILL_DIR).mkdir(parents=True, exist_ok=True)
 
         async for users in self.client.send_paginated_request("users", params):
-            tmp_fd, tmp_path = tempfile.mkstemp(suffix=".ndjson", dir=SPILL_DIR)
-            os.close(tmp_fd)
-            try:
-                semaphore = asyncio.Semaphore(self.ENRICH_CONCURRENCY)
-                write_lock = asyncio.Lock()
+            for batched_users in batched(users, self.SUB_BATCH_SIZE):
+                tasks = [
+                    asyncio.create_task(self._enrich_single_user(user, options))
+                    for user in batched_users
+                ]
 
-                async with aiofiles.open(tmp_path, mode="w") as fh:
-                    tasks = [
-                        asyncio.create_task(
-                            self._enrich_and_spill(
-                                user, semaphore, write_lock, options, fh
-                            )
-                        )
-                        for user in users
-                    ]
-                    await asyncio.gather(*tasks)
-
-                async for batch in self._read_batches_from_disk(tmp_path):
-                    yield batch
-
-            finally:
-                Path(tmp_path).unlink(missing_ok=True)
+                results = await asyncio.gather(*tasks)
+                yield results
