@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+
+## 0.1.271 (2026-03-22)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions and missing resource config models to `DynatracePortAppConfig` for schema validation compliance
+
+
+## 0.1.270 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
 ## 0.1.269 (2026-03-19)
 
 

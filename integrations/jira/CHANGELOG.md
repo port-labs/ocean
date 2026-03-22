@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.6.2 (2026-03-20)
+## 0.6.3 (2026-03-22)
 
 
 ### Bug Fixes
@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed rate limiter crashing on responses without rate limit headers (`int() argument must be a string, not 'NoneType'`).
 - Removed unsupported legacy beta header fallback (`X-Beta-RateLimit-*`) and aligned with official Jira Cloud rate limit headers.
 - Fixed conftest mock patching the wrong module (`port_ocean.helpers.async_client` → `port_ocean.utils.async_http`).
+
+
+## 0.6.2 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
 
 
 ## 0.6.1 (2026-03-19)
