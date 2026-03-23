@@ -1424,9 +1424,7 @@ async def test_generate_releases_will_skip_404(
 
 def test_parse_wiql_with_order_by() -> None:
     """Test parsing WIQL into filter and ORDER BY parts."""
-    client = AzureDevopsClient(
-        "https://fake_org_url.com", "fake_pat", "fake_username"
-    )
+    client = AzureDevopsClient("https://fake_org_url.com", "fake_pat", "fake_username")
 
     # No ORDER BY
     filter_part, order_part = client._parse_wiql_with_order_by(
@@ -1486,15 +1484,25 @@ async def test_generate_work_items_paginates_when_exceeding_20k_limit(
         MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
     )
 
-    client = AzureDevopsClient(
-        "https://fake_org_url.com", "fake_pat", "fake_username"
-    )
+    client = AzureDevopsClient("https://fake_org_url.com", "fake_pat", "fake_username")
     test_project = {"id": "proj1", "name": "Test Project"}
 
     # First WIQL batch: 19999 IDs, second WIQL batch: 100 IDs
     wiql_responses = [
-        {"workItems": [{"id": i} for i in range(1, MAX_WORK_ITEMS_RESULTS_PER_PROJECT + 1)]},
-        {"workItems": [{"id": i} for i in range(MAX_WORK_ITEMS_RESULTS_PER_PROJECT + 1, MAX_WORK_ITEMS_RESULTS_PER_PROJECT + 101)]},
+        {
+            "workItems": [
+                {"id": i} for i in range(1, MAX_WORK_ITEMS_RESULTS_PER_PROJECT + 1)
+            ]
+        },
+        {
+            "workItems": [
+                {"id": i}
+                for i in range(
+                    MAX_WORK_ITEMS_RESULTS_PER_PROJECT + 1,
+                    MAX_WORK_ITEMS_RESULTS_PER_PROJECT + 101,
+                )
+            ]
+        },
     ]
     wiql_call_count = 0
 
@@ -1530,7 +1538,9 @@ async def test_generate_work_items_paginates_when_exceeding_20k_limit(
 
     async with event_context("test_event"):
         with (
-            patch.object(client, "generate_projects", side_effect=mock_generate_projects),
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
             patch.object(client, "send_request", side_effect=mock_send_request),
         ):
             collected_items: List[Dict[str, Any]] = []
@@ -1551,9 +1561,7 @@ async def test_generate_work_items_with_user_order_by_skips_pagination(
     When user's WIQL contains ORDER BY, we use their query as-is and skip pagination.
     Only one WIQL call is made (no ID-range pagination).
     """
-    client = AzureDevopsClient(
-        "https://fake_org_url.com", "fake_pat", "fake_username"
-    )
+    client = AzureDevopsClient("https://fake_org_url.com", "fake_pat", "fake_username")
     test_project = {"id": "proj1", "name": "Test Project"}
 
     wiql_call_count = 0
@@ -1590,7 +1598,9 @@ async def test_generate_work_items_with_user_order_by_skips_pagination(
 
     async with event_context("test_event"):
         with (
-            patch.object(client, "generate_projects", side_effect=mock_generate_projects),
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
             patch.object(client, "send_request", side_effect=mock_send_request),
         ):
             collected_items: List[Dict[str, Any]] = []
@@ -1601,7 +1611,9 @@ async def test_generate_work_items_with_user_order_by_skips_pagination(
                 collected_items.extend(item_batch)
 
             assert len(collected_items) == 100
-            assert wiql_call_count == 1, "Should make only 1 WIQL call when user has ORDER BY"
+            assert (
+                wiql_call_count == 1
+            ), "Should make only 1 WIQL call when user has ORDER BY"
 
 
 @pytest.mark.asyncio
@@ -1851,7 +1863,7 @@ async def test_generate_pipeline_stages(mock_event_context: MagicMock) -> None:
         yield [{"id": "proj1", "name": "Project One"}]
 
     async def mock_generate_builds_for_project(
-        project: Dict[str, Any]
+        project: Dict[str, Any],
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [{"id": "build123", "name": "Build 123"}]
 
@@ -4378,7 +4390,7 @@ async def test_generate_branches(mock_event_context: MagicMock) -> None:
         ]
 
     async def mock_get_branches_for_repository(
-        repository: Dict[str, Any]
+        repository: Dict[str, Any],
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield EXPECTED_BRANCHES
 

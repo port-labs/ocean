@@ -981,9 +981,7 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             # Single WIQL call, no pagination loop
             wiql_query = wiql_base + f" ORDER BY {user_order_part}"
-            wiql_url = (
-                f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
-            )
+            wiql_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
             wiql_response = await self.send_request(
                 "POST",
                 wiql_url,
