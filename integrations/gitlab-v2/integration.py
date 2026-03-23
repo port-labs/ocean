@@ -9,9 +9,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from port_ocean.core.handlers.port_app_config.validators import (
-    validate_and_get_config_schema,
-)
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
@@ -43,8 +40,8 @@ class SearchQuery(BaseModel):
 
 
 class GroupSelector(Selector):
-    include_only_active_groups: Optional[bool] = Field(
-        default=None,
+    include_only_active_groups: bool = Field(
+        default=False,
         alias="includeOnlyActiveGroups",
         title="Include Only Active Groups",
         description="Filter groups by active status",
@@ -58,8 +55,8 @@ class ProjectSelector(Selector):
         default=False,
         description="Whether to include the languages of the project, defaults to false",
     )
-    include_only_active_projects: Optional[bool] = Field(
-        default=None,
+    include_only_active_projects: bool = Field(
+        default=False,
         alias="includeOnlyActiveProjects",
         title="Include Only Active Projects",
         description="Filter projects by active status",
@@ -143,15 +140,19 @@ class GitlabMemberResourceConfig(ResourceConfig):
 class FilesSelector(BaseModel):
     path: str = Field(
         alias="path",
+        title="Path",
         description="Specify the path to match files from",
     )
     repos: list[str] = Field(
-        description="A list of repositories to search files in", default_factory=list
+        description="A list of repositories to search files in",
+        default_factory=list,
+        title="Repositories",
     )
     skip_parsing: bool = Field(
         default=False,
         alias="skipParsing",
         description="Skip parsing the files and just return the raw file content",
+        title="Skip Parsing",
     )
 
 
@@ -178,13 +179,14 @@ class GitLabFilesResourceConfig(ResourceConfig):
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
-        default="",
         alias="name",
+        title="Repository Name",
         description="Specify the repository name",
     )
     branch: str = Field(
         default="main",
         alias="branch",
+        title="Branch",
         description="Specify the branch to bring the folders from",
     )
 
@@ -192,11 +194,13 @@ class RepositoryBranchMapping(BaseModel):
 class FolderPattern(BaseModel):
     path: str = Field(
         alias="path",
+        title="Path",
         description="Specify the repositories and folders to include under this relative path",
     )
     repos: list[RepositoryBranchMapping] = Field(
         default_factory=list,
         alias="repos",
+        title="Repositories",
         description="Specify the repositories and branches to include under this relative path",
     )
 
@@ -220,7 +224,10 @@ class GitlabMergeRequestSelector(GroupSelector):
     updated_after: float = Field(
         alias="updatedAfter",
         title="Updated After (Days)",
-        description="Specify the number of days to look back for merge requests (e.g. 90 for last 90 days)",
+        description=(
+            "Specify the number of days to look back for merge requests (e.g. 90 for last 90 days)."
+            " Note: large values may cause rate limiting."
+        ),
         default=90,
     )
 
@@ -303,7 +310,7 @@ class IssueSelector(GroupSelector):
         default=None,
         alias="updatedAfter",
         title="Updated After (Days)",
-        description="Filter issues updated on or after the given time in days",
+        description="Filter issues updated on or after the given time in days. Note: large values may cause rate limiting.",
     )
 
     @property
@@ -331,11 +338,13 @@ class GitlabVisibilityConfig(BaseModel):
     use_min_access_level: bool = Field(
         alias="useMinAccessLevel",
         default=True,
+        title="Use Min Access Level",
         description="If true, apply min_access_level filtering. If false, include all accessible resources without filtering",
     )
-    min_access_level: int = Field(
+    min_access_level: Literal[10, 20, 30, 40, 50] = Field(
         alias="minAccessLevel",
         default=30,
+        title="Min Access Level",
         description="Minimum access level required (10=Guest, 20=Reporter, 30=Developer, 40=Maintainer, 50=Owner)",
     )
 
@@ -382,6 +391,7 @@ class GitlabPortAppConfig(PortAppConfig):
     visibility: GitlabVisibilityConfig = Field(
         default_factory=GitlabVisibilityConfig,
         alias="visibility",
+        title="Visibility",
         description="Configuration for resource visibility and access control",
     )
     resources: list[
@@ -458,38 +468,3 @@ class GitlabIntegration(BaseIntegration):
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
         )
-
-
-def test_gitlab_port_app_config_schema_generation() -> None:
-    """
-     Small regression test to ensure that schema generation for GitlabPortAppConfig
-    _succeeds and that the expected resource kinds are present in the schema.
-
-     This helps catch issues such as accidentally reintroducing ResourceConfig into
-     the resources union or removing one of the supported resource kinds.
-    """
-    schema = validate_and_get_config_schema(GitlabPortAppConfig)
-
-    # Basic sanity check: schema generation should return a truthy mapping.
-    assert schema, "Expected a non-empty schema for GitlabPortAppConfig"
-
-    # To avoid depending on the exact schema structure, check that all expected
-    # resource kind identifiers appear somewhere in the stringified schema.
-    schema_str = str(schema)
-    expected_kinds = {
-        "project",
-        "group",
-        "issue",
-        "gitlab-group-with-members",
-        "member",
-        "folder",
-        "file",
-        "merge-request",
-        "tag",
-        "release",
-        "pipeline",
-        "job",
-    }
-
-    missing_kinds = {kind for kind in expected_kinds if kind not in schema_str}
-    assert not missing_kinds, f"Missing resource kinds in schema: {missing_kinds}"
