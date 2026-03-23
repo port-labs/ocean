@@ -184,7 +184,7 @@ async def test_get_new_usage_metrics_returns_empty_when_manifest_has_empty_links
 
 
 @pytest.mark.asyncio
-async def test_fetch_report_from_signed_url_returns_none_on_forbidden_error(
+async def test_fetch_report_from_signed_url_returns_empty_on_forbidden_error(
     github_client: GitHubClient,
 ) -> None:
     signed_url = "https://signed.example.com/copilot-report-expired.json"
@@ -201,7 +201,7 @@ async def test_fetch_report_from_signed_url_returns_none_on_forbidden_error(
 
     with patch.object(github_client._client, "request", new=request_mock):
         result = await github_client._fetch_report_from_signed_url(signed_url)
-        assert result is None
+        assert result == []
 
 
 @pytest.mark.asyncio

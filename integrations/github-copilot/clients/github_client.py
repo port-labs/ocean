@@ -139,7 +139,7 @@ class GitHubClient:
             ]
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching report from signed URL: {e}")
-            return None
+            return []
 
     async def get_metrics_for_team(
         self, organization: dict[str, Any], team: dict[str, Any]
