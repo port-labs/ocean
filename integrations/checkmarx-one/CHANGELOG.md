@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.35 (2026-03-23)
+
+
+### Bug Fixes
+
+- Treated HTTP 502 (Bad Gateway) and 503 (Service Unavailable) responses from the Checkmarx API as ignorable transient errors
+
+
+## 0.2.34 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
 ## 0.2.33 (2026-03-19)
 
 

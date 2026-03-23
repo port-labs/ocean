@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.14 (2026-03-19)
+## 0.2.15 (2026-03-23)
 
 
 ### Features
 
 - Added support for a new `sbom-artifact` kind that fetches full SBOM inventory via `sbomArtifactsGroupedByName` and `sbomArtifacts`, with group filtering and bounded nested pagination.
+
+
+## 0.2.14 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
 
 
 ## 0.2.13 (2026-03-19)
