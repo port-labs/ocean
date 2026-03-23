@@ -177,18 +177,12 @@ class WizClient:
             data = await self.make_graphql_query(gql, variables)
             resource_data = data.get(resource)
             if not isinstance(resource_data, dict):
-                logger.error(
-                    f"Wiz GraphQL response is missing '{resource}' object. Available keys: {list(data.keys())}"
-                )
                 raise OceanAbortException(
-                    f"Wiz GraphQL response is missing '{resource}' object"
+                    f"Wiz GraphQL response is missing '{resource}' object. Available keys: {list(data.keys())}"
                 )
 
             nodes = resource_data.get("nodes")
             if not isinstance(nodes, list):
-                logger.error(
-                    f"Wiz GraphQL response for '{resource}' includes invalid 'nodes': {type(nodes).__name__}"
-                )
                 raise OceanAbortException(
                     f"Wiz GraphQL response for '{resource}' includes invalid 'nodes'"
                 )
