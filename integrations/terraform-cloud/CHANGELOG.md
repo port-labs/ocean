@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.0.0 (2026-03-19)
+## 0.2.70 (2026-03-22)
 
 
-### Breaking Changes
+### Improvements
 
-- Set `currentOnly` selector option for `state-file` kind to true by default.
+- Bumped ocean version to ^0.38.22
+
+
+## 0.2.69 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
 
 
 ## 0.2.68 (2026-03-18)
