@@ -153,7 +153,7 @@ async def test_make_graphql_query_raises_on_null_data_with_graphql_errors(
 
             with pytest.raises(
                 OceanAbortException,
-                match="does not contain a valid 'data' object",
+                match="Wiz GraphQL returned errors",
             ):
                 await mock_wiz_client.make_graphql_query(query, variables)
 
@@ -173,13 +173,11 @@ async def test_get_paginated_resources_raises_on_missing_resource_data(
             OceanAbortException,
             match="missing 'repositories' object",
         ):
-            await anext(
-                mock_wiz_client._get_paginated_resources(
-                    resource="repositories",
-                    variables={"first": 1},
-                    max_pages=1,
-                )
-            )
+            await mock_wiz_client._get_paginated_resources(
+                resource="repositories",
+                variables={"first": 1},
+                max_pages=1,
+            ).__anext__()
 
 
 @pytest.mark.asyncio
