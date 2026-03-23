@@ -152,7 +152,12 @@ class GithubFilePattern(RepositorySourceModel):
 class GithubFileSelector(Selector, IncludedFilesConfig):
     files: list[GithubFilePattern] = Field(
         title="Files",
-        description="File patterns (path, repos) to ingest.",
+        description="""Array of files to retrieve. Each cell can include:
+* <b>Path</b> - files path, supports glob pattern.
+Example: "**/package.json"
+* <b>Organization</b> - GitHub org to scan
+* <b>Repos</b> - array of repositories used to fetch files from. Each repo includes name and branch.
+For more information, see <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#files-and-file-contents'>Our docs</a>.""",
     )
     included_files: list[str] = Field(
         title="Included Files",
@@ -198,11 +203,11 @@ class GithubPullRequestSelector(RepoSearchSelector):
         description="Filter pull requests by states (e.g. ['open']).",
     )
     max_results: int = Field(
-        title="Max pull requests to return",
+        title="Max merged pull requests",
         alias="maxResults",
         default=100,
         ge=1,
-        description="Maximum number of pull requests to return per repository.",
+        description="Max number of merged pull requests. Note: large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
     )
     since: int = Field(
         title="Since (Days)",

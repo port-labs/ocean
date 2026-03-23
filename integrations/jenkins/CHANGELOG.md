@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.84 (2026-03-22)
+
+
+### Bug Fix
+
+- Fixed invalid `required` field attribute in selector overrides that broke the JSON schema
+
+
+## 0.2.83 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.2.82 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.2.81 (2026-03-18)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions and dedicated resource config models to `JenkinsPortAppConfig` for schema validation compliance
+
+
+## 0.2.80 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.2.79 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
 ## 0.2.78 (2026-03-16)
 
 

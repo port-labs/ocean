@@ -7,12 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.X.XX (TBD)
+## 0.7.46 (2026-03-23)
 
 ### Bug Fixes
 
 - Fixed work items sync capped at 20K per project: added ID-range pagination to fetch all work items when a project exceeds the Azure DevOps WIQL API limit of 20,000 results per query
 - When user's WIQL contains ORDER BY: use their query as-is (respecting their order) but disable pagination with a warning; without ORDER BY we append our own for full pagination
+
+## 0.7.45 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.7.44 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.7.43 (2026-03-18)
+
+
+### Improvements
+
+- Updated HTTP client to use Ocean's core `client_timeout` configuration
+
+
+## 0.7.42 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.7.41 (2026-03-17)
+
+
+### Bug Fixes
+
+- Fixed `_get_repository_files` to skip `None` results from `download_single_file` instead of yielding `[None]`
+
+
+## 0.7.40 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.7.39 (2026-03-16)
+
+
+### Improvements
+
+- Use port_ocean for included_files repo_branch_matches and resolve_included_file_path
 
 
 ## 0.7.38 (2026-03-16)
@@ -49,6 +104,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.7.34 (2026-03-12)
 
+
+### Improvements
+
+- Refactored includedFiles enrichment to use strategy-based architecture with dedicated enricher, fetcher, and strategy components for better maintainability and consistency with other integrations
 
 ### Bug Fixes
 
