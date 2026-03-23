@@ -49,6 +49,7 @@ class PortOceanContext:
 
     @property
     def initialized(self) -> bool:
+        """True when an ``Ocean`` instance is bound; safe to check before using ``app``."""
         return self._app is not None
 
     @property

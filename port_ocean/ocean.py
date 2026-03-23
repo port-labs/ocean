@@ -122,6 +122,16 @@ class Ocean:
         with self._active_resync_id_lock:
             self._active_resync_event_id = event_id
 
+    def clear_active_resync_event_id_if_matches(self, event_id: str) -> None:
+        """Clear the active resync id only if it still belongs to this RESYNC context.
+
+        When a newer RESYNC replaces the stored id, an older context's exit must
+        not clear the newer id.
+        """
+        with self._active_resync_id_lock:
+            if self._active_resync_event_id == event_id:
+                self._active_resync_event_id = None
+
     async def _report_resync_aborted(self) -> None:
         """
         Report resync status as aborted when the app receives a kill signal.
