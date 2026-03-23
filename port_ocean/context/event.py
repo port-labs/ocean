@@ -156,6 +156,11 @@ async def event_context(
     )
     _event_context_stack.push(new_event)
 
+    if event_type == EventType.RESYNC:
+        from port_ocean.context.ocean import ocean
+
+        ocean.app.set_active_resync_event_id(new_event.id)
+
     def _handle_event(triggering_event_id: int) -> None:
         if (
             new_event.event_type == EventType.RESYNC
@@ -216,5 +221,10 @@ async def event_context(
             ).info("Event finished")
 
             dispatcher.disconnect(_handle_event, event_type)
+
+    if new_event.event_type == EventType.RESYNC:
+        from port_ocean.context.ocean import ocean
+
+        ocean.app.clear_active_resync_event_id()
 
     _event_context_stack.pop()

@@ -2,7 +2,7 @@ import asyncio
 import sys
 import threading
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Callable, Dict, Type
+from typing import Any, AsyncIterator, Callable, Dict, Optional, Type
 
 from fastapi import APIRouter, FastAPI
 from loguru import logger
@@ -107,9 +107,24 @@ class Ocean:
         self.resync_state_updater = ResyncStateUpdater(
             self.port_client, self.config.scheduled_resync_interval
         )
+        self._active_resync_id_lock = threading.Lock()
+        self._active_resync_event_id: Optional[str] = None
         self.app_initialized = False
 
         signal_handler.register(self._report_resync_aborted, priority=100)
+
+    @property
+    def active_resync_event_id(self) -> Optional[str]:
+        with self._active_resync_id_lock:
+            return self._active_resync_event_id
+
+    def set_active_resync_event_id(self, event_id: str) -> None:
+        with self._active_resync_id_lock:
+            self._active_resync_event_id = event_id
+
+    def clear_active_resync_event_id(self) -> None:
+        with self._active_resync_id_lock:
+            self._active_resync_event_id = None
 
     async def _report_resync_aborted(self) -> None:
         """
@@ -267,7 +282,11 @@ class Ocean:
 
         @health_router.get("/isHealthy")
         def is_healthy() -> dict[str, str]:
-            return {"status": "healthy"}
+            payload: dict[str, str] = {"status": "healthy"}
+            resync_id = self.active_resync_event_id
+            if resync_id:
+                payload["resync_id"] = resync_id
+            return payload
 
         self.fast_api_app.include_router(health_router, prefix=self.route_prefix or "")
 
