@@ -122,10 +122,6 @@ class Ocean:
         with self._active_resync_id_lock:
             self._active_resync_event_id = event_id
 
-    def clear_active_resync_event_id(self) -> None:
-        with self._active_resync_id_lock:
-            self._active_resync_event_id = None
-
     async def _report_resync_aborted(self) -> None:
         """
         Report resync status as aborted when the app receives a kill signal.

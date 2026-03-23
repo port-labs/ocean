@@ -19,6 +19,7 @@ from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSor
 from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
 
+from port_ocean.context.ocean import ocean
 from port_ocean.context.resource import resource
 from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
@@ -157,8 +158,6 @@ async def event_context(
     _event_context_stack.push(new_event)
 
     if event_type == EventType.RESYNC:
-        from port_ocean.context.ocean import ocean
-
         ocean.app.set_active_resync_event_id(new_event.id)
 
     def _handle_event(triggering_event_id: int) -> None:
@@ -223,8 +222,6 @@ async def event_context(
             dispatcher.disconnect(_handle_event, event_type)
 
     if new_event.event_type == EventType.RESYNC:
-        from port_ocean.context.ocean import ocean
-
-        ocean.app.clear_active_resync_event_id()
+        ocean.app.set_active_resync_event_id(None)
 
     _event_context_stack.pop()

@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.23 (2026-03-21)
+
+### Features
+
+- `/isHealthy` includes `resync_id` when a resync is in progress (tracks the active RESYNC event id on Ocean).
+
 ## 0.38.22 (2026-03-19)
 
 ### Features
