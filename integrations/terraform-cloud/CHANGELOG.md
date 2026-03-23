@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.0 (2026-03-23)
+
+
+### Breaking Changes
+
+- Set `currentOnly` selector option for `state-file` kind to true by default.
+
+
 ## 0.2.70 (2026-03-22)
 
 
