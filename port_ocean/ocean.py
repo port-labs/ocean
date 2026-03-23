@@ -118,7 +118,7 @@ class Ocean:
         with self._active_resync_id_lock:
             return self._active_resync_event_id
 
-    def set_active_resync_event_id(self, event_id: str) -> None:
+    def set_active_resync_event_id(self, event_id: str | None) -> None:
         with self._active_resync_id_lock:
             self._active_resync_event_id = event_id
 
