@@ -1,3 +1,4 @@
+import threading
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -140,6 +141,8 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
             integration_configuration=integration_settings,
             port_client=mock_port_client,
         )
+        ocean_mock._active_resync_id_lock = threading.Lock()
+        ocean_mock._active_resync_event_id = None
 
         return ocean_mock
 
