@@ -5,7 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
 <!-- towncrier release notes start -->
+
+
+## 0.3.40 (2026-03-22)
+
+
+### Improvements
+
+- Split multi-value Literal kind definitions and added explicit resource config models to `SentryPortAppConfig`
+
+
+## 0.3.39 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.3.38 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.3.37 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.3.36 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
 
 ## 0.3.35 (2026-03-16)
 
