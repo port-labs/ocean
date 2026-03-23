@@ -222,8 +222,7 @@ async def event_context(
 
                 dispatcher.disconnect(_handle_event, event_type)
 
+    finally:
         if new_event.event_type == EventType.RESYNC and ocean.initialized:
             ocean.app.clear_active_resync_event_id_if_matches(new_event.id)
-
-    finally:
         _event_context_stack.pop()
