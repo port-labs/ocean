@@ -145,8 +145,20 @@ class WizClient:
             )
             response.raise_for_status()
             response_json = response.json()
+            graphql_errors = response_json.get("errors") or []
+            data = response_json.get("data")
 
-            return response_json["data"]
+            if graphql_errors:
+                raise OceanAbortException(
+                    f"Wiz GraphQL returned errors for query variables {variables}: {graphql_errors}"
+                )
+
+            if data is None:
+                raise OceanAbortException(
+                    f"Wiz GraphQL returned null data for query variables {variables}. Response: {response_json}"
+                )
+
+            return data
         except httpx.HTTPError as e:
             logger.error(f"Error while making GraphQL query: {str(e)}")
             raise
@@ -163,10 +175,27 @@ class WizClient:
             )
             gql = GRAPH_QUERIES[resource]
             data = await self.make_graphql_query(gql, variables)
+            resource_data = data.get(resource)
+            if not isinstance(resource_data, dict):
+                logger.error(
+                    f"Wiz GraphQL response is missing '{resource}' object. Available keys: {list(data.keys())}"
+                )
+                raise OceanAbortException(
+                    f"Wiz GraphQL response is missing '{resource}' object"
+                )
 
-            yield data[resource]["nodes"]
+            nodes = resource_data.get("nodes")
+            if not isinstance(nodes, list):
+                logger.error(
+                    f"Wiz GraphQL response for '{resource}' includes invalid 'nodes': {type(nodes).__name__}"
+                )
+                raise OceanAbortException(
+                    f"Wiz GraphQL response for '{resource}' includes invalid 'nodes'"
+                )
 
-            cursor = data[resource].get("pageInfo") or {}
+            yield nodes
+
+            cursor = resource_data.get("pageInfo") or {}
             if not cursor.get("hasNextPage", False):
                 break  # Break out of the loop if no more pages
 
