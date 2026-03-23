@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.84 (2026-03-22)
+
+
+### Bug Fix
+
+- Fixed invalid `required` field attribute in selector overrides that broke the JSON schema
+
+
 ## 0.2.83 (2026-03-22)
 
 
