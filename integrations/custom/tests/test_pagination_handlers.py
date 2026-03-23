@@ -153,8 +153,8 @@ class TestNextLinkPagination:
         )
 
         assert captured_params[0] == {"$top": "100"}
-        assert captured_params[1] == {}
-        assert captured_params[2] == {}
+        assert captured_params[1] is None
+        assert captured_params[2] is None
 
     async def test_custom_next_link_path(
         self,
@@ -221,7 +221,7 @@ class TestNextLinkPagination:
         assert captured_urls[1] == "https://api.example.com/items?page=2"
 
         assert captured_params[0] == {"initial": "param"}
-        assert captured_params[1] == {}
+        assert captured_params[1] is None
 
 
 class TestPaginationHandlerRegistry:
