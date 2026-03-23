@@ -8,12 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- towncrier release notes start -->
 
 
-## 0.1.86 (2026-03-22)
+## 0.1.87 (2026-03-23)
 
 
 ### Improvements
 
-- Added explicit Literal kind definitions, introduced OktaGroupResourceConfig, removed bare ResourceConfig from the union, added title metadata to all selector fields in OktaUserSelector, and added resource metadata in OktaAppConfig for schema validation compliance.
+- Added explicit Literal kind definitions and introduced OktaGroupResourceConfig
+- Removed bare ResourceConfig from the union
+- Added title metadata to all selector fields in OktaUserSelector
+- Added resource metadata in OktaAppConfig for schema validation compliance.
+
+
+## 0.1.86 (2026-03-22)
+
+
+### Bug Fixes
+
+- Fixed user group and app enrichment to paginate through all results instead of returning only the first 200
+- Fixed pagination URL handling when using an Okta admin domain whose Link header returns a different subdomain
 
 
 ## 0.1.85 (2026-03-22)
