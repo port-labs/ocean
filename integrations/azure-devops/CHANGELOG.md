@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.46 (2026-03-22)
+## 0.7.46 (2026-03-24)
 
 
 ### Bug Fixes
