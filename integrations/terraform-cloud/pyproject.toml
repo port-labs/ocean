@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "terraform-cloud"
-version = "0.3.0"
+version = "0.3.1"
 description = "Terraform Cloud Integration for Port"
 authors = ["Michael Armah <michaelarmah@getport.io>"]
 
