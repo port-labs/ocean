@@ -74,6 +74,29 @@ def parse_file_content(
         return content
 
 
+def build_search_query(search_path: str) -> str:
+    """Build a GitLab search query string from a file path pattern.
+
+    The query always includes a ``filename:`` modifier so results are filtered
+    by file name rather than just file contents.  When a directory component is
+    present a ``path:`` modifier is also appended.  Glob characters (``*``) are
+    stripped from the keyword because GitLab does not support them there, but
+    they are preserved inside the ``filename:`` and ``path:`` modifiers.
+
+    Examples:
+        ``readme.md``            -> ``readme.md filename:readme.md``
+        ``src/config/app.json``  -> ``app.json path:src/config filename:app.json``
+        ``home/directory/*.txt`` -> ``.txt path:home/directory filename:*.txt``
+        ``home/*/*.txt``         -> ``.txt path:home/* filename:*.txt``
+    """
+    if "/" not in search_path:
+        keyword = search_path.replace("*", "")
+        return f"{keyword} filename:{search_path}"
+    directory, filename = search_path.rsplit("/", 1)
+    keyword = filename.replace("*", "")
+    return f"{keyword} path:{directory} filename:{filename}"
+
+
 def enrich_resources_with_project(
     resources: list[dict[str, Any]], project_map: dict[str, Any]
 ) -> list[dict[str, Any]]:

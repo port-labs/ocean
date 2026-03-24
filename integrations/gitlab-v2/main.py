@@ -97,15 +97,6 @@ async def _fetch_included_files_content(
     return included
 
 
-def _apply_included_files(
-    entities: list[dict[str, Any]],
-    included: dict[str, Any],
-) -> None:
-    """Apply fetched included files to a batch of entities."""
-    for entity in entities:
-        entity["__includedFiles"] = included
-
-
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean GitLab-v2 Integration")
@@ -491,7 +482,6 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 include_languages=False,
             ):
                 for project in projects_batch:
-                    cached_files: dict[str, Any] | None = None
                     async for folders_batch in client.get_repository_folders(
                         path=path,
                         repository=project["path_with_namespace"],
@@ -499,11 +489,21 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     ):
                         if folders_batch:
                             if included_files:
-                                if cached_files is None:
-                                    cached_files = await _fetch_included_files_content(
-                                        client, project, included_files
-                                    )
-                                _apply_included_files(folders_batch, cached_files)
+                                from gitlab.enrichments.included_files import (
+                                    IncludedFilesEnricher,
+                                    FolderIncludedFilesStrategy,
+                                )
+
+                                enricher = IncludedFilesEnricher(
+                                    client=client,
+                                    strategy=FolderIncludedFilesStrategy(
+                                        folder_selectors=selector.folders,
+                                        global_included_files=included_files,
+                                    ),
+                                )
+                                folders_batch = await enricher.enrich_batch(
+                                    folders_batch
+                                )
                             logger.info(
                                 f"Found {len(folders_batch)} folders in {project['path_with_namespace']}"
                             )
@@ -511,17 +511,23 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else:
             # Process specific repos
             for repo in repos:
-                cached_files = None
                 async for folders_batch in client.get_repository_folders(
                     path=path, repository=repo.name, branch=repo.branch
                 ):
                     if included_files and folders_batch:
-                        if cached_files is None:
-                            # Extract project from the first folder entity
-                            cached_files = await _fetch_included_files_content(
-                                client, folders_batch[0].get("repo", {}), included_files
-                            )
-                        _apply_included_files(folders_batch, cached_files)
+                        from gitlab.enrichments.included_files import (
+                            IncludedFilesEnricher,
+                            FolderIncludedFilesStrategy,
+                        )
+
+                        enricher = IncludedFilesEnricher(
+                            client=client,
+                            strategy=FolderIncludedFilesStrategy(
+                                folder_selectors=selector.folders,
+                                global_included_files=included_files,
+                            ),
+                        )
+                        folders_batch = await enricher.enrich_batch(folders_batch)
                     logger.info(f"Found batch of {len(folders_batch)} matching folders")
                     yield folders_batch
 

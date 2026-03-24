@@ -7,6 +7,127 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.1.36 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 5.1.35 (2026-03-22)
+
+
+### Bug Fixes
+
+- Fixed `team` collaborator webhook processing by iterating REST team-members pagination correctly and mapping REST payload fields.
+- Standardized collaborator webhook enrichment to avoid emitting multiple repository-enriched data in webhook upserts/deletes.
+
+
+## 5.1.34 (2026-03-22)
+
+
+### Improvements
+
+- Refined selectors descriptions
+
+
+## 5.1.33 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 5.1.32 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 5.1.31 (2026-03-17)
+
+
+### Improvements
+
+- Pre-compute `__is_default_branch` on branch entities during hydration to avoid expensive JQ comparisons at scale
+
+
+## 5.1.30 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 5.1.29 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 5.1.28 (2026-03-16)
+
+
+### Improvements
+
+- Use port_ocean for included_files repo_branch_matches and resolve_included_file_path
+
+
+## 5.1.27 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 5.1.26 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+## 5.1.25 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+## 5.1.24 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+## 5.1.23 (2026-03-13)
+
+
+### Bug Fixes
+
+- Configured HTTP client to follow redirects by default to handle renamed or moved GitHub repositories
+
+
+## 5.1.22 (2026-03-12)
+
+
+### Bug Fixes
+
+- Updated base client GraphQL error filtering to ignore errors with type "NOT_FOUND" by default
+
+
 ## 5.1.21 (2026-03-12)
 
 

@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.36 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.2.35 (2026-03-23)
+
+
+### Bug Fixes
+
+- Treated HTTP 502 (Bad Gateway) and 503 (Service Unavailable) responses from the Checkmarx API as ignorable transient errors
+
+
+## 0.2.34 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.2.33 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.2.32 (2026-03-18)
+
+
+### Improvements
+
+- Added project ID to DAST, SAST, and KICS scan results for improved traceability
+
+
+## 0.2.31 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.2.30 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.2.29 (2026-03-17)
+
+
+### Improvements
+
+- Updated `enrich_scan_result` to include `project_id` for scan result resource kinds (`sca` & `containers`)
+
+
+## 0.2.28 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.2.27 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+## 0.2.26 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+## 0.2.25 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
 ## 0.2.24 (2026-03-12)
 
 

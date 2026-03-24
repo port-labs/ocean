@@ -11,7 +11,7 @@ from port_ocean.utils.async_iterators import (
 from urllib.parse import quote
 from wcmatch import glob
 
-from gitlab.helpers.utils import parse_file_content
+from gitlab.helpers.utils import parse_file_content, build_search_query
 
 from gitlab.clients.rest_client import RestClient
 
@@ -52,9 +52,16 @@ class GitLabClient:
                 project, search_queries
             )
         if included_files:
-            project = await self.enrich_project_with_included_files(
-                project, included_files
+            from gitlab.enrichments.included_files import (
+                IncludedFilesEnricher,
+                ProjectIncludedFilesStrategy,
             )
+
+            enricher = IncludedFilesEnricher(
+                client=self,
+                strategy=ProjectIncludedFilesStrategy(included_files=included_files),
+            )
+            project = (await enricher.enrich_batch([project]))[0]
         return project
 
     async def get_group(self, group_id: int) -> dict[str, Any]:
@@ -132,14 +139,18 @@ class GitLabClient:
                 )
 
             if included_files:
-                enriched_batch = await self._enrich_batch(
-                    enriched_batch,
-                    partial(
-                        self.enrich_project_with_included_files,
-                        file_paths=included_files,
-                    ),
-                    max_concurrent,
+                from gitlab.enrichments.included_files import (
+                    IncludedFilesEnricher,
+                    ProjectIncludedFilesStrategy,
                 )
+
+                enricher = IncludedFilesEnricher(
+                    client=self,
+                    strategy=ProjectIncludedFilesStrategy(
+                        included_files=included_files
+                    ),
+                )
+                enriched_batch = await enricher.enrich_batch(enriched_batch)
 
             yield enriched_batch
 
@@ -370,11 +381,13 @@ class GitLabClient:
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        search_query = f"path:{path}"
+        search_query = build_search_query(path)
         logger.info(f"Starting file search with path pattern: '{path}'")
 
         if repositories:
-            logger.info(f"Searching across {len(repositories)} specific repositories")
+            logger.info(
+                f"Searching for {path} across {len(repositories)} specific repositories"
+            )
             for repo in repositories:
                 logger.debug(f"Processing repository: {repo}")
                 async for batch in self._search_files_in_repository(
@@ -382,7 +395,7 @@ class GitLabClient:
                 ):
                     yield batch
         else:
-            logger.info("Searching across groups")
+            logger.info(f"Searching for {path} across groups")
             async for top_level_groups in self.get_parent_groups(
                 params=params,
             ):
@@ -412,7 +425,7 @@ class GitLabClient:
         Groups API, it iterates over all accessible projects and searches
         each one individually using the Projects API.
         """
-        search_query = f"path:{path}"
+        search_query = build_search_query(path)
         logger.info(
             f"Starting project-level file search with path pattern: '{path}' using params: {params}"
         )
@@ -559,32 +572,6 @@ class GitLabClient:
                 search_results[name] = None
 
         project["__searchQueries"] = search_results
-        return project
-
-    async def enrich_project_with_included_files(
-        self, project: dict[str, Any], file_paths: list[str]
-    ) -> dict[str, Any]:
-        """Enrich a project with the contents of specified files.
-
-        Fetches each file from the project's default branch and stores the
-        contents in ``project["__includedFiles"]`` keyed by file path.
-        Missing files are stored as ``None``.
-        """
-        project_path = project.get("path_with_namespace", str(project["id"]))
-        ref = project.get("default_branch", "main")
-        included_files: dict[str, Optional[str]] = {}
-
-        for file_path in file_paths:
-            try:
-                content = await self.get_file_content(project_path, file_path, ref)
-                included_files[file_path] = content
-            except Exception:
-                logger.debug(
-                    f"Could not fetch file '{file_path}' from {project_path}@{ref}, storing as None"
-                )
-                included_files[file_path] = None
-
-        project["__includedFiles"] = included_files
         return project
 
     async def get_group_members(
