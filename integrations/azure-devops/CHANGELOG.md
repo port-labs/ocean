@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.47 (2026-03-24)
+## 0.7.48 (2026-03-24)
 
 
 ### Bug Fixes
 
 - Fixed test runs ingestion pagination to use `$skip/$top` for the Test Runs List endpoint (instead of continuation tokens), preventing missing test runs in large projects/orgs.
+
+
+## 0.7.47 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
 
 
 ## 0.7.46 (2026-03-23)
