@@ -57,6 +57,7 @@ class RepositorySelector(Selector):
             "List of file paths to fetch from the repository and attach to "
             "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
         ),
+        title="Attached files",
     )
 
 
@@ -73,11 +74,13 @@ class FolderPattern(BaseModel):
         default="",
         alias="path",
         description="Specify the repositories and folders to include under this relative path",
+        title="Folder sync patterns",
     )
     repos: list[RepositoryBranchMapping] = Field(
         default_factory=list,
         alias="repos",
         description="Specify the repositories and branches to include under this relative path",
+        title="Specific Repositories",
     )
 
 
@@ -101,11 +104,13 @@ class BitbucketFilePattern(BaseModel):
         default="*/",
         alias="path",
         description="Specify the path to match files from",
+        title="File sync patterns",
     )
     repos: list[str] = Field(
         default_factory=list,
         alias="repos",
         description="Specify the repositories to fetch files from",
+        title="Specific Repositories",
     )
     skip_parsing: bool = Field(
         default=False,
@@ -122,6 +127,7 @@ class BitbucketFilePattern(BaseModel):
 class BitbucketFileSelector(Selector):
     files: BitbucketFilePattern
     included_files: list[str] = Field(
+        title="Additional attached files (optional)",
         alias="includedFiles",
         default_factory=list,
         description="List of file paths to fetch and attach to the file entity",

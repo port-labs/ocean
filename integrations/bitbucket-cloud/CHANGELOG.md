@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.0 (2026-03-24)
+
+
+### Improvements
+
+- Renamed `included files` to `Attached files`
+
 ## 0.4.47 (2026-03-24)
 
 

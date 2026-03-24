@@ -129,7 +129,7 @@ class FilePattern(BaseModel):
     )
     repos: Optional[List[str]] = Field(
         default=None,
-        title="Repositories",
+        title="Specific Repositories",
         description="List of repository names to scan. If None, scans all repositories.",
     )
 
@@ -139,13 +139,13 @@ class FilePattern(BaseModel):
 
 class AzureDevopsFileSelector(Selector):
     files: FilePattern = Field(
-        title="Files",
+        title="File sync patterns",
         description="Configuration for file selection and scanning.",
     )
     included_files: list[str] = Field(
         alias="includedFiles",
         default_factory=list,
-        title="Included Files",
+        title="Additional attached files (optional)",
         description="List of file paths to fetch and attach to the file entity",
     )
 
@@ -276,7 +276,7 @@ class AzureDevopsRepositorySelector(Selector):
     included_files: list[str] = Field(
         alias="includedFiles",
         default_factory=list,
-        title="Included Files",
+        title="Attached Files",
         description=(
             "List of file paths to fetch from the repository and attach to "
             "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
