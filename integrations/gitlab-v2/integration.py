@@ -128,7 +128,7 @@ class GitLabFilesSelector(GroupSelector):
         title="Additional files",
         alias="includedFiles",
         default_factory=list,
-        description="List of file paths to fetch and attach to the file entity. This selector will add the content of the file to the API response under the `__includedFiles` field.",,
+        description="List of file paths to fetch and attach to the file entity. This selector will add the content of the file to the API response under the `__includedFiles` field.",
     )
 
 
