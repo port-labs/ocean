@@ -210,10 +210,10 @@ class GithubPullRequestSelector(RepoSearchSelector):
         description="Max number of merged pull requests. Note: large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
     )
     since: int = Field(
-        title="Since (Days)",
+        title="Closed PRs Lookback Days",
         default=60,
         ge=1,
-        description="Only fetch pull requests updated within the last N days.",
+        description="Numbers of days back for closed pull requests.",
     )
     api: Literal["rest", "graphql"] = Field(
         title="API",
