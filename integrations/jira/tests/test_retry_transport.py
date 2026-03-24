@@ -1,11 +1,10 @@
 import asyncio
-import time
 from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 
-from jira.rate_limiter import JiraRateLimiter, JiraRateLimitInfo
+from jira.rate_limiter import JiraRateLimiter
 from jira.retry_transport import JiraRetryTransport
 
 
@@ -104,7 +103,9 @@ class TestAfterRetryAsyncWithRealRateLimiter:
         """after_retry_async calling on_response updates the rate limiter state."""
         rate_limiter = JiraRateLimiter(max_concurrent=5)
         transport = JiraRetryTransport(
-            wrapped_transport=httpx.MockTransport(handler=lambda r: httpx.Response(200)),
+            wrapped_transport=httpx.MockTransport(
+                handler=lambda r: httpx.Response(200)
+            ),
             rate_limit_notifier=rate_limiter.on_response,
         )
         req = httpx.Request("GET", "https://test.atlassian.net/rest/api/3/issue")
@@ -126,7 +127,9 @@ class TestAfterRetryAsyncWithRealRateLimiter:
         """After a 429 notification, subsequent context entries sleep proactively."""
         rate_limiter = JiraRateLimiter(max_concurrent=5, minimum_limit_remaining=1)
         transport = JiraRetryTransport(
-            wrapped_transport=httpx.MockTransport(handler=lambda r: httpx.Response(200)),
+            wrapped_transport=httpx.MockTransport(
+                handler=lambda r: httpx.Response(200)
+            ),
             rate_limit_notifier=rate_limiter.on_response,
         )
         req = httpx.Request("GET", "https://test.atlassian.net/rest/api/3/issue")
@@ -149,7 +152,9 @@ class TestAfterRetryAsyncWithRealRateLimiter:
         """Multiple concurrent context entries are all gated after a 429 notification."""
         rate_limiter = JiraRateLimiter(max_concurrent=3, minimum_limit_remaining=1)
         transport = JiraRetryTransport(
-            wrapped_transport=httpx.MockTransport(handler=lambda r: httpx.Response(200)),
+            wrapped_transport=httpx.MockTransport(
+                handler=lambda r: httpx.Response(200)
+            ),
             rate_limit_notifier=rate_limiter.on_response,
         )
         req = httpx.Request("GET", "https://test.atlassian.net/rest/api/3/issue")
