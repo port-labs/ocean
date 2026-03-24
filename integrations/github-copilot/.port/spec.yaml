@@ -7,6 +7,7 @@ features:
     resources:
       - kind: copilot-team-metrics
       - kind: copilot-organization-metrics
+      - kind: organization-usage-metrics
 saas:
   enabled: true
 configurations:

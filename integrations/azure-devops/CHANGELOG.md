@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.48 (2026-03-24)
+
+
+### Bug Fixes
+
+- Fixed test runs ingestion pagination to use `$skip/$top` for the Test Runs List endpoint (instead of continuation tokens), preventing missing test runs in large projects/orgs.
+
+
+## 0.7.47 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.7.46 (2026-03-23)
+
+### Bug Fixes
+
+- Fixed work items sync capped at 20K per project: added ID-range pagination to fetch all work items when a project exceeds the Azure DevOps WIQL API limit of 20,000 results per query
+- When user's WIQL contains ORDER BY: use their query as-is (respecting their order) but disable pagination with a warning; without ORDER BY we append our own for full pagination
+
+## 0.7.45 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.7.44 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
 ## 0.7.43 (2026-03-18)
 
 
