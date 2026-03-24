@@ -11,7 +11,7 @@ from loguru import logger
 MAX_CONCURRENT_REQUESTS = 10
 MINIMUM_LIMIT_REMAINING = 1
 RATE_LIMIT_STATUS_CODE = 429
-DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60
+DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 1
 
 
 @dataclass
@@ -136,26 +136,15 @@ class JiraRateLimiter:
             )
             if not self._initialized or epoch_passed or stale_exhausted:
                 self._initialize_from_response(response.headers)
-
-    def _parse_rate_limit_headers(
-        self, headers: httpx.Headers
-    ) -> Optional[JiraRateLimitInfo]:
-        limit_value = headers.get("x-ratelimit-limit")
-        remaining_value = headers.get("x-ratelimit-remaining")
-        reset_time_str = headers.get("x-ratelimit-reset")
-
-        if not (limit_value and remaining_value and reset_time_str):
-            return None
-
-        try:
-            dt = datetime.fromisoformat(reset_time_str.replace("Z", "+00:00"))
-            return JiraRateLimitInfo(
-                limit=int(limit_value),
-                remaining=int(remaining_value),
-                reset_time=dt.timestamp(),
-            )
-        except (ValueError, TypeError):
-            return None
+            elif self._rate_limit_info is not None:
+                server_remaining = response.headers.get("x-ratelimit-remaining")
+                if server_remaining is not None:
+                    try:
+                        sr = int(server_remaining)
+                        if sr > self._rate_limit_info.remaining:
+                            self._rate_limit_info.remaining = sr
+                    except (ValueError, TypeError):
+                        pass
 
     def _parse_retry_after(self, headers: httpx.Headers) -> Optional[float]:
         retry_after_value = headers.get("retry-after")
@@ -168,7 +157,7 @@ class JiraRateLimiter:
 
     def _handle_rate_limit_response(self, headers: httpx.Headers) -> None:
         """Handle a 429 rate-limited response by updating state."""
-        info = self._parse_rate_limit_headers(headers)
+        info = self._parse_partial_rate_limit_headers(headers)
         retry_after_seconds = self._parse_retry_after(headers)
 
         self._near_limit = headers.get("x-ratelimit-nearlimit") == "true"
@@ -307,5 +296,4 @@ class JiraRateLimiter:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> None:
-        """Always release the semaphore after the request completes."""
         self._semaphore.release()

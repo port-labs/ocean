@@ -597,3 +597,64 @@ class TestJiraRateLimiter:
         mock_sleep.assert_awaited_once()
         sleep_duration = mock_sleep.call_args[0][0]
         assert sleep_duration > 0
+
+    @pytest.mark.asyncio
+    async def test_on_response_syncs_remaining_upward(self) -> None:
+        """Tests that on_response syncs remaining upward when server reports more."""
+        rate_limiter = JiraRateLimiter()
+
+        # Initialize with a response
+        init_response = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-limit": "350",
+                "x-ratelimit-remaining": "340",
+            },
+        )
+        await rate_limiter.on_response(init_response)
+        assert rate_limiter._rate_limit_info is not None
+
+        # Simulate internal counter being decremented (e.g., by _enforce_rate_limit)
+        rate_limiter._rate_limit_info.remaining = 100
+
+        # Server reports higher remaining (window reset server-side)
+        fresh_response = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-limit": "350",
+                "x-ratelimit-remaining": "349",
+            },
+        )
+        await rate_limiter.on_response(fresh_response)
+
+        # Remaining should have been synced upward
+        assert rate_limiter._rate_limit_info.remaining == 349
+
+    @pytest.mark.asyncio
+    async def test_on_response_does_not_sync_remaining_downward(self) -> None:
+        """Tests that on_response does NOT reduce remaining from server headers."""
+        rate_limiter = JiraRateLimiter()
+
+        init_response = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-limit": "350",
+                "x-ratelimit-remaining": "340",
+            },
+        )
+        await rate_limiter.on_response(init_response)
+        assert rate_limiter._rate_limit_info is not None
+        assert rate_limiter._rate_limit_info.remaining == 340
+
+        # Server reports lower remaining — should NOT reduce our counter
+        lower_response = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-limit": "350",
+                "x-ratelimit-remaining": "200",
+            },
+        )
+        await rate_limiter.on_response(lower_response)
+
+        # Remaining should stay at 340 (not reduced to 200)
+        assert rate_limiter._rate_limit_info.remaining == 340
