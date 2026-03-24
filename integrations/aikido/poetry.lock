@@ -12,6 +12,17 @@ files = [
 ]
 
 [[package]]
+name = "aiolimiter"
+version = "1.2.1"
+description = "asyncio rate limiter, a leaky bucket implementation"
+optional = false
+python-versions = "<4.0,>=3.8"
+files = [
+    {file = "aiolimiter-1.2.1-py3-none-any.whl", hash = "sha256:d3f249e9059a20badcb56b61601a83556133655c11d1eb3dd3e04ff069e5f3c7"},
+    {file = "aiolimiter-1.2.1.tar.gz", hash = "sha256:e02a37ea1a855d9e832252a105420ad4d15011505512a1a1d814647451b5cca9"},
+]
+
+[[package]]
 name = "aiostream"
 version = "0.6.4"
 description = "Generator-based operators for asynchronous iteration"
@@ -2255,4 +2266,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "93620374dc2ec8df5138174be31a226818a9b05ba703c7535d54da7bac3789b4"
+content-hash = "468fe41ea07b3b4b6ba175211b11a5e2effdd29c22dad5ed74e46f0df678b1c5"
