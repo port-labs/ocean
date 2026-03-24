@@ -23,7 +23,7 @@ from port_ocean.utils.signal import signal_handler
 class AzureDevopsSelector(Selector):
     default_team: bool = Field(
         default=False,
-        title="Include Default Team",
+        title="Default Team",
         description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
         alias="defaultTeam",
     )
@@ -145,7 +145,6 @@ class AzureDevopsFileSelector(Selector):
     included_files: list[str] = Field(
         alias="includedFiles",
         default_factory=list,
-        title="Included Files",
         description="List of file paths to fetch and attach to the file entity",
     )
 
