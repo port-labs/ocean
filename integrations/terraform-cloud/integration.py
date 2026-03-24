@@ -14,7 +14,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 class StateFileSelector(Selector):
     current_only: bool = Field(
         alias="currentOnly",
-        default=False,
+        default=True,
         description="If true, fetch only the current state file per workspace. If false, fetch all historical state files.",
     )
 
