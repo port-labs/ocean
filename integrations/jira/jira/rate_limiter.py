@@ -11,6 +11,7 @@ from loguru import logger
 MAX_CONCURRENT_REQUESTS = 10
 MINIMUM_LIMIT_REMAINING = 1
 RATE_LIMIT_STATUS_CODE = 429
+DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60
 
 
 @dataclass
@@ -211,9 +212,52 @@ class JiraRateLimiter:
             f"{f' (reason: {reason})' if reason else ''}"
         )
 
+    def _parse_partial_rate_limit_headers(
+        self, headers: httpx.Headers
+    ) -> Optional[JiraRateLimitInfo]:
+        """Parse rate limit headers when x-ratelimit-reset may be absent.
+
+        Normal (non-429) Jira responses include x-ratelimit-limit and
+        x-ratelimit-remaining but omit x-ratelimit-reset.  When reset is
+        missing we synthesise a window using DEFAULT_RATE_LIMIT_WINDOW_SECONDS
+        so that the limiter can still track remaining quota proactively.
+        """
+        limit_value = headers.get("x-ratelimit-limit")
+        remaining_value = headers.get("x-ratelimit-remaining")
+        reset_time_str = headers.get("x-ratelimit-reset")
+
+        if not (limit_value and remaining_value):
+            return None
+
+        try:
+            limit = int(limit_value)
+            remaining = int(remaining_value)
+        except (ValueError, TypeError):
+            return None
+
+        if reset_time_str:
+            try:
+                dt = datetime.fromisoformat(reset_time_str.replace("Z", "+00:00"))
+                reset_time = dt.timestamp()
+            except (ValueError, TypeError):
+                reset_time = time.time() + DEFAULT_RATE_LIMIT_WINDOW_SECONDS
+        else:
+            reset_time = time.time() + DEFAULT_RATE_LIMIT_WINDOW_SECONDS
+
+        return JiraRateLimitInfo(
+            limit=limit,
+            remaining=remaining,
+            reset_time=reset_time,
+        )
+
     def _initialize_from_response(self, headers: httpx.Headers) -> None:
-        """Initialize rate limit tracking from a normal (non-429) response."""
-        info = self._parse_rate_limit_headers(headers)
+        """Initialize rate limit tracking from a normal (non-429) response.
+
+        Jira normal responses typically include x-ratelimit-limit and
+        x-ratelimit-remaining but omit x-ratelimit-reset.  We accept
+        partial headers so the limiter can activate proactively.
+        """
+        info = self._parse_partial_rate_limit_headers(headers)
         if info is None:
             return
 

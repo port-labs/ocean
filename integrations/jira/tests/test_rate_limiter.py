@@ -11,6 +11,7 @@ from jira.rate_limiter import (
     is_rate_limit_response,
     MAX_CONCURRENT_REQUESTS,
     MINIMUM_LIMIT_REMAINING,
+    DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
 )
 
 
@@ -542,3 +543,57 @@ class TestJiraRateLimiter:
         await rate_limiter.on_response(response_offset)
         assert rate_limiter._rate_limit_info is not None
         assert abs(rate_limiter._rate_limit_info.reset_time - expected_timestamp) < 0.01
+
+    @pytest.mark.asyncio
+    async def test_on_response_initializes_from_partial_headers(self) -> None:
+        """Tests that on_response initializes from limit + remaining without reset."""
+        rate_limiter = JiraRateLimiter()
+
+        response = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "80",
+            },
+        )
+
+        before = time.time()
+        await rate_limiter.on_response(response)
+        after = time.time()
+
+        assert rate_limiter._initialized is True
+        assert rate_limiter._rate_limit_info is not None
+        assert rate_limiter._rate_limit_info.limit == 100
+        assert rate_limiter._rate_limit_info.remaining == 80
+        # reset_time should be synthesized ~DEFAULT_RATE_LIMIT_WINDOW_SECONDS from now
+        expected_low = before + DEFAULT_RATE_LIMIT_WINDOW_SECONDS
+        expected_high = after + DEFAULT_RATE_LIMIT_WINDOW_SECONDS
+        assert expected_low <= rate_limiter._rate_limit_info.reset_time <= expected_high
+
+    @pytest.mark.asyncio
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    async def test_proactive_throttle_from_partial_headers(
+        self, mock_sleep: AsyncMock
+    ) -> None:
+        """Tests that proactive throttling engages after init from partial headers."""
+        rate_limiter = JiraRateLimiter(minimum_limit_remaining=5)
+
+        # Simulate a normal response with low remaining, no reset header
+        response = httpx.Response(
+            200,
+            headers={
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "3",
+            },
+        )
+
+        await rate_limiter.on_response(response)
+        assert rate_limiter._initialized is True
+
+        # Now entering the context should trigger proactive sleep
+        async with rate_limiter:
+            pass
+
+        mock_sleep.assert_awaited_once()
+        sleep_duration = mock_sleep.call_args[0][0]
+        assert sleep_duration > 0
