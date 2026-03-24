@@ -43,9 +43,9 @@ class AikidoClient:
         Send an authenticated API request to the Aikido API.
         Rate limited to stay under Aikido's 20 req/min limit.
         """
+        token = await self.auth.get_token()
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
         async with self.rate_limiter:
-            token = await self.auth.get_token()
-            url = f"{self.base_url}/{endpoint.lstrip('/')}"
 
             headers = {
                 "Authorization": f"Bearer {token}",
