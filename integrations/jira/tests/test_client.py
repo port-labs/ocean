@@ -163,9 +163,9 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
 
         # Verify params were passed correctly
         mock_request.assert_called_with(
-            "GET",
+            "POST",
             f"{mock_jira_client.api_url}/search/jql",
-            params={"jql": "project = TEST"},
+            json={"jql": "project = TEST", "maxResults": PAGE_SIZE},
         )
 
 
@@ -211,9 +211,9 @@ async def test_get_paginated_issues_without_jql_param(
 
         assert len(issues) == 2
         mock_request.assert_called_with(
-            "GET",
+            "POST",
             f"{mock_jira_client.api_url}/search/jql",
-            params={"jql": default_jql},
+            json={"jql": default_jql, "maxResults": PAGE_SIZE},
         )
 
 
@@ -238,9 +238,9 @@ async def test_get_paginated_issues_with_empty_jql(
 
         assert len(issues) == 2
         mock_request.assert_called_with(
-            "GET",
+            "POST",
             f"{mock_jira_client.api_url}/search/jql",
-            params={"jql": custom_jql},
+            json={"jql": custom_jql, "maxResults": PAGE_SIZE},
         )
 
 
@@ -487,8 +487,10 @@ async def test_create_events_webhook_oauth(mock_jira_client: JiraClient) -> None
 
 
 @pytest.mark.asyncio
-async def test_get_reconciled_issues(mock_jira_client: JiraClient) -> None:
-    """Test get_reconciled_issues uses POST with correct body shape."""
+async def test_get_paginated_issues_with_reconcile(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test get_paginated_issues with reconcileIssues uses correct POST body."""
     issues_data = {
         "issues": [{"key": "TEST-1", "id": "10001", "fields": {"summary": "Test"}}]
     }
@@ -498,11 +500,15 @@ async def test_get_reconciled_issues(mock_jira_client: JiraClient) -> None:
     ) as mock_request:
         mock_request.return_value = issues_data
 
-        result = await mock_jira_client.get_reconciled_issues(
-            jql="project = TEST AND key = TEST-1",
-            issue_ids=[10001],
-            fields="*all",
-        )
+        issues = []
+        async for batch in mock_jira_client.get_paginated_issues(
+            params={
+                "jql": "project = TEST AND key = TEST-1",
+                "fields": "*all",
+                "reconcileIssues": [10001],
+            }
+        ):
+            issues.extend(batch)
 
         mock_request.assert_called_once_with(
             "POST",
@@ -514,26 +520,27 @@ async def test_get_reconciled_issues(mock_jira_client: JiraClient) -> None:
                 "maxResults": 1,
             },
         )
-        assert len(result) == 1
-        assert result[0]["key"] == "TEST-1"
+        assert len(issues) == 1
+        assert issues[0]["key"] == "TEST-1"
 
 
 @pytest.mark.asyncio
-async def test_get_reconciled_issues_empty_response(
+async def test_get_paginated_issues_with_reconcile_empty_response(
     mock_jira_client: JiraClient,
 ) -> None:
-    """Test get_reconciled_issues returns empty list when no issues found."""
+    """Test get_paginated_issues with reconcileIssues returns empty when no issues found."""
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.return_value = {"issues": []}
 
-        result = await mock_jira_client.get_reconciled_issues(
-            jql="key = NONEXISTENT-1",
-            issue_ids=[99999],
-        )
+        issues = []
+        async for batch in mock_jira_client.get_paginated_issues(
+            params={"jql": "key = NONEXISTENT-1", "reconcileIssues": [99999]}
+        ):
+            issues.extend(batch)
 
-        assert result == []
+        assert issues == []
 
 
 def test_validate_existing_webhook_warns_on_misconfiguration() -> None:

@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.6.4 (2026-03-22)
+
+
+### Improvements
+
+- Switched issue search to POST `/rest/api/3/search/jql` to avoid URL length limits
+- Unified reconcile and paginated issue search into `get_paginated_issues`
+
+
+## 0.6.3 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
 
 ## 0.6.3 (2026-03-22)
 
