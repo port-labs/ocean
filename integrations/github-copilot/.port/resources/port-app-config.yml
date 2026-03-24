@@ -95,3 +95,25 @@ resources:
             loc_added_sum: .loc_added_sum
             user_initiated_interaction_count: .user_initiated_interaction_count
             git_hub_org: .__organization.login
+  - kind: user-usage-metrics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.user_login + "-" + .day)
+          title: (.user_login + "-" + .day)
+          blueprint: '"githubCopilotUserUsage"'
+          properties:
+            record_date: .day + "T00:00:00Z"
+            code_generation_activity_count: .code_generation_activity_count
+            code_acceptance_activity_count: .code_acceptance_activity_count
+            loc_suggested_to_add_sum: .loc_suggested_to_add_sum
+            loc_suggested_to_delete_sum: .loc_suggested_to_delete_sum
+            loc_added_sum: .loc_added_sum
+            loc_deleted_sum: .loc_deleted_sum
+            user_initiated_interaction_count: .user_initiated_interaction_count
+            git_hub_org: .__organization.login
+            used_agent: .used_agent
+            used_chat: .used_chat
+            username: .user_login
