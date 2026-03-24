@@ -154,7 +154,7 @@ class WizClient:
                 )
 
             if data is None:
-                raise OceanAbortException(
+                logger.warning(
                     f"Wiz GraphQL returned null data for query variables {variables}. Response: {response_json}"
                 )
 
