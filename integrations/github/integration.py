@@ -160,10 +160,10 @@ Example: "**/package.json"
 For more information, see <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#files-and-file-contents'>Our docs</a>.""",
     )
     included_files: list[str] = Field(
-        title="Additional attached files (optional)",
+        title="Additional files",
         alias="includedFiles",
         default_factory=list,
-        description="Additional file paths to fetch and attach to the file entity.",
+        description="List of file paths to fetch and attach to the file entity. This selector will add the content of the file to the API response under the `__includedFiles` field.",
     )
 
 

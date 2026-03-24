@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Renamed `included files` to `Attached files`
+- Renamed `included files` to `Additional files`
 
 ## 5.1.36 (2026-03-24)
 

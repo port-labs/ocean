@@ -145,8 +145,8 @@ class AzureDevopsFileSelector(Selector):
     included_files: list[str] = Field(
         alias="includedFiles",
         default_factory=list,
-        title="Additional attached files (optional)",
-        description="List of file paths to fetch and attach to the file entity",
+        title="Additional files",
+        description="List of file paths to fetch and attach to the file entity. This selector will add the content of the file to the API response under the `__includedFiles` field.",
     )
 
 
