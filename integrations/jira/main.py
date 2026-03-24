@@ -8,6 +8,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from jira.overrides import (
     JiraIssueConfig,
@@ -17,6 +18,7 @@ from jira.overrides import (
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
+from webhook_processors.version_webhook_processor import VersionWebhookProcessor
 
 
 async def setup_application() -> None:
@@ -36,7 +38,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     params = {"expand": selector.expand}
 
     async for projects in client.get_paginated_projects(params):
-        logger.info(f"Received project batch with {len(projects)} issues")
+        logger.info(f"Received project batch with {len(projects)} projects")
         yield projects
 
 
@@ -88,6 +90,19 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield users_batch
 
 
+@ocean.on_resync(Kinds.VERSION)
+async def on_resync_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
+
+    async for projects in client.get_paginated_projects():
+        logger.info(f"Fetching versions for {len(projects)} projects concurrently")
+        version_streams = [
+            client.get_paginated_versions(project["key"]) for project in projects
+        ]
+        async for version_batch in stream_async_iterators_tasks(*version_streams):
+            yield version_batch
+
+
 # Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
@@ -103,3 +118,4 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
+ocean.add_webhook_processor("/webhook", VersionWebhookProcessor)

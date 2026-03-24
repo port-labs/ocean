@@ -19,6 +19,12 @@ WEBHOOK_EVENTS = [
     "jira:issue_created",
     "jira:issue_updated",
     "jira:issue_deleted",
+    "jira:version_created",
+    "jira:version_updated",
+    "jira:version_deleted",
+    "jira:version_released",
+    "jira:version_unreleased",
+    "jira:version_moved",
     "project_created",
     "project_updated",
     "project_deleted",
@@ -35,6 +41,12 @@ OAUTH2_WEBHOOK_EVENTS = [
     "jira:issue_created",
     "jira:issue_updated",
     "jira:issue_deleted",
+    "jira:version_created",
+    "jira:version_updated",
+    "jira:version_deleted",
+    "jira:version_released",
+    "jira:version_unreleased",
+    "jira:version_moved",
 ]
 
 
@@ -439,3 +451,28 @@ class JiraClient(OAuthClient):
             team["__members"] = members
 
         return teams
+
+    async def get_paginated_versions(
+        self, project_key: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield PAGE_SIZE batches of versions for a project, enriched with ``__projectKey``."""
+        logger.info("Getting versions from Jira")
+
+        url = f"{self.api_url}/project/{project_key}/version"
+        async for versions in self._get_paginated_data(url, "values"):
+            for version in versions:
+                version["__projectKey"] = project_key
+            yield versions
+
+    async def get_single_version(self, version_id: str) -> dict[str, Any]:
+        """Fetch a version by ID and enrich it with ``__projectKey``."""
+        version = await self._send_api_request(
+            "GET", f"{self.api_url}/version/{version_id}"
+        )
+        if version:
+            project_id = version["projectId"]
+            project = await self._send_api_request(
+                "GET", f"{self.api_url}/project/{project_id}"
+            )
+            version["__projectKey"] = project["key"]
+        return version

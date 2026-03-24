@@ -6,14 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-## 0.5.101 (2026-03-18)
+## 0.6.3 (2026-03-22)
 
 
 ### Improvements
 
 - Switched issue search to POST `/rest/api/3/search/jql` to avoid URL length limits
 - Unified reconcile and paginated issue search into `get_paginated_issues`
+
+
+## 0.6.2 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.6.1 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.6.0 (2026-03-11)
+
+
+### Features
+
+- Added `version` as a standalone kind to sync Jira project releases as entities in Port.
 
 
 ## 0.5.100 (2026-03-17)

@@ -896,61 +896,153 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
+
+        Uses ID-range pagination to fetch all work items when a project exceeds the WIQL API limit
+        of 20,000 results per query.
         """
         async for projects in self.generate_projects():
             for project in projects:
-                # Execute WIQL query to get work item IDs
-                work_item_ids = await self._fetch_work_item_ids(project, wiql)
-                logger.info(
-                    f"Found {len(work_item_ids)} work item IDs for project {project['name']}"
-                )
-                # Fetch work items using the IDs (in batches if needed)
-                async for work_items_batch in self._fetch_work_items_in_batches(
-                    project["id"],
-                    work_item_ids,
-                    query_params={"$expand": expand},
+                # Execute WIQL queries with ID-range pagination to get all work item IDs
+                async for work_item_ids in self._fetch_work_item_id_batches(
+                    project, wiql
                 ):
-                    logger.debug(f"Received {len(work_items_batch)} work items")
-                    # Enrich each work item with project details before yielding
-                    yield self._add_project_details_to_work_items(
-                        work_items_batch, project
+                    if not work_item_ids:
+                        continue
+                    logger.info(
+                        f"Fetched batch of {len(work_item_ids)} work item IDs for project {project['name']}"
                     )
+                    # Fetch work items using the IDs (in batches of 200 per API call)
+                    async for work_items_batch in self._fetch_work_items_in_batches(
+                        project["id"],
+                        work_item_ids,
+                        query_params={"$expand": expand},
+                    ):
+                        logger.debug(f"Received {len(work_items_batch)} work items")
+                        # Enrich each work item with project details before yielding
+                        yield self._add_project_details_to_work_items(
+                            work_items_batch, project
+                        )
 
-    async def _fetch_work_item_ids(
+    def _parse_wiql_with_order_by(
+        self, wiql: Optional[str]
+    ) -> tuple[Optional[str], Optional[str]]:
+        """
+        Parse user's WIQL into filter and ORDER BY parts.
+
+        :param wiql: User-provided WIQL (filter conditions, optionally with ORDER BY).
+        :return: Tuple of (filter_part, order_part). If no ORDER BY, order_part is None.
+        """
+        if not wiql or not wiql.strip():
+            return None, None
+
+        # Case-insensitive split on ORDER BY clause (WIQL: " ORDER BY [Field] Asc/Desc")
+        wiql_stripped = wiql.strip()
+        wiql_upper = wiql_stripped.upper()
+        order_by_marker = " ORDER BY "
+        order_by_idx = wiql_upper.find(order_by_marker)
+        if order_by_idx == -1:
+            # Also check for ORDER BY at start (no leading space)
+            if wiql_upper.startswith("ORDER BY "):
+                order_part = wiql_stripped[len("ORDER BY ") :].strip()
+                return None, order_part or None
+            return wiql_stripped, None
+
+        filter_part = wiql_stripped[:order_by_idx].strip()
+        order_part = wiql_stripped[order_by_idx + len(order_by_marker) :].strip()
+        return filter_part or None, order_part or None
+
+    async def _fetch_work_item_id_batches(
         self, project: dict[str, Any], wiql: Optional[str]
-    ) -> list[int]:
+    ) -> AsyncGenerator[list[int], None]:
         """
-        Executes a WIQL query to fetch work item IDs for a given project.
+        Executes WIQL queries to fetch work item IDs for a project.
 
-        :param project_id: The ID of the project.
-        :return: A list of work item IDs.
+        When user's WIQL has no ORDER BY: uses ID-range pagination to fetch all work items
+        (Azure DevOps WIQL API returns at most 20,000 per query).
+
+        When user's WIQL has ORDER BY: uses their query as-is. Pagination is disabled;
+        only up to 20,000 work items per project will be returned (with a warning).
+
+        :param project: The project dict containing id and name.
+        :param wiql: Optional user-provided WIQL filter to append to the WHERE clause.
+        :yield: Batches of work item IDs (each batch up to MAX_WORK_ITEMS_RESULTS_PER_PROJECT).
         """
-        wiql_query = f"SELECT [Id] from WorkItems WHERE [System.TeamProject] = '{project['name']}'"
+        filter_part, user_order_part = self._parse_wiql_with_order_by(wiql)
 
-        if wiql:
-            # Append the user-provided wiql to the WHERE clause
-            wiql_query += f" AND {wiql}"
-            logger.info(f"Found and appended WIQL filter: {wiql}")
+        wiql_base = f"SELECT [Id] FROM WorkItems WHERE [System.TeamProject] = '{project['name']}'"
+        if filter_part:
+            wiql_base += f" AND ({filter_part})"
+            logger.info(f"Using WIQL filter: {filter_part}")
 
+        if user_order_part:
+            logger.warning(
+                "WIQL contains ORDER BY. Pagination is disabled - only up to 20,000 work items "
+                "per project will be returned. To fetch all work items, remove ORDER BY from your WIQL."
+            )
+            # Single WIQL call, no pagination loop
+            wiql_query = wiql_base + f" ORDER BY {user_order_part}"
+            wiql_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
+            wiql_response = await self.send_request(
+                "POST",
+                wiql_url,
+                params={
+                    "api-version": "7.1-preview.2",
+                    "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
+                },
+                data=json.dumps({"query": wiql_query}),
+                headers={"Content-Type": "application/json"},
+            )
+            if wiql_response:
+                work_items = wiql_response.json().get("workItems", [])
+                work_item_ids = [item["id"] for item in work_items]
+                if work_item_ids:
+                    yield work_item_ids
+            return
+
+        # No user ORDER BY: use our ORDER BY [System.Id] Asc for pagination
         wiql_url = (
             f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
         )
-        logger.info(
-            f"Fetching work item IDs for project {project['name']} using WIQL query {wiql_query}"
-        )
-        wiql_response = await self.send_request(
-            "POST",
-            wiql_url,
-            params={
-                "api-version": "7.1-preview.2",
-                "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
-            },
-            data=json.dumps({"query": wiql_query}),
-            headers={"Content-Type": "application/json"},
-        )
-        if not wiql_response:
-            return []
-        return [item["id"] for item in wiql_response.json()["workItems"]]
+        last_id = 0
+
+        while True:
+            wiql_query = wiql_base
+            if last_id > 0:
+                wiql_query += f" AND [System.Id] > {last_id}"
+            wiql_query += " ORDER BY [System.Id] Asc"
+
+            logger.debug(
+                f"Fetching work item IDs for project {project['name']} (last_id={last_id})"
+            )
+            wiql_response = await self.send_request(
+                "POST",
+                wiql_url,
+                params={
+                    "api-version": "7.1-preview.2",
+                    "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
+                },
+                data=json.dumps({"query": wiql_query}),
+                headers={"Content-Type": "application/json"},
+            )
+            if not wiql_response:
+                break
+
+            work_items = wiql_response.json().get("workItems", [])
+            work_item_ids = [item["id"] for item in work_items]
+
+            if not work_item_ids:
+                break
+
+            yield work_item_ids
+
+            if len(work_item_ids) < MAX_WORK_ITEMS_RESULTS_PER_PROJECT:
+                logger.info(
+                    f"Completed work item ID fetch for project {project['name']} "
+                    f"(total batches, last batch had {len(work_item_ids)} items)"
+                )
+                break
+
+            last_id = max(work_item_ids)
 
     async def _fetch_work_items_in_batches(
         self,
@@ -1426,7 +1518,6 @@ class AzureDevopsClient(HTTPBaseClient):
                     params=API_PARAMS,
                     data=json.dumps(request_data),
                     headers={"Content-Type": "application/json"},
-                    timeout=30,
                 )
                 if not response or response.status_code >= 400:
                     logger.warning(f"Failed to fetch items from {items_batch_url}")

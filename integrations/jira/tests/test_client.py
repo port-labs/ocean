@@ -583,6 +583,40 @@ def test_validate_existing_webhook_no_warnings_when_healthy() -> None:
         mock_logger.warning.assert_not_called()
 
 
+@pytest.mark.asyncio
+async def test_get_paginated_versions(mock_jira_client: JiraClient) -> None:
+    """Test get_paginated_versions iterates over projects and yields enriched version batches."""
+
+    versions_response: dict[str, Any] = {
+        "values": [
+            {"id": 1001, "name": "v1.0"},
+            {"id": 1002, "name": "v1.1"},
+        ],
+        "total": 2,
+    }
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            versions_response,
+        ]
+
+        all_versions: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_versions(project_key="PROJ1"):
+            all_versions.extend(batch)
+
+        mock_request.assert_called_once_with(
+            "GET",
+            f"{mock_jira_client.api_url}/project/PROJ1/version",
+            params={"maxResults": PAGE_SIZE, "startAt": 0},
+        )
+        assert len(all_versions) == 2
+        assert all_versions == versions_response["values"]
+        assert all_versions[0]["__projectKey"] == "PROJ1"
+        assert all_versions[1]["__projectKey"] == "PROJ1"
+
+
 def test_jira_issue_selector_default_jql() -> None:
     """Test that JiraIssueSelector uses the correct default JQL when not provided"""
     selector = JiraIssueSelector(query="true")
