@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unified reconcile and paginated issue search into `get_paginated_issues`
 
 
+## 0.6.3 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
 ## 0.6.2 (2026-03-22)
 
 
