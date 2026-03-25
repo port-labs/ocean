@@ -102,7 +102,10 @@ class BitbucketFolderResourceConfig(ResourceConfig):
         title="Bitbucket Folder",
         description="A folder within a Bitbucket repository, scoped to specific branches and paths",
     )
-    selector: BitbucketFolderSelector
+    selector: BitbucketFolderSelector = Field(
+        title="Folder Selector",
+        description="Selector to filter and configure which Bitbucket folders are synced",
+    )
     port: PortResourceConfig
 
 
@@ -143,7 +146,10 @@ class BitbucketFileResourceConfig(ResourceConfig):
         title="Bitbucket File",
         description="A file within a Bitbucket repository, matched by path and filename patterns",
     )
-    selector: BitbucketFileSelector
+    selector: BitbucketFileSelector = Field(
+        title="File Selector",
+        description="Selector to filter and configure which Bitbucket files are synced",
+    )
 
 
 class RepositoryResourceConfig(ResourceConfig):
@@ -151,7 +157,10 @@ class RepositoryResourceConfig(ResourceConfig):
         title="Bitbucket Repository",
         description="A Bitbucket repository synced from your workspace",
     )
-    selector: RepositorySelector
+    selector: RepositorySelector = Field(
+        title="Repository Selector",
+        description="Selector to filter and configure which Bitbucket repositories are synced",
+    )
 
 
 class PullRequestResourceConfig(ResourceConfig):
@@ -159,7 +168,10 @@ class PullRequestResourceConfig(ResourceConfig):
         title="Bitbucket Pull Request",
         description="A pull request in a Bitbucket repository",
     )
-    selector: PullRequestSelector
+    selector: PullRequestSelector = Field(
+        title="Pull Request Selector",
+        description="Selector to filter and configure which Bitbucket pull requests are synced",
+    )
 
 
 class ProjectResourceConfig(ResourceConfig):
@@ -193,8 +205,8 @@ class GitManipulationHandler(JQEntityProcessor):
                 f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
                 f"Pattern: '{pattern}'. "
                 f"Use the 'includedFiles' selector instead. Example: "
-                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
-                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
+                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX) :]}'] "
+                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX) :]}"]'
             )
             entity_processor = FileEntityProcessor
         else:
