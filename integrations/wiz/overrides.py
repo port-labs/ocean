@@ -211,4 +211,6 @@ class WizPortAppConfig(PortAppConfig):
         | HostedTechnologyResourceConfig
         | RepositoryResourceConfig
         | SbomArtifactResourceConfig
-    ] = Field(default_factory=list)  # type: ignore[assignment]
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
