@@ -211,6 +211,11 @@ class GitHubClient:
 
             for signed_url, result in zip(signed_urls_batch, results):
                 if isinstance(result, BaseException):
+                    if isinstance(
+                        result, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)
+                    ):
+                        raise result
+
                     logger.warning(
                         f"Failed to fetch Copilot usage report for organization {org_login} from signed URL {signed_url}: {result}"
                     )
