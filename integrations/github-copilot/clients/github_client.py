@@ -193,9 +193,11 @@ class GitHubClient:
             )
             return
 
+        report_start_day = response_data.get("report_start_day", "unknown")
+        report_end_day = response_data.get("report_end_day", "unknown")
         logger.info(
             f"Received {len(download_links)} user activity report download links for organization {org_login} "
-            f"covering {response_data['report_start_day']} to {response_data['report_end_day']}"
+            f"covering {report_start_day} to {report_end_day}"
         )
         for signed_urls_batch in batched(
             download_links, self.pagination_page_size_limit

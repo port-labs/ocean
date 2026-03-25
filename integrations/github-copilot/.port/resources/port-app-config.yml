@@ -101,8 +101,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: (.user_login + "-" + .day)
-          title: (.user_login + "-" + .day)
+          identifier: (.user_login + "@" + .__organization.login + "@" + .day)
+          title: (.user_login + "@" + .__organization.login + "@" + .day)
           blueprint: '"githubCopilotUserUsage"'
           properties:
             record_date: .day + "T00:00:00Z"

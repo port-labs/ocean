@@ -1,5 +1,6 @@
 import pytest
 import httpx
+from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, patch, MagicMock
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -395,4 +396,42 @@ async def test_get_users_usage_metrics_returns_batches_from_signed_urls(
                 "code_acceptance_activity_count": 5,
             }
         ],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_users_usage_metrics_enriches_records_across_org_batches(
+    github_client: GitHubClient,
+) -> None:
+    org_a = {"login": "acme-a", "id": 1}
+    org_b = {"login": "acme-b", "id": 2}
+    org_c = {"login": "acme-c", "id": 3}
+
+    async def organizations_generator() -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield [org_a, org_b]
+        yield [org_c]
+
+    async def users_usage_generator(
+        organization: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if organization["login"] == "acme-a":
+            yield [{"user_login": "alice", "day": "2026-03-12"}]
+            return
+        if organization["login"] == "acme-b":
+            yield [{"user_login": "bob", "day": "2026-03-12"}]
+            return
+        yield [{"user_login": "charlie", "day": "2026-03-12"}]
+
+    with (
+        patch.object(github_client, "get_organizations", new=organizations_generator),
+        patch.object(
+            github_client, "_get_users_usage_metrics", new=users_usage_generator
+        ),
+    ):
+        result = [batch async for batch in github_client.fetch_users_usage_metrics()]
+
+    assert result == [
+        [{"user_login": "alice", "day": "2026-03-12", "__organization": org_a}],
+        [{"user_login": "bob", "day": "2026-03-12", "__organization": org_b}],
+        [{"user_login": "charlie", "day": "2026-03-12", "__organization": org_c}],
     ]
