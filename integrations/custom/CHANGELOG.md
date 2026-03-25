@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.4.26-beta (2026-03-24)
 
 
-### Bug Fixes
+### Improvements
 
-- Fixed NextLinkPagination bug where URL query parameters were stripped on subsequent requests
+- Bumped ocean version to ^0.38.23
 
 
 ## 0.4.25-beta (2026-03-22)
