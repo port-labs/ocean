@@ -131,6 +131,39 @@ class VulnerabilityFindingResourceConfig(ResourceConfig):
     )
 
 
+class TechnologyResourceConfig(ResourceConfig):
+    selector: Selector = Field(
+        title="Technology Selector",
+        description="Selector for the technology resource.",
+    )
+    kind: Literal["technology"] = Field(
+        title="Wiz Technology",
+        description="A software technology detected by Wiz across cloud resources.",
+    )
+
+
+class HostedTechnologyResourceConfig(ResourceConfig):
+    selector: Selector = Field(
+        title="Hosted Technology Selector",
+        description="Selector for the hosted technology resource.",
+    )
+    kind: Literal["hosted-technology"] = Field(
+        title="Wiz Hosted Technology",
+        description="A hosted technology detected by Wiz in a cloud environment.",
+    )
+
+
+class RepositoryResourceConfig(ResourceConfig):
+    selector: Selector = Field(
+        title="Repository Selector",
+        description="Selector for the repository resource.",
+    )
+    kind: Literal["repository"] = Field(
+        title="Wiz Repository",
+        description="A code repository tracked by Wiz.",
+    )
+
+
 class WizPortAppConfig(PortAppConfig):
     resources: list[
         IssueResourceConfig
@@ -138,6 +171,9 @@ class WizPortAppConfig(PortAppConfig):
         | ServiceTicketResourceConfig
         | ProjectResourceConfig
         | VulnerabilityFindingResourceConfig
+        | TechnologyResourceConfig
+        | HostedTechnologyResourceConfig
+        | RepositoryResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore[assignment]
