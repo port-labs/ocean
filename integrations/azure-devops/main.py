@@ -84,7 +84,7 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     selector = cast(AzureDevopsTeamResourceConfig, event.resource_config).selector
 
-    for i in range(2):
+    for i in range(8):
         async for teams in azure_devops_client.generate_teams():
             logger.info(f"Resyncing {len(teams)} teams")
             if selector.include_members:
