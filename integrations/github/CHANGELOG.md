@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.2.3 (2026-03-25)
+
+
+### Improvements
+
+- Add static resource examples to the integration, enabling blueprint mapping before any data has been ingested.
+
+
 ## 5.2.2 (2026-03-25)
 
 
