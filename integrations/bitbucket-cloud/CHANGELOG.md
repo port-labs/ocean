@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed `included files` to `Additional files`
 
+
 ## 0.4.47 (2026-03-24)
 
 
