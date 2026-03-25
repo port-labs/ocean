@@ -177,19 +177,27 @@ class SbomArtifactSelector(Selector):
         ]
     ] = Field(
         alias="groupList",
+        title="Group List",
         description="List of SBOM artifact groups to fetch. If empty, all groups are fetched.",
         default=["CODE_LIBRARY", "OS_PACKAGE", "PLUGIN", "CUSTOM", "CI_COMPONENT"],
     )
     max_pages: int = Field(
         alias="maxPages",
+        title="Max Pages",
         description="Maximum number of pages to fetch for both grouped names and detailed SBOM artifacts. By default, 500 pages are fetched.",
         default=500,
     )
 
 
 class SbomArtifactResourceConfig(ResourceConfig):
-    selector: SbomArtifactSelector
-    kind: Literal["sbom-artifact"]
+    selector: SbomArtifactSelector = Field(
+        title="SBOM Artifact Selector",
+        description="Selector for the SBOM artifact resource.",
+    )
+    kind: Literal["sbom-artifact"] = Field(
+        title="Wiz SBOM Artifact",
+        description="A software bill of materials artifact tracked by Wiz.",
+    )
 
 
 class WizPortAppConfig(PortAppConfig):
@@ -203,6 +211,4 @@ class WizPortAppConfig(PortAppConfig):
         | HostedTechnologyResourceConfig
         | RepositoryResourceConfig
         | SbomArtifactResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
