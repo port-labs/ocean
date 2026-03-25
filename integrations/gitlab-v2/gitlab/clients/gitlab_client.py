@@ -631,19 +631,18 @@ class GitLabClient:
         async for batch in self.rest.get_paginated_project_resource(
             str(project_id), members_api
         ):
-            if batch:
-                filtered_batch = batch
-                if not include_bot_members:
-                    filtered_batch = [
-                        member
-                        for member in batch
-                        if "bot" not in member["username"].lower()
-                    ]
-                if filtered_batch:
-                    logger.info(
-                        f"Fetched {len(filtered_batch)} member(s) from '{members_api}' for project '{project_id}'"
-                    )
-                    yield filtered_batch
+            if not batch:
+                continue
+            filtered_batch = [
+                member
+                for member in batch
+                if not member.get("bot", False) or include_bot_members
+            ]
+            if filtered_batch:
+                logger.info(
+                    f"Fetched {len(filtered_batch)} member(s) from '{members_api}' for project '{project_id}'"
+                )
+                yield filtered_batch
 
     async def enrich_project_with_members(
         self,

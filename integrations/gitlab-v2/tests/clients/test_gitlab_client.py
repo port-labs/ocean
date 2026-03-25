@@ -472,9 +472,9 @@ class TestGitLabClient:
         """Test fetching project members with and without bot filtering"""
         project_id = "789"
         mock_members = [
-            {"id": 1, "username": "user1", "name": "User One"},
-            {"id": 2, "username": "bot1", "name": "Bot One"},
-            {"id": 3, "username": "user2", "name": "User Two"},
+            {"id": 1, "username": "user1", "name": "User One", "bot": False},
+            {"id": 2, "username": "bot1", "name": "Bot One", "bot": True},
+            {"id": 3, "username": "user2", "name": "User Two", "bot": False},
         ]
 
         with patch.object(
@@ -501,7 +501,7 @@ class TestGitLabClient:
                 results_without_bots.extend(batch)
 
             assert len(results_without_bots) == 2
-            assert all("bot" not in m["username"].lower() for m in results_without_bots)
+            assert all(not m["bot"] for m in results_without_bots)
             mock_get_resource.assert_called_with(project_id, "members")
 
     async def test_get_project_members_with_inherited(

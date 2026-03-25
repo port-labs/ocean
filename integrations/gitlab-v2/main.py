@@ -1,3 +1,4 @@
+from itertools import batched
 from typing import cast, Any, Dict
 
 from loguru import logger
@@ -372,20 +373,16 @@ async def on_resync_projects_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_T
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
-        for i in range(0, len(projects_batch), RESYNC_MEMBERS_BATCH_SIZE):
-            current_batch = projects_batch[i : i + RESYNC_MEMBERS_BATCH_SIZE]
-            logger.info(
-                f"Processing members for {i + len(current_batch)}/{len(projects_batch)} projects"
-            )
-
+        for batch in batched(projects_batch, RESYNC_MEMBERS_BATCH_SIZE):
+            logger.info(f"Processing members for batch of {len(batch)} projects")
             tasks = [
                 client.enrich_project_with_members(
                     project, include_bot_members, include_inherited_members
                 )
-                for project in current_batch
+                for project in batch
             ]
             results = await asyncio.gather(*tasks)
-            yield results
+            yield list(results)
 
 
 @ocean.on_resync(ObjectKind.FILE)
