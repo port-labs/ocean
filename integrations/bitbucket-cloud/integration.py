@@ -86,9 +86,6 @@ class FolderPattern(BaseModel):
 
 
 class BitbucketFolderSelector(RepositorySelector):
-    query: str = Field(
-        default="", title="Query", description="Query string to filter folders"
-    )
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
