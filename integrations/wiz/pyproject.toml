@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "wiz"
-version = "0.2.16"
+version = "0.2.17"
 description = "Wiz Port integration in Ocean"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
