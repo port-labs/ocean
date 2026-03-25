@@ -1951,8 +1951,8 @@ class AzureDevopsClient(HTTPBaseClient):
             for project in projects:
                 project_id = project["id"]
                 url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-                async for runs in self._get_paginated_by_top_and_continuation_token(
-                    url, additional_params=params
+                async for runs in self._get_paginated_by_top_and_skip(
+                    url, params=params
                 ):
                     yield await self._enrich_test_runs(
                         runs, project_id, include_results, coverage_config
