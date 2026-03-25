@@ -1,8 +1,90 @@
 {
-  "name": "copilot/add-http-client-file",
+  "name": "main",
   "commit": {
-    "sha": "4eefbb2beda5fcc12fed45018c91b8477c89a713",
-    "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/commits/4eefbb2beda5fcc12fed45018c91b8477c89a713"
+    "sha": "55619858bf20a10d0c5768d8e6c3b344a1138be4",
+    "node_id": "C_kwDOO-eDotoAKDU1NjE5ODU4YmYyMGExMGQwYzU3NjhkOGU2YzNiMzQ0YTExMzhiZTQ",
+    "commit": {
+      "author": {
+        "name": "Melody Daniel",
+        "email": "melodyogonna@gmail.com",
+        "date": "2025-11-12T14:53:46Z"
+      },
+      "committer": {
+        "name": "Melody Daniel",
+        "email": "melodyogonna@gmail.com",
+        "date": "2025-11-12T14:53:46Z"
+      },
+      "message": "Add a differentiating property to single.yaml",
+      "tree": {
+        "sha": "a479fe71df606fe9426701dee116e403e13cd078",
+        "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/git/trees/a479fe71df606fe9426701dee116e403e13cd078"
+      },
+      "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/git/commits/55619858bf20a10d0c5768d8e6c3b344a1138be4",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/commits/55619858bf20a10d0c5768d8e6c3b344a1138be4",
+    "html_url": "https://github.com/port-gh-app-dev/small-repo/commit/55619858bf20a10d0c5768d8e6c3b344a1138be4",
+    "comments_url": "https://api.github.com/repos/port-gh-app-dev/small-repo/commits/55619858bf20a10d0c5768d8e6c3b344a1138be4/comments",
+    "author": {
+      "login": "melodyogonna",
+      "id": 24739630,
+      "node_id": "MDQ6VXNlcjI0NzM5NjMw",
+      "avatar_url": "https://avatars.githubusercontent.com/u/24739630?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/melodyogonna",
+      "html_url": "https://github.com/melodyogonna",
+      "followers_url": "https://api.github.com/users/melodyogonna/followers",
+      "following_url": "https://api.github.com/users/melodyogonna/following{/other_user}",
+      "gists_url": "https://api.github.com/users/melodyogonna/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/melodyogonna/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/melodyogonna/subscriptions",
+      "organizations_url": "https://api.github.com/users/melodyogonna/orgs",
+      "repos_url": "https://api.github.com/users/melodyogonna/repos",
+      "events_url": "https://api.github.com/users/melodyogonna/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/melodyogonna/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "melodyogonna",
+      "id": 24739630,
+      "node_id": "MDQ6VXNlcjI0NzM5NjMw",
+      "avatar_url": "https://avatars.githubusercontent.com/u/24739630?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/melodyogonna",
+      "html_url": "https://github.com/melodyogonna",
+      "followers_url": "https://api.github.com/users/melodyogonna/followers",
+      "following_url": "https://api.github.com/users/melodyogonna/following{/other_user}",
+      "gists_url": "https://api.github.com/users/melodyogonna/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/melodyogonna/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/melodyogonna/subscriptions",
+      "organizations_url": "https://api.github.com/users/melodyogonna/orgs",
+      "repos_url": "https://api.github.com/users/melodyogonna/repos",
+      "events_url": "https://api.github.com/users/melodyogonna/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/melodyogonna/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "835b5ecdb07be0c85a0a312b30d5ee0b8127ff66",
+        "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/commits/835b5ecdb07be0c85a0a312b30d5ee0b8127ff66",
+        "html_url": "https://github.com/port-gh-app-dev/small-repo/commit/835b5ecdb07be0c85a0a312b30d5ee0b8127ff66"
+      }
+    ]
+  },
+  "_links": {
+    "self": "https://api.github.com/repos/port-gh-app-dev/small-repo/branches/main",
+    "html": "https://github.com/port-gh-app-dev/small-repo/tree/main"
   },
   "protected": false,
   "protection": {
@@ -13,8 +95,7 @@
       "checks": []
     }
   },
-  "protection_url": "https://api.github.com/repos/port-gh-app-dev/small-repo/branches/copilot/add-http-client-file/protection",
-  "__is_default_branch": false,
+  "protection_url": "https://api.github.com/repos/port-gh-app-dev/small-repo/branches/main/protection",
   "__repository": "small-repo",
   "__repository_object": {
     "id": 1005028258,
@@ -84,14 +165,14 @@
     "releases_url": "https://api.github.com/repos/port-gh-app-dev/small-repo/releases{/id}",
     "deployments_url": "https://api.github.com/repos/port-gh-app-dev/small-repo/deployments",
     "created_at": "2025-06-19T14:51:39Z",
-    "updated_at": "2026-03-17T17:03:59Z",
-    "pushed_at": "2026-03-17T17:03:55Z",
+    "updated_at": "2025-11-12T14:54:08Z",
+    "pushed_at": "2026-01-08T14:14:27Z",
     "git_url": "git://github.com/port-gh-app-dev/small-repo.git",
     "ssh_url": "git@github.com:port-gh-app-dev/small-repo.git",
     "clone_url": "https://github.com/port-gh-app-dev/small-repo.git",
     "svn_url": "https://github.com/port-gh-app-dev/small-repo",
     "homepage": null,
-    "size": 98,
+    "size": 70,
     "stargazers_count": 0,
     "watchers_count": 0,
     "language": "Python",
@@ -105,7 +186,7 @@
     "mirror_url": null,
     "archived": false,
     "disabled": false,
-    "open_issues_count": 2,
+    "open_issues_count": 1,
     "license": null,
     "allow_forking": true,
     "is_template": false,
@@ -115,7 +196,7 @@
     "topics": [],
     "visibility": "public",
     "forks": 0,
-    "open_issues": 2,
+    "open_issues": 1,
     "watchers": 0,
     "default_branch": "main",
     "permissions": {
@@ -148,13 +229,7 @@
         "status": "disabled"
       }
     },
-    "custom_properties": {
-      "business_criticality": "low",
-      "code_maturity": "Basic",
-      "engineering_excellence": "Needs Improvement",
-      "githubRepository_security_posture": "Basic",
-      "production_readiness": "Development"
-    }
+    "custom_properties": {}
   },
   "__organization": "port-gh-app-dev"
 }
