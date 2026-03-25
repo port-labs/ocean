@@ -10,7 +10,7 @@ from typing import Literal, Optional
 class IssueSelector(Selector):
     status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] = Field(
         alias="statusList",
-        title="Status List",
+        title="Statuses",
         description="List of statuses to filter issues by",
         default=["OPEN", "IN_PROGRESS"],
     )
@@ -18,7 +18,7 @@ class IssueSelector(Selector):
         list[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "INFORMATIONAL"]]
     ] = Field(
         alias="severityList",
-        title="Severity List",
+        title="Severities",
         description="List of severities to filter issues by. If empty, all severities are fetched.",
         default=None,
     )
@@ -26,14 +26,14 @@ class IssueSelector(Selector):
         list[Literal["TOXIC_COMBINATION", "THREAT_DETECTION", "CLOUD_CONFIGURATION"]]
     ] = Field(
         alias="typeList",
-        title="Type List",
+        title="Types",
         description="List of issue types to fetch. If empty, all issue types are fetched.",
         default=None,
     )
     max_pages: int = Field(
         alias="maxPages",
         title="Max Pages",
-        description="Maximum number of pages to fetch for issues. By default, 500 pages are fetched.",
+        description="Maximum number of pages to fetch for issues.",
         default=500,
     )
 
@@ -100,7 +100,7 @@ class ProjectResourceConfig(ResourceConfig):
 class VulnerabilityFindingSelector(Selector):
     status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] = Field(
         alias="statusList",
-        title="Status List",
+        title="Statuses",
         description="List of statuses to filter vulnerability findings by",
         default=["OPEN", "IN_PROGRESS"],
     )
@@ -108,14 +108,14 @@ class VulnerabilityFindingSelector(Selector):
         list[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "NONE"]]
     ] = Field(
         alias="severityList",
-        title="Severity List",
+        title="Severities",
         description="List of severities to filter vulnerability findings by. If empty, all severities are fetched.",
         default=None,
     )
     max_pages: int = Field(
         alias="maxPages",
         title="Max Pages",
-        description="Maximum number of pages to fetch for vulnerability findings. By default, 500 pages are fetched.",
+        description="Maximum number of pages to fetch for vulnerability findings.",
         default=500,
     )
 
@@ -177,14 +177,14 @@ class SbomArtifactSelector(Selector):
         ]
     ] = Field(
         alias="groupList",
-        title="Group List",
+        title="Groups",
         description="List of SBOM artifact groups to fetch. If empty, all groups are fetched.",
         default=["CODE_LIBRARY", "OS_PACKAGE", "PLUGIN", "CUSTOM", "CI_COMPONENT"],
     )
     max_pages: int = Field(
         alias="maxPages",
         title="Max Pages",
-        description="Maximum number of pages to fetch for both grouped names and detailed SBOM artifacts. By default, 500 pages are fetched.",
+        description="Maximum number of pages to fetch for both grouped names and detailed SBOM artifacts.",
         default=500,
     )
 
