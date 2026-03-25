@@ -1,0 +1,159 @@
+{
+  "id": "9cbcba1e-0c11-478d-8593-942995201487",
+  "sourceRule": {
+    "__typename": "Control",
+    "id": "wc-id-3206",
+    "name": "Publicly exposed cloud resource with non-PQC compliant transport encryption",
+    "controlDescription": "This cloud resource is publicly accessible from the internet and uses transport encryption (TLS/SSL) that does not support Post-Quantum Cryptography (PQC) compliant cipher suites or key exchange algorithms. The public exposure combined with classical cryptographic protocols creates an increased attack surface.\n\nPublicly exposed resources are more easily targeted by attackers than internal ones. An attacker can intercept encrypted traffic from this publicly accessible resource and store it for future decryption using quantum computers. This \"Harvest Now, Decrypt Later\" attack vector is particularly concerning for publicly exposed endpoints where traffic interception is more feasible.",
+    "resolutionRecommendation": "### Limit external exposure\n* Restrict access to resources that do not need to be accessible from the internet.\n* Ensure that exposed ports allow only encrypted communications.\n\n### Ensure quantum-resistant cryptography\n* Configure TLS settings to enforce modern protocol versions (TLS 1.2 or higher) with PQC-compliant cipher suites.\n* Enable Hybrid Post-Quantum Key Exchange (e.g., ECDHE + ML-KEM) to protect data in transit.\n* Update security policies to mandate quantum-safe key exchange algorithms.\n* Disable support for deprecated cryptographic protocols and cipher suites.\n* Prioritize PQC migration for publicly exposed endpoints.",
+    "securitySubCategories": [
+      {
+        "title": "2 Data-in-transit is protected",
+        "category": {
+          "name": "9 Data Security (PR.DS)",
+          "framework": {
+            "name": "NIST CSF v1.1"
+          }
+        }
+      },
+      {
+        "title": "3.10 Encrypt Sensitive Data in Transit",
+        "category": {
+          "name": "3 Data Protection",
+          "framework": {
+            "name": "CIS Controls v8"
+          }
+        }
+      },
+      {
+        "title": "3.13.8 Implement cryptographic mechanisms to prevent unauthorized disclosure of CUI during transmission unless otherwise protected by alternative physical safeguards.",
+        "category": {
+          "name": "3.13 System and Communications Protection",
+          "framework": {
+            "name": "NIST 800-171 Rev.2"
+          }
+        }
+      },
+      {
+        "title": "4.1 Use strong cryptography and security protocols to safeguard sensitive cardholder data during transmission over open, public networks",
+        "category": {
+          "name": "4 encrypt transmission of cardholder data across open, public networks",
+          "framework": {
+            "name": "PCI DSS v3.1.0"
+          }
+        }
+      },
+      {
+        "title": "Data Encrypted for Impact",
+        "category": {
+          "name": "Impact",
+          "framework": {
+            "name": "MITRE ATT&CK Cloud Matrix"
+          }
+        }
+      },
+      {
+        "title": "Data Encrypted for Impact",
+        "category": {
+          "name": "Impact",
+          "framework": {
+            "name": "MITRE ATT&CK Matrix"
+          }
+        }
+      },
+      {
+        "title": "SC-13 Cryptographic Protection",
+        "category": {
+          "name": "SC System And Communications Protection",
+          "framework": {
+            "name": "NIST SP 800-53 Revision 5"
+          }
+        }
+      },
+      {
+        "title": "SC-8 Transmission Confidentiality and Integrity",
+        "category": {
+          "name": "SC System And Communications Protection",
+          "framework": {
+            "name": "NIST SP 800-53 Revision 5"
+          }
+        }
+      },
+      {
+        "title": "Security policies",
+        "category": {
+          "name": "Session Negotiation - PQC Compliance",
+          "framework": {
+            "name": "Wiz for Post-Quantum Cryptography Security"
+          }
+        }
+      }
+    ]
+  },
+  "createdAt": "2026-03-25T05:46:26.681576Z",
+  "updatedAt": "2026-03-25T05:46:26.681576Z",
+  "dueAt": null,
+  "type": "TOXIC_COMBINATION",
+  "resolvedAt": null,
+  "statusChangedAt": "2026-03-25T05:46:26.681576Z",
+  "projects": [
+    {
+      "id": "4f76f599-1f6c-5cb6-a0b9-a262517aeacd",
+      "name": "Test Folder - Test",
+      "slug": "testfolder",
+      "businessUnit": "",
+      "riskProfile": {
+        "businessImpact": "MBI"
+      }
+    },
+    {
+      "id": "83b76efe-a7b6-5762-8a53-8e8f59e68bd8",
+      "name": "Project 2",
+      "slug": "project-2",
+      "businessUnit": "",
+      "riskProfile": {
+        "businessImpact": "MBI"
+      }
+    },
+    {
+      "id": "af52828c-4eb1-5c4e-847c-ebc3a5ead531",
+      "name": "project 4",
+      "slug": "project-4",
+      "businessUnit": "Dev",
+      "riskProfile": {
+        "businessImpact": "MBI"
+      }
+    },
+    {
+      "id": "d6ac50bb-aec0-52fc-80ab-bacd7b02f178",
+      "name": "Project1",
+      "slug": "project1",
+      "businessUnit": "Dev",
+      "riskProfile": {
+        "businessImpact": "MBI"
+      }
+    }
+  ],
+  "status": "OPEN",
+  "severity": "LOW",
+  "entitySnapshot": {
+    "id": "0727dd0c-24e3-56b2-a170-adf96b72e2d6",
+    "type": "LOAD_BALANCER",
+    "nativeType": "loadBalancerv2/application",
+    "name": "Splunk",
+    "status": "Active",
+    "cloudPlatform": "AWS",
+    "cloudProviderURL": "https://eu-north-1.console.aws.amazon.com/ec2/v2/home?region=eu-north-1#LoadBalancers:search=Splunk;sort=loadBalancerName",
+    "providerId": "arn:aws:elasticloadbalancing:eu-north-1:998231069301:loadbalancer/app/Splunk/6a65a4bd322d6f5f",
+    "region": "eu-north-1",
+    "resourceGroupExternalId": "",
+    "subscriptionExternalId": "998231069301",
+    "subscriptionName": "wiz-integrations",
+    "subscriptionTags": {},
+    "tags": {},
+    "createdAt": "2022-12-04T10:57:17Z",
+    "externalId": "arn:aws:elasticloadbalancing:eu-north-1:998231069301:loadbalancer/app/Splunk/6a65a4bd322d6f5f"
+  },
+  "serviceTickets": null,
+  "notes": null
+}
