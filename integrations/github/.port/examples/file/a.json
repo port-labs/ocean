@@ -1,6 +1,6 @@
 {
   "organization": "port-gh-app-dev",
-  "content": "content",
+  "content": "Content",
   "repository": {
     "id": 1005028258,
     "node_id": "R_kgDOO-eDog",
@@ -69,14 +69,14 @@
     "releases_url": "https://api.github.com/repos/port-gh-app-dev/small-repo/releases{/id}",
     "deployments_url": "https://api.github.com/repos/port-gh-app-dev/small-repo/deployments",
     "created_at": "2025-06-19T14:51:39Z",
-    "updated_at": "2025-11-12T14:54:08Z",
-    "pushed_at": "2025-11-12T14:54:04Z",
+    "updated_at": "2026-03-17T17:03:59Z",
+    "pushed_at": "2026-03-17T17:03:55Z",
     "git_url": "git://github.com/port-gh-app-dev/small-repo.git",
     "ssh_url": "git@github.com:port-gh-app-dev/small-repo.git",
     "clone_url": "https://github.com/port-gh-app-dev/small-repo.git",
     "svn_url": "https://github.com/port-gh-app-dev/small-repo",
     "homepage": null,
-    "size": 68,
+    "size": 98,
     "stargazers_count": 0,
     "watchers_count": 0,
     "language": "Python",
@@ -90,15 +90,17 @@
     "mirror_url": null,
     "archived": false,
     "disabled": false,
-    "open_issues_count": 0,
+    "open_issues_count": 2,
     "license": null,
     "allow_forking": true,
     "is_template": false,
     "web_commit_signoff_required": false,
+    "has_pull_requests": true,
+    "pull_request_creation_policy": "all",
     "topics": [],
     "visibility": "public",
     "forks": 0,
-    "open_issues": 0,
+    "open_issues": 2,
     "watchers": 0,
     "default_branch": "main",
     "permissions": {
@@ -119,7 +121,13 @@
     "squash_merge_commit_title": "COMMIT_OR_PR_TITLE",
     "merge_commit_message": "PR_TITLE",
     "merge_commit_title": "MERGE_MESSAGE",
-    "custom_properties": {},
+    "custom_properties": {
+      "business_criticality": "low",
+      "code_maturity": "Basic",
+      "engineering_excellence": "Needs Improvement",
+      "githubRepository_security_posture": "Basic",
+      "production_readiness": "Development"
+    },
     "organization": {
       "login": "port-gh-app-dev",
       "id": 216844958,
@@ -149,7 +157,7 @@
         "status": "disabled"
       },
       "dependabot_security_updates": {
-        "status": "disabled"
+        "status": "enabled"
       },
       "secret_scanning_non_provider_patterns": {
         "status": "enabled"
@@ -159,18 +167,21 @@
       },
       "secret_scanning_validity_checks": {
         "status": "enabled"
+      },
+      "secret_scanning_delegated_alert_dismissal": {
+        "status": "disabled"
       }
     },
     "network_count": 0,
     "subscribers_count": 0
   },
   "branch": "main",
-  "path": "dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.txt",
-  "name": "dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.txt",
+  "path": "readme.md",
+  "name": "readme.md",
   "metadata": {
-    "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/contents/dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.txt?ref=main",
-    "path": "dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.txt",
-    "size": 2048
+    "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/contents/readme.md?ref=main",
+    "path": "readme.md",
+    "size": 6406
   },
   "__base_jq": ".content"
 }

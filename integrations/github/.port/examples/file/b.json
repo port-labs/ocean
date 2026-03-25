@@ -165,11 +165,11 @@
     "subscribers_count": 0
   },
   "branch": "main",
-  "path": "dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.txt",
-  "name": "dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.txt",
+  "path": "dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.yaml",
+  "name": "dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.yaml",
   "metadata": {
-    "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/contents/dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.txt?ref=main",
-    "path": "dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.txt",
+    "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/contents/dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.yaml?ref=main",
+    "path": "dummy_file_9058d25a-28b5-4475-97d7-5c80e18ae97f.yaml",
     "size": 2048
   },
   "__base_jq": ".content"
