@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.70 (2026-03-24)
+
+### Features
+
+- Added support for project members (direct and inherited) via a new `project-with-members` kind, using GitLab's `/projects/:id/members` and `/projects/:id/members/all` API endpoints
+
 ## 0.5.69 (2026-03-24)
 
 
