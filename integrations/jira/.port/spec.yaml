@@ -10,6 +10,7 @@ features:
       - kind: issue
       - kind: team
       - kind: user
+      - kind: release
 configurations:
   - name: appHost
     required: false
