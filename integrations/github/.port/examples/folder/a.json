@@ -100,6 +100,8 @@
     "allow_forking": true,
     "is_template": false,
     "web_commit_signoff_required": false,
+    "has_pull_requests": true,
+    "pull_request_creation_policy": "all",
     "topics": [],
     "visibility": "public",
     "forks": 0,
@@ -107,12 +109,77 @@
     "watchers": 0,
     "default_branch": "main",
     "permissions": {
-      "admin": false,
-      "maintain": false,
-      "push": false,
-      "triage": false,
-      "pull": false
+      "admin": true,
+      "maintain": true,
+      "push": true,
+      "triage": true,
+      "pull": true
     },
-    "score": 1
-  }
+    "allow_squash_merge": true,
+    "allow_merge_commit": true,
+    "allow_rebase_merge": true,
+    "allow_auto_merge": false,
+    "delete_branch_on_merge": false,
+    "allow_update_branch": false,
+    "use_squash_pr_title_as_default": false,
+    "squash_merge_commit_message": "COMMIT_MESSAGES",
+    "squash_merge_commit_title": "COMMIT_OR_PR_TITLE",
+    "merge_commit_message": "PR_TITLE",
+    "merge_commit_title": "MERGE_MESSAGE",
+    "custom_properties": {
+      "business_criticality": "low",
+      "code_maturity": "Basic",
+      "engineering_excellence": "Needs Improvement",
+      "githubRepository_security_posture": "Basic",
+      "production_readiness": "Development"
+    },
+    "organization": {
+      "login": "port-gh-app-dev",
+      "id": 216844958,
+      "node_id": "O_kgDODOzKng",
+      "avatar_url": "https://avatars.githubusercontent.com/u/216844958?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/port-gh-app-dev",
+      "html_url": "https://github.com/port-gh-app-dev",
+      "followers_url": "https://api.github.com/users/port-gh-app-dev/followers",
+      "following_url": "https://api.github.com/users/port-gh-app-dev/following{/other_user}",
+      "gists_url": "https://api.github.com/users/port-gh-app-dev/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/port-gh-app-dev/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/port-gh-app-dev/subscriptions",
+      "organizations_url": "https://api.github.com/users/port-gh-app-dev/orgs",
+      "repos_url": "https://api.github.com/users/port-gh-app-dev/repos",
+      "events_url": "https://api.github.com/users/port-gh-app-dev/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/port-gh-app-dev/received_events",
+      "type": "Organization",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "security_and_analysis": {
+      "secret_scanning": {
+        "status": "enabled"
+      },
+      "secret_scanning_push_protection": {
+        "status": "disabled"
+      },
+      "dependabot_security_updates": {
+        "status": "disabled"
+      },
+      "secret_scanning_non_provider_patterns": {
+        "status": "enabled"
+      },
+      "secret_scanning_ai_detection": {
+        "status": "disabled"
+      },
+      "secret_scanning_validity_checks": {
+        "status": "enabled"
+      },
+      "secret_scanning_delegated_alert_dismissal": {
+        "status": "disabled"
+      }
+    },
+    "network_count": 0,
+    "subscribers_count": 0
+  },
+  "__organization": "port-gh-app-dev",
+  "__branch": "main"
 }
