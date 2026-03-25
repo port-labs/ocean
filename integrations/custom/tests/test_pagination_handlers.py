@@ -1,6 +1,6 @@
 """Tests for pagination handlers"""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock
 import pytest
 
@@ -55,9 +55,9 @@ class TestNextLinkPagination:
         async def mock_make_request(
             url: str,
             method: str,
-            params: Dict[str, Any],
+            params: Optional[Dict[str, Any]],
             headers: Dict[str, str],
-            body: Dict[str, Any] | None = None,
+            body: Optional[Dict[str, Any]] = None,
         ) -> MagicMock:
             return mock_response
 
@@ -103,14 +103,14 @@ class TestNextLinkPagination:
         responses = [page1, page2, page3]
         response_index = 0
         captured_urls: List[str] = []
-        captured_params: List[Dict[str, Any]] = []
+        captured_params: List[Optional[Dict[str, Any]]] = []
 
         async def mock_make_request(
             url: str,
             method: str,
-            params: Dict[str, Any],
+            params: Optional[Dict[str, Any]],
             headers: Dict[str, str],
-            body: Dict[str, Any] | None = None,
+            body: Optional[Dict[str, Any]] = None,
         ) -> MagicMock:
             nonlocal response_index
             captured_urls.append(url)
@@ -153,8 +153,8 @@ class TestNextLinkPagination:
         )
 
         assert captured_params[0] == {"$top": "100"}
-        assert captured_params[1] == {}
-        assert captured_params[2] == {}
+        assert captured_params[1] is None
+        assert captured_params[2] is None
 
     async def test_custom_next_link_path(
         self,
@@ -174,14 +174,14 @@ class TestNextLinkPagination:
         responses = [page1, page2]
         response_index = 0
         captured_urls: List[str] = []
-        captured_params: List[Dict[str, Any]] = []
+        captured_params: List[Optional[Dict[str, Any]]] = []
 
         async def mock_make_request(
             url: str,
             method: str,
-            params: Dict[str, Any],
+            params: Optional[Dict[str, Any]],
             headers: Dict[str, str],
-            body: Dict[str, Any] | None = None,
+            body: Optional[Dict[str, Any]] = None,
         ) -> MagicMock:
             nonlocal response_index
             captured_urls.append(url)
@@ -221,7 +221,7 @@ class TestNextLinkPagination:
         assert captured_urls[1] == "https://api.example.com/items?page=2"
 
         assert captured_params[0] == {"initial": "param"}
-        assert captured_params[1] == {}
+        assert captured_params[1] is None
 
 
 class TestPaginationHandlerRegistry:
