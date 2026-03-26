@@ -4,15 +4,32 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+- Fixed updatedAt date format in newRelicServiceLevel default mapping to properly transform epoch milliseconds to ISO 8601 date-time
 
 <!-- towncrier release notes start -->
 
-## 0.1.301 (2026-03-22)
+## 0.1.303 (2026-03-26)
 
 
 ### Improvements
 
-- Added explicit Literal kind definitions, introduced NewRelicSelector, enabled custom kinds support, and added title metadata to `NewRelicPortAppConfig` for schema validation compliance
+- Fixed updatedAt date format in newRelicServiceLevel default mapping to properly transform epoch milliseconds to ISO 8601 date-time
+
+
+## 0.1.302 (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.1.301 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
 
 
 ## 0.1.300 (2026-03-22)
