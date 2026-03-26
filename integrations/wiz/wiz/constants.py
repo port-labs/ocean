@@ -1,4 +1,5 @@
 PAGE_SIZE = 100
+MAX_SBOM_ARTIFACT_ENTITIES = 50_000
 AUTH0_URLS = ["https://auth.wiz.io/oauth/token", "https://auth0.gov.wiz.io/oauth/token"]
 COGNITO_URLS = [
     "https://auth.app.wiz.io/oauth/token",
@@ -320,6 +321,136 @@ query RepositoriesTable(
 }
 """
 
+SBOM_ARTIFACTS_GROUPED_BY_NAME_GQL = """
+query GetGroupedArtifacts($first: Int, $after: String) {
+  sbomArtifactsGroupedByName(first: $first, after: $after) {
+    nodes {
+      id
+      name
+      type {
+        codeLibraryLanguage
+        osPackageManager
+        plugin
+        ciComponent
+        custom
+        group
+      }
+      artifacts {
+        totalCount
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    totalCount
+  }
+}
+"""
+
+SBOM_ARTIFACTS_GQL = """
+query GetSBOMArtifactsByName($first: Int, $after: String, $filterBy: SBOMArtifactFilters) {
+  sbomArtifacts(first: $first, after: $after, filterBy: $filterBy) {
+    nodes {
+      id
+      name
+      version
+      filePath
+      transitivity
+      validatedInRuntime
+      usedInCodeResult
+      licenses {
+        id
+        name
+      }
+      asset {
+        __typename
+        ... on SBOMArtifactAssetVirtualMachine {
+          id
+          name
+          type
+          region
+          nativeType
+          cloudPlatform
+          status
+          subscription {
+            id
+            name
+          }
+        }
+        ... on SBOMArtifactAssetServerless {
+          id
+          name
+          type
+          region
+          nativeType
+          cloudPlatform
+          status
+          subscription {
+            id
+            name
+          }
+        }
+        ... on SBOMArtifactAssetContainerImage {
+          id
+          name
+          type
+          region
+          nativeType
+          cloudPlatform
+          status
+          subscription {
+            id
+            name
+          }
+        }
+        ... on SBOMArtifactAssetContainer {
+          id
+          name
+          type
+          region
+          nativeType
+          cloudPlatform
+          status
+          subscription {
+            id
+            name
+          }
+        }
+        ... on SBOMArtifactAssetRepositoryBranch {
+          id
+          name
+          type
+          nativeType
+          cloudPlatform
+          repositoryId
+          repositoryExternalId
+          repositoryName
+        }
+        ... on SBOMArtifactAssetCIWorkflow {
+          id
+          name
+          type
+          nativeType
+          cloudPlatform
+        }
+        ... on SBOMArtifactAssetCIJob {
+          id
+          name
+          type
+          nativeType
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    totalCount
+  }
+}
+"""
+
 GRAPH_QUERIES = {
     "issues": ISSUES_GQL,
     "projects": PROJECTS_GQL,
@@ -327,4 +458,6 @@ GRAPH_QUERIES = {
     "technologies": TECHNOLOGIES_GQL,
     "hostedTechnologies": HOSTED_TECHNOLOGIES_GQL,
     "repositories": REPOSITORIES_GQL,
+    "sbomArtifactsGroupedByName": SBOM_ARTIFACTS_GROUPED_BY_NAME_GQL,
+    "sbomArtifacts": SBOM_ARTIFACTS_GQL,
 }

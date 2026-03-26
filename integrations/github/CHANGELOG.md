@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.2.3 (2026-03-25)
+
+
+### Improvements
+
+- Add static resource examples to the integration, enabling blueprint mapping before any data has been ingested.
+
+
+## 5.2.2 (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 5.2.1 (2026-03-24)
+
+### Improvements
+
+- Renamed the pull request `since` selector label from "Since (Days)" to "Closed PRs Lookback Days" and updated its description to clarify it applies to the lookback window for closed pull requests.
+
+
+## 5.2.0 (2026-03-24)
+
+
+### Improvements
+
+- Renamed `included files` to `Additional files`
+
+## 5.1.36 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
 ## 5.1.35 (2026-03-22)
 
 

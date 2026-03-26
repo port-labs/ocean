@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.42-beta (2026-03-22)
+## 0.2.44-beta (2026-03-26)
 
 
 ### Improvements
 
 - Added explicit Literal kind definitions, missing resource configs, and field metadata to `JiraServerPortAppConfig` for schema validation compliance
+
+
+## 0.2.43-beta (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.2.42-beta (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
 
 
 ## 0.2.41-beta (2026-03-22)
