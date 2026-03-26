@@ -404,19 +404,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         error: Exception | None,
     ) -> None:
         if self._logger and response:
-            is_rate_limited = response.status_code == 429
-            rate_limit_reset = (response.headers.get("x-ratelimit-reset") or "").strip()
-            if is_rate_limited:
-                self._logger.warning(
-                    f"[DAN][RATE-LIMIT-HIT] {request.method} {request.url} | "
-                    f"status=429 | x-ratelimit-reset={rate_limit_reset or 'not set'} | "
-                    f"retrying in {sleep_time:.2f}s"
-                )
-            else:
-                self._logger.warning(
-                    f"Request {request.method} {request.url} failed with status code:"
-                    f" {response.status_code}, retrying in {sleep_time} seconds."  # noqa: F821
-                )
+            self._logger.warning(
+                f"Request {request.method} {request.url} failed with status code:"
+                f" {response.status_code}, retrying in {sleep_time} seconds."  # noqa: F821
+            )
         elif self._logger and error:
             self._logger.warning(
                 f"Request {request.method} {request.url} failed with exception:"
@@ -552,14 +543,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if header_value := (headers.get(header_name) or "").strip():
                     sleep_time = self._parse_retry_header(header_value)
                     if sleep_time is not None:
-                        capped = min(sleep_time, self._retry_config.max_backoff_wait)
-                        if isinstance(self._logger, logging.Logger):
-                            self._logger.warning(
-                                f"[DAN][RATE-LIMIT-HEADER-DETECTED] "
-                                f"status={status_code} | header={header_name} | "
-                                f"raw_value={header_value} | sleep={capped:.2f}s"
-                            )
-                        return capped
+                        return min(sleep_time, self._retry_config.max_backoff_wait)
 
         # Fall back to exponential backoff
         backoff = self._retry_config.base_delay * (2 ** (attempts_made - 1))
