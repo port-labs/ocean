@@ -7,13 +7,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.38.25 (2026-03-26)
-
-### Improvements
-
-- Bumped GitHub Actions security scanner to `aquasecurity/trivy-action@0.35.0` in the Docker image security scan workflow.
-
-
 ## 0.38.24 (2026-03-25)
 
 ### Improvements
