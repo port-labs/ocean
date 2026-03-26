@@ -80,8 +80,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def _get_resource_raw_results(
         self, resource_config: ResourceConfig
     ) -> tuple[RESYNC_RESULT, list[Exception]]:
-        for _ in range(300):
-            logger.info(f"Fetching {resource_config.kind} resync results")
+        logger.info(f"Fetching {resource_config.kind} resync results")
 
         if not is_resource_supported(
             resource_config.kind, self.event_strategy["resync"]
@@ -91,8 +90,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
         fns = self._collect_resync_functions(resource_config)
-        for _ in range(300):
-            logger.info(f"Found {len(fns)} resync functions for {resource_config.kind}")
+        logger.info(f"Found {len(fns)} resync functions for {resource_config.kind}")
 
         results, errors = await self._execute_resync_tasks(fns, resource_config)
 
@@ -120,10 +118,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results = []
         for task in fns:
             if inspect.isasyncgenfunction(task):
-                for _ in range(300):
-                    logger.info(
-                        f"Found async generator function for {resource_config.kind} name: {task.__qualname__}"
-                    )
+                logger.info(
+                    f"Found async generator function for {resource_config.kind} name: {task.__qualname__}"
+                )
                 results.append(
                     resync_generator_wrapper(
                         task,
@@ -134,10 +131,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
                 )
             else:
-                for _ in range(300):
-                    logger.info(
-                        f"Found sync function for {resource_config.kind} name: {task.__qualname__}"
-                    )
+                logger.info(
+                    f"Found sync function for {resource_config.kind} name: {task.__qualname__}"
+                )
                 task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
                 tasks.append(
                     resync_function_wrapper(
@@ -145,10 +141,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
                 )
 
-        for _ in range(300):
-            logger.info(
-                f"Found {len(tasks) + len(results)} resync tasks for {resource_config.kind}"
-            )
+        logger.info(
+            f"Found {len(tasks) + len(results)} resync tasks for {resource_config.kind}"
+        )
         successful_results, errors = await gather_and_split_errors_from_results(tasks)
         results.extend(
             sum(
@@ -157,10 +152,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
 
-        for _ in range(300):
-            logger.info(
-                f"Triggered {len(tasks)} tasks for {resource_config.kind}, failed: {len(errors)}"
-            )
+        logger.info(
+            f"Triggered {len(tasks)} tasks for {resource_config.kind}, failed: {len(errors)}"
+        )
 
         return results, errors
 
@@ -229,11 +223,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             _entities: list[Entity],
         ) -> AsyncGenerator[list[Entity], None]:
             # fetch entities from port in batches
-            for _ in range(300):
-                logger.info(
-                    "Fetching entities from port in batches for diff calculation, using non paginated api",
-                    batch_size=BATCH_SIZE,
-                )
+            logger.info(
+                "Fetching entities from port in batches for diff calculation, using non paginated api",
+                batch_size=BATCH_SIZE,
+            )
             for start_index in range(0, len(_entities), BATCH_SIZE):
                 entities_batch = _entities[start_index : start_index + BATCH_SIZE]
                 batch_results = await self._fetch_entities_batch_from_port(
@@ -278,24 +271,22 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         batch_index: int = 1,
     ) -> CalculationResult:
         with logger.contextualize(etl_phase=ETLPhase.TRANSFORM):
-            for _ in range(300):
-                logger.info(
-                    "Starting transform phase",
-                    batch_index=batch_index,
-                    raw_items=len(results),
-                )
+            logger.info(
+                "Starting transform phase",
+                batch_index=batch_index,
+                raw_items=len(results),
+            )
             objects_diff = await self._calculate_raw(
                 [(resource, results)], parse_all, send_raw_data_examples_amount
             )
             entities_transformed = len(objects_diff[0].entity_selector_diff.passed)
             entities_failed = len(objects_diff[0].entity_selector_diff.failed)
-            for _ in range(300):
-                logger.info(
-                    "Transform phase complete",
-                    batch_index=batch_index,
-                    entities_transformed=entities_transformed,
-                    entities_failed=entities_failed,
-                )
+            logger.info(
+                "Transform phase complete",
+                batch_index=batch_index,
+                entities_transformed=entities_transformed,
+                entities_failed=entities_failed,
+            )
 
         ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
@@ -308,12 +299,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         with logger.contextualize(etl_phase=ETLPhase.LOAD):
-            for _ in range(300):
-                logger.info(
-                    "Starting load phase",
-                    batch_index=batch_index,
-                    entities_to_load=entities_transformed,
-                )
+            logger.info(
+                "Starting load phase",
+                batch_index=batch_index,
+                entities_to_load=entities_transformed,
+            )
             modified_objects = []
 
             if event.event_type == EventType.RESYNC:
@@ -324,14 +314,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         user_agent_type,
                     )
                     if changed_entities:
-                        for _ in range(300):
-                            logger.info(
-                                "Upserting changed entities",
-                                changed_entities=len(changed_entities),
-                                total_entities=len(
-                                    objects_diff[0].entity_selector_diff.passed
-                                ),
-                            )
+                        logger.info(
+                            "Upserting changed entities",
+                            changed_entities=len(changed_entities),
+                            total_entities=len(
+                                objects_diff[0].entity_selector_diff.passed
+                            ),
+                        )
                         ocean.metrics.inc_metric(
                             name=MetricType.OBJECT_COUNT_NAME,
                             labels=[
@@ -347,13 +336,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         )
 
                     else:
-                        for _ in range(300):
-                            logger.info(
-                                "Entities in batch didn't change since last sync, skipping",
-                                total_entities=len(
-                                    objects_diff[0].entity_selector_diff.passed
-                                ),
-                            )
+                        logger.info(
+                            "Entities in batch didn't change since last sync, skipping",
+                            total_entities=len(
+                                objects_diff[0].entity_selector_diff.passed
+                            ),
+                        )
                         ocean.metrics.inc_metric(
                             name=MetricType.OBJECT_COUNT_NAME,
                             labels=[
@@ -379,12 +367,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     objects_diff[0].entity_selector_diff.passed, user_agent_type
                 )
 
-            for _ in range(300):
-                logger.info(
-                    "Load phase complete",
-                    batch_index=batch_index,
-                    entities_upserted=len(modified_objects),
-                )
+            logger.info(
+                "Load phase complete",
+                batch_index=batch_index,
+                entities_upserted=len(modified_objects),
+            )
 
         return CalculationResult(
             number_of_transformed_entities=len(
@@ -404,10 +391,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType,
     ) -> tuple[list[Entity], list[Exception]]:
         if resource.port.entity.mappings.is_using_search_identifier:
-            for _ in range(300):
-                logger.info(
-                    f"Skip unregistering resource of kind {resource.kind}, as mapping defined with search identifier"
-                )
+            logger.info(
+                f"Skip unregistering resource of kind {resource.kind}, as mapping defined with search identifier"
+            )
             return [], []
 
         objects_diff = await self._calculate_raw([(resource, results)])
@@ -416,8 +402,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         await self.entities_state_applier.delete(
             entities_selector_diff.passed, user_agent_type
         )
-        for _ in range(300):
-            logger.info("Finished unregistering change")
+        logger.info("Finished unregistering change")
         return entities_selector_diff.passed, errors
 
     @TimeMetric(MetricPhase.RESYNC)
@@ -425,8 +410,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self, resource_config: ResourceConfig, user_agent_type: UserAgentType
     ) -> tuple[list[Entity], list[Exception]]:
         with logger.contextualize(etl_phase=ETLPhase.EXTRACT):
-            for _ in range(300):
-                logger.info("Starting extract phase")
+            logger.info("Starting extract phase")
             results, errors = await self._get_resource_raw_results(resource_config)
             async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
             raw_results: RAW_RESULT = []
@@ -443,12 +427,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     raw_results, event.id, resource_config.kind, data_type="resync"
                 )
 
-            for _ in range(300):
-                logger.info(
-                    "Extract phase complete",
-                    raw_items=len(raw_results),
-                    async_generators=len(async_generators),
-                )
+            logger.info(
+                "Extract phase complete",
+                raw_items=len(raw_results),
+                async_generators=len(async_generators),
+            )
 
         send_raw_data_examples_amount = (
             SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
@@ -474,10 +457,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             number_of_transformed_entities += (
                 calculation_result.number_of_transformed_entities
             )
-            for _ in range(300):
-                logger.info(
-                    f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
-                )
+            logger.info(
+                f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
+            )
 
         for generator in async_generators:
             try:
@@ -511,10 +493,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 ocean.metrics.sync_state = SyncState.FAILED
                 errors.append(error)
 
-        for _ in range(300):
-            logger.info(
-                f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
-            )
+        logger.info(
+            f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
+        )
 
         ocean.metrics.set_metric(
             name=MetricType.SUCCESS_NAME,
@@ -573,8 +554,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         Returns:
             list[Entity]: A list of registered entities.
         """
-        for _ in range(300):
-            logger.info(f"Registering state for {kind}")
+        logger.info(f"Registering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
         resource_mappings = [
             resource for resource in config.resources if resource.kind == kind
@@ -626,10 +606,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         if filtered_entities_to_delete:
-            for _ in range(300):
-                logger.info(
-                    f"Deleting {len(filtered_entities_to_delete)} entities that didn't pass any of the selectors"
-                )
+            logger.info(
+                f"Deleting {len(filtered_entities_to_delete)} entities that didn't pass any of the selectors"
+            )
 
             await self.entities_state_applier.delete(
                 filtered_entities_to_delete, user_agent_type
@@ -655,8 +634,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         Returns:
             list[Entity]: A list of unregistered entities.
         """
-        for _ in range(300):
-            logger.info(f"Registering state for {kind}")
+        logger.info(f"Registering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
         resource_mappings = [
             resource for resource in config.resources if resource.kind == kind
@@ -696,16 +674,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             raw_desired_state (RawEntityDiff): The desired state difference of raw entities.
             user_agent_type (UserAgentType): The type of user agent.
         """
-        for _ in range(300):
-            logger.info(f"Updating state for {kind}")
+        logger.info(f"Updating state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
         resource_mappings = [
             resource for resource in config.resources if resource.kind == kind
         ]
 
         with logger.contextualize(kind=kind):
-            for _ in range(300):
-                logger.info(f"Found {len(resource_mappings)} resources for {kind}")
+            logger.info(f"Found {len(resource_mappings)} resources for {kind}")
 
             entities_before, _ = zip(
                 await self._calculate_raw(
@@ -747,11 +723,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         try:
             if not event.entity_topological_sorter.should_execute():
                 return None
-            for _ in range(300):
-                logger.info(
-                    f"Executings topological sort of {event.entity_topological_sorter.get_entities_count()} entities failed to upsert.",
-                    failed_toupsert_entities_count=event.entity_topological_sorter.get_entities_count(),
-                )
+            logger.info(
+                f"Executings topological sort of {event.entity_topological_sorter.get_entities_count()} entities failed to upsert.",
+                failed_toupsert_entities_count=event.entity_topological_sorter.get_entities_count(),
+            )
 
             for entity in event.entity_topological_sorter.get_entities():
                 await self.entities_state_applier.context.port_client.upsert_entity(
@@ -762,11 +737,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
 
         except OceanAbortException as ocean_abort:
-            for _ in range(300):
-                logger.info(
-                    f"Failed topological sort of failed to upsert entities - trying to upsert unordered {event.entity_topological_sorter.get_entities_count()} entities.",
-                    failed_topological_sort_entities_count=event.entity_topological_sorter.get_entities_count(),
-                )
+            logger.info(
+                f"Failed topological sort of failed to upsert entities - trying to upsert unordered {event.entity_topological_sorter.get_entities_count()} entities.",
+                failed_topological_sort_entities_count=event.entity_topological_sorter.get_entities_count(),
+            )
             if isinstance(ocean_abort.__cause__, CycleError):
                 for entity in event.entity_topological_sorter.get_entities(False):
                     await self.entities_state_applier.context.port_client.upsert_entity(
@@ -783,10 +757,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         index: int,
         user_agent_type: UserAgentType,
     ) -> None:
-        for _ in range(300):
-            logger.info(
-                f"process started successfully for {resource.kind} with index {index}"
-            )
+        logger.info(
+            f"process started successfully for {resource.kind} with index {index}"
+        )
 
         clear_http_client_context()
 
@@ -799,8 +772,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
         asyncio.run(process_resource_task())
-        for _ in range(300):
-            logger.info(f"Process finished for {resource.kind} with index {index}")
+        logger.info(f"Process finished for {resource.kind} with index {index}")
 
     async def _process_resource(
         self, resource: ResourceConfig, index: int, user_agent_type: UserAgentType
@@ -853,8 +825,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         app_config: Any,
         silent: bool = True,
     ) -> None:
-        for _ in range(300):
-            logger.info("Resync reconciliation subprocess started successfully")
+        logger.info("Resync reconciliation subprocess started successfully")
 
         clear_http_client_context()
 
@@ -869,8 +840,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             file_ipc_map["resync_reconciliation"].save(result)
 
         asyncio.run(resync_reconciliation_task())
-        for _ in range(300):
-            logger.info("Resync reconciliation subprocess finished")
+        logger.info("Resync reconciliation subprocess finished")
 
     async def process_resource(
         self, resource: ResourceConfig, index: int, user_agent_type: UserAgentType
@@ -878,8 +848,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         with logger.contextualize(resource_kind=resource.kind, index=index):
             if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
                 id = uuid.uuid4()
-                for _ in range(300):
-                    logger.info(f"Starting subprocess with id {id}")
+                logger.info(f"Starting subprocess with id {id}")
                 file_ipc_map = {
                     "process_resource": FileIPC(
                         str(id),
@@ -940,8 +909,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         """
         with logger.contextualize(etl_phase=ETLPhase.RECONCILIATION):
-            for _ in range(300):
-                logger.info("Starting reconciliation phase")
+            logger.info("Starting reconciliation phase")
 
             await self.sort_and_upsert_failed_entities(user_agent_type)
 
@@ -952,8 +920,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
                 return False
 
-            for _ in range(300):
-                logger.info("Starting resync diff calculation")
+            logger.info("Starting resync diff calculation")
             generated_entities, errors = zip_and_sum(creation_results) or [
                 [],
                 [],
@@ -971,10 +938,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.error(message, exc_info=error_group)
                 return False
 
-            for _ in range(300):
-                logger.info(
-                    f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
-                )
+            logger.info(
+                f"Running resync diff calculation, number of entities created during sync: {len(generated_entities)}"
+            )
             resync_start_time: datetime | None = event.attributes.get(
                 "resync_start_time"
             )
@@ -997,22 +963,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         },
                     ],
                 }
-            for _ in range(300):
-                logger.info(
-                    "Fetching current entity state from Port",
-                    entities_synced=len(generated_entities),
-                )
+            logger.info(
+                "Fetching current entity state from Port",
+                entities_synced=len(generated_entities),
+            )
             entities_at_port = await ocean.port_client.search_entities(
                 user_agent_type, query
             )
             entities_to_delete = max(0, len(entities_at_port) - len(generated_entities))
-            for _ in range(300):
-                logger.info(
-                    "Calculating diff and deleting stale entities",
-                    entities_at_port=len(entities_at_port),
-                    entities_synced=len(generated_entities),
-                    entities_to_delete=entities_to_delete,
-                )
+            logger.info(
+                "Calculating diff and deleting stale entities",
+                entities_at_port=len(entities_at_port),
+                entities_synced=len(generated_entities),
+                entities_to_delete=entities_to_delete,
+            )
 
             await self.entities_state_applier.delete_diff(
                 {"before": entities_at_port, "after": generated_entities},
@@ -1020,27 +984,23 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 app_config.entity_deletion_threshold,
             )
 
-            for _ in range(300):
-                logger.info(
-                    "Reconciliation phase complete",
-                    entities_at_port=len(entities_at_port),
-                    entities_synced=len(generated_entities),
-                    entities_to_delete=entities_to_delete,
-                )
+            logger.info(
+                "Reconciliation phase complete",
+                entities_at_port=len(entities_at_port),
+                entities_synced=len(generated_entities),
+                entities_to_delete=entities_to_delete,
+            )
 
-            for _ in range(300):
-                logger.info("Resync finished successfully")
+            logger.info("Resync finished successfully")
 
             # Execute resync_complete hooks
             if "resync_complete" in self.event_strategy:
-                for _ in range(300):
-                    logger.info("Executing resync_complete hooks")
+                logger.info("Executing resync_complete hooks")
 
                 for resync_complete_fn in self.event_strategy["resync_complete"]:
                     await resync_complete_fn()
 
-                for _ in range(300):
-                    logger.info("Finished executing resync_complete hooks")
+                logger.info("Finished executing resync_complete hooks")
 
             return True
 
@@ -1054,8 +1014,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> bool:
         if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
             id = uuid.uuid4()
-            for _ in range(300):
-                logger.info(f"Starting resync reconciliation in subprocess with id {id}")
+            logger.info(f"Starting resync reconciliation in subprocess with id {id}")
 
             file_ipc_map = {
                 "resync_reconciliation": FileIPC(
@@ -1147,9 +1106,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             user_agent_type (UserAgentType): The type of user agent.
             silent (bool): Whether to raise exceptions or handle them silently.
         """
-        for _ in range(300):
-            logger.info("Resync was triggered")
-
+        logger.info("Resync was triggered")
 
         async with event_context(
             EventType.RESYNC,
@@ -1163,8 +1120,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
-            for _ in range(300):
-                logger.info(f"Resync will use the following mappings: {app_config.dict()}")
+            logger.info(f"Resync will use the following mappings: {app_config.dict()}")
 
             kinds = [
                 f"{resource.kind}-{index}"
