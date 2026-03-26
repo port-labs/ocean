@@ -7,13 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.116-beta (2026-03-24)
+## 0.1.116-beta (2026-03-25)
 
 
-### Features
+### Improvements
 
-- Add proactive rate limiting to Aikido integration using aiolimiter (15 req/min) to prevent 429 errors
-- Add Retry-After header handling via RetryConfig to gracefully handle 429 responses
+- Bumped ocean version to ^0.38.24
 
 
 ## 0.1.115-beta (2026-03-24)

@@ -155,6 +155,8 @@ class PortAppConfig(_FieldMetadataEnforcer):
     entity_deletion_threshold: float = Field(
         alias="entityDeletionThreshold",
         default=0.9,
+        ge=0,
+        le=1,
         title="Deletion safety limit",
         description="Skip deletion if the number of entities to delete exceeds this percentage of total entities. Set between 0 and 1. Protects against accidental mass deletion from misconfigurations.",
     )
