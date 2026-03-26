@@ -23,7 +23,7 @@ from port_ocean.utils.signal import signal_handler
 class AzureDevopsSelector(Selector):
     default_team: bool = Field(
         default=False,
-        title="Default Team",
+        title="Include Default Team",
         description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
         alias="defaultTeam",
     )
@@ -129,7 +129,7 @@ class FilePattern(BaseModel):
     )
     repos: Optional[List[str]] = Field(
         default=None,
-        title="Repositories",
+        title="Specific Repositories",
         description="List of repository names to scan. If None, scans all repositories.",
     )
 
@@ -139,13 +139,14 @@ class FilePattern(BaseModel):
 
 class AzureDevopsFileSelector(Selector):
     files: FilePattern = Field(
-        title="Files",
+        title="File sync patterns",
         description="Configuration for file selection and scanning.",
     )
     included_files: list[str] = Field(
         alias="includedFiles",
         default_factory=list,
-        description="List of file paths to fetch and attach to the file entity",
+        title="Additional files",
+        description="List of file paths to fetch and attach to the file entity. This selector will add the content of the file to the API response under the `__includedFiles` field.",
     )
 
 
@@ -275,7 +276,7 @@ class AzureDevopsRepositorySelector(Selector):
     included_files: list[str] = Field(
         alias="includedFiles",
         default_factory=list,
-        title="Included Files",
+        title="Attached Files",
         description=(
             "List of file paths to fetch from the repository and attach to "
             "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"

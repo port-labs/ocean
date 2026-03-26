@@ -1,0 +1,24 @@
+{
+  "id": "10071",
+  "name": ".NET Core SDK",
+  "description": ".NET Core SDK is a set of libraries and tools that allow developers to create .NET Core applications and libraries. It includes the .NET Core runtime for running applications, but also provides additional capabilities for building, testing, and debugging .NET Core applications. The SDK also includes a command line interface (CLI) for performing various tasks such as project creation, code compilation, and package management.",
+  "categories": [
+    {
+      "name": "Frameworks & Libraries"
+    }
+  ],
+  "usage": "COMMON",
+  "status": "UNREVIEWED",
+  "risk": "MEDIUM",
+  "note": null,
+  "ownerName": "Microsoft Corporation",
+  "businessModel": "COMMERCIAL_OPEN_SOURCE",
+  "popularity": "VERY_COMMON",
+  "projectCount": 0,
+  "codeRepoCount": 0,
+  "isCloudService": false,
+  "supportedOperatingSystems": [
+    "WINDOWS",
+    "LINUX"
+  ]
+}

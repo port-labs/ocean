@@ -1,0 +1,23 @@
+{
+  "id": "7880",
+  "name": ".NET Framework",
+  "description": ".NET Framework is a software development platform developed by Microsoft. It provides a controlled programming environment where software can be developed, installed, and executed on Windows-based operating systems. It primarily supports the creation and management of Windows applications and web services.",
+  "categories": [
+    {
+      "name": "Frameworks & Libraries"
+    }
+  ],
+  "usage": "COMMON",
+  "status": "UNREVIEWED",
+  "risk": "MEDIUM",
+  "note": null,
+  "ownerName": "Microsoft Corporation",
+  "businessModel": "COMMERCIAL_PROPRIETARY",
+  "popularity": "VERY_COMMON",
+  "projectCount": 4,
+  "codeRepoCount": 0,
+  "isCloudService": false,
+  "supportedOperatingSystems": [
+    "WINDOWS"
+  ]
+}

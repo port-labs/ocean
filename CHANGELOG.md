@@ -7,6 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.24 (2026-03-25)
+
+### Improvements
+
+- Enforced strict boundaries for entity_deletion_threshold, allowing only values between 0 and 1
+
+
+## 0.38.23 (2026-03-24)
+
+### Improvements
+
+- Revised descriptions for port-app-config root flags
+
+
 ## 0.38.22 (2026-03-19)
 
 ### Features
