@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.115-beta (2026-03-22)
+## 0.1.117-beta (2026-03-26)
 
 
 ### Improvements
 
 - Added explicit Literal kind definitions and missing resource config models to AikidoPortAppConfig for schema validation compliance
+
+
+## 0.1.116-beta (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.1.115-beta (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
 
 
 ## 0.1.114-beta (2026-03-22)
