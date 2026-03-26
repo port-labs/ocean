@@ -66,12 +66,14 @@ class ProjectWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 include_bot_members=include_bot_members,
                 include_inherited_members=include_inherited_members,
             )
-        else:
-            logger.warning(f"Project with ID '{project_id}' not found")
-            project = {}
+            return WebhookEventRawResults(
+                updated_raw_results=[project],
+                deleted_raw_results=[],
+            )
 
+        logger.warning(f"Project with ID '{project_id}' not found")
         return WebhookEventRawResults(
-            updated_raw_results=[project],
+            updated_raw_results=[],
             deleted_raw_results=[],
         )
 

@@ -223,8 +223,7 @@ class TestProjectWithMemberWebhookProcessor:
 
         result = await processor.handle_event(member_add_payload, resource_config)
 
-        assert len(result.updated_raw_results) == 1
-        assert result.updated_raw_results[0] == {}
+        assert not result.updated_raw_results
         assert not result.deleted_raw_results
 
     async def test_should_process_event(
