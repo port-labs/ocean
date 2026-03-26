@@ -46,6 +46,7 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
                 "port_client": port_client,
                 "max_backoff_wait": FIVE_MINUETS,
                 "base_delay": 0.3,
+                "retry_after_headers": ["Retry-After", "x-ratelimit-reset"],
             },
             timeout=PORT_HTTPX_TIMEOUT,
             limits=PORT_HTTPX_LIMITS,
