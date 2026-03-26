@@ -1,0 +1,130 @@
+{
+  "number": 235,
+  "state": "open",
+  "dependency": {
+    "package": {
+      "ecosystem": "npm",
+      "name": "undici"
+    },
+    "manifest_path": "remote/package-lock.json",
+    "scope": "runtime",
+    "relationship": "transitive"
+  },
+  "security_advisory": {
+    "ghsa_id": "GHSA-v9p9-hfj2-hcw8",
+    "cve_id": "CVE-2026-2229",
+    "summary": "Undici has Unhandled Exception in WebSocket Client Due to Invalid server_max_window_bits Validation",
+    "description": "### Impact\n\nThe undici WebSocket client is vulnerable to a denial-of-service attack due to improper validation of the `server_max_window_bits` parameter in the permessage-deflate extension. When a WebSocket client connects to a server, it automatically advertises support for permessage-deflate compression. A malicious server can respond with an out-of-range `server_max_window_bits` value (outside zlib's valid range of 8-15). When the server subsequently sends a compressed frame, the client attempts to create a zlib InflateRaw instance with the invalid windowBits value, causing a synchronous RangeError exception that is not caught, resulting in immediate process termination.\n\nThe vulnerability exists because:\n\n1. The `isValidClientWindowBits()` function only validates that the value contains ASCII digits, not that it falls within the valid range 8-15\n2. The `createInflateRaw()` call is not wrapped in a try-catch block\n3. The resulting exception propagates up through the call stack and crashes the Node.js process\n\n### Patches\n_Has the problem been patched? What versions should users upgrade to?_\n\n### Workarounds\n_Is there a way for users to fix or remediate the vulnerability without upgrading?_",
+    "severity": "high",
+    "identifiers": [
+      {
+        "value": "GHSA-v9p9-hfj2-hcw8",
+        "type": "GHSA"
+      },
+      {
+        "value": "CVE-2026-2229",
+        "type": "CVE"
+      }
+    ],
+    "references": [
+      {
+        "url": "https://github.com/nodejs/undici/security/advisories/GHSA-v9p9-hfj2-hcw8"
+      },
+      {
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-2229"
+      },
+      {
+        "url": "https://hackerone.com/reports/3487486"
+      },
+      {
+        "url": "https://cna.openjsf.org/security-advisories.html"
+      },
+      {
+        "url": "https://datatracker.ietf.org/doc/html/rfc7692"
+      },
+      {
+        "url": "https://nodejs.org/api/zlib.html#class-zlibinflateraw"
+      },
+      {
+        "url": "https://github.com/advisories/GHSA-v9p9-hfj2-hcw8"
+      }
+    ],
+    "published_at": "2026-03-13T20:41:41Z",
+    "updated_at": "2026-03-13T20:41:44Z",
+    "withdrawn_at": null,
+    "vulnerabilities": [
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "undici"
+        },
+        "severity": "high",
+        "vulnerable_version_range": "< 6.24.0",
+        "first_patched_version": {
+          "identifier": "6.24.0"
+        }
+      },
+      {
+        "package": {
+          "ecosystem": "npm",
+          "name": "undici"
+        },
+        "severity": "high",
+        "vulnerable_version_range": ">= 7.0.0, < 7.24.0",
+        "first_patched_version": {
+          "identifier": "7.24.0"
+        }
+      }
+    ],
+    "cvss_severities": {
+      "cvss_v3": {
+        "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "score": 7.5
+      },
+      "cvss_v4": {
+        "vector_string": null,
+        "score": 0
+      }
+    },
+    "epss": {
+      "percentage": 0.00186,
+      "percentile": 0.40303
+    },
+    "cvss": {
+      "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "score": 7.5
+    },
+    "cwes": [
+      {
+        "cwe_id": "CWE-248",
+        "name": "Uncaught Exception"
+      }
+    ],
+    "classification": "general"
+  },
+  "security_vulnerability": {
+    "package": {
+      "ecosystem": "npm",
+      "name": "undici"
+    },
+    "severity": "high",
+    "vulnerable_version_range": ">= 7.0.0, < 7.24.0",
+    "first_patched_version": {
+      "identifier": "7.24.0"
+    }
+  },
+  "url": "https://api.github.com/repos/port-gh-app-dev/vscode/dependabot/alerts/235",
+  "html_url": "https://github.com/port-gh-app-dev/vscode/security/dependabot/235",
+  "created_at": "2026-03-14T00:38:55Z",
+  "updated_at": "2026-03-14T00:38:55Z",
+  "dismissal_request": null,
+  "assignees": [],
+  "dismissed_at": null,
+  "dismissed_by": null,
+  "dismissed_reason": null,
+  "dismissed_comment": null,
+  "fixed_at": null,
+  "auto_dismissed_at": null,
+  "__repository": "vscode",
+  "__organization": "port-gh-app-dev"
+}
