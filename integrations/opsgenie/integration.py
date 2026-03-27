@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Literal
+from typing import Any, Literal
 from pydantic import Field, BaseModel
 
 from port_ocean.core.handlers import APIPortAppConfig
@@ -103,7 +103,10 @@ class AlertResourceConfig(ResourceConfig):
         title="OpsGenie Alert",
         description="An alert synced from your OpsGenie account",
     )
-    selector: AlertAndIncidentSelector
+    selector: AlertAndIncidentSelector = Field(
+        title="Alert Selector",
+        description="The selector to filter which alerts to sync",
+    )
 
 
 class IncidentResourceConfig(ResourceConfig):
@@ -111,7 +114,10 @@ class IncidentResourceConfig(ResourceConfig):
         title="OpsGenie Incident",
         description="An incident synced from your OpsGenie account",
     )
-    selector: AlertAndIncidentSelector
+    selector: AlertAndIncidentSelector = Field(
+        title="Incident Selector",
+        description="The selector to filter which incidents to sync",
+    )
 
 
 class ServiceResourceConfig(ResourceConfig):
@@ -119,7 +125,10 @@ class ServiceResourceConfig(ResourceConfig):
         title="OpsGenie Service",
         description="A service synced from your OpsGenie account",
     )
-    selector: Selector
+    selector: Selector = Field(
+        title="Service Selector",
+        description="The selector to filter which services to sync",
+    )
 
 
 class ScheduleResourceConfig(ResourceConfig):
@@ -127,7 +136,10 @@ class ScheduleResourceConfig(ResourceConfig):
         title="OpsGenie Schedule",
         description="A schedule synced from your OpsGenie account",
     )
-    selector: ScheduleSelector
+    selector: ScheduleSelector = Field(
+        title="Schedule Selector",
+        description="The selector to filter which schedules to sync",
+    )
 
 
 class ScheduleOncallResourceConfig(ResourceConfig):
@@ -135,7 +147,10 @@ class ScheduleOncallResourceConfig(ResourceConfig):
         title="OpsGenie Schedule On-Call",
         description="On-call data for a schedule synced from your OpsGenie account",
     )
-    selector: Selector
+    selector: Selector = Field(
+        title="Schedule On-Call Selector",
+        description="The selector to filter which on-call schedules to sync",
+    )
 
 
 class TeamResourceConfig(ResourceConfig):
@@ -143,7 +158,10 @@ class TeamResourceConfig(ResourceConfig):
         title="OpsGenie Team",
         description="A team synced from your OpsGenie account",
     )
-    selector: TeamSelector
+    selector: TeamSelector = Field(
+        title="Team Selector",
+        description="The selector to filter which teams to sync",
+    )
 
 
 class UserResourceConfig(ResourceConfig):
@@ -151,7 +169,10 @@ class UserResourceConfig(ResourceConfig):
         title="OpsGenie User",
         description="A user synced from your OpsGenie account",
     )
-    selector: Selector
+    selector: Selector = Field(
+        title="User Selector",
+        description="The selector to filter which users to sync",
+    )
 
 
 class OpsGeniePortAppConfig(PortAppConfig):
@@ -163,7 +184,9 @@ class OpsGeniePortAppConfig(PortAppConfig):
         | ScheduleOncallResourceConfig
         | TeamResourceConfig
         | UserResourceConfig
-    ] = Field(default_factory=list)  # type: ignore[assignment]
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
 
 
 class OpsGenieIntegration(BaseIntegration):
