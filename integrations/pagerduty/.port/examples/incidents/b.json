@@ -1,0 +1,200 @@
+{
+  "incident_number": 272,
+  "title": "Test Title",
+  "description": "Test Title",
+  "created_at": "2025-11-07T08:54:23Z",
+  "updated_at": "2025-11-07T08:54:23Z",
+  "status": "triggered",
+  "incident_key": "ae29c278c0f747b18c9c225b981a711a",
+  "service": {
+    "id": "P00BUSE",
+    "type": "service_reference",
+    "summary": "API Gateway MTBF Test",
+    "self": "https://api.pagerduty.com/services/P00BUSE",
+    "html_url": "https://getport-io.pagerduty.com/service-directory/P00BUSE"
+  },
+  "assignments": [
+    {
+      "at": "2025-11-07T08:54:23Z",
+      "assignee": {
+        "name": "John Doe",
+        "email": "jdoe@getport.io",
+        "time_zone": "Asia/Jerusalem",
+        "color": "purple",
+        "avatar_url": "https://secure.gravatar.com/avatar/45c8178b572b583254694ab0aa3aaf4b.png?d=mm&r=PG",
+        "billed": true,
+        "role": "owner",
+        "description": null,
+        "invitation_sent": false,
+        "job_title": null,
+        "teams": [],
+        "created_via_sso": false,
+        "contact_methods": [
+          {
+            "id": "PCQ9T3Z",
+            "type": "email_contact_method_reference",
+            "summary": "Default",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PCQ9T3Z",
+            "html_url": null
+          },
+          {
+            "id": "PRV0DHB",
+            "type": "phone_contact_method_reference",
+            "summary": "Mobile",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PRV0DHB",
+            "html_url": null
+          },
+          {
+            "id": "P0CNH3N",
+            "type": "push_notification_contact_method_reference",
+            "summary": "iPhone",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/P0CNH3N",
+            "html_url": null
+          },
+          {
+            "id": "PV4OEX1",
+            "type": "sms_contact_method_reference",
+            "summary": "Mobile",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PV4OEX1",
+            "html_url": null
+          }
+        ],
+        "notification_rules": [
+          {
+            "id": "POGJIWU",
+            "type": "assignment_notification_rule_reference",
+            "summary": "0 minutes: channel PCQ9T3Z",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/POGJIWU",
+            "html_url": null
+          },
+          {
+            "id": "P70207T",
+            "type": "assignment_notification_rule_reference",
+            "summary": "1 minutes: channel PCQ9T3Z",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P70207T",
+            "html_url": null
+          },
+          {
+            "id": "PNZQ0JG",
+            "type": "assignment_notification_rule_reference",
+            "summary": "3 minutes: channel PRV0DHB",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/PNZQ0JG",
+            "html_url": null
+          },
+          {
+            "id": "P4DEOZ7",
+            "type": "assignment_notification_rule_reference",
+            "summary": "0 minutes: channel P0CNH3N",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P4DEOZ7",
+            "html_url": null
+          },
+          {
+            "id": "P3QDMV3",
+            "type": "assignment_notification_rule_reference",
+            "summary": "2 minutes: channel PV4OEX1",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P3QDMV3",
+            "html_url": null
+          }
+        ],
+        "locale": "en-US",
+        "id": "P4K4DLP",
+        "type": "user",
+        "summary": "John Doe",
+        "self": "https://api.pagerduty.com/users/P4K4DLP",
+        "html_url": "https://getport-io.pagerduty.com/users/P4K4DLP"
+      }
+    }
+  ],
+  "assigned_via": "escalation_policy",
+  "last_status_change_at": "2025-11-07T08:54:23Z",
+  "resolved_at": null,
+  "first_trigger_log_entry": {
+    "id": "R47P5EBY5LBMJQ2UR7X8MKF4W9",
+    "type": "trigger_log_entry",
+    "summary": "Triggered through the website.",
+    "self": "https://api.pagerduty.com/log_entries/R47P5EBY5LBMJQ2UR7X8MKF4W9",
+    "html_url": "https://getport-io.pagerduty.com/incidents/Q2LUAAA3RGK9UP/log_entries/R47P5EBY5LBMJQ2UR7X8MKF4W9",
+    "created_at": "2025-11-07T08:54:23Z",
+    "agent": {
+      "id": "PJCRRLH",
+      "type": "user_reference",
+      "summary": "isaac",
+      "self": "https://api.pagerduty.com/users/PJCRRLH",
+      "html_url": "https://getport-io.pagerduty.com/users/PJCRRLH"
+    },
+    "channel": {
+      "type": "web_trigger",
+      "summary": "Test Title",
+      "subject": "Test Title",
+      "details": "test"
+    },
+    "service": {
+      "id": "P00BUSE",
+      "type": "service_reference",
+      "summary": "API Gateway MTBF Test",
+      "self": "https://api.pagerduty.com/services/P00BUSE",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P00BUSE"
+    },
+    "incident": {
+      "id": "Q2LUAAA3RGK9UP",
+      "type": "incident_reference",
+      "summary": "[#272] Test Title",
+      "self": "https://api.pagerduty.com/incidents/Q2LUAAA3RGK9UP",
+      "html_url": "https://getport-io.pagerduty.com/incidents/Q2LUAAA3RGK9UP"
+    },
+    "teams": [],
+    "contexts": [],
+    "event_details": {
+      "description": "Test Title"
+    }
+  },
+  "alert_counts": {
+    "all": 0,
+    "triggered": 0,
+    "resolved": 0
+  },
+  "is_mergeable": true,
+  "incident_type": {
+    "name": "incident_default"
+  },
+  "escalation_policy": {
+    "id": "P7LVMYP",
+    "type": "escalation_policy_reference",
+    "summary": "Backend Escalation Policy",
+    "self": "https://api.pagerduty.com/escalation_policies/P7LVMYP",
+    "html_url": "https://getport-io.pagerduty.com/escalation_policies/P7LVMYP"
+  },
+  "teams": [],
+  "pending_actions": [],
+  "acknowledgements": [],
+  "basic_alert_grouping": null,
+  "alert_grouping": null,
+  "last_status_change_by": {
+    "id": "P00BUSE",
+    "type": "service_reference",
+    "summary": "API Gateway MTBF Test",
+    "self": "https://api.pagerduty.com/services/P00BUSE",
+    "html_url": "https://getport-io.pagerduty.com/service-directory/P00BUSE"
+  },
+  "priority": {
+    "id": "PHFV7WH",
+    "type": "priority",
+    "summary": "P2",
+    "self": "https://api.pagerduty.com/priorities/PHFV7WH",
+    "html_url": null,
+    "account_id": "PDK8E7Y",
+    "color": "eb6016",
+    "created_at": "2023-08-14T09:49:11Z",
+    "description": "",
+    "name": "P2",
+    "order": 400000000,
+    "schema_version": 0,
+    "updated_at": "2023-08-14T09:49:11Z"
+  },
+  "urgency": "low",
+  "id": "Q2LUAAA3RGK9UP",
+  "type": "incident",
+  "summary": "[#272] Test Title",
+  "self": "https://api.pagerduty.com/incidents/Q2LUAAA3RGK9UP",
+  "html_url": "https://getport-io.pagerduty.com/incidents/Q2LUAAA3RGK9UP"
+}

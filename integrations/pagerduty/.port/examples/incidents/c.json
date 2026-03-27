@@ -1,0 +1,144 @@
+{
+  "incident_number": 274,
+  "title": "High latency detected in checkout flow - MCP Guide Test",
+  "description": "High latency detected in checkout flow - MCP Guide Test",
+  "created_at": "2025-12-02T04:41:16Z",
+  "updated_at": "2025-12-02T05:11:16Z",
+  "status": "triggered",
+  "incident_key": "aa3ce5d67016411c98f10ec372c5b921",
+  "service": {
+    "id": "P7QOAJ8",
+    "type": "service_reference",
+    "summary": "PORT-2",
+    "self": "https://api.pagerduty.com/services/P7QOAJ8",
+    "html_url": "https://getport-io.pagerduty.com/service-directory/P7QOAJ8"
+  },
+  "assignments": [
+    {
+      "at": "2025-12-02T04:41:16Z",
+      "assignee": {
+        "name": "Jane Smith",
+        "email": "jsmith@getport.io",
+        "time_zone": "Asia/Jerusalem",
+        "color": "green",
+        "avatar_url": "https://secure.gravatar.com/avatar/0d5d34ceb820d324d69046a1b2f51dc0.png?d=mm&r=PG",
+        "billed": true,
+        "role": "admin",
+        "description": null,
+        "invitation_sent": false,
+        "job_title": null,
+        "teams": [],
+        "created_via_sso": false,
+        "contact_methods": [
+          {
+            "id": "PKDRC7X",
+            "type": "email_contact_method_reference",
+            "summary": "Default",
+            "self": "https://api.pagerduty.com/users/PJCRRLH/contact_methods/PKDRC7X",
+            "html_url": null
+          }
+        ],
+        "notification_rules": [
+          {
+            "id": "PL8ZDWC",
+            "type": "assignment_notification_rule_reference",
+            "summary": "0 minutes: channel PKDRC7X",
+            "self": "https://api.pagerduty.com/users/PJCRRLH/notification_rules/PL8ZDWC",
+            "html_url": null
+          },
+          {
+            "id": "PRIX7O7",
+            "type": "assignment_notification_rule_reference",
+            "summary": "0 minutes: channel PKDRC7X",
+            "self": "https://api.pagerduty.com/users/PJCRRLH/notification_rules/PRIX7O7",
+            "html_url": null
+          }
+        ],
+        "locale": "en-US",
+        "id": "PJCRRLH",
+        "type": "user",
+        "summary": "Jane Smith",
+        "self": "https://api.pagerduty.com/users/PJCRRLH",
+        "html_url": "https://getport-io.pagerduty.com/users/PJCRRLH"
+      }
+    }
+  ],
+  "assigned_via": "escalation_policy",
+  "last_status_change_at": "2025-12-02T05:11:16Z",
+  "resolved_at": null,
+  "first_trigger_log_entry": {
+    "id": "R7AUN8LWB4WCWFTMQWG7J1GW9J",
+    "type": "trigger_log_entry",
+    "summary": "Triggered through the website.",
+    "self": "https://api.pagerduty.com/log_entries/R7AUN8LWB4WCWFTMQWG7J1GW9J",
+    "html_url": "https://getport-io.pagerduty.com/incidents/Q3XPBJRWJEU9R9/log_entries/R7AUN8LWB4WCWFTMQWG7J1GW9J",
+    "created_at": "2025-12-02T04:41:16Z",
+    "agent": {
+      "id": "PJCRRLH",
+      "type": "user_reference",
+      "summary": "Jane Smith",
+      "self": "https://api.pagerduty.com/users/PJCRRLH",
+      "html_url": "https://getport-io.pagerduty.com/users/PJCRRLH"
+    },
+    "channel": {
+      "type": "api",
+      "summary": "High latency detected in checkout flow - MCP Guide Test",
+      "subject": "High latency detected in checkout flow - MCP Guide Test",
+      "details": "This incident was triggered via Port MCP to demonstrate action execution in the documentation guide."
+    },
+    "service": {
+      "id": "P7QOAJ8",
+      "type": "service_reference",
+      "summary": "PORT-2",
+      "self": "https://api.pagerduty.com/services/P7QOAJ8",
+      "html_url": "https://getport-io.pagerduty.com/service-directory/P7QOAJ8"
+    },
+    "incident": {
+      "id": "Q3XPBJRWJEU9R9",
+      "type": "incident_reference",
+      "summary": "[#274] High latency detected in checkout flow - MCP Guide Test",
+      "self": "https://api.pagerduty.com/incidents/Q3XPBJRWJEU9R9",
+      "html_url": "https://getport-io.pagerduty.com/incidents/Q3XPBJRWJEU9R9"
+    },
+    "teams": [],
+    "contexts": [],
+    "event_details": {
+      "description": "High latency detected in checkout flow - MCP Guide Test"
+    }
+  },
+  "alert_counts": {
+    "all": 0,
+    "triggered": 0,
+    "resolved": 0
+  },
+  "is_mergeable": true,
+  "incident_type": {
+    "name": "incident_default"
+  },
+  "escalation_policy": {
+    "id": "P7LVMYP",
+    "type": "escalation_policy_reference",
+    "summary": "Backend Escalation Policy",
+    "self": "https://api.pagerduty.com/escalation_policies/P7LVMYP",
+    "html_url": "https://getport-io.pagerduty.com/escalation_policies/P7LVMYP"
+  },
+  "teams": [],
+  "pending_actions": [],
+  "acknowledgements": [],
+  "basic_alert_grouping": null,
+  "alert_grouping": null,
+  "last_status_change_by": {
+    "id": "P7QOAJ8",
+    "type": "service_reference",
+    "summary": "PORT-2",
+    "self": "https://api.pagerduty.com/services/P7QOAJ8",
+    "html_url": "https://getport-io.pagerduty.com/service-directory/P7QOAJ8"
+  },
+  "priority": null,
+  "urgency": "high",
+  "id": "Q3XPBJRWJEU9R9",
+  "type": "incident",
+  "summary": "[#274] High latency detected in checkout flow - MCP Guide Test",
+  "self": "https://api.pagerduty.com/incidents/Q3XPBJRWJEU9R9",
+  "html_url": "https://getport-io.pagerduty.com/incidents/Q3XPBJRWJEU9R9"
+}
