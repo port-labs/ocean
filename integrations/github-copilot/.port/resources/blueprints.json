@@ -107,10 +107,50 @@
         "git_hub_org": {
           "type": "string",
           "title": "GitHub Org"
+        },
+        "weekly_active_users": {
+          "type": "number",
+          "title": "Weekly Active Users"
+        },
+        "monthly_active_chat_users": {
+          "type": "number",
+          "title": "Monthly Active Chat Users"
+        },
+        "monthly_active_agent_users": {
+          "type": "number",
+          "title": "Monthly Active Agent Users"
+        },
+        "loc_suggested_to_delete_sum": {
+          "type": "number",
+          "title": "LOC Suggested To Delete"
+        },
+        "loc_deleted_sum": {
+          "type": "number",
+          "title": "LOC Deleted"
+        },
+        "prs_created_by_copilot": {
+          "icon": "DefaultProperty",
+          "type": "number",
+          "title": "PRs Created by Copilot"
+        },
+        "prs_reviewed_by_copilot": {
+          "icon": "DefaultProperty",
+          "type": "number",
+          "title": "PRs Reviewed By Copilot"
+        },
+        "prs_merged_by_copilot": {
+          "icon": "DefaultProperty",
+          "type": "number",
+          "title": "PRs Merged By Copilot"
+        },
+        "total_copilot_applied_suggestions": {
+          "type": "number",
+          "title": "Total Suggestions Applied By Copilot"
         }
       },
       "required": []
     },
+    "mirrorProperties": {},
     "calculationProperties": {
       "acceptance_rate": {
         "title": "Acceptance Rate",
@@ -118,7 +158,9 @@
         "calculation": "if (.properties.code_generation_activity_count == 0) then 0 else ((.properties.code_acceptance_activity_count / .properties.code_generation_activity_count) * 100 | round) end",
         "type": "number"
       }
-    }
+    },
+    "aggregationProperties": {},
+    "relations": {}
   },
   {
     "identifier": "githubCopilotUserUsage",
