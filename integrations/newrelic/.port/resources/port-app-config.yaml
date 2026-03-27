@@ -84,7 +84,7 @@ resources:
             description: .serviceLevel.indicators[0].description
             targetThreshold: .serviceLevel.indicators[0].objectives[0].target
             createdAt: if .serviceLevel.indicators[0].createdAt != null then (.serviceLevel.indicators[0].createdAt | tonumber / 1000 | todate) else null end
-            updatedAt: .serviceLevel.indicators[0].updatedAt
+            updatedAt: if .serviceLevel.indicators[0].updatedAt != null then (.serviceLevel.indicators[0].updatedAt | tonumber / 1000 | todate) else null end
             createdBy: .serviceLevel.indicators[0].createdBy.email
             sli: .__SLI.SLI
             tags: .tags

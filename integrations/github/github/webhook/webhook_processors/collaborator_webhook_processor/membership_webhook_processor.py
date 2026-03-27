@@ -118,9 +118,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
             collaborator_copy = response.copy()
             list_of_collaborators.append(
                 enrich_with_organization(
-                    enrich_with_repository(
-                        collaborator_copy, repository["name"], repo=repository
-                    ),
+                    enrich_with_repository(collaborator_copy, repository["name"]),
                     organization,
                 )
             )
