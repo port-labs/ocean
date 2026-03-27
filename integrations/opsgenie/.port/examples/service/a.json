@@ -1,0 +1,14 @@
+{
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0051",
+  "name": "Test Escalation Service",
+  "description": "escalation policy service",
+  "teamId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012",
+  "tags": [
+    "escalate"
+  ],
+  "links": {
+    "web": "https://app.opsgenie.com/service/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0051/status",
+    "api": "https://api.opsgenie.com/v1/services/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0051"
+  },
+  "isExternal": false
+}

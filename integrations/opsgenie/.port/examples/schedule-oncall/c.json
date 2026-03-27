@@ -1,0 +1,20 @@
+{
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0021",
+  "name": "Devops Team_schedule",
+  "description": "",
+  "timezone": "Africa/Monrovia",
+  "enabled": true,
+  "ownerTeam": {
+    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0011",
+    "name": "Devops Team"
+  },
+  "rotations": [],
+  "__currentOncalls": {
+    "_parent": {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0021",
+      "name": "Devops Team_schedule",
+      "enabled": true
+    },
+    "onCallRecipients": []
+  }
+}

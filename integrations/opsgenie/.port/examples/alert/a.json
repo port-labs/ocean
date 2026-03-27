@@ -1,0 +1,32 @@
+{
+  "seen": true,
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0061-1724857097467",
+  "tinyId": "13",
+  "alias": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0061-1724857097467",
+  "message": "Example alert",
+  "status": "open",
+  "acknowledged": false,
+  "isSeen": true,
+  "tags": [],
+  "snoozed": false,
+  "count": 1,
+  "lastOccurredAt": "2024-08-28T14:58:17.467Z",
+  "createdAt": "2024-08-28T14:58:17.467Z",
+  "updatedAt": "2024-08-28T14:58:59.285Z",
+  "source": "user1@example.com",
+  "owner": "",
+  "priority": "P3",
+  "teams": [],
+  "responders": [
+    {
+      "type": "user",
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001"
+    }
+  ],
+  "integration": {
+    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0071",
+    "name": "Default API",
+    "type": "API"
+  },
+  "ownerTeamId": ""
+}
