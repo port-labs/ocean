@@ -1,0 +1,20 @@
+{
+  "slug": "kickerstarters",
+  "id": "T_kwDOBMNoS84AyQua",
+  "databaseId": 13175706,
+  "name": "Kickerstarters",
+  "description": "Test team younno",
+  "privacy": "VISIBLE",
+  "notificationSetting": "NOTIFICATIONS_ENABLED",
+  "url": "https://github.com/orgs/Journey/teams/kickerstarters",
+  "members": {
+    "nodes": [
+      {
+        "login": "johndoe",
+        "name": "John Doe",
+        "email": "",
+        "isSiteAdmin": false
+      }
+    ]
+  }
+}
