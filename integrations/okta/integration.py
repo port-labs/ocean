@@ -44,7 +44,7 @@ class OktaUserSelector(Selector):
     )
     fields: str = Field(
         default=DEFAULT_USER_FIELDS,
-        title="Fields",
+        title="Include Fields",
         description="Comma-separated list of user fields to retrieve. Profile attributes should be contained within a profile:(field1,field2,...) directive.",
     )
 
