@@ -90,7 +90,7 @@ resources:
             record_date: .day + "T00:00:00Z"
             daily_active_users: .daily_active_users
             weekly_active_users: .weekly_active_users
-            monthly_acitive_chat_users: .monthly_active_chat_users
+            monthly_active_chat_users: .monthly_active_chat_users
             monthly_active_agent_users: .monthly_active_agent_users
             user_initiated_interaction_count: .user_initiated_interaction_count
             code_generation_activity_count: .code_generation_activity_count
