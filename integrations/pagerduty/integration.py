@@ -151,81 +151,134 @@ class PagerdutyIncidentAPIQueryParams(BaseModel):
 class PagerdutyIncidentResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
         api_query_params: PagerdutyIncidentAPIQueryParams | None = Field(
-            alias="apiQueryParams", description="API query params to include."
+            alias="apiQueryParams",
+            title="API Query Parameters",
+            description="API query parameters to include when fetching incidents.",
         )
         incident_analytics: bool = Field(
             default=False,
+            title="Incident Analytics",
             description="If set to true, will ingest incident analytics data to Port. Default value is false",
             alias="incidentAnalytics",
         )
         include_custom_fields: bool = Field(
             default=False,
+            title="Include Custom Fields",
             description="If set to true, will fetch and attach custom field values for each incident. Default value is false",
             alias="includeCustomFields",
         )
 
-    kind: Literal["incidents"]
-    selector: PagerdutySelector
+    kind: Literal["incidents"] = Field(
+        title="PagerDuty Incident",
+        description="A PagerDuty incident representing an event or alert that requires attention and response.",
+    )
+    selector: PagerdutySelector = Field(
+        title="PagerDuty Incident Selector",
+        description="Configuration for filtering and querying PagerDuty incidents synced into Port.",
+    )
 
 
 class PagerdutyServiceResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
         api_query_params: PagerdutyServiceAPIQueryParams | None = Field(
-            alias="apiQueryParams", description="API query params to include"
+            alias="apiQueryParams",
+            title="API Query Parameters",
+            description="API query parameters to include when fetching services.",
         )
         service_analytics: bool = Field(
             default=True,
+            title="Service Analytics",
             description="If set to true, will ingest service analytics data to Port. Default value is true",
             alias="serviceAnalytics",
         )
         analytics_months_period: int = Field(
             default=3,
+            title="Analytics Months Period",
             description="Number of months to consider for the service analytics date range. Must be a positive integer. Default value is 3 months",
             alias="analyticsMonthsPeriod",
         )
         include_custom_fields: bool = Field(
             default=False,
+            title="Include Custom Fields",
             description="If set to true, will fetch and attach custom field values for each service. Default value is false",
             alias="includeCustomFields",
         )
 
-    kind: Literal["services"]
-    selector: PagerdutySelector
+    kind: Literal["services"] = Field(
+        title="PagerDuty Service",
+        description="A PagerDuty service representing a component or system being monitored for incidents.",
+    )
+    selector: PagerdutySelector = Field(
+        title="PagerDuty Service Selector",
+        description="Configuration for filtering and querying PagerDuty services synced into Port.",
+    )
 
 
 class PagerdutyScheduleResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
         api_query_params: PagerdutyScheduleAPIQueryParams | None = Field(
-            alias="apiQueryParams"
+            alias="apiQueryParams",
+            title="API Query Parameters",
+            description="API query parameters to include when fetching schedules.",
         )
 
-    kind: Literal["schedules"]
-    selector: PagerdutySelector
+    kind: Literal["schedules"] = Field(
+        title="PagerDuty Schedule",
+        description="A PagerDuty on-call schedule defining when team members are responsible for responding to incidents.",
+    )
+    selector: PagerdutySelector = Field(
+        title="PagerDuty Schedule Selector",
+        description="Configuration for filtering and querying PagerDuty schedules synced into Port.",
+    )
 
 
 class PagerdutyOncallResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
         api_query_params: PagerdutyOncallAPIQueryParams | None = Field(
-            alias="apiQueryParams"
+            alias="apiQueryParams",
+            title="API Query Parameters",
+            description="API query parameters to include when fetching on-call entries.",
         )
 
-    kind: Literal["oncalls"]
-    selector: PagerdutySelector
+    kind: Literal["oncalls"] = Field(
+        title="PagerDuty On-Call",
+        description="A PagerDuty on-call entry representing a user currently on call for a given schedule.",
+    )
+    selector: PagerdutySelector = Field(
+        title="PagerDuty On-Call Selector",
+        description="Configuration for filtering and querying PagerDuty on-call entries synced into Port.",
+    )
 
 
 class PagerdutyEscalationPolicyResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
         api_query_params: PagerdutyEscalationPolicyAPIQueryParams | None = Field(
-            alias="apiQueryParams"
+            alias="apiQueryParams",
+            title="API Query Parameters",
+            description="API query parameters to include when fetching escalation policies.",
         )
         attach_oncall_users: bool = Field(
             alias="attachOncallUsers",
-            description=" When set to true, it fetches the oncall data per escalation policy",
+            title="Attach On-Call Users",
+            description="When set to true, it fetches the oncall data per escalation policy",
             default=True,
         )
 
-    kind: Literal["escalation_policies"]
-    selector: PagerdutySelector
+    kind: Literal["escalation_policies"] = Field(
+        title="PagerDuty Escalation Policy",
+        description="A PagerDuty escalation policy defining how alerts escalate through team members when not acknowledged.",
+    )
+    selector: PagerdutySelector = Field(
+        title="PagerDuty Escalation Policy Selector",
+        description="Configuration for filtering and querying PagerDuty escalation policies synced into Port.",
+    )
+
+
+class CustomResourceConfig(ResourceConfig):
+    kind: str = Field(
+        title="Custom Kind",
+        description="Use this to map additional PagerDuty resources by setting the kind name to any PagerDuty entity that has a GET List <resource name> endpoint in the <a target='_blank' href='https://developer.pagerduty.com/api-reference/e65c5833eeb07-pager-duty-api'>PagerDuty API</a>.\n\nExample: teams",
+    )
 
 
 class PagerdutyPortAppConfig(PortAppConfig):
@@ -235,7 +288,7 @@ class PagerdutyPortAppConfig(PortAppConfig):
         | PagerdutyScheduleResourceConfig
         | PagerdutyOncallResourceConfig
         | PagerdutyEscalationPolicyResourceConfig
-        | ResourceConfig
+        | CustomResourceConfig
     ] = Field(default_factory=list)
     allow_custom_kinds: ClassVar[bool] = True
 
