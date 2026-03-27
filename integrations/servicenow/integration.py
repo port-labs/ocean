@@ -70,7 +70,10 @@ class ResourceSelector(Selector):
 
 
 class IncidentResourceConfig(ResourceConfig):
-    selector: ResourceSelector
+    selector: ResourceSelector = Field(
+        title="Incident Selector",
+        description="Selector for filtering ServiceNow incident records",
+    )
     kind: Literal[ObjectKind.INCIDENT] = Field(
         title="ServiceNow Incident",
         description="A ServiceNow incident record from the incident table",
@@ -78,7 +81,10 @@ class IncidentResourceConfig(ResourceConfig):
 
 
 class UserGroupResourceConfig(ResourceConfig):
-    selector: ResourceSelector
+    selector: ResourceSelector = Field(
+        title="User Group Selector",
+        description="Selector for filtering ServiceNow user group records",
+    )
     kind: Literal[ObjectKind.USER_GROUP] = Field(
         title="ServiceNow User Group",
         description="A ServiceNow user group from the sys_user_group table",
@@ -86,7 +92,10 @@ class UserGroupResourceConfig(ResourceConfig):
 
 
 class ServiceCatalogResourceConfig(ResourceConfig):
-    selector: ResourceSelector
+    selector: ResourceSelector = Field(
+        title="Service Catalog Selector",
+        description="Selector for filtering ServiceNow service catalog records",
+    )
     kind: Literal[ObjectKind.SERVICE_CATALOG] = Field(
         title="ServiceNow Service Catalog",
         description="A ServiceNow service catalog from the sc_catalog table",
@@ -94,7 +103,10 @@ class ServiceCatalogResourceConfig(ResourceConfig):
 
 
 class VulnerabilityResourceConfig(ResourceConfig):
-    selector: ResourceSelector
+    selector: ResourceSelector = Field(
+        title="Vulnerability Selector",
+        description="Selector for filtering ServiceNow vulnerable item records",
+    )
     kind: Literal[ObjectKind.VULNERABILITY] = Field(
         title="ServiceNow Vulnerability",
         description="A ServiceNow vulnerable item from the sn_vul_vulnerable_item table",
@@ -102,7 +114,10 @@ class VulnerabilityResourceConfig(ResourceConfig):
 
 
 class ReleaseProjectResourceConfig(ResourceConfig):
-    selector: ResourceSelector
+    selector: ResourceSelector = Field(
+        title="Release Project Selector",
+        description="Selector for filtering ServiceNow release project records",
+    )
     kind: Literal[ObjectKind.RELEASE_PROJECT] = Field(
         title="ServiceNow Release Project",
         description="A ServiceNow release project from the release_project table",
@@ -110,7 +125,10 @@ class ReleaseProjectResourceConfig(ResourceConfig):
 
 
 class CustomResource(ResourceConfig):
-    selector: ResourceSelector
+    selector: ResourceSelector = Field(
+        title="Custom Resource Selector",
+        description="Selector for filtering records from a custom ServiceNow table",
+    )
     kind: str = Field(
         title="Custom kind",
         description="Use this to map additional ServiceNow resources by setting the kind name to any table available through the ServiceNow <a target='_blank' href='https://developer.servicenow.com/dev.do#!/reference/api/xanadu/rest/c_TableAPI#table-GET'>Table API</a>.\n\nExample: incident",
