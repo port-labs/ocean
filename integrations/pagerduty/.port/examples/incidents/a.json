@@ -34,28 +34,28 @@
             "id": "PCQ9T3Z",
             "type": "email_contact_method_reference",
             "summary": "Default",
-            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PCQ9T3Q",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PCQ9T3Z",
             "html_url": null
           },
           {
             "id": "PRV0DHB",
             "type": "phone_contact_method_reference",
             "summary": "Mobile",
-            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PRV0DHZ",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PRV0DHB",
             "html_url": null
           },
           {
             "id": "P0CNH3N",
             "type": "push_notification_contact_method_reference",
             "summary": "iPhone",
-            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/P0CNH3M",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/P0CNH3N",
             "html_url": null
           },
           {
             "id": "PV4OEX1",
             "type": "sms_contact_method_reference",
             "summary": "Mobile",
-            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PV4OEXT",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PV4OEX1",
             "html_url": null
           }
         ],
@@ -64,44 +64,44 @@
             "id": "POGJIWU",
             "type": "assignment_notification_rule_reference",
             "summary": "0 minutes: channel PCQ9T3Z",
-            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/POGJIWO",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/POGJIWU",
             "html_url": null
           },
           {
             "id": "P70207T",
             "type": "assignment_notification_rule_reference",
             "summary": "1 minutes: channel PCQ9T3Z",
-            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P70207W",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P70207T",
             "html_url": null
           },
           {
             "id": "PNZQ0JG",
             "type": "assignment_notification_rule_reference",
             "summary": "3 minutes: channel PRV0DHB",
-            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/PNZQ0JU",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/PNZQ0JG",
             "html_url": null
           },
           {
             "id": "P4DEOZ7",
             "type": "assignment_notification_rule_reference",
             "summary": "0 minutes: channel P0CNH3N",
-            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P4DEOZV",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P4DEOZ7",
             "html_url": null
           },
           {
             "id": "P3QDMV3",
             "type": "assignment_notification_rule_reference",
             "summary": "2 minutes: channel PV4OEX1",
-            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P3QDMVY",
+            "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P3QDMV3",
             "html_url": null
           }
         ],
         "locale": "en-US",
         "id": "P4K4DLP",
         "type": "user",
-        "summary": "Daniel Sinai",
+        "summary": "John Doe",
         "self": "https://api.pagerduty.com/users/P4K4DLP",
-        "html_url": "https://getport-io.pagerduty.com/users/P4K4DLQ"
+        "html_url": "https://getport-io.pagerduty.com/users/P4K4DLP"
       }
     }
   ],
@@ -161,8 +161,8 @@
     "id": "P7LVMYP",
     "type": "escalation_policy_reference",
     "summary": "Backend Escalation Policy",
-    "self": "https://api.pagerduty.com/escalation_policies/P7LVMYD",
-    "html_url": "https://getport-io.pagerduty.com/escalation_policies/P7LVMYD"
+    "self": "https://api.pagerduty.com/escalation_policies/P7LVMYP",
+    "html_url": "https://getport-io.pagerduty.com/escalation_policies/P7LVMYP"
   },
   "teams": [],
   "pending_actions": [],
@@ -173,8 +173,8 @@
     "id": "P00BUSE",
     "type": "service_reference",
     "summary": "API Gateway MTBF Test",
-    "self": "https://api.pagerduty.com/services/P00BUSQ",
-    "html_url": "https://getport-io.pagerduty.com/service-directory/P00BUSQ"
+    "self": "https://api.pagerduty.com/services/P00BUSE",
+    "html_url": "https://getport-io.pagerduty.com/service-directory/P00BUSE"
   },
   "priority": {
     "id": "PHFV7WH",
