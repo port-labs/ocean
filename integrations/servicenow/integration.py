@@ -124,7 +124,7 @@ class ReleaseProjectResourceConfig(ResourceConfig):
     )
 
 
-class CustomResource(ResourceConfig):
+class CustomResourceConfig(ResourceConfig):
     selector: ResourceSelector = Field(
         title="Custom Resource Selector",
         description="Selector for filtering records from a custom ServiceNow table",
@@ -142,7 +142,7 @@ class ServiceNowPortAppConfig(PortAppConfig):
         | ServiceCatalogResourceConfig
         | VulnerabilityResourceConfig
         | ReleaseProjectResourceConfig
-        | ResourceConfig
+        | CustomResourceConfig
     ] = Field(default_factory=list)
     allow_custom_kinds: ClassVar[bool] = True
 
