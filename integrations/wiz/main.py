@@ -8,9 +8,15 @@ from port_ocean.context.event import event
 from overrides import (
     IssueResourceConfig,
     ProjectResourceConfig,
+    SbomArtifactResourceConfig,
     VulnerabilityFindingResourceConfig,
 )
-from wiz.options import IssueOptions, ProjectOptions, VulnerabilityFindingOptions
+from wiz.options import (
+    IssueOptions,
+    ProjectOptions,
+    SbomArtifactOptions,
+    VulnerabilityFindingOptions,
+)
 from initialize_client import init_client
 from integration import ObjectKindWithSpecialHandling, ObjectKind
 from wiz.webhook_processors.issue_webhook_processor import IssueWebhookProcessor
@@ -100,6 +106,26 @@ async def resync_vulnerability_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
 
     async for vulnerability_findings in wiz_client.get_vulnerability_findings(options):
         yield vulnerability_findings
+
+
+@ocean.on_resync(ObjectKindWithSpecialHandling.SBOM_ARTIFACT)
+async def resync_sbom_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    wiz_client = init_client()
+    selector = cast(SbomArtifactResourceConfig, event.resource_config).selector
+    group_list = selector.group_list
+    max_pages = selector.max_pages
+
+    logger.info(
+        f"Resyncing {kind.lower()} with group list: {group_list}, max pages: {max_pages}"
+    )
+
+    options = SbomArtifactOptions(
+        group_list=group_list,
+        max_pages=max_pages,
+    )
+
+    async for sbom_artifacts in wiz_client.get_sbom_artifacts(options):
+        yield sbom_artifacts
 
 
 @ocean.on_resync(ObjectKindWithSpecialHandling.REPOSITORY)

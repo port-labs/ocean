@@ -19,7 +19,7 @@ class VersionWebhookProcessor(AbstractWebhookProcessor):
         return event.payload.get("webhookEvent", "").startswith("jira:version_")
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [Kinds.VERSION]
+        return [Kinds.RELEASE]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True

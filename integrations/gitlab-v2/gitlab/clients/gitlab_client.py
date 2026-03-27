@@ -11,7 +11,7 @@ from port_ocean.utils.async_iterators import (
 from urllib.parse import quote
 from wcmatch import glob
 
-from gitlab.helpers.utils import parse_file_content
+from gitlab.helpers.utils import parse_file_content, build_search_query
 
 from gitlab.clients.rest_client import RestClient
 
@@ -381,11 +381,13 @@ class GitLabClient:
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        search_query = f"path:{path}"
+        search_query = build_search_query(path)
         logger.info(f"Starting file search with path pattern: '{path}'")
 
         if repositories:
-            logger.info(f"Searching across {len(repositories)} specific repositories")
+            logger.info(
+                f"Searching for {path} across {len(repositories)} specific repositories"
+            )
             for repo in repositories:
                 logger.debug(f"Processing repository: {repo}")
                 async for batch in self._search_files_in_repository(
@@ -393,7 +395,7 @@ class GitLabClient:
                 ):
                     yield batch
         else:
-            logger.info("Searching across groups")
+            logger.info(f"Searching for {path} across groups")
             async for top_level_groups in self.get_parent_groups(
                 params=params,
             ):
@@ -423,7 +425,7 @@ class GitLabClient:
         Groups API, it iterates over all accessible projects and searches
         each one individually using the Projects API.
         """
-        search_query = f"path:{path}"
+        search_query = build_search_query(path)
         logger.info(
             f"Starting project-level file search with path pattern: '{path}' using params: {params}"
         )

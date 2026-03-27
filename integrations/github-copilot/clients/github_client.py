@@ -1,11 +1,12 @@
+import asyncio
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
+import json
 import re
 from loguru import logger
 from port_ocean.utils import http_async_client
 from urllib.parse import parse_qs, urlparse
-import asyncio
 from itertools import batched
 
 from .github_endpoints import GithubEndpoints
@@ -93,14 +94,18 @@ class GitHubClient:
             f"covering {response_data['report_start_day']} to {response_data['report_end_day']}"
         )
 
-        for signed_urls in batched(download_links, self.pagination_page_size_limit):
-            reports = await asyncio.gather(
+        for signed_urls_batch in batched(
+            download_links, self.pagination_page_size_limit
+        ):
+            results = await asyncio.gather(
                 *[
                     self._fetch_report_from_signed_url(signed_url)
-                    for signed_url in signed_urls
+                    for signed_url in signed_urls_batch
                 ]
             )
-            yield [report for report in reports if report is not None]
+            for records in results:
+                if records:
+                    yield records
 
     async def fetch_organization_usage_metrics(
         self,
@@ -124,15 +129,17 @@ class GitHubClient:
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
-    ) -> dict[str, Any] | None:
+    ) -> list[dict[str, Any]]:
         logger.debug("Fetching report from signed URL")
         try:
             response = await self._client.request(method="get", url=signed_url)
             response.raise_for_status()
-            return response.json()
+            return [
+                json.loads(line) for line in response.text.splitlines() if line.strip()
+            ]
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching report from signed URL: {e}")
-            return None
+            return []
 
     async def get_metrics_for_team(
         self, organization: dict[str, Any], team: dict[str, Any]
@@ -274,7 +281,7 @@ class GitHubClient:
     ) -> list[dict[str, Any]]:
         for metric in metrics:
             logger.info(
-                f"Enriching metric of day {metric[record_date_key]} with organization {organization}"
+                f"Enriching metric of day {metric[record_date_key]} with organization {organization['login']}"
             )
             metric["__organization"] = organization
         return metrics

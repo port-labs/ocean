@@ -1,3 +1,5 @@
+import asyncio
+import functools
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 
@@ -5,10 +7,19 @@ import httpx
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.utils.async_iterators import (
+    semaphore_async_iterator,
+    stream_async_iterators_tasks,
+)
 from port_ocean.utils import http_async_client
 from port_ocean.utils.misc import get_time
 from pydantic import BaseModel, Field, PrivateAttr
-from wiz.options import IssueOptions, ProjectOptions, VulnerabilityFindingOptions
+from wiz.options import (
+    IssueOptions,
+    ProjectOptions,
+    SbomArtifactOptions,
+    VulnerabilityFindingOptions,
+)
 
 from .constants import (
     AUTH0_URLS,
@@ -16,6 +27,7 @@ from .constants import (
     GRAPH_QUERIES,
     ISSUES_GQL,
     PAGE_SIZE,
+    MAX_SBOM_ARTIFACT_ENTITIES,
 )
 
 
@@ -48,6 +60,16 @@ class TokenResponse(BaseModel):
 
 
 class WizClient:
+    _MAX_CONCURRENT_SBOM_GROUP_FETCHES = 10  # Wiz has 10 concurrent requests limit per service account according to https://docs.stellarcyber.ai/6.3.x/Configure/Connectors/Wiz-Connectors.htm
+
+    _SBOM_TYPE_FILTER_KEYS = (
+        "codeLibraryLanguage",
+        "osPackageManager",
+        "plugin",
+        "custom",
+        "ciComponent",
+    )
+
     def __init__(
         self, api_url: str, client_id: str, client_secret: str, token_url: str
     ):
@@ -123,8 +145,20 @@ class WizClient:
             )
             response.raise_for_status()
             response_json = response.json()
+            graphql_errors = response_json.get("errors") or []
+            data = response_json.get("data")
 
-            return response_json["data"]
+            if graphql_errors:
+                raise OceanAbortException(
+                    f"Wiz GraphQL returned errors for query variables {variables}: {graphql_errors}"
+                )
+
+            if data is None:
+                logger.warning(
+                    f"Wiz GraphQL returned null data for query variables {variables}. Response: {response_json}"
+                )
+
+            return data
         except httpx.HTTPError as e:
             logger.error(f"Error while making GraphQL query: {str(e)}")
             raise
@@ -141,10 +175,21 @@ class WizClient:
             )
             gql = GRAPH_QUERIES[resource]
             data = await self.make_graphql_query(gql, variables)
+            resource_data = data.get(resource)
+            if not isinstance(resource_data, dict):
+                raise OceanAbortException(
+                    f"Wiz GraphQL response is missing '{resource}' object. Available keys: {list(data.keys())}"
+                )
 
-            yield data[resource]["nodes"]
+            nodes = resource_data.get("nodes")
+            if not isinstance(nodes, list):
+                raise OceanAbortException(
+                    f"Wiz GraphQL response for '{resource}' includes invalid 'nodes'"
+                )
 
-            cursor = data[resource].get("pageInfo") or {}
+            yield nodes
+
+            cursor = resource_data.get("pageInfo") or {}
             if not cursor.get("hasNextPage", False):
                 break  # Break out of the loop if no more pages
 
@@ -299,3 +344,130 @@ class WizClient:
             variables=variables,
         ):
             yield repos
+
+    def _build_sbom_artifact_type_filter(
+        self, sbom_type: dict[str, Any] | None
+    ) -> dict[str, list[str]] | None:
+        """
+        Build a valid SBOMArtifactFilters.type object.
+        Wiz expects exactly one type key with a list value.
+        """
+        if not isinstance(sbom_type, dict):
+            return None
+
+        for key in self._SBOM_TYPE_FILTER_KEYS:
+            raw_value = sbom_type.get(key)
+            if isinstance(raw_value, str) and raw_value:
+                return {key: [raw_value]}
+
+        return None
+
+    async def _get_sbom_artifacts_for_grouped_name(
+        self,
+        grouped_node: dict[str, Any],
+        page_size: int,
+        max_pages: int,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        name = grouped_node.get("name")
+        sbom_type = grouped_node.get("type")
+
+        if not isinstance(name, str) or not name:
+            logger.warning(f"Skipping invalid SBOM grouped node name: {name}")
+            return
+
+        type_filter = self._build_sbom_artifact_type_filter(sbom_type)
+        if not type_filter:
+            logger.warning(
+                f"Skipping SBOM grouped node '{name}' because no valid type filter was found"
+            )
+            return
+
+        variables: dict[str, Any] = {
+            "first": page_size,
+            "filterBy": {
+                "name": name,
+                "type": type_filter,
+            },
+        }
+
+        async for artifacts in self._get_paginated_resources(
+            resource="sbomArtifacts",
+            variables=variables,
+            max_pages=max_pages,
+        ):
+            enriched_artifacts = []
+            for artifact in artifacts:
+                artifact["__groupTypeMetadata"] = grouped_node.get("type")
+                enriched_artifacts.append(artifact)
+
+            if enriched_artifacts:
+                yield enriched_artifacts
+
+    async def get_sbom_artifacts(
+        self,
+        options: SbomArtifactOptions,
+        page_size: int = PAGE_SIZE,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        max_pages = min(options.get("max_pages", 500), 500)
+        selected_groups = set(options.get("group_list") or [])
+        allow_all_groups = not selected_groups
+        total_ingested = 0
+
+        logger.info(
+            f"Resyncing SBOM artifacts with groups: {selected_groups or 'ALL'}, max pages: {max_pages} max artifacts: {MAX_SBOM_ARTIFACT_ENTITIES}"
+        )
+
+        grouped_variables: dict[str, Any] = {
+            "first": page_size,
+        }
+        sbom_group_semaphore = asyncio.BoundedSemaphore(
+            self._MAX_CONCURRENT_SBOM_GROUP_FETCHES
+        )
+
+        async for grouped_nodes in self._get_paginated_resources(
+            resource="sbomArtifactsGroupedByName",
+            variables=grouped_variables,
+            max_pages=max_pages,
+        ):
+            if total_ingested >= MAX_SBOM_ARTIFACT_ENTITIES:
+                logger.warning(
+                    f"Reached maximum SBOM artifact limit of {MAX_SBOM_ARTIFACT_ENTITIES}. "
+                    f"Stopping ingestion."
+                )
+                return
+
+            grouped_artifact_streams = [
+                semaphore_async_iterator(
+                    sbom_group_semaphore,
+                    functools.partial(
+                        self._get_sbom_artifacts_for_grouped_name,
+                        grouped_node=grouped_node,
+                        page_size=page_size,
+                        max_pages=max_pages,
+                    ),
+                )
+                for grouped_node in grouped_nodes
+                if allow_all_groups
+                or ((grouped_node.get("type") or {}).get("group") in selected_groups)
+            ]
+
+            if not grouped_artifact_streams:
+                continue
+
+            async for artifact_batch in stream_async_iterators_tasks(
+                *grouped_artifact_streams
+            ):
+                remaining = MAX_SBOM_ARTIFACT_ENTITIES - total_ingested
+
+                if remaining <= 0:
+                    logger.warning(
+                        f"Reached maximum SBOM artifact limit of {MAX_SBOM_ARTIFACT_ENTITIES}. "
+                        f"Stopping ingestion."
+                    )
+                    return
+                # Trim the batch if it would exceed the limit
+                if len(artifact_batch) > remaining:
+                    artifact_batch = artifact_batch[:remaining]
+
+                total_ingested += len(artifact_batch)
+                yield artifact_batch

@@ -29,3 +29,20 @@ class VulnerabilityFindingOptions(TypedDict):
     severity_list: NotRequired[
         Optional[List[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "NONE"]]]
     ]
+
+
+class SbomArtifactOptions(TypedDict):
+    max_pages: Required[int]
+    group_list: NotRequired[
+        Optional[
+            List[
+                Literal[
+                    "CODE_LIBRARY",
+                    "OS_PACKAGE",
+                    "PLUGIN",
+                    "CUSTOM",
+                    "CI_COMPONENT",
+                ]
+            ]
+        ]
+    ]

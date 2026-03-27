@@ -9,6 +9,8 @@ from tests.mocks import (
     organizations_response,
     teams_response,
     copilot_metrics_response,
+    mock_single_json_signed_url_content,
+    mock_ndjson_signed_url_content,
 )
 
 BASE_URL = "https://api.github.com"
@@ -182,7 +184,7 @@ async def test_get_new_usage_metrics_returns_empty_when_manifest_has_empty_links
 
 
 @pytest.mark.asyncio
-async def test_fetch_report_from_signed_url_returns_none_on_forbidden_error(
+async def test_fetch_report_from_signed_url_returns_empty_on_forbidden_error(
     github_client: GitHubClient,
 ) -> None:
     signed_url = "https://signed.example.com/copilot-report-expired.json"
@@ -199,7 +201,7 @@ async def test_fetch_report_from_signed_url_returns_none_on_forbidden_error(
 
     with patch.object(github_client._client, "request", new=request_mock):
         result = await github_client._fetch_report_from_signed_url(signed_url)
-        assert result is None
+        assert result == []
 
 
 @pytest.mark.asyncio
@@ -230,9 +232,11 @@ async def test_get_new_usage_metrics_skips_unexpected_schema(
         "report_end_day": "2026-03-09",
     }
 
-    unexpected_schema_response = MagicMock()
-    unexpected_schema_response.status_code = 200
-    unexpected_schema_response.json.return_value = {"unexpected_key": "some_value"}
+    unexpected_schema_response = httpx.Response(
+        status_code=200,
+        content=b'{"unexpected_key": "some_value"}',
+        request=httpx.Request("GET", "https://signed.example.com/unexpected.json"),
+    )
 
     request_mock = AsyncMock(
         side_effect=[manifest_response, unexpected_schema_response]
@@ -246,3 +250,73 @@ async def test_get_new_usage_metrics_skips_unexpected_schema(
             )
         ]
     assert result == [[{"unexpected_key": "some_value"}]]
+
+
+@pytest.mark.asyncio
+async def test_fetch_report_from_signed_url_parses_single_line_json(
+    github_client: GitHubClient,
+) -> None:
+    """_fetch_report_from_signed_url handles a single-line JSON report."""
+    import json
+
+    signed_url = "https://signed.example.com/copilot-report-single.json"
+    single_json_response = httpx.Response(
+        status_code=200,
+        content=mock_single_json_signed_url_content,
+        request=httpx.Request("GET", signed_url),
+    )
+    expected = [json.loads(mock_single_json_signed_url_content)]
+
+    with patch.object(
+        github_client._client,
+        "request",
+        new=AsyncMock(return_value=single_json_response),
+    ):
+        result = await github_client._fetch_report_from_signed_url(signed_url)
+        assert result == expected
+
+
+@pytest.mark.asyncio
+async def test_fetch_report_from_signed_url_parses_ndjson(
+    github_client: GitHubClient,
+) -> None:
+    """_fetch_report_from_signed_url parses NDJSON with one JSON object per line."""
+    signed_url = "https://signed.example.com/copilot-report-ndjson.json"
+    ndjson_response = httpx.Response(
+        status_code=200,
+        content=mock_ndjson_signed_url_content,
+        request=httpx.Request("GET", signed_url),
+    )
+
+    expected = [
+        {
+            "report_start_day": "2026-02-01",
+            "report_end_day": "2026-02-28",
+            "day_totals": [
+                {
+                    "org": "acme-corp-test-org",
+                    "daily_active_users": 5,
+                    "day": "2026-02-01",
+                    "code_generation_activity_count": 100,
+                }
+            ],
+        },
+        {
+            "report_start_day": "2026-02-01",
+            "report_end_day": "2026-02-28",
+            "day_totals": [
+                {
+                    "org": "acme-corp-test-org",
+                    "daily_active_users": 42,
+                    "day": "2026-03-05",
+                    "code_generation_activity_count": 150,
+                }
+            ],
+        },
+    ]
+
+    with patch.object(
+        github_client._client, "request", new=AsyncMock(return_value=ndjson_response)
+    ):
+        result = await github_client._fetch_report_from_signed_url(signed_url)
+        assert result == expected

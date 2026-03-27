@@ -1,0 +1,21 @@
+{
+  "id": "7881",
+  "name": ".NET Core",
+  "description": ".NET Core is a free, open-source, cross-platform development framework developed by Microsoft. It allows developers to build applications for Windows, macOS, and Linux using C#, F#, and Visual Basic. .NET Core provides a modular and high-performance runtime for creating web applications, microservices, console apps, and cloud-based services.",
+  "categories": [
+    {
+      "name": "Frameworks & Libraries"
+    }
+  ],
+  "usage": "COMMON",
+  "status": "UNREVIEWED",
+  "risk": "MEDIUM",
+  "note": null,
+  "ownerName": "Microsoft Corporation",
+  "businessModel": "COMMERCIAL_OPEN_SOURCE",
+  "popularity": null,
+  "projectCount": 0,
+  "codeRepoCount": 0,
+  "isCloudService": false,
+  "supportedOperatingSystems": null
+}
