@@ -13,7 +13,6 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
-    PortResourceConfig,
     ResourceConfig,
     Selector,
 )
@@ -60,7 +59,6 @@ class RepositorySelector(Selector):
             "List of file paths to fetch from the repository and attach to "
             "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
         ),
-        title="Attached files",
     )
 
 
@@ -106,7 +104,6 @@ class BitbucketFolderResourceConfig(ResourceConfig):
         title="Folder Selector",
         description="Selector to filter and configure which Bitbucket folders are synced",
     )
-    port: PortResourceConfig
 
 
 class BitbucketFilePattern(BaseModel):
