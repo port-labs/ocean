@@ -1,0 +1,14 @@
+{
+  "id": 187847671,
+  "node_id": "W_kwDOO-eDos4LMlP3",
+  "name": "CodeQL",
+  "path": "dynamic/github-code-scanning/codeql",
+  "state": "active",
+  "created_at": "2025-09-09T20:04:04.000+01:00",
+  "updated_at": "2025-09-09T20:04:04.000+01:00",
+  "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/actions/workflows/187847671",
+  "html_url": "https://github.com/port-gh-app-dev/small-repo/actions/workflows/github-code-scanning/codeql",
+  "badge_url": "https://github.com/port-gh-app-dev/small-repo/actions/workflows/github-code-scanning/codeql/badge.svg",
+  "__repository": "small-repo",
+  "__organization": "port-gh-app-dev"
+}
