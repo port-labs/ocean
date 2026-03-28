@@ -8,6 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.28-beta (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.4.27-beta (2026-03-25)
+
+
+### Bug Fixes
+
+- Fixed NextLinkPagination bug where URL query parameters were stripped on subsequent requests
+
+
+## 0.4.26-beta (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.4.25-beta (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
 ## 0.4.24-beta (2026-03-19)
 
 

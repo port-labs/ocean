@@ -1,0 +1,30 @@
+{
+  "login": "mk-armah",
+  "id": 85971733,
+  "node_id": "MDQ6VXNlcjg1OTcxNzMz",
+  "avatar_url": "https://avatars.githubusercontent.com/u/85971733?v=4",
+  "gravatar_id": "",
+  "url": "https://api.github.com/users/mk-armah",
+  "html_url": "https://github.com/mk-armah",
+  "followers_url": "https://api.github.com/users/mk-armah/followers",
+  "following_url": "https://api.github.com/users/mk-armah/following{/other_user}",
+  "gists_url": "https://api.github.com/users/mk-armah/gists{/gist_id}",
+  "starred_url": "https://api.github.com/users/mk-armah/starred{/owner}{/repo}",
+  "subscriptions_url": "https://api.github.com/users/mk-armah/subscriptions",
+  "organizations_url": "https://api.github.com/users/mk-armah/orgs",
+  "repos_url": "https://api.github.com/users/mk-armah/repos",
+  "events_url": "https://api.github.com/users/mk-armah/events{/privacy}",
+  "received_events_url": "https://api.github.com/users/mk-armah/received_events",
+  "type": "User",
+  "user_view_type": "public",
+  "site_admin": false,
+  "permissions": {
+    "admin": false,
+    "maintain": false,
+    "push": false,
+    "triage": false,
+    "pull": true
+  },
+  "role_name": "read",
+  "__repository": "perf-[REDACTED]-repo-adfd348e"
+}
