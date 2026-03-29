@@ -106,18 +106,6 @@ class LiveEventsMixin(HandlerMixin):
                     continue
                 kind = webhook_event_raw_result.resource.kind
 
-                kafka_metadata = {}
-                if webhook_event_raw_result.original_webhook:
-                    kafka_metadata["originalWebhook"] = webhook_event_raw_result.original_webhook
-
-                # Include specific allowed headers in kafka_metadata
-                allowed_headers = ["x-jira-webhook-event"]
-                if webhook_event_raw_result.original_headers:
-                    for header_key in allowed_headers:
-                        header_value = webhook_event_raw_result.original_headers.get(header_key)
-                        if header_value:
-                            kafka_metadata[header_key] = header_value
-
                 if webhook_event_raw_result.updated_raw_results:
                     logger.debug(
                         f"Sending {len(webhook_event_raw_result.updated_raw_results)} upserted raw items to lakehouse",
@@ -130,7 +118,6 @@ class LiveEventsMixin(HandlerMixin):
                             event_id,
                             kind,
                             operation=LakehouseOperation.UPSERT,
-                            kafka_metadata=kafka_metadata,
                             resync_start_time=webhook_event_raw_result.created_at,
                             event_type=LakehouseEventType.LIVE_EVENT,
                         )
@@ -153,7 +140,6 @@ class LiveEventsMixin(HandlerMixin):
                             event_id,
                             kind,
                             operation=LakehouseOperation.DELETE,
-                            kafka_metadata=kafka_metadata,
                             resync_start_time=webhook_event_raw_result.created_at,
                             event_type=LakehouseEventType.LIVE_EVENT,
                         )

@@ -287,7 +287,6 @@ class IntegrationClientMixin:
         sync_id: str,
         kind: str,
         operation: LakehouseOperation = LakehouseOperation.UPSERT,
-        kafka_metadata: dict[str, Any] | None = None,
         resync_start_time: datetime | None = None,
         event_type: LakehouseEventType | None = None,
     ) -> None:
@@ -318,13 +317,12 @@ class IntegrationClientMixin:
             "items": raw_data,
             "extractionTimestamp": int(datetime.now().timestamp() * 1000),
             "operation": operation.value,
+            "eventType": (
+                event_type.value if event_type else LakehouseEventType.LIVE_EVENT.value
+            ),
         }
-        if kafka_metadata:
-            body["kafkaMetadata"] = kafka_metadata
         if resync_start_time is not None:
             body["resyncStartTime"] = resync_start_time.isoformat()
-        if event_type is not None:
-            body["eventType"] = event_type.value
 
         response = await self.client.post(
             f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",

@@ -212,7 +212,6 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
             "test-event-id",
             "repository",
             operation=LakehouseOperation.UPSERT,
-            kafka_metadata={},
             resync_start_time=ANY,  # Timestamp - any datetime is acceptable
             event_type=LakehouseEventType.LIVE_EVENT,
         )
@@ -256,7 +255,6 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
             "test-event-id",
             "repository",
             operation=LakehouseOperation.DELETE,
-            kafka_metadata={},
             resync_start_time=ANY,  # Timestamp - any datetime is acceptable
             event_type=LakehouseEventType.LIVE_EVENT,
         )
@@ -365,7 +363,6 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
                     "test-event-id",
                     "repository",
                     operation=LakehouseOperation.UPSERT,
-                    kafka_metadata={},
                     resync_start_time=ANY,  # Timestamp - any datetime is acceptable
                     event_type=LakehouseEventType.LIVE_EVENT,
                 ),
@@ -374,59 +371,8 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
                     "test-event-id",
                     "repository",
                     operation=LakehouseOperation.DELETE,
-                    kafka_metadata={},
                     resync_start_time=ANY,  # Timestamp - any datetime is acceptable
                     event_type=LakehouseEventType.LIVE_EVENT,
                 ),
             ]
-        )
-
-
-@pytest.mark.asyncio
-async def test_send_webhook_raw_data_to_lakehouse_with_original_webhook(
-    mock_live_events_mixin: LiveEventsMixin,
-    mock_ocean: Ocean,
-) -> None:
-    """Test lakehouse send includes original webhook in kafka_metadata"""
-    from unittest.mock import MagicMock, ANY
-    from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-    from port_ocean.core.models import LakehouseEventType
-
-    mock_post = AsyncMock()
-    with (
-        patch("port_ocean.core.integrations.mixins.live_events.ocean", mock_ocean),
-        patch.object(mock_ocean.port_client, "post_integration_raw_data", mock_post),
-    ):
-        # Create webhook event
-        webhook_event = MagicMock(spec=WebhookEvent)
-        webhook_event.trace_id = "test-event-id"
-
-        original_webhook_payload = {
-            "event": "push",
-            "repository": "my-repo",
-            "ref": "refs/heads/main",
-        }
-        raw_data = [{"name": "repo-one", "stars": 100}]
-        webhook_results = WebhookEventRawResults(
-            updated_raw_results=raw_data,
-            deleted_raw_results=[],
-        )
-        webhook_results.resource = one_webhook_event_raw_results_for_creation.resource
-        webhook_results._webhook_trace_id = webhook_event.trace_id
-        webhook_results.original_webhook = original_webhook_payload
-
-        # Call the method
-        await mock_live_events_mixin._send_webhook_raw_data_to_lakehouse(
-            [webhook_results]
-        )
-
-        # Verify lakehouse API called with kafka_metadata containing original webhook
-        mock_post.assert_called_once_with(
-            raw_data,
-            "test-event-id",
-            "repository",
-            operation=LakehouseOperation.UPSERT,
-            kafka_metadata={"originalWebhook": original_webhook_payload},
-            resync_start_time=ANY,  # Timestamp - any datetime is acceptable
-            event_type=LakehouseEventType.LIVE_EVENT,
         )

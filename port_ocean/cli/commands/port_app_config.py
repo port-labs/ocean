@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Type
 
 import click
-from jsonref import replace_refs  # type: ignore[import-untyped]
+from jsonref import replace_refs  # type: ignore[import-not-found]
 
 from port_ocean.cli.commands.main import cli_start
 from port_ocean.core.handlers import BasePortAppConfig

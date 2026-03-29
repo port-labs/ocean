@@ -13,22 +13,22 @@ from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 class TestLakehouseEventTypeEnum:
     """Test suite for LakehouseEventType enum"""
 
-    def test_enum_values_are_correct(self):
+    def test_enum_values_are_correct(self) -> None:
         """Verify enum values match specification"""
         assert LakehouseEventType.RESYNC.value == "resync"
         assert LakehouseEventType.LIVE_EVENT.value == "live-event"
 
-    def test_enum_values_are_strings(self):
+    def test_enum_values_are_strings(self) -> None:
         """Verify enum values can be compared as strings"""
         assert LakehouseEventType.RESYNC == "resync"
         assert LakehouseEventType.LIVE_EVENT == "live-event"
 
-    def test_enum_values_are_distinct(self):
+    def test_enum_values_are_distinct(self) -> None:
         """Verify RESYNC and LIVE_EVENT are different"""
         assert LakehouseEventType.RESYNC != LakehouseEventType.LIVE_EVENT
         assert LakehouseEventType.RESYNC.value != LakehouseEventType.LIVE_EVENT.value
 
-    def test_enum_iteration(self):
+    def test_enum_iteration(self) -> None:
         """Verify all enum members can be iterated"""
         event_types = list(LakehouseEventType)
         assert len(event_types) == 2
@@ -40,7 +40,7 @@ class TestPostIntegrationRawDataInputValidation:
     """Test input validation in post_integration_raw_data"""
 
     @pytest.mark.asyncio
-    async def test_empty_sync_id_raises_error(self):
+    async def test_empty_sync_id_raises_error(self) -> None:
         """Verify empty sync_id raises ValueError"""
         mixin = IntegrationClientMixin(
             integration_identifier="test-integration",
@@ -57,7 +57,7 @@ class TestPostIntegrationRawDataInputValidation:
             )
 
     @pytest.mark.asyncio
-    async def test_empty_kind_raises_error(self):
+    async def test_empty_kind_raises_error(self) -> None:
         """Verify empty kind raises ValueError"""
         mixin = IntegrationClientMixin(
             integration_identifier="test-integration",
@@ -74,7 +74,7 @@ class TestPostIntegrationRawDataInputValidation:
             )
 
     @pytest.mark.asyncio
-    async def test_future_resync_start_time_raises_error(self):
+    async def test_future_resync_start_time_raises_error(self) -> None:
         """Verify future timestamp raises ValueError"""
         mixin = IntegrationClientMixin(
             integration_identifier="test-integration",
@@ -93,7 +93,7 @@ class TestPostIntegrationRawDataInputValidation:
             )
 
     @pytest.mark.asyncio
-    async def test_past_resync_start_time_succeeds(self):
+    async def test_past_resync_start_time_succeeds(self) -> None:
         """Verify past timestamp is accepted"""
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
@@ -124,7 +124,7 @@ class TestPostIntegrationRawDataInputValidation:
             )
 
     @pytest.mark.asyncio
-    async def test_timezone_naive_future_timestamp_raises_error(self):
+    async def test_timezone_naive_future_timestamp_raises_error(self) -> None:
         """Verify timezone-naive future timestamp raises ValueError (tests timezone.utc fallback)"""
         mixin = IntegrationClientMixin(
             integration_identifier="test-integration",
@@ -146,7 +146,7 @@ class TestPostIntegrationRawDataInputValidation:
             )
 
     @pytest.mark.asyncio
-    async def test_timezone_naive_past_timestamp_succeeds(self):
+    async def test_timezone_naive_past_timestamp_succeeds(self) -> None:
         """Verify timezone-naive past timestamp is accepted (tests timezone.utc fallback)"""
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
@@ -183,7 +183,7 @@ class TestPostIntegrationRawDataRequestBody:
     """Test request body construction in post_integration_raw_data"""
 
     @pytest.mark.asyncio
-    async def test_request_body_with_resync_event_type(self):
+    async def test_request_body_with_resync_event_type(self) -> None:
         """Verify request body includes resyncStartTime and eventType for resync"""
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
@@ -222,13 +222,13 @@ class TestPostIntegrationRawDataRequestBody:
         request_body = call_args.kwargs["json"]
         assert request_body["items"] == raw_data
         assert request_body["operation"] == "upsert"
-        assert request_body["type"] == "resync"
-        assert request_body["resyncStartTime"] == resync_time.isotime()
+        assert request_body["eventType"] == "resync"
+        assert request_body["resyncStartTime"] == resync_time.isoformat()
         assert request_body["eventType"] == "resync"
         assert "extractionTimestamp" in request_body
 
     @pytest.mark.asyncio
-    async def test_request_body_with_live_event_type(self):
+    async def test_request_body_with_live_event_type(self) -> None:
         """Verify request body includes resyncStartTime and eventType for webhook"""
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
@@ -255,7 +255,6 @@ class TestPostIntegrationRawDataRequestBody:
                 sync_id="webhook-xyz-789",
                 kind="repository",
                 operation=LakehouseOperation.UPSERT,
-                kafka_metadata={"originalWebhook": {"event": "push"}},
                 resync_start_time=webhook_time,
                 event_type=LakehouseEventType.LIVE_EVENT,
             )
@@ -268,14 +267,12 @@ class TestPostIntegrationRawDataRequestBody:
         request_body = call_args.kwargs["json"]
         assert request_body["items"] == raw_data
         assert request_body["operation"] == "upsert"
-        assert request_body["type"] == "live-event"
-        assert request_body["resyncStartTime"] == webhook_time.isotime()
         assert request_body["eventType"] == "live-event"
-        assert "kafkaMetadata" in request_body
-        assert request_body["kafkaMetadata"]["originalWebhook"]["event"] == "push"
+        assert request_body["resyncStartTime"] == webhook_time.isoformat()
+        assert request_body["eventType"] == "live-event"
 
     @pytest.mark.asyncio
-    async def test_request_body_without_optional_params(self):
+    async def test_request_body_without_optional_params(self) -> None:
         """Verify request body works without resync_start_time and event_type"""
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
@@ -307,17 +304,17 @@ class TestPostIntegrationRawDataRequestBody:
         assert mock_client.post.called
         call_args = mock_client.post.call_args
 
-        # Verify the request body does NOT include optional fields
+        # Verify the request body does NOT include optional fields, but includes default eventType
         request_body = call_args.kwargs["json"]
         assert "resyncStartTime" not in request_body
-        assert "eventType" not in request_body
+        assert request_body["eventType"] == "live-event"
 
 
 class TestWebhookEventTimestampTracking:
     """Test WebhookEvent created_at timestamp tracking"""
 
     @pytest.mark.asyncio
-    async def test_webhook_event_from_request_sets_created_at(self):
+    async def test_webhook_event_from_request_sets_created_at(self) -> None:
         """Verify WebhookEvent.from_request() sets created_at"""
         from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
         from fastapi import Request
@@ -336,7 +333,7 @@ class TestWebhookEventTimestampTracking:
         assert before <= webhook_event.created_at <= after
         assert webhook_event.created_at.tzinfo == timezone.utc
 
-    def test_webhook_event_from_dict_parses_created_at(self):
+    def test_webhook_event_from_dict_parses_created_at(self) -> None:
         """Verify WebhookEvent.from_dict() parses created_at from ISO string"""
         from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
@@ -353,7 +350,7 @@ class TestWebhookEventTimestampTracking:
         assert webhook_event.created_at is not None
         assert webhook_event.created_at == datetime.fromisoformat(timestamp)
 
-    def test_webhook_event_from_dict_handles_missing_created_at(self):
+    def test_webhook_event_from_dict_handles_missing_created_at(self) -> None:
         """Verify WebhookEvent.from_dict() generates timestamp if missing"""
         from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
@@ -372,7 +369,7 @@ class TestWebhookEventTimestampTracking:
         assert webhook_event.created_at is not None
         assert before <= webhook_event.created_at <= after
 
-    def test_webhook_event_clone_preserves_created_at(self):
+    def test_webhook_event_clone_preserves_created_at(self) -> None:
         """Verify WebhookEvent.clone() preserves created_at"""
         from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
@@ -389,7 +386,7 @@ class TestWebhookEventTimestampTracking:
         assert cloned.created_at == original_time
         assert cloned.trace_id == original.trace_id
 
-    def test_webhook_event_raw_results_has_created_at(self):
+    def test_webhook_event_raw_results_has_created_at(self) -> None:
         """Verify WebhookEventRawResults stores created_at"""
         from port_ocean.core.handlers.webhook.webhook_event import (
             WebhookEventRawResults,
@@ -404,7 +401,7 @@ class TestWebhookEventTimestampTracking:
 
         assert results.created_at == timestamp
 
-    def test_webhook_event_raw_results_generates_created_at_if_missing(self):
+    def test_webhook_event_raw_results_generates_created_at_if_missing(self) -> None:
         """Verify WebhookEventRawResults generates timestamp if not provided"""
         from port_ocean.core.handlers.webhook.webhook_event import (
             WebhookEventRawResults,
@@ -425,7 +422,7 @@ class TestWebhookEventTimestampTracking:
 class TestTimestampConversionToMilliseconds:
     """Test datetime to unix milliseconds conversion"""
 
-    def test_converts_datetime_to_unix_milliseconds(self):
+    def test_converts_datetime_to_unix_milliseconds(self) -> None:
         """Verify datetime converts to unix milliseconds correctly"""
         dt = datetime(2024, 3, 29, 10, 30, 45, 123456, tzinfo=timezone.utc)
         timestamp_ms = int(dt.timestamp() * 1000)
@@ -436,7 +433,7 @@ class TestTimestampConversionToMilliseconds:
         # Verify milliseconds component is preserved
         assert timestamp_ms % 1000 == 123  # 123 milliseconds from microseconds
 
-    def test_milliseconds_precision_preserved(self):
+    def test_milliseconds_precision_preserved(self) -> None:
         """Verify microseconds are converted to milliseconds correctly"""
         # 123456 microseconds = 123.456 milliseconds = 123 ms (truncated)
         dt = datetime(2026, 1, 1, 0, 0, 0, 123456, tzinfo=timezone.utc)
@@ -451,7 +448,7 @@ class TestBackwardCompatibility:
     """Test backward compatibility with existing code"""
 
     @pytest.mark.asyncio
-    async def test_optional_params_can_be_omitted(self):
+    async def test_optional_params_can_be_omitted(self) -> None:
         """Verify resync_start_time and event_type can be omitted"""
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
