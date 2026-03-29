@@ -1,5 +1,6 @@
 import pytest
 from typing import Any
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 from http import HTTPStatus
 import httpx
@@ -369,6 +370,62 @@ class TestRetryTransport:
         _, headers_arg, status_code_arg = calc_sleep.call_args.args
         assert headers_arg == response1.headers
         assert status_code_arg == response1.status_code
+
+    @pytest.mark.asyncio
+    async def test_retries_when_body_read_fails_for_chunked_response(self) -> None:
+        """
+        If the response has no Content-Length (likely chunked) and reading the body raises
+        an httpx HTTPError (e.g. RemoteProtocolError / incomplete chunked read), the error
+        should occur inside the retry loop and be retried.
+        """
+        mock_transport = Mock()
+        transport = RetryTransport(
+            wrapped_transport=mock_transport,
+            retry_config=RetryConfig(max_attempts=2),
+        )
+
+        class FailingAsyncStream(httpx.AsyncByteStream):
+            async def __aiter__(self):
+                yield b'{"partial":'
+                raise httpx.RemoteProtocolError(
+                    "peer closed connection without sending complete message body (incomplete chunked read)"
+                )
+
+            async def aclose(self) -> None:
+                return None
+
+        request = httpx.Request("GET", "https://example.com")
+
+        # First attempt returns a chunked/unknown-length response whose body read fails.
+        response1 = httpx.Response(200, headers={}, stream=FailingAsyncStream())
+
+        # Second attempt succeeds with a known-length body to avoid extra reads in logging.
+        ok_body = b'{"ok": true}'
+        response2 = httpx.Response(
+            200, headers={"Content-Length": str(len(ok_body))}, content=ok_body
+        )
+
+        mock_transport.handle_async_request = AsyncMock(
+            side_effect=[response1, response2]
+        )
+
+        fake_ocean = SimpleNamespace(
+            config=SimpleNamespace(streaming=SimpleNamespace(enabled=False))
+        )
+
+        with (
+            patch.object(transport, "_calculate_sleep", return_value=0.0),
+            patch(
+                "port_ocean.helpers.retry.asyncio.sleep",
+                new=AsyncMock(return_value=None),
+            ),
+            patch.object(retry_module, "ocean", fake_ocean),
+        ):
+            result = await transport.handle_async_request(request)
+
+        assert mock_transport.handle_async_request.await_count == 2
+        assert result.status_code == 200
+        assert result.content == ok_body
 
     def test_calculate_sleep_ignores_retry_after_for_configured_status_codes(
         self,
