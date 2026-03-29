@@ -180,8 +180,9 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
     mock_ocean: Ocean,
 ) -> None:
     """Test lakehouse send when enabled - UPSERT operation with raw data"""
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, ANY
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+    from port_ocean.core.models import LakehouseEventType
 
     mock_post = AsyncMock()
     with (
@@ -211,8 +212,9 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
             "test-event-id",
             "repository",
             operation=LakehouseOperation.UPSERT,
-            data_type="live-event",
             kafka_metadata={},
+            resync_start_time=ANY,  # Timestamp - any datetime is acceptable
+            event_type=LakehouseEventType.LIVE_EVENT,
         )
 
 
@@ -222,8 +224,9 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
     mock_ocean: Ocean,
 ) -> None:
     """Test lakehouse send when enabled - DELETE operation with raw data"""
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, ANY
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+    from port_ocean.core.models import LakehouseEventType
 
     mock_post = AsyncMock()
     with (
@@ -253,8 +256,9 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
             "test-event-id",
             "repository",
             operation=LakehouseOperation.DELETE,
-            data_type="live-event",
             kafka_metadata={},
+            resync_start_time=ANY,  # Timestamp - any datetime is acceptable
+            event_type=LakehouseEventType.LIVE_EVENT,
         )
 
 
@@ -325,8 +329,9 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
     mock_ocean: Ocean,
 ) -> None:
     """Test lakehouse send with both UPSERT and DELETE operations"""
-    from unittest.mock import MagicMock, call
+    from unittest.mock import MagicMock, call, ANY
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+    from port_ocean.core.models import LakehouseEventType
 
     mock_post = AsyncMock()
     with (
@@ -360,16 +365,18 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
                     "test-event-id",
                     "repository",
                     operation=LakehouseOperation.UPSERT,
-                    data_type="live-event",
                     kafka_metadata={},
+                    resync_start_time=ANY,  # Timestamp - any datetime is acceptable
+                    event_type=LakehouseEventType.LIVE_EVENT,
                 ),
                 call(
                     delete_data,
                     "test-event-id",
                     "repository",
                     operation=LakehouseOperation.DELETE,
-                    data_type="live-event",
                     kafka_metadata={},
+                    resync_start_time=ANY,  # Timestamp - any datetime is acceptable
+                    event_type=LakehouseEventType.LIVE_EVENT,
                 ),
             ]
         )
@@ -381,8 +388,9 @@ async def test_send_webhook_raw_data_to_lakehouse_with_original_webhook(
     mock_ocean: Ocean,
 ) -> None:
     """Test lakehouse send includes original webhook in kafka_metadata"""
-    from unittest.mock import MagicMock
+    from unittest.mock import MagicMock, ANY
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+    from port_ocean.core.models import LakehouseEventType
 
     mock_post = AsyncMock()
     with (
@@ -418,6 +426,7 @@ async def test_send_webhook_raw_data_to_lakehouse_with_original_webhook(
             "test-event-id",
             "repository",
             operation=LakehouseOperation.UPSERT,
-            data_type="live-event",
             kafka_metadata={"originalWebhook": original_webhook_payload},
+            resync_start_time=ANY,  # Timestamp - any datetime is acceptable
+            event_type=LakehouseEventType.LIVE_EVENT,
         )

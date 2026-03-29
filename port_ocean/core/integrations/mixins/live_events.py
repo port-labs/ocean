@@ -6,7 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.integrations.mixins.utils import handle_items_to_parse, is_lakehouse_data_enabled
-from port_ocean.core.models import Entity, LakehouseOperation
+from port_ocean.core.models import Entity, LakehouseOperation, LakehouseEventType
 from port_ocean.core.ocean_types import RAW_ITEM
 from port_ocean.context.ocean import ocean
 
@@ -130,8 +130,9 @@ class LiveEventsMixin(HandlerMixin):
                             event_id,
                             kind,
                             operation=LakehouseOperation.UPSERT,
-                            data_type="live-event",
                             kafka_metadata=kafka_metadata,
+                            resync_start_time=webhook_event_raw_result.created_at,
+                            event_type=LakehouseEventType.LIVE_EVENT,
                         )
                     except Exception as e:
                         logger.warning(
@@ -152,8 +153,9 @@ class LiveEventsMixin(HandlerMixin):
                             event_id,
                             kind,
                             operation=LakehouseOperation.DELETE,
-                            data_type="live-event",
                             kafka_metadata=kafka_metadata,
+                            resync_start_time=webhook_event_raw_result.created_at,
+                            event_type=LakehouseEventType.LIVE_EVENT,
                         )
                     except Exception as e:
                         logger.warning(

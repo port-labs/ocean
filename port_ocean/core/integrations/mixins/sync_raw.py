@@ -28,7 +28,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, ProcessExecutionMode
+from port_ocean.core.models import Entity, ProcessExecutionMode, LakehouseEventType
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -424,7 +424,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             if lakehouse_data_enabled and raw_results:
                 await ocean.port_client.post_integration_raw_data(
-                    raw_results, event.id, resource_config.kind, data_type="resync"
+                    raw_results,
+                    event.id,
+                    resource_config.kind,
+                    resync_start_time=event.attributes.get("resync_start_time"),
+                    event_type=LakehouseEventType.RESYNC,
                 )
 
             logger.info(
@@ -467,7 +471,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     batch_index += 1
                     if lakehouse_data_enabled:
                         await ocean.port_client.post_integration_raw_data(
-                            items, event.id, resource_config.kind, data_type="resync"
+                            items,
+                            event.id,
+                            resource_config.kind,
+                            resync_start_time=event.attributes.get("resync_start_time"),
+                            event_type=LakehouseEventType.RESYNC,
                         )
                     number_of_raw_results += len(items)
                     if send_raw_data_examples_amount > 0:

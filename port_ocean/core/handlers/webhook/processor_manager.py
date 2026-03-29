@@ -274,6 +274,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 if resource is not None:
                     webhook_event_raw_results.resource = resource
                 webhook_event_raw_results._webhook_trace_id = processor.event.trace_id
+                webhook_event_raw_results._created_at = processor.event.created_at
                 webhook_event_raw_results.original_webhook = original_payload
                 webhook_event_raw_results.original_headers = headers
                 break
