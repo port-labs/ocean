@@ -6,7 +6,7 @@ define run_checks
 	echo "Running poetry check"; \
 	poetry check || exit_code=$$?;\
 	echo "Running mypy"; \
-	mypy . --exclude '/\.venv/' || exit_code=$$?; \
+	mypy . --exclude '/\.venv.*/' || exit_code=$$?; \
 	echo "Running ruff"; \
 	ruff check . || exit_code=$$?; \
 	echo "Running black"; \
