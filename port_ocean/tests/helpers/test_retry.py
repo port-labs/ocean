@@ -36,7 +36,7 @@ class TestRetryConfig:
                 HTTPStatus.BAD_REQUEST,
             ]
         )
-        assert config.retry_after_headers == ["Retry-After"]
+        assert config.retry_after_headers == ["Retry-After", "x-ratelimit-reset"]
         assert config.ignore_retry_after_status_codes == frozenset()
 
     def test_custom_configuration(self) -> None:
@@ -73,7 +73,11 @@ class TestRetryConfig:
             ]
         )
         assert config.retry_status_codes == expected_codes
-        assert config.retry_after_headers == ["X-Custom-Retry", "Retry-After"]
+        assert config.retry_after_headers == [
+            "X-Custom-Retry",
+            "Retry-After",
+            "x-ratelimit-reset",
+        ]
         assert config.ignore_retry_after_status_codes == frozenset(
             [HTTPStatus.INTERNAL_SERVER_ERROR]
         )
@@ -228,7 +232,10 @@ class TestRetryTransport:
         transport = RetryTransport(wrapped_transport=mock_transport)
 
         assert transport._retry_config.max_attempts == 10  # Default value
-        assert transport._retry_config.retry_after_headers == ["Retry-After"]
+        assert transport._retry_config.retry_after_headers == [
+            "Retry-After",
+            "x-ratelimit-reset",
+        ]
 
     def test_is_retryable_method(self) -> None:
         """Test _is_retryable_method functionality."""
@@ -538,6 +545,7 @@ class TestRetryConfigIntegration:
         assert transport._retry_config.retry_after_headers == [
             "X-RateLimit-Reset",
             "Retry-After",
+            "x-ratelimit-reset",
         ]
         assert HTTPStatus.FORBIDDEN in transport._retry_config.retry_status_codes
 
