@@ -431,7 +431,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         if ocean.config.streaming.enabled:
             return False
         return not (
-            response.headers.get("Content-Length") or response.headers.get("content-length")
+            response.headers.get("Content-Length")
+            or response.headers.get("content-length")
         )
 
     async def _get_content_length_async(self, response: httpx.Response) -> int:
