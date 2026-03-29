@@ -1,4 +1,5 @@
 from abc import ABC
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any, Dict, Type, TypeAlias, Optional
 from uuid import uuid4
@@ -52,12 +53,14 @@ class WebhookEvent(LiveEvent):
         headers: EventHeaders,
         original_request: Request | None = None,
         group_id: str | None = None,
+        created_at: datetime | None = None,
     ) -> None:
         self.trace_id = trace_id
         self.payload = payload
         self.headers = headers
         self._original_request = original_request
         self.group_id = group_id
+        self.created_at = created_at or datetime.now(timezone.utc)
 
     @classmethod
     async def from_request(
@@ -65,21 +68,27 @@ class WebhookEvent(LiveEvent):
     ) -> "WebhookEvent":
         trace_id = str(uuid4())
         payload = await request.json()
+        created_at = datetime.now(timezone.utc)
 
         return cls(
             trace_id=trace_id,
             payload=payload,
             headers=dict(request.headers),
             original_request=request,
+            created_at=created_at,
         )
 
     @classmethod
     def from_dict(cls: Type["WebhookEvent"], data: Dict[str, Any]) -> "WebhookEvent":
+        created_at = None
+        if "created_at" in data:
+            created_at = datetime.fromisoformat(data["created_at"])
         return cls(
             trace_id=data["trace_id"],
             payload=data["payload"],
             headers=data["headers"],
             original_request=None,
+            created_at=created_at,
         )
 
     def clone(self) -> "WebhookEvent":
@@ -88,6 +97,7 @@ class WebhookEvent(LiveEvent):
             payload=self.payload,
             headers=self.headers,
             original_request=self._original_request,
+            created_at=self.created_at,
         )
 
     def set_timestamp(
@@ -114,6 +124,7 @@ class WebhookEventRawResults:
         updated_raw_results: list[RAW_ITEM],
         deleted_raw_results: list[RAW_ITEM],
         webhook_trace_id: str | None = None,
+        created_at: datetime | None = None,
     ) -> None:
         self._resource: ResourceConfig | None = None
         self._updated_raw_results = updated_raw_results
@@ -121,6 +132,7 @@ class WebhookEventRawResults:
         self._webhook_trace_id = webhook_trace_id
         self._original_webhook: EventPayload | None = None
         self._original_headers: EventHeaders | None = None
+        self._created_at = created_at or datetime.now(timezone.utc)
 
     @property
     def original_webhook(self) -> EventPayload | None:
@@ -155,3 +167,7 @@ class WebhookEventRawResults:
     @property
     def deleted_raw_results(self) -> list[RAW_ITEM]:
         return self._deleted_raw_results
+
+    @property
+    def created_at(self) -> datetime:
+        return self._created_at
