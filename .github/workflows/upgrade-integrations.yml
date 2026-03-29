@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -32,7 +34,7 @@ jobs:
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.MACHINE_USER_TOKEN }}
+          token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
           title: ${{ steps.version.outputs.pr_name }}
           branch: ${{ steps.version.outputs.branch_name }}
           base: main
