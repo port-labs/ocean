@@ -1,13 +1,11 @@
-import asyncio
 import json
-from typing import Any, AsyncGenerator
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from client import (
     ArgocdClient,
     ClusterState,
-    MAXIMUM_CONCURRENT_CLUSTER_REQUESTS,
     ObjectKind,
 )
 
@@ -24,7 +22,7 @@ def mock_argocd_client() -> ArgocdClient:
 
 
 @pytest.mark.asyncio
-async def test_get_resources_for_available_clusters(
+async def test_get_resources(
     mock_argocd_client: ArgocdClient,
 ) -> None:
     kinds = [ObjectKind.PROJECT, ObjectKind.APPLICATION]
@@ -58,39 +56,26 @@ async def test_get_resources_for_available_clusters(
                 ]
             }
 
+        async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+            yield response_data["items"]
+
         with patch.object(
-            mock_argocd_client, "get_available_clusters", new_callable=AsyncMock
-        ) as mock_clusters:
-            mock_clusters.return_value = [
-                {
-                    "name": "test-cluster",
-                    "connectionState": {"status": ClusterState.AVAILABLE.value},
-                }
-            ]
+            mock_argocd_client.streaming_client,
+            "stream_json",
+            side_effect=mock_stream_json,
+        ) as mock_stream:
+            resources = []
+            async for resource_batch in mock_argocd_client.get_resources(
+                resource_kind=kind
+            ):
+                resources.extend(resource_batch)
 
-            async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
-                yield response_data["items"]
-
-            with patch.object(
-                mock_argocd_client.streaming_client,
-                "stream_json",
-                side_effect=mock_stream_json,
-            ) as mock_stream:
-                resources = []
-                async for (
-                    resource_batch
-                ) in mock_argocd_client.get_resources_for_available_clusters(
-                    resource_kind=kind
-                ):
-                    resources.extend(resource_batch)
-
-                assert resources == response_data["items"]
-                mock_stream.assert_called_with(
-                    url=f"{mock_argocd_client.api_url}/{kind}s",
-                    target_items_path="items",
-                    params={"selector": "cluster=test-cluster"},
-                )
-            mock_clusters.assert_called_once()
+            assert resources == response_data["items"]
+            mock_stream.assert_called_with(
+                url=f"{mock_argocd_client.api_url}/{kind}s",
+                target_items_path="items",
+                params=None,
+            )
 
 
 @pytest.mark.asyncio
@@ -193,7 +178,7 @@ async def test_get_deployment_history(mock_argocd_client: ArgocdClient) -> None:
         yield response_data["items"]
 
     with patch(
-        "client.ArgocdClient.get_resources_for_available_clusters",
+        "client.ArgocdClient.get_resources",
         side_effect=mock_resources_generator,
     ) as mock_request:
         kind = ObjectKind.APPLICATION
@@ -228,7 +213,7 @@ async def test_get_deployment_history_without_history_data(
         yield response_data["items"]
 
     with patch(
-        "client.ArgocdClient.get_resources_for_available_clusters",
+        "client.ArgocdClient.get_resources",
         side_effect=mock_resources_generator,
     ) as mock_request:
         kind = ObjectKind.APPLICATION
@@ -274,7 +259,7 @@ async def test_get_kubernetes_resource(mock_argocd_client: ArgocdClient) -> None
         yield response_data["items"]
 
     with patch(
-        "client.ArgocdClient.get_resources_for_available_clusters",
+        "client.ArgocdClient.get_resources",
         side_effect=mock_resources_generator,
     ) as mock_request:
         kind = ObjectKind.APPLICATION
@@ -309,7 +294,7 @@ async def test_get_kubernetes_resource_without_resource_data(
         yield response_data["items"]
 
     with patch(
-        "client.ArgocdClient.get_resources_for_available_clusters",
+        "client.ArgocdClient.get_resources",
         side_effect=mock_resources_generator,
     ) as mock_request:
         resources_list = [
@@ -411,10 +396,10 @@ async def test_get_clusters_with_only_available_clusters(
 
 
 @pytest.mark.asyncio
-async def test_get_clusters_filters_unavailable_clusters(
+async def test_get_clusters_returns_all_clusters(
     mock_argocd_client: ArgocdClient,
 ) -> None:
-    """Test that get_clusters filters out unavailable clusters."""
+    """Test that get_clusters returns all clusters regardless of status."""
     response_data = {
         "items": [
             {
@@ -444,40 +429,34 @@ async def test_get_clusters_filters_unavailable_clusters(
             },
         ]
     }
+
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
     with patch.object(
-        mock_argocd_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value = response_data
-
+        mock_argocd_client.streaming_client,
+        "stream_json",
+        side_effect=mock_stream_json,
+    ) as mock_stream:
         all_clusters = []
+        async for cluster_batch in mock_argocd_client.get_clusters():
+            all_clusters.extend(cluster_batch)
 
-        async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
-            yield response_data["items"]
-
-        with patch.object(
-            mock_argocd_client.streaming_client,
-            "stream_json",
-            side_effect=mock_stream_json,
-        ) as mock_stream:
-            async for cluster_batch in mock_argocd_client.get_clusters(
-                skip_unavailable_clusters=True
-            ):
-                all_clusters.extend(cluster_batch)
-
-            # Only 3 out of 5 clusters have "Successful" status
-            assert len(all_clusters) == 3
-            assert all(
-                cluster["connectionState"]["status"] == ClusterState.AVAILABLE.value
-                for cluster in all_clusters
-            )
-            # Verify the correct clusters were included
-            cluster_names = [cluster["name"] for cluster in all_clusters]
-            assert cluster_names == ["cluster-1", "cluster-3", "cluster-5"]
-            mock_stream.assert_called_with(
-                url=f"{mock_argocd_client.api_url}/clusters",
-                target_items_path="items",
-                params=None,
-            )
+        # All 5 clusters are returned regardless of status
+        assert len(all_clusters) == 5
+        cluster_names = [cluster["name"] for cluster in all_clusters]
+        assert cluster_names == [
+            "cluster-1",
+            "cluster-2",
+            "cluster-3",
+            "cluster-4",
+            "cluster-5",
+        ]
+        mock_stream.assert_called_with(
+            url=f"{mock_argocd_client.api_url}/clusters",
+            target_items_path="items",
+            params=None,
+        )
 
 
 # Tests for streaming vs non-streaming functionality
@@ -554,8 +533,8 @@ async def test_get_clusters_with_streaming_disabled() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_clusters_skip_unavailable_with_streaming_disabled() -> None:
-    """Test get_clusters filters unavailable clusters when streaming disabled"""
+async def test_get_clusters_returns_all_with_streaming_disabled() -> None:
+    """Test get_clusters returns all clusters when streaming disabled"""
     client = ArgocdClient(
         token="test_token",
         server_url="https://localhost:8080",
@@ -576,17 +555,16 @@ async def test_get_clusters_skip_unavailable_with_streaming_disabled() -> None:
         client, "_send_api_request", new_callable=AsyncMock, return_value=response_data
     ):
         clusters = []
-        async for cluster_batch in client.get_clusters(skip_unavailable_clusters=True):
+        async for cluster_batch in client.get_clusters():
             clusters.extend(cluster_batch)
 
-        # Should only have successful clusters
-        assert len(clusters) == 2
-        assert all(c["connectionState"]["status"] == "Successful" for c in clusters)
+        # All clusters are returned regardless of status
+        assert len(clusters) == 3
 
 
 @pytest.mark.asyncio
-async def test_get_resources_for_available_clusters_with_streaming_disabled() -> None:
-    """Test get_resources_for_available_clusters uses direct API requests when streaming disabled"""
+async def test_get_resources_with_streaming_disabled() -> None:
+    """Test get_resources uses direct API requests when streaming disabled"""
     client = ArgocdClient(
         token="test_token",
         server_url="https://localhost:8080",
@@ -595,39 +573,31 @@ async def test_get_resources_for_available_clusters_with_streaming_disabled() ->
         use_streaming=False,
     )
 
-    # Mock available clusters
-    with patch.object(
-        client, "get_available_clusters", new_callable=AsyncMock
-    ) as mock_clusters:
-        mock_clusters.return_value = [{"name": "test-cluster"}]
+    response_data = {
+        "items": [
+            {"name": "app1", "metadata": {"uid": "uid1"}},
+            {"name": "app2", "metadata": {"uid": "uid2"}},
+        ]
+    }
 
-        response_data = {
-            "items": [
-                {"name": "app1", "metadata": {"uid": "uid1"}},
-                {"name": "app2", "metadata": {"uid": "uid2"}},
-            ]
-        }
+    with patch.object(client.streaming_client, "stream_json") as mock_stream:
+        with patch.object(
+            client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            return_value=response_data,
+        ) as mock_request:
+            resources = []
+            async for resource_batch in client.get_resources(ObjectKind.APPLICATION):
+                resources.extend(resource_batch)
 
-        with patch.object(client.streaming_client, "stream_json") as mock_stream:
-            with patch.object(
-                client,
-                "_send_api_request",
-                new_callable=AsyncMock,
-                return_value=response_data,
-            ) as mock_request:
-                resources = []
-                async for resource_batch in client.get_resources_for_available_clusters(
-                    ObjectKind.APPLICATION
-                ):
-                    resources.extend(resource_batch)
-
-                # Should use direct API request, not streaming
-                mock_request.assert_called_once_with(
-                    url=f"{client.api_url}/applications",
-                    query_params={"selector": "cluster=test-cluster"},
-                )
-                mock_stream.assert_not_called()
-                assert len(resources) == 2
+            # Should use direct API request, not streaming
+            mock_request.assert_called_once_with(
+                url=f"{client.api_url}/applications",
+                query_params=None,
+            )
+            mock_stream.assert_not_called()
+            assert len(resources) == 2
 
 
 @pytest.mark.asyncio
@@ -705,117 +675,28 @@ def test_argocd_client_without_custom_headers() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_resources_for_available_clusters_multiple_clusters_yields_all_batches(
+async def test_get_resources_yields_all_batches(
     mock_argocd_client: ArgocdClient,
 ) -> None:
-    """Test that all batches from multiple clusters are yielded."""
-    cluster_names = [f"cluster-{i}" for i in range(5)]
-    mock_clusters = [{"name": name} for name in cluster_names]
+    """Test that all batches from get_paginated_resources are yielded."""
+    batch_1 = [{"name": f"item-{j}"} for j in range(3)]
+    batch_2 = [{"name": f"item-{j}"} for j in range(3, 5)]
 
-    # Each cluster returns 2 batches of items
-    cluster_items: dict[str, list[list[dict[str, Any]]]] = {
-        name: [
-            [{"name": f"{name}-item-{j}"} for j in range(3)],
-            [{"name": f"{name}-item-{j}"} for j in range(3, 5)],
-        ]
-        for name in cluster_names
-    }
-
-    async def fake_get_paginated(
-        url: str, params: dict[str, Any] | None = None
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        cluster_name = params["selector"].split("=")[1]  # type: ignore[index]
-        for batch in cluster_items[cluster_name]:
-            yield batch
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+        yield batch_1
+        yield batch_2
 
     with patch.object(
-        mock_argocd_client, "get_available_clusters", new_callable=AsyncMock
-    ) as mock_get_clusters:
-        mock_get_clusters.return_value = mock_clusters
-
-        with patch.object(
-            mock_argocd_client,
-            "get_paginated_resources",
-            side_effect=fake_get_paginated,
+        mock_argocd_client.streaming_client,
+        "stream_json",
+        side_effect=mock_stream_json,
+    ):
+        all_resources: list[dict[str, Any]] = []
+        async for batch in mock_argocd_client.get_resources(
+            resource_kind=ObjectKind.APPLICATION
         ):
-            all_resources: list[dict[str, Any]] = []
-            async for batch in mock_argocd_client.get_resources_for_available_clusters(
-                resource_kind=ObjectKind.APPLICATION
-            ):
-                all_resources.extend(batch)
+            all_resources.extend(batch)
 
-    # Every item from every cluster must appear
-    assert len(all_resources) == 5 * 5  # 5 clusters × 5 items each
-    for name in cluster_names:
-        for j in range(5):
-            assert {"name": f"{name}-item-{j}"} in all_resources
-
-
-@pytest.mark.asyncio
-async def test_get_resources_for_available_clusters_concurrency_is_bounded() -> None:
-    """Test that the semaphore limits the number of concurrent get_paginated_resources iterators."""
-    concurrency_limit = MAXIMUM_CONCURRENT_CLUSTER_REQUESTS
-    # Use more clusters than the concurrency limit to actually test bounding
-    num_clusters = concurrency_limit + 10
-    cluster_names = [f"cluster-{i}" for i in range(num_clusters)]
-    mock_clusters = [{"name": name} for name in cluster_names]
-
-    in_flight = 0
-    max_in_flight = 0
-    lock = asyncio.Lock()
-
-    client = ArgocdClient(
-        token="test_token",
-        server_url="https://localhost:8080",
-        ignore_server_error=True,
-        allow_insecure=True,
-        use_streaming=True,
-    )
-
-    async def fake_get_paginated(
-        url: str, params: dict[str, Any] | None = None
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        nonlocal in_flight, max_in_flight
-
-        async with lock:
-            in_flight += 1
-            if in_flight > max_in_flight:
-                max_in_flight = in_flight
-
-        # Simulate async I/O so other iterators can be scheduled concurrently
-        await asyncio.sleep(0.01)
-        yield [{"name": f"{params['selector']}-item"}]  # type: ignore[index]
-
-        async with lock:
-            in_flight -= 1
-
-    with patch.object(
-        client, "get_available_clusters", new_callable=AsyncMock
-    ) as mock_get_clusters:
-        mock_get_clusters.return_value = mock_clusters
-
-        with patch.object(
-            client,
-            "get_paginated_resources",
-            side_effect=fake_get_paginated,
-        ):
-            all_resources: list[dict[str, Any]] = []
-            async for batch in client.get_resources_for_available_clusters(
-                resource_kind=ObjectKind.APPLICATION
-            ):
-                all_resources.extend(batch)
-
-    # All clusters produced results
-    assert len(all_resources) == num_clusters
-
-    # Concurrency never exceeded the semaphore limit
-    assert max_in_flight <= concurrency_limit, (
-        f"Max in-flight iterators ({max_in_flight}) exceeded "
-        f"semaphore limit ({concurrency_limit})"
-    )
-    # Concurrency was actually used (not purely sequential)
-    assert (
-        max_in_flight > 1
-    ), f"Expected concurrent execution but max in-flight was {max_in_flight}"
-    # All iterators finished
-    assert in_flight == 0
+    assert len(all_resources) == 5
+    for j in range(5):
+        assert {"name": f"item-{j}"} in all_resources

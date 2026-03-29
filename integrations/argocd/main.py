@@ -24,7 +24,7 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield []
     else:
         argocd_client = init_client()
-        async for cluster in argocd_client.get_resources_for_available_clusters(
+        async for cluster in argocd_client.get_resources(
             resource_kind=ObjectKind(kind)
         ):
             yield cluster
@@ -55,7 +55,7 @@ async def on_managed_k8s_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_T
 async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
 
-    async for app_batch in argocd_client.get_resources_for_available_clusters(
+    async for app_batch in argocd_client.get_resources(
         resource_kind=ObjectKind.APPLICATION
     ):
         if not app_batch:
