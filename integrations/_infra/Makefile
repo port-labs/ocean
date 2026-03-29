@@ -43,7 +43,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/prod install/local-core lint lint/fix run test test/integration clean seed
+.SILENT: install install/prod install/local-core lint lint/fix run test test/integration test/integration/discover test/integration/generate clean seed
 
 install:
 	$(call deactivate_virtualenv) && \
@@ -75,6 +75,17 @@ test:
 
 test/integration:
 	$(ACTIVATE) && poetry run pytest integration_tests/ -xvs -o "addopts="
+
+# Discover: run integration resync and record all HTTP requests to .port/resources/discovery.json.
+# Requires: make install/local-core (integration_testing is not in the published Ocean package).
+# Run from an integration directory. Use real APIs if .env has credentials, else mock 404s.
+test/integration/discover:
+	$(ACTIVATE) && poetry run python -m port_ocean.integration_testing.discovery
+
+# Generate: read discovery.json and write integration_tests/test_integration_resync.py with mock routes.
+# Requires: make install/local-core. Run after make test/integration/discover.
+test/integration/generate:
+	$(ACTIVATE) && poetry run python -m port_ocean.integration_testing.generate
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
