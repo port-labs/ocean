@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.13 (2026-03-26)
+
+
+### Features
+
+- Introduced a new `user-usage-metrics` kind to support fetching Copilot usage metrics for individual users in an organization
+
+
 ## 0.2.12 (2026-03-25)
 
 

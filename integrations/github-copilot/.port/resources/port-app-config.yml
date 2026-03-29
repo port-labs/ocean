@@ -89,9 +89,39 @@ resources:
           properties:
             record_date: .day + "T00:00:00Z"
             daily_active_users: .daily_active_users
+            weekly_active_users: .weekly_active_users
+            monthly_active_chat_users: .monthly_active_chat_users
+            monthly_active_agent_users: .monthly_active_agent_users
+            user_initiated_interaction_count: .user_initiated_interaction_count
             code_generation_activity_count: .code_generation_activity_count
             code_acceptance_activity_count: .code_acceptance_activity_count
             loc_suggested_to_add_sum: .loc_suggested_to_add_sum
             loc_added_sum: .loc_added_sum
+            loc_suggested_to_delete_sum: .loc_suggested_to_delete_sum
+            loc_deleted_sum: .loc_deleted_sum
+            prs_created_by_copilot: .pull_requests.total_created_by_copilot
+            prs_reviewed_by_copilot: .pull_requests.total_reviewed_by_copilot
+            prs_merged_by_copilot: .pull_requests.total_merged_created_by_copilot
+            total_copilot_applied_suggestions: .pull_requests.total_copilot_applied_suggestions
+  - kind: user-usage-metrics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.user_login + "@" + .__organization.login + "@" + .day)
+          title: (.user_login + "@" + .__organization.login + "@" + .day)
+          blueprint: '"githubCopilotUserUsage"'
+          properties:
+            record_date: .day + "T00:00:00Z"
+            code_generation_activity_count: .code_generation_activity_count
+            code_acceptance_activity_count: .code_acceptance_activity_count
+            loc_suggested_to_add_sum: .loc_suggested_to_add_sum
+            loc_suggested_to_delete_sum: .loc_suggested_to_delete_sum
+            loc_added_sum: .loc_added_sum
+            loc_deleted_sum: .loc_deleted_sum
             user_initiated_interaction_count: .user_initiated_interaction_count
             git_hub_org: .__organization.login
+            used_agent: .used_agent
+            used_chat: .used_chat
+            username: .user_login
