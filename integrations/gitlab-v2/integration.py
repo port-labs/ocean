@@ -1,6 +1,6 @@
 from typing import Literal, Any, Type, List, Optional
 from loguru import logger
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
@@ -16,6 +16,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
+from gitlab.helpers.utils import GitlabAccessLevel
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from datetime import datetime, timedelta, timezone
@@ -67,11 +68,11 @@ class ProjectSelector(Selector):
         title="Search Queries",
         description=(
             "List of search queries to execute against each project during enrichment. "
-            "Results are stored under __searchQueries[<name>] as a boolean (True if matches found)."
+            "Results are stored under __searchQueries[<name>] as a boolean (True if matches found).\n\n"
+            "See <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/capabilities?method=hosted&step=choose-method#enrich-entities-with-search-queries'>search queries documentation</a> for usage and examples."
         ),
     )
     included_files: list[str] = Field(
-        title="Attached files",
         alias="includedFiles",
         title="Included Files",
         default_factory=list,
@@ -112,7 +113,7 @@ class GitlabMemberSelector(GroupSelector):
         alias="includeInheritedMembers",
         title="Include Inherited Members",
         default=False,
-        description="If set to true, the integration will include inherited members in the group members list. Default value is false",
+        description="If set to true, the integration will include inherited members in the group members list.",
     )
 
 
@@ -160,7 +161,6 @@ class FilesSelector(BaseModel):
 class GitLabFilesSelector(GroupSelector):
     files: FilesSelector
     included_files: list[str] = Field(
-        title="Additional files",
         alias="includedFiles",
         title="Included Files",
         default_factory=list,
@@ -312,7 +312,7 @@ class IssueSelector(GroupSelector):
         default=None,
         alias="updatedAfter",
         title="Updated After (Days)",
-        description="Filter issues updated on or after the given time in days. Note: large values may cause rate limiting.",
+        description="Filter issues updated within the last N days (e.g. 30 to fetch issues updated in the last 30 days). Note: large values may cause rate limiting.\n\nSee <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/examples#issues-configuration-options'>issues configuration options</a> for more details.",
     )
 
     @property
@@ -343,28 +343,12 @@ class GitlabVisibilityConfig(BaseModel):
         title="Use Min Access Level",
         description="If true, apply min_access_level filtering. If false, include all accessible resources without filtering",
     )
-    min_access_level: Literal[10, 20, 30, 40, 50] = Field(
+    min_access_level: GitlabAccessLevel = Field(
         alias="minAccessLevel",
-        default=30,
+        default=GitlabAccessLevel.DEVELOPER,
         title="Min Access Level",
         description="Minimum access level required (10=Guest, 20=Reporter, 30=Developer, 40=Maintainer, 50=Owner)",
     )
-
-    @validator("min_access_level")
-    def validate_access_level(cls, value: int) -> int:
-        """Validate that min_access_level is a valid GitLab access level."""
-        valid_levels = [
-            10,
-            20,
-            30,
-            40,
-            50,
-        ]  # Guest, Reporter, Developer, Maintainer, Owner
-        if value not in valid_levels:
-            raise ValueError(
-                f"min_access_level must be one of: {valid_levels} (10=Guest, 20=Reporter, 30=Developer, 40=Maintainer, 50=Owner)"
-            )
-        return value
 
 
 class PipelineResourceConfig(ResourceConfig):

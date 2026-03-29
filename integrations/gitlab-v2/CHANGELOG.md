@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added explicit Literal kind definitions and removed bare ResourceConfig from the union
 - Added title/description metadata to selector fields in GitlabPortAppConfig for improved schema validation compliance
+- Renamed field titles from "Attached files" and "Additional files" to "Included Files" for consistency across ProjectSelectorandGitLabFilesSelector
 
 
 ## 0.6.1 (2026-03-25)
