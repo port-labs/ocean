@@ -136,7 +136,7 @@ When an integration is configured with the webhook event listener, the resync/up
 
 ### Example
 
-To use the webhook event listener, set the `type` field to `WEBHOOK` and provide a the address used to contact the integration instance in the `baseUrl` field in the [integration configuration](../../developing-an-integration/testing-the-integration.md#configuration-mapping):
+To use the webhook event listener, set the `type` field to `WEBHOOK` and provide the address used to contact the integration instance in the `baseUrl` field in the [integration configuration](../../developing-an-integration/testing-the-integration.md#configuration-mapping):
 
 ```yaml showLineNumbers
 eventListener:
