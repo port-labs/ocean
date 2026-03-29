@@ -10,10 +10,11 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One API Security risks."""
 
     def _enrich_scan_result_with_scan_id(
-        self, scan_result: Dict[str, Any], scan_id: str
+        self, scan_result: Dict[str, Any], scan_id: str, branch: str = ""
     ) -> dict[str, Any]:
-        """Enrich scan result with scan ID."""
+        """Enrich scan result with scan ID and branch."""
         scan_result["__scan_id"] = scan_id
+        scan_result["__branch"] = branch
         return scan_result
 
     async def get_resource(self, options: Any) -> RAW_ITEM:
@@ -51,6 +52,7 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
                 self._enrich_scan_result_with_scan_id(
                     result,
                     options["scan_id"],
+                    options["branch"],
                 )
                 for result in results
             ]

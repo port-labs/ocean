@@ -32,10 +32,12 @@ class CheckmarxKicsExporter(AbstractCheckmarxExporter):
         result: Dict[str, Any],
         scan_id: str,
         project_id: str,
+        branch: str = "",
     ) -> dict[str, Any]:
-        """Enrich a KICS result with the scan ID and project ID."""
+        """Enrich a KICS result with the scan ID, project ID, and branch."""
         result["__scan_id"] = scan_id
         result["__project_id"] = project_id
+        result["__branch"] = branch
         return result
 
     async def get_paginated_resources(
@@ -61,7 +63,7 @@ class CheckmarxKicsExporter(AbstractCheckmarxExporter):
             )
             yield [
                 self._enrich_kics_result_with_scan_info(
-                    result, options["scan_id"], options["project_id"]
+                    result, options["scan_id"], options["project_id"], options["branch"]
                 )
                 for result in results
             ]

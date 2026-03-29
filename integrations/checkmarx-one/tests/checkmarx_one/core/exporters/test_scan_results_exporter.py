@@ -88,6 +88,7 @@ async def test_get_paginated_resources_filters_and_enriches(
         "scan_id": "scan-123",
         "type": "sast",
         "project_id": "proj_456",
+        "branch": "",
     }
     batches: List[Dict[str, Any]] = []
     async for batch in exporter.get_paginated_resources(options):
@@ -99,12 +100,14 @@ async def test_get_paginated_resources_filters_and_enriches(
             "type": "sast",
             "__scan_id": "scan-123",
             "__project_id": "proj_456",
+            "__branch": "",
         },
         {
             "id": "3",
             "type": "sast",
             "__scan_id": "scan-123",
             "__project_id": "proj_456",
+            "__branch": "",
         },
     ]
 
@@ -123,6 +126,7 @@ async def test_get_paginated_resources_enriches_with_project_id(
         "scan_id": "scan-123",
         "project_id": "project-456",
         "type": "sca",
+        "branch": "",
     }
     batches: List[Dict[str, Any]] = []
     async for batch in exporter.get_paginated_resources(options):
@@ -134,6 +138,7 @@ async def test_get_paginated_resources_enriches_with_project_id(
             "type": "sca",
             "__scan_id": "scan-123",
             "__project_id": "project-456",
+            "__branch": "",
         },
     ]
 

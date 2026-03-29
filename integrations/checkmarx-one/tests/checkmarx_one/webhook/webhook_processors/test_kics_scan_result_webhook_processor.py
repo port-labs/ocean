@@ -105,6 +105,8 @@ class TestKicsScanResultWebhookProcessor:
         valid_payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+        "branch": "main",
+
         }
         result = await kics_scan_result_webhook_processor.authenticate(
             valid_payload, headers
@@ -210,6 +212,8 @@ class TestKicsScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+        "branch": "main",
+
         }
 
         # Mock the KICS exporter
@@ -248,6 +252,8 @@ class TestKicsScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+        "branch": "main",
+
         }
 
         # Mock the KICS exporter to return empty results
@@ -284,6 +290,8 @@ class TestKicsScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+        "branch": "main",
+
         }
 
         # Mock the KICS exporter to raise an exception
@@ -339,6 +347,8 @@ class TestKicsScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+        "branch": "main",
+
         }
 
         # Mock the KICS exporter
@@ -397,6 +407,8 @@ class TestKicsScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-456",
             "projectId": "project-789",
+        "branch": "main",
+
         }
 
         # Mock the KICS exporter

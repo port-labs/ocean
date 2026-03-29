@@ -111,6 +111,8 @@ class TestSastScanResultWebhookProcessor:
         valid_payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+        "branch": "main",
+
         }
         result = await sast_scan_result_webhook_processor.authenticate(
             valid_payload, headers
@@ -248,6 +250,8 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+        "branch": "main",
+
         }
 
         # Mock the SAST exporter
@@ -286,6 +290,8 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+        "branch": "main",
+
         }
 
         # Mock the SAST exporter to return empty results
@@ -322,6 +328,8 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+        "branch": "main",
+
         }
 
         # Mock the SAST exporter to raise an exception
@@ -379,6 +387,8 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+        "branch": "main",
+
         }
 
         # Mock the SAST exporter
@@ -443,6 +453,8 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-456",
             "projectId": "project-789",
+        "branch": "main",
+
         }
 
         # Mock the SAST exporter
@@ -494,6 +506,8 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-789",
             "projectId": "project-999",
+        "branch": "main",
+
         }
 
         # Mock the SAST exporter
@@ -529,3 +543,136 @@ class TestSastScanResultWebhookProcessor:
         assert len(result.updated_raw_results) == 1
         assert len(result.deleted_raw_results) == 0
         assert result.updated_raw_results[0]["result_id"] == "sast-result-minimal"
+
+    async def test_handle_event_latest_scans_only_with_previous_scan(
+        self,
+        sast_scan_result_webhook_processor: SastScanResultWebhookProcessor,
+    ) -> None:
+        """When latestScansOnly=True and a previous scan exists, its findings go to deleted_raw_results."""
+        resource_config = CheckmarxOneSastResourcesConfig(
+            kind="sast",
+            selector=CheckmarxOneSastSelector(
+                query="true",
+                scan_filter={"latestScansOnly": True},
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".result_id",
+                        title=".query_name",
+                        blueprint='"checkmarxSastScanResult"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+
+        new_findings = [{"result_id": "new-1", "__scan_id": "scan-new", "__branch": "main"}]
+        prev_findings = [
+            {"result_id": "old-1", "__scan_id": "scan-prev", "__branch": "main"},
+            {"result_id": "old-2", "__scan_id": "scan-prev", "__branch": "main"},
+        ]
+        prev_scan = {"id": "scan-prev", "projectId": "proj-1", "branch": "main"}
+
+        payload: EventPayload = {
+            "scanId": "scan-new",
+            "projectId": "proj-1",
+            "branch": "main",
+            "statusInfo": [{"status": "Completed"}],
+        }
+
+        mock_sast_exporter = AsyncMock()
+        call_count = 0
+
+        async def mock_paginated(options: Any) -> AsyncIterator[List[dict[str, Any]]]:
+            nonlocal call_count
+            call_count += 1
+            if options["scan_id"] == "scan-new":
+                yield new_findings
+            else:
+                yield prev_findings
+
+        mock_sast_exporter.get_paginated_resources = mock_paginated
+
+        mock_scan_exporter = AsyncMock()
+        mock_scan_exporter.get_previous_completed_scan = AsyncMock(return_value=prev_scan)
+
+        with (
+            patch(
+                "checkmarx_one.webhook.webhook_processors.sast_scan_result_webhook_processor.create_sast_exporter",
+                return_value=mock_sast_exporter,
+            ),
+            patch(
+                "checkmarx_one.webhook.webhook_processors.sast_scan_result_webhook_processor.create_scan_exporter",
+                return_value=mock_scan_exporter,
+            ),
+        ):
+            result = await sast_scan_result_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == new_findings
+        assert result.deleted_raw_results == prev_findings
+        mock_scan_exporter.get_previous_completed_scan.assert_called_once_with(
+            "proj-1", "main", "scan-new"
+        )
+
+    async def test_handle_event_latest_scans_only_no_previous_scan(
+        self,
+        sast_scan_result_webhook_processor: SastScanResultWebhookProcessor,
+    ) -> None:
+        """When latestScansOnly=True but no previous scan exists, deleted_raw_results is empty."""
+        resource_config = CheckmarxOneSastResourcesConfig(
+            kind="sast",
+            selector=CheckmarxOneSastSelector(
+                query="true",
+                scan_filter={"latestScansOnly": True},
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".result_id",
+                        title=".query_name",
+                        blueprint='"checkmarxSastScanResult"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+
+        new_findings = [{"result_id": "new-1", "__scan_id": "scan-new", "__branch": "main"}]
+
+        payload: EventPayload = {
+            "scanId": "scan-new",
+            "projectId": "proj-1",
+            "branch": "main",
+            "statusInfo": [{"status": "Completed"}],
+        }
+
+        mock_sast_exporter = AsyncMock()
+
+        async def mock_paginated(options: Any) -> AsyncIterator[List[dict[str, Any]]]:
+            yield new_findings
+
+        mock_sast_exporter.get_paginated_resources = mock_paginated
+
+        mock_scan_exporter = AsyncMock()
+        mock_scan_exporter.get_previous_completed_scan = AsyncMock(return_value=None)
+
+        with (
+            patch(
+                "checkmarx_one.webhook.webhook_processors.sast_scan_result_webhook_processor.create_sast_exporter",
+                return_value=mock_sast_exporter,
+            ),
+            patch(
+                "checkmarx_one.webhook.webhook_processors.sast_scan_result_webhook_processor.create_scan_exporter",
+                return_value=mock_scan_exporter,
+            ),
+        ):
+            result = await sast_scan_result_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert result.updated_raw_results == new_findings
+        assert result.deleted_raw_results == []
