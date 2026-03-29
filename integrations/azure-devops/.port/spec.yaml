@@ -2,6 +2,7 @@ title: Azure Devops
 description: Azure Devops integration for Port Ocean
 icon: AzureDevops
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/azure-devops
+formMappingEnabled: true
 features:
   - type: gitops
     section: GitOps
