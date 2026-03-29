@@ -71,6 +71,7 @@ class ProjectSelector(Selector):
         ),
     )
     included_files: list[str] = Field(
+        title="Attached files",
         alias="includedFiles",
         title="Included Files",
         default_factory=list,
@@ -159,10 +160,11 @@ class FilesSelector(BaseModel):
 class GitLabFilesSelector(GroupSelector):
     files: FilesSelector
     included_files: list[str] = Field(
+        title="Additional files",
         alias="includedFiles",
         title="Included Files",
         default_factory=list,
-        description="List of file paths to fetch and attach to the file entity",
+        description="List of file paths to fetch and attach to the file entity. This selector will add the content of the file to the API response under the `__includedFiles` field.",
     )
 
 
