@@ -22,16 +22,11 @@ from fastapi import Request
 from loguru import logger
 
 
-def get_default_user_fields() -> str:
-    """Default list of fields to fetch for users.
-
-    Matches previous behavior from okta.core.options.get_default_user_fields.
-    """
-    return (
-        "id,status,created,activated,lastLogin,lastUpdated,"
-        "profile:(login,firstName,lastName,displayName,email,title,department,"
-        "employeeNumber,mobilePhone,primaryPhone,streetAddress,city,state,zipCode,countryCode,managerId,manager)"
-    )
+DEFAULT_USER_FIELDS = (
+    "id,status,created,activated,lastLogin,lastUpdated,"
+    "profile:(login,firstName,lastName,displayName,email,title,department,"
+    "employeeNumber,mobilePhone,primaryPhone,streetAddress,city,state,zipCode,countryCode,managerId,manager)"
+)
 
 
 class OktaUserSelector(Selector):
@@ -39,14 +34,17 @@ class OktaUserSelector(Selector):
 
     include_groups: bool = Field(
         default=True,
+        title="Include Groups",
         description="Include user groups in the response",
     )
     include_applications: bool = Field(
         default=True,
+        title="Include Applications",
         description="Include user applications in the response",
     )
     fields: str = Field(
-        default_factory=get_default_user_fields,
+        default=DEFAULT_USER_FIELDS,
+        title="Include Fields",
         description="Comma-separated list of user fields to retrieve. Profile attributes should be contained within a profile:(field1,field2,...) directive.",
     )
 
@@ -54,17 +52,31 @@ class OktaUserSelector(Selector):
 class OktaUserConfig(ResourceConfig):
     """Configuration for Okta users."""
 
-    selector: OktaUserSelector
-    kind: Literal["okta-user"]
+    kind: Literal["okta-user"] = Field(
+        title="Okta User",
+        description="Okta user resource kind.",
+    )
+    selector: OktaUserSelector = Field(
+        title="User Selector",
+        description="Selector for the Okta user resource.",
+    )
+
+
+class OktaGroupConfig(ResourceConfig):
+    kind: Literal["okta-group"] = Field(
+        title="Okta Group",
+        description="Okta group resource kind.",
+    )
 
 
 class OktaAppConfig(PortAppConfig):
     """Port app configuration for Okta integration."""
 
-    resources: list[OktaUserConfig | ResourceConfig] = Field(
+    resources: list[OktaUserConfig | OktaGroupConfig] = Field(
         default_factory=list,
+        title="Resources",
         description="Specify the resources to include in the sync",
-    )
+    )  # type: ignore[assignment]
 
 
 class OktaHandlerMixin(HandlerMixin):

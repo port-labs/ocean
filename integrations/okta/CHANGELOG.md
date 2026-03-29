@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+<<<<<<< task_tboeio/otka_selector_propagation
+
+## 0.1.87 (2026-03-23)
+=======
 ## 0.1.88 (2026-03-25)
 
 
@@ -16,11 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.87 (2026-03-24)
+>>>>>>> main
 
 
 ### Improvements
 
+<<<<<<< task_tboeio/otka_selector_propagation
+- Added explicit Literal kind definitions and introduced OktaGroupResourceConfig
+- Removed bare ResourceConfig from the union
+- Added title metadata to all selector fields in OktaUserSelector
+- Added resource metadata in OktaAppConfig for schema validation compliance.
+=======
 - Bumped ocean version to ^0.38.23
+>>>>>>> main
 
 
 ## 0.1.86 (2026-03-22)
