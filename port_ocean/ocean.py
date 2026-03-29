@@ -14,19 +14,17 @@ from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.disk import DiskCacheProvider
 from port_ocean.cache.memory import InMemoryCacheProvider
 from port_ocean.clients.port.client import PortClient
-from port_ocean.config.settings import (
-    IntegrationConfiguration,
-)
+from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import (
     PortOceanContext,
     initialize_port_ocean_context,
     ocean,
 )
+from port_ocean.core.handlers.actions.execution_manager import ExecutionManager
 from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
-from port_ocean.core.handlers.actions.execution_manager import ExecutionManager
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.log.sensetive import sensitive_log_filter
@@ -108,6 +106,7 @@ class Ocean:
             self.port_client, self.config.scheduled_resync_interval
         )
         self.app_initialized = False
+        self._status_heartbeat_task: asyncio.Task[None] | None = None
 
         signal_handler.register(self._report_resync_aborted, priority=100)
 
@@ -205,6 +204,31 @@ class Ocean:
             )
             await repeated_function()
 
+    async def _setup_status_heartbeat(self) -> None:
+        interval = self.config.status_heartbeat_interval_seconds
+        if interval <= 0:
+            return
+
+        logger.info(
+            "Starting metrics heartbeat",
+            interval_seconds=interval,
+        )
+
+        async def heartbeat_loop() -> None:
+            while True:
+                try:
+                    if not self.metrics.event_id.strip():
+                        await asyncio.sleep(interval)
+                        continue
+                    await self.metrics.report_metrics_heartbeat()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    logger.error(f"Metrics heartbeat failed: {e}")
+                await asyncio.sleep(interval)
+
+        self._status_heartbeat_task = asyncio.create_task(heartbeat_loop())
+
     @property
     def route_prefix(self) -> str:
         return (
@@ -263,19 +287,12 @@ class Ocean:
             self.metrics.create_mertic_router(), prefix=f"{self.route_prefix}/metrics"
         )
 
-        health_router = APIRouter()
-
-        @health_router.get("/isHealthy")
-        def is_healthy() -> dict[str, str]:
-            return {"status": "healthy"}
-
-        self.fast_api_app.include_router(health_router, prefix=self.route_prefix or "")
-
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
                 await self._register_addons()
+                await self._setup_status_heartbeat()
                 await self._setup_scheduled_resync()
                 yield None
             except Exception:
@@ -283,6 +300,13 @@ class Ocean:
                 logger.complete()
                 sys.exit("Server stopped")
             finally:
+                if self._status_heartbeat_task is not None:
+                    self._status_heartbeat_task.cancel()
+                    try:
+                        await self._status_heartbeat_task
+                    except asyncio.CancelledError:
+                        pass
+                    self._status_heartbeat_task = None
                 await signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle

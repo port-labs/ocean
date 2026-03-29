@@ -409,6 +409,15 @@ class Metrics:
         except Exception as e:
             logger.error(f"Error posting metrics: {e}", metrics=metrics)
 
+    async def report_metrics_heartbeat(self) -> None:
+        event_id = self.event_id.strip()
+        if not event_id:
+            return
+        try:
+            await self.port_client.put_integration_metrics_heartbeat(event_id)
+        except Exception as e:
+            logger.error(f"Error sending metrics heartbeat: {e}", event_id=event_id)
+
     async def report_kind_sync_metrics(
         self,
         metric_name: Optional[str] = None,

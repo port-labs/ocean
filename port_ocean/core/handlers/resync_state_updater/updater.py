@@ -80,14 +80,6 @@ class ResyncStateUpdater:
             "intervalInMinuets": _interval,
         }
 
-        integration = await self.port_client.update_integration_state(
-            state, should_raise=False
-        )
-        if integration:
-            self.last_integration_state_updated_at = integration["resyncState"][
-                "updatedAt"
-            ]
-
         ocean.metrics.set_metric(
             name=MetricType.SUCCESS_NAME,
             labels=[ocean.metrics.current_resource_kind(), MetricPhase.RESYNC],
@@ -96,9 +88,22 @@ class ResyncStateUpdater:
 
         ocean.metrics.sync_state = status.value
 
-        await ocean.metrics.send_metrics_to_webhook(
-            kind=ocean.metrics.current_resource_kind()
+        # Post metrics before PATCHing resync state so ingest still accepts POST .../syncMetrics;
+        # clear event_id after so heartbeats stop and the id does not leak past the run.
+        try:
+            await ocean.metrics.send_metrics_to_webhook(
+                kind=ocean.metrics.current_resource_kind()
+            )
+            await ocean.metrics.report_sync_metrics(
+                kinds=[ocean.metrics.current_resource_kind()]
+            )
+        finally:
+            ocean.metrics.event_id = ""
+
+        integration = await self.port_client.update_integration_state(
+            state, should_raise=False
         )
-        await ocean.metrics.report_sync_metrics(
-            kinds=[ocean.metrics.current_resource_kind()]
-        )
+        if integration:
+            self.last_integration_state_updated_at = integration["resyncState"][
+                "updatedAt"
+            ]

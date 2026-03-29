@@ -213,6 +213,19 @@ class IntegrationClientMixin:
         handle_port_status_code(response, should_log=False)
         logger.debug("Finished POST metrics request")
 
+    async def put_integration_metrics_heartbeat(self, event_id: str) -> None:
+        logger.debug("starting PUT metrics heartbeat request", event_id=event_id)
+        metrics_attributes = await self.get_metrics_attributes()
+        url = metrics_attributes["ingestUrl"] + "/heartbeat"
+        headers = await self.auth.headers()
+        response = await self.client.put(
+            url,
+            headers=headers,
+            json={"eventId": event_id},
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Finished PUT metrics heartbeat request")
+
     async def put_integration_sync_metrics(self, kind_metrics: dict[str, Any]) -> None:
         logger.debug("starting PUT metrics request", kind_metrics=kind_metrics)
         metrics_attributes = await self.get_metrics_attributes()
