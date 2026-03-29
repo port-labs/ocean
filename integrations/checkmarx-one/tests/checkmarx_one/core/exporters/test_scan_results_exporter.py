@@ -148,6 +148,7 @@ def test_get_params_with_all_options(exporter: CheckmarxScanResultExporter) -> N
         "scan_id": "scan-123",
         "project_id": "proj_456",
         "type": "sast",
+        "branch": "",
         "severity": ["HIGH"],
         "state": ["CONFIRMED"],
         "status": ["NEW"],

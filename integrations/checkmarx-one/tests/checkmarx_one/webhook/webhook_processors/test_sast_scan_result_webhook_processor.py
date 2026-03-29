@@ -21,6 +21,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from integration import (
     CheckmarxOneSastResourcesConfig,
     CheckmarxOneSastSelector,
+    CheckmarxOneScanModel,
 )
 
 
@@ -111,8 +112,7 @@ class TestSastScanResultWebhookProcessor:
         valid_payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
-        "branch": "main",
-
+            "branch": "main",
         }
         result = await sast_scan_result_webhook_processor.authenticate(
             valid_payload, headers
@@ -250,8 +250,7 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
-        "branch": "main",
-
+            "branch": "main",
         }
 
         # Mock the SAST exporter
@@ -290,8 +289,7 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
-        "branch": "main",
-
+            "branch": "main",
         }
 
         # Mock the SAST exporter to return empty results
@@ -328,8 +326,7 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
-        "branch": "main",
-
+            "branch": "main",
         }
 
         # Mock the SAST exporter to raise an exception
@@ -387,8 +384,7 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
-        "branch": "main",
-
+            "branch": "main",
         }
 
         # Mock the SAST exporter
@@ -453,8 +449,7 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-456",
             "projectId": "project-789",
-        "branch": "main",
-
+            "branch": "main",
         }
 
         # Mock the SAST exporter
@@ -506,8 +501,7 @@ class TestSastScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-789",
             "projectId": "project-999",
-        "branch": "main",
-
+            "branch": "main",
         }
 
         # Mock the SAST exporter
@@ -553,7 +547,7 @@ class TestSastScanResultWebhookProcessor:
             kind="sast",
             selector=CheckmarxOneSastSelector(
                 query="true",
-                scan_filter={"latestScansOnly": True},
+                scan_filter=CheckmarxOneScanModel(latestScansOnly=True),
             ),
             port=PortResourceConfig(
                 entity=MappingsConfig(
@@ -567,7 +561,9 @@ class TestSastScanResultWebhookProcessor:
             ),
         )
 
-        new_findings = [{"result_id": "new-1", "__scan_id": "scan-new", "__branch": "main"}]
+        new_findings = [
+            {"result_id": "new-1", "__scan_id": "scan-new", "__branch": "main"}
+        ]
         prev_findings = [
             {"result_id": "old-1", "__scan_id": "scan-prev", "__branch": "main"},
             {"result_id": "old-2", "__scan_id": "scan-prev", "__branch": "main"},
@@ -595,7 +591,9 @@ class TestSastScanResultWebhookProcessor:
         mock_sast_exporter.get_paginated_resources = mock_paginated
 
         mock_scan_exporter = AsyncMock()
-        mock_scan_exporter.get_previous_completed_scan = AsyncMock(return_value=prev_scan)
+        mock_scan_exporter.get_previous_completed_scan = AsyncMock(
+            return_value=prev_scan
+        )
 
         with (
             patch(
@@ -627,7 +625,7 @@ class TestSastScanResultWebhookProcessor:
             kind="sast",
             selector=CheckmarxOneSastSelector(
                 query="true",
-                scan_filter={"latestScansOnly": True},
+                scan_filter=CheckmarxOneScanModel(latestScansOnly=True),
             ),
             port=PortResourceConfig(
                 entity=MappingsConfig(
@@ -641,7 +639,9 @@ class TestSastScanResultWebhookProcessor:
             ),
         )
 
-        new_findings = [{"result_id": "new-1", "__scan_id": "scan-new", "__branch": "main"}]
+        new_findings = [
+            {"result_id": "new-1", "__scan_id": "scan-new", "__branch": "main"}
+        ]
 
         payload: EventPayload = {
             "scanId": "scan-new",

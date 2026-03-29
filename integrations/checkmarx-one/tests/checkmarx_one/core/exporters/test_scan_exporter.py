@@ -191,14 +191,34 @@ class TestCheckmarxScanExporter:
         """latest_scans_only=True should yield only the first scan per (projectId, branch) group."""
 
         scans_page1 = [
-            {"id": "scan-1", "projectId": "proj-A", "branch": "main", "status": "Completed"},
-            {"id": "scan-2", "projectId": "proj-A", "branch": "develop", "status": "Completed"},
+            {
+                "id": "scan-1",
+                "projectId": "proj-A",
+                "branch": "main",
+                "status": "Completed",
+            },
+            {
+                "id": "scan-2",
+                "projectId": "proj-A",
+                "branch": "develop",
+                "status": "Completed",
+            },
         ]
         scans_page2 = [
             # Duplicate group (proj-A, main) — should be skipped
-            {"id": "scan-3", "projectId": "proj-A", "branch": "main", "status": "Completed"},
+            {
+                "id": "scan-3",
+                "projectId": "proj-A",
+                "branch": "main",
+                "status": "Completed",
+            },
             # New group
-            {"id": "scan-4", "projectId": "proj-B", "branch": "main", "status": "Completed"},
+            {
+                "id": "scan-4",
+                "projectId": "proj-B",
+                "branch": "main",
+                "status": "Completed",
+            },
         ]
 
         call_params: dict[str, Any] = {}
@@ -226,7 +246,9 @@ class TestCheckmarxScanExporter:
 
         assert "scan-1" in scan_ids
         assert "scan-2" in scan_ids
-        assert "scan-3" not in scan_ids, "scan-3 duplicates (proj-A, main) and must be dropped"
+        assert (
+            "scan-3" not in scan_ids
+        ), "scan-3 duplicates (proj-A, main) and must be dropped"
         assert "scan-4" in scan_ids
 
     @pytest.mark.asyncio
@@ -266,17 +288,27 @@ class TestCheckmarxScanExporter:
         """get_previous_completed_scan returns the first non-current scan from the API."""
 
         current_scan_id = "scan-new"
-        prev_scan = {"id": "scan-prev", "projectId": "proj-A", "branch": "main", "status": "Completed"}
+        prev_scan = {
+            "id": "scan-prev",
+            "projectId": "proj-A",
+            "branch": "main",
+            "status": "Completed",
+        }
 
         async def mock_paginated_resources(
             endpoint: str, object_key: str, params: dict[str, Any] | None = None
         ) -> AsyncIterator[List[dict[str, Any]]]:
             # Simulate newest-first order: current first, then previous
-            yield [{"id": current_scan_id, "projectId": "proj-A", "branch": "main"}, prev_scan]
+            yield [
+                {"id": current_scan_id, "projectId": "proj-A", "branch": "main"},
+                prev_scan,
+            ]
 
         mock_client.send_paginated_request = mock_paginated_resources
 
-        result = await scan_exporter.get_previous_completed_scan("proj-A", "main", current_scan_id)
+        result = await scan_exporter.get_previous_completed_scan(
+            "proj-A", "main", current_scan_id
+        )
         assert result is not None
         assert result["id"] == "scan-prev"
 
@@ -297,5 +329,7 @@ class TestCheckmarxScanExporter:
 
         mock_client.send_paginated_request = mock_paginated_resources
 
-        result = await scan_exporter.get_previous_completed_scan("proj-A", "main", current_scan_id)
+        result = await scan_exporter.get_previous_completed_scan(
+            "proj-A", "main", current_scan_id
+        )
         assert result is None

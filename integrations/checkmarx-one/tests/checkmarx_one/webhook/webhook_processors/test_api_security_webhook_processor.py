@@ -182,8 +182,7 @@ class TestApiSecurityWebhookProcessor:
         payload = {
             "scanId": "scan-123",
             "projectId": "project-456",
-        "branch": "main",
-
+            "branch": "main",
         }
 
         # Mock the API sec exporter
@@ -230,8 +229,7 @@ class TestApiSecurityWebhookProcessor:
         payload = {
             "scanId": "scan-123",
             "projectId": "project-456",
-        "branch": "main",
-
+            "branch": "main",
         }
 
         # Mock the API sec exporter to return empty results
@@ -268,8 +266,7 @@ class TestApiSecurityWebhookProcessor:
         payload = {
             "scanId": "scan-123",
             "projectId": "project-456",
-        "branch": "main",
-
+            "branch": "main",
         }
 
         # Mock the API sec exporter to raise an exception
@@ -317,8 +314,7 @@ class TestApiSecurityWebhookProcessor:
         payload = {
             "scanId": "scan-123",
             "projectId": "project-456",
-        "branch": "main",
-
+            "branch": "main",
         }
 
         # Mock the API sec exporter
