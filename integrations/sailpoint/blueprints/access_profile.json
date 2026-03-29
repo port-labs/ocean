@@ -1,0 +1,33 @@
+{
+  "identifier": "sailpoint_access_profile",
+  "title": "SailPoint Access Profile",
+  "icon": "Layers",
+  "schema": {
+    "properties": {
+      "name": { "type": "string" },
+      "description": { "type": "string" },
+      "type": { "type": "string", "enum": ["BUSINESS", "IT", "OTHER"] },
+      "ownerId": { "type": "string", "description": "Identity ID of the owner" },
+      "createdAt": { "type": "string", "format": "date-time" },
+      "updatedAt": { "type": "string", "format": "date-time" }
+    },
+    "required": ["name"]
+  },
+  "relations": {
+    "entitlements": {
+      "title": "Entitlements",
+      "target": "sailpoint_entitlement",
+      "many": true
+    },
+    "roles": {
+      "title": "Roles",
+      "target": "sailpoint_role",
+      "many": true
+    },
+    "identities": {
+      "title": "Assigned Identities",
+      "target": "sailpoint_identity",
+      "many": true
+    }
+  }
+}
