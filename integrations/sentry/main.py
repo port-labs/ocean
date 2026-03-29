@@ -7,7 +7,12 @@ from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
-from integration import TeamResourceConfig, ObjectKind
+from integration import (
+    IssueTagResourceConfig,
+    SentryProjectTagResourceConfig,
+    TeamResourceConfig,
+    ObjectKind,
+)
 from clients.sentry import SentryClient
 from clients.init_client import init_client
 from webhook_processors.issue_webhook_processor import SentryIssueWebhookProcessor
@@ -15,7 +20,6 @@ from webhook_processors.issue_tag_webhook_processor import (
     SentryIssueTagWebhookProcessor,
 )
 from webhook_processors.init_client import init_webhook_client
-from integration import SentryResourceConfig
 
 
 async def enrich_team_with_members(
@@ -66,7 +70,7 @@ async def on_resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.PROJECT_TAG)
 async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = init_client()
-    selector = cast(SentryResourceConfig, event.resource_config).selector
+    selector = cast(SentryProjectTagResourceConfig, event.resource_config).selector
     async for projects in sentry_client.get_paginated_projects():
         logger.info(f"Collecting tags from {len(projects)} projects")
         project_tags_batch = await sentry_client.get_projects_tags_from_projects(
@@ -96,7 +100,7 @@ async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ISSUE_TAG)
 async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = init_client()
-    selector = cast(SentryResourceConfig, event.resource_config).selector
+    selector = cast(IssueTagResourceConfig, event.resource_config).selector
     async for project_slugs in sentry_client.get_paginated_project_slugs():
         if project_slugs:
             issue_tasks = [
