@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.25 (2026-03-29)
+
+### Improvements
+
+- Send event_type and resync_start_time
+
 ## 0.38.24 (2026-03-25)
 
 ### Improvements
