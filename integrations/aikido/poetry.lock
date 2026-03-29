@@ -12,6 +12,17 @@ files = [
 ]
 
 [[package]]
+name = "aiolimiter"
+version = "1.2.1"
+description = "asyncio rate limiter, a leaky bucket implementation"
+optional = false
+python-versions = "<4.0,>=3.8"
+files = [
+    {file = "aiolimiter-1.2.1-py3-none-any.whl", hash = "sha256:d3f249e9059a20badcb56b61601a83556133655c11d1eb3dd3e04ff069e5f3c7"},
+    {file = "aiolimiter-1.2.1.tar.gz", hash = "sha256:e02a37ea1a855d9e832252a105420ad4d15011505512a1a1d814647451b5cca9"},
+]
+
+[[package]]
 name = "aiostream"
 version = "0.6.4"
 description = "Generator-based operators for asynchronous iteration"
@@ -1492,13 +1503,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.38.23"
+version = "0.38.24"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.38.23-py3-none-any.whl", hash = "sha256:4c7e2d8c205440aa884082ec932f8e6463a29ca922da9b970104ff555140f52d"},
-    {file = "port_ocean-0.38.23.tar.gz", hash = "sha256:44c11164bb1954f2c759c372793800693ee474db143885607ba072d7c2a7410e"},
+    {file = "port_ocean-0.38.24-py3-none-any.whl", hash = "sha256:261c740a909167ac3c62dbe6bbe4ec48e3b1d5f010d66dfbb78fd32cd6ad79e3"},
+    {file = "port_ocean-0.38.24.tar.gz", hash = "sha256:14a3350a89f76b610736aa733164aff9f78eced09e010527d461b633052a161d"},
 ]
 
 [package.dependencies]
@@ -2255,4 +2266,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "93620374dc2ec8df5138174be31a226818a9b05ba703c7535d54da7bac3789b4"
+content-hash = "4583ba1313a1a8c07fe6fc10ab6d854299e288819bd4a216accee50a6b0af546"
