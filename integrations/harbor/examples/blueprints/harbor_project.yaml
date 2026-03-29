@@ -1,0 +1,66 @@
+identifier: harborProject
+title: Harbor Project
+icon: Project
+schema:
+  properties:
+    project_name:
+      type: string
+      title: Project Name
+      description: Unique project identifier in Harbor
+    display_name:
+      type: string
+      title: Display Name
+      description: Friendly name shown in Harbor
+    public:
+      type: boolean
+      title: Public
+      description: Indicates whether the project is publicly accessible
+    visibility:
+      type: string
+      title: Visibility
+      description: Reported visibility flag for the project
+    repository_count:
+      type: integer
+      title: Repository Count
+      description: Number of repositories inside the project
+    owner:
+      type: string
+      title: Owner
+      description: Harbor user that owns the project
+    members:
+      type: array
+      title: Member Usernames
+      description: Collected usernames that belong to the project
+      items:
+        type: string
+    member_roles:
+      type: array
+      title: Member Roles
+      description: Roles assigned to project members
+      items:
+        type: object
+        properties:
+          username:
+            type: string
+            title: Username
+          role:
+            type: string
+            title: Role
+  required:
+    - project_name
+mirrorProperties: {}
+calculationProperties: {}
+aggregationProperties: {}
+relations:
+  repositories:
+    target: harborRepository
+    title: Repositories
+    description: Container and Helm repositories that belong to this project
+    many: true
+    required: false
+  members:
+    target: harborUser
+    title: Members
+    description: Users that have explicit membership in this project
+    many: true
+    required: false
