@@ -114,7 +114,11 @@ class RetryConfig:
 
         # Combine defaults with additional codes for extensibility
         self.retry_status_codes = default_status_codes | additional_codes
-        self.retry_after_headers = retry_after_headers or ["Retry-After"]
+        # Always include the Port rate-limit headers regardless of what the caller passes.
+        # Merge preserving caller order, appending any missing required headers at the end.
+        required_headers = ["Retry-After", "x-ratelimit-reset"]
+        base = list(retry_after_headers) if retry_after_headers else required_headers[:]
+        self.retry_after_headers = base + [h for h in required_headers if h not in base]
 
         self.ignore_retry_after_status_codes = (
             frozenset(ignore_retry_after_status_codes)
