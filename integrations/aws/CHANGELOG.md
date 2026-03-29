@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.20 (2026-03-26)
+
+
+### Bug Fixes
+
+- Enhanced missing resource exception handling for opt-in regions
+
+
 ## 0.3.19 (2026-03-25)
 
 
