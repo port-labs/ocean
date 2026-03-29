@@ -223,7 +223,7 @@ class TestPostIntegrationRawDataRequestBody:
         assert request_body["items"] == raw_data
         assert request_body["operation"] == "upsert"
         assert request_body["type"] == "resync"
-        assert request_body["resyncStartTime"] == int(resync_time.timestamp() * 1000)
+        assert request_body["resyncStartTime"] == resync_time.isotime()
         assert request_body["eventType"] == "resync"
         assert "extractionTimestamp" in request_body
 
@@ -269,7 +269,7 @@ class TestPostIntegrationRawDataRequestBody:
         assert request_body["items"] == raw_data
         assert request_body["operation"] == "upsert"
         assert request_body["type"] == "live-event"
-        assert request_body["resyncStartTime"] == int(webhook_time.timestamp() * 1000)
+        assert request_body["resyncStartTime"] == webhook_time.isotime()
         assert request_body["eventType"] == "live-event"
         assert "kafkaMetadata" in request_body
         assert request_body["kafkaMetadata"]["originalWebhook"]["event"] == "push"
