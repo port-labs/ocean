@@ -55,7 +55,7 @@ class IncludedFilesConfig(BaseModel):
         title="Attached Files",
         alias="includedFiles",
         default_factory=list,
-        description="File paths to fetch and attach to the folder entity.",
+        description='File paths to fetch and attach to the raw data under `__includedFiles`. E.g. ["README.md", "CODEOWNERS"]',
     )
 
     class Config:
