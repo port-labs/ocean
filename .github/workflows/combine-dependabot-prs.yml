@@ -36,7 +36,7 @@ jobs:
         id: create-combined-pr
         name: Create Combined PR
         with:
-          github-token: ${{ secrets.MACHINE_USER_TOKEN }}
+          github-token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
           script: |
             const pulls = await github.paginate('GET /repos/:owner/:repo/pulls', {
               owner: context.repo.owner,

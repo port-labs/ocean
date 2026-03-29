@@ -49,7 +49,7 @@ jobs:
       - name: Open pull request
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.MACHINE_USER_TOKEN }}
+          token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
           title: ${{ steps.version.outputs.pr_name }}
           branch: ${{ steps.version.outputs.branch_name }}
           base: main
