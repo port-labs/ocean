@@ -1,5 +1,3 @@
-import asyncio
-import functools
 from enum import StrEnum
 from itertools import batched
 from typing import Any, Optional, AsyncGenerator
@@ -10,10 +8,6 @@ import json
 
 from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.utils import http_async_client
-from port_ocean.utils.async_iterators import (
-    stream_async_iterators_tasks,
-    semaphore_async_iterator,
-)
 
 
 class ObjectKind(StrEnum):
@@ -147,48 +141,17 @@ class ArgocdClient:
                     return {}
                 raise exception
 
-    async def get_clusters(
-        self, skip_unavailable_clusters: bool = False
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_clusters(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
         async for clusters in self.get_paginated_resources(url):
-            if skip_unavailable_clusters:
-                yield [
-                    cluster
-                    for cluster in clusters
-                    if cluster.get("connectionState", {}).get("status")
-                    == ClusterState.AVAILABLE.value
-                ]
-            else:
-                yield clusters
+            yield clusters
 
-    async def get_available_clusters(self) -> list[dict[str, Any]]:
-        available_clusters: list[dict[str, Any]] = []
-        async for clusters in self.get_clusters(skip_unavailable_clusters=True):
-            available_clusters.extend(clusters)
-        return available_clusters
-
-    async def get_resources_for_available_clusters(
+    async def get_resources(
         self, resource_kind: ObjectKind
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        available_clusters = await self.get_available_clusters()
-        cluster_names = [cluster["name"] for cluster in available_clusters]
         url = f"{self.api_url}/{resource_kind}s"
 
-        semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_CLUSTER_REQUESTS)
-        tasks = [
-            semaphore_async_iterator(
-                semaphore,
-                functools.partial(
-                    self.get_paginated_resources,
-                    url,
-                    params={"selector": f"cluster={name}"},
-                ),
-            )
-            for name in cluster_names
-        ]
-
-        async for resources in stream_async_iterators_tasks(*tasks):
+        async for resources in self.get_paginated_resources(url):
             yield resources
 
     async def get_application_by_name(
@@ -209,7 +172,7 @@ class ArgocdClient:
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         has_applications = False
-        async for applications in self.get_resources_for_available_clusters(
+        async for applications in self.get_resources(
             resource_kind=ObjectKind.APPLICATION
         ):
             has_applications = True
@@ -231,7 +194,7 @@ class ArgocdClient:
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         has_applications = False
-        async for applications in self.get_resources_for_available_clusters(
+        async for applications in self.get_resources(
             resource_kind=ObjectKind.APPLICATION
         ):
             has_applications = True
