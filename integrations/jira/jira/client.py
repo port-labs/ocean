@@ -8,8 +8,9 @@ from loguru import logger
 
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
-from port_ocean.utils import http_async_client
+from port_ocean.helpers.async_client import OceanAsyncClient
 from .rate_limiter import JiraRateLimiter
+from .retry_transport import JiraRetryTransport
 
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
@@ -80,10 +81,15 @@ class JiraClient(OAuthClient):
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.teams_base_url = f"{self.jira_url}/gateway/api/public/teams/v1/org"
 
-        self.client = http_async_client
-        self.client.auth = self.jira_api_auth
-        self.client.timeout = Timeout(30)
         self._rate_limiter = JiraRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS)
+        self.client = OceanAsyncClient(
+            JiraRetryTransport,
+            transport_kwargs={
+                "rate_limit_notifier": self._rate_limiter.on_response,
+            },
+            timeout=Timeout(30),
+        )
+        self.client.auth = self.jira_api_auth
 
     def _get_bearer(self) -> BearerAuth:
         try:
@@ -102,24 +108,31 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
     ) -> Any:
+        response: httpx.Response | None = None
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
                     method=method, url=url, params=params, json=json, headers=headers
                 )
                 response.raise_for_status()
+                await self._rate_limiter.on_response(response)
                 return response.json()
         except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Jira API request failed with status {e.response.status_code}: {method} {url}"
+            response = e.response
+            await self._rate_limiter.on_response(response)
+            is_rate_limit = self._rate_limiter.is_rate_limit_response(response)
+            logger.bind(
+                status_code=response.status_code,
+                method=method,
+                url=url,
+                is_rate_limit=is_rate_limit,
+            ).error(
+                f"Jira API request failed with status {response.status_code}: {method} {url}"
             )
             raise
         except httpx.RequestError as e:
             logger.error(f"Failed to connect to Jira API: {method} {url} - {str(e)}")
             raise
-        finally:
-            if "response" in locals() and response:
-                await self._rate_limiter.update_rate_limit_headers(response.headers)
 
     async def _get_paginated_data(
         self,
