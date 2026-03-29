@@ -65,7 +65,7 @@ class ContainersScanResultWebhookProcessor(ScanWebhookProcessor):
         )
 
         data_to_delete = []
-        if selector.scan_filter.latest_scans_only:
+        if selector.scan_filter.latest_scans_only and self._is_scan_fully_completed():
             scan_exporter = create_scan_exporter()
             previous_scan = await scan_exporter.get_previous_completed_scan(
                 project_id, branch, scan_id

@@ -98,6 +98,13 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
         scan_statuses = {info["status"] for info in status_info if "status" in info}
         return bool(scan_statuses & set(statuses))
 
+    def _is_scan_fully_completed(self) -> bool:
+        """Return True only when the webhook event signals a fully completed scan."""
+        return (
+            self.event.headers.get("x-cx-webhook-event")
+            == CheckmarxEventType.SCAN_COMPLETED
+        )
+
     @staticmethod
     def _filter_scan_by_project_names(
         scan: dict[str, Any], project_names: Optional[List[str]]
