@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.38.25 (2026-03-29)
+
+### Features
+
+- Metrics heartbeat: while a sync has an active metrics `eventId`, Ocean periodically `PUT`s to the ingest URL `/heartbeat` so Port can track live sync progress. Configurable via `status_heartbeat_interval_seconds` (default 60; set to 0 to disable).
+
+### Improvements
+
+- Resync completion: send webhook and sync metrics before patching integration resync state, then clear `event_id` so heartbeats stop and the id is not reused. Manual `sync_raw_all` also clears `event_id` after completion.
+
 ## 0.38.24 (2026-03-25)
 
 ### Improvements
