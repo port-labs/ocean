@@ -468,6 +468,98 @@ class TestGitLabClient:
             assert result["__members"][1]["email"] is None
             mock_get_members.assert_called_once_with("456", True, False)
 
+    async def test_get_project_members(self, client: GitLabClient) -> None:
+        """Test fetching project members with and without bot filtering"""
+        project_id = "789"
+        mock_members = [
+            {"id": 1, "username": "user1", "name": "User One", "bot": False},
+            {"id": 2, "username": "bot1", "name": "Bot One", "bot": True},
+            {"id": 3, "username": "user2", "name": "User Two", "bot": False},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_members]),
+        ) as mock_get_resource:
+            results_with_bots = []
+            async for batch in client.get_project_members(
+                project_id, include_bot_members=True, include_inherited_members=False
+            ):
+                results_with_bots.extend(batch)
+
+            assert len(results_with_bots) == 3
+            mock_get_resource.assert_called_with(project_id, "members")
+
+            mock_get_resource.reset_mock()
+            mock_get_resource.return_value = async_mock_generator([mock_members])
+
+            results_without_bots = []
+            async for batch in client.get_project_members(
+                project_id, include_bot_members=False, include_inherited_members=False
+            ):
+                results_without_bots.extend(batch)
+
+            assert len(results_without_bots) == 2
+            assert all(not m["bot"] for m in results_without_bots)
+            mock_get_resource.assert_called_with(project_id, "members")
+
+    async def test_get_project_members_with_inherited(
+        self, client: GitLabClient
+    ) -> None:
+        """Test fetching project members with inherited members uses members/all"""
+        project_id = "789"
+        mock_members = [
+            {"id": 1, "username": "user1", "name": "User One"},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_members]),
+        ) as mock_get_resource:
+            results = []
+            async for batch in client.get_project_members(
+                project_id, include_bot_members=True, include_inherited_members=True
+            ):
+                results.extend(batch)
+
+            assert len(results) == 1
+            mock_get_resource.assert_called_with(project_id, "members/all")
+
+    async def test_enrich_project_with_members(self, client: GitLabClient) -> None:
+        """Test enriching a project with its members"""
+        project = {"id": "789", "name": "Test Project"}
+        mock_members = [
+            {
+                "id": 1,
+                "username": "user1",
+                "name": "User One",
+                "email": "user1@example.com",
+                "access_level": 30,
+            },
+            {"id": 2, "username": "user2", "name": "User Two", "access_level": 20},
+        ]
+
+        with patch.object(
+            client,
+            "get_project_members",
+            return_value=async_mock_generator([mock_members]),
+        ) as mock_get_members:
+            result = await client.enrich_project_with_members(
+                project, include_bot_members=True, include_inherited_members=False
+            )
+
+            assert result["id"] == "789"
+            assert result["name"] == "Test Project"
+            assert "__members" in result
+            assert len(result["__members"]) == 2
+            assert result["__members"][0]["username"] == "user1"
+            assert result["__members"][1]["username"] == "user2"
+            assert result["__members"][0]["email"] == "user1@example.com"
+            assert result["__members"][1]["email"] is None
+            mock_get_members.assert_called_once_with("789", True, False)
+
     async def test_enrich_batch(self, client: GitLabClient) -> None:
         """Test the _enrich_batch method"""
         # Arrange

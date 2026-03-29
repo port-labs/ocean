@@ -620,6 +620,55 @@ class GitLabClient:
         group["__members"] = members
         return group
 
+    async def get_project_members(
+        self,
+        project_id: str,
+        include_bot_members: bool,
+        include_inherited_members: bool,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        members_api = "members/all" if include_inherited_members else "members"
+        logger.info(f"Fetching members for project {project_id} with {members_api} API")
+        async for batch in self.rest.get_paginated_project_resource(
+            str(project_id), members_api
+        ):
+            if not batch:
+                continue
+            filtered_batch = [
+                member
+                for member in batch
+                if not member.get("bot", False) or include_bot_members
+            ]
+            if filtered_batch:
+                logger.info(
+                    f"Fetched {len(filtered_batch)} member(s) from '{members_api}' for project '{project_id}'"
+                )
+                yield filtered_batch
+
+    async def enrich_project_with_members(
+        self,
+        project: dict[str, Any],
+        include_bot_members: bool,
+        include_inherited_members: bool,
+    ) -> dict[str, Any]:
+        logger.info(f"Enriching project {project['id']} with members")
+        members = []
+        async for members_batch in self.get_project_members(
+            str(project["id"]), include_bot_members, include_inherited_members
+        ):
+            for member in members_batch:
+                members.append(
+                    {
+                        "email": member.get("email"),
+                        "username": member["username"],
+                        "name": member["name"],
+                        "access_level": member["access_level"],
+                        "id": member["id"],
+                    }
+                )
+
+        project["__members"] = members
+        return project
+
     async def _process_file(
         self, file: dict[str, Any], context: str, skip_parsing: bool = False
     ) -> dict[str, Any]:
