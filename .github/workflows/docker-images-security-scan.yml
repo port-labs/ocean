@@ -101,7 +101,7 @@ jobs:
           tags: ${{ steps.enrich-version.outputs.image_tag }}
           load-created-image: 'true'
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
-          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          docker-password: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
           build-args: |
             BUILD_CONTEXT=./integrations/${{ steps.enrich-version.outputs.integration }}
             INTEGRATION_VERSION=${{ steps.enrich-version.outputs.version }}
