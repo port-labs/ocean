@@ -99,8 +99,6 @@ class ArgocdClient:
                 response_data = await self._send_api_request(
                     url=url, query_params=params
                 )
-                if not response_data.get("items"):
-                    return
                 for batch in batched(response_data.get("items", []), PAGE_SIZE):
                     yield list(batch)
             else:
