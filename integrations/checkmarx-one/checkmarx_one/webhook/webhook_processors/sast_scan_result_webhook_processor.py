@@ -12,6 +12,7 @@ from checkmarx_one.core.options import (
 )
 from checkmarx_one.exporter_factory import (
     create_sast_exporter,
+    create_scan_exporter,
 )
 from checkmarx_one.utils import ObjectKind
 from integration import (
@@ -35,6 +36,7 @@ class SastScanResultWebhookProcessor(ScanWebhookProcessor):
 
         scan_id = payload["scanId"]
         project_id = payload["projectId"]
+        branch = payload["branch"]
 
         logger.info(
             f"Processing SAST scan result for scan: {scan_id} of project: {project_id}"
@@ -46,6 +48,7 @@ class SastScanResultWebhookProcessor(ScanWebhookProcessor):
         options = ListSastOptions(
             scan_id=scan_id,
             project_id=project_id,
+            branch=branch,
             compliance=selector.compliance,
             group=selector.group,
             include_nodes=selector.include_nodes,
@@ -65,7 +68,37 @@ class SastScanResultWebhookProcessor(ScanWebhookProcessor):
             f"Fetched {len(data_to_upsert)} SAST scan results for scan {scan_id} from Webhook"
         )
 
+        data_to_delete = []
+        if selector.scan_filter.latest_scans_only and self._is_scan_fully_completed():
+            scan_exporter = create_scan_exporter()
+            previous_scan = await scan_exporter.get_previous_completed_scan(
+                project_id, branch, scan_id
+            )
+            if previous_scan:
+                prev_scan_id = previous_scan["id"]
+                prev_options = ListSastOptions(
+                    scan_id=prev_scan_id,
+                    project_id=project_id,
+                    branch=branch,
+                    compliance=selector.compliance,
+                    group=selector.group,
+                    include_nodes=selector.include_nodes,
+                    language=selector.language,
+                    result_id=selector.result_id,
+                    severity=selector.severity,
+                    status=selector.status,
+                    category=selector.category,
+                    state=selector.state,
+                )
+                async for prev_batch in sast_exporter.get_paginated_resources(
+                    prev_options
+                ):
+                    data_to_delete.extend(prev_batch)
+                logger.info(
+                    f"Queued {len(data_to_delete)} previous SAST findings from scan {prev_scan_id} for deletion"
+                )
+
         return WebhookEventRawResults(
             updated_raw_results=data_to_upsert,
-            deleted_raw_results=[],
+            deleted_raw_results=data_to_delete,
         )

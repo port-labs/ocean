@@ -17,6 +17,7 @@ class ListScanOptions(TypedDict):
     """Options for listing scans."""
 
     project_names: NotRequired[Optional[List[str]]]
+    project_id_filter: NotRequired[Optional[str]]
     branches: NotRequired[Optional[List[str]]]
     statuses: NotRequired[
         Optional[
@@ -28,6 +29,7 @@ class ListScanOptions(TypedDict):
         ]
     ]
     from_date: NotRequired[Optional[str]]
+    latest_scans_only: NotRequired[bool]
 
 
 class SingleScanOptions(TypedDict):
@@ -40,6 +42,7 @@ class ListApiSecOptions(TypedDict):
     """Options for listing API sec scan results."""
 
     scan_id: Required[str]
+    branch: Required[str]
 
 
 class ListScanResultOptions(TypedDict):
@@ -48,6 +51,7 @@ class ListScanResultOptions(TypedDict):
     type: str
     scan_id: Required[str]
     project_id: Required[str]
+    branch: Required[str]
     severity: NotRequired[
         Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
     ]
@@ -74,6 +78,7 @@ class ListKicsOptions(TypedDict):
 
     scan_id: Required[str]
     project_id: Required[str]
+    branch: Required[str]
     severity: NotRequired[
         Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
     ]
@@ -85,6 +90,7 @@ class ListSastOptions(TypedDict, total=False):
 
     scan_id: Required[str]
     project_id: Required[str]
+    branch: Required[str]
     compliance: NotRequired[Optional[str]]
     group: NotRequired[Optional[str]]
     include_nodes: NotRequired[bool]

@@ -35,6 +35,11 @@ class CheckmarxOneScanModel(BaseModel):
         default=90,
         description="Filter results by the date and time when the scan was created. (UNIX timestamp in seconds)",
     )
+    latest_scans_only: bool = Field(
+        default=False,
+        alias="latestScansOnly",
+        description="When true, only sync findings from the latest completed scan per project and branch. Forces statuses=Completed and sorts newest-first.",
+    )
 
     @property
     def from_date(self) -> Optional[str]:

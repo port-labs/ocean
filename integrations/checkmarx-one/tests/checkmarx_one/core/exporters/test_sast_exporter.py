@@ -50,7 +50,11 @@ class TestCheckmarxSastExporter:
 
     def test_build_params_minimal(self, exporter: CheckmarxSastExporter) -> None:
         """Test building params with minimal options."""
-        options: ListSastOptions = {"scan_id": "scan-123", "project_id": "project-1"}
+        options: ListSastOptions = {
+            "scan_id": "scan-123",
+            "project_id": "project-1",
+            "branch": "",
+        }
 
         params = exporter._build_paginated_resource_params(options)
 
@@ -85,7 +89,11 @@ class TestCheckmarxSastExporter:
         """Test getting paginated SAST results with single batch."""
         scan_id = "scan-123"
         project_id = "project-1"
-        options: ListSastOptions = {"scan_id": scan_id, "project_id": project_id}
+        options: ListSastOptions = {
+            "scan_id": scan_id,
+            "project_id": project_id,
+            "branch": "",
+        }
         mock_results = [
             {"result-id": "1", "query-name": "Vulnerability 1"},
             {"result-id": "2", "query-name": "Vulnerability 2"},
@@ -118,7 +126,11 @@ class TestCheckmarxSastExporter:
         """Test getting paginated SAST results with multiple batches."""
         scan_id = "scan-123"
         project_id = "project-1"
-        options: ListSastOptions = {"scan_id": scan_id, "project_id": project_id}
+        options: ListSastOptions = {
+            "scan_id": scan_id,
+            "project_id": project_id,
+            "branch": "",
+        }
         batch1 = [{"result-id": "1", "query-name": "Vulnerability 1"}]
         batch2 = [{"result-id": "2", "query-name": "Vulnerability 2"}]
 
@@ -149,7 +161,11 @@ class TestCheckmarxSastExporter:
     ) -> None:
         """Test that paginated request uses correct endpoint and params."""
         scan_id = "scan-789"
-        options: ListSastOptions = {"scan_id": scan_id, "project_id": "project-1"}
+        options: ListSastOptions = {
+            "scan_id": scan_id,
+            "project_id": "project-1",
+            "branch": "",
+        }
         mock_results = [{"result-id": "1", "query-name": "Test Vulnerability"}]
 
         call_args: dict[str, Any] = {}
@@ -200,7 +216,11 @@ class TestCheckmarxSastExporter:
     ) -> None:
         """Test getting paginated SAST results with empty batch."""
         scan_id = "scan-123"
-        options: ListSastOptions = {"scan_id": scan_id, "project_id": "project-1"}
+        options: ListSastOptions = {
+            "scan_id": scan_id,
+            "project_id": "project-1",
+            "branch": "",
+        }
         mock_results: List[dict[str, Any]] = []
 
         async def mock_paginated_resources(
@@ -223,7 +243,11 @@ class TestCheckmarxSastExporter:
     ) -> None:
         """Test getting paginated SAST results with no batches."""
         scan_id = "scan-123"
-        options: ListSastOptions = {"scan_id": scan_id, "project_id": "project-1"}
+        options: ListSastOptions = {
+            "scan_id": scan_id,
+            "project_id": "project-1",
+            "branch": "",
+        }
 
         async def mock_paginated_resources(
             endpoint: str, object_key: str, params: dict[str, Any] | None = None
@@ -247,6 +271,7 @@ class TestCheckmarxSastExporter:
         options: ListSastOptions = {
             "scan_id": "different-scan-456",
             "project_id": "project-1",
+            "branch": "",
         }
 
         params = exporter._build_paginated_resource_params(options)
@@ -259,7 +284,11 @@ class TestCheckmarxSastExporter:
         self, exporter: CheckmarxSastExporter
     ) -> None:
         """Test that visible columns always includes scan-id."""
-        options: ListSastOptions = {"scan_id": "scan-123", "project_id": "project-1"}
+        options: ListSastOptions = {
+            "scan_id": "scan-123",
+            "project_id": "project-1",
+            "branch": "",
+        }
 
         params = exporter._build_paginated_resource_params(options)
 
@@ -270,7 +299,11 @@ class TestCheckmarxSastExporter:
         self, exporter: CheckmarxSastExporter
     ) -> None:
         """Test that visible columns contains all expected SAST result fields."""
-        options: ListSastOptions = {"scan_id": "scan-123", "project_id": "project-1"}
+        options: ListSastOptions = {
+            "scan_id": "scan-123",
+            "project_id": "project-1",
+            "branch": "",
+        }
 
         params = exporter._build_paginated_resource_params(options)
         visible_columns = params["visible-columns"]

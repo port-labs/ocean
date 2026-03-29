@@ -107,6 +107,7 @@ class TestScaScanResultWebhookProcessor:
         valid_payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
         result = await sca_scan_result_webhook_processor.authenticate(
             valid_payload, headers
@@ -212,6 +213,7 @@ class TestScaScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
 
         # Mock the scan result exporter
@@ -250,6 +252,7 @@ class TestScaScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
 
         # Mock the scan result exporter to return empty results
@@ -286,6 +289,7 @@ class TestScaScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
 
         # Mock the scan result exporter to raise an exception
@@ -339,6 +343,7 @@ class TestScaScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
 
         # Mock the scan result exporter
@@ -378,6 +383,7 @@ class TestScaScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
 
         captured_options: list[Any] = []
