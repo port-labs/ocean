@@ -1,0 +1,9 @@
+{
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0011",
+  "name": "Devops Team",
+  "description": "for devops work",
+  "links": {
+    "web": "https://app.opsgenie.com/teams/dashboard/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0011/main",
+    "api": "https://api.opsgenie.com/v2/teams/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0011"
+  }
+}

@@ -76,6 +76,7 @@ class ScheduleAPIQueryParams(BaseModel):
 class AlertAndIncidentSelector(Selector):
     api_query_params: APIQueryParams | None = Field(
         alias="apiQueryParams",
+        title="API Query Parameters",
         description="The query parameters to filter alerts or incidents",
     )
 
@@ -83,6 +84,7 @@ class AlertAndIncidentSelector(Selector):
 class ScheduleSelector(Selector):
     api_query_params: ScheduleAPIQueryParams | None = Field(
         alias="apiQueryParams",
+        title="API Query Parameters",
         description="The query parameters to filter schedules",
     )
 
@@ -90,33 +92,101 @@ class ScheduleSelector(Selector):
 class TeamSelector(Selector):
     include_members: bool = Field(
         alias="includeMembers",
+        title="Include Members",
         default=False,
         description="Whether to include the members of the team, defaults to false",
     )
 
 
-class AlertAndIncidentResourceConfig(ResourceConfig):
-    kind: Literal["alert", "incident"]
-    selector: AlertAndIncidentSelector
+class AlertResourceConfig(ResourceConfig):
+    kind: Literal["alert"] = Field(
+        title="OpsGenie Alert",
+        description="An alert synced from your OpsGenie account",
+    )
+    selector: AlertAndIncidentSelector = Field(
+        title="Alert Selector",
+        description="The selector to filter which alerts to sync",
+    )
+
+
+class IncidentResourceConfig(ResourceConfig):
+    kind: Literal["incident"] = Field(
+        title="OpsGenie Incident",
+        description="An incident synced from your OpsGenie account",
+    )
+    selector: AlertAndIncidentSelector = Field(
+        title="Incident Selector",
+        description="The selector to filter which incidents to sync",
+    )
+
+
+class ServiceResourceConfig(ResourceConfig):
+    kind: Literal["service"] = Field(
+        title="OpsGenie Service",
+        description="A service synced from your OpsGenie account",
+    )
+    selector: Selector = Field(
+        title="Service Selector",
+        description="The selector to filter which services to sync",
+    )
 
 
 class ScheduleResourceConfig(ResourceConfig):
-    kind: Literal["schedule"]
-    selector: ScheduleSelector
+    kind: Literal["schedule"] = Field(
+        title="OpsGenie Schedule",
+        description="A schedule synced from your OpsGenie account",
+    )
+    selector: ScheduleSelector = Field(
+        title="Schedule Selector",
+        description="The selector to filter which schedules to sync",
+    )
+
+
+class ScheduleOncallResourceConfig(ResourceConfig):
+    kind: Literal["schedule-oncall"] = Field(
+        title="OpsGenie Schedule On-Call",
+        description="On-call data for a schedule synced from your OpsGenie account",
+    )
+    selector: Selector = Field(
+        title="Schedule On-Call Selector",
+        description="The selector to filter which on-call schedules to sync",
+    )
 
 
 class TeamResourceConfig(ResourceConfig):
-    kind: Literal["team"]
-    selector: TeamSelector
+    kind: Literal["team"] = Field(
+        title="OpsGenie Team",
+        description="A team synced from your OpsGenie account",
+    )
+    selector: TeamSelector = Field(
+        title="Team Selector",
+        description="The selector to filter which teams to sync",
+    )
+
+
+class UserResourceConfig(ResourceConfig):
+    kind: Literal["user"] = Field(
+        title="OpsGenie User",
+        description="A user synced from your OpsGenie account",
+    )
+    selector: Selector = Field(
+        title="User Selector",
+        description="The selector to filter which users to sync",
+    )
 
 
 class OpsGeniePortAppConfig(PortAppConfig):
     resources: list[
-        AlertAndIncidentResourceConfig
+        AlertResourceConfig
+        | IncidentResourceConfig
+        | ServiceResourceConfig
         | ScheduleResourceConfig
+        | ScheduleOncallResourceConfig
         | TeamResourceConfig
-        | ResourceConfig
-    ] = Field(default_factory=list)
+        | UserResourceConfig
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
 
 
 class OpsGenieIntegration(BaseIntegration):

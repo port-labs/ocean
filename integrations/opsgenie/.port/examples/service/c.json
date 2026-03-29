@@ -1,0 +1,16 @@
+{
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0053",
+  "name": "My Test Service",
+  "description": "This is for Opsgenie testing",
+  "teamId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012",
+  "tags": [
+    "port",
+    "devops",
+    "ai"
+  ],
+  "links": {
+    "web": "https://app.opsgenie.com/service/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0053/status",
+    "api": "https://api.opsgenie.com/v1/services/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0053"
+  },
+  "isExternal": false
+}
