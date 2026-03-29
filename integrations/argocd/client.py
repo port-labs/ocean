@@ -1,5 +1,3 @@
-import asyncio
-import functools
 from enum import StrEnum
 from itertools import batched
 from typing import Any, Optional, AsyncGenerator
@@ -10,10 +8,6 @@ import json
 
 from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.utils import http_async_client
-from port_ocean.utils.async_iterators import (
-    stream_async_iterators_tasks,
-    semaphore_async_iterator,
-)
 
 
 class ObjectKind(StrEnum):
@@ -31,7 +25,6 @@ class ResourceKindsWithSpecialHandling(StrEnum):
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
 
 PAGE_SIZE = 100
-MAXIMUM_CONCURRENT_CLUSTER_REQUESTS = 10
 
 
 class ClusterState(StrEnum):
@@ -105,7 +98,7 @@ class ArgocdClient:
                 response_data = await self._send_api_request(
                     url=url, query_params=params
                 )
-                for batch in batched(response_data.get("items", []), PAGE_SIZE):
+                for batch in batched(response_data.get("items") or [], PAGE_SIZE):
                     yield list(batch)
             else:
                 async for resources in self.streaming_client.stream_json(
@@ -171,24 +164,8 @@ class ArgocdClient:
     async def get_resources_for_available_clusters(
         self, resource_kind: ObjectKind
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        available_clusters = await self.get_available_clusters()
-        cluster_names = [cluster["name"] for cluster in available_clusters]
         url = f"{self.api_url}/{resource_kind}s"
-
-        semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_CLUSTER_REQUESTS)
-        tasks = [
-            semaphore_async_iterator(
-                semaphore,
-                functools.partial(
-                    self.get_paginated_resources,
-                    url,
-                    params={"selector": f"cluster={name}"},
-                ),
-            )
-            for name in cluster_names
-        ]
-
-        async for resources in stream_async_iterators_tasks(*tasks):
+        async for resources in self.get_paginated_resources(url):
             yield resources
 
     async def get_application_by_name(
