@@ -1,0 +1,62 @@
+name: Integration Tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    uses: ./.github/workflows/detect-changes-matrix.yml
+  test:
+    name: ${{ format('🧪 Integration Tests - {0}', matrix.folder) }}
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: >-
+      needs.detect-changes.outputs.integration_tests_matrix != '[]'
+      && needs.detect-changes.outputs.has_code_changes == 'true'
+    strategy:
+      max-parallel: 5
+      fail-fast: false
+      matrix:
+        folder: ${{ fromJson(needs.detect-changes.outputs.integration_tests_matrix) }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Install poetry
+        run: pipx install 'poetry>=1.0.0,<2.0.0'
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        working-directory: ${{ format('integrations/{0}', matrix.folder) }}
+        run: |
+          if [ "${{ needs.detect-changes.outputs.core }}" = "true" ] || \
+             [ "${{ needs.detect-changes.outputs.core_ci_files_changed }}" = "true" ] || \
+             [ "${{ needs.detect-changes.outputs.integration_testing_core_changed }}" = "true" ]; then
+            make install/local-core
+          else
+            make install
+          fi
+
+      - name: Run integration tests
+        working-directory: ${{ format('integrations/{0}', matrix.folder) }}
+        env:
+          PYTEST_ADDOPTS: --junitxml=junit/integration-test-results-${{ matrix.folder }}.xml
+        run: |
+          mkdir -p /tmp/ocean/prometheus/metrics
+          export PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
+          make test/integration
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: ${{ always() }}
+        with:
+          report_paths: '**/junit/integration-test-results-*.xml'
+          include_passed: true
+          require_tests: true
+          fail_on_failure: true

@@ -17,6 +17,15 @@ on:
       infra:
         value: ${{ jobs.detect-changes.outputs.infra }}
         description: "Determine if any changes to docker infra"
+      integration_tests_matrix:
+        value: ${{ jobs.detect-changes.outputs.integration_tests_matrix }}
+        description: "Integrations to run integration tests for (empty if skip)"
+      integration_testing_core_changed:
+        value: ${{ jobs.detect-changes.outputs.integration_testing_core_changed }}
+        description: "True if port_ocean/integration_testing changed"
+      has_code_changes:
+        value: ${{ jobs.detect-changes.outputs.has_code_changes }}
+        description: "True if PR has code changes (excludes README, changelog, version bumps)"
 
 jobs:
   detect-changes:
@@ -28,6 +37,9 @@ jobs:
       core: ${{ steps.set-all-matrix.outputs.core }}
       core_ci_files_changed: ${{ steps.set-all-matrix.outputs.core_ci_files_changed }}
       infra: ${{ steps.set-all-matrix.outputs.infra}}
+      integration_tests_matrix: ${{ steps.set-all-matrix.outputs.integration_tests_matrix }}
+      integration_testing_core_changed: ${{ steps.set-all-matrix.outputs.integration_testing_core_changed }}
+      has_code_changes: ${{ steps.set-all-matrix.outputs.has_code_changes }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v5
@@ -59,6 +71,16 @@ jobs:
               - '!integrations/_infra/*'
             infra:
               - 'integrations/_infra/*'
+            integration_testing_core:
+              - 'port_ocean/integration_testing/**'
+            code_changes:
+              - 'port_ocean/**'
+              - 'integrations/**'
+              - '.github/workflows/**'
+              - '!**/*.md'
+              - '!**/changelog/**'
+              - '!**/CHANGELOG*'
+              - '!**/README*'
 
       - name: Set integrations and all matrix
         id: set-all-matrix
@@ -66,8 +88,14 @@ jobs:
           INTEGRATIONS=$(node -e 'integrations=${{ steps.changed-files.outputs.integrations_all_changed_files }};console.log(JSON.stringify(integrations.map(integration => integration.split("/")[1])))')
           HAS_CORE=${{ steps.changed-files.outputs.core_all_changed_files != '[]' }}
           HAS_CORE_CI_FILES=${{ steps.changed-files.outputs.core_ci_files_all_changed_files != '[]' }}
+          HAS_INTEGRATION_TESTING_CORE=${{ steps.changed-files.outputs.integration_testing_core_all_changed_files != '[]' }}
+          CODE_CHANGES_FILES='${{ steps.changed-files.outputs.code_changes_all_changed_files }}'
+          HAS_CODE_CHANGES=false
+          if [ -n "${CODE_CHANGES_FILES}" ] && [ "${CODE_CHANGES_FILES}" != "[]" ]; then HAS_CODE_CHANGES=true; fi
           echo "Core changes : ${HAS_CORE}"
           echo "Core CI files changes : ${HAS_CORE_CI_FILES}"
+          echo "Integration testing core changes : ${HAS_INTEGRATION_TESTING_CORE}"
+          echo "Has code changes : ${HAS_CODE_CHANGES}"
           MATRIX=$(node -e "integrations=${INTEGRATIONS}; hasCore=${HAS_CORE}; hasCoreCI=${HAS_CORE_CI_FILES}; console.log(JSON.stringify((hasCore || hasCoreCI) ? integrations.concat(['.']) : integrations))")
           HAS_INFRA=${{ steps.changed-files.outputs.infra_all_changed_files != '[]' }}
           echo "Infra changes : ${HAS_INFRA}"
@@ -75,6 +103,26 @@ jobs:
           echo "All changes : ${MATRIX}"
           echo "core=${HAS_CORE}" >> $GITHUB_OUTPUT
           echo "core_ci_files_changed=${HAS_CORE_CI_FILES}" >> $GITHUB_OUTPUT
+          echo "integration_testing_core_changed=${HAS_INTEGRATION_TESTING_CORE}" >> $GITHUB_OUTPUT
           echo "integrations=${INTEGRATIONS}" >> $GITHUB_OUTPUT
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
           echo "infra=${HAS_INFRA}" >> $GITHUB_OUTPUT
+          echo "has_code_changes=${HAS_CODE_CHANGES}" >> $GITHUB_OUTPUT
+
+          # Build integration_tests_matrix:
+          # - If core or integration_testing changed: run for ALL integrations that have integration_tests/
+          # - If only integration changed: run only for changed integrations that have integration_tests/
+          # - Skip if no code changes
+          if [ "${HAS_CODE_CHANGES}" != "true" ]; then
+            echo "integration_tests_matrix=[]" >> $GITHUB_OUTPUT
+          else
+            INTEGRATIONS_WITH_TESTS=$(find integrations -name "integration_tests" -type d 2>/dev/null | while read -r d; do basename "$(dirname "$d")"; done | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            if [ "${HAS_CORE}" = "true" ] || [ "${HAS_CORE_CI_FILES}" = "true" ] || [ "${HAS_INTEGRATION_TESTING_CORE}" = "true" ]; then
+              echo "integration_tests_matrix=${INTEGRATIONS_WITH_TESTS}" >> $GITHUB_OUTPUT
+            else
+              CHANGED_SET=$(node -e "const changed = ${INTEGRATIONS}; console.log(JSON.stringify(changed))")
+              WITH_TESTS_SET=$(node -e "const all = ${INTEGRATIONS_WITH_TESTS}; console.log(JSON.stringify(all))")
+              INTERSECTION=$(node -e "const a = new Set(${CHANGED_SET}); const b = new Set(${WITH_TESTS_SET}); console.log(JSON.stringify([...a].filter(x => b.has(x))))")
+              echo "integration_tests_matrix=${INTERSECTION}" >> $GITHUB_OUTPUT
+            fi
+          fi
