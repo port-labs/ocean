@@ -742,7 +742,7 @@ class GitLabClient:
                 logger.warning(
                     f"search in group {group_id} failed with {content['message']}"
                 )
-                yield []
+                return
             else:
                 raise
 
