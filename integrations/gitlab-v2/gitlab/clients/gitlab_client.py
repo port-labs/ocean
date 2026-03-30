@@ -386,7 +386,7 @@ class GitLabClient:
         search_query = build_search_query(path)
         logger.info(f"Starting file search with path pattern: '{path}'")
 
-        semaphore = asyncio.Semaphore(max_concurrent)
+        semaphore = asyncio.BoundedSemaphore(max_concurrent)
         if repositories:
             logger.info(
                 f"Searching for {path} across {len(repositories)} specific repositories"
@@ -450,7 +450,7 @@ class GitLabClient:
         logger.info(
             f"Starting project-level file search with path pattern: '{path}' using params: {params}"
         )
-        semaphore = asyncio.Semaphore(max_concurrent)
+        semaphore = asyncio.BoundedSemaphore(max_concurrent)
         async for projects_batch in self.get_projects(params=params):
             tasks = [
                 semaphore_async_iterator(
