@@ -344,14 +344,14 @@ async def test_build_sbom_artifact_resource_filter_maps_supported_fields(
         "cloud_platform": ["AWS", "GitLab"],
         "scan_source": "WORKLOAD",
         "status": ["Active", "Error"],
-        "region": " us-east-1 ",
+        "region": [" us-east-1 "],
     }
 
     assert mock_wiz_client._build_sbom_artifact_resource_filter(resource_filter) == {
         "cloudPlatform": ["AWS", "GitLab"],
         "scanSource": "WORKLOAD",
         "status": ["Active", "Error"],
-        "region": "us-east-1",
+        "region": ["us-east-1"],
     }
 
 
@@ -462,7 +462,7 @@ async def test_get_sbom_artifacts_for_grouped_name_adds_resource_filter(
         "cloudPlatform": ["AWS"],
         "scanSource": "CODE",
         "status": ["Active"],
-        "region": "us-east-1",
+        "region": ["us-east-1"],
     }
 
     with patch.object(

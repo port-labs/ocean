@@ -392,10 +392,6 @@ class WizClient:
                 graphql_resource_filter["status"] = status_values
 
         region = resource_filter.get("region")
-        if isinstance(region, str):
-            trimmed_region = region.strip()
-            if trimmed_region:
-                graphql_resource_filter["region"] = trimmed_region
         if isinstance(region, list):
             region_values = [
                 r.strip() for r in region if isinstance(r, str) and r.strip()
