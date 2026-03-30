@@ -740,7 +740,7 @@ class GitLabClient:
             # is not enabled in the group.
             if e.response.status_code == 400 and message in content.get("message", ""):
                 logger.warning(
-                    f"search in group {group_id} failed with {content.get('message')}"
+                    f"search in group {group_id} failed with {content['message']}"
                 )
                 yield []
             else:
