@@ -39,7 +39,9 @@ class DynatraceEntitySelector(Selector):
     )
 
     entity_fields: EntityFieldsType | None = Field(
-        description="List of fields to include in each entity", alias="entityFields"
+        description="List of fields to include in each entity",
+        alias="entityFields",
+        title="Entity Fields",
     )
 
 
