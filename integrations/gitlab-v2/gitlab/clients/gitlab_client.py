@@ -709,6 +709,9 @@ class GitLabClient:
             # This allows the integration to fall-back to repository search if blob search
             # is not enabled in the group.
             if e.response.status_code == 400 and message in content.get("message", ""):
+                logger.warning(
+                    f"search in group {group_id} failed with {content.get('message')}"
+                )
                 yield []
             else:
                 raise
