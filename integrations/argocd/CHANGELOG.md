@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.31 (2026-03-29)
+## 0.2.32 (2026-03-30)
 
 
 ### Bug Fixes
 
 - Removed cluster-based `selector` filtering from `get_resources` to fix compatibility with ArgoCD instances that do not support cluster selector queries
+
+
+## 0.2.31 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
 
 
 ## 0.2.30 (2026-03-25)
