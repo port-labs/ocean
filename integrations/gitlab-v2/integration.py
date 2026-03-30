@@ -107,6 +107,29 @@ class GitlabMemberResourceConfig(ResourceConfig):
     selector: GitlabMemberSelector
 
 
+class GitlabProjectMemberSelector(Selector):
+    include_only_active_projects: Optional[bool] = Field(
+        default=None,
+        alias="includeOnlyActiveProjects",
+        description="Filter projects by active status",
+    )
+    include_bot_members: bool = Field(
+        alias="includeBotMembers",
+        default=False,
+        description="If set to false, bots will be filtered out from the members list. Default value is false",
+    )
+    include_inherited_members: bool = Field(
+        alias="includeInheritedMembers",
+        default=False,
+        description="If set to true, the integration will include inherited members in the project members list. Default value is false",
+    )
+
+
+class GitlabProjectWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["project-with-members"]
+    selector: GitlabProjectMemberSelector
+
+
 class FilesSelector(BaseModel):
     path: str = Field(
         alias="path",
@@ -301,6 +324,7 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabIssueResourceConfig
         | GitlabGroupWithMembersResourceConfig
         | GitlabMemberResourceConfig
+        | GitlabProjectWithMembersResourceConfig
         | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
         | GitlabMergeRequestResourceConfig

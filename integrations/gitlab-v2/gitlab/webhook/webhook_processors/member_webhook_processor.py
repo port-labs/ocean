@@ -6,7 +6,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from gitlab.helpers.utils import ObjectKind
+from gitlab.helpers.utils import ObjectKind, is_bot_member
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
@@ -53,14 +53,6 @@ class MemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
             GitlabMemberSelector, resource_config.selector
         )
 
-        if not selector.include_bot_members and "bot" in user_name.lower():
-            logger.info(
-                f"Excluding bot member '{user_name}' from group '{group_id}' because include_bot_members is false"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[payload]
-            )
-
         group_member = await self._gitlab_webhook_client.get_group_member(
             group_id, user_id, selector.include_inherited_members
         )
@@ -70,6 +62,14 @@ class MemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 f"Group member '{user_name}' not found in group '{group_id}'"
             )
             group_member = {}
+
+        if not selector.include_bot_members and is_bot_member(group_member):
+            logger.info(
+                f"Excluding bot member '{user_name}' from group '{group_id}' because include_bot_members is false"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[payload]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[group_member], deleted_raw_results=[]
