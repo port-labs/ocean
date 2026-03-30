@@ -381,20 +381,31 @@ class GitLabClient:
         repositories: list[str] | None = None,
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         search_query = build_search_query(path)
         logger.info(f"Starting file search with path pattern: '{path}'")
 
+        semaphore = asyncio.Semaphore(max_concurrent)
         if repositories:
             logger.info(
                 f"Searching for {path} across {len(repositories)} specific repositories"
             )
-            for repo in repositories:
-                logger.debug(f"Processing repository: {repo}")
-                async for batch in self._search_files_in_repository(
-                    repo, scope, search_query, skip_parsing
-                ):
-                    yield batch
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    partial(
+                        self._search_files_in_repository,
+                        repo,
+                        scope,
+                        search_query,
+                        skip_parsing,
+                    ),
+                )
+                for repo in repositories
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
         else:
             logger.info(f"Searching for {path} across groups")
             async for top_level_groups in self.get_parent_groups(
@@ -404,13 +415,21 @@ class GitLabClient:
                     f"Found {len(top_level_groups)} top-level searchable groups"
                 )
 
-                for group in top_level_groups:
-                    group_id = str(group["id"])
-                    logger.debug(f"Processing group: {group_id}")
-                    async for batch in self._search_files_in_group(
-                        group_id, scope, search_query, skip_parsing
-                    ):
-                        yield batch
+                tasks = [
+                    semaphore_async_iterator(
+                        semaphore,
+                        partial(
+                            self._search_files_in_group,
+                            str(group["id"]),
+                            scope,
+                            search_query,
+                            skip_parsing,
+                        ),
+                    )
+                    for group in top_level_groups
+                ]
+                async for batch in stream_async_iterators_tasks(*tasks):
+                    yield batch
 
     async def search_files_in_projects(
         self,
@@ -418,6 +437,7 @@ class GitLabClient:
         path: str,
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files across all accessible projects.
 
@@ -430,13 +450,23 @@ class GitLabClient:
         logger.info(
             f"Starting project-level file search with path pattern: '{path}' using params: {params}"
         )
+        semaphore = asyncio.Semaphore(max_concurrent)
         async for projects_batch in self.get_projects(params=params):
-            for project in projects_batch:
-                repo_path = project["path_with_namespace"]
-                async for batch in self._search_files_in_repository(
-                    repo_path, scope, search_query, skip_parsing
-                ):
-                    yield batch
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    partial(
+                        self._search_files_in_repository,
+                        project["path_with_namespace"],
+                        scope,
+                        search_query,
+                        skip_parsing,
+                    ),
+                )
+                for project in projects_batch
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
 
     async def get_repository_tree(
         self,
