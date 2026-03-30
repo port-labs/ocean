@@ -44,10 +44,26 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
             ]
         ]
         | None
+    ) = Field(
+        default=None,
+        title="Include",
+        description="Additional details to include in the response.",
     )
-    sort_by: Literal["name", "name:asc", "name:desc"] | None
-    team_ids: list[str] | None
-    time_zone: str | None
+    sort_by: Literal["name", "name:asc", "name:desc"] | None = Field(
+        default=None,
+        title="Sort By",
+        description="Sort services by name.",
+    )
+    team_ids: list[str] | None = Field(
+        default=None,
+        title="Team IDs",
+        description="Filter services by team IDs.",
+    )
+    time_zone: str | None = Field(
+        default=None,
+        title="Time Zone",
+        description="Time zone to use for the response. Defaults to the account's time zone.",
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -60,16 +76,26 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
 
 
 class PagerdutyScheduleAPIQueryParams(BaseModel):
-    include: list[str] | None
+    include: list[str] | None = Field(
+        default=None,
+        title="Include",
+        description="Additional details to include in the response.",
+    )
     until: int | None = Field(
         default=None,
-        description="Number of months ahead to calculate 'until' date",
+        title="Until",
+        description="Number of months ahead to end the schedule window at.",
     )
     since: int | None = Field(
         default=None,
-        description="Number of months back to calculate 'since' date",
+        title="Since",
+        description="Number of months in the past to start the schedule window from.",
     )
-    time_zone: str | None
+    time_zone: str | None = Field(
+        default=None,
+        title="Time Zone",
+        description="Time zone to use for the schedule. Defaults to the account's time zone.",
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -83,9 +109,22 @@ class PagerdutyScheduleAPIQueryParams(BaseModel):
 
 
 class PagerdutyOncallAPIQueryParams(BaseModel):
-    include: list[str] = Field(default=["users"])
-    until: int = Field(default=3)
-    since: int = Field(default=0)
+    include: list[str] = Field(
+        default=["users"],
+        title="Include",
+        description="Additional details to include in the response. Defaults to 'users'.",
+    )
+    until: int = Field(
+        default=3,
+        gt=0,
+        title="Until",
+        description="Number of months ahead to include on-call schedules. Defaults to 3 months from now.",
+    )
+    since: int = Field(
+        default=0,
+        title="Since",
+        description="Number of months back to include on-call schedules. Defaults to the current month.",
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -100,9 +139,21 @@ class PagerdutyOncallAPIQueryParams(BaseModel):
 
 
 class PagerdutyEscalationPolicyAPIQueryParams(BaseModel):
-    include: list[Literal["services", "teams", "targets"]] | None
-    team_ids: list[str] | None
-    user_ids: list[str] | None
+    include: list[Literal["services", "teams", "targets"]] | None = Field(
+        default=None,
+        title="Include",
+        description="Additional details to include in the response.",
+    )
+    team_ids: list[str] | None = Field(
+        default=None,
+        title="Team IDs",
+        description="Filter escalation policies by team IDs.",
+    )
+    user_ids: list[str] | None = Field(
+        default=None,
+        title="User IDs",
+        description="Filter escalation policies by user IDs.",
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -117,18 +168,66 @@ class PagerdutyEscalationPolicyAPIQueryParams(BaseModel):
 
 
 class PagerdutyIncidentAPIQueryParams(BaseModel):
-    date_range: str | None
-    incident_key: str | None
-    include: list[str] | None
-    service_ids: list[str] | None
-    since: str | None
-    sort_by: str | None
-    statuses: list[Literal["triggered", "acknowledged", "resolved"]] | None
-    team_ids: list[str] | None
-    time_zone: str | None
-    until: str | None
-    urgencies: list[Literal["high", "low"]] | None
-    user_ids: list[str] | None
+    date_range: str | None = Field(
+        default=None,
+        title="Date Range",
+        description="Filter incidents by date range. Use 'all' to return all incidents.",
+    )
+    incident_key: str | None = Field(
+        default=None,
+        title="Incident Key",
+        description="Filter incidents by incident key (deduplication key).",
+    )
+    include: list[str] | None = Field(
+        default=None,
+        title="Include",
+        description="Additional details to include in the response.",
+    )
+    service_ids: list[str] | None = Field(
+        default=None,
+        title="Service IDs",
+        description="Filter incidents by service IDs.",
+    )
+    since: str | None = Field(
+        default=None,
+        title="Since",
+        description="Start of the date range to filter incidents (ISO 8601 format).",
+    )
+    sort_by: str | None = Field(
+        default=None,
+        title="Sort By",
+        description="Sort incidents by a field and direction, e.g. 'created_at:asc'.",
+    )
+    statuses: list[Literal["triggered", "acknowledged", "resolved"]] | None = Field(
+        default=None,
+        title="Statuses",
+        description="Filter incidents by status. Accepted values: 'triggered', 'acknowledged', 'resolved'.",
+    )
+    team_ids: list[str] | None = Field(
+        default=None,
+        title="Team IDs",
+        description="Filter incidents by team IDs.",
+    )
+    time_zone: str | None = Field(
+        default=None,
+        title="Time Zone",
+        description="Time zone to use for the response. Defaults to the account's time zone.",
+    )
+    until: str | None = Field(
+        default=None,
+        title="Until",
+        description="End of the date range to filter incidents (ISO 8601 format).",
+    )
+    urgencies: list[Literal["high", "low"]] | None = Field(
+        default=None,
+        title="Urgencies",
+        description="Filter incidents by urgency. Accepted values: 'high', 'low'.",
+    )
+    user_ids: list[str] | None = Field(
+        default=None,
+        title="User IDs",
+        description="Filter incidents by user IDs.",
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -289,9 +388,7 @@ class PagerdutyPortAppConfig(PortAppConfig):
         | PagerdutyOncallResourceConfig
         | PagerdutyEscalationPolicyResourceConfig
         | CustomResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
     allow_custom_kinds: ClassVar[bool] = True
 
 
