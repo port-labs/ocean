@@ -1,7 +1,9 @@
+import asyncio
 import pytest
 from typing import Any
 from unittest.mock import AsyncMock, patch, MagicMock
 from httpx import Request, Response, HTTPStatusError
+from aiolimiter import AsyncLimiter
 from clients.aikido_client import AikidoClient
 from clients.options import ListRepositoriesOptions, ListContainersOptions
 from helpers.exceptions import MissingIntegrationCredentialException
@@ -442,3 +444,106 @@ async def test_get_containers_paginates_with_options(
         {"filter_status": "inactive", "per_page": 20, "page": 0},
         {"filter_status": "inactive", "per_page": 20, "page": 1},
     ]
+
+
+@pytest.mark.asyncio
+async def test_rate_limiter_is_initialized() -> None:
+    client = AikidoClient(
+        base_url="https://api.example.com",
+        client_id="test_client_id",
+        client_secret="test_client_secret",
+    )
+    assert isinstance(client.rate_limiter, AsyncLimiter)
+
+
+@pytest.mark.asyncio
+async def test_token_acquisition_outside_rate_limiter(
+    aikido_client: AikidoClient,
+) -> None:
+    """Token acquisition should happen before entering the rate limiter context."""
+    call_order: list[str] = []
+
+    async def tracked_get_token() -> str | None:
+        call_order.append("get_token")
+        return "test_token"
+
+    async def tracked_acquire(amount: float = 1) -> None:
+        call_order.append("rate_limiter_acquire")
+
+    mock_response = MagicMock(spec=Response)
+    mock_response.json.return_value = {"key": "value"}
+    mock_response.raise_for_status.return_value = None
+
+    with (
+        patch.object(aikido_client.auth, "get_token", side_effect=tracked_get_token),
+        patch.object(
+            aikido_client.rate_limiter, "acquire", side_effect=tracked_acquire
+        ),
+        patch.object(
+            aikido_client.http_client, "request", new_callable=AsyncMock
+        ) as mock_request,
+    ):
+        mock_request.return_value = mock_response
+        await aikido_client._send_api_request("test_endpoint")
+
+    assert call_order == ["get_token", "rate_limiter_acquire"]
+
+
+@pytest.mark.asyncio
+async def test_concurrent_requests_are_rate_limited(
+    aikido_client: AikidoClient,
+) -> None:
+    """Multiple concurrent requests should be properly rate limited."""
+    aikido_client.rate_limiter = AsyncLimiter(2, 1)
+
+    request_times: list[float] = []
+
+    mock_response = MagicMock(spec=Response)
+    mock_response.json.return_value = {"key": "value"}
+    mock_response.raise_for_status.return_value = None
+
+    async def tracked_request(*args: Any, **kwargs: Any) -> MagicMock:
+        request_times.append(asyncio.get_event_loop().time())
+        return mock_response
+
+    with patch.object(
+        aikido_client.http_client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = tracked_request
+
+        tasks = [aikido_client._send_api_request(f"endpoint_{i}") for i in range(4)]
+        await asyncio.gather(*tasks)
+
+    assert mock_request.call_count == 4
+    first_two = request_times[:2]
+    assert all(
+        abs(t - first_two[0]) < 0.1 for t in first_two
+    ), "First two requests should start nearly simultaneously"
+
+
+@pytest.mark.asyncio
+async def test_rate_limiter_does_not_block_token_refresh(
+    aikido_client: AikidoClient,
+) -> None:
+    """Token refresh should not consume rate limiter capacity."""
+    aikido_client.rate_limiter = AsyncLimiter(1, 60)
+
+    mock_response = MagicMock(spec=Response)
+    mock_response.json.return_value = {"key": "value"}
+    mock_response.raise_for_status.return_value = None
+
+    with (
+        patch.object(
+            aikido_client.auth, "get_token", new_callable=AsyncMock
+        ) as mock_get_token,
+        patch.object(
+            aikido_client.http_client, "request", new_callable=AsyncMock
+        ) as mock_request,
+    ):
+        mock_get_token.return_value = "test_token"
+        mock_request.return_value = mock_response
+
+        await aikido_client._send_api_request("endpoint_1")
+
+    assert mock_get_token.call_count == 1
+    assert mock_request.call_count == 1
