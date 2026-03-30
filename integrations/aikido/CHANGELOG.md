@@ -6,13 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-## 0.1.117-beta (2026-03-26)
+## 0.1.119-beta (2026-03-31)
 
 
 ### Improvements
 
 - Added explicit Literal kind definitions and missing resource config models to AikidoPortAppConfig for schema validation compliance
+
+
+## 0.1.118-beta (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 0.1.117-beta (2026-03-6)
+
+
+### Features
+
+- Add proactive rate limiting to Aikido integration using aiolimiter (15 req/min) to prevent 429 errors
+- Add Retry-After header handling via RetryConfig to gracefully handle 429 responses
 
 
 ## 0.1.116-beta (2026-03-25)
