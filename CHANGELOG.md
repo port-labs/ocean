@@ -7,12 +7,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.38.27 (2026-03-25)
-
-### Improvements
-
-- Migrated PR creation token in `apply-release.yml`, `upgrade-integrations.yml`, and `combine-dependabot-prs.yml` to use `PORT_MACHINE_USER_GITHUB_TOKEN` instead of `MACHINE_USER_TOKEN`
-
 ## 0.38.26 (2026-03-25)
 
 ### Improvements
