@@ -29,11 +29,13 @@ class RepositoryBranchMapping(BaseModel):
     name: str = Field(
         default="",
         alias="name",
+        title="Name",
         description="Specify the repository name",
     )
     branch: str = Field(
         default="default",
         alias="branch",
+        title="Branch",
         description="Specify the branch to bring the folders from",
     )
 
@@ -76,7 +78,7 @@ class FolderPattern(BaseModel):
         default="",
         alias="path",
         description="Specify the repositories and folders to include under this relative path",
-        title="Folder sync patterns",
+        title="Folder paths",
     )
     repos: list[RepositoryBranchMapping] = Field(
         default_factory=list,
@@ -122,17 +124,22 @@ class BitbucketFilePattern(BaseModel):
     skip_parsing: bool = Field(
         default=False,
         alias="skipParsing",
+        title="Skip Parsing",
         description="Skip parsing the files and just return the raw file content",
     )
     filenames: list[str] = Field(
         default_factory=list,
         alias="filenames",
+        title="Filenames",
         description="Specify list of filenames to search and return",
     )
 
 
 class BitbucketFileSelector(Selector):
-    files: BitbucketFilePattern
+    files: BitbucketFilePattern = Field(
+        title="File Patterns",
+        description="Define which files to sync by specifying path patterns, target repositories, and filenames to match",
+    )
     included_files: list[str] = Field(
         title="Additional files",
         alias="includedFiles",
