@@ -1,0 +1,23 @@
+{
+  "id": "10531",
+  "name": ".NET Host",
+  "description": ".NET Host refers to the .NET runtime that is responsible for loading and executing .NET applications. It's the entity that invokes the main entry point of your .NET application (like the 'dotnet' command in .NET Core CLI). .NET Host provides features like application dependency management, runtime configuration, and runtime applying of patches and updates.",
+  "categories": [
+    {
+      "name": "Frameworks & Libraries"
+    }
+  ],
+  "usage": "COMMON",
+  "status": "UNREVIEWED",
+  "risk": "HIGH",
+  "note": null,
+  "ownerName": "Microsoft Corporation",
+  "businessModel": "COMMERCIAL_OPEN_SOURCE",
+  "popularity": "VERY_COMMON",
+  "projectCount": 0,
+  "codeRepoCount": 0,
+  "isCloudService": false,
+  "supportedOperatingSystems": [
+    "WINDOWS"
+  ]
+}

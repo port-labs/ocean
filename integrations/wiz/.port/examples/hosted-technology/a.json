@@ -1,0 +1,20 @@
+{
+  "id": "7ef60ebe-841e-5a72-be95-e72e0d2219a1",
+  "name": "NGINX (docker.io/nginx@dec7a90b)",
+  "technology": {
+    "id": "2599",
+    "name": "NGINX"
+  },
+  "resource": {
+    "id": "8687d4ec-9644-55ba-a9be-6c7c9bfa0111",
+    "name": "docker.io/nginx@dec7a90b"
+  },
+  "detectionMethods": [
+    "PACKAGE",
+    "EXTERNAL_NETWORK_SCAN"
+  ],
+  "installedPackages": null,
+  "firstSeen": "2026-03-18T14:17:59.986833Z",
+  "updatedAt": "2026-03-21T07:51:42.977126Z",
+  "cpe": "cpe:/a:f5:nginx:1.29.6"
+}
