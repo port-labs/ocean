@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.30-beta (2026-03-30)
+
+
+### Improvements
+
+- Enabled formMappingEnabled flag
+
+
 ## 0.4.29-beta (2026-03-30)
 
 
