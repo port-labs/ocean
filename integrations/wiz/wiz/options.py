@@ -1,4 +1,4 @@
-from typing import List, Literal, TypedDict, Required, NotRequired, Optional
+from typing import Any, List, Literal, TypedDict, Required, NotRequired, Optional
 
 
 class IssueOptions(TypedDict):
@@ -46,3 +46,4 @@ class SbomArtifactOptions(TypedDict):
             ]
         ]
     ]
+    resource_filter: NotRequired[Optional[dict[str, Any]]]
