@@ -3,6 +3,7 @@ from functools import partial
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
 
 import anyio
+import httpx
 from loguru import logger
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
@@ -688,17 +689,29 @@ class GitLabClient:
         logger.debug(
             f"Starting search in group '{group_id}' for query '{query}' with scope '{scope}'"
         )
-        params = {"scope": scope, "search": query}
+        params = {"scope": scope, "search": query, "search_type": "advanced"}
         encoded_group = quote(group_id, safe="")
         path = f"groups/{encoded_group}/search"
 
-        async for file_batch in self.rest.get_paginated_resource(path, params=params):
-            logger.debug(f"Found {len(file_batch)} files in group '{group_id}'")
-            processed_batch = await self._process_file_batch(
-                file_batch, group_id, skip_parsing
-            )
-            if processed_batch:
-                yield processed_batch
+        try:
+            async for file_batch in self.rest.get_paginated_resource(
+                path, params=params
+            ):
+                logger.debug(f"Found {len(file_batch)} files in group '{group_id}'")
+                processed_batch = await self._process_file_batch(
+                    file_batch, group_id, skip_parsing
+                )
+                if processed_batch:
+                    yield processed_batch
+        except httpx.HTTPStatusError as e:
+            message = "Scope 'blobs' is not available for this search"
+            content = e.response.json()
+            # This allows the integration to fall-back to repository search if blob search
+            # is not enabled in the group.
+            if e.response.status_code == 400 and message in content.get("message", ""):
+                yield []
+            else:
+                raise
 
     async def _resolve_file_references(
         self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str
