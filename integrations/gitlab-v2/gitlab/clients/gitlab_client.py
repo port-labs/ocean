@@ -709,6 +709,34 @@ class GitLabClient:
             if processed_batch:
                 yield processed_batch
 
+    async def _search_files_in_group_projects(
+        self,
+        group_id: str,
+        scope: str,
+        query: str,
+        skip_parsing: bool = False,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        semaphore = asyncio.BoundedSemaphore(max_concurrent)
+        async for projects_batch in self.rest.get_paginated_group_resource(
+            group_id, "projects"
+        ):
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    partial(
+                        self._search_files_in_repository,
+                        project["path_with_namespace"],
+                        scope,
+                        query,
+                        skip_parsing,
+                    ),
+                )
+                for project in projects_batch
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+
     async def _search_files_in_group(
         self,
         group_id: str,
@@ -720,8 +748,7 @@ class GitLabClient:
             f"Starting search in group '{group_id}' for query '{query}' with scope '{scope}'"
         )
         params = {"scope": scope, "search": query, "search_type": "advanced"}
-        encoded_group = quote(group_id, safe="")
-        path = f"groups/{encoded_group}/search"
+        path = f"groups/{quote(group_id, safe='')}/search"
 
         try:
             async for file_batch in self.rest.get_paginated_resource(
@@ -734,17 +761,23 @@ class GitLabClient:
                 if processed_batch:
                     yield processed_batch
         except httpx.HTTPStatusError as e:
-            message = "Scope 'blobs' is not available for this search"
-            content = e.response.json()
-            # This allows the integration to fall-back to repository search if blob search
-            # is not enabled in the group.
-            if e.response.status_code == 400 and message in content.get("message", ""):
-                logger.warning(
-                    f"search in group {group_id} failed with {content['message']}"
-                )
-                return
-            else:
+            if not self._is_blob_search_unavailable(e):
                 raise
+            logger.warning(
+                f"Group search in group {group_id} failed: {e.response.json().get('message')}, "
+                f"falling back to project-level search for group's projects"
+            )
+            async for batch in self._search_files_in_group_projects(
+                group_id, scope, query, skip_parsing
+            ):
+                yield batch
+
+    def _is_blob_search_unavailable(self, error: httpx.HTTPStatusError) -> bool:
+        return (
+            error.response.status_code == 400
+            and "Scope 'blobs' is not available for this search"
+            in error.response.json().get("message", "")
+        )
 
     async def _resolve_file_references(
         self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str
