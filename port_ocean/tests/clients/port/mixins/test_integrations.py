@@ -209,14 +209,14 @@ async def test_put_integration_sync_metrics_error_handling(
         await integration_client.put_integration_sync_metrics(BASIC_KIND_METRICS)
 
 
-async def test_put_integration_metrics_heartbeat_basic(
+async def test_post_integration_metrics_heartbeat_basic(
     integration_client: IntegrationClientMixin,
 ) -> None:
     """POST heartbeat uses ingestUrl + /heartbeat."""
     with patch(
         "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
     ) as mock_handle:
-        await integration_client.put_integration_metrics_heartbeat("event-xyz")
+        await integration_client.post_integration_metrics_heartbeat("event-xyz")
 
         integration_client.get_metrics_attributes.assert_called_once()
         integration_client.auth.headers.assert_called_once()
@@ -230,7 +230,7 @@ async def test_put_integration_metrics_heartbeat_basic(
         assert "Authorization" in call_args[1]["headers"]
 
 
-async def test_put_integration_metrics_heartbeat_appends_to_ingest_url(
+async def test_post_integration_metrics_heartbeat_appends_to_ingest_url(
     integration_client: IntegrationClientMixin,
     monkeypatch: Any,
 ) -> None:
@@ -240,7 +240,7 @@ async def test_put_integration_metrics_heartbeat_appends_to_ingest_url(
     monkeypatch.setattr(integration_client, "get_metrics_attributes", mock_attrs)
 
     with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
-        await integration_client.put_integration_metrics_heartbeat("e1")
+        await integration_client.post_integration_metrics_heartbeat("e1")
 
         call_args = integration_client.client.post.call_args
         assert call_args[0][0] == f"{ingest_url}/heartbeat"
