@@ -109,6 +109,7 @@ class Ocean:
         self._status_heartbeat_task: asyncio.Task[None] | None = None
 
         signal_handler.register(self._report_resync_aborted, priority=100)
+        signal_handler.register(self._stop_status_heartbeat, priority=90)
 
     async def _report_resync_aborted(self) -> None:
         """
@@ -136,6 +137,15 @@ class Ocean:
                     )
         except Exception as e:
             logger.warning(f"Error during graceful shutdown: {e}")
+
+    async def _stop_status_heartbeat(self) -> None:
+        if self._status_heartbeat_task is not None:
+            self._status_heartbeat_task.cancel()
+            try:
+                await self._status_heartbeat_task
+            except asyncio.CancelledError:
+                pass
+            self._status_heartbeat_task = None
 
     def _get_process_execution_mode(self) -> ProcessExecutionMode:
         if self.config.process_execution_mode:
@@ -300,13 +310,6 @@ class Ocean:
                 logger.complete()
                 sys.exit("Server stopped")
             finally:
-                if self._status_heartbeat_task is not None:
-                    self._status_heartbeat_task.cancel()
-                    try:
-                        await self._status_heartbeat_task
-                    except asyncio.CancelledError:
-                        pass
-                    self._status_heartbeat_task = None
                 await signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
