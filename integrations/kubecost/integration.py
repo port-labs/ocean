@@ -81,6 +81,7 @@ _WINDOW_TYPE = (
 class CloudCostSelector(Selector):
     window: _WINDOW_TYPE = _WINDOW_FIELD
     aggregate: AggregationField | None = Field(
+        default=None,
         title="Aggregate",
         description="Field by which to aggregate the results.",
     )
@@ -147,10 +148,12 @@ class KubecostSelector(Selector):
     aggregate: AggregationField | None = Field(
         title="Aggregate",
         description="Field by which to aggregate the results.",
+        default=None,
     )
     step: DurationField | None = Field(
-        title="Step",
+        title="Allocation set duration",
         description="Duration of a single allocation set (e.g., '30m', '2h', '1d'). Default is window.",
+        default=None,
     )
     accumulate: bool = Field(
         title="Accumulate",
