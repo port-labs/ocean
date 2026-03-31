@@ -56,6 +56,10 @@ def integration_client(monkeypatch: Any) -> IntegrationClientMixin:
     client.put.return_value = MagicMock()
     client.put.return_value.status_code = 200
     client.put.return_value.is_error = False
+    client.post = AsyncMock()
+    client.post.return_value = MagicMock()
+    client.post.return_value.status_code = 200
+    client.post.return_value.is_error = False
 
     integration_client = IntegrationClientMixin(
         integration_identifier=TEST_INTEGRATION_IDENTIFIER,
@@ -208,7 +212,7 @@ async def test_put_integration_sync_metrics_error_handling(
 async def test_put_integration_metrics_heartbeat_basic(
     integration_client: IntegrationClientMixin,
 ) -> None:
-    """PUT heartbeat uses ingestUrl + /heartbeat."""
+    """POST heartbeat uses ingestUrl + /heartbeat."""
     with patch(
         "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
     ) as mock_handle:
@@ -216,10 +220,10 @@ async def test_put_integration_metrics_heartbeat_basic(
 
         integration_client.get_metrics_attributes.assert_called_once()
         integration_client.auth.headers.assert_called_once()
-        integration_client.client.put.assert_called_once()
+        integration_client.client.post.assert_called_once()
         mock_handle.assert_called_once()
 
-        call_args = integration_client.client.put.call_args
+        call_args = integration_client.client.post.call_args
         expected_url = f"{TEST_INGEST_URL}/heartbeat"
         assert call_args[0][0] == expected_url
         assert call_args[1]["json"] == {"eventId": "event-xyz"}
@@ -238,5 +242,5 @@ async def test_put_integration_metrics_heartbeat_appends_to_ingest_url(
     with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
         await integration_client.put_integration_metrics_heartbeat("e1")
 
-        call_args = integration_client.client.put.call_args
+        call_args = integration_client.client.post.call_args
         assert call_args[0][0] == f"{ingest_url}/heartbeat"
