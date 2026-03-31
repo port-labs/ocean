@@ -335,18 +335,18 @@ typing-extensions = ">=4.0.0"
 
 [[package]]
 name = "azure-mgmt-core"
-version = "1.6.0"
+version = "1.5.0"
 description = "Microsoft Azure Management Core Library for Python"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "azure_mgmt_core-1.6.0-py3-none-any.whl", hash = "sha256:0460d11e85c408b71c727ee1981f74432bc641bb25dfcf1bb4e90a49e776dbc4"},
-    {file = "azure_mgmt_core-1.6.0.tar.gz", hash = "sha256:b26232af857b021e61d813d9f4ae530465255cb10b3dde945ad3743f7a58e79c"},
+    {file = "azure_mgmt_core-1.5.0-py3-none-any.whl", hash = "sha256:18aaa5a723ee8ae05bf1bfc9f6d0ffb996631c7ea3c922cc86f522973ce07b5f"},
+    {file = "azure_mgmt_core-1.5.0.tar.gz", hash = "sha256:380ae3dfa3639f4a5c246a7db7ed2d08374e88230fd0da3eb899f7c11e5c441a"},
 ]
 
 [package.dependencies]
-azure-core = ">=1.32.0"
+azure-core = ">=1.31.0"
 
 [[package]]
 name = "azure-mgmt-resource"
@@ -3045,4 +3045,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "a0849b6cb149307b0faad47174e63203469ec0c15ae3617a485c19baa3e198e0"
+content-hash = "34c5605b16461b43582b8f223b373f2aec227f637f55beffc1352625a10e9179"
