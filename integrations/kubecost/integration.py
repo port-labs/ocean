@@ -55,26 +55,21 @@ class DurationField(str):
             )
 
 
-_WINDOW_FIELD = Field(
+_WINDOW_FIELD: str = Field(
     default="today",
     title="Window",
-    description="The time window for the query. Accepts preset values (e.g. 'today', '7d') or custom date/unixtime pairs.",
-)
-
-_WINDOW_TYPE = (
-    Literal[
-        "today",
-        "week",
-        "month",
-        "yesterday",
-        "lastweek",
-        "lastmonth",
-        "30m",
-        "12h",
-        "7d",
-    ]
-    | DatePairField
-    | UnixtimePairField
+    description=(
+        "The time window for the query. Supported values: preset windows "
+        "('today', 'week', 'month', 'yesterday', 'lastweek', 'lastmonth', "
+        "'30m', '12h', '7d'), an ISO8601 UTC date-time pair "
+        "('2026-03-30T00:00:00Z,2026-03-31T00:00:00Z'), or a Unix timestamp "
+        "pair ('1711756800,1711843200')."
+    ),
+    regex=(
+        r"^(today|week|month|yesterday|lastweek|lastmonth|30m|12h|7d|"
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z,\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z|"
+        r"\d+,\d+)$"
+    ),
 )
 
 
