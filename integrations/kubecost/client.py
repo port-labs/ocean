@@ -21,7 +21,7 @@ class KubeCostClient:
     def generate_params(
         self,
         selector: CloudCostSelector | KubecostSelector,
-    ) -> dict[str, str]:
+    ) -> dict[str, Any]:
         params = selector.dict(exclude_unset=True, by_alias=True)
         params.pop("query")
         return params

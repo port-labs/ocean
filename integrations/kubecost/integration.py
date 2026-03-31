@@ -8,51 +8,25 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from pydantic import validator
 from pydantic.fields import Field
 
 
-class DatePairField(str):
-    @classmethod
-    def validate(cls, value: str) -> None:
-        # Regular expression to validate the format of the date pair value
-        regex = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z,\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
-        if not re.match(regex, value):
-            raise ValueError(
-                "Invalid date pair format. Use 'YYYY-MM-DDTHH:MM:SSZ,YYYY-MM-DDTHH:MM:SSZ'."
-            )
+def validate_aggregation(v: str) -> str:
+    regex = r"^(cluster|node|namespace|controllerKind|controller|service|pod|container|invoiceEntityID|accountID|provider|label:name|annotation:name)(,(cluster|node|namespace|controllerKind|controller|service|pod|container|invoiceEntityID|accountID|provider|label:name|annotation:name))*$"
+    if not re.match(regex, v):
+        raise ValueError(
+            "Invalid aggregation format. Use 'cluster', 'node', 'namespace', 'controllerKind', 'controller', 'service', 'pod', 'container', 'label:name', or 'annotation:name'."
+        )
+    return v
 
 
-class UnixtimePairField(str):
-    @classmethod
-    def validate(cls, value: str) -> None:
-        # Regular expression to validate the format of the unixtime pair value
-        regex = r"^\d+,\d+$"
-        if not re.match(regex, value):
-            raise ValueError(
-                "Invalid unixtime pair format. Use 'X,Y' (X and Y are positive integers)."
-            )
-
-
-class AggregationField(str):
-    @classmethod
-    def validate(cls, value: str) -> None:
-        # Regular expression to validate the format of the aggregation value
-        regex = r"^(cluster|node|namespace|controllerKind|controller|service|pod|container|invoiceEntityID|accountID|provider|label:name|annotation:name)(,(cluster|node|namespace|controllerKind|controller|service|pod|container|invoiceEntityID|accountID|provider|label:name|annotation:name))*$"
-        if not re.match(regex, value):
-            raise ValueError(
-                "Invalid aggregation format. Use 'cluster', 'node', 'namespace', 'controllerKind', 'controller', 'service', 'pod', 'container', 'label:name', or 'annotation:name'."
-            )
-
-
-class DurationField(str):
-    @classmethod
-    def validate(cls, value: str) -> None:
-        # Regular expression to validate the format of the step value
-        regex = r"^\d+[smhd]$"
-        if not re.match(regex, value):
-            raise ValueError(
-                "Invalid duration format. Use 'Xs', 'Xm', 'Xh', or 'Xd' (X is a positive integer)."
-            )
+def validate_duration(v: str) -> str:
+    if not re.match(r"^\d+[smhd]$", v):
+        raise ValueError(
+            "Invalid duration format. Use 'Xs', 'Xm', 'Xh', or 'Xd' (X is a positive integer)."
+        )
+    return v
 
 
 _WINDOW_FIELD: str = Field(
@@ -74,12 +48,14 @@ _WINDOW_FIELD: str = Field(
 
 
 class CloudCostSelector(Selector):
-    window: _WINDOW_TYPE = _WINDOW_FIELD
-    aggregate: AggregationField | None = Field(
+    window: str = _WINDOW_FIELD
+    aggregate: str | None = Field(
         default=None,
         title="Aggregate",
         description="Field by which to aggregate the results.",
     )
+
+    _validate_aggregate = validator("aggregate", allow_reuse=True)(validate_aggregation)
     # v1 API fields
     filter_invoice_entity_ids: str | None = Field(
         title="Filter Invoice Entity IDs",
@@ -139,17 +115,20 @@ class CloudCostSelector(Selector):
 
 
 class KubecostSelector(Selector):
-    window: _WINDOW_TYPE = _WINDOW_FIELD
-    aggregate: AggregationField | None = Field(
+    window: str = _WINDOW_FIELD
+    aggregate: str | None = Field(
         title="Aggregate",
         description="Field by which to aggregate the results.",
         default=None,
     )
-    step: DurationField | None = Field(
+    step: str | None = Field(
         title="Allocation set duration",
         description="Duration of a single allocation set (e.g., '30m', '2h', '1d'). Default is window.",
         default=None,
     )
+
+    _validate_aggregate = validator("aggregate", allow_reuse=True)(validate_aggregation)
+    _validate_step = validator("step", allow_reuse=True)(validate_duration)
     accumulate: bool = Field(
         title="Accumulate",
         default=False,
