@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.38.28 (2026-03-31)
+
+### Features
+
+- Metrics heartbeat: while a sync has an active metrics `eventId`, Ocean periodically `PUT`s to the ingest URL `/heartbeat` so Port can track live sync progress. Configurable via `status_heartbeat_interval_seconds` (default 60; set to 0 to disable).
+
+### Improvements
+
+- Resync completion: send webhook and sync metrics before patching integration resync state, then clear `event_id` so heartbeats stop and the id is not reused. Manual `sync_raw_all` also clears `event_id` after completion.
+
+
 ## 0.38.27 (2026-03-30)
 
 ### Improvements
@@ -25,16 +36,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Added `x-ratelimit-reset` to the list of retry-after headers checked by the Port HTTP transport, so that when Ocean receives a 429 from the Port API it waits until the rate-limit window resets instead of falling back to exponential backoff
 
-
-## 0.38.25 (2026-03-29)
-
-### Features
-
-- Metrics heartbeat: while a sync has an active metrics `eventId`, Ocean periodically `PUT`s to the ingest URL `/heartbeat` so Port can track live sync progress. Configurable via `status_heartbeat_interval_seconds` (default 60; set to 0 to disable).
-
-### Improvements
-
-- Resync completion: send webhook and sync metrics before patching integration resync state, then clear `event_id` so heartbeats stop and the id is not reused. Manual `sync_raw_all` also clears `event_id` after completion.
 
 ## 0.38.24 (2026-03-25)
 
