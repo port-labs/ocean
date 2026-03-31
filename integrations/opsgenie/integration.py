@@ -13,37 +13,60 @@ from port_ocean.core.integrations.base import BaseIntegration
 class APIQueryParams(BaseModel):
     created_at: str | None = Field(
         alias="createdAt",
+        title="Created At",
         description="The date and time the alert or incident was created",
     )
     last_occurred_at: str | None = Field(
         alias="lastOccurredAt",
+        title="Last Occurred At",
         description="The date and time the alert was last occurred",
     )
     snoozed_until: str | None = Field(
         alias="snoozedUntil",
+        title="Snoozed Until",
         description="The date and time the alert was snoozed until",
     )
-    message: str | None = Field(description="The message of the alert or incident")
+    message: str | None = Field(
+        title="Message",
+        description="The message of the alert or incident",
+    )
     status: Literal["open", "resolved", "closed"] | None = Field(
-        description="The status of the alert"
+        title="Status",
+        description="The status of the alert",
     )
-    is_seen: bool | None = Field(description="Whether the alert has been seen")
+    is_seen: bool | None = Field(
+        title="Is Seen",
+        description="Whether the alert has been seen",
+    )
     acknowledged: bool | None = Field(
-        description="Whether the alert has been acknowledged"
+        title="Acknowledged",
+        description="Whether the alert has been acknowledged",
     )
-    snoozed: bool | None = Field(description="Whether the alert has been snoozed")
+    snoozed: bool | None = Field(
+        title="Snoozed",
+        description="Whether the alert has been snoozed",
+    )
     priority: Literal["P1", "P2", "P3", "P4", "P5"] | None = Field(
-        description="The priority of the alert"
+        title="Priority",
+        description="The priority of the alert",
     )
     owner: str | None = Field(
-        description="The owner of the alert. Accepts OpsGenie username"
+        title="Owner",
+        description="The owner of the alert. Accepts OpsGenie username",
     )
-    teams: str | None = Field(description="The teams associated with the alert")
+    teams: str | None = Field(
+        title="Teams",
+        description="The teams associated with the alert",
+    )
     acknowledged_by: str | None = Field(
-        alias="acknowledgedBy", description="The user who acknowledged the alert"
+        alias="acknowledgedBy",
+        title="Acknowledged By",
+        description="The user who acknowledged the alert",
     )
     closed_by: str | None = Field(
-        alias="closedBy", description="The user who closed the alert"
+        alias="closedBy",
+        title="Closed By",
+        description="The user who closed the alert",
     )
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -62,7 +85,8 @@ class APIQueryParams(BaseModel):
 
 class ScheduleAPIQueryParams(BaseModel):
     expand: Literal["rotation"] | None = Field(
-        description="The field to expand in the response"
+        title="Expand",
+        description="The field to expand in the response",
     )
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -184,9 +208,7 @@ class OpsGeniePortAppConfig(PortAppConfig):
         | ScheduleOncallResourceConfig
         | TeamResourceConfig
         | UserResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class OpsGenieIntegration(BaseIntegration):
