@@ -216,9 +216,6 @@ class Ocean:
 
     async def _setup_status_heartbeat(self) -> None:
         interval = self.config.status_heartbeat_interval_seconds
-        if interval <= 0:
-            return
-
         logger.info(
             "Starting metrics heartbeat",
             interval_seconds=interval,
