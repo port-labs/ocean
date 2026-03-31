@@ -8,8 +8,9 @@ from loguru import logger
 
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
-from port_ocean.utils import http_async_client
+from port_ocean.helpers.async_client import OceanAsyncClient
 from .rate_limiter import JiraRateLimiter
+from .retry_transport import JiraRetryTransport
 
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
@@ -80,10 +81,15 @@ class JiraClient(OAuthClient):
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.teams_base_url = f"{self.jira_url}/gateway/api/public/teams/v1/org"
 
-        self.client = http_async_client
-        self.client.auth = self.jira_api_auth
-        self.client.timeout = Timeout(30)
         self._rate_limiter = JiraRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS)
+        self.client = OceanAsyncClient(
+            JiraRetryTransport,
+            transport_kwargs={
+                "rate_limit_notifier": self._rate_limiter.on_response,
+            },
+            timeout=Timeout(30),
+        )
+        self.client.auth = self.jira_api_auth
 
     def _get_bearer(self) -> BearerAuth:
         try:
@@ -102,24 +108,31 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
     ) -> Any:
+        response: httpx.Response | None = None
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
                     method=method, url=url, params=params, json=json, headers=headers
                 )
                 response.raise_for_status()
+                await self._rate_limiter.on_response(response)
                 return response.json()
         except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Jira API request failed with status {e.response.status_code}: {method} {url}"
+            response = e.response
+            await self._rate_limiter.on_response(response)
+            is_rate_limit = self._rate_limiter.is_rate_limit_response(response)
+            logger.bind(
+                status_code=response.status_code,
+                method=method,
+                url=url,
+                is_rate_limit=is_rate_limit,
+            ).error(
+                f"Jira API request failed with status {response.status_code}: {method} {url}"
             )
             raise
         except httpx.RequestError as e:
             logger.error(f"Failed to connect to Jira API: {method} {url} - {str(e)}")
             raise
-        finally:
-            if "response" in locals() and response:
-                await self._rate_limiter.update_rate_limit_headers(response.headers)
 
     async def _get_paginated_data(
         self,
@@ -327,21 +340,38 @@ class JiraClient(OAuthClient):
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
         return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
+    @staticmethod
+    def _build_issue_search_body(
+        jql: str,
+        fields: str | None = None,
+        expand: str | None = None,
+        reconcile_issues: list[int] | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "jql": jql,
+            "maxResults": len(reconcile_issues) if reconcile_issues else PAGE_SIZE,
+        }
+        if fields:
+            body["fields"] = (
+                ["*all"]
+                if fields == "*all"
+                else [f.strip() for f in fields.split(",") if f.strip()]
+            )
+        if expand:
+            body["expand"] = expand
+        if reconcile_issues:
+            body["reconcileIssues"] = reconcile_issues
+        return body
+
     async def _get_paginated_data_using_next_page_token(
         self,
         url: str,
+        body: dict[str, Any],
         extract_key: str | None = None,
-        initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get paginated data using token-based pagination for JQL endpoints."""
-        params = initial_params or {}
-        next_page_token = None
-
+        """Get paginated data via POST using token-based pagination for JQL endpoints."""
         while True:
-            if next_page_token:
-                params["nextPageToken"] = next_page_token
-
-            response_data = await self._send_api_request("GET", url, params=params)
+            response_data = await self._send_api_request("POST", url, json=body)
             items = response_data.get(extract_key, []) if extract_key else response_data
 
             if not items:
@@ -353,6 +383,8 @@ class JiraClient(OAuthClient):
             if not next_page_token:
                 break
 
+            body = {**body, "nextPageToken": next_page_token}
+
     async def get_paginated_issues(
         self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -361,36 +393,17 @@ class JiraClient(OAuthClient):
         logger.info(f"Using JQL filter: {params['jql']}")
         url = f"{self.api_url}/search/jql"
 
+        body = self._build_issue_search_body(
+            jql=params["jql"],
+            fields=params.get("fields"),
+            expand=params.get("expand"),
+            reconcile_issues=params.get("reconcileIssues"),
+        )
+
         async for issues in self._get_paginated_data_using_next_page_token(
-            url, "issues", initial_params=params
+            url, body, "issues"
         ):
             yield issues
-
-    async def get_reconciled_issues(
-        self,
-        jql: str,
-        issue_ids: list[int],
-        fields: str | None = None,
-    ) -> list[dict[str, Any]]:
-        """Filter known issues against a JQL query with read-after-write consistency."""
-        url = f"{self.api_url}/search/jql"
-        fields_list = (
-            ["*all"]
-            if not fields or fields == "*all"
-            else [field.strip() for field in fields.split(",") if field.strip()]
-        )
-        body = {
-            "jql": jql,
-            "fields": fields_list,
-            "reconcileIssues": issue_ids,
-            "maxResults": len(issue_ids),
-        }
-        response_data = await self._send_api_request("POST", url, json=body)
-        issues = response_data["issues"]
-        logger.info(
-            f"Found {len(issues)} issues matching JQL filter for issue IDs: {issue_ids}"
-        )
-        return issues
 
     async def get_single_user(self, account_id: str) -> dict[str, Any]:
         return await self._send_api_request(

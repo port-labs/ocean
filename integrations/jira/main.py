@@ -90,8 +90,8 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield users_batch
 
 
-@ocean.on_resync(Kinds.VERSION)
-async def on_resync_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+@ocean.on_resync(Kinds.RELEASE)
+async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
     async for projects in client.get_paginated_projects():

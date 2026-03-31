@@ -1,0 +1,13 @@
+{
+  "id": 7934297357,
+  "node_id": "EN_kwDOO-eDos8AAAAB2OvFDQ",
+  "name": "Production",
+  "url": "https://api.github.com/repos/port-gh-app-dev/small-repo/environments/Production",
+  "html_url": "https://github.com/port-gh-app-dev/small-repo/deployments/activity_log?environments_filter=Production",
+  "created_at": "2025-08-04T08:05:29Z",
+  "updated_at": "2025-08-04T08:05:29Z",
+  "can_admins_bypass": true,
+  "protection_rules": [],
+  "deployment_branch_policy": null,
+  "__repository": "small-repo"
+}

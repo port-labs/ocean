@@ -6,6 +6,60 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.3.51 (2026-03-30)
+
+### Improvements
+
+- Enabled formMappingEnabled flag
+
+
+## 0.3.50 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 0.3.49 (2026-03-27)
+
+
+### Improvements
+
+- Added Literal kind definitions to `SnykPortAppConfig` for schema validation compliance
+
+
+## 0.3.48 (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.3.47 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.3.46 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.3.45 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
 
 ## 0.3.44 (2026-03-17)
 
