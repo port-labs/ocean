@@ -2,6 +2,7 @@ title: Ocean Custom
 description: Universal HTTP REST API integration with dynamic path parameters and flexible authentication
 icon: RestAPI
 docs: https://docs.port.io/build-your-software-catalog/custom-integration/ocean-custom-integration/overview
+formMappingEnabled: true
 features:
   - type: exporter
     section: Other
