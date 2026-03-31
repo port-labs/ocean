@@ -78,7 +78,7 @@ class FolderPattern(BaseModel):
         default="",
         alias="path",
         description="Specify the repositories and folders to include under this relative path",
-        title="Folder paths",
+        title="Folder Sync Patterns",
     )
     repos: list[RepositoryBranchMapping] = Field(
         default_factory=list,
@@ -130,8 +130,8 @@ class BitbucketFilePattern(BaseModel):
     filenames: list[str] = Field(
         default_factory=list,
         alias="filenames",
-        title="Filenames",
-        description="Specify list of filenames to search and return",
+        title="File Names",
+        description="List of filenames or patterns to search for within the specified path (e.g. ['config.yml', '*.yaml']). Required — if empty, no file search will be performed",
     )
 
 
