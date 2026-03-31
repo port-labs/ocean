@@ -11,7 +11,7 @@ azure-identity = "^1.21.0"
 azure-mgmt-subscription = "^3.1.1"
 azure-mgmt-resource = "^23.3.0"
 azure-mgmt-resourcegraph = "^8.0.0"
-aiohttp = "^3.11.16"
+aiohttp = "^3.13.3"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
