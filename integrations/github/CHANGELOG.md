@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.2.7 (2026-03-31)
+
+
+### Bug Fixes
+
+- Increased retries count in fetching dispatched workflow run and revised created filter to be more accurate
+
+
+## 5.2.6 (2026-03-30)
+
+
+### Improvements
+
+- Enabled formMappingEnabled flag
+
+
+## 5.2.5 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
 ## 5.2.4 (2026-03-29)
 
 
