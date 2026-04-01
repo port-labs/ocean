@@ -6,18 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.38.28 (2026-04-01)
+
+### Bug Fixes
+
+- Fixed retry behavior for chunked/unknown-length HTTP responses where a transient `httpx.RemoteProtocolError` could occur during body reads (e.g. “incomplete chunked read”) outside the retry loop, aborting resync instead of retrying. Added unit test coverage for this scenario.
+
 ## 0.38.27 (2026-03-30)
 
 ### Improvements
 
 - Updated GH token used in CI
 
-
-## 0.38.27 (2026-03-29)
-
-### Bug Fixes
-
-- Fixed retry behavior for chunked/unknown-length HTTP responses where a transient `httpx.RemoteProtocolError` could occur during body reads (e.g. “incomplete chunked read”) outside the retry loop, aborting resync instead of retrying. Added unit test coverage for this scenario.
 
 ## 0.38.26 (2026-03-25)
 
