@@ -90,7 +90,6 @@ class FolderPattern(BaseModel):
 
 class BitbucketFolderSelector(RepositorySelector):
     folders: list[FolderPattern] = Field(
-        default_factory=list,
         alias="folders",
         title="Folders",
         description="Specify the repositories, branches and folders to include under this relative path",
