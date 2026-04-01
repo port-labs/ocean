@@ -408,7 +408,6 @@ class TestRetryTransport:
         mock_transport.handle_async_request = AsyncMock(
             side_effect=[response1, response2]
         )
-
         fake_ocean = SimpleNamespace(
             config=SimpleNamespace(streaming=SimpleNamespace(enabled=False))
         )
