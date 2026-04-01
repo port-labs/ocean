@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import random
 import time
 from datetime import datetime
@@ -640,7 +641,12 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     await self._should_retry_async(response)
                 ):
                     if self._should_prefetch_body_for_retry(request, response):
-                        await response.aread()
+                        try:
+                            await response.aread()
+                        except httpx.HTTPError:
+                            with contextlib.suppress(Exception):
+                                await response.aclose()
+                            raise
                     return response
                 await response.aclose()
             except httpx.ConnectTimeout as e:
@@ -702,7 +708,12 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 self._after_retry(request, response, attempts_made + 1)
                 if remaining_attempts < 1 or not self._should_retry(response):
                     if self._should_prefetch_body_for_retry(request, response):
-                        response.read()
+                        try:
+                            response.read()
+                        except httpx.HTTPError:
+                            with contextlib.suppress(Exception):
+                                response.close()
+                            raise
                     return response
                 response.close()
             except httpx.ConnectTimeout as e:
