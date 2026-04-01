@@ -3,7 +3,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic import Field
+from pydantic import BaseModel, Field
 from typing import Literal, Optional
 
 
@@ -164,6 +164,85 @@ class RepositoryResourceConfig(ResourceConfig):
     )
 
 
+class SbomArtifactResourceFilterSelector(BaseModel):
+    cloud_platform: Optional[
+        list[
+            Literal[
+                "GCP",
+                "AWS",
+                "Azure",
+                "OCI",
+                "Alibaba",
+                "vSphere",
+                "OpenStack",
+                "AKS",
+                "EKS",
+                "GKE",
+                "Kubernetes",
+                "OpenShift",
+                "OKE",
+                "Linode",
+                "AzureDevOps",
+                "GitHub",
+                "GitLab",
+                "Bitbucket",
+                "BitbucketCloud",
+                "Terraform",
+                "OpenAI",
+                "Snowflake",
+                "MongoDBAtlas",
+                "Databricks",
+                "Okta",
+                "Cloudflare",
+                "Akamai",
+                "Microsoft365",
+                "Wiz",
+                "ACK",
+                "SelfHosted",
+                "LKE",
+                "IBM",
+                "ServiceNow",
+                "Salesforce",
+                "Vercel",
+                "GenericDB",
+                "DigitalOcean",
+                "TencentCloud",
+                "OVHCloud",
+                "Crusoe",
+                "Nebius",
+                "Slack",
+                "CircleCI",
+                "Jenkins",
+                "MicrosoftPowerPlatform",
+                "Backstage",
+            ]
+        ]
+    ] = Field(
+        alias="cloudPlatform",
+        title="Cloud Platforms",
+        description="Filter SBOM artifacts by resource cloud platform.",
+        default=None,
+    )
+    scan_source: Optional[Literal["WORKLOAD", "CODE"]] = Field(
+        alias="scanSource",
+        title="Scan Source",
+        description="Filter SBOM artifacts by scan source. Leave empty to include both.",
+        default=None,
+    )
+    status: Optional[list[Literal["Active", "Inactive", "Error"]]] = Field(
+        alias="status",
+        title="Statuses",
+        description="Filter SBOM artifacts by resource status.",
+        default=None,
+    )
+    region: Optional[list[str]] = Field(
+        alias="region",
+        title="Regions",
+        description="Filter SBOM artifacts by resource region (e.g. ['us-east-1', 'eu-west-1']).",
+        default=None,
+    )
+
+
 class SbomArtifactSelector(Selector):
     group_list: Optional[
         list[
@@ -186,6 +265,12 @@ class SbomArtifactSelector(Selector):
         title="Max Pages",
         description="Maximum number of pages to fetch for both grouped names and detailed SBOM artifacts.",
         default=500,
+    )
+    resource: Optional[SbomArtifactResourceFilterSelector] = Field(
+        alias="resource",
+        title="Resource Filter",
+        description="Optional resource-level filters for SBOM artifacts.",
+        default=None,
     )
 
 
