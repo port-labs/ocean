@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.284 (2026-03-31)
+
+
+### Bug Fixes
+
+- Added `pyasn1` `>=0.6.3` to resolve security vulnerability in transitive dependency `pyasn1`
+
+
 ## 0.1.283 (2026-03-30)
 
 
@@ -205,7 +213,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.37.2
-  
+
 =======
 ## 0.1.258 (2026-02-23)
 
