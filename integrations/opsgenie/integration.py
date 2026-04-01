@@ -14,17 +14,17 @@ class APIQueryParams(BaseModel):
     created_at: str | None = Field(
         alias="createdAt",
         title="Created At",
-        description="The date and time the alert or incident was created",
+        description="The date and time the alert or incident was created (e.g. 2024-01-31T12:00:00Z)",
     )
     last_occurred_at: str | None = Field(
         alias="lastOccurredAt",
         title="Last Occurred At",
-        description="The date and time the alert was last occurred",
+        description="The date and time the alert was last occurred (e.g. 2024-01-31T12:00:00Z)",
     )
     snoozed_until: str | None = Field(
         alias="snoozedUntil",
         title="Snoozed Until",
-        description="The date and time the alert was snoozed until",
+        description="The date and time the alert was snoozed until (e.g. 2024-01-31T12:00:00Z)",
     )
     message: str | None = Field(
         title="Message",
@@ -86,7 +86,7 @@ class APIQueryParams(BaseModel):
 class ScheduleAPIQueryParams(BaseModel):
     expand: Literal["rotation"] | None = Field(
         title="Expand",
-        description="The field to expand in the response",
+        description="When set to 'rotation', the schedule response will include the full rotation details instead of just a reference",
     )
 
     def generate_request_params(self) -> dict[str, Any]:
