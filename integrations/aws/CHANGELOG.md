@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Updated `aioboto3` and `aiobotocore` to resolve security vulnerability in `aiohttp`
+- Added `aiohttp` `^3.13.4` to resolve security vulnerability in transitive dependency `aiohttp`
 
 
 ## 0.3.21 (2026-03-30)

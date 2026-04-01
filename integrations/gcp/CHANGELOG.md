@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Updated `google-auth` to resolve security vulnerability in `pyasn1`
+- Added `pyasn1` `>=0.6.3` to resolve security vulnerability in transitive dependency `pyasn1`
 
 
 ## 0.1.283 (2026-03-30)
