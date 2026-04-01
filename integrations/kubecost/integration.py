@@ -1,4 +1,3 @@
-import re
 from typing import Literal
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -8,25 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic import validator
 from pydantic.fields import Field
-
-
-def validate_aggregation(v: str) -> str:
-    regex = r"^(cluster|node|namespace|controllerKind|controller|service|pod|container|invoiceEntityID|accountID|provider|label:name|annotation:name)(,(cluster|node|namespace|controllerKind|controller|service|pod|container|invoiceEntityID|accountID|provider|label:name|annotation:name))*$"
-    if not re.match(regex, v):
-        raise ValueError(
-            "Invalid aggregation format. Use 'cluster', 'node', 'namespace', 'controllerKind', 'controller', 'service', 'pod', 'container', 'label:name', or 'annotation:name'."
-        )
-    return v
-
-
-def validate_duration(v: str) -> str:
-    if not re.match(r"^\d+[smhd]$", v):
-        raise ValueError(
-            "Invalid duration format. Use 'Xs', 'Xm', 'Xh', or 'Xd' (X is a positive integer)."
-        )
-    return v
 
 
 _WINDOW_FIELD: str = Field(
@@ -52,10 +33,9 @@ class CloudCostSelector(Selector):
     aggregate: str | None = Field(
         default=None,
         title="Aggregate",
-        description="Field by which to aggregate the results.",
+        description="Field by which to aggregate the results. E.g. 'namespace', 'service', or 'label:app'.",
+        regex=r"^(cluster|node|namespace|controllerKinda|controller|service|pod|container|invoiceEntityID|accountID|provider|label:\w+|annotation:\w+)(,(cluster|node|namespace|controllerKind|controller|service|pod|container|invoiceEntityID|accountID|provider|label:\w+|annotation:\w+))*$",
     )
-
-    _validate_aggregate = validator("aggregate", allow_reuse=True)(validate_aggregation)
     # v1 API fields
     filter_invoice_entity_ids: str | None = Field(
         title="Filter Invoice Entity IDs",
@@ -109,7 +89,7 @@ class CloudCostSelector(Selector):
         description=(
             "Filter results by any category which that can be aggregated by,"
             " can support multiple filterable items in the same category in"
-            " a comma-separated list."
+            " a comma-separated list. E.g. 'namespace:kube-system,kubecost'."
         ),
     )
 
@@ -118,17 +98,16 @@ class KubecostSelector(Selector):
     window: str = _WINDOW_FIELD
     aggregate: str | None = Field(
         title="Aggregate",
-        description="Field by which to aggregate the results.",
+        description="Field by which to aggregate the results. E.g. 'namespace', 'service', or 'label:app'.",
         default=None,
+        regex=r"^(cluster|node|namespace|controllerKind|controller|service|pod|container|invoiceEntityID|accountID|provider|label:\w+|annotation:\w+)(,(cluster|node|namespace|controllerKind|controller|service|pod|container|invoiceEntityID|accountID|provider|label:\w+|annotation:\w+))*$",
     )
     step: str | None = Field(
         title="Allocation set duration",
-        description="Duration of a single allocation set (e.g., '30m', '2h', '1d'). Default is window.",
+        description="Granularity of each time bucket in the results. For example, '1d' breaks a week-long window into daily buckets. Accepts seconds (s), minutes (m), hours (h), or days (d), e.g. '30m', '2h', '1d'. Defaults to the full window as a single bucket.",
         default=None,
+        regex=r"^\d+[smhd]$",
     )
-
-    _validate_aggregate = validator("aggregate", allow_reuse=True)(validate_aggregation)
-    _validate_step = validator("step", allow_reuse=True)(validate_duration)
     accumulate: bool = Field(
         title="Accumulate",
         default=False,
@@ -252,7 +231,7 @@ class KubecostSelector(Selector):
         description=(
             "Filter results by any category which that can be aggregated by,"
             " can support multiple filterable items in the same category in"
-            " a comma-separated list."
+            " a comma-separated list. E.g. 'namespace:kube-system,kubecost'."
         ),
     )
     format: Literal["csv", "pdf"] | None = Field(
