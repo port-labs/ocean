@@ -32,7 +32,7 @@ from github.actions.abstract_github_executor import (
 )
 
 
-MAX_WORKFLOW_POLL_ATTEMPTS = 10
+MAX_WORKFLOW_POLL_ATTEMPTS = 30
 WORKFLOW_POLL_DELAY_SECONDS = 2
 
 
@@ -164,7 +164,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 params={
                     "actor": actor,
                     "event": "workflow_dispatch",
-                    "created": f">{isoDate}",
+                    "created": f">={isoDate}",
                     "exclude_pull_requests": True,
                     "branch": ref,
                 },
@@ -181,7 +181,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 attempts_made += 1
 
         if len(workflow_runs) == 0:
-            raise NoWorkflowRunsFoundException("No workflow runs found")
+            raise NoWorkflowRunsFoundException(
+                "Workflow dispatched successfully but due to a delay in GitHub we were unable to track it's progress"
+            )
 
         logger.info(
             f"Found workflow run for {organization}/{repo} with ref {ref}: {workflow_runs[0]['id']}",
