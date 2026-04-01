@@ -208,7 +208,9 @@ class OpsGeniePortAppConfig(PortAppConfig):
         | ScheduleOncallResourceConfig
         | TeamResourceConfig
         | UserResourceConfig
-    ] = Field(default_factory=list)  # type: ignore[assignment]
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
 
 
 class OpsGenieIntegration(BaseIntegration):
