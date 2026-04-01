@@ -56,7 +56,7 @@ class APIQueryParams(BaseModel):
     )
     teams: str | None = Field(
         title="Teams",
-        description="The teams associated with the alert",
+        description="The teams associated with the alert. Accepts a comma-separated string of team names (e.g. 'team-a, team-b')",
     )
     acknowledged_by: str | None = Field(
         alias="acknowledgedBy",
