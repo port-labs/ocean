@@ -422,6 +422,19 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
     def _should_log_response_size(self, request: httpx.Request) -> bool:
         return self._logger is not None and not request.url.host.endswith("port.io")
 
+    def _is_streaming_enabled(self) -> bool:
+        """
+        Best-effort check for streaming mode.
+
+        In some test contexts we initialize the global Ocean context with a spec'd Mock
+        that may not provide `config`. When config isn't available, we default to
+        streaming enabled (i.e., avoid prefetching/reading response bodies).
+        """
+        try:
+            return bool(ocean.config.streaming.enabled)
+        except Exception:
+            return True
+
     def _should_prefetch_body_for_retry(
         self, request: httpx.Request, response: httpx.Response
     ) -> bool:
@@ -429,7 +442,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         # (common for chunked transfer encoding). In that case, mid-stream disconnects can raise
         # during body reads (e.g. "incomplete chunked read"). Prefetching inside the retry loop
         # ensures such failures are retried for retryable methods.
-        if ocean.config.streaming.enabled:
+        if self._is_streaming_enabled():
             return False
         return not (
             response.headers.get("Content-Length")
@@ -444,7 +457,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         if content_length:
             return int(content_length)
 
-        if not ocean.config.streaming.enabled:
+        if not self._is_streaming_enabled():
             try:
                 return len(await response.aread())
             except httpx.HTTPError:
@@ -466,7 +479,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         if content_length:
             return int(content_length)
 
-        if not ocean.config.streaming.enabled:
+        if not self._is_streaming_enabled():
             try:
                 return len(response.read())
             except httpx.HTTPError:
