@@ -62,7 +62,7 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
     time_zone: str | None = Field(
         default=None,
         title="Time Zone",
-        description="Time zone to use for the response. Defaults to the account's time zone.",
+        description="Time zone to use for the response. Defaults to the account's time zone. e.g. 'America/New_York', 'Europe/London', 'UTC'.",
     )
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -76,25 +76,27 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
 
 
 class PagerdutyScheduleAPIQueryParams(BaseModel):
-    include: list[str] | None = Field(
+    include: (
+        list[Literal["schedule_layers", "final_schedule", "overrides_schedule"]] | None
+    ) = Field(
         default=None,
         title="Include",
-        description="Additional details to include in the response.",
+        description="Additional details to include in the response. ",
     )
     until: int | None = Field(
         default=None,
-        title="Until",
+        title="Until (Months Ahead)",
         description="Number of months ahead to end the schedule window at.",
     )
     since: int | None = Field(
         default=None,
-        title="Since",
+        title="Since (Months Ago)",
         description="Number of months in the past to start the schedule window from.",
     )
     time_zone: str | None = Field(
         default=None,
         title="Time Zone",
-        description="Time zone to use for the schedule. Defaults to the account's time zone.",
+        description="Time zone to use for the schedule. Defaults to the account's time zone. e.g. 'America/New_York', 'Europe/London', 'UTC'.",
     )
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -109,20 +111,20 @@ class PagerdutyScheduleAPIQueryParams(BaseModel):
 
 
 class PagerdutyOncallAPIQueryParams(BaseModel):
-    include: list[str] = Field(
+    include: list[Literal["users", "escalation_policies", "schedules"]] = Field(
         default=["users"],
         title="Include",
-        description="Additional details to include in the response. Defaults to 'users'.",
+        description="Additional details to include in the response.",
     )
     until: int = Field(
         default=3,
         gt=0,
-        title="Until",
+        title="Until (Months Ahead)",
         description="Number of months ahead to include on-call schedules. Defaults to 3 months from now.",
     )
     since: int = Field(
         default=0,
-        title="Since",
+        title="Since (Months Ago)",
         description="Number of months back to include on-call schedules. Defaults to the current month.",
     )
 
@@ -168,17 +170,33 @@ class PagerdutyEscalationPolicyAPIQueryParams(BaseModel):
 
 
 class PagerdutyIncidentAPIQueryParams(BaseModel):
-    date_range: str | None = Field(
+    date_range: Literal["all"] | None = Field(
         default=None,
         title="Date Range",
-        description="Filter incidents by date range. Use 'all' to return all incidents.",
+        description="Filter incidents by date range. Use 'all' to return all incidents regardless of date. For a specific range, leave this unset and use the 'Since' and 'Until' fields instead. e.g. 'all'.",
     )
     incident_key: str | None = Field(
         default=None,
         title="Incident Key",
         description="Filter incidents by incident key (deduplication key).",
     )
-    include: list[str] | None = Field(
+    include: (
+        list[
+            Literal[
+                "acknowledgers",
+                "agents",
+                "assignees",
+                "conference_bridge",
+                "escalation_policies",
+                "first_trigger_log_entries",
+                "priorities",
+                "services",
+                "teams",
+                "users",
+            ]
+        ]
+        | None
+    ) = Field(
         default=None,
         title="Include",
         description="Additional details to include in the response.",
@@ -190,8 +208,8 @@ class PagerdutyIncidentAPIQueryParams(BaseModel):
     )
     since: str | None = Field(
         default=None,
-        title="Since",
-        description="Start of the date range to filter incidents (ISO 8601 format).",
+        title="Since (Start Date)",
+        description="Start of the date range to filter incidents (ISO 8601 format). e.g. '2024-01-01T00:00:00Z'.",
     )
     sort_by: str | None = Field(
         default=None,
@@ -201,7 +219,7 @@ class PagerdutyIncidentAPIQueryParams(BaseModel):
     statuses: list[Literal["triggered", "acknowledged", "resolved"]] | None = Field(
         default=None,
         title="Statuses",
-        description="Filter incidents by status. Accepted values: 'triggered', 'acknowledged', 'resolved'.",
+        description="Filter incidents by status",
     )
     team_ids: list[str] | None = Field(
         default=None,
@@ -211,17 +229,17 @@ class PagerdutyIncidentAPIQueryParams(BaseModel):
     time_zone: str | None = Field(
         default=None,
         title="Time Zone",
-        description="Time zone to use for the response. Defaults to the account's time zone.",
+        description="Time zone to use for the response. Defaults to the account's time zone. e.g. 'America/New_York', 'Europe/London', 'UTC'.",
     )
     until: str | None = Field(
         default=None,
-        title="Until",
-        description="End of the date range to filter incidents (ISO 8601 format).",
+        title="Until (End Date)",
+        description="End of the date range to filter incidents (ISO 8601 format). e.g. '2024-12-31T23:59:59Z'.",
     )
     urgencies: list[Literal["high", "low"]] | None = Field(
         default=None,
         title="Urgencies",
-        description="Filter incidents by urgency. Accepted values: 'high', 'low'.",
+        description="Filter incidents by urgency",
     )
     user_ids: list[str] | None = Field(
         default=None,
