@@ -1,8 +1,15 @@
+from typing import Any, cast
 from fastapi import Request
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from client import ArgocdClient, ObjectKind, ResourceKindsWithSpecialHandling
+from client import ArgocdClient
+from integration import (
+    ObjectKind,
+    ResourceKindsWithSpecialHandling,
+    ApplicationResourceConfig,
+)
 from port_ocean.context.ocean import ocean
 
 
@@ -24,8 +31,13 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield []
     else:
         argocd_client = init_client()
+        params: dict[str, Any] | None = None
+        parsed_kind = ObjectKind(kind)
+        if parsed_kind == ObjectKind.APPLICATION:
+            selector = cast(ApplicationResourceConfig, event.resource_config).selector
+            params = selector.query_params
         async for cluster in argocd_client.get_resources(
-            resource_kind=ObjectKind(kind)
+            resource_kind=parsed_kind, query_params=params
         ):
             yield cluster
 

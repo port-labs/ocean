@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.0 (2026-03-31)
+
+
+### Breaking Changes
+
+- Replaced cluster name filtering on the application kind as this only works for applications with specific labels that support the `selector=cluster=<cluster-name>` query parameter with the `query_params` selector
+
+
 ## 0.2.32 (2026-03-30)
 
 

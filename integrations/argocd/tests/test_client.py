@@ -3,11 +3,8 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from client import (
-    ArgocdClient,
-    ClusterState,
-    ObjectKind,
-)
+from client import ArgocdClient, ClusterState
+from integration import ObjectKind
 
 
 @pytest.fixture
@@ -75,6 +72,77 @@ async def test_get_resources(
                 url=f"{mock_argocd_client.api_url}/{kind}s",
                 target_items_path="items",
                 params=None,
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_resources_with_query_params(
+    mock_argocd_client: ArgocdClient,
+) -> None:
+    kinds = [ObjectKind.PROJECT, ObjectKind.APPLICATION]
+
+    for kind in kinds:
+        response_data = {}
+        if kind == ObjectKind.PROJECT:
+            response_data = {
+                "items": [
+                    {
+                        "spec": {"destinations": [{"server": "*", "namespace": "*"}]},
+                        "metadata": {"name": "test-project", "uid": "test-uid"},
+                    }
+                ]
+            }
+        elif kind == ObjectKind.APPLICATION:
+            response_data = {
+                "items": [
+                    {
+                        "labels": {"cluster": "test-cluster"},
+                        "spec": {
+                            "destinations": [
+                                {
+                                    "server": "https://kubernetes.default.svc",
+                                    "namespace": "default",
+                                }
+                            ],
+                            "project": "default",
+                        },
+                        "metadata": {"name": "test-project-1", "uid": "test-uid"},
+                    },
+                    {
+                        "spec": {
+                            "destinations": [
+                                {
+                                    "server": "https://kubernetes.default.svc",
+                                    "namespace": "default",
+                                }
+                            ],
+                            "project": "default",
+                        },
+                        "metadata": {"name": "test-project-2", "uid": "test-uid"},
+                    },
+                ]
+            }
+
+        async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+            yield response_data["items"]
+
+        with patch.object(
+            mock_argocd_client.streaming_client,
+            "stream_json",
+            side_effect=mock_stream_json,
+        ) as mock_stream:
+            resources = []
+            params: dict[str, Any] = {"selector": "cluster=test-cluster"}
+            async for resource_batch in mock_argocd_client.get_resources(
+                resource_kind=kind, query_params=params
+            ):
+                resources.extend(resource_batch)
+
+            assert resources == response_data["items"]
+            mock_stream.assert_called_with(
+                url=f"{mock_argocd_client.api_url}/{kind}s",
+                target_items_path="items",
+                params=params,
             )
 
 

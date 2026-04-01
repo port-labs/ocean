@@ -5,21 +5,10 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from loguru import logger
 import json
+from integration import ObjectKind, ResourceKindsWithSpecialHandling
 
 from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.utils import http_async_client
-
-
-class ObjectKind(StrEnum):
-    PROJECT = "project"
-    APPLICATION = "application"
-
-
-class ResourceKindsWithSpecialHandling(StrEnum):
-    DEPLOYMENT_HISTORY = "deployment-history"
-    KUBERNETES_RESOURCE = "kubernetes-resource"
-    MANAGED_RESOURCE = "managed-resource"
-    CLUSTER = "cluster"
 
 
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
@@ -147,11 +136,11 @@ class ArgocdClient:
             yield clusters
 
     async def get_resources(
-        self, resource_kind: ObjectKind
+        self, resource_kind: ObjectKind, query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self.api_url}/{resource_kind}s"
 
-        async for resources in self.get_paginated_resources(url):
+        async for resources in self.get_paginated_resources(url, params=query_params):
             yield resources
 
     async def get_application_by_name(
