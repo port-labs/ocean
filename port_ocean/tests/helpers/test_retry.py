@@ -1,5 +1,5 @@
 import pytest
-from typing import Any
+from typing import Any, AsyncIterator
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 from http import HTTPStatus
@@ -385,7 +385,7 @@ class TestRetryTransport:
         )
 
         class FailingAsyncStream(httpx.AsyncByteStream):
-            async def __aiter__(self):
+            async def __aiter__(self) -> AsyncIterator[bytes]:
                 yield b'{"partial":'
                 raise httpx.RemoteProtocolError(
                     "peer closed connection without sending complete message body (incomplete chunked read)"
