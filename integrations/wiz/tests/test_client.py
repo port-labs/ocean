@@ -337,7 +337,26 @@ async def test_build_sbom_artifact_type_filter_selects_only_one_key(
 
 
 @pytest.mark.asyncio
-async def test_get_sbom_artifacts_filters_groups_and_caps_max_pages(
+async def test_build_sbom_artifact_resource_filter_maps_supported_fields(
+    mock_wiz_client: WizClient,
+) -> None:
+    resource_filter = {
+        "cloud_platform": ["AWS", "GitLab"],
+        "scan_source": "WORKLOAD",
+        "status": ["Active", "Error"],
+        "region": [" us-east-1 "],
+    }
+
+    assert mock_wiz_client._build_sbom_artifact_resource_filter(resource_filter) == {
+        "cloudPlatform": ["AWS", "GitLab"],
+        "scanSource": "WORKLOAD",
+        "status": ["Active", "Error"],
+        "region": ["us-east-1"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_sbom_artifacts_filters_groups_without_capping_max_pages(
     mock_wiz_client: WizClient,
 ) -> None:
     options: SbomArtifactOptions = {
@@ -372,7 +391,10 @@ async def test_get_sbom_artifacts_filters_groups_and_caps_max_pages(
         mock_paginated.return_value = mock_paginated_generator(grouped_nodes)
 
         def _grouped_fetch_side_effect(
-            grouped_node: dict[str, Any], page_size: int, max_pages: int
+            grouped_node: dict[str, Any],
+            page_size: int,
+            max_pages: int,
+            resource_filter: dict[str, Any] | None = None,
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
             return mock_paginated_generator(
                 [{"id": f"{grouped_node['id']}-artifact", "name": grouped_node["name"]}]
@@ -387,12 +409,13 @@ async def test_get_sbom_artifacts_filters_groups_and_caps_max_pages(
         mock_paginated.assert_called_once_with(
             resource="sbomArtifactsGroupedByName",
             variables={"first": 100},
-            max_pages=500,
+            max_pages=999,
         )
         mock_grouped_fetch.assert_called_once_with(
             grouped_node=grouped_nodes[0],
             page_size=100,
-            max_pages=500,
+            max_pages=999,
+            resource_filter=None,
         )
         assert results == [{"id": "group-1-artifact", "name": "pandas"}]
 
@@ -423,6 +446,50 @@ async def test_get_sbom_artifacts_for_grouped_name_enriches_type_metadata(
             results.extend(batch)
 
         assert results[0]["__groupTypeMetadata"] == grouped_node["type"]
+
+
+@pytest.mark.asyncio
+async def test_get_sbom_artifacts_for_grouped_name_adds_resource_filter(
+    mock_wiz_client: WizClient,
+) -> None:
+    grouped_node = {
+        "id": "group-1",
+        "name": "pandas",
+        "type": {"group": "CODE_LIBRARY", "codeLibraryLanguage": "PYTHON"},
+        "artifacts": {"totalCount": 2},
+    }
+    resource_filter = {
+        "cloudPlatform": ["AWS"],
+        "scanSource": "CODE",
+        "status": ["Active"],
+        "region": ["us-east-1"],
+    }
+
+    with patch.object(
+        mock_wiz_client, "_get_paginated_resources"
+    ) as mock_paginated_resources:
+        mock_paginated_resources.return_value = mock_paginated_generator([])
+
+        async for _ in mock_wiz_client._get_sbom_artifacts_for_grouped_name(
+            grouped_node=grouped_node,
+            page_size=100,
+            max_pages=500,
+            resource_filter=resource_filter,
+        ):
+            pass
+
+        mock_paginated_resources.assert_called_once_with(
+            resource="sbomArtifacts",
+            variables={
+                "first": 100,
+                "filterBy": {
+                    "name": "pandas",
+                    "type": {"codeLibraryLanguage": ["PYTHON"]},
+                    "resource": resource_filter,
+                },
+            },
+            max_pages=500,
+        )
 
 
 @pytest.mark.asyncio
