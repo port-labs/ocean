@@ -114,7 +114,11 @@ class RetryConfig:
 
         # Combine defaults with additional codes for extensibility
         self.retry_status_codes = default_status_codes | additional_codes
-        self.retry_after_headers = retry_after_headers or ["Retry-After"]
+        # Always include the Port rate-limit headers regardless of what the caller passes.
+        # Merge preserving caller order, appending any missing required headers at the end.
+        required_headers = ["Retry-After", "x-ratelimit-reset"]
+        base = list(retry_after_headers) if retry_after_headers else required_headers[:]
+        self.retry_after_headers = base + [h for h in required_headers if h not in base]
 
         self.ignore_retry_after_status_codes = (
             frozenset(ignore_retry_after_status_codes)
@@ -172,6 +176,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         retry_status_codes: Iterable[int] | None = None,
         retry_config: Optional[RetryConfig] = None,
         logger: Any | None = None,
+        retry_after_headers: Optional[List[str]] = None,
     ) -> None:
         """
         Initializes the instance of RetryTransport class with the given parameters.
@@ -219,6 +224,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 respect_retry_after_header=respect_retry_after_header,
                 retryable_methods=retryable_methods,
                 retry_status_codes=retry_status_codes,
+                retry_after_headers=retry_after_headers,
             )
 
         self._logger = logger

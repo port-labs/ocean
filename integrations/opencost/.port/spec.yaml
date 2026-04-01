@@ -2,6 +2,7 @@ title: OpenCost
 description: OpenCost integration for Port Ocean
 icon: Opencost
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-cost/opencost
+formMappingEnabled: true
 features:
   - type: exporter
     section: Cloud Cost
