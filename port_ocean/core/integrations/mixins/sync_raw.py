@@ -1050,20 +1050,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self,
         creation_results: list[tuple[list[Entity], list[Exception]]],
         app_config: Any,
-        *,
-        resync_event_id: str | None = None,
     ) -> None:
         """Handle resync abortion by updating metrics for runtime, pending resources, and reconciliation.
 
         Args:
             creation_results: Results from entity creation that have been processed so far
             app_config: The application configuration containing resource definitions
-            resync_event_id: Event id for this resync; restored on metrics because graceful shutdown
-                may call ``update_after_resync`` concurrently and clear ``ocean.metrics.event_id``.
         """
-        if resync_event_id:
-            ocean.metrics.event_id = resync_event_id
-
         async with metric_resource_context(MetricResourceKind.RUNTIME):
             ocean.metrics.sync_state = SyncState.ABORTED
             await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
@@ -1120,8 +1113,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             trigger_type=trigger_type,
             attributes={"resync_start_time": datetime.now(timezone.utc)},
         ):
-            resync_event_id = event.id
-            ocean.metrics.event_id = resync_event_id
+            ocean.metrics.event_id = event.id
 
             # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
             # rather than the old cache
@@ -1195,15 +1187,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
-                await self._handle_resync_abortion(
-                    creation_results, app_config, resync_event_id=resync_event_id
-                )
+                await self._handle_resync_abortion(creation_results, app_config)
                 raise
             except Exception as e:
                 logger.error(f"Error in resync: {e}")
-                await self._handle_resync_abortion(
-                    creation_results, app_config, resync_event_id=resync_event_id
-                )
+                await self._handle_resync_abortion(creation_results, app_config)
                 raise
             else:
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):

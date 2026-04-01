@@ -184,10 +184,7 @@ class PortOceanContext:
         await self.integration.sync(entities, user_agent_type)
 
     async def sync_raw_all(self) -> None:
-        try:
-            await self.integration.sync_raw_all(trigger_type="manual")
-        finally:
-            ocean.metrics.event_id = ""
+        await self.integration.sync_raw_all(trigger_type="manual")
 
     def add_webhook_processor(self, path: str, processor: type) -> None:
         """
