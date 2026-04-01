@@ -14,7 +14,6 @@ from port_ocean.core.integrations.base import BaseIntegration
 
 class ObjectKind(StrEnum):
     PROJECT = "project"
-    APPLICATION = "application"
 
 
 class ResourceKindsWithSpecialHandling(StrEnum):
@@ -22,6 +21,7 @@ class ResourceKindsWithSpecialHandling(StrEnum):
     KUBERNETES_RESOURCE = "kubernetes-resource"
     MANAGED_RESOURCE = "managed-resource"
     CLUSTER = "cluster"
+    APPLICATION = "application"
 
 
 class ApplicationSelector(Selector):
@@ -37,10 +37,15 @@ class ApplicationResourceConfig(ResourceConfig):
     selector: ApplicationSelector
 
 
+class ManagedResourceResourceConfig(ResourceConfig):
+    kind: Literal["managed-resource"]
+    selector: ApplicationSelector
+
+
 class ArgocdPortAppConfig(PortAppConfig):
-    resources: list[ApplicationResourceConfig | ResourceConfig] = Field(
-        default_factory=list
-    )
+    resources: list[
+        ApplicationResourceConfig | ManagedResourceResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class ArgocdIntegration(BaseIntegration):

@@ -5,7 +5,7 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from loguru import logger
 import json
-from integration import ObjectKind, ResourceKindsWithSpecialHandling
+from integration import ResourceKindsWithSpecialHandling
 
 from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.utils import http_async_client
@@ -136,7 +136,7 @@ class ArgocdClient:
             yield clusters
 
     async def get_resources(
-        self, resource_kind: ObjectKind, query_params: Optional[dict[str, Any]] = None
+        self, resource_kind: str, query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self.api_url}/{resource_kind}s"
 
@@ -146,7 +146,7 @@ class ArgocdClient:
     async def get_application_by_name(
         self, name: str, namespace: Optional[str] = None
     ) -> dict[str, Any]:
-        url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
+        url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{name}"
         query_params = {}
         if namespace:
             query_params["appNamespace"] = namespace
@@ -162,7 +162,7 @@ class ArgocdClient:
         )
         has_applications = False
         async for applications in self.get_resources(
-            resource_kind=ObjectKind.APPLICATION
+            resource_kind=ResourceKindsWithSpecialHandling.APPLICATION
         ):
             has_applications = True
             for application in applications:
@@ -184,7 +184,7 @@ class ArgocdClient:
         )
         has_applications = False
         async for applications in self.get_resources(
-            resource_kind=ObjectKind.APPLICATION
+            resource_kind=ResourceKindsWithSpecialHandling.APPLICATION
         ):
             has_applications = True
             for app in applications:
@@ -216,7 +216,7 @@ class ArgocdClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         application_name = application["metadata"]["name"]
         logger.info(f"Fetching managed resources for application: {application_name}")
-        url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
+        url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{application_name}/managed-resources"
 
         async for managed_resources in self.get_paginated_resources(url):
             yield [

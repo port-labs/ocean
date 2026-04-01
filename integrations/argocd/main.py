@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 from fastapi import Request
 from loguru import logger
 from port_ocean.context.event import event
@@ -9,6 +9,7 @@ from integration import (
     ObjectKind,
     ResourceKindsWithSpecialHandling,
     ApplicationResourceConfig,
+    ManagedResourceResourceConfig,
 )
 from port_ocean.context.ocean import ocean
 
@@ -31,15 +32,21 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield []
     else:
         argocd_client = init_client()
-        params: dict[str, Any] | None = None
-        parsed_kind = ObjectKind(kind)
-        if parsed_kind == ObjectKind.APPLICATION:
-            selector = cast(ApplicationResourceConfig, event.resource_config).selector
-            params = selector.query_params
         async for cluster in argocd_client.get_resources(
-            resource_kind=parsed_kind, query_params=params
+            resource_kind=ObjectKind(kind)
         ):
             yield cluster
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.APPLICATION)
+async def on_applications_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    argocd_client = init_client()
+    selector = cast(ApplicationResourceConfig, event.resource_config).selector
+    params = selector.query_params
+    async for application in argocd_client.get_resources(
+        resource_kind=ResourceKindsWithSpecialHandling.APPLICATION, query_params=params
+    ):
+        yield application
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLUSTER)
@@ -67,8 +74,10 @@ async def on_managed_k8s_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_T
 async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
 
+    selector = cast(ManagedResourceResourceConfig, event.resource_config).selector
+    params = selector.query_params
     async for app_batch in argocd_client.get_resources(
-        resource_kind=ObjectKind.APPLICATION
+        resource_kind=ResourceKindsWithSpecialHandling.APPLICATION, query_params=params
     ):
         if not app_batch:
             logger.info(
@@ -98,4 +107,6 @@ async def on_application_event_webhook_handler(request: Request) -> None:
             data["application_name"],
             namespace=data.get("application_namespace"),
         )
-        await ocean.register_raw(ObjectKind.APPLICATION, [application])
+        await ocean.register_raw(
+            ResourceKindsWithSpecialHandling.APPLICATION, [application]
+        )

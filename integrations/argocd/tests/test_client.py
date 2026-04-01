@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from client import ArgocdClient, ClusterState
-from integration import ObjectKind
+from integration import ObjectKind, ResourceKindsWithSpecialHandling
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def mock_argocd_client() -> ArgocdClient:
 async def test_get_resources(
     mock_argocd_client: ArgocdClient,
 ) -> None:
-    kinds = [ObjectKind.PROJECT, ObjectKind.APPLICATION]
+    kinds = [ObjectKind.PROJECT, ResourceKindsWithSpecialHandling.APPLICATION]
 
     for kind in kinds:
         response_data = {}
@@ -35,7 +35,7 @@ async def test_get_resources(
                     }
                 ]
             }
-        elif kind == ObjectKind.APPLICATION:
+        elif kind == ResourceKindsWithSpecialHandling.APPLICATION:
             response_data = {
                 "items": [
                     {
@@ -79,7 +79,7 @@ async def test_get_resources(
 async def test_get_resources_with_query_params(
     mock_argocd_client: ArgocdClient,
 ) -> None:
-    kinds = [ObjectKind.PROJECT, ObjectKind.APPLICATION]
+    kinds = [ObjectKind.PROJECT, ResourceKindsWithSpecialHandling.APPLICATION]
 
     for kind in kinds:
         response_data = {}
@@ -92,7 +92,7 @@ async def test_get_resources_with_query_params(
                     }
                 ]
             }
-        elif kind == ObjectKind.APPLICATION:
+        elif kind == ResourceKindsWithSpecialHandling.APPLICATION:
             response_data = {
                 "items": [
                     {
@@ -170,7 +170,7 @@ async def test_get_application_by_name(mock_argocd_client: ArgocdClient) -> None
         )
         assert application == response_data
         mock_request.assert_called_once_with(
-            url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}",
+            url=f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{application_name}",
             query_params={},
         )
 
@@ -203,7 +203,7 @@ async def test_get_application_by_name_with_namespace(
         )
         assert application == response_data
         mock_request.assert_called_once_with(
-            url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}",
+            url=f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{application_name}",
             query_params={"appNamespace": application_namespace},
         )
 
@@ -249,7 +249,7 @@ async def test_get_deployment_history(mock_argocd_client: ArgocdClient) -> None:
         "client.ArgocdClient.get_resources",
         side_effect=mock_resources_generator,
     ) as mock_request:
-        kind = ObjectKind.APPLICATION
+        kind = ResourceKindsWithSpecialHandling.APPLICATION
         async for all_history in mock_argocd_client.get_deployment_history():
             assert len(all_history) == 1
         mock_request.assert_called_with(resource_kind=kind)
@@ -284,7 +284,7 @@ async def test_get_deployment_history_without_history_data(
         "client.ArgocdClient.get_resources",
         side_effect=mock_resources_generator,
     ) as mock_request:
-        kind = ObjectKind.APPLICATION
+        kind = ResourceKindsWithSpecialHandling.APPLICATION
         histories = [
             history async for history in mock_argocd_client.get_deployment_history()
         ]
@@ -330,7 +330,7 @@ async def test_get_kubernetes_resource(mock_argocd_client: ArgocdClient) -> None
         "client.ArgocdClient.get_resources",
         side_effect=mock_resources_generator,
     ) as mock_request:
-        kind = ObjectKind.APPLICATION
+        kind = ResourceKindsWithSpecialHandling.APPLICATION
         async for resources in mock_argocd_client.get_kubernetes_resource():
             assert len(resources) == 1
         mock_request.assert_called_with(resource_kind=kind)
@@ -369,7 +369,9 @@ async def test_get_kubernetes_resource_without_resource_data(
             res async for res in mock_argocd_client.get_kubernetes_resource()
         ]
         assert not resources_list
-        mock_request.assert_called_with(resource_kind=ObjectKind.APPLICATION)
+        mock_request.assert_called_with(
+            resource_kind=ResourceKindsWithSpecialHandling.APPLICATION
+        )
 
 
 @pytest.mark.asyncio
@@ -408,7 +410,7 @@ async def test_get_managed_resources(
                 assert len(resources) == len(response_data["items"])
                 application_name = application["metadata"]["name"]
                 mock_stream.assert_called_with(
-                    url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources",
+                    url=f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{application_name}/managed-resources",
                     target_items_path="items",
                     params=None,
                 )
@@ -656,7 +658,9 @@ async def test_get_resources_with_streaming_disabled() -> None:
             return_value=response_data,
         ) as mock_request:
             resources = []
-            async for resource_batch in client.get_resources(ObjectKind.APPLICATION):
+            async for resource_batch in client.get_resources(
+                ResourceKindsWithSpecialHandling.APPLICATION
+            ):
                 resources.extend(resource_batch)
 
             # Should use direct API request, not streaming
@@ -761,7 +765,7 @@ async def test_get_resources_yields_all_batches(
     ):
         all_resources: list[dict[str, Any]] = []
         async for batch in mock_argocd_client.get_resources(
-            resource_kind=ObjectKind.APPLICATION
+            resource_kind=ResourceKindsWithSpecialHandling.APPLICATION
         ):
             all_resources.extend(batch)
 
