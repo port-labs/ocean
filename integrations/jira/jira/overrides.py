@@ -76,15 +76,7 @@ class JiraProjectResourceConfig(ResourceConfig):
     )
 
 
-class JiraUserSelector(Selector):
-    pass
-
-
 class JiraUserResourceConfig(ResourceConfig):
-    selector: JiraUserSelector = Field(
-        title="User Selector",
-        description="Defines which Jira users to include and how to query them",
-    )
     kind: Literal["user"] = Field(
         title="Jira User",
         description="A user account in your Jira organization",

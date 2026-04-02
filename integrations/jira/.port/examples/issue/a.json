@@ -1,36 +1,36 @@
 {
   "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
   "id": "73987",
-  "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebf/rest/api/3/issue/73987",
+  "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/issue/73987",
   "key": "SEC-108",
   "fields": {
     "statuscategorychangedate": "2026-01-26T01:39:15.510+0200",
     "issuetype": {
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/issuetype/10095",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/issuetype/10095",
       "id": "10095",
       "description": "Tasks track small, distinct pieces of work.",
-      "iconUrl": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/2/universal_avatar/view/type/issuetype/avatar/10318?size=medium",
+      "iconUrl": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/2/universal_avatar/view/type/issuetype/avatar/10318?size=medium",
       "name": "Task",
       "subtask": false,
       "avatarId": 10318,
-      "entityId": "a698acf5-aead-44a9-b7b7-9d4eb7adef3c",
+      "entityId": "00000000-0000-0000-0000-000000000002",
       "hierarchyLevel": 0
     },
     "components": [],
     "timespent": null,
     "timeoriginalestimate": null,
     "project": {
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/project/10084",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/project/10084",
       "id": "10084",
       "key": "SEC",
       "name": "SECURITY",
       "projectTypeKey": "software",
       "simplified": true,
       "avatarUrls": {
-        "48x48": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10423",
-        "24x24": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10423?size=small",
-        "16x16": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10423?size=xsmall",
-        "32x32": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/universal_avatar/view/type/project/avatar/10423?size=medium"
+        "48x48": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10423",
+        "24x24": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10423?size=small",
+        "16x16": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10423?size=xsmall",
+        "32x32": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10423?size=medium"
       }
     },
     "description": {
@@ -160,7 +160,7 @@
             },
             {
               "type": "text",
-              "text": ":\tadvance-templates"
+              "text": ":\texample-bucket"
             },
             {
               "type": "hardBreak"
@@ -212,12 +212,12 @@
             },
             {
               "type": "text",
-              "text": "https://console.aws.amazon.com/s3/buckets/advance-templates?region=eu-west-1",
+              "text": "https://console.aws.amazon.com/s3/buckets/example-bucket?region=eu-west-1",
               "marks": [
                 {
                   "type": "link",
                   "attrs": {
-                    "href": "https://console.aws.amazon.com/s3/buckets/advance-templates?region=eu-west-1"
+                    "href": "https://console.aws.amazon.com/s3/buckets/example-bucket?region=eu-west-1"
                   }
                 }
               ]
@@ -236,7 +236,7 @@
             },
             {
               "type": "text",
-              "text": " Main (185657066287)"
+              "text": " Main (123456789012)"
             },
             {
               "type": "hardBreak"
@@ -282,7 +282,7 @@
                 {
                   "type": "link",
                   "attrs": {
-                    "href": "https://app.wiz.io/issues#~(issue~'dad1a316-77e1-48ab-9ae6-b03e2979c1da)"
+                    "href": "https://app.wiz.io/issues#~(issue~'00000000-0000-0000-0000-000000000003)"
                   }
                 }
               ]
@@ -301,7 +301,7 @@
     "fixVersions": [],
     "aggregatetimespent": null,
     "statusCategory": {
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/statuscategory/2",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/statuscategory/2",
       "id": 2,
       "key": "new",
       "colorName": "blue-gray",
@@ -313,18 +313,18 @@
     "security": null,
     "attachment": [
       {
-        "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/attachment/24535",
+        "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/attachment/24535",
         "id": "24535",
-        "filename": "evidence_dad1a316-77e1-48ab-9ae6-b03e2979c1da.csv",
+        "filename": "evidence_00000000-0000-0000-0000-000000000003.csv",
         "author": {
-          "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/user?accountId=712020%3Abaa21d13-8c87-441b-a3c9-748c89270356",
-          "accountId": "712020:baa21d13-8c87-441b-a3c9-748c89270356",
-          "emailAddress": "jira-security-wiz-integration@port.io",
+          "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/user?accountId=712020%3A00000000-0000-0000-0000-000000000001",
+          "accountId": "712020:00000000-0000-0000-0000-000000000001",
+          "emailAddress": "integration@example.com",
           "avatarUrls": {
-            "48x48": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
-            "24x24": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
-            "16x16": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
-            "32x32": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png"
+            "48x48": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+            "24x24": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+            "16x16": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+            "32x32": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png"
           },
           "displayName": "Wiz Integration",
           "active": true,
@@ -334,7 +334,7 @@
         "created": "2026-01-26T01:39:16.050+0200",
         "size": 1227,
         "mimeType": "text/csv",
-        "content": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/attachment/content/24535"
+        "content": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/attachment/content/24535"
       }
     ],
     "aggregatetimeestimate": null,
@@ -346,20 +346,20 @@
       "shouldDisplay": true
     },
     "watches": {
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/issue/SEC-108/watchers",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/issue/SEC-108/watchers",
       "watchCount": 1,
       "isWatching": false
     },
     "lastViewed": null,
     "creator": {
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/user?accountId=712020%3Abaa21d13-8c87-441b-a3c9-748c89270356",
-      "accountId": "712020:baa21d13-8c87-441b-a3c9-748c89270356",
-      "emailAddress": "jira-security-wiz-integration@port.io",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/user?accountId=712020%3A00000000-0000-0000-0000-000000000001",
+      "accountId": "712020:00000000-0000-0000-0000-000000000001",
+      "emailAddress": "integration@example.com",
       "avatarUrls": {
-        "48x48": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
-        "24x24": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
-        "16x16": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
-        "32x32": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png"
+        "48x48": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "24x24": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "16x16": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "32x32": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png"
       },
       "displayName": "Wiz Integration",
       "active": true,
@@ -371,14 +371,14 @@
     "customfield_10020": null,
     "customfield_10021": null,
     "reporter": {
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/user?accountId=712020%3Abaa21d13-8c87-441b-a3c9-748c892",
-      "accountId": "712020:baa21d13-8c87-441b-a3c9-748c89270356",
-      "emailAddress": "jira-security-wiz-integration@port.io",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/user?accountId=712020%3A00000000-0000-0000-0000-000000000001",
+      "accountId": "712020:00000000-0000-0000-0000-000000000001",
+      "emailAddress": "integration@example.com",
       "avatarUrls": {
-        "48x48": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
-        "24x24": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
-        "16x16": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
-        "32x32": "https://secure.gravatar.com/avatar/fd9847028a121a3a0d646aac37b85f25?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png"
+        "48x48": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "24x24": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "16x16": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png",
+        "32x32": "https://secure.gravatar.com/avatar/00000000000000000000000000000000?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FWI-6.png"
       },
       "displayName": "Wiz Integration",
       "active": true,
@@ -391,8 +391,8 @@
     },
     "customfield_10000": "{}",
     "priority": {
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/priority/3",
-      "iconUrl": "https://getport.atlassian.net/images/icons/priorities/medium_new.svg",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/priority/3",
+      "iconUrl": "https://your-domain.atlassian.net/images/icons/priorities/medium_new.svg",
       "name": "Medium",
       "id": "3"
     },
@@ -413,28 +413,28 @@
     },
     "issuelinks": [],
     "votes": {
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/issue/SEC-108/votes",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/issue/SEC-108/votes",
       "votes": 0,
       "hasVoted": false
     },
     "comment": {
       "comments": [],
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/issue/73987/comment",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/issue/73987/comment",
       "maxResults": 0,
       "total": 0,
       "startAt": 0
     },
     "assignee": {
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/user?accountId=712020%3A0c6fd01e-b553-44e6-8f36-32221f50aff3",
-      "accountId": "712020:0c6fd01e-b553-44e6-8f36-32221f50aff3",
-      "emailAddress": "asafa@port.io",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/user?accountId=712020%3A00000000-0000-0000-0000-000000000002",
+      "accountId": "712020:00000000-0000-0000-0000-000000000002",
+      "emailAddress": "jane.smith@example.com",
       "avatarUrls": {
-        "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:0c6fd01e-b553-44e6-8f36-32221f50aff3/7b6b6ac9-fca8-4907-8b82-d416c04cd793/48",
-        "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:0c6fd01e-b553-44e6-8f36-32221f50aff3/7b6b6ac9-fca8-4907-8b82-d416c04cd793/24",
-        "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:0c6fd01e-b553-44e6-8f36-32221f50aff3/7b6b6ac9-fca8-4907-8b82-d416c04cd793/16",
-        "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:0c6fd01e-b553-44e6-8f36-32221f50aff3/7b6b6ac9-fca8-4907-8b82-d416c04cd793/32"
+        "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:00000000-0000-0000-0000-000000000002/00000000-0000-0000-0000-000000000001/48",
+        "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:00000000-0000-0000-0000-000000000002/00000000-0000-0000-0000-000000000001/24",
+        "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:00000000-0000-0000-0000-000000000002/00000000-0000-0000-0000-000000000001/16",
+        "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:00000000-0000-0000-0000-000000000002/00000000-0000-0000-0000-000000000001/32"
       },
-      "displayName": "Asaf Apelbaum",
+      "displayName": "Jane Smith",
       "active": true,
       "timeZone": "Asia/Jerusalem",
       "accountType": "atlassian"
@@ -447,13 +447,13 @@
     },
     "updated": "2026-01-26T01:39:16.439+0200",
     "status": {
-      "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/status/10107",
+      "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/status/10107",
       "description": "",
-      "iconUrl": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/",
+      "iconUrl": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/",
       "name": "To Do",
       "id": "10107",
       "statusCategory": {
-        "self": "https://api.atlassian.com/ex/jira/33f08530-afd8-42fd-82cc-1dd5ebfeece8/rest/api/3/statuscategory/2",
+        "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/statuscategory/2",
         "id": 2,
         "key": "new",
         "colorName": "blue-gray",
