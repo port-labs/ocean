@@ -1,7 +1,7 @@
 from typing import Any, Optional, Literal
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -24,8 +24,51 @@ class ResourceKindsWithSpecialHandling(StrEnum):
     APPLICATION = "application"
 
 
+class ApplicationQueryParams(BaseModel):
+    selector: Optional[str] = Field(
+        default=None,
+        description="Selector to filter applications by kubernetes labels",
+        alias="selector",
+    )
+    app_namespace: Optional[str] = Field(
+        default=None,
+        description="Namespace to filter applications by",
+        alias="appNamespace",
+    )
+    projects: Optional[list[str]] = Field(
+        default=None,
+        description="Projects to filter applications by",
+        alias="projects",
+    )
+    resource_version: Optional[str] = Field(
+        default=None,
+        description="Resource version to filter applications by",
+        alias="resourceVersion",
+    )
+    repo: Optional[str] = Field(
+        default=None,
+        description="Repository to filter applications by",
+        alias="repo",
+    )
+
+    @property
+    def generate_request_params(self) -> dict[str, Any]:
+        params: dict[str, Any] = {}
+        if self.selector:
+            params["selector"] = self.selector
+        if self.app_namespace:
+            params["appNamespace"] = self.app_namespace
+        if self.projects:
+            params["projects"] = self.projects
+        if self.resource_version:
+            params["resourceVersion"] = self.resource_version
+        if self.repo:
+            params["repo"] = self.repo
+        return params
+
+
 class ApplicationSelector(Selector):
-    query_params: Optional[dict[str, Any]] = Field(
+    query_params: Optional[ApplicationQueryParams] = Field(
         default=None,
         alias="queryParams",
         description="API query parameters to filter applications",

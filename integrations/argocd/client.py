@@ -83,12 +83,17 @@ class ArgocdClient:
     async def get_paginated_resources(
         self, url: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.debug(f"Fetching paginated resources from {url} with params: {params}")
         try:
             if not self.use_streaming:
                 response_data = await self._send_api_request(
                     url=url, query_params=params
                 )
-                for batch in batched(response_data.get("items", []), PAGE_SIZE):
+                items = response_data.get("items") or []
+                if not items:
+                    logger.info(f"No items found in response from {url}")
+                    return
+                for batch in batched(items, PAGE_SIZE):
                     yield list(batch)
             else:
                 async for resources in self.streaming_client.stream_json(

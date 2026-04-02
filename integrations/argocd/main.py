@@ -42,7 +42,9 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_applications_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
     selector = cast(ApplicationResourceConfig, event.resource_config).selector
-    params = selector.query_params
+    params = (
+        selector.query_params.generate_request_params if selector.query_params else None
+    )
     async for application in argocd_client.get_resources(
         resource_kind=ResourceKindsWithSpecialHandling.APPLICATION, query_params=params
     ):
@@ -75,7 +77,9 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
 
     selector = cast(ManagedResourceResourceConfig, event.resource_config).selector
-    params = selector.query_params
+    params = (
+        selector.query_params.generate_request_params if selector.query_params else None
+    )
     async for app_batch in argocd_client.get_resources(
         resource_kind=ResourceKindsWithSpecialHandling.APPLICATION, query_params=params
     ):
