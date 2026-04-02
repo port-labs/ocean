@@ -5,12 +5,8 @@ from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import ArgocdClient
-from integration import (
-    ObjectKind,
-    ResourceKindsWithSpecialHandling,
-    ApplicationResourceConfig,
-    ManagedResourceResourceConfig,
-)
+from integration import ApplicationResourceConfig, ManagedResourceResourceConfig
+from misc import ResourceKindsWithSpecialHandling, ObjectKind
 from port_ocean.context.ocean import ocean
 
 

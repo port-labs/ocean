@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from client import ArgocdClient, ClusterState
-from integration import ObjectKind, ResourceKindsWithSpecialHandling
+from misc import ObjectKind, ResourceKindsWithSpecialHandling
 
 
 @pytest.fixture

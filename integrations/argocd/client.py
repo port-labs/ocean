@@ -5,7 +5,7 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from loguru import logger
 import json
-from integration import ResourceKindsWithSpecialHandling
+from misc import ResourceKindsWithSpecialHandling
 
 from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.utils import http_async_client

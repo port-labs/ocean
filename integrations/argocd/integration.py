@@ -1,5 +1,5 @@
 from typing import Any, Optional, Literal
-from enum import StrEnum
+from misc import ResourceKindsWithSpecialHandling
 
 from pydantic import BaseModel, Field
 
@@ -10,18 +10,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-
-
-class ObjectKind(StrEnum):
-    PROJECT = "project"
-
-
-class ResourceKindsWithSpecialHandling(StrEnum):
-    DEPLOYMENT_HISTORY = "deployment-history"
-    KUBERNETES_RESOURCE = "kubernetes-resource"
-    MANAGED_RESOURCE = "managed-resource"
-    CLUSTER = "cluster"
-    APPLICATION = "application"
 
 
 class ApplicationQueryParams(BaseModel):
@@ -65,8 +53,14 @@ class ApplicationSelector(Selector):
 
 
 class ApplicationResourceConfig(ResourceConfig):
-    kind: Literal["application"]
-    selector: ApplicationSelector
+    kind: Literal[ResourceKindsWithSpecialHandling.APPLICATION] = Field(
+        title="Application",
+        description="Application resource kind.",
+    )
+    selector: ApplicationSelector = Field(
+        title="Application selector",
+        description="Selector for the application resource.",
+    )
 
 
 class ManagedResourceSelector(Selector):
@@ -78,8 +72,14 @@ class ManagedResourceSelector(Selector):
 
 
 class ManagedResourceResourceConfig(ResourceConfig):
-    kind: Literal["managed-resource"]
-    selector: ManagedResourceSelector
+    kind: Literal[ResourceKindsWithSpecialHandling.MANAGED_RESOURCE] = Field(
+        title="Managed resource",
+        description="Managed resource kind.",
+    )
+    selector: ManagedResourceSelector = Field(
+        title="Managed resource selector",
+        description="Selector for the managed resource resource.",
+    )
 
 
 class ArgocdPortAppConfig(PortAppConfig):
