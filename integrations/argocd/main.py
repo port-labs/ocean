@@ -77,9 +77,8 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
 
     selector = cast(ManagedResourceResourceConfig, event.resource_config).selector
-    params = (
-        selector.query_params.generate_request_params if selector.query_params else None
-    )
+    app_filters = selector.app_filters
+    params = app_filters.generate_request_params if app_filters else None
     async for app_batch in argocd_client.get_resources(
         resource_kind=ResourceKindsWithSpecialHandling.APPLICATION, query_params=params
     ):

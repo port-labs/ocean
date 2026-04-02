@@ -53,18 +53,7 @@ class ApplicationQueryParams(BaseModel):
 
     @property
     def generate_request_params(self) -> dict[str, Any]:
-        params: dict[str, Any] = {}
-        if self.selector:
-            params["selector"] = self.selector
-        if self.app_namespace:
-            params["appNamespace"] = self.app_namespace
-        if self.projects:
-            params["projects"] = self.projects
-        if self.resource_version:
-            params["resourceVersion"] = self.resource_version
-        if self.repo:
-            params["repo"] = self.repo
-        return params
+        return self.dict(exclude_none=True)
 
 
 class ApplicationSelector(Selector):
@@ -80,9 +69,17 @@ class ApplicationResourceConfig(ResourceConfig):
     selector: ApplicationSelector
 
 
+class ManagedResourceSelector(Selector):
+    app_filters: Optional[ApplicationQueryParams] = Field(
+        default=None,
+        alias="appFilters",
+        description="API query parameters to filter applications",
+    )
+
+
 class ManagedResourceResourceConfig(ResourceConfig):
     kind: Literal["managed-resource"]
-    selector: ApplicationSelector
+    selector: ManagedResourceSelector
 
 
 class ArgocdPortAppConfig(PortAppConfig):
