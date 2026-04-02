@@ -34,7 +34,7 @@ class JiraIssueConfig(ResourceConfig):
 
 class JiraProjectSelector(Selector):
     expand: str = Field(
-        title="Expand",
+        title="Parameters to expand",
         default="",
         description="A comma-separated list of the parameters to expand",
     )
