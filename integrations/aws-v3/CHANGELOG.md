@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.1.67-beta (2026-03-31)
+
+
+### Bug Fixes
+
+- Bumped `aioboto3` to `^15.5.0`, `aiobotocore` to `^2.25.0`, `types-aiobotocore` to `^2.25.0`, and added `aiohttp` `^3.13.4` to resolve security vulnerability in transitive dependency `aiohttp`
+
+
 ## 2.1.66-beta (2026-03-30)
 
 
