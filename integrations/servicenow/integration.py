@@ -30,7 +30,7 @@ class APIQueryParams(BaseModel):
         alias="sysparmFields",
         default=None,
         title="Fields",
-        description="Comma-separated list of fields to return in the response",
+        description="Comma-separated list of fields to return in the response (e.g. 'sys_id,name,description,state')",
     )
     sysparm_exclude_reference_link: Literal["true", "false"] | None = Field(
         alias="sysparmExcludeReferenceLink",
@@ -144,7 +144,9 @@ class ServiceNowPortAppConfig(PortAppConfig):
         | ReleaseProjectResourceConfig
         | CustomResourceConfig
     ] = Field(
-        default_factory=list
+        default_factory=list,
+        title="ServiceNow Resources",
+        description="Resource Configs for ServiceNow integration",
     )  # type: ignore[assignment]
     allow_custom_kinds: ClassVar[bool] = True
 
