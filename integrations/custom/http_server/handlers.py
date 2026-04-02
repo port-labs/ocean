@@ -24,7 +24,13 @@ class PaginationHandler:
         config: Dict[str, Any],
         extract_items_fn: Callable[[Any], List[Dict[str, Any]]],
         make_request_fn: Callable[
-            [str, str, Dict[str, Any], Dict[str, str], Optional[Dict[str, Any]]],
+            [
+                str,
+                str,
+                Optional[Dict[str, Any]],
+                Dict[str, str],
+                Optional[Dict[str, Any]],
+            ],
             Awaitable[httpx.Response],
         ],
         get_nested_value_fn: Callable[[Dict[str, Any], str], Any],
@@ -262,7 +268,7 @@ class NextLinkPagination(PaginationHandler):
         next_link_path = self.config.get("next_link_path", "@odata.nextLink")
 
         current_url = url
-        current_params = params
+        current_params: Optional[Dict[str, Any]] = params
 
         while True:
             response = await self.make_request(
@@ -283,7 +289,48 @@ class NextLinkPagination(PaginationHandler):
                 break
 
             current_url = next_url
-            current_params = {}
+            current_params = None
+
+
+class HeaderLinkPagination(PaginationHandler):
+    """Pagination using RFC 5988 Link header.
+
+    Uses httpx's built-in response.links property to parse Link headers.
+    The next link URL is used directly for subsequent requests.
+
+    Example Link header:
+        Link: <https://api.example.com/items?page=2>; rel="next",
+              <https://api.example.com/items?page=10>; rel="last"
+    """
+
+    async def fetch_all(
+        self,
+        url: str,
+        method: str,
+        params: Dict[str, Any],
+        headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenType[List[Dict[str, Any]], None]:
+        link_rel = self.config.get("header_link_rel", "next")
+
+        current_url = url
+        current_params: Optional[Dict[str, Any]] = params
+
+        while True:
+            response = await self.make_request(
+                current_url, method, current_params, headers, body
+            )
+            response_data = response.json()
+
+            yield [response_data]
+
+            next_url = response.links.get(link_rel, {}).get("url")
+
+            if not next_url:
+                break
+
+            current_url = next_url
+            current_params = None
 
 
 # Registry of available pagination handlers
@@ -293,6 +340,7 @@ PAGINATION_HANDLERS = {
     "offset": OffsetPagination,
     "cursor": CursorPagination,
     "next_link": NextLinkPagination,
+    "header_link": HeaderLinkPagination,
 }
 
 
@@ -302,7 +350,7 @@ def get_pagination_handler(
     config: Dict[str, Any],
     extract_items_fn: Callable[[Any], List[Dict[str, Any]]],
     make_request_fn: Callable[
-        [str, str, Dict[str, Any], Dict[str, str], Optional[Dict[str, Any]]],
+        [str, str, Optional[Dict[str, Any]], Dict[str, str], Optional[Dict[str, Any]]],
         Awaitable[httpx.Response],
     ],
     get_nested_value_fn: Callable[[Dict[str, Any], str], Any],

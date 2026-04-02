@@ -46,6 +46,9 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
                 repo_name, response, organization
             )
 
+        if repo:
+            response = self._enrich_with_default_branch_status(response, repo)
+
         logger.info(
             f"Fetched branch: {branch_name} for repo: {repo_name} from {organization}"
         )
@@ -151,6 +154,9 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
                 repo_name, branch, organization
             )
 
+        if repo:
+            branch = self._enrich_with_default_branch_status(branch, repo)
+
         return enrich_with_organization(
             enrich_with_repository(branch, repo_name, repo=repo), organization
         )
@@ -173,4 +179,11 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched protection rules for branch '{branch_name}' in repo '{repo_name}'."
         )
 
+        return branch
+
+    def _enrich_with_default_branch_status(
+        self, branch: dict[str, Any], repo: dict[str, Any]
+    ) -> RAW_ITEM:
+        if repo:
+            branch["__is_default_branch"] = branch["name"] == repo["default_branch"]
         return branch

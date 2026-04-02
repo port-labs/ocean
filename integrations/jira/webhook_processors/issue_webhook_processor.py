@@ -44,11 +44,16 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         if config.selector.jql:
             jql = f"({config.selector.jql}) AND key = {issue_key}"
 
-        issues = await client.get_reconciled_issues(
-            jql=jql,
-            issue_ids=[issue_id],
-            fields=config.selector.fields,
-        )
+        issues = []
+        async for batch in client.get_paginated_issues(
+            params={
+                "jql": jql,
+                "fields": config.selector.fields,
+                "expand": config.selector.expand,
+                "reconcileIssues": [issue_id],
+            }
+        ):
+            issues.extend(batch)
 
         data_to_update = []
         data_to_delete = []
@@ -68,6 +73,13 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         )
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+        webhook_identifier = headers.get("x-atlassian-webhook-identifier")
+        jira_webhook_flow = headers.get("x-atlassian-webhook-flow")
+        jira_webhook_retry = headers.get("x-atlassian-webhook-retry", "0")
+        jira_webhook_key = payload.get("issue", {}).get("key")
+        logger.info(
+            f"got issue webhook event with identifier: {webhook_identifier}, flow: {jira_webhook_flow}, retry: {jira_webhook_retry}, key: {jira_webhook_key}"
+        )
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:

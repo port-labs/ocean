@@ -7,16 +7,16 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
 from github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor import (
     CollaboratorTeamWebhookProcessor,
 )
-from github.helpers.utils import ObjectKind, GithubClientType
+from github.helpers.utils import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from typing import Any
+from typing import Any, AsyncGenerator
 from port_ocean.context.event import event_context
 
 
@@ -178,25 +178,13 @@ class TestCollaboratorTeamWebhookProcessor:
         payload = VALID_TEAM_COLLABORATOR_PAYLOADS.copy()
         payload["action"] = action
 
-        # Mock team data for GraphQL exporter
-        mock_team_data = {
-            "members": {
-                "nodes": [
-                    {
-                        "id": "user1",
-                        "login": "test-user",
-                        "name": "Test User",
-                        "isSiteAdmin": False,
-                    }
-                ]
-            },
-            "repositories": {
-                "nodes": [
-                    {"name": "repo1"},
-                    {"name": "repo2"},
-                ]
-            },
-        }
+        rest_team_members_batch = [
+            {
+                "id": 1,
+                "login": "test-user",
+                "site_admin": False,
+            }
+        ]
 
         with patch(
             "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client"
@@ -204,61 +192,37 @@ class TestCollaboratorTeamWebhookProcessor:
             mock_client = MagicMock()
             mock_create_client.return_value = mock_client
 
-            # Mock GraphQLTeamMembersAndReposExporter
-            with patch(
-                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.GraphQLTeamMembersAndReposExporter"
-            ) as mock_graphql_team_exporter_class:
-                mock_graphql_team_exporter = MagicMock()
-                mock_graphql_team_exporter_class.return_value = (
-                    mock_graphql_team_exporter
-                )
+            async def mock_paginated_generator() -> (
+                AsyncGenerator[list[dict[str, Any]], None]
+            ):
+                yield rest_team_members_batch
 
-                mock_graphql_team_exporter.get_resource = AsyncMock(
-                    return_value=mock_team_data
-                )
+            mock_client.send_paginated_request.return_value = mock_paginated_generator()
 
-                result = await team_webhook_processor.handle_event(
-                    payload, resource_config
-                )
+            result = await team_webhook_processor.handle_event(payload, resource_config)
 
-                # Verify the result
-                assert isinstance(result, WebhookEventRawResults)
-                assert bool(result.updated_raw_results) is expected_updated
-                assert bool(result.deleted_raw_results) is expected_deleted
+            # Verify the result
+            assert isinstance(result, WebhookEventRawResults)
+            assert bool(result.updated_raw_results) is expected_updated
+            assert bool(result.deleted_raw_results) is expected_deleted
 
-                if expected_updated:
-                    # Verify the data structure matches expected format
-                    expected_team_data = [
-                        {
-                            "id": "user1",
-                            "login": "test-user",
-                            "name": "Test User",
-                            "site_admin": False,
-                            "__repository": "repo1",
-                        },
-                        {
-                            "id": "user1",
-                            "login": "test-user",
-                            "name": "Test User",
-                            "site_admin": False,
-                            "__repository": "repo2",
-                        },
-                    ]
-                    assert result.updated_raw_results == expected_team_data
+            if expected_updated:
+                # Verify the data structure matches expected format
+                expected_team_data = [
+                    {
+                        "id": 1,
+                        "login": "test-user",
+                        "site_admin": False,
+                        "__repository": "test-repo",
+                        "__organization": "test-org",
+                    }
+                ]
+                assert result.updated_raw_results == expected_team_data
 
-                    # Verify GraphQL client was created with correct type
-                    mock_create_client.assert_called_once_with(
-                        client_type=GithubClientType.GRAPHQL
-                    )
-
-                    # Verify team exporter was called
-                    mock_graphql_team_exporter.get_resource.assert_called_once_with(
-                        {"organization": "test-org", "slug": "test-team"}
-                    )
-                else:
-                    # For unsupported events, no exporters should be called
-                    mock_create_client.assert_not_called()
-                    mock_graphql_team_exporter.get_resource.assert_not_called()
+                mock_create_client.assert_called_once_with()
+            else:
+                # For unsupported events, no exporters should be called
+                mock_create_client.assert_not_called()
 
     async def test_handle_event_no_team_data(
         self,
@@ -275,27 +239,18 @@ class TestCollaboratorTeamWebhookProcessor:
             mock_client = MagicMock()
             mock_create_client.return_value = mock_client
 
-            # Mock GraphQLTeamMembersAndReposExporter returning None
-            with patch(
-                "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.GraphQLTeamMembersAndReposExporter"
-            ) as mock_graphql_team_exporter_class:
-                mock_graphql_team_exporter = MagicMock()
-                mock_graphql_team_exporter_class.return_value = (
-                    mock_graphql_team_exporter
-                )
+            async def mock_paginated_generator() -> (
+                AsyncGenerator[list[dict[str, Any]], None]
+            ):
+                yield []
 
-                mock_graphql_team_exporter.get_resource = AsyncMock(return_value=None)
+            mock_client.send_paginated_request.return_value = mock_paginated_generator()
 
-                result = await team_webhook_processor.handle_event(
-                    payload, resource_config
-                )
+            result = await team_webhook_processor.handle_event(payload, resource_config)
 
-                # Verify empty results when no team data
-                assert isinstance(result, WebhookEventRawResults)
-                assert result.updated_raw_results == []
-                assert result.deleted_raw_results == []
+            # Verify empty results when no team data
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == []
 
-                # Verify GraphQL client was created
-                mock_create_client.assert_called_once_with(
-                    client_type=GithubClientType.GRAPHQL
-                )
+            mock_create_client.assert_called_once_with()

@@ -1,0 +1,23 @@
+{
+  "id": "10530",
+  "name": ".NET Framework SDK",
+  "description": ".NET Framework SDK is a software development kit developed by Microsoft that provides tools, compilers, and application program interfaces (APIs) for developing applications for the .NET Framework. This SDK allows developers to build, test, and deploy a wide range of applications, including web applications, desktop applications, and mobile applications. It includes classes, interfaces and value types, all of which help in creating efficient code and software programs.",
+  "categories": [
+    {
+      "name": "Frameworks & Libraries"
+    }
+  ],
+  "usage": "COMMON",
+  "status": "UNREVIEWED",
+  "risk": "HIGH",
+  "note": null,
+  "ownerName": "Microsoft Corporation",
+  "businessModel": "COMMERCIAL_PROPRIETARY",
+  "popularity": "VERY_COMMON",
+  "projectCount": 0,
+  "codeRepoCount": 0,
+  "isCloudService": false,
+  "supportedOperatingSystems": [
+    "WINDOWS"
+  ]
+}

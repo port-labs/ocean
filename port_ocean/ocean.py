@@ -263,6 +263,14 @@ class Ocean:
             self.metrics.create_mertic_router(), prefix=f"{self.route_prefix}/metrics"
         )
 
+        health_router = APIRouter()
+
+        @health_router.get("/isHealthy")
+        def is_healthy() -> dict[str, str]:
+            return {"status": "healthy"}
+
+        self.fast_api_app.include_router(health_router, prefix=self.route_prefix or "")
+
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
