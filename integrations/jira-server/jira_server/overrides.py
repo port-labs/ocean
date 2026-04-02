@@ -15,7 +15,7 @@ class JiraIssueSelector(Selector):
         description="JQL query to filter issues.",
     )
     fields: str | None = Field(
-        title="Fields",
+        title="Issue fields",
         description="the list of fields to return for each issue. By default, all navigable fields are returned.",
         default="*all",
     )
