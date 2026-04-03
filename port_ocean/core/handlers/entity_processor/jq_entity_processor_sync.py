@@ -6,6 +6,7 @@ from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entity_processor.models import MappedEntity
+from port_ocean.core.utils.json_compat import make_json_compatible
 from port_ocean.exceptions.core import EntityProcessorException
 
 _COMPILED_PATTERNS: dict[str, Any] = {}
@@ -76,7 +77,7 @@ class JQEntityProcessorSync:
         """Execute a JQ pattern against data, logging a structured WARNING with field context on failure."""
         try:
             compiled_pattern = JQEntityProcessorSync._compile(pattern)
-            it = compiled_pattern.input_value(data)
+            it = compiled_pattern.input_value(make_json_compatible(data))
             return next(iter(it), None)
         except Exception as exc:
             JQEntityProcessorSync._log_search_failure(pattern, exc, field)
@@ -85,7 +86,7 @@ class JQEntityProcessorSync:
     @staticmethod
     def _search_as_bool(data: dict[str, Any] | str, pattern: str) -> bool:
         compiled_pattern = JQEntityProcessorSync._compile(pattern)
-        value = compiled_pattern.input_value(data).first()
+        value = compiled_pattern.input_value(make_json_compatible(data)).first()
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(

@@ -22,6 +22,7 @@ from port_ocean.core.ocean_types import (
     CalculationResult,
     EntitySelectorDiff,
 )
+from port_ocean.core.utils.json_compat import make_json_compatible
 from port_ocean.core.utils.utils import (
     gather_and_split_errors_from_results,
 )
@@ -101,7 +102,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         """Execute a JQ pattern against data, logging a structured ERROR with field context on failure."""
         try:
             compiled_pattern = self._compile(pattern)
-            func = compiled_pattern.input_value(data)
+            func = compiled_pattern.input_value(make_json_compatible(data))
             return func.first()
         except Exception as exc:
             self._log_search_failure(pattern, exc, field)
@@ -111,7 +112,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         compiled_pattern = self._compile(pattern)
 
-        func = compiled_pattern.input_value(data)
+        func = compiled_pattern.input_value(make_json_compatible(data))
 
         value = func.first()
         if isinstance(value, bool):
