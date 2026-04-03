@@ -29,3 +29,13 @@ configurations:
     required: true
     type: string
     description: "Sentry organization"
+  - name: webhookSecret
+    type: string
+    description: Secret used to verify incoming webhook requests. Ensures that only legitimate events from Sentry are accepted. This is required if live events are enabled.
+    sensitive: true
+    required: false
+
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
