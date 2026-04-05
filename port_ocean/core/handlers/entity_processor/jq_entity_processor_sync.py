@@ -8,7 +8,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entity_processor.models import MappedEntity
 from port_ocean.core.utils.json_compat import (
     JQInputNotJsonSerializableError,
-    jq_input_value,
+    compile_jq,
     make_json_compatible,
 )
 from port_ocean.exceptions.core import EntityProcessorException
@@ -82,9 +82,9 @@ class JQEntityProcessorSync:
         try:
             compiled_pattern = JQEntityProcessorSync._compile(pattern)
             try:
-                it = jq_input_value(compiled_pattern, data)
+                it = compile_jq(compiled_pattern, data)
             except JQInputNotJsonSerializableError:
-                it = jq_input_value(compiled_pattern, make_json_compatible(data))
+                it = compile_jq(compiled_pattern, make_json_compatible(data))
             return next(iter(it), None)
         except Exception as exc:
             JQEntityProcessorSync._log_search_failure(pattern, exc, field)
@@ -94,9 +94,9 @@ class JQEntityProcessorSync:
     def _search_as_bool(data: dict[str, Any] | str, pattern: str) -> bool:
         compiled_pattern = JQEntityProcessorSync._compile(pattern)
         try:
-            value = jq_input_value(compiled_pattern, data).first()
+            value = compile_jq(compiled_pattern, data).first()
         except JQInputNotJsonSerializableError:
-            value = jq_input_value(compiled_pattern, make_json_compatible(data)).first()
+            value = compile_jq(compiled_pattern, make_json_compatible(data)).first()
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(

@@ -2,7 +2,7 @@ from datetime import date, datetime, timezone
 
 from port_ocean.core.utils.json_compat import (
     JQInputNotJsonSerializableError,
-    jq_input_value,
+    compile_jq,
     make_json_compatible,
 )
 
@@ -20,13 +20,13 @@ def test_make_json_compatible_recurses_list_and_dict() -> None:
     assert out == {"a": [{"b": dt.isoformat()}]}
 
 
-def test_jq_input_value_raises_typed_error_on_not_json_serializable() -> None:
+def test_compile_jq_raises_typed_error_on_not_json_serializable() -> None:
     class DummyCompiled:
         def input_value(self, _data):  # type: ignore[no-untyped-def]
             raise TypeError("Object of type datetime is not JSON serializable")
 
     try:
-        jq_input_value(DummyCompiled(), {"x": object()})
+        compile_jq(DummyCompiled(), {"x": object()})
         assert False, "Expected JQInputNotJsonSerializableError"
     except JQInputNotJsonSerializableError:
         assert True

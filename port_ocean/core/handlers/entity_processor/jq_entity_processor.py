@@ -24,7 +24,7 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils.json_compat import (
     JQInputNotJsonSerializableError,
-    jq_input_value,
+    compile_jq,
     make_json_compatible,
 )
 from port_ocean.core.utils.utils import (
@@ -107,9 +107,9 @@ class JQEntityProcessor(BaseEntityProcessor):
         try:
             compiled_pattern = self._compile(pattern)
             try:
-                func = jq_input_value(compiled_pattern, data)
+                func = compile_jq(compiled_pattern, data)
             except JQInputNotJsonSerializableError:
-                func = jq_input_value(compiled_pattern, make_json_compatible(data))
+                func = compile_jq(compiled_pattern, make_json_compatible(data))
             return func.first()
         except Exception as exc:
             self._log_search_failure(pattern, exc, field)
@@ -120,9 +120,9 @@ class JQEntityProcessor(BaseEntityProcessor):
         compiled_pattern = self._compile(pattern)
 
         try:
-            func = jq_input_value(compiled_pattern, data)
+            func = compile_jq(compiled_pattern, data)
         except JQInputNotJsonSerializableError:
-            func = jq_input_value(compiled_pattern, make_json_compatible(data))
+            func = compile_jq(compiled_pattern, make_json_compatible(data))
 
         value = func.first()
         if isinstance(value, bool):

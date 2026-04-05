@@ -26,7 +26,7 @@ def make_json_compatible(value: Any) -> Any:
     return value
 
 
-def jq_input_value(compiled_pattern: Any, data: Any) -> Any:
+def compile_jq(compiled_pattern: Any, data: Any) -> Any:
     """
     Call `compiled_pattern.input_value(data)` and raise a typed exception when jq
     cannot serialize the input (e.g. due to date/datetime).
