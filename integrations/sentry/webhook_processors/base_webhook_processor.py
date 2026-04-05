@@ -20,10 +20,6 @@ class _SentryBaseWebhookProcessor(AbstractWebhookProcessor):
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         """Authenticate the webhook request."""
-        expected_digest = headers.get("sentry-hook-signature")
-        if not expected_digest:
-            return False
-
         webhook_secret: str | None = ocean.integration_config.get(
             "sentry_webhook_secret"
         )
@@ -32,6 +28,10 @@ class _SentryBaseWebhookProcessor(AbstractWebhookProcessor):
                 "No secret configured for Sentry incoming webhooks. Accepting event without signature validation."
             )
             return True
+
+        expected_digest = headers.get("sentry-hook-signature")
+        if not expected_digest:
+            return False
 
         body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode(
             "utf-8"

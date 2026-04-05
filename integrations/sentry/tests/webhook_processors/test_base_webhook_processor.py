@@ -1,7 +1,9 @@
 import pytest
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from typing import Generator
-
+import hashlib
+import hmac
+import json
 from webhook_processors.base_webhook_processor import _SentryBaseWebhookProcessor
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
@@ -86,45 +88,60 @@ class TestSentryBaseWebhookProcessor:
         }
         assert await proc.validate_payload(valid_payload) is True
 
-    # @pytest.mark.parametrize(
-    #     "headers,secret,expected",
-    #     [
-    #         # Case 1: No signature header -> passes (API-registered webhooks)
-    #         ({}, "some-secret", True),
-    #         # Case 2: Signature present, but no secret configured -> fails
-    #         ({"sentry-hook-signature": "s1"}, None, False),
-    #         # Case 3: Signature present, secret present, match -> passes
-    #         # hmac(sha256, "{}", "secret") = 769db...f66b
-    #         (
-    #             {
-    #                 "sentry-hook-signature": "769db0058b88eb3427be559194246917f909565611488c594c3ac9a80392f66b"
-    #             },
-    #             "secret",
-    #             True,
-    #         ),
-    #         # Case 4: Signature present, secret present, mismatch -> fails
-    #         ({"sentry-hook-signature": "wrong-sig"}, "secret", False),
-    #     ],
-    # )
-    # async def test_authenticate(
-    #     self, headers: dict[str, str], secret: str | None, expected: bool
-    # ) -> None:
-    #     """Test authentication logic for various scenarios."""
-    #     mock_request = Mock()
-    #     mock_request.headers = headers
-    #     mock_request.body = AsyncMock(return_value=b"{}")
+    @pytest.mark.asyncio
+    async def test_authenticate_no_secret_accepts_without_signature(
+        self, mock_ocean_no_secret: MagicMock
+    ) -> None:
+        proc = DummyProcessor(WebhookEvent(trace_id="t-auth-1", payload={}, headers={}))
+        payload: EventPayload = {"action": "created", "data": {"issue": {"id": "1"}}}
+        assert await proc.authenticate(payload, {}) is True
 
-    #     event = WebhookEvent(
-    #         trace_id="t1",
-    #         payload={},
-    #         headers=headers,
-    #         original_request=mock_request,
-    #     )
+    @pytest.mark.asyncio
+    async def test_authenticate_with_secret_valid_signature(self) -> None:
+        secret = "test-secret"
+        payload: EventPayload = {"action": "created", "data": {"issue": {"id": "1"}}}
+        body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode(
+            "utf-8"
+        )
+        expected_sig = hmac.new(
+            secret.encode("utf-8"), body, hashlib.sha256
+        ).hexdigest()
 
-    #     with patch("webhook_processors.base_webhook_processor.ocean") as mock_ocean:
-    #         mock_config = MagicMock()
-    #         mock_config.get.return_value = {"sentry_webhook_secret": secret}
-    #         mock_ocean.integration_config = mock_config
+        with patch("webhook_processors.base_webhook_processor.ocean") as mock_ocean:
+            mock_config = MagicMock()
+            mock_config.get.return_value = secret
+            mock_ocean.integration_config = mock_config
 
-    #         proc = DummyProcessor(event)
-    #         assert await proc.authenticate({}, headers) is expected
+            proc = DummyProcessor(
+                WebhookEvent(trace_id="t-auth-2", payload=payload, headers={})
+            )
+            assert (
+                await proc.authenticate(
+                    payload, {"sentry-hook-signature": expected_sig}
+                )
+                is True
+            )
+
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            {},
+            {"sentry-hook-signature": "not-the-real-digest"},
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_authenticate_with_secret_rejects_missing_or_invalid_signature(
+        self, headers: dict[str, str]
+    ) -> None:
+        secret = "test-secret"
+        payload: EventPayload = {"action": "created", "data": {"issue": {"id": "1"}}}
+
+        with patch("webhook_processors.base_webhook_processor.ocean") as mock_ocean:
+            mock_config = MagicMock()
+            mock_config.get.return_value = secret
+            mock_ocean.integration_config = mock_config
+
+            proc = DummyProcessor(
+                WebhookEvent(trace_id="t-auth-3", payload=payload, headers=headers)
+            )
+            assert await proc.authenticate(payload, headers) is False
