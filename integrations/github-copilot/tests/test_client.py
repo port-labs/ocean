@@ -95,10 +95,10 @@ async def test_send_api_request_404_returns_empty(github_client: GitHubClient) -
 
 
 def test_resolve_route_params() -> None:
-    endpoint = "/orgs/{org}/teams/{team}/metrics"  # this endpoint is discontinued and jsut serves as a placeholder
-    params = {"org": "acme", "team": "devs"}
+    endpoint = "/orgs/{org}/copilot/metrics/users"
+    params = {"org": "acme"}
     result = GitHubClient._resolve_route_params(endpoint, params)
-    assert result == "/orgs/acme/teams/devs/metrics"
+    assert result == "/orgs/acme/copilot/metrics/users"
 
 
 @pytest.mark.asyncio
