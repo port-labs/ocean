@@ -107,12 +107,18 @@ class JiraClient(OAuthClient):
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
+        retryable: bool = False,
     ) -> Any:
         response: httpx.Response | None = None
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
-                    method=method, url=url, params=params, json=json, headers=headers
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json,
+                    headers=headers,
+                    extensions={"retryable": retryable} if retryable else None,
                 )
                 response.raise_for_status()
                 await self._rate_limiter.on_response(response)
@@ -371,7 +377,9 @@ class JiraClient(OAuthClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get paginated data via POST using token-based pagination for JQL endpoints."""
         while True:
-            response_data = await self._send_api_request("POST", url, json=body)
+            response_data = await self._send_api_request(
+                "POST", url, json=body, retryable=True
+            )
             items = response_data.get(extract_key, []) if extract_key else response_data
 
             if not items:
