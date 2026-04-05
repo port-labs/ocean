@@ -3,6 +3,7 @@ from functools import partial
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
 
 import anyio
+import httpx
 from loguru import logger
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
@@ -380,20 +381,31 @@ class GitLabClient:
         repositories: list[str] | None = None,
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         search_query = build_search_query(path)
         logger.info(f"Starting file search with path pattern: '{path}'")
 
+        semaphore = asyncio.BoundedSemaphore(max_concurrent)
         if repositories:
             logger.info(
                 f"Searching for {path} across {len(repositories)} specific repositories"
             )
-            for repo in repositories:
-                logger.debug(f"Processing repository: {repo}")
-                async for batch in self._search_files_in_repository(
-                    repo, scope, search_query, skip_parsing
-                ):
-                    yield batch
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    partial(
+                        self._search_files_in_repository,
+                        repo,
+                        scope,
+                        search_query,
+                        skip_parsing,
+                    ),
+                )
+                for repo in repositories
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
         else:
             logger.info(f"Searching for {path} across groups")
             async for top_level_groups in self.get_parent_groups(
@@ -403,13 +415,21 @@ class GitLabClient:
                     f"Found {len(top_level_groups)} top-level searchable groups"
                 )
 
-                for group in top_level_groups:
-                    group_id = str(group["id"])
-                    logger.debug(f"Processing group: {group_id}")
-                    async for batch in self._search_files_in_group(
-                        group_id, scope, search_query, skip_parsing
-                    ):
-                        yield batch
+                tasks = [
+                    semaphore_async_iterator(
+                        semaphore,
+                        partial(
+                            self._search_files_in_group,
+                            str(group["id"]),
+                            scope,
+                            search_query,
+                            skip_parsing,
+                        ),
+                    )
+                    for group in top_level_groups
+                ]
+                async for batch in stream_async_iterators_tasks(*tasks):
+                    yield batch
 
     async def search_files_in_projects(
         self,
@@ -417,6 +437,7 @@ class GitLabClient:
         path: str,
         skip_parsing: bool = False,
         params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Search for files across all accessible projects.
 
@@ -429,13 +450,23 @@ class GitLabClient:
         logger.info(
             f"Starting project-level file search with path pattern: '{path}' using params: {params}"
         )
+        semaphore = asyncio.BoundedSemaphore(max_concurrent)
         async for projects_batch in self.get_projects(params=params):
-            for project in projects_batch:
-                repo_path = project["path_with_namespace"]
-                async for batch in self._search_files_in_repository(
-                    repo_path, scope, search_query, skip_parsing
-                ):
-                    yield batch
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    partial(
+                        self._search_files_in_repository,
+                        project["path_with_namespace"],
+                        scope,
+                        search_query,
+                        skip_parsing,
+                    ),
+                )
+                for project in projects_batch
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
 
     async def get_repository_tree(
         self,
@@ -678,6 +709,34 @@ class GitLabClient:
             if processed_batch:
                 yield processed_batch
 
+    async def _search_files_in_group_projects(
+        self,
+        group_id: str,
+        scope: str,
+        query: str,
+        skip_parsing: bool = False,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        semaphore = asyncio.BoundedSemaphore(max_concurrent)
+        async for projects_batch in self.rest.get_paginated_group_resource(
+            group_id, "projects"
+        ):
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    partial(
+                        self._search_files_in_repository,
+                        project["path_with_namespace"],
+                        scope,
+                        query,
+                        skip_parsing,
+                    ),
+                )
+                for project in projects_batch
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+
     async def _search_files_in_group(
         self,
         group_id: str,
@@ -688,17 +747,38 @@ class GitLabClient:
         logger.debug(
             f"Starting search in group '{group_id}' for query '{query}' with scope '{scope}'"
         )
-        params = {"scope": scope, "search": query}
-        encoded_group = quote(group_id, safe="")
-        path = f"groups/{encoded_group}/search"
+        params = {"scope": scope, "search": query, "search_type": "advanced"}
+        path = f"groups/{quote(group_id, safe='')}/search"
 
-        async for file_batch in self.rest.get_paginated_resource(path, params=params):
-            logger.debug(f"Found {len(file_batch)} files in group '{group_id}'")
-            processed_batch = await self._process_file_batch(
-                file_batch, group_id, skip_parsing
+        try:
+            async for file_batch in self.rest.get_paginated_resource(
+                path, params=params
+            ):
+                logger.debug(f"Found {len(file_batch)} files in group '{group_id}'")
+                processed_batch = await self._process_file_batch(
+                    file_batch, group_id, skip_parsing
+                )
+                if processed_batch:
+                    yield processed_batch
+        except httpx.HTTPStatusError as e:
+            if not self._is_blob_search_unavailable(e):
+                raise
+            logger.warning(
+                f"Group search in group {group_id} failed: {e.response.json().get('message')}, "
+                f"falling back to project-level search for group's projects"
             )
-            if processed_batch:
-                yield processed_batch
+            async for batch in self._search_files_in_group_projects(
+                group_id, scope, query, skip_parsing
+            ):
+                yield batch
+
+    def _is_blob_search_unavailable(self, error: httpx.HTTPStatusError) -> bool:
+        if error.response.status_code != 400:
+            return False
+        message = error.response.json().get("message", "")
+        if isinstance(message, list):
+            message = " ".join(message)
+        return "Scope 'blobs' is not available for this search" in message
 
     async def _resolve_file_references(
         self, data: Union[dict[str, Any], list[Any], Any], project_id: str, ref: str
