@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.9 (2026-04-01)
+
+
+### Bug Fixes
+
+- Fixed Jira OAuth sync abort on 401 by marking JQL search POST requests as retryable so token refresh is triggered correctly without affecting non-idempotent POST operations like webhook creation
+
+
 ## 0.6.8 (2026-03-30)
 
 
