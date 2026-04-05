@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added an optional webhook secret support to `spec.yaml`
+- Added support for an optional webhook secret in `spec.yaml`
 
 
 ## 0.3.45 (2026-04-05)
