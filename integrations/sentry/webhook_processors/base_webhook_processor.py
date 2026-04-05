@@ -1,6 +1,8 @@
 import json
 import hmac
 import hashlib
+
+from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -26,7 +28,10 @@ class _SentryBaseWebhookProcessor(AbstractWebhookProcessor):
             "sentry_webhook_secret"
         )
         if not webhook_secret:
-            return False
+            logger.info(
+                "No secret configured for Sentry incoming webhooks. Accepting event without signature validation."
+            )
+            return True
 
         body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode(
             "utf-8"
