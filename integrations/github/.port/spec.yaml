@@ -115,10 +115,10 @@ installationDocs:
       docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=installation-method&s1=hosted-by-port#setup
   githubWorkflow:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=install&s1=ci-deployment#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=install&s1=ci-deployment&cicd-method=github#setup
   gitlabCI:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=install&s1=ci-deployment#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=install&s1=ci-deployment&cicd-method=gitlab#setup
   helm:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=prerequisites&s1=kubernetes#setup
