@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.8 (2026-04-06)
+
+
+### Improvements
+
+- Fix selector and kind propagation
+
+
 ## 0.5.7 (2026-04-06)
 
 
@@ -69,6 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Renamed `included files` to `Additional files`
+
 
 ## 0.4.47 (2026-03-24)
 
