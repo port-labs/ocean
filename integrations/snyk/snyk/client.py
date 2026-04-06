@@ -7,6 +7,7 @@ from httpx import URL, Timeout
 from loguru import logger
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
 from snyk.utils import enrich_batch_with_org
@@ -152,10 +153,21 @@ class SnykClient:
         logger.info(f"Fetching paginated issues for organization: {org['id']}")
         query_params = {"version": self.snyk_api_version}
 
-        async for issues in self._get_paginated_resources(
-            url_path=f"/orgs/{org['id']}/issues", query_params=query_params
-        ):
-            yield enrich_batch_with_org(issues, org)
+        async for projects in self.get_paginated_projects(org):
+            tasks = [
+                self._get_paginated_resources(
+                    url_path=f"/orgs/{org['id']}/issues",
+                    query_params={
+                        **query_params,
+                        "scan_item.id": project["id"],
+                        "scan_item.type": project["type"],
+                    },
+                )
+                for project in projects
+            ]
+
+            async for issues in stream_async_iterators_tasks(*tasks):
+                yield enrich_batch_with_org(issues, org)
 
     def _get_projects_by_target(
         self,
