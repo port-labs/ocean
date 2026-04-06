@@ -103,7 +103,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
     status_heartbeat_interval_seconds: int = Field(
-        default=30,  # Interval in seconds for sending metrics heartbeat (liveness).
+        default=10,  # Interval in seconds for sending metrics heartbeat (liveness).
         gt=0,
     )
     client_timeout: int = 60
