@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.5 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.6.4 (2026-04-05)
+
+
+### Improvements
+
+- Fall back to repository-level search when the `blobs` scope is unavailable for group search (e.g. when GitLab advanced search is not enabled)
+
+
+## 0.6.3 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
 ## 0.6.2 (2026-03-30)
 
 
