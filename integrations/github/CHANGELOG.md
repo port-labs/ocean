@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.2.13 (2026-04-06)
+
+
+### Bug fixes
+
+- Fixed spacing for file kind's descriptions
+
 ## 5.2.12 (2026-04-06)
 
 
