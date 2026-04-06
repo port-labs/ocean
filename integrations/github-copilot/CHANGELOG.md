@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-
 <!-- towncrier release notes start -->
 
 ## 0.3.0 (2026-04-06)
@@ -14,9 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Removed deprecated `copilot-team-metrics` and `copilot-organization-metrics` kinds following GitHub's legacy Copilot Metrics API shutdown on April 2, 2026
-- Removed associated blueprints, mappings, and default config entries for deprecated kinds
 - Updated `pages.json` dashboard to reference `githubCopilotOrganizationUsage` blueprint, removing widgets that depended on team-level metrics
 - Updated dashboard identifier from `copilot_metrics` to `copilot_usage_metrics`
+
+
+## 0.2.19 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
 
 
 ## 0.2.18 (2026-04-06)
