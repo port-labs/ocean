@@ -6,6 +6,7 @@ import pytest
 
 from http_server.handlers import (
     NextLinkPagination,
+    HeaderLinkPagination,
     get_pagination_handler,
     PAGINATION_HANDLERS,
 )
@@ -259,3 +260,199 @@ class TestPaginationHandlerRegistry:
             get_nested_value_fn=MagicMock(),
         )
         assert isinstance(handler, NonePagination)
+
+    def test_header_link_in_registry(self) -> None:
+        """Test that header_link pagination type is registered"""
+        assert "header_link" in PAGINATION_HANDLERS
+        assert PAGINATION_HANDLERS["header_link"] == HeaderLinkPagination
+
+    def test_get_pagination_handler_header_link(self) -> None:
+        """Test get_pagination_handler returns HeaderLinkPagination for header_link type"""
+        mock_client = MagicMock()
+        handler = get_pagination_handler(
+            pagination_type="header_link",
+            client=mock_client,
+            config={},
+            extract_items_fn=MagicMock(),
+            make_request_fn=MagicMock(),
+            get_nested_value_fn=MagicMock(),
+        )
+        assert isinstance(handler, HeaderLinkPagination)
+
+
+class TestHeaderLinkPagination:
+    """Test cases for HeaderLinkPagination handler"""
+
+    @pytest.fixture
+    def mock_client(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_extract_items(self) -> MagicMock:
+        return MagicMock(
+            side_effect=lambda data: data if isinstance(data, list) else [data]
+        )
+
+    @pytest.fixture
+    def mock_get_nested_value(self) -> MagicMock:
+        return MagicMock()
+
+    async def test_single_page_no_link_header(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """Test pagination stops when no Link header is present"""
+        response_data = [{"id": "1"}, {"id": "2"}]
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = response_data
+        mock_response.links = {}
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            return mock_response
+
+        handler = HeaderLinkPagination(
+            client=mock_client,
+            config={},
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.github.com/users/octocat/repos",
+            method="GET",
+            params={"per_page": "100"},
+            headers={},
+        ):
+            results.append(batch)
+
+        assert len(results) == 1
+        assert results[0] == [response_data]
+
+    async def test_multiple_pages_with_link_header(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """Test pagination follows Link header through multiple pages"""
+        page1 = [{"id": "1"}, {"id": "2"}]
+        page2 = [{"id": "3"}, {"id": "4"}]
+        page3 = [{"id": "5"}]
+
+        responses = [
+            (page1, {"next": {"url": "https://api.github.com/repos?page=2"}}),
+            (page2, {"next": {"url": "https://api.github.com/repos?page=3"}}),
+            (page3, {}),
+        ]
+        response_index = 0
+        captured_urls: List[str] = []
+        captured_params: List[Optional[Dict[str, Any]]] = []
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            nonlocal response_index
+            captured_urls.append(url)
+            captured_params.append(params)
+            data, links = responses[response_index]
+            mock_response = MagicMock()
+            mock_response.json.return_value = data
+            mock_response.links = links
+            response_index += 1
+            return mock_response
+
+        handler = HeaderLinkPagination(
+            client=mock_client,
+            config={},
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.github.com/users/octocat/repos",
+            method="GET",
+            params={"per_page": "100"},
+            headers={},
+        ):
+            results.append(batch)
+
+        assert len(results) == 3
+        assert results[0] == [page1]
+        assert results[1] == [page2]
+        assert results[2] == [page3]
+
+        assert captured_urls[0] == "https://api.github.com/users/octocat/repos"
+        assert captured_params[0] == {"per_page": "100"}
+
+        assert captured_urls[1] == "https://api.github.com/repos?page=2"
+        assert captured_params[1] is None
+
+        assert captured_urls[2] == "https://api.github.com/repos?page=3"
+        assert captured_params[2] is None
+
+    async def test_custom_rel_value(
+        self,
+        mock_client: MagicMock,
+        mock_extract_items: MagicMock,
+        mock_get_nested_value: MagicMock,
+    ) -> None:
+        """Test pagination with custom rel value from config"""
+        page1 = [{"id": "1"}]
+        page2 = [{"id": "2"}]
+
+        responses = [
+            (page1, {"nextPage": {"url": "https://api.example.com/items?page=2"}}),
+            (page2, {}),
+        ]
+        response_index = 0
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: Optional[Dict[str, Any]],
+            headers: Dict[str, str],
+            body: Optional[Dict[str, Any]] = None,
+        ) -> MagicMock:
+            nonlocal response_index
+            data, links = responses[response_index]
+            mock_response = MagicMock()
+            mock_response.json.return_value = data
+            mock_response.links = links
+            response_index += 1
+            return mock_response
+
+        handler = HeaderLinkPagination(
+            client=mock_client,
+            config={"header_link_rel": "nextPage"},
+            extract_items_fn=mock_extract_items,
+            make_request_fn=mock_make_request,
+            get_nested_value_fn=mock_get_nested_value,
+        )
+
+        results: List[List[Dict[str, Any]]] = []
+        async for batch in handler.fetch_all(
+            url="https://api.example.com/items",
+            method="GET",
+            params={},
+            headers={},
+        ):
+            results.append(batch)
+
+        assert len(results) == 2

@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -489,7 +490,7 @@ class TestGitLabClient:
         assert result[1]["enriched"] is True
 
     async def test_search_files_in_repos(self, client: GitLabClient) -> None:
-        """Test file search in specific repositories using scope and query via _search_in_repository"""
+        """Test file search in specific repositories using scope and query via _search_files_in_repository"""
         processed_files = [
             {"path": "test.json", "project_id": "123", "content": {"key": "value"}}
         ]
@@ -517,7 +518,7 @@ class TestGitLabClient:
                 )
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
-        """Test file search across all groups using scope and query with config parameters"""
+        """Test file search across all groups — search_files calls get_parent_groups (which calls get_groups) and params are forwarded"""
         mock_groups = [{"id": "1", "name": "Group1"}]
         processed_files = [
             {"path": "test.yaml", "project_id": "123", "content": {"key": "value"}}
@@ -557,6 +558,61 @@ class TestGitLabClient:
                     mock_search_group.assert_called_once_with(
                         "1", "blobs", "test.yaml filename:test.yaml", False
                     )
+
+    async def test_search_files_in_group_blobs_scope_unavailable(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that _search_files_in_group falls back to _search_files_in_group_projects when blobs scope is unavailable (400 error)"""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "message": "400 Bad request - Scope 'blobs' is not available for this search"
+        }
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            side_effect=error,
+        ):
+            with patch.object(
+                client,
+                "_search_files_in_group_projects",
+                return_value=async_mock_generator([]),
+            ):
+                results = []
+                async for batch in client._search_files_in_group(
+                    "my-group", "blobs", "test.json"
+                ):
+                    results.extend(batch)
+
+        assert results == []
+
+    async def test_search_files_in_group_other_400_raises(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that _search_files_in_group re-raises 400 errors unrelated to blobs scope"""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {
+            "message": "400 Bad request - Some other error"
+        }
+        error = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            side_effect=error,
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client._search_files_in_group(
+                    "my-group", "blobs", "test.json"
+                ):
+                    pass
 
     async def test_get_file_content(self, client: GitLabClient) -> None:
         """Test fetching file content via REST"""
