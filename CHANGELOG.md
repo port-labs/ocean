@@ -6,11 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.38.28 (2026-03-31)
+## 0.40.1 (2026-04-06)
 
-### Features
+### Bug Fixes
 
-- Metrics heartbeat: while a sync has an active metrics `eventId`, Ocean periodically `PUT`s to the ingest URL `/heartbeat` so Port can track live sync progress. Configurable via `status_heartbeat_interval_seconds` (default 10).
+- Added `User-Agent` configuration for the Port's `/auth/access_token` route
+
+## 0.40.0 (2026-04-06)
+
+### Bug Fixes
+
+- Fixed retry behavior for chunked/unknown-length HTTP responses where a transient `httpx.RemoteProtocolError` could occur during body reads (e.g. “incomplete chunked read”) outside the retry loop, aborting resync instead of retrying. Added unit test coverage for this scenario.
+
+## 0.39.1 (2026-04-05)
+
+### Bug Fixes
+
+- Fixed `UnboundLocalError` in `event_context` when `EmptyPortAppConfigError` is raised: `success` is now set in that handler so the `finally` block can log “Event finished” without masking the original error.
+
+
+## 0.39.0 (2026-04-05)
+
+### Improvements
+
+- Normalize JQ input data to JSON-compatible types only when needed (fallback on “not JSON serializable” errors), preventing transform failures from `date`/`datetime` values.
+
 
 ## 0.38.27 (2026-03-30)
 
