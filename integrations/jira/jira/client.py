@@ -93,11 +93,23 @@ class JiraClient(OAuthClient):
 
     def _get_bearer(self) -> BearerAuth:
         try:
-            return BearerAuth(self.external_access_token)
+            bearer_auth = BearerAuth(self.external_access_token)
+            logger.debug(
+                "Using external OAuth access token from configured token file for Jira API auth"
+            )
+            return bearer_auth
         except ValueError:
+            logger.warning(
+                "OAuth token file was not available; falling back to configured Jira token for bearer auth"
+            )
             return BearerAuth(self.jira_token)
 
     def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
+        logger.debug(
+            "Refreshing Jira request auth credentials before retry",
+            method=request.method,
+            url=str(request.url),
+        )
         return next(self._get_bearer().auth_flow(request))
 
     async def _send_api_request(
