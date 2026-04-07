@@ -683,6 +683,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     self._log_error(request, error)
                     raise
             if _ON_RETRY_CALLBACK:
+                if self._logger:
+                    self._logger.debug(
+                        f"Applying retry auth callback before async retry for {request.method} {request.url}"
+                    )
                 request = _ON_RETRY_CALLBACK(request)
             attempts_made += 1
             remaining_attempts -= 1
@@ -745,6 +749,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     self._log_error(request, error)
                     raise
             if _ON_RETRY_CALLBACK:
+                if self._logger:
+                    self._logger.debug(
+                        f"Applying retry auth callback before retry for {request.method} {request.url}"
+                    )
                 request = _ON_RETRY_CALLBACK(request)
             attempts_made += 1
             remaining_attempts -= 1
