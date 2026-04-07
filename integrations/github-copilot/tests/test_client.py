@@ -1,5 +1,6 @@
 import pytest
 import httpx
+from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, patch, MagicMock
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -320,3 +321,117 @@ async def test_fetch_report_from_signed_url_parses_ndjson(
     ):
         result = await github_client._fetch_report_from_signed_url(signed_url)
         assert result == expected
+
+
+@pytest.mark.asyncio
+async def test_get_users_usage_metrics_returns_batches_from_signed_urls(
+    github_client: GitHubClient,
+) -> None:
+    organization = {"login": "acme-corp-test-org"}
+    manifest_response = MagicMock()
+    manifest_response.status_code = 200
+    manifest_response.json.return_value = {
+        "download_links": [
+            "https://signed.example.com/users-report-1.ndjson",
+            "https://signed.example.com/users-report-2.ndjson",
+        ],
+        "report_start_day": "2026-03-01",
+        "report_end_day": "2026-03-28",
+    }
+
+    fetch_report_mock = AsyncMock(
+        side_effect=[
+            [
+                {
+                    "day": "2026-03-12",
+                    "organization_id": "1234567890",
+                    "user_login": "bob",
+                    "code_generation_activity_count": 19,
+                    "code_acceptance_activity_count": 8,
+                }
+            ],
+            [
+                {
+                    "day": "2026-03-12",
+                    "organization_id": "1234567890",
+                    "user_login": "alice",
+                    "code_generation_activity_count": 11,
+                    "code_acceptance_activity_count": 5,
+                }
+            ],
+        ]
+    )
+
+    with (
+        patch.object(
+            github_client,
+            "_send_api_request",
+            new=AsyncMock(return_value=manifest_response),
+        ),
+        patch.object(
+            github_client, "_fetch_report_from_signed_url", new=fetch_report_mock
+        ),
+    ):
+        result = [
+            batch
+            async for batch in github_client._get_users_usage_metrics(organization)
+        ]
+
+    assert result == [
+        [
+            {
+                "day": "2026-03-12",
+                "organization_id": "1234567890",
+                "user_login": "bob",
+                "code_generation_activity_count": 19,
+                "code_acceptance_activity_count": 8,
+            }
+        ],
+        [
+            {
+                "day": "2026-03-12",
+                "organization_id": "1234567890",
+                "user_login": "alice",
+                "code_generation_activity_count": 11,
+                "code_acceptance_activity_count": 5,
+            }
+        ],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_users_usage_metrics_enriches_records_across_org_batches(
+    github_client: GitHubClient,
+) -> None:
+    org_a = {"login": "acme-a", "id": 1}
+    org_b = {"login": "acme-b", "id": 2}
+    org_c = {"login": "acme-c", "id": 3}
+
+    async def organizations_generator() -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield [org_a, org_b]
+        yield [org_c]
+
+    async def users_usage_generator(
+        organization: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if organization["login"] == "acme-a":
+            yield [{"user_login": "alice", "day": "2026-03-12"}]
+            return
+        if organization["login"] == "acme-b":
+            yield [{"user_login": "bob", "day": "2026-03-12"}]
+            return
+        yield [{"user_login": "charlie", "day": "2026-03-12"}]
+
+    with (
+        patch.object(github_client, "get_organizations", new=organizations_generator),
+        patch.object(
+            github_client, "_get_users_usage_metrics", new=users_usage_generator
+        ),
+    ):
+        result = [batch async for batch in github_client.fetch_users_usage_metrics()]
+
+    assert result == [
+        [{"user_login": "alice", "day": "2026-03-12", "__organization": org_a}],
+        [{"user_login": "bob", "day": "2026-03-12", "__organization": org_b}],
+        [{"user_login": "charlie", "day": "2026-03-12", "__organization": org_c}],
+    ]

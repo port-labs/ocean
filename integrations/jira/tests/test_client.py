@@ -166,6 +166,7 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
             "POST",
             f"{mock_jira_client.api_url}/search/jql",
             json={"jql": "project = TEST", "maxResults": PAGE_SIZE},
+            retryable=True,
         )
 
 
@@ -214,6 +215,7 @@ async def test_get_paginated_issues_without_jql_param(
             "POST",
             f"{mock_jira_client.api_url}/search/jql",
             json={"jql": default_jql, "maxResults": PAGE_SIZE},
+            retryable=True,
         )
 
 
@@ -241,6 +243,7 @@ async def test_get_paginated_issues_with_empty_jql(
             "POST",
             f"{mock_jira_client.api_url}/search/jql",
             json={"jql": custom_jql, "maxResults": PAGE_SIZE},
+            retryable=True,
         )
 
 
@@ -519,6 +522,7 @@ async def test_get_paginated_issues_with_reconcile(
                 "reconcileIssues": [10001],
                 "maxResults": 1,
             },
+            retryable=True,
         )
         assert len(issues) == 1
         assert issues[0]["key"] == "TEST-1"
@@ -631,3 +635,25 @@ def test_jira_issue_selector_default_jql() -> None:
     assert (
         selector.fields == "*all"
     ), f"Expected default fields to be '*all', but got '{selector.fields}'"
+
+
+@pytest.mark.asyncio
+async def test_jql_search_post_request_is_marked_retryable(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"issues": []}
+
+        async for _ in mock_jira_client.get_paginated_issues(
+            params={"jql": "project = TEST"}
+        ):
+            pass
+
+        mock_request.assert_called_once_with(
+            "POST",
+            f"{mock_jira_client.api_url}/search/jql",
+            json={"jql": "project = TEST", "maxResults": PAGE_SIZE},
+            retryable=True,
+        )

@@ -55,7 +55,7 @@ class IncludedFilesConfig(BaseModel):
         title="Attached Files",
         alias="includedFiles",
         default_factory=list,
-        description="File paths to fetch and attach to the folder entity.",
+        description='File paths to fetch and attach to the raw data under `__includedFiles`. E.g. ["README.md", "CODEOWNERS"]',
     )
 
     class Config:
@@ -152,11 +152,10 @@ class GithubFilePattern(RepositorySourceModel):
 class GithubFileSelector(Selector, IncludedFilesConfig):
     files: list[GithubFilePattern] = Field(
         title="File sync patterns",
-        description="""Array of files to retrieve. Each cell can include:
-* <b>Path</b> - files path, supports glob pattern.
-Example: "**/package.json"
-* <b>Organization</b> - GitHub org to scan
-* <b>Repos</b> - array of repositories used to fetch files from. Each repo includes name and branch.
+        description="""Array of files to retrieve. Each cell can include:<br/>
+• <b>Path</b> - files path, supports glob pattern. Example: "**/package.json"<br/>
+• <b>Organization</b> - GitHub org to scan<br/>
+• <b>Repos</b> - array of repositories used to fetch files from. Each repo includes name and branch.<br/>
 For more information, see <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#files-and-file-contents'>Our docs</a>.""",
     )
     included_files: list[str] = Field(

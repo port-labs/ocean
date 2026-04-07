@@ -7,10 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-<<<<<<< task_tboeio/otka_selector_propagation
 
-## 0.1.87 (2026-03-23)
-=======
+## 0.1.95 (2026-04-07)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions and introduced OktaGroupResourceConfig
+- Removed bare ResourceConfig from the union
+- Added title metadata to all selector fields in OktaUserSelector
+- Added resource metadata in OktaAppConfig for schema validation compliance.
+
+
+## 0.1.94 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.1.93 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.1.92 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.1.91 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.1.90 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 0.1.89 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
 ## 0.1.88 (2026-03-25)
 
 
@@ -20,19 +76,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.87 (2026-03-24)
->>>>>>> main
 
 
 ### Improvements
 
-<<<<<<< task_tboeio/otka_selector_propagation
-- Added explicit Literal kind definitions and introduced OktaGroupResourceConfig
-- Removed bare ResourceConfig from the union
-- Added title metadata to all selector fields in OktaUserSelector
-- Added resource metadata in OktaAppConfig for schema validation compliance.
-=======
 - Bumped ocean version to ^0.38.23
->>>>>>> main
 
 
 ## 0.1.86 (2026-03-22)
