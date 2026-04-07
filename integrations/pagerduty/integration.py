@@ -395,7 +395,7 @@ class PagerdutyEscalationPolicyResourceConfig(ResourceConfig):
 class CustomResourceConfig(ResourceConfig):
     kind: str = Field(
         title="Custom Kind",
-        description="Use this to map additional PagerDuty resources by setting the kind name to any PagerDuty entity that has a GET List <resource name> endpoint in the <a target='_blank' href='https://developer.pagerduty.com/api-reference/e65c5833eeb07-pager-duty-api'>PagerDuty API</a>.\n\nExample: teams",
+        description="Use this to map additional PagerDuty resources by setting the kind name to any PagerDuty entity that has a GET List \\<resource name\\> endpoint in the <a target='_blank' href='https://developer.pagerduty.com/api-reference/e65c5833eeb07-pager-duty-api'>PagerDuty API</a>.\n\nExample: teams",
     )
 
 
