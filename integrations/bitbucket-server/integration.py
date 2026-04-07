@@ -62,8 +62,12 @@ class BitbucketRepositoryResourceConfig(ResourceConfig):
     )
 
 
+class BitbucketUserSelector(Selector):
+    pass
+
+
 class BitbucketUserResourceConfig(ResourceConfig):
-    selector: BitbucketGenericSelector = Field(
+    selector: BitbucketUserSelector = Field(
         title="User Selector",
         description="Selector for the Bitbucket user resource.",
     )
