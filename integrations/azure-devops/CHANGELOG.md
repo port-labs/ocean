@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.9 (2026-04-06)
+
+
+### Improvements
+
+- Added title/description metadata to AzureDevopsFolderSelector, AzureDevopsFolderResourceConfig, and AzureDevopsReleaseDeploymentConfig for schema validation compliance
+
+
 ## 0.8.8 (2026-04-06)
 
 
