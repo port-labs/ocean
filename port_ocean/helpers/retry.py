@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import random
 import time
 from datetime import datetime
@@ -114,7 +115,11 @@ class RetryConfig:
 
         # Combine defaults with additional codes for extensibility
         self.retry_status_codes = default_status_codes | additional_codes
-        self.retry_after_headers = retry_after_headers or ["Retry-After"]
+        # Always include the Port rate-limit headers regardless of what the caller passes.
+        # Merge preserving caller order, appending any missing required headers at the end.
+        required_headers = ["Retry-After", "x-ratelimit-reset"]
+        base = list(retry_after_headers) if retry_after_headers else required_headers[:]
+        self.retry_after_headers = base + [h for h in required_headers if h not in base]
 
         self.ignore_retry_after_status_codes = (
             frozenset(ignore_retry_after_status_codes)
@@ -172,6 +177,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         retry_status_codes: Iterable[int] | None = None,
         retry_config: Optional[RetryConfig] = None,
         logger: Any | None = None,
+        retry_after_headers: Optional[List[str]] = None,
     ) -> None:
         """
         Initializes the instance of RetryTransport class with the given parameters.
@@ -219,6 +225,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 respect_retry_after_header=respect_retry_after_header,
                 retryable_methods=retryable_methods,
                 retry_status_codes=retry_status_codes,
+                retry_after_headers=retry_after_headers,
             )
 
         self._logger = logger
@@ -415,6 +422,33 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
     def _should_log_response_size(self, request: httpx.Request) -> bool:
         return self._logger is not None and not request.url.host.endswith("port.io")
 
+    def _is_streaming_enabled(self) -> bool:
+        """
+        Best-effort check for streaming mode.
+
+        In some test contexts we initialize the global Ocean context with a spec'd Mock
+        that may not provide `config`. When config isn't available, we default to
+        streaming enabled (i.e., avoid prefetching/reading response bodies).
+        """
+        try:
+            return bool(ocean.config.streaming.enabled)
+        except Exception:
+            return True
+
+    def _should_prefetch_body_for_retry(
+        self, request: httpx.Request, response: httpx.Response
+    ) -> bool:
+        # Only relevant when we're not streaming and the server doesn't provide Content-Length
+        # (common for chunked transfer encoding). In that case, mid-stream disconnects can raise
+        # during body reads (e.g. "incomplete chunked read"). Prefetching inside the retry loop
+        # ensures such failures are retried for retryable methods.
+        if self._is_streaming_enabled():
+            return False
+        return not (
+            response.headers.get("Content-Length")
+            or response.headers.get("content-length")
+        )
+
     async def _get_content_length_async(self, response: httpx.Response) -> int:
         """Get the size of the response body."""
         content_length = response.headers.get("Content-Length") or response.headers.get(
@@ -423,9 +457,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         if content_length:
             return int(content_length)
 
-        if not ocean.config.streaming.enabled:
-            length = len(await response.aread())
-            return length
+        if not self._is_streaming_enabled():
+            try:
+                return len(await response.aread())
+            except httpx.HTTPError:
+                return 0
 
         if (
             hasattr(response, "num_bytes_downloaded")
@@ -443,9 +479,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         if content_length:
             return int(content_length)
 
-        if not ocean.config.streaming.enabled:
-            length = len(response.read())
-            return length
+        if not self._is_streaming_enabled():
+            try:
+                return len(response.read())
+            except httpx.HTTPError:
+                return 0
 
         if (
             hasattr(response, "num_bytes_downloaded")
@@ -615,6 +653,13 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if remaining_attempts < 1 or not (
                     await self._should_retry_async(response)
                 ):
+                    if self._should_prefetch_body_for_retry(request, response):
+                        try:
+                            await response.aread()
+                        except httpx.HTTPError:
+                            with contextlib.suppress(Exception):
+                                await response.aclose()
+                            raise
                     return response
                 await response.aclose()
             except httpx.ConnectTimeout as e:
@@ -675,6 +720,13 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response.request = request
                 self._after_retry(request, response, attempts_made + 1)
                 if remaining_attempts < 1 or not self._should_retry(response):
+                    if self._should_prefetch_body_for_retry(request, response):
+                        try:
+                            response.read()
+                        except httpx.HTTPError:
+                            with contextlib.suppress(Exception):
+                                response.close()
+                            raise
                     return response
                 response.close()
             except httpx.ConnectTimeout as e:

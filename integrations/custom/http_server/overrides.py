@@ -107,7 +107,7 @@ class HttpServerResourceConfig(ResourceConfig):
     )
     kind: str = Field(
         title="Custom Kind",
-        description="Endpoint path (e.g., '/api/v1/users', '/api/conversations.list')",
+        description="Use this to map a custom API endpoint by setting the kind name to the endpoint path without the base URL.\n\nExample:  /api/v1/users",
     )
 
 

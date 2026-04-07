@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.314 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+0.1.313 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+0.1.312 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+0.1.311 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+0.1.310 (2026-04-05)
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+0.1.309 (2026-03-31)
+
+
+### Bug Fixes
+
+- Bumped `aiohttp` to `^3.13.4`, `azure-identity` to `^1.25.0`, and added `azure-core` `^1.39.0` to resolve security vulnerabilities in `aiohttp` and `azure-core`
+
+
+0.1.308 (2026-03-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+0.1.307 (2026-03-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+0.1.306 (2026-03-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+0.1.305 (2026-03-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+0.1.304 (2026-03-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
 0.1.303 (2026-03-17)
 
 ### Improvements

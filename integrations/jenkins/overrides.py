@@ -18,7 +18,6 @@ class JenkinsBuildSelector(Selector):
         default=100,
         title="Max Builds Per Job",
         description="Number of builds to fetch. Defaults to 100",
-        required=False,
     )
 
 
@@ -31,7 +30,6 @@ class JenkinsStageSelector(Selector):
         alias="jobUrl",
         title="Job URL",
         description="The URL of the Jenkins job to fetch stages for.",
-        required=True,
     )
 
 
