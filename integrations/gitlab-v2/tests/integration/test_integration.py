@@ -5,6 +5,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
     WebhookEvent,
 )
+from port_ocean.core.handlers.port_app_config.validators import (
+    validate_and_get_config_schema,
+)
+from integration import GitlabPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from integration import (
     GitlabIntegration,
@@ -80,3 +84,29 @@ async def test_gitlab_webhook_manager_uses_gitmanipulation_handler(
         # Assert
         assert isinstance(manager, GitlabLiveEventsProcessorManager)
         assert manager.EntityProcessorClass == GitManipulationHandler
+
+
+def test_gitlab_port_app_config_schema_generation_includes_all_resource_kinds() -> None:
+    """Validates that schema generation succeeds and all supported resource kinds are present."""
+    schema = validate_and_get_config_schema(GitlabPortAppConfig)
+
+    assert schema, "Expected a non-empty schema for GitlabPortAppConfig"
+
+    schema_str = str(schema)
+    expected_kinds = {
+        "project",
+        "group",
+        "issue",
+        "group-with-members",
+        "member",
+        "folder",
+        "file",
+        "merge-request",
+        "tag",
+        "release",
+        "pipeline",
+        "job",
+    }
+
+    missing_kinds = {kind for kind in expected_kinds if kind not in schema_str}
+    assert not missing_kinds, f"Missing resource kinds in schema: {missing_kinds}"
