@@ -5,7 +5,7 @@ from utils.misc import (
     CustomProperties,
     AsyncPaginator,
     OPT_IN_REGIONS,
-    is_resource_type_not_available_exception,
+    is_region_not_supported_exception,
 )
 from utils.resources import (
     resync_custom_kind,
@@ -123,7 +123,7 @@ async def test_resync_cloudcontrol_skips_unavailable_resource_type(
                 use_get_resource_api=False,
             ):
                 results.append(result)
-        assert is_resource_type_not_available_exception(exc_info.value)
+        assert is_region_not_supported_exception(exc_info.value, "us-east-1")
         assert results == []
 
 

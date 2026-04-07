@@ -6,17 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-## 0.5.29 (2026-03-27)
+## 0.5.30 (2026-04-01)
 
 
 ### Improvements
 
 - Add static examples for Pagerduty
 
-### Bug Fixes
 
-- Fix selector and kind propagation
+## 0.5.29 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
 
 
 ## 0.5.28 (2026-03-25)
