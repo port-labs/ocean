@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.6.15 (2026-04-07)
 
+
 ### Improvements
 
 - Enhanced logging to provide clearer and more detailed insights into OAUTH processes
