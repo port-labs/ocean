@@ -407,7 +407,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     @TimeMetric(MetricPhase.RESYNC)
     async def _register_in_batches(
-        self, resource_config: ResourceConfig, user_agent_type: UserAgentType
+        self, resource_config: ResourceConfig, user_agent_type: UserAgentType, index: int
     ) -> tuple[list[Entity], list[Exception]]:
         with logger.contextualize(etl_phase=ETLPhase.EXTRACT):
             logger.info("Starting extract phase")
@@ -424,7 +424,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             if lakehouse_data_enabled and raw_results:
                 await ocean.port_client.post_integration_raw_data(
-                    raw_results, event.id, resource_config.kind, data_type="resync"
+                    raw_results, event.id, resource_config.kind, data_type="resync", index=index
                 )
 
             logger.info(
@@ -467,7 +467,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     batch_index += 1
                     if lakehouse_data_enabled:
                         await ocean.port_client.post_integration_raw_data(
-                            items, event.id, resource_config.kind, data_type="resync"
+                            items, event.id, resource_config.kind, data_type="resync", index=index
                         )
                     number_of_raw_results += len(items)
                     if send_raw_data_examples_amount > 0:
@@ -792,7 +792,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
             task = asyncio.create_task(
-                self._register_in_batches(resource, user_agent_type)
+                self._register_in_batches(resource, user_agent_type, index)
             )
             event.on_abort(lambda: task.cancel())
 
