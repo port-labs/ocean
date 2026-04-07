@@ -76,6 +76,10 @@
         "total_copilot_applied_suggestions": {
           "type": "number",
           "title": "Total Suggestions Applied By Copilot"
+        },
+        "acceptance_rate_score": {
+          "type": "number",
+          "title": "Acceptance Rate Score"
         }
       },
       "required": []

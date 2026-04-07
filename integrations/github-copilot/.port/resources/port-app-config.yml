@@ -26,6 +26,11 @@ resources:
             prs_reviewed_by_copilot: .pull_requests.total_reviewed_by_copilot
             prs_merged_by_copilot: .pull_requests.total_merged_created_by_copilot
             total_copilot_applied_suggestions: .pull_requests.total_copilot_applied_suggestions
+            git_hub_org: .__organization.login
+            acceptance_rate_score: >-
+              if .code_generation_activity_count == 0 then 0
+              else ((.code_acceptance_activity_count / .code_generation_activity_count) * 100 | round)
+              end
   - kind: user-usage-metrics
     selector:
       query: 'true'
