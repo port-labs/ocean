@@ -30,17 +30,8 @@
             "description": "",
             "title": "Average acceptance rate",
             "chartType": "aggregateByProperty",
-            "dataset": {
-              "combinator": "and",
-              "rules": [
-                {
-                  "operator": "=",
-                  "value": "githubCopilotOrganizationUsage",
-                  "property": "$blueprint"
-                }
-              ]
-            },
-            "property": "acceptance_rate_score",
+            "dataset": [],
+            "property": "acceptance_rate",
             "func": "median",
             "unitAlignment": "right",
             "unit": "%",
