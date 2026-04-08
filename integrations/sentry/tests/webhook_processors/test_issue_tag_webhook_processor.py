@@ -42,8 +42,8 @@ class TestSentryIssueTagWebhookProcessor:
             trace_id="t1",
             payload={"action": "created", "data": {"issue": {"id": "12345"}}},
             headers={
-                "sentry-hook-signature": "test-signature",
                 "sentry-hook-resource": "issue",
+                "sentry-hook-signature": "test-signature",
             },
         )
         processor = SentryIssueTagWebhookProcessor(event)
