@@ -38,7 +38,7 @@ class ArgocdApplicationWebhookProcessor(AbstractWebhookProcessor):
         application_name = payload["application_name"]
         namespace = payload.get("application_namespace")
         query_params = self._resolve_query_params(resource_config, namespace)
-        if not query_params:
+        if query_params is None:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )

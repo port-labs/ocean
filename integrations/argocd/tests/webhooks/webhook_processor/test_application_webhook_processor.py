@@ -65,7 +65,7 @@ class TestArgocdApplicationWebhookProcessor:
         assert result.deleted_raw_results == []
 
     @pytest.mark.asyncio
-    async def test_handle_event_without_selector_query_params_skips_processing(
+    async def test_handle_event_without_selector_query_params_continues_processing(
         self,
     ) -> None:
         processor = self._create_processor()
@@ -82,8 +82,11 @@ class TestArgocdApplicationWebhookProcessor:
         ):
             result = await processor.handle_event(payload, resource_config)
 
-        mock_client.get_application_by_name.assert_not_called()
-        assert result.updated_raw_results == []
+        mock_client.get_application_by_name.assert_called_once_with(
+            "test-app",
+            params={},
+        )
+        assert result.updated_raw_results == [application]
         assert result.deleted_raw_results == []
 
     @pytest.mark.asyncio
