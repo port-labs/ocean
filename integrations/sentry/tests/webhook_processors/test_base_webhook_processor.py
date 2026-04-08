@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 from typing import Generator
 import hashlib
 import hmac
@@ -31,27 +31,6 @@ class DummyProcessor(_SentryBaseWebhookProcessor):
         raise NotImplementedError
 
 
-def _make_request(body: bytes, headers: dict[str, str] | None = None) -> Mock:
-    """Create a mock FastAPI Request with the given body and headers."""
-    mock_request = Mock()
-    mock_request.headers = headers or {}
-    mock_request.body = AsyncMock(return_value=body)
-    return mock_request
-
-
-def _make_event(
-    payload: EventPayload,
-    headers: dict[str, str] | None = None,
-    original_request: Mock | None = None,
-) -> WebhookEvent:
-    return WebhookEvent(
-        trace_id="t1",
-        payload=payload,
-        headers=headers or {},
-        original_request=original_request,
-    )
-
-
 VALID_PAYLOAD: EventPayload = {
     "action": "created",
     "data": {"issue": {"id": "1"}},
@@ -80,136 +59,128 @@ def mock_ocean_with_secret() -> Generator[MagicMock, None, None]:
 
 @pytest.mark.asyncio
 class TestSentryBaseWebhookProcessor:
-    async def test_authenticate_always_returns_true(self) -> None:
-        event = _make_event(VALID_PAYLOAD)
+    # -- should_process_event --
+
+    async def test_should_process_event_accepts_valid_event(self) -> None:
+        event = WebhookEvent(
+            trace_id="t1",
+            payload=VALID_PAYLOAD,
+            headers={
+                "sentry-hook-signature": "test-signature",
+                "sentry-hook-resource": "issue",
+            },
+        )
         proc = DummyProcessor(event)
+        assert await proc.should_process_event(event) is True
+
+    async def test_should_process_event_rejects_missing_signature(self) -> None:
+        event = WebhookEvent(
+            trace_id="t2",
+            payload=VALID_PAYLOAD,
+            headers={"sentry-hook-resource": "issue"},
+        )
+        proc = DummyProcessor(event)
+        assert await proc.should_process_event(event) is False
+
+    async def test_should_process_event_rejects_non_issue_resource(self) -> None:
+        event = WebhookEvent(
+            trace_id="t3",
+            payload=VALID_PAYLOAD,
+            headers={
+                "sentry-hook-signature": "test-signature",
+                "sentry-hook-resource": "error",
+            },
+        )
+        proc = DummyProcessor(event)
+        assert await proc.should_process_event(event) is False
+
+    async def test_should_process_event_rejects_unknown_action(self) -> None:
+        event = WebhookEvent(
+            trace_id="t4",
+            payload={"action": "unknown_action"},
+            headers={
+                "sentry-hook-signature": "test-signature",
+                "sentry-hook-resource": "issue",
+            },
+        )
+        proc = DummyProcessor(event)
+        assert await proc.should_process_event(event) is False
+
+    # -- authenticate --
+
+    async def test_authenticate_no_secret_accepts(
+        self, mock_ocean_no_secret: MagicMock
+    ) -> None:
+        """No secret configured — skip verification."""
+        proc = DummyProcessor(
+            WebhookEvent(trace_id="t-auth-1", payload={}, headers={})
+        )
         assert await proc.authenticate(VALID_PAYLOAD, {}) is True
 
-    async def test_should_process_event_rejects_without_original_request(
+    async def test_authenticate_no_secret_accepts_with_signature(
         self, mock_ocean_no_secret: MagicMock
     ) -> None:
-        event = _make_event(
-            VALID_PAYLOAD,
-            headers={"sentry-hook-resource": "issue"},
+        """No secret configured — skip verification even if signature is present."""
+        proc = DummyProcessor(
+            WebhookEvent(trace_id="t-auth-2", payload={}, headers={})
         )
-        proc = DummyProcessor(event)
-        assert await proc.should_process_event(event) is False
-
-    async def test_should_process_event_rejects_non_issue_resource(
-        self, mock_ocean_no_secret: MagicMock
-    ) -> None:
-        request = _make_request(b"{}")
-        event = _make_event(
-            VALID_PAYLOAD,
-            headers={"sentry-hook-resource": "error"},
-            original_request=request,
+        assert (
+            await proc.authenticate(
+                VALID_PAYLOAD, {"sentry-hook-signature": "some-sig"}
+            )
+            is True
         )
-        proc = DummyProcessor(event)
-        assert await proc.should_process_event(event) is False
 
-    async def test_should_process_event_rejects_unknown_action(
-        self, mock_ocean_no_secret: MagicMock
-    ) -> None:
-        request = _make_request(b"{}")
-        event = _make_event(
-            {"action": "unknown_action"},
-            headers={"sentry-hook-resource": "issue"},
-            original_request=request,
-        )
-        proc = DummyProcessor(event)
-        assert await proc.should_process_event(event) is False
-
-    # -- Signature verification (via should_process_event) --
-
-    async def test_no_secret_no_signature_accepts(
-        self, mock_ocean_no_secret: MagicMock
-    ) -> None:
-        """Neither secret nor signature configured — accept."""
-        request = _make_request(b"{}")
-        event = _make_event(
-            VALID_PAYLOAD,
-            headers={"sentry-hook-resource": "issue"},
-            original_request=request,
-        )
-        proc = DummyProcessor(event)
-        assert await proc.should_process_event(event) is True
-
-    async def test_no_secret_with_signature_accepts(
-        self, mock_ocean_no_secret: MagicMock
-    ) -> None:
-        """No secret configured but signature present — accept with warning."""
-        request = _make_request(
-            b"{}",
-            headers={"sentry-hook-signature": "some-signature"},
-        )
-        event = _make_event(
-            VALID_PAYLOAD,
-            headers={"sentry-hook-resource": "issue"},
-            original_request=request,
-        )
-        proc = DummyProcessor(event)
-        assert await proc.should_process_event(event) is True
-
-    async def test_secret_without_signature_rejects(
+    async def test_authenticate_with_secret_valid_signature(
         self, mock_ocean_with_secret: MagicMock
     ) -> None:
-        """XOR mismatch: secret configured but no signature in request."""
-        request = _make_request(b"{}")
-        event = _make_event(
-            VALID_PAYLOAD,
-            headers={"sentry-hook-resource": "issue"},
-            original_request=request,
-        )
-        proc = DummyProcessor(event)
-        assert await proc.should_process_event(event) is False
-
-    async def test_valid_signature_accepts(
-        self, mock_ocean_with_secret: MagicMock
-    ) -> None:
-        """Both secret and valid signature — accept."""
+        """Secret configured and valid signature — accept."""
         secret = "test-secret"
         body = json.dumps(
             VALID_PAYLOAD, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
         valid_sig = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
 
-        request = _make_request(
-            body,
-            headers={"sentry-hook-signature": valid_sig},
+        proc = DummyProcessor(
+            WebhookEvent(trace_id="t-auth-3", payload=VALID_PAYLOAD, headers={})
         )
-        event = _make_event(
-            VALID_PAYLOAD,
-            headers={"sentry-hook-resource": "issue"},
-            original_request=request,
+        assert (
+            await proc.authenticate(
+                VALID_PAYLOAD, {"sentry-hook-signature": valid_sig}
+            )
+            is True
         )
-        proc = DummyProcessor(event)
-        assert await proc.should_process_event(event) is True
 
-    async def test_invalid_signature_rejects(
+    async def test_authenticate_with_secret_missing_signature(
         self, mock_ocean_with_secret: MagicMock
     ) -> None:
-        """Both secret and signature present but signature is wrong — reject."""
-        body = json.dumps(
-            VALID_PAYLOAD, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
+        """Secret configured but no signature — reject."""
+        proc = DummyProcessor(
+            WebhookEvent(trace_id="t-auth-4", payload=VALID_PAYLOAD, headers={})
+        )
+        assert await proc.authenticate(VALID_PAYLOAD, {}) is False
 
-        request = _make_request(
-            body,
-            headers={"sentry-hook-signature": "not-the-real-digest"},
+    async def test_authenticate_with_secret_invalid_signature(
+        self, mock_ocean_with_secret: MagicMock
+    ) -> None:
+        """Secret configured and wrong signature — reject."""
+        proc = DummyProcessor(
+            WebhookEvent(trace_id="t-auth-5", payload=VALID_PAYLOAD, headers={})
         )
-        event = _make_event(
-            VALID_PAYLOAD,
-            headers={"sentry-hook-resource": "issue"},
-            original_request=request,
+        assert (
+            await proc.authenticate(
+                VALID_PAYLOAD, {"sentry-hook-signature": "not-the-real-digest"}
+            )
+            is False
         )
-        proc = DummyProcessor(event)
-        assert await proc.should_process_event(event) is False
+
+    # -- validate_payload --
 
     async def test_validate_payload_valid(self) -> None:
-        """Accept valid custom integration payloads."""
         proc = DummyProcessor(
-            _make_event(
-                VALID_PAYLOAD,
+            WebhookEvent(
+                trace_id="t-val-1",
+                payload=VALID_PAYLOAD,
                 headers={
                     "sentry-hook-signature": "test-signature",
                     "sentry-hook-resource": "issue",
