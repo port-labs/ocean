@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import Mock, AsyncMock, patch, MagicMock
 
 from webhook_processors.issue_tag_webhook_processor import (
     SentryIssueTagWebhookProcessor,
@@ -38,17 +38,27 @@ def _resource_config() -> IssueTagResourceConfig:
 class TestSentryIssueTagWebhookProcessor:
     async def test_should_process_event(self) -> None:
         """Should return True for issue events as per implementation."""
+        mock_request = Mock()
+        mock_request.headers = {}
+        mock_request.body = AsyncMock(return_value=b"{}")
+
         event = WebhookEvent(
             trace_id="t1",
             payload={"action": "created", "data": {"issue": {"id": "12345"}}},
             headers={
                 "sentry-hook-resource": "issue",
-                "sentry-hook-signature": "test-signature",
             },
+            original_request=mock_request,
         )
-        processor = SentryIssueTagWebhookProcessor(event)
-        result = await processor.should_process_event(event)
-        assert result is True
+
+        with patch("webhook_processors.base_webhook_processor.ocean") as mock_ocean:
+            mock_config = MagicMock()
+            mock_config.get.return_value = None
+            mock_ocean.integration_config = mock_config
+
+            processor = SentryIssueTagWebhookProcessor(event)
+            result = await processor.should_process_event(event)
+            assert result is True
 
     async def test_get_matching_kinds(self) -> None:
         """Should return ['issue_tag'] for matching kinds."""
