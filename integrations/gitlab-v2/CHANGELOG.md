@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.9 (2026-04-07)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions and removed bare ResourceConfig from the union
+- Added title/description metadata to selector fields in GitlabPortAppConfig for improved schema validation compliance
+- Renamed field titles from "Attached files" and "Additional files" to "Included Files" for consistency across ProjectSelectorandGitLabFilesSelector
+
+
+## 0.6.8 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.6.7 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.6.6 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.6.5 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
 ## 0.6.4 (2026-04-05)
 
 
