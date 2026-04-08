@@ -112,18 +112,14 @@ class TestSentryBaseWebhookProcessor:
         self, mock_ocean_no_secret: MagicMock
     ) -> None:
         """No secret configured — skip verification."""
-        proc = DummyProcessor(
-            WebhookEvent(trace_id="t-auth-1", payload={}, headers={})
-        )
+        proc = DummyProcessor(WebhookEvent(trace_id="t-auth-1", payload={}, headers={}))
         assert await proc.authenticate(VALID_PAYLOAD, {}) is True
 
     async def test_authenticate_no_secret_accepts_with_signature(
         self, mock_ocean_no_secret: MagicMock
     ) -> None:
         """No secret configured — skip verification even if signature is present."""
-        proc = DummyProcessor(
-            WebhookEvent(trace_id="t-auth-2", payload={}, headers={})
-        )
+        proc = DummyProcessor(WebhookEvent(trace_id="t-auth-2", payload={}, headers={}))
         assert (
             await proc.authenticate(
                 VALID_PAYLOAD, {"sentry-hook-signature": "some-sig"}
@@ -145,9 +141,7 @@ class TestSentryBaseWebhookProcessor:
             WebhookEvent(trace_id="t-auth-3", payload=VALID_PAYLOAD, headers={})
         )
         assert (
-            await proc.authenticate(
-                VALID_PAYLOAD, {"sentry-hook-signature": valid_sig}
-            )
+            await proc.authenticate(VALID_PAYLOAD, {"sentry-hook-signature": valid_sig})
             is True
         )
 
