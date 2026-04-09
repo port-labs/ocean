@@ -265,7 +265,7 @@ class Ocean:
                 logger.warning(
                     "Failed to load external oauth access token from file",
                     file_path=self.config.oauth_access_token_file_path,
-                    error=e,
+                    error=str(e),
                 )
         return None
 
