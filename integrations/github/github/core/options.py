@@ -41,6 +41,7 @@ class SinglePullRequestOptions(RepositoryIdentifier):
     """Options for fetching a single pull request."""
 
     pr_number: Required[int]
+    enrich_with_first_commit: NotRequired[bool]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -49,6 +50,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
     states: Required[list[str]]
     max_results: Required[int]
     updated_after: Required[datetime]
+    enrich_with_first_commit: NotRequired[bool]
 
 
 class SingleIssueOptions(RepositoryIdentifier):
