@@ -1,0 +1,24 @@
+{
+  "id": 26361953,
+  "type": "open_source",
+  "title": "golang.org/x/crypto",
+  "description": "Attacker can trigger DOS-attack",
+  "severity_score": 92,
+  "severity": "critical",
+  "group_status": "new",
+  "time_to_fix_minutes": 30,
+  "locations": [
+    {
+      "id": 1841546,
+      "name": "test-azure-sync-project",
+      "type": "code_repository"
+    }
+  ],
+  "how_to_fix": "In order to fix all of these vulnerabilities, update golang.org/x/crypto to 0.45.0. In order to solve only the critical issues, update to 0.31.0 or upgrade one at a time.",
+  "related_cve_ids": [
+    "CVE-2024-45337",
+    "CVE-2025-22869",
+    "CVE-2025-58181",
+    "CVE-2025-47914"
+  ]
+}
