@@ -1,10 +1,12 @@
-from integration import GithubPortAppConfig
+from integration import (
+    GithubCollaboratorConfig,
+    GithubCollaboratorSelector,
+    GithubPortAppConfig,
+)
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
     PortResourceConfig,
-    ResourceConfig,
-    Selector,
 )
 import pytest
 from unittest.mock import MagicMock, patch
@@ -70,10 +72,10 @@ INVALID_MEMBERSHIP_COLLABORATOR_PAYLOADS: dict[str, Any] = {
 
 
 @pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+def resource_config() -> GithubCollaboratorConfig:
+    return GithubCollaboratorConfig(
         kind=ObjectKind.COLLABORATOR,
-        selector=Selector(query="true"),
+        selector=GithubCollaboratorSelector(query="true", affiliation="all"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -173,7 +175,7 @@ class TestCollaboratorMembershipWebhookProcessor:
     async def test_handle_event_membership_events(
         self,
         membership_webhook_processor: CollaboratorMembershipWebhookProcessor,
-        resource_config: ResourceConfig,
+        resource_config: GithubCollaboratorConfig,
         mock_port_app_config: GithubPortAppConfig,
         action: str,
         expected_updated: bool,
@@ -240,6 +242,32 @@ class TestCollaboratorMembershipWebhookProcessor:
                 else:
                     # For non-upsert events, no repositories should be fetched
                     mock_team_exporter.get_team_repositories_by_slug.assert_not_called()
+
+    async def test_handle_event_skips_when_affiliation_filter_enabled(
+        self,
+        membership_webhook_processor: CollaboratorMembershipWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+        mock_port_app_config: GithubPortAppConfig,
+    ) -> None:
+        payload = VALID_MEMBERSHIP_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "added"
+
+        # Enable affiliation filtering -> skip collaborator live events
+        resource_config.selector.affiliation = "outside"
+
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.membership_webhook_processor.create_github_client"
+        ) as mock_create_client:
+            async with event_context("test_event") as event_context_obj:
+                event_context_obj.port_app_config = mock_port_app_config
+                result = await membership_webhook_processor.handle_event(
+                    payload, resource_config
+                )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == []
+            mock_create_client.assert_not_called()
 
     async def test_enrich_collaborators_with_repositories(
         self, membership_webhook_processor: CollaboratorMembershipWebhookProcessor
