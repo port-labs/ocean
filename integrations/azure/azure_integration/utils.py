@@ -7,7 +7,7 @@ from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
 from azure_integration.overrides import (
-    AzureSpecificKindsResourceConfig,
+    AzureCustomKindResourceConfig,
     AzureCloudResourceConfig,
     AzureCloudResourceSelector,
     AzureSpecificKindSelector,
@@ -30,7 +30,7 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
 
 
 def get_current_resource_config() -> (
-    typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
+    typing.Union[AzureCustomKindResourceConfig, AzureCloudResourceConfig]
 ):
     """
     Returns the current resource config, accessible only inside an event context
@@ -83,7 +83,7 @@ def get_resource_configs_with_resource_kind(
             AzureResourceGroupResourceConfig,
             AzureSubscriptionResourceConfig,
             AzureCloudResourceConfig,
-            AzureSpecificKindsResourceConfig,
+            AzureCustomKindResourceConfig,
         ]
     ],
 ) -> list[
@@ -91,7 +91,7 @@ def get_resource_configs_with_resource_kind(
         AzureResourceGroupResourceConfig,
         AzureSubscriptionResourceConfig,
         AzureCloudResourceConfig,
-        AzureSpecificKindsResourceConfig,
+        AzureCustomKindResourceConfig,
     ]
 ]:
     """

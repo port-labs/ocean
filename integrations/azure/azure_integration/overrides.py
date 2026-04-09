@@ -21,6 +21,7 @@ class AzureCloudResourceSelector(Selector):
         alias="resourceKinds",
         title="Resource Kinds",
         description="Map of Azure resource kinds to their API versions.",
+        min_properties=1,
     )
 
     @validator("resource_kinds")
@@ -30,10 +31,10 @@ class AzureCloudResourceSelector(Selector):
         return v
 
 
-class AzureSpecificKindsResourceConfig(ResourceConfig):
+class AzureCustomKindResourceConfig(ResourceConfig):
     kind: str = Field(
-        title="Kind",
-        description="Azure resource kind.",
+        title="Custom Kind",
+        description="Use this to map Azure resources by setting the kind name to the Azure resource type exactly as it appears in the <a target='_blank' href='https://learn.microsoft.com/en-us/rest/api/azure/'>Azure REST API</a> reference.\n\nExample: Microsoft.Storage/storageAccounts",
     )
     selector: AzureSpecificKindSelector = Field(
         title="Selector",
@@ -81,7 +82,7 @@ class AzurePortAppConfig(PortAppConfig):
         AzureResourceGroupResourceConfig
         | AzureSubscriptionResourceConfig
         | AzureCloudResourceConfig
-        | AzureSpecificKindsResourceConfig
+        | AzureCustomKindResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore
