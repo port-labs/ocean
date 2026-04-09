@@ -179,6 +179,7 @@ class VulnerabilitySelector(Selector):
     enrich_with_project: bool = Field(
         default=False,
         title="Enrich with Project",
+        alias="enrichWithProject",
         description="Enrich each vulnerability with its associated project data",
     )
 
@@ -246,9 +247,7 @@ class SnykPortAppConfig(PortAppConfig):
         | OrganizationResourceConfig
         | VulnerabilityResourceConfig
         | IssueResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class SnykIntegration(BaseIntegration):
