@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
+from pydantic import BaseModel, Field
 
 
 class ListOrganizationOptions(TypedDict):
@@ -51,6 +52,10 @@ class ListPullRequestOptions(RepositoryIdentifier):
     max_results: Required[int]
     updated_after: Required[datetime]
     enrich_with_first_commit: NotRequired[bool]
+
+
+class PullRequestGraphQLOptions(BaseModel):
+    enrich_with_first_commit: bool = Field(default=False)
 
 
 class SingleIssueOptions(RepositoryIdentifier):

@@ -1,7 +1,4 @@
-from __future__ import annotations
-
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from github.core.options import PullRequestGraphQLOptions
 
 PAGE_INFO_FRAGMENT = """
 fragment PageInfoFields on PageInfo {
@@ -169,25 +166,6 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
       }}
     }}
 """
-
-
-@dataclass(frozen=True, slots=True)
-class PullRequestGraphQLOptions:
-    """Controls optional PullRequest selections in list/detail GraphQL queries.
-
-    Add a boolean field here when introducing a new optional fragment; implement the
-    corresponding selection in :func:`build_pr_fields` (new segment) and normalize the
-    response in the GraphQL PR exporter.
-    """
-
-    enrich_with_first_commit: bool = False
-
-    @classmethod
-    def from_mapping(cls, raw: Mapping[str, object]) -> PullRequestGraphQLOptions:
-        return cls(
-            enrich_with_first_commit=bool(raw.get("enrich_with_first_commit")),
-        )
-
 
 PR_COMMITS_TOTAL_ONLY = """
 commits { totalCount }

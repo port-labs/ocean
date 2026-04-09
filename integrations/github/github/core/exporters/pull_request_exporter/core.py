@@ -6,9 +6,12 @@ from loguru import logger
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import ListPullRequestOptions, SinglePullRequestOptions
-from github.helpers.gql_queries import (
+from github.core.options import (
+    ListPullRequestOptions,
     PullRequestGraphQLOptions,
+    SinglePullRequestOptions,
+)
+from github.helpers.gql_queries import (
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
 )
@@ -169,7 +172,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         repo_name, organization, params = parse_github_options(dict(options))
         pr_number: int = params["pr_number"]
         repo = params["repo"]
-        pr_gql_options = PullRequestGraphQLOptions.from_mapping(params)
+        pr_gql_options = PullRequestGraphQLOptions(**params)
 
         variables = {
             "organization": organization,
@@ -211,7 +214,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         updated_after = extras["updated_after"]
         repo = extras["repo"]
         repo_name = repo["name"]
-        pr_gql_options = PullRequestGraphQLOptions.from_mapping(extras)
+        pr_gql_options = PullRequestGraphQLOptions(**extras)
 
         if "open" in states:
             logger.info(

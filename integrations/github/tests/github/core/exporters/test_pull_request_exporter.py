@@ -9,9 +9,12 @@ from github.core.exporters.pull_request_exporter import (
 from github.clients.http.rest_client import GithubRestClient
 from github.clients.http.graphql_client import GithubGraphQLClient
 from port_ocean.context.event import event_context
-from github.core.options import SinglePullRequestOptions, ListPullRequestOptions
-from github.helpers.gql_queries import (
+from github.core.options import (
+    SinglePullRequestOptions,
+    ListPullRequestOptions,
     PullRequestGraphQLOptions,
+)
+from github.helpers.gql_queries import (
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
 )
