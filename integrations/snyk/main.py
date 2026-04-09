@@ -82,7 +82,8 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     all_organizations = await snyk_client.get_organizations_in_groups()
     project_tasks = (
-        snyk_client.get_paginated_projects(org) for org in all_organizations
+        snyk_client.get_paginated_projects(ProjectOptions(org=org))
+        for org in all_organizations
     )
 
     async for projects in stream_async_iterators_tasks(*project_tasks):
