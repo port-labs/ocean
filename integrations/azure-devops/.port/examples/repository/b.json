@@ -1,0 +1,25 @@
+{
+  "id": "a8d65272-0cb1-4b06-8687-ce96d9e7ac15",
+  "name": "authentication-service",
+  "url": "[REDACTED]/31440986-0c26-4def-ae3d-feadd2d3498e/_apis/git/repositories/a8d65272-0cb1-4b06-8687-ce96d9e7ac15",
+  "project": {
+    "id": "31440986-0c26-4def-ae3d-feadd2d3498e",
+    "name": "test-azure-sync-project",
+    "url": "[REDACTED]/_apis/projects/31440986-0c26-4def-ae3d-feadd2d3498e",
+    "state": "wellFormed",
+    "revision": 15,
+    "visibility": "private",
+    "lastUpdateTime": "2026-04-06T09:13:38.42Z"
+  },
+  "defaultBranch": "refs/heads/feature/test-branch-02af9b",
+  "size": 1940,
+  "remoteUrl": "https://eridotdev@dev.azure.com/eridotdev/test-azure-sync-project/_git/authentication-service",
+  "sshUrl": "git@ssh.dev.azure.com:v3/eridotdev/test-azure-sync-project/authentication-service",
+  "webUrl": "[REDACTED]/test-azure-sync-project/_git/authentication-service",
+  "isDisabled": false,
+  "isInMaintenance": false,
+  "__includedFiles": {
+    "README.md": "# perf-test-repo-8b347cb6\nTest repository 23 for performance testing. UID: 8b347cb6\n",
+    "CODEOWNERS": ""
+  }
+}

@@ -2,6 +2,7 @@ title: Okta
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/identity-access-management/okta
 description: okta integration for Port Ocean
 icon: Okta
+formMappingEnabled: true
 features:
   - type: exporter
     section: Identity Providers
