@@ -44,7 +44,7 @@ class ContainerSelector(Selector):
     filter_status: Literal["all", "active", "inactive"] = Field(
         default="active",
         alias="filterStatus",
-        title="Filter Status",
+        title="Status",
         description="Filter containers by status: all, active, or inactive",
     )
 
