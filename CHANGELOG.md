@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.40.4 (2026-04-09)
+
+### Improvements
+
+- When loading an external OAuth access token from a file fails, the debug log now includes the underlying exception for easier troubleshooting.
+
 ## 0.40.3 (2026-04-07)
 
 
