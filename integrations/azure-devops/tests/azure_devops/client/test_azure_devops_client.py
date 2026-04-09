@@ -4623,11 +4623,6 @@ async def test_get_repository_files_mixed_none_and_valid_downloads() -> None:
     assert all(r is not None for r in results)
 
 
-# ============================================================
-# Multi-project concurrency tests
-# ============================================================
-
-
 @pytest.mark.asyncio
 async def test_generate_repositories_multiple_projects(
     mock_event_context: MagicMock,
