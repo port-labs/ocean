@@ -357,6 +357,7 @@ query PullRequestDetails(
 }}
 """
 
+
 REPOSITORY_FRAGMENT = """
 fragment RepositoryFields on Repository {
   id
