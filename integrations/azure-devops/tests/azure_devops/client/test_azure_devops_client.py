@@ -4621,3 +4621,468 @@ async def test_get_repository_files_mixed_none_and_valid_downloads() -> None:
     assert results[0]["file"]["path"] == "/src/good.py"
     # Verify None was not included
     assert all(r is not None for r in results)
+
+
+# ============================================================
+# Multi-project concurrency tests
+# ============================================================
+
+
+@pytest.mark.asyncio
+async def test_generate_repositories_multiple_projects(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify generate_repositories fetches repos from all projects concurrently."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {"id": "proj1", "name": "Project One"},
+            {"id": "proj2", "name": "Project Two"},
+            {"id": "proj3", "name": "Project Three"},
+        ]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        for pid in ("proj1", "proj2", "proj3"):
+            if pid in url:
+                return Response(
+                    status_code=200,
+                    json={
+                        "value": [
+                            {
+                                "id": f"repo-{pid}",
+                                "name": f"Repo-{pid}",
+                                "isDisabled": False,
+                                "project": {"state": "wellFormed"},
+                            }
+                        ]
+                    },
+                )
+        return None
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            repos: List[Dict[str, Any]] = []
+            async for batch in client.generate_repositories():
+                repos.extend(batch)
+
+            repo_ids = {r["id"] for r in repos}
+            assert repo_ids == {"repo-proj1", "repo-proj2", "repo-proj3"}
+
+
+@pytest.mark.asyncio
+async def test_generate_pipelines_multiple_projects() -> None:
+    """Verify generate_pipelines fetches pipelines from all projects concurrently."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {"id": "proj1", "name": "Project One"},
+            {"id": "proj2", "name": "Project Two"},
+            {"id": "proj3", "name": "Project Three"},
+        ]
+
+    async def mock_get_paginated(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        for pid in ("proj1", "proj2", "proj3"):
+            if pid in url:
+                yield [{"id": f"pipe-{pid}", "name": f"Pipeline-{pid}"}]
+                return
+        yield []
+
+    with (
+        patch.object(client, "generate_projects", side_effect=mock_generate_projects),
+        patch.object(
+            client,
+            "_get_paginated_by_top_and_continuation_token",
+            side_effect=mock_get_paginated,
+        ),
+    ):
+        pipelines: List[Dict[str, Any]] = []
+        async for batch in client.generate_pipelines():
+            pipelines.extend(batch)
+
+        pipe_ids = {p["id"] for p in pipelines}
+        assert pipe_ids == {"pipe-proj1", "pipe-proj2", "pipe-proj3"}
+        # Verify __projectId enrichment
+        for p in pipelines:
+            expected_proj = p["id"].replace("pipe-", "")
+            assert p["__projectId"] == expected_proj
+
+
+@pytest.mark.asyncio
+async def test_generate_releases_multiple_projects(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify generate_releases fetches releases from all projects concurrently."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {"id": "proj1", "name": "Project One"},
+            {"id": "proj2", "name": "Project Two"},
+            {"id": "proj3", "name": "Project Three"},
+        ]
+
+    async def mock_get_paginated(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        for pid in ("proj1", "proj2", "proj3"):
+            if pid in url:
+                yield [{"id": f"release-{pid}", "name": f"Release-{pid}"}]
+                return
+        yield []
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated,
+            ),
+        ):
+            releases: List[Dict[str, Any]] = []
+            async for batch in client.generate_releases():
+                releases.extend(batch)
+
+            release_ids = {r["id"] for r in releases}
+            assert release_ids == {"release-proj1", "release-proj2", "release-proj3"}
+
+
+@pytest.mark.asyncio
+async def test_generate_environments_multiple_projects(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify generate_environments fetches envs from all projects concurrently."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {"id": "proj1", "name": "Project One"},
+            {"id": "proj2", "name": "Project Two"},
+            {"id": "proj3", "name": "Project Three"},
+        ]
+
+    async def mock_get_paginated(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        for pid in ("proj1", "proj2", "proj3"):
+            if pid in url:
+                yield [{"id": f"env-{pid}", "name": f"Env-{pid}"}]
+                return
+        yield []
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated,
+            ),
+        ):
+            environments: List[Dict[str, Any]] = []
+            async for batch in client.generate_environments():
+                environments.extend(batch)
+
+            env_ids = {e["id"] for e in environments}
+            assert env_ids == {"env-proj1", "env-proj2", "env-proj3"}
+
+
+@pytest.mark.asyncio
+async def test_generate_release_deployments_multiple_projects(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify generate_release_deployments fetches from all projects concurrently."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {"id": "proj1", "name": "Project One"},
+            {"id": "proj2", "name": "Project Two"},
+            {"id": "proj3", "name": "Project Three"},
+        ]
+
+    async def mock_get_paginated(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        for pid in ("proj1", "proj2", "proj3"):
+            if pid in url and "deployments" in url:
+                yield [{"id": f"deploy-{pid}", "name": f"Deploy-{pid}"}]
+                return
+        yield []
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated,
+            ),
+        ):
+            deployments: List[Dict[str, Any]] = []
+            async for batch in client.generate_release_deployments():
+                deployments.extend(batch)
+
+            deploy_ids = {d["id"] for d in deployments}
+            assert deploy_ids == {"deploy-proj1", "deploy-proj2", "deploy-proj3"}
+
+
+@pytest.mark.asyncio
+async def test_generate_pipeline_stages_multiple_projects(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify generate_pipeline_stages fetches stages from all projects concurrently."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {"id": "proj1", "name": "Project One"},
+            {"id": "proj2", "name": "Project Two"},
+        ]
+
+    async def mock_generate_builds_for_project(
+        project: Dict[str, Any],
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": f"build-{project['id']}", "name": f"Build-{project['id']}"}]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "timeline" in url:
+            # Extract project from URL to create unique stage IDs
+            stage_id = "stage-proj1" if "proj1" in url else "stage-proj2"
+            return Response(
+                status_code=200,
+                json={
+                    "records": [
+                        {
+                            "id": stage_id,
+                            "name": f"Stage {stage_id}",
+                            "type": "Stage",
+                            "state": "completed",
+                            "result": "succeeded",
+                            "startTime": "2023-01-01T10:00:00Z",
+                            "finishTime": "2023-01-01T10:05:00Z",
+                        }
+                    ]
+                },
+            )
+        return None
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(
+                client,
+                "_generate_builds_for_project",
+                side_effect=mock_generate_builds_for_project,
+            ),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            stages: List[Dict[str, Any]] = []
+            async for batch in client.generate_pipeline_stages():
+                stages.extend(batch)
+
+            stage_ids = {s["id"] for s in stages}
+            assert stage_ids == {"stage-proj1", "stage-proj2"}
+
+
+@pytest.mark.asyncio
+async def test_generate_work_items_multiple_projects(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify generate_work_items fetches work items from all projects concurrently."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {"id": "proj1", "name": "Project One"},
+            {"id": "proj2", "name": "Project Two"},
+            {"id": "proj3", "name": "Project Three"},
+        ]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "wit/wiql" in url:
+            # Return 2 work item IDs per project
+            for pid in ("proj1", "proj2", "proj3"):
+                if pid in url:
+                    base = {"proj1": 1, "proj2": 100, "proj3": 200}[pid]
+                    return Response(
+                        status_code=200,
+                        request=Request(method, url),
+                        json={
+                            "workItems": [
+                                {"id": base},
+                                {"id": base + 1},
+                            ]
+                        },
+                    )
+        if "wit/workitems" in url:
+            params = kwargs.get("params", {})
+            ids_param = params.get("ids", "")
+            ids = [int(x) for x in ids_param.split(",") if x]
+            work_items = [{"id": wi_id, "fields": {}} for wi_id in ids]
+            return Response(
+                status_code=200,
+                request=Request(method, url),
+                json={"value": work_items},
+            )
+        return Response(status_code=404, request=Request(method, url))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            items: List[Dict[str, Any]] = []
+            async for batch in client.generate_work_items(wiql=None, expand="All"):
+                items.extend(batch)
+
+            item_ids = {i["id"] for i in items}
+            assert item_ids == {1, 2, 100, 101, 200, 201}
+            # Verify project enrichment
+            project_ids = {i["__projectId"] for i in items}
+            assert project_ids == {"proj1", "proj2", "proj3"}
+
+
+@pytest.mark.asyncio
+async def test_generate_repository_policies_multiple_repos(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify generate_repository_policies fetches policies from all repos concurrently."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": "repo1",
+                "name": "Repo One",
+                "project": {"id": "proj1", "name": "Project One"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "id": "repo2",
+                "name": "Repo Two",
+                "project": {"id": "proj1", "name": "Project One"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "id": "repo3",
+                "name": "Repo Three",
+                "project": {"id": "proj2", "name": "Project Two"},
+                "defaultBranch": "refs/heads/main",
+            },
+        ]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        params = kwargs.get("params", {})
+        repo_id = params.get("repositoryId", "")
+        return Response(
+            status_code=200,
+            json={"value": [{"id": f"policy-{repo_id}", "name": f"Policy-{repo_id}"}]},
+        )
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client,
+                "generate_repositories",
+                side_effect=mock_generate_repositories,
+            ),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            policies: List[Dict[str, Any]] = []
+            async for batch in client.generate_repository_policies():
+                policies.extend(batch)
+
+            policy_ids = {p["id"] for p in policies}
+            assert policy_ids == {"policy-repo1", "policy-repo2", "policy-repo3"}
+            # Verify __repository enrichment
+            for policy in policies:
+                repo_id = policy["id"].replace("policy-", "")
+                assert policy["__repository"]["id"] == repo_id
+
+
+@pytest.mark.asyncio
+async def test_generate_pipelines_error_isolation() -> None:
+    """Verify that one project failing doesn't prevent others from being processed."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {"id": "proj1", "name": "Project One"},
+            {"id": "proj-bad", "name": "Bad Project"},
+            {"id": "proj3", "name": "Project Three"},
+        ]
+
+    async def mock_get_paginated(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "proj-bad" in url:
+            raise Exception("Simulated API failure")
+        for pid in ("proj1", "proj3"):
+            if pid in url:
+                yield [{"id": f"pipe-{pid}", "name": f"Pipeline-{pid}"}]
+                return
+        yield []
+
+    with (
+        patch.object(client, "generate_projects", side_effect=mock_generate_projects),
+        patch.object(
+            client,
+            "_get_paginated_by_top_and_continuation_token",
+            side_effect=mock_get_paginated,
+        ),
+    ):
+        pipelines: List[Dict[str, Any]] = []
+        async for batch in client.generate_pipelines():
+            pipelines.extend(batch)
+
+        # proj-bad should fail silently, proj1 and proj3 should succeed
+        pipe_ids = {p["id"] for p in pipelines}
+        assert pipe_ids == {"pipe-proj1", "pipe-proj3"}
