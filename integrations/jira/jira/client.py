@@ -98,11 +98,9 @@ class JiraClient(OAuthClient):
                 "Using external OAuth access token from configured token file for Jira API auth"
             )
             return bearer_auth
-        except ValueError as e:
+        except ValueError:
             logger.warning(
-                "OAuth token file was not available; falling back to configured Jira token for bearer auth: {}",
-                error=str(e),
-                file_path=self.config.oauth_access_token_file_path
+                "OAuth token file was not available; falling back to configured Jira token for bearer auth"
             )
             return BearerAuth(self.jira_token)
 
