@@ -1,0 +1,21 @@
+{
+  "blocked": false,
+  "verified": true,
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003",
+  "username": "user3@example.com",
+  "fullName": "Example User",
+  "role": {
+    "id": "User",
+    "name": "User"
+  },
+  "timeZone": "Africa/Monrovia",
+  "locale": "en_US",
+  "userAddress": {
+    "country": "",
+    "state": "",
+    "city": "",
+    "line": "",
+    "zipCode": ""
+  },
+  "createdAt": "2023-09-16T13:19:26.171Z"
+}
