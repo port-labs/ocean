@@ -1,0 +1,23 @@
+{
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0022",
+  "name": "Data Science Team_schedule",
+  "description": "",
+  "timezone": "Africa/Monrovia",
+  "enabled": true,
+  "ownerTeam": {
+    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012",
+    "name": "Data Science Team"
+  },
+  "rotations": [],
+  "__currentOncalls": {
+    "_parent": {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0022",
+      "name": "Data Science Team_schedule",
+      "enabled": true
+    },
+    "onCallRecipients": [
+      "user3@example.com",
+      "user2@example.com"
+    ]
+  }
+}

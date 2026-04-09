@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.6.16 (2026-04-09)
+
+## 0.6.17 (2026-04-09)
 
 
 ### Improvements
 
 - Log the `ValueError` when falling back to the configured Jira token because the external OAuth access token is unavailable
+
+## 0.6.16 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
 
 
 ## 0.6.15 (2026-04-07)

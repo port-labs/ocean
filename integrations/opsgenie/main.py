@@ -8,7 +8,8 @@ from client import OpsGenieClient
 from utils import ObjectKind, ResourceKindsWithSpecialHandling
 
 from integration import (
-    AlertAndIncidentResourceConfig,
+    AlertResourceConfig,
+    IncidentResourceConfig,
     ScheduleResourceConfig,
     TeamResourceConfig,
 )
@@ -100,7 +101,7 @@ async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_incident_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     opsgenie_client = init_client()
 
-    selector = cast(AlertAndIncidentResourceConfig, event.resource_config).selector
+    selector = cast(IncidentResourceConfig, event.resource_config).selector
     async for incident_batch in opsgenie_client.get_paginated_resources(
         resource_type=ObjectKind.INCIDENT,
         query_params=(
@@ -117,7 +118,7 @@ async def on_incident_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_alert_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     opsgenie_client = init_client()
 
-    selector = cast(AlertAndIncidentResourceConfig, event.resource_config).selector
+    selector = cast(AlertResourceConfig, event.resource_config).selector
     async for alerts_batch in opsgenie_client.get_paginated_resources(
         resource_type=ObjectKind.ALERT,
         query_params=(
