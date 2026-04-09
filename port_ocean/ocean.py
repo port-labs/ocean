@@ -261,9 +261,10 @@ class Ocean:
             try:
                 with open(self.config.oauth_access_token_file_path, "r") as f:
                     return f.read()
-            except Exception:
+            except Exception as e:
                 logger.debug(
                     "Failed to load external oauth access token from file",
+                    error=str(e),
                     file_path=self.config.oauth_access_token_file_path,
                 )
         return None
