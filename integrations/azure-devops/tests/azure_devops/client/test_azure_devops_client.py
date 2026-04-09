@@ -4627,7 +4627,7 @@ async def test_get_repository_files_mixed_none_and_valid_downloads() -> None:
 async def test_generate_repositories_multiple_projects(
     mock_event_context: MagicMock,
 ) -> None:
-    """Verify generate_repositories fetches repos from all projects concurrently."""
+    """Verify generate_repositories returns repos from all projects."""
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
     )

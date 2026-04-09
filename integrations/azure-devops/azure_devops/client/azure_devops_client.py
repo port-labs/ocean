@@ -66,6 +66,7 @@ MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
 MAX_CONCURRENT_PROJECTS = 10
+MAX_CONCURRENT_TIMELINE_FETCHES = 10
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -804,11 +805,14 @@ class AzureDevopsClient(HTTPBaseClient):
         self, project: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         try:
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TIMELINE_FETCHES)
+
+            async def _bounded_fetch(build: dict[str, Any]) -> list[dict[str, Any]]:
+                async with semaphore:
+                    return await self._fetch_stages_for_build(project, build)
+
             async for builds_batch in self._generate_builds_for_project(project):
-                stage_tasks = [
-                    self._fetch_stages_for_build(project, build)
-                    for build in builds_batch
-                ]
+                stage_tasks = [_bounded_fetch(build) for build in builds_batch]
                 stage_results = await asyncio.gather(
                     *stage_tasks, return_exceptions=True
                 )
