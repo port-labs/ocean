@@ -1,7 +1,7 @@
 from typing import Any, Optional
 
 
-def enrich_batch_with_org(
+def enrich_batch_with_data(
     batch: list[dict[str, Any]],
     enrichment_data: Any,
     enricment_key: str = "__organization",
