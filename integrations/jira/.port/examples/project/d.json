@@ -1,0 +1,24 @@
+{
+  "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+  "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/project/10414",
+  "id": "10414",
+  "key": "DGS",
+  "name": "Demo - Sample",
+  "avatarUrls": {
+    "48x48": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10402",
+    "24x24": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10402?size=small",
+    "16x16": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10402?size=xsmall",
+    "32x32": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10402?size=medium"
+  },
+  "projectTypeKey": "software",
+  "simplified": true,
+  "style": "next-gen",
+  "isPrivate": false,
+  "properties": {},
+  "entityId": "00000000-0000-0000-0000-000000000004",
+  "uuid": "00000000-0000-0000-0000-000000000004",
+  "insight": {
+    "totalIssueCount": 1,
+    "lastIssueUpdateTime": "2026-01-02T19:24:14.850+0200"
+  }
+}
