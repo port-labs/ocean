@@ -35,12 +35,12 @@ class JiraIssueSelector(Selector):
         description="JQL (Jira Query Language) expression used to filter which issues are synced. Defaults to open issues and those created or updated within the last week.",
     )
     fields: str | None = Field(
-        title="Fields",
+        title="Included Fields",
         description="Comma-separated list of issue fields to return. Use '*all' to return all fields, or specify individual field names (e.g. 'summary,status,assignee') to reduce payload size.",
         default="*all",
     )
     expand: str | None = Field(
-        title="Expand",
+        title="Fields To Expand",
         description="Comma-separated list of additional issue properties to expand. Supported values include 'renderedFields', 'names', 'schema', 'transitions', 'operations', 'editmeta', and 'changelog'.",
         default=None,
     )
@@ -59,7 +59,7 @@ class JiraIssueConfig(ResourceConfig):
 
 class JiraProjectSelector(Selector):
     expand: str = Field(
-        title="Expand",
+        title="Expand Properties",
         description="Comma-separated list of additional project properties to expand in the response. Supported values include 'description', 'lead', 'url', 'projectKeys', and 'insight'.",
         default="insight",
     )
