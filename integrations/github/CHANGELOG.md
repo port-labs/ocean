@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.2.18 (2026-04-09)
+
+
+### Improvements
+
+- Add `selector.affiliation` support for the Collaborator kind (`all`/`direct`/`outside`).
+- Skip Collaborator live events when `selector.affiliation` is not `all` to avoid catalog 
+
+
+## 5.2.17 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 5.2.16 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 5.2.15 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 5.2.14 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 5.2.13 (2026-04-06)
+
+
+### Bug fixes
+
+- Fixed spacing for file kind's descriptions
+
+## 5.2.12 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 5.2.11 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 5.2.10 (2026-04-05)
+
+### Improvements
+
+- Make github CI and gitlab CI docs more specific
+
+
+## 5.2.9 (2026-04-05)
+
+### Bug fixes
+
+- Fixed installation docs
+
+
+## 5.2.8 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
 ## 5.2.7 (2026-03-31)
 
 

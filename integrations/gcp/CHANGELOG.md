@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.293 (2026-04-09)
+
+
+### Improvements
+
+- Added enable form mapping flag to integration
+
+
+## 0.1.292 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.1.291 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.1.290 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.1.289 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.1.288 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.1.287 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.1.286 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 0.1.285 (2026-04-01)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions for known GCP asset types
+- Enabled custom kinds support
+- Added title/description metadata to `GCPPortAppConfig` for schema validation compliance
+
+
 ## 0.1.284 (2026-03-31)
 
 

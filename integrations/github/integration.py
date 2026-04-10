@@ -152,11 +152,10 @@ class GithubFilePattern(RepositorySourceModel):
 class GithubFileSelector(Selector, IncludedFilesConfig):
     files: list[GithubFilePattern] = Field(
         title="File sync patterns",
-        description="""Array of files to retrieve. Each cell can include:
-* <b>Path</b> - files path, supports glob pattern.
-Example: "**/package.json"
-* <b>Organization</b> - GitHub org to scan
-* <b>Repos</b> - array of repositories used to fetch files from. Each repo includes name and branch.
+        description="""Array of files to retrieve. Each cell can include:<br/>
+• <b>Path</b> - files path, supports glob pattern. Example: "**/package.json"<br/>
+• <b>Organization</b> - GitHub org to scan<br/>
+• <b>Repos</b> - array of repositories used to fetch files from. Each repo includes name and branch.<br/>
 For more information, see <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#files-and-file-contents'>Our docs</a>.""",
     )
     included_files: list[str] = Field(
@@ -464,6 +463,14 @@ class GithubBranchSelector(RepoSearchSelector):
     )
 
 
+class GithubCollaboratorSelector(RepoSearchSelector):
+    affiliation: Literal["all", "direct", "outside"] = Field(
+        title="Affiliation",
+        default="all",
+        description="Filter collaborators by affiliation (all, direct, outside).",
+    )
+
+
 class GithubBranchConfig(ResourceConfig):
     kind: Literal[ObjectKind.BRANCH] = Field(
         title="Github Branch",
@@ -546,7 +553,7 @@ class GithubCollaboratorConfig(ResourceConfig):
         title="Github Collaborator",
         description="Github collaborator resource kind.",
     )
-    selector: RepoSearchSelector = Field(
+    selector: GithubCollaboratorSelector = Field(
         title="Collaborator selector",
         description="Selector for the collaborator resource.",
     )
