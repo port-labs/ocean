@@ -463,6 +463,14 @@ class GithubBranchSelector(RepoSearchSelector):
     )
 
 
+class GithubCollaboratorSelector(RepoSearchSelector):
+    affiliation: Literal["all", "direct", "outside"] = Field(
+        title="Affiliation",
+        default="all",
+        description="Filter collaborators by affiliation (all, direct, outside).",
+    )
+
+
 class GithubBranchConfig(ResourceConfig):
     kind: Literal[ObjectKind.BRANCH] = Field(
         title="Github Branch",
@@ -545,7 +553,7 @@ class GithubCollaboratorConfig(ResourceConfig):
         title="Github Collaborator",
         description="Github collaborator resource kind.",
     )
-    selector: RepoSearchSelector = Field(
+    selector: GithubCollaboratorSelector = Field(
         title="Collaborator selector",
         description="Selector for the collaborator resource.",
     )
