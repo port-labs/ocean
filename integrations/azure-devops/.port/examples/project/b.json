@@ -1,0 +1,25 @@
+{
+  "id": "a1b2c3d4-1111-4222-b333-abcdef123456",
+  "name": "technova-core-api",
+  "url": "[REDACTED]/_apis/projects/a1b2c3d4-1111-4222-b333-abcdef123456",
+  "state": "wellFormed",
+  "revision": 42,
+  "_links": {
+    "self": {
+      "href": "[REDACTED]/_apis/projects/a1b2c3d4-1111-4222-b333-abcdef123456"
+    },
+    "collection": {
+      "href": "[REDACTED]/_apis/projectCollections/1d8e3089-8f24-43f5-96f6-7a561518619b"
+    },
+    "web": {
+      "href": "[REDACTED]/technova-core-api"
+    }
+  },
+  "visibility": "private",
+  "defaultTeam": {
+    "id": "12345678-aaaa-bbbb-cccc-111122223333",
+    "name": "technova-core-api Team",
+    "url": "[REDACTED]/_apis/projects/a1b2c3d4-1111-4222-b333-abcdef123456/teams/12345678-aaaa-bbbb-cccc-111122223333"
+  },
+  "lastUpdateTime": "2026-04-01T10:15:00.00Z"
+}
