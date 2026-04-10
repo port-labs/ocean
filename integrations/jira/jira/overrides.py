@@ -83,12 +83,18 @@ class JiraUserResourceConfig(ResourceConfig):
     )
 
 
+class JiraReleaseResourceConfig(ResourceConfig):
+    kind: Literal["release"] = Field(
+        title="Jira Release",
+        description="A release (version) in a Jira project used to track shipped work",
+    )
+
+
 class JiraPortAppConfig(PortAppConfig):
     resources: list[
         TeamResourceConfig
         | JiraIssueConfig
         | JiraProjectResourceConfig
         | JiraUserResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+        | JiraReleaseResourceConfig
+    ] = Field(default_factory=list)  # type: ignore[assignment]
