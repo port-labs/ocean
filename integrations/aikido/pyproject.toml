@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aikido"
-version = "0.1.125-beta"
+version = "0.1.126-beta"
 description = "Aikido Ocean Integation"
 authors = ["Habib Nuhu <habib.nuhu@getport.io>"]
 

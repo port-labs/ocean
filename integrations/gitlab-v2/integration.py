@@ -41,8 +41,8 @@ class SearchQuery(BaseModel):
 
 
 class GroupSelector(Selector):
-    include_only_active_groups: bool = Field(
-        default=False,
+    include_only_active_groups: Optional[bool] = Field(
+        default=None,
         alias="includeOnlyActiveGroups",
         title="Include Only Active Groups",
         description="Filter groups by active status",
@@ -56,8 +56,8 @@ class ProjectSelector(Selector):
         default=False,
         description="Whether to include the languages of the project, defaults to false",
     )
-    include_only_active_projects: bool = Field(
-        default=False,
+    include_only_active_projects: Optional[bool] = Field(
+        default=None,
         alias="includeOnlyActiveProjects",
         title="Include Only Active Projects",
         description="Filter projects by active status",
@@ -411,8 +411,8 @@ class GitManipulationHandler(JQEntityProcessor):
                 f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
                 f"Pattern: '{pattern}'. "
                 f"Use the 'includedFiles' selector instead. Example: "
-                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
-                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
+                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX) :]}'] "
+                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX) :]}"]'
             )
             entity_processor = FileEntityProcessor
         elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
