@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added optional enrich with first commit selector for PR kind for LTTM metrics
 
 
+## 5.2.19 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
 ## 5.2.18 (2026-04-09)
 
 
