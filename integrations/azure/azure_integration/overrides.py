@@ -21,7 +21,7 @@ class AzureCloudResourceSelector(Selector):
         alias="resourceKinds",
         title="Resource Kinds",
         description="Map of Azure resource kinds to their API versions.",
-        min_properties=1,
+        minProperties=1,
     )
 
     @validator("resource_kinds")
