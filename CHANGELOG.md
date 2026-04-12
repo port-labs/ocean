@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.40.5 (2026-04-09)
+
+### Features
+
+- Integration lakehouse raw-data POST now includes `resourceIndex`; resync and live events passes the resource list index.
+
 ## 0.40.4 (2026-04-09)
 
 ### Improvements
