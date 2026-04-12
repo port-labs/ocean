@@ -8,7 +8,7 @@ from azure_integration.utils import (
     get_resource_configs_with_resource_kind,
 )
 from azure_integration.overrides import (
-    AzureSpecificKindsResourceConfig,
+    AzureCustomKindResourceConfig,
     AzureCloudResourceConfig,
     AzureSpecificKindSelector,
     AzureCloudResourceSelector,
@@ -106,7 +106,7 @@ class TestGetResourceConfigsWithResourceKind:
 
     def test_finds_matching_specific_kind(self) -> None:
         """Test finding resource config with specific kind"""
-        config = AzureSpecificKindsResourceConfig(
+        config = AzureCustomKindResourceConfig(
             kind="Microsoft.Storage/storageAccounts",
             selector=AzureSpecificKindSelector(query="true", apiVersion="2023-01-01"),
             port=PortResourceConfig(
@@ -131,7 +131,7 @@ class TestGetResourceConfigsWithResourceKind:
 
     def test_does_not_find_non_matching_kind(self) -> None:
         """Test that non-matching kinds are not returned"""
-        config = AzureSpecificKindsResourceConfig(
+        config = AzureCustomKindResourceConfig(
             kind="Microsoft.Compute/virtualMachines",
             selector=AzureSpecificKindSelector(query="true", apiVersion="2023-03-01"),
             port=PortResourceConfig(
