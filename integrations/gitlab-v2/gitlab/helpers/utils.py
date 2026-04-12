@@ -1,6 +1,7 @@
 import json
 import re
 from copy import deepcopy
+from enum import IntEnum
 from enum import StrEnum
 from typing import Any, Union
 
@@ -142,3 +143,11 @@ def enrich_resources_with_project(
         enriched_resource = {**resource, "__project": project_map.get(project_id)}
         enriched_resources.append(enriched_resource)
     return enriched_resources
+
+
+class GitlabAccessLevel(IntEnum):
+    GUEST = 10
+    REPORTER = 20
+    DEVELOPER = 30
+    MAINTAINER = 40
+    OWNER = 50

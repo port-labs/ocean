@@ -355,10 +355,11 @@ async def test_extractMatchingProcessors_processorMatch(
         )
 
         assert len(processors) == 1
-        config, processor = processors[0]
+        config, processor, resource_index = processors[0]
         assert isinstance(processor, MockProcessor)
         assert config is not None
         assert config.kind == "repository"
+        assert resource_index == 0
         assert processor.event != webhook_event
         assert processor.event.payload == webhook_event.payload
 
@@ -403,8 +404,8 @@ async def test_extractMatchingProcessors_multipleMatches(
         )
 
     assert len(processors) == 2
-    assert all(isinstance(p, MockProcessor) for _, p in processors)
-    assert all(p.event != webhook_event for _, p in processors)
+    assert all(isinstance(p, MockProcessor) for _, p, _ in processors)
+    assert all(p.event != webhook_event for _, p, _ in processors)
 
 
 @pytest.mark.asyncio
@@ -424,10 +425,11 @@ async def test_extractMatchingProcessors_onlyOneMatches(
         )
 
     assert len(processors) == 1
-    config, processor = processors[0]
+    config, processor, resource_index = processors[0]
     assert isinstance(processor, MockProcessor)
     assert config is not None
     assert config.kind == "repository"
+    assert resource_index == 0
     assert processor.event != webhook_event
     assert processor.event.payload == webhook_event.payload
 
@@ -948,9 +950,12 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
         processor: AbstractWebhookProcessor,
         path: str,
         resource: ResourceConfig,
+        resource_index: int | None = None,
     ) -> WebhookEventRawResults:
         try:
-            return await original_process_data(self, processor, path, resource)
+            return await original_process_data(
+                self, processor, path, resource, resource_index
+            )
         except Exception as e:
             test_state["exception_thrown"] = e  # type: ignore
             raise e
@@ -1070,7 +1075,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
 
     async def patched_extract_matching_processors(
         self: LiveEventsProcessorManager, event: WebhookEvent, path: str
-    ) -> list[tuple[ResourceConfig | None, AbstractWebhookProcessor]]:
+    ) -> list[tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]]:
         try:
             return await original_process_data(self, event, path)
         except Exception as e:
@@ -1544,9 +1549,12 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
         self: LiveEventsProcessorManager,
         processor: AbstractWebhookProcessor,
         resource: ResourceConfig,
+        resource_index: int | None = None,
     ) -> WebhookEventRawResults:
         try:
-            return await original_process_data(self, processor, resource)
+            return await original_process_data(
+                self, processor, resource, resource_index
+            )
         except Exception as e:
             test_state["exception"] = True
             raise e

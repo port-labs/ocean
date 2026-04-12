@@ -1,0 +1,9 @@
+{
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012",
+  "name": "Data Science Team",
+  "description": "",
+  "links": {
+    "web": "https://app.opsgenie.com/teams/dashboard/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012/main",
+    "api": "https://api.opsgenie.com/v2/teams/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012"
+  }
+}

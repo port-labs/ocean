@@ -118,6 +118,12 @@ class LiveEventsMixin(HandlerMixin):
                         if header_value:
                             kafka_metadata[header_key] = header_value
 
+                resource_index = (
+                    webhook_event_raw_result.resource_index
+                    if webhook_event_raw_result.resource_index is not None
+                    else 0
+                )
+
                 if webhook_event_raw_result.updated_raw_results:
                     logger.debug(
                         f"Sending {len(webhook_event_raw_result.updated_raw_results)} upserted raw items to lakehouse",
@@ -129,6 +135,7 @@ class LiveEventsMixin(HandlerMixin):
                             webhook_event_raw_result.updated_raw_results,
                             event_id,
                             kind,
+                            index=resource_index,
                             operation=LakehouseOperation.UPSERT,
                             data_type="live-event",
                             kafka_metadata=kafka_metadata,
@@ -151,6 +158,7 @@ class LiveEventsMixin(HandlerMixin):
                             webhook_event_raw_result.deleted_raw_results,
                             event_id,
                             kind,
+                            index=resource_index,
                             operation=LakehouseOperation.DELETE,
                             data_type="live-event",
                             kafka_metadata=kafka_metadata,
