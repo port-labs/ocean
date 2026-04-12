@@ -21,6 +21,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from github.core.options import SingleTeamOptions
+from github.webhook.webhook_processors.collaborator_webhook_processor.utils import (
+    skip_if_affiliation_filtered,
+)
 
 
 class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
@@ -58,6 +61,10 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
         logger.info(
             f"Handling team event: {action} for team {team_slug} of organization: {organization}"
         )
+
+        skipped = skip_if_affiliation_filtered(resource_config)
+        if skipped is not None:
+            return skipped
 
         if action not in TEAM_COLLABORATOR_EVENTS:
             logger.info(

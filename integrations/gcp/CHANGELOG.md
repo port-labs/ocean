@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.293 (2026-04-09)
+
+
+### Improvements
+
+- Added enable form mapping flag to integration
+
+
 ## 0.1.292 (2026-04-09)
 
 
