@@ -295,6 +295,7 @@ class IntegrationClientMixin:
         raw_data: list[dict[Any, Any]],
         sync_id: str,
         kind: str,
+        index: int,
         operation: LakehouseOperation = LakehouseOperation.UPSERT,
         data_type: str | None = None,
         kafka_metadata: dict[str, Any] | None = None,
@@ -308,6 +309,7 @@ class IntegrationClientMixin:
             "items": raw_data,
             "extractionTimestamp": int(datetime.now().timestamp() * 1000),
             "operation": operation.value,
+            "resourceIndex": index,
         }
         if data_type is not None:
             body["type"] = data_type

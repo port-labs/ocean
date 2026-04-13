@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import Request
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -219,11 +219,29 @@ class GithubPullRequestSelector(RepoSearchSelector):
         default="rest",
         description="API to use for fetching pull requests (REST or GraphQL).",
     )
+    enrich_with_first_commit: bool = Field(
+        title="Enrich with first commit",
+        alias="enrichWithFirstCommit",
+        default=False,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, each pull request is enriched with the "
+            "first commit on the branch (OID and committed timestamp in UTC). Use this to measure "
+            "lead time from the initial commit through review and merge."
+        ),
+    )
 
     @property
     def updated_after(self) -> datetime:
         """Convert the since days to a timezone-aware datetime object."""
         return datetime.now(timezone.utc) - timedelta(days=self.since)
+
+    @validator("enrich_with_first_commit")
+    def validate_enrich_with_first_commit(cls, v: bool) -> bool:
+        if v and cls.api != "graphql":
+            raise ValueError(
+                "Enrich with first commit is only supported with GraphQL API."
+            )
+        return v
 
 
 class GithubPullRequestConfig(ResourceConfig):
