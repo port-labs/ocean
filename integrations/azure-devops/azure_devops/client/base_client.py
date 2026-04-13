@@ -102,6 +102,10 @@ class HTTPBaseClient:
                 if not response:
                     break
                 response_json = response.json()
+                continuation_token = response.headers.get(
+                    CONTINUATION_TOKEN_HEADER
+                ) or response_json.get(CONTINUATION_TOKEN_KEY)
+                del response  # release raw bytes before processing items
                 items = response_json[data_key]
 
                 logger.info(
@@ -109,9 +113,6 @@ class HTTPBaseClient:
                 )
                 yield items
                 timeout_retries = 0
-                continuation_token = response.headers.get(
-                    CONTINUATION_TOKEN_HEADER
-                ) or response_json.get(CONTINUATION_TOKEN_KEY)
                 if not continuation_token:
                     logger.info(
                         f"No continuation token found, pagination complete for {url}"
@@ -151,6 +152,7 @@ class HTTPBaseClient:
                     break
 
                 objects_page = response.json()["value"]
+                del response  # release raw bytes before processing items
                 if objects_page:
                     logger.info(
                         f"Found {len(objects_page)} objects in url {url} with params: {params} and max_results: {max_results}"

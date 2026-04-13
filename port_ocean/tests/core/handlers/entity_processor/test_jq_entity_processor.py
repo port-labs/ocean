@@ -907,7 +907,7 @@ class TestJQEntityProcessor:
         )
         raw_results = [{"id": "1"}, {"id": "2"}]
         entities, errors = mocked_processor.merge_results(
-            jq_results, async_results, raw_results
+            jq_results, async_results, len(raw_results)
         )
         assert len(errors) == 0
         assert len(entities) == 2
@@ -949,7 +949,7 @@ class TestJQEntityProcessor:
         ] = ([], [])
         raw_results: list[RAW_ITEM] = [{"id": "1"}]
         entities, errors = mocked_processor.merge_results(
-            jq_results, async_results, raw_results
+            jq_results, async_results, len(raw_results)
         )
         assert len(errors) == 0
         assert len(entities) == 1
@@ -981,7 +981,7 @@ class TestJQEntityProcessor:
         )
         raw_results = [{"id": "1"}]
         entities, errors = mocked_processor.merge_results(
-            jq_results, async_results, raw_results
+            jq_results, async_results, len(raw_results)
         )
         assert len(errors) == 0
         assert len(entities) == 1
@@ -1017,7 +1017,7 @@ class TestJQEntityProcessor:
         )
         raw_results = [{"id": "1"}]
         with pytest.raises(ExceptionGroup, match="Error processing tasks"):
-            mocked_processor.merge_results(jq_results, async_results, raw_results)
+            mocked_processor.merge_results(jq_results, async_results, len(raw_results))
 
     async def test_merge_results_with_per_item_errors(
         self, mocked_processor: JQEntityProcessor
@@ -1049,7 +1049,7 @@ class TestJQEntityProcessor:
         )
         raw_results: list[RAW_ITEM] = [{"id": "1"}]
         entities, errors = mocked_processor.merge_results(
-            jq_results, async_results, raw_results
+            jq_results, async_results, len(raw_results)
         )
         # Per-item errors are collected but don't raise ExceptionGroup
         assert len(errors) == 2
@@ -1109,7 +1109,7 @@ class TestJQEntityProcessor:
         )
         raw_results: list[RAW_ITEM] = [{"id": "1"}, {"id": "2"}]
         entities, errors = mocked_processor.merge_results(
-            jq_results, async_results, raw_results
+            jq_results, async_results, len(raw_results)
         )
         assert len(errors) == 0
         assert len(entities) == 2
@@ -1158,7 +1158,7 @@ class TestJQEntityProcessor:
         )
         raw_results: list[RAW_ITEM] = [{"id": "1"}]
         entities, errors = mocked_processor.merge_results(
-            jq_results, async_results, raw_results
+            jq_results, async_results, len(raw_results)
         )
         assert len(errors) == 0
         assert len(entities) == 1

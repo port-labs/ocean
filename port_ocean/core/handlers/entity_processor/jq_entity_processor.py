@@ -32,6 +32,7 @@ from port_ocean.core.utils.utils import (
 )
 from port_ocean.exceptions.core import EntityProcessorException
 
+_PARSE_SYNC_CHUNK_SIZE = 50
 
 # Set globals for multiprocessing of batch data. When a process forks, it inherits these globals by reference.
 # We will take advantage of COW to avoid pickling the data.
@@ -425,32 +426,46 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         global _MULTIPROCESS_JQ_BATCH_DATA, _MULTIPROCESS_JQ_BATCH_MAPPINGS, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY, _MULTIPROCESS_JQ_BATCH_PARSE_ALL
 
-        _MULTIPROCESS_JQ_BATCH_DATA = raw_results
-        _MULTIPROCESS_JQ_BATCH_MAPPINGS = compileable_patterns
-        _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY = selector_query
-        _MULTIPROCESS_JQ_BATCH_PARSE_ALL = parse_all
-        # Fork a new process to calculate the entities.
-        # Use indexes to acess data to have the lowest pickling overhead.
+        all_valid: list[tuple[list[MappedEntity], list[Exception]]] = []
+        all_errors: list[Exception] = []
         loop = asyncio.get_running_loop()
-        with ProcessPoolExecutor(
-            max_workers=ocean.config.process_in_queue_max_workers,
-            mp_context=multiprocessing.get_context("fork"),
-        ) as pool:
-            results = await gather_and_split_errors_from_results(
-                [
-                    asyncio.wait_for(
-                        loop.run_in_executor(pool, _calculate_entity, index),
-                        timeout=ocean.config.process_in_queue_timeout,
-                    )
-                    for index in range(len(raw_results))
-                ]
-            )
-        # Clear globals to avoid memory leaks.
-        _MULTIPROCESS_JQ_BATCH_DATA = None
-        _MULTIPROCESS_JQ_BATCH_MAPPINGS = None
-        _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY = None
-        _MULTIPROCESS_JQ_BATCH_PARSE_ALL = None
-        return results
+
+        # Process in fixed-size chunks so that each forked worker inherits a
+        # smaller global payload, reducing COW-induced peak memory.
+        for chunk_start in range(0, len(raw_results), _PARSE_SYNC_CHUNK_SIZE):
+            chunk = raw_results[chunk_start : chunk_start + _PARSE_SYNC_CHUNK_SIZE]
+
+            _MULTIPROCESS_JQ_BATCH_DATA = chunk
+            _MULTIPROCESS_JQ_BATCH_MAPPINGS = compileable_patterns
+            _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY = selector_query
+            _MULTIPROCESS_JQ_BATCH_PARSE_ALL = parse_all
+
+            # Fork a new process to calculate the entities.
+            # Use indexes to access data to have the lowest pickling overhead.
+            with ProcessPoolExecutor(
+                max_workers=ocean.config.process_in_queue_max_workers,
+                mp_context=multiprocessing.get_context("fork"),
+            ) as pool:
+                chunk_valid, chunk_errors = await gather_and_split_errors_from_results(
+                    [
+                        asyncio.wait_for(
+                            loop.run_in_executor(pool, _calculate_entity, index),
+                            timeout=ocean.config.process_in_queue_timeout,
+                        )
+                        for index in range(len(chunk))
+                    ]
+                )
+
+            all_valid.extend(chunk_valid)
+            all_errors.extend(chunk_errors)
+
+            # Clear globals eagerly between chunks to release COW pages.
+            _MULTIPROCESS_JQ_BATCH_DATA = None
+            _MULTIPROCESS_JQ_BATCH_MAPPINGS = None
+            _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY = None
+            _MULTIPROCESS_JQ_BATCH_PARSE_ALL = None
+
+        return all_valid, all_errors
 
     async def parse_items_async(
         self,
@@ -493,15 +508,13 @@ class JQEntityProcessor(BaseEntityProcessor):
         async_results: tuple[
             list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
         ],
-        raw_results: list[RAW_ITEM],
+        original_result_size: int,
     ) -> tuple[list[MappedEntity], list[Exception]]:
         errors: list[Exception] = []
         calculated_entities_results: list[MappedEntity] = []
 
         actual_jq_results, jq_errors = jq_results
         actual_async_results, async_errors = async_results
-
-        original_result_size = len(raw_results)
         jq_results_size = len(actual_jq_results)
         async_results_size = len(actual_async_results)
         # checkout gather and split, there are some execptions we want raise
@@ -602,8 +615,13 @@ class JQEntityProcessor(BaseEntityProcessor):
         async_results = await self.parse_items_async(
             uncompileable_patterns, raw_results, mapping.selector.query, parse_all
         )
+        # Capture length before releasing the local reference so the caller can
+        # GC the raw data as soon as possible (the list lives in the caller's
+        # frame, but dropping our reference here reduces peak RSS when GC runs).
+        original_result_size = len(raw_results)
+        del raw_results
         calculated_entities_results, errors = self.merge_results(
-            sync_results, async_results, raw_results
+            sync_results, async_results, original_result_size
         )
         logger.debug(
             f"Finished parsing raw results into entities with {len(errors)} errors. errors: {errors}"

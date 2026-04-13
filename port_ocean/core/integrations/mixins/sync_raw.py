@@ -453,7 +453,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 batch_index=batch_index,
             )
             errors.extend(calculation_result.errors)
-            passed_entities = list(calculation_result.entity_selector_diff.passed)
+            # Store minimal stubs (identifier + blueprint only).
+            passed_entities = [
+                Entity(
+                    identifier=e.identifier,
+                    blueprint=e.blueprint,
+                    icon=None,
+                    title=None,
+                )
+                for e in calculation_result.entity_selector_diff.passed
+            ]
             number_of_transformed_entities += (
                 calculation_result.number_of_transformed_entities
             )
@@ -482,8 +491,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         send_raw_data_examples_amount=send_raw_data_examples_amount,
                         batch_index=batch_index,
                     )
+                    # Store minimal stubs (identifier + blueprint only) so the
+                    # full entity dicts (properties, relations) can be GC'd.
+                    # Reconciliation only needs the identity key for diff.
                     passed_entities.extend(
-                        calculation_result.entity_selector_diff.passed
+                        Entity(
+                            identifier=e.identifier,
+                            blueprint=e.blueprint,
+                            icon=None,
+                            title=None,
+                        )
+                        for e in calculation_result.entity_selector_diff.passed
                     )
                     errors.extend(calculation_result.errors)
                     number_of_transformed_entities += (
