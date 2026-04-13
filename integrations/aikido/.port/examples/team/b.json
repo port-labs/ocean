@@ -1,0 +1,45 @@
+{
+  "id": 1310046,
+  "name": "Infra Test Team",
+  "external_source": "azure_devops",
+  "external_source_id": "76268945-78a4-4d64-b567-18ac9d3548b8",
+  "responsibilities": [
+    {
+      "id": 1841542,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841544,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841546,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841543,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841547,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    },
+    {
+      "id": 1841545,
+      "type": "code_repository",
+      "included_paths": null,
+      "excluded_paths": null
+    }
+  ],
+  "active": true
+}
