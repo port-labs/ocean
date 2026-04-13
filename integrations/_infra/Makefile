@@ -46,6 +46,8 @@ endef
 .SILENT: install install/prod install/local-core lint lint/fix run test test/integration clean seed
 
 install:
+	$(call deactivate_virtualenv) && \
+	$(call install_poetry) && \
 	poetry install --with dev --no-root
 
 install/local-core: install

@@ -105,7 +105,7 @@ class HTTPBaseClient:
                 continuation_token = response.headers.get(
                     CONTINUATION_TOKEN_HEADER
                 ) or response_json.get(CONTINUATION_TOKEN_KEY)
-                del response  # release raw bytes before processing items
+                del response
                 items = response_json[data_key]
 
                 logger.info(
@@ -152,7 +152,7 @@ class HTTPBaseClient:
                     break
 
                 objects_page = response.json()["value"]
-                del response  # release raw bytes before processing items
+                del response
                 if objects_page:
                     logger.info(
                         f"Found {len(objects_page)} objects in url {url} with params: {params} and max_results: {max_results}"
