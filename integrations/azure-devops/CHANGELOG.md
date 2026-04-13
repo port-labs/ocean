@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.8.12 (2026-04-09)
+## 0.8.12 (2026-04-12)
 
 
 ### Improvements
@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Increased parallelism for project and organization-level resource processing during full syncs, significantly reducing resync duration for customers with large numbers of ADO projects
 - Refactored 8 sequential resource generators (repositories, pipelines, releases, environments, release deployments, pipeline stages, work items, and repository policies) to process projects concurrently using bounded semaphores
 - Added `MAX_CONCURRENT_PROJECTS` constant (default: 10) to control project-level concurrency while respecting API rate limits
+
+
+## 0.8.12 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
 
 
 ## 0.8.11 (2026-04-09)

@@ -432,6 +432,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 states=list(config.selector.states),
                                 max_results=config.selector.max_results,
                                 updated_after=config.selector.updated_after,
+                                enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                             )
                         )
