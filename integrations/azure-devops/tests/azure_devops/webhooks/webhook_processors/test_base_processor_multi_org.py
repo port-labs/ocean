@@ -141,7 +141,7 @@ def test_get_client_for_webhook_returns_per_org_client_on_match(
     }
     client = processor._get_client_for_webhook(payload)
     assert isinstance(client, AzureDevopsClient)
-    assert client._organization_base_url == "https://dev.azure.com/org-one"
+    assert client.organization_url == "https://dev.azure.com/org-one"
 
 
 def test_get_client_for_webhook_falls_back_when_container_missing(
@@ -155,32 +155,24 @@ def test_get_client_for_webhook_falls_back_when_container_missing(
     client = processor._get_client_for_webhook(payload)
     assert isinstance(client, AzureDevopsClient)
     # From conftest.py's TEST_INTEGRATION_CONFIG:
-    assert client._organization_base_url == "https://dev.azure.com/test-org"
+    assert client.organization_url == "https://dev.azure.com/test-org"
 
 
-def test_get_client_for_webhook_falls_back_on_unknown_org(
+def test_get_client_for_webhook_raises_on_unknown_org_multi_org(
     processor: _ConcreteProcessor,
     set_multi_org_mapping: Dict[str, str],
     clean_event_context: None,
 ) -> None:
-    """If the extracted org URL isn't in the mapping, fall back to the
-    legacy factory (which logs a warning)."""
+    """If the extracted org URL isn't in the mapping and multiple orgs are
+    configured, raise ValueError — the processor cannot determine which
+    org to use."""
     payload: EventPayload = {
         "resourceContainers": {
             "account": {"baseUrl": "https://dev.azure.com/unknown-org/"}
         }
     }
-    # In multi-org-only mode, ocean.integration_config["organization_url"]
-    # is None, so the legacy factory will raise. Restore legacy fields so
-    # the fallback has something to return.
-    ocean.integration_config["organization_url"] = "https://dev.azure.com/test-org"
-    ocean.integration_config["personal_access_token"] = "test-pat"
-    try:
-        client = processor._get_client_for_webhook(payload)
-        assert client._organization_base_url == "https://dev.azure.com/test-org"
-    finally:
-        ocean.integration_config["organization_url"] = None
-        ocean.integration_config["personal_access_token"] = None
+    with pytest.raises(ValueError, match="multiple organizations are configured"):
+        processor._get_client_for_webhook(payload)
 
 
 def test_enrich_webhook_results_annotates_both_lists(

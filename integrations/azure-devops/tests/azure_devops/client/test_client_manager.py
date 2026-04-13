@@ -73,8 +73,8 @@ def test_legacy_single_org_builds_one_client(
     clients = manager.get_clients()
     assert len(clients) == 1
     assert manager.is_multi_org is False
-    org_url, client = clients[0]
-    assert org_url == "https://dev.azure.com/legacy-org"
+    client = clients[0]
+    assert client.organization_url == "https://dev.azure.com/legacy-org"
     assert isinstance(client, AzureDevopsClient)
 
 
@@ -94,7 +94,7 @@ def test_multi_org_builds_one_client_per_entry(
     clients = manager.get_clients()
     assert len(clients) == 2
     assert manager.is_multi_org is True
-    urls = {url for url, _ in clients}
+    urls = {client.organization_url for client in clients}
     assert urls == set(set_multi_org_mapping.keys())
 
 

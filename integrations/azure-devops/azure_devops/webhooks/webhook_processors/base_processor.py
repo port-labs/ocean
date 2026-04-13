@@ -55,7 +55,9 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
         return None
 
     def _get_client_for_webhook(self, payload: EventPayload) -> AzureDevopsClient:
-        """Resolve the per-org Azure DevOps client for a webhook event"""
+        """Resolve the per-org Azure DevOps client for a webhook event."""
+        from azure_devops.client.client_manager import AzureDevopsClientManager
+
         org_url = self._extract_org_url_from_payload(payload)
         if org_url:
             try:
@@ -63,10 +65,20 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
             except ValueError:
                 logger.warning(
                     f"Webhook event references unknown organization {org_url}; "
-                    f"falling back to legacy client. "
-                    f"Check organizationTokenMapping config."
+                    f"falling back to default client. "
+                    f"If multiple organizations are configured, ensure the "
+                    f"org URL is present in organizationTokenMapping."
                 )
-        return AzureDevopsClient.create_from_ocean_config()
+        # Fallback: use sole configured client or raise
+        manager = AzureDevopsClientManager.create_from_ocean_config()
+        clients = manager.get_clients()
+        if len(clients) == 1:
+            return clients[0]
+        raise ValueError(
+            "Cannot resolve organization from webhook payload and multiple "
+            "organizations are configured. Ensure webhooks include "
+            "resourceContainers with a baseUrl."
+        )
 
     def _enrich_webhook_results(
         self,

@@ -32,8 +32,8 @@ class AzureDevopsClientManager:
     def is_multi_org(self) -> bool:
         return len(self._clients) > 1
 
-    def get_clients(self) -> list[tuple[str, AzureDevopsClient]]:
-        return list(self._clients.items())
+    def get_clients(self) -> list[AzureDevopsClient]:
+        return list(self._clients.values())
 
     def get_client_for_org(self, org_url: str) -> Optional[AzureDevopsClient]:
         return self._clients.get(_normalize_org_url(org_url))

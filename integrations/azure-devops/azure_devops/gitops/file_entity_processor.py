@@ -11,7 +11,9 @@ JSON_SUFFIX = ".json"
 
 
 def _get_client_for_entity(data: Dict[str, Any]) -> AzureDevopsClient:
-    """Resolve the per-org Azure DevOps client for a GitOps entity"""
+    """Resolve the per-org Azure DevOps client for a GitOps entity."""
+    from azure_devops.client.client_manager import AzureDevopsClientManager
+
     org_url = data.get("__organizationUrl")
     if org_url:
         try:
@@ -19,9 +21,15 @@ def _get_client_for_entity(data: Dict[str, Any]) -> AzureDevopsClient:
         except ValueError:
             logger.warning(
                 f"GitOps entity references unknown organization {org_url}; "
-                f"falling back to legacy client. "
-                f"Check organizationTokenMapping config."
+                f"falling back to default client. "
+                f"If multiple organizations are configured, ensure the "
+                f"org URL is present in organizationTokenMapping."
             )
+    # Fallback: use sole configured client or legacy single-org client
+    manager = AzureDevopsClientManager.create_from_ocean_config()
+    clients = manager.get_clients()
+    if len(clients) == 1:
+        return clients[0]
     return AzureDevopsClient.create_from_ocean_config_no_cache()
 
 

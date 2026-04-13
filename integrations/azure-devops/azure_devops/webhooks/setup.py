@@ -21,15 +21,17 @@ async def setup_webhooks_for_all_orgs() -> None:
     clients = manager.get_clients()
     webhook_secret = ocean.integration_config.get("webhook_secret")
 
-    for org_url, client in clients:
+    for client in clients:
         try:
-            logger.info(f"Setting up webhooks for organization {org_url}")
+            logger.info(
+                f"Setting up webhooks for organization {client.organization_url}"
+            )
             if is_projects_limited:
                 async for projects in client.generate_projects():
                     for project in projects:
                         logger.info(
                             f"Setting up webhooks for project {project['name']} "
-                            f"in organization {org_url}"
+                            f"in organization {client.organization_url}"
                         )
                         await client.create_webhook_subscriptions(
                             base_url, project["id"], webhook_secret
@@ -42,5 +44,5 @@ async def setup_webhooks_for_all_orgs() -> None:
             if len(clients) == 1:
                 raise
             logger.exception(
-                f"Failed to set up webhooks for organization {org_url}: {exc}"
+                f"Failed to set up webhooks for organization {client.organization_url}: {exc}"
             )

@@ -63,7 +63,7 @@ def test_entity_with_known_org_url_returns_per_org_client(
     }
     client = _get_client_for_entity(entity)
     assert isinstance(client, AzureDevopsClient)
-    assert client._organization_base_url == "https://dev.azure.com/gitops-org-one"
+    assert client.organization_url == "https://dev.azure.com/gitops-org-one"
 
 
 def test_entity_with_unknown_org_url_falls_back_to_legacy(
@@ -82,7 +82,7 @@ def test_entity_with_unknown_org_url_falls_back_to_legacy(
             "__organizationUrl": "https://dev.azure.com/deleted-org",
         }
         client = _get_client_for_entity(entity)
-        assert client._organization_base_url == "https://dev.azure.com/test-org"
+        assert client.organization_url == "https://dev.azure.com/test-org"
     finally:
         ocean.integration_config["organization_url"] = None
         ocean.integration_config["personal_access_token"] = None
@@ -100,4 +100,4 @@ def test_entity_without_org_url_uses_legacy_client(
     client = _get_client_for_entity(entity)
     assert isinstance(client, AzureDevopsClient)
     # From conftest.py's TEST_INTEGRATION_CONFIG:
-    assert client._organization_base_url == "https://dev.azure.com/test-org"
+    assert client.organization_url == "https://dev.azure.com/test-org"

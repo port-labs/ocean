@@ -134,30 +134,61 @@ class AzureDevopsClient(HTTPBaseClient):
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username
 
+    @property
+    def organization_url(self) -> str:
+        return self._organization_base_url
+
+    @classmethod
+    def _resolve_single_client(cls) -> "AzureDevopsClient":
+        """Return a client when legacy config keys are absent.
+
+        Uses AzureDevopsClientManager: returns the sole configured client
+        when exactly one org exists, otherwise raises ValueError.
+        """
+        from azure_devops.client.client_manager import AzureDevopsClientManager
+
+        manager = AzureDevopsClientManager.create_from_ocean_config()
+        clients = manager.get_clients()
+        if len(clients) == 1:
+            return clients[0]
+        raise ValueError(
+            "Cannot resolve a default Azure DevOps client: multiple "
+            "organizations are configured via organizationTokenMapping "
+            "and the organization could not be determined from context."
+        )
+
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
         if cache := event.attributes.get("azure_devops_client"):
             return cache
-        azure_devops_client = cls(
-            ocean.integration_config["organization_url"].strip("/"),
-            ocean.integration_config["personal_access_token"],
-            ocean.integration_config["webhook_auth_username"],
-        )
+        org_url = ocean.integration_config.get("organization_url")
+        pat = ocean.integration_config.get("personal_access_token")
+        if org_url and pat:
+            azure_devops_client = cls(
+                org_url.strip("/"),
+                pat,
+                ocean.integration_config.get("webhook_auth_username"),
+            )
+        else:
+            azure_devops_client = cls._resolve_single_client()
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
 
     @classmethod
     def create_from_ocean_config_no_cache(cls) -> "AzureDevopsClient":
-        azure_devops_client = cls(
-            ocean.integration_config["organization_url"].strip("/"),
-            ocean.integration_config["personal_access_token"],
-            ocean.integration_config["webhook_auth_username"],
-        )
-        return azure_devops_client
+        org_url = ocean.integration_config.get("organization_url")
+        pat = ocean.integration_config.get("personal_access_token")
+        if org_url and pat:
+            return cls(
+                org_url.strip("/"),
+                pat,
+                ocean.integration_config.get("webhook_auth_username"),
+            )
+        return cls._resolve_single_client()
 
     @classmethod
     def create_for_org(cls, org_url: str) -> "AzureDevopsClient":
-        """Look up the client for a specific organization URL"""
+        """Look up the client for a specific organization URL."""
         from azure_devops.client.client_manager import AzureDevopsClientManager
 
         manager = AzureDevopsClientManager.create_from_ocean_config()
@@ -188,6 +219,7 @@ class AzureDevopsClient(HTTPBaseClient):
         project = response.json()
         return project
 
+    @cache_iterator_result()
     async def generate_projects(
         self, sync_default_team: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -197,19 +229,9 @@ class AzureDevopsClient(HTTPBaseClient):
         endpoint using the project id which we obtain from the list projects endpoint.
         read more -> https://learn.microsoft.com/en-us/rest/api/azure/devops/core/projects/list?view=azure-devops-rest-7.1&tabs=HTTP#teamprojectreference
         """
-        async for projects in self._generate_projects_cached(
-            self._organization_base_url, sync_default_team
-        ):
-            yield projects
 
-    @cache_iterator_result()
-    async def _generate_projects_cached(
-        self,
-        org_identifier: str,
-        sync_default_team: bool = False,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {"includeCapabilities": "true"}
-        projects_url = f"{org_identifier}/{API_URL_PREFIX}/projects"
+        projects_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects"
         async for projects in self._get_paginated_by_top_and_continuation_token(
             projects_url, additional_params=params
         ):
@@ -283,15 +305,9 @@ class AzureDevopsClient(HTTPBaseClient):
             "__projectId": project_id,
         }
 
-    async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for teams in self._generate_teams_cached(self._organization_base_url):
-            yield teams
-
     @cache_iterator_result()
-    async def _generate_teams_cached(
-        self, org_identifier: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        teams_url = f"{org_identifier}/{API_URL_PREFIX}/teams"
+    async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
         async for teams in self._get_paginated_by_top_and_skip(teams_url):
             yield teams
 
@@ -357,15 +373,9 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield users
 
+    @cache_iterator_result()
     async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate all security groups in the organization."""
-        async for groups in self._generate_groups_cached(self._organization_base_url):
-            yield groups
-
-    @cache_iterator_result()
-    async def _generate_groups_cached(
-        self, org_identifier: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         groups_url = (
             self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/groups"
         )
@@ -479,23 +489,13 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 yield members
 
+    @cache_iterator_result()
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        async for repositories in self._generate_repositories_cached(
-            self._organization_base_url, include_disabled_repositories
-        ):
-            yield repositories
-
-    @cache_iterator_result()
-    async def _generate_repositories_cached(
-        self,
-        org_identifier: str,
-        include_disabled_repositories: bool = True,
-    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
-                repos_url = f"{org_identifier}/{project['id']}/{API_URL_PREFIX}/git/repositories"
+                repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
                 response = await self.send_request("GET", repos_url)
                 if not response:
                     continue
@@ -873,19 +873,11 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             return []
 
-    async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for environments in self._generate_environments_cached(
-            self._organization_base_url
-        ):
-            yield environments
-
     @cache_iterator_result()
-    async def _generate_environments_cached(
-        self, org_identifier: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
-                environments_url = f"{org_identifier}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments"
+                environments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments"
                 async for (
                     environments
                 ) in self._get_paginated_by_top_and_continuation_token(
@@ -1285,17 +1277,9 @@ class AzureDevopsClient(HTTPBaseClient):
                         continue
                     raise
 
+    @cache_iterator_result()
     async def get_boards_in_organization(
         self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for boards in self._get_boards_in_organization_cached(
-            self._organization_base_url
-        ):
-            yield boards
-
-    @cache_iterator_result()
-    async def _get_boards_in_organization_cached(
-        self, org_identifier: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             yield [

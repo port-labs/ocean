@@ -55,7 +55,7 @@ def _make_client(org_url: str) -> AzureDevopsClient:
 
 def _install_manager(
     monkeypatch: pytest.MonkeyPatch,
-    clients: list[tuple[str, AzureDevopsClient]],
+    clients: list[AzureDevopsClient],
 ) -> None:
     """Patch AzureDevopsClientManager.create_from_ocean_config_no_cache
     (as seen from inside azure_devops.webhooks.setup) to return a
@@ -104,7 +104,7 @@ async def test_single_org_setup_calls_create_subscriptions_once(
     non_once_event_listener: None,
 ) -> None:
     client = _make_client("https://dev.azure.com/single-org")
-    _install_manager(monkeypatch, [("https://dev.azure.com/single-org", client)])
+    _install_manager(monkeypatch, [client])
 
     await setup_webhooks_for_all_orgs()
 
@@ -124,7 +124,7 @@ async def test_single_org_setup_propagates_exceptions(
     before multi-org support existed."""
     client = _make_client("https://dev.azure.com/broken-org")
     client.create_webhook_subscriptions.side_effect = RuntimeError("boom")  # type: ignore[attr-defined]
-    _install_manager(monkeypatch, [("https://dev.azure.com/broken-org", client)])
+    _install_manager(monkeypatch, [client])
 
     with pytest.raises(RuntimeError, match="boom"):
         await setup_webhooks_for_all_orgs()
@@ -149,7 +149,7 @@ async def test_single_org_projects_limited_creates_per_project(
 
         client = _make_client("https://dev.azure.com/limited-org")
         client.generate_projects = _fake_generate_projects  # type: ignore[method-assign]
-        _install_manager(monkeypatch, [("https://dev.azure.com/limited-org", client)])
+        _install_manager(monkeypatch, [client])
 
         await setup_webhooks_for_all_orgs()
 
@@ -175,13 +175,7 @@ async def test_multi_org_setup_calls_create_subscriptions_per_org(
 ) -> None:
     client_alpha = _make_client("https://dev.azure.com/org-alpha")
     client_beta = _make_client("https://dev.azure.com/org-beta")
-    _install_manager(
-        monkeypatch,
-        [
-            ("https://dev.azure.com/org-alpha", client_alpha),
-            ("https://dev.azure.com/org-beta", client_beta),
-        ],
-    )
+    _install_manager(monkeypatch, [client_alpha, client_beta])
 
     await setup_webhooks_for_all_orgs()
 
@@ -206,13 +200,7 @@ async def test_multi_org_setup_isolates_failing_org(
     client_bad.create_webhook_subscriptions.side_effect = RuntimeError(  # type: ignore[attr-defined]
         "org-bad pat is expired"
     )
-    _install_manager(
-        monkeypatch,
-        [
-            ("https://dev.azure.com/org-bad", client_bad),
-            ("https://dev.azure.com/org-good", client_good),
-        ],
-    )
+    _install_manager(monkeypatch, [client_bad, client_good])
 
     # Should NOT raise — the bad org's exception is caught and logged.
     await setup_webhooks_for_all_orgs()
