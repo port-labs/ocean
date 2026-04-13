@@ -1,10 +1,12 @@
-from integration import GithubPortAppConfig
+from integration import (
+    GithubCollaboratorConfig,
+    GithubCollaboratorSelector,
+    GithubPortAppConfig,
+)
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
     PortResourceConfig,
-    ResourceConfig,
-    Selector,
 )
 import pytest
 from unittest.mock import MagicMock, patch
@@ -62,10 +64,10 @@ INVALID_TEAM_COLLABORATOR_PAYLOADS: dict[str, Any] = {
 
 
 @pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+def resource_config() -> GithubCollaboratorConfig:
+    return GithubCollaboratorConfig(
         kind=ObjectKind.COLLABORATOR,
-        selector=Selector(query="true"),
+        selector=GithubCollaboratorSelector(query="true", affiliation="all"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -169,7 +171,7 @@ class TestCollaboratorTeamWebhookProcessor:
     async def test_handle_event_team_events(
         self,
         team_webhook_processor: CollaboratorTeamWebhookProcessor,
-        resource_config: ResourceConfig,
+        resource_config: GithubCollaboratorConfig,
         action: str,
         expected_updated: bool,
         expected_deleted: bool,
@@ -224,10 +226,31 @@ class TestCollaboratorTeamWebhookProcessor:
                 # For unsupported events, no exporters should be called
                 mock_create_client.assert_not_called()
 
+    async def test_handle_event_skips_when_affiliation_filter_enabled(
+        self,
+        team_webhook_processor: CollaboratorTeamWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+    ) -> None:
+        payload = VALID_TEAM_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "added_to_repository"
+
+        # Enable affiliation filtering -> skip collaborator live events
+        resource_config.selector.affiliation = "direct"
+
+        with patch(
+            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client"
+        ) as mock_create_client:
+            result = await team_webhook_processor.handle_event(payload, resource_config)
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == []
+            mock_create_client.assert_not_called()
+
     async def test_handle_event_no_team_data(
         self,
         team_webhook_processor: CollaboratorTeamWebhookProcessor,
-        resource_config: ResourceConfig,
+        resource_config: GithubCollaboratorConfig,
     ) -> None:
         """Test handling when no team data is returned."""
         payload = VALID_TEAM_COLLABORATOR_PAYLOADS.copy()
