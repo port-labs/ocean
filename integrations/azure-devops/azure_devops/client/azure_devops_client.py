@@ -65,8 +65,7 @@ MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
-MAX_CONCURRENT_PROJECTS = 10
-MAX_CONCURRENT_TIMELINE_FETCHES = 10
+MAX_CONCURRENT_PROJECTS = 5
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -449,47 +448,25 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 yield members
 
-    async def _generate_repositories_for_project(
-        self,
-        project: dict[str, Any],
-        include_disabled_repositories: bool,
-    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        try:
-            repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-            response = await self.send_request("GET", repos_url)
-            if not response:
-                return
-            repositories = response.json()["value"]
-            if include_disabled_repositories:
-                yield repositories
-            else:
-                yield [
-                    repo for repo in repositories if self._repository_is_healthy(repo)
-                ]
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch repositories for project {project.get('name')}: {e}"
-            )
-
     @cache_iterator_result()
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
-            tasks = [
-                semaphore_async_iterator(
-                    semaphore,
-                    functools.partial(
-                        self._generate_repositories_for_project,
-                        project,
-                        include_disabled_repositories,
-                    ),
-                )
-                for project in projects
-            ]
-            async for repos in stream_async_iterators_tasks(*tasks):
-                yield repos
+            for project in projects:
+                repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
+                response = await self.send_request("GET", repos_url)
+                if not response:
+                    continue
+                repositories = response.json()["value"]
+                if include_disabled_repositories:
+                    yield repositories
+                else:
+                    yield [
+                        repo
+                        for repo in repositories
+                        if self._repository_is_healthy(repo)
+                    ]
 
     async def generate_branches(
         self,
@@ -585,64 +562,28 @@ class AzureDevopsClient(HTTPBaseClient):
             async for pull_requests in stream_async_iterators_tasks(*tasks):
                 yield pull_requests
 
-    async def _generate_pipelines_for_project(
-        self, project: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        try:
-            pipelines_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/pipelines"
-            async for pipelines in self._get_paginated_by_top_and_continuation_token(
-                pipelines_url
-            ):
-                for pipeline in pipelines:
-                    pipeline["__projectId"] = project["id"]
-                yield pipelines
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch pipelines for project {project.get('name')}: {e}"
-            )
-
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
-            tasks = [
-                semaphore_async_iterator(
-                    semaphore,
-                    functools.partial(self._generate_pipelines_for_project, project),
-                )
-                for project in projects
-            ]
-            async for pipelines in stream_async_iterators_tasks(*tasks):
-                yield pipelines
-
-    async def _generate_releases_for_project(
-        self, project: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        try:
-            releases_url = (
-                self._format_service_url("vsrm")
-                + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
-            )
-            async for releases in self._get_paginated_by_top_and_continuation_token(
-                releases_url
-            ):
-                yield releases
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch releases for project {project.get('name')}: {e}"
-            )
+            for project in projects:
+                pipelines_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/pipelines"
+                async for (
+                    pipelines
+                ) in self._get_paginated_by_top_and_continuation_token(pipelines_url):
+                    for pipeline in pipelines:
+                        pipeline["__projectId"] = project["id"]
+                    yield pipelines
 
     async def generate_releases(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
-            tasks = [
-                semaphore_async_iterator(
-                    semaphore,
-                    functools.partial(self._generate_releases_for_project, project),
+            for project in projects:
+                releases_url = (
+                    self._format_service_url("vsrm")
+                    + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
                 )
-                for project in projects
-            ]
-            async for releases in stream_async_iterators_tasks(*tasks):
-                yield releases
+                async for releases in self._get_paginated_by_top_and_continuation_token(
+                    releases_url
+                ):
+                    yield releases
 
     async def generate_pipeline_runs(
         self,
@@ -790,47 +731,26 @@ class AzureDevopsClient(HTTPBaseClient):
         https://learn.microsoft.com/en-us/rest/api/azure/devops/build/timeline/get?view=azure-devops-rest-7.1
         """
         async for projects in self.generate_projects():
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
-            tasks = [
-                semaphore_async_iterator(
-                    semaphore,
-                    functools.partial(self._generate_stages_for_project, project),
-                )
-                for project in projects
-            ]
-            async for stages in stream_async_iterators_tasks(*tasks):
-                yield stages
+            for project in projects:
+                async for builds_batch in self._generate_builds_for_project(project):
+                    stage_tasks = [
+                        self._fetch_stages_for_build(project, build)
+                        for build in builds_batch
+                    ]
+                    stage_results = await asyncio.gather(
+                        *stage_tasks, return_exceptions=True
+                    )
 
-    async def _generate_stages_for_project(
-        self, project: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        try:
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TIMELINE_FETCHES)
+                    stages: list[dict[str, Any]] = []
+                    for stage_records in stage_results:
+                        if isinstance(stage_records, Exception):
+                            logger.warning(f"Failed to fetch stages: {stage_records}")
+                            continue
+                        if stage_records and isinstance(stage_records, list):
+                            stages.extend(stage_records)
 
-            async def _bounded_fetch(build: dict[str, Any]) -> list[dict[str, Any]]:
-                async with semaphore:
-                    return await self._fetch_stages_for_build(project, build)
-
-            async for builds_batch in self._generate_builds_for_project(project):
-                stage_tasks = [_bounded_fetch(build) for build in builds_batch]
-                stage_results = await asyncio.gather(
-                    *stage_tasks, return_exceptions=True
-                )
-
-                stages: list[dict[str, Any]] = []
-                for stage_records in stage_results:
-                    if isinstance(stage_records, Exception):
-                        logger.warning(f"Failed to fetch stages: {stage_records}")
-                        continue
-                    if stage_records and isinstance(stage_records, list):
-                        stages.extend(stage_records)
-
-                if stages:
-                    yield stages
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch pipeline stages for project {project.get('name')}: {e}"
-            )
+                    if stages:
+                        yield stages
 
     async def generate_iterations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
@@ -912,67 +832,31 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             return []
 
-    async def _generate_environments_for_project(
-        self, project: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        try:
-            environments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments"
-            async for environments in self._get_paginated_by_top_and_continuation_token(
-                environments_url
-            ):
-                yield environments
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch environments for project {project.get('name')}: {e}"
-            )
-
     @cache_iterator_result()
     async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
-            tasks = [
-                semaphore_async_iterator(
-                    semaphore,
-                    functools.partial(self._generate_environments_for_project, project),
-                )
-                for project in projects
-            ]
-            async for environments in stream_async_iterators_tasks(*tasks):
-                yield environments
-
-    async def _generate_release_deployments_for_project(
-        self, project: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        try:
-            deployments_url = (
-                self._format_service_url("vsrm")
-                + f"/{project['id']}/{API_URL_PREFIX}/release/deployments"
-            )
-            async for deployments in self._get_paginated_by_top_and_continuation_token(
-                deployments_url
-            ):
-                yield deployments
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch release deployments for project {project.get('name')}: {e}"
-            )
+            for project in projects:
+                environments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments"
+                async for (
+                    environments
+                ) in self._get_paginated_by_top_and_continuation_token(
+                    environments_url
+                ):
+                    yield environments
 
     async def generate_release_deployments(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
-            tasks = [
-                semaphore_async_iterator(
-                    semaphore,
-                    functools.partial(
-                        self._generate_release_deployments_for_project, project
-                    ),
+            for project in projects:
+                deployments_url = (
+                    self._format_service_url("vsrm")
+                    + f"/{project['id']}/{API_URL_PREFIX}/release/deployments"
                 )
-                for project in projects
-            ]
-            async for deployments in stream_async_iterators_tasks(*tasks):
-                yield deployments
+                async for (
+                    deployments
+                ) in self._get_paginated_by_top_and_continuation_token(deployments_url):
+                    yield deployments
 
     async def generate_pipeline_deployments(
         self, environment_id: int, project: dict[str, Any]
@@ -985,29 +869,25 @@ class AzureDevopsClient(HTTPBaseClient):
                 deployment["__project"] = project
             yield deployments
 
-    async def _generate_policies_for_repo(
-        self, repo: dict[str, Any]
+    async def _fetch_policies_for_repo(
+        self,
+        repo: dict[str, Any],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        try:
-            params: dict[str, Any] = {
-                "repositoryId": repo["id"],
-            }
-            if default_branch := repo.get("defaultBranch"):
-                params["refName"] = default_branch
+        params: dict[str, Any] = {
+            "repositoryId": repo["id"],
+        }
+        if default_branch := repo.get("defaultBranch"):
+            params["refName"] = default_branch
 
-            policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
-            response = await self.send_request("GET", policies_url, params=params)
-            if not response:
-                return
-            repo_policies = response.json()["value"]
+        policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
+        response = await self.send_request("GET", policies_url, params=params)
+        if not response:
+            return
+        repo_policies = response.json()["value"]
 
-            for policy in repo_policies:
-                policy["__repository"] = repo
-            yield repo_policies
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch policies for repository {repo.get('name')}: {e}"
-            )
+        for policy in repo_policies:
+            policy["__repository"] = repo
+        yield repo_policies
 
     async def generate_repository_policies(
         self,
@@ -1015,42 +895,16 @@ class AzureDevopsClient(HTTPBaseClient):
         async for repos in self.generate_repositories(
             include_disabled_repositories=False
         ):
-            semaphore = asyncio.BoundedSemaphore(
-                MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
-            )
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS)
             tasks = [
                 semaphore_async_iterator(
                     semaphore,
-                    functools.partial(self._generate_policies_for_repo, repo),
+                    functools.partial(self._fetch_policies_for_repo, repo),
                 )
                 for repo in repos
             ]
             async for policies in stream_async_iterators_tasks(*tasks):
                 yield policies
-
-    async def _generate_work_items_for_project(
-        self, project: dict[str, Any], wiql: Optional[str], expand: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        try:
-            async for work_item_ids in self._fetch_work_item_id_batches(project, wiql):
-                if not work_item_ids:
-                    continue
-                logger.info(
-                    f"Fetched batch of {len(work_item_ids)} work item IDs for project {project['name']}"
-                )
-                async for work_items_batch in self._fetch_work_items_in_batches(
-                    project["id"],
-                    work_item_ids,
-                    query_params={"$expand": expand},
-                ):
-                    logger.debug(f"Received {len(work_items_batch)} work items")
-                    yield self._add_project_details_to_work_items(
-                        work_items_batch, project
-                    )
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch work items for project {project.get('name')}: {e}"
-            )
 
     async def generate_work_items(
         self, wiql: Optional[str], expand: str
@@ -1062,21 +916,27 @@ class AzureDevopsClient(HTTPBaseClient):
         of 20,000 results per query.
         """
         async for projects in self.generate_projects():
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
-            tasks = [
-                semaphore_async_iterator(
-                    semaphore,
-                    functools.partial(
-                        self._generate_work_items_for_project,
-                        project,
-                        wiql,
-                        expand,
-                    ),
-                )
-                for project in projects
-            ]
-            async for work_items in stream_async_iterators_tasks(*tasks):
-                yield work_items
+            for project in projects:
+                # Execute WIQL queries with ID-range pagination to get all work item IDs
+                async for work_item_ids in self._fetch_work_item_id_batches(
+                    project, wiql
+                ):
+                    if not work_item_ids:
+                        continue
+                    logger.info(
+                        f"Fetched batch of {len(work_item_ids)} work item IDs for project {project['name']}"
+                    )
+                    # Fetch work items using the IDs (in batches of 200 per API call)
+                    async for work_items_batch in self._fetch_work_items_in_batches(
+                        project["id"],
+                        work_item_ids,
+                        query_params={"$expand": expand},
+                    ):
+                        logger.debug(f"Received {len(work_items_batch)} work items")
+                        # Enrich each work item with project details before yielding
+                        yield self._add_project_details_to_work_items(
+                            work_items_batch, project
+                        )
 
     def _parse_wiql_with_order_by(
         self, wiql: Optional[str]
@@ -2092,6 +1952,19 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return enriched
 
+    async def _fetch_enriched_test_runs(
+        self,
+        project_id: str,
+        include_results: bool,
+        coverage_config: Optional["CodeCoverageConfig"],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
+        params = {"includeRunDetails": True}
+        async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+            yield await self._enrich_test_runs(
+                runs, project_id, include_results, coverage_config
+            )
+
     async def fetch_test_runs(
         self,
         include_results: bool,
@@ -2101,17 +1974,22 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Starting to fetch test runs with include_results={include_results}"
         )
 
-        params = {"includeRunDetails": True}
         async for projects in self.generate_projects():
-            for project in projects:
-                project_id = project["id"]
-                url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-                async for runs in self._get_paginated_by_top_and_skip(
-                    url, params=params
-                ):
-                    yield await self._enrich_test_runs(
-                        runs, project_id, include_results, coverage_config
-                    )
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._fetch_enriched_test_runs,
+                        project["id"],
+                        include_results,
+                        coverage_config,
+                    ),
+                )
+                for project in projects
+            ]
+            async for test_runs in stream_async_iterators_tasks(*tasks):
+                yield test_runs
 
     async def _attach_async_results(
         self,
