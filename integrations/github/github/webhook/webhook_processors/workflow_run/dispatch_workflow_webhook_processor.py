@@ -60,7 +60,7 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         if wf_run_actor == integration_actor:
             return True
 
-        logger.warning(
+        logger.debug(
             "Skipping workflow run event as it was not triggered by this integration",
             integration_actor=integration_actor,
             wf_run_actor=wf_run_actor,
