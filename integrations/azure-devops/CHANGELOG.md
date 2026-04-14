@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Enhance repository-policy and test-run fetching with concurrency support
+- Enhanced repository-policy and test-run fetching with concurrency support
 
 
 ## 0.8.12 (2026-04-12)
