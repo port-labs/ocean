@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.53 (2026-04-14)
+
+
+### Bug Fixes
+
+- Expose webhook secret in `spec.yaml`
+
+
 ## 0.3.52 (2026-04-12)
 
 
