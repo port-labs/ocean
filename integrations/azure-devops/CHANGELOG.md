@@ -12,9 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Increased parallelism for project and organization-level resource processing during full syncs, significantly reducing resync duration for customers with large numbers of ADO projects
-- Refactored 8 sequential resource generators (repositories, pipelines, releases, environments, release deployments, pipeline stages, work items, and repository policies) to process projects concurrently using bounded semaphores
-- Added `MAX_CONCURRENT_PROJECTS` constant (default: 10) to control project-level concurrency while respecting API rate limits
+- Enhance repository-policy and test-run fetching with concurrency support
 
 
 ## 0.8.12 (2026-04-12)
