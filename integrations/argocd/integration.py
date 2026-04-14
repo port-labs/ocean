@@ -1,5 +1,6 @@
 from typing import Any, Optional, Literal
-from misc import ResourceKindsWithSpecialHandling
+
+from misc import ObjectKind, ResourceKindsWithSpecialHandling
 
 from pydantic import BaseModel, Field
 
@@ -82,10 +83,45 @@ class ManagedResourceResourceConfig(ResourceConfig):
     )
 
 
+class ProjectResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PROJECT] = Field(
+        title="Argo CD Project",
+        description="Argo CD project resource kind.",
+    )
+
+
+class ClusterResourceConfig(ResourceConfig):
+    kind: Literal[ResourceKindsWithSpecialHandling.CLUSTER] = Field(
+        title="Argo CD Cluster",
+        description="Argo CD cluster resource kind.",
+    )
+
+
+class DeploymentHistoryResourceConfig(ResourceConfig):
+    kind: Literal[ResourceKindsWithSpecialHandling.DEPLOYMENT_HISTORY] = Field(
+        title="Argo CD Deployment History",
+        description="Argo CD deployment history resource kind.",
+    )
+
+
+class KubernetesResourceResourceConfig(ResourceConfig):
+    kind: Literal[ResourceKindsWithSpecialHandling.KUBERNETES_RESOURCE] = Field(
+        title="Argo CD Kubernetes Resource",
+        description="Argo CD kubernetes resource kind.",
+    )
+
+
 class ArgocdPortAppConfig(PortAppConfig):
     resources: list[
-        ApplicationResourceConfig | ManagedResourceResourceConfig | ResourceConfig
-    ] = Field(default_factory=list)
+        ApplicationResourceConfig
+        | ManagedResourceResourceConfig
+        | ProjectResourceConfig
+        | ClusterResourceConfig
+        | DeploymentHistoryResourceConfig
+        | KubernetesResourceResourceConfig
+    ] = Field(
+        default_factory=list,
+    )  # type: ignore[assignment]
 
 
 class ArgocdIntegration(BaseIntegration):
