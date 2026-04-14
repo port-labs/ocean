@@ -1,3 +1,11 @@
+## 0.2.0 (2026-04-14)
+
+
+### Improvements
+
+- Added Literal kind definitions to `AmplicationPortAppConfig` for schema validation compliance
+
+
 ## 0.1.173 (2026-04-12)
 
 

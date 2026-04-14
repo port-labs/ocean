@@ -2,13 +2,8 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from loguru import logger
 from amplication.client import AmplicationClient
-from enum import StrEnum
 
-
-class ObjectKind(StrEnum):
-    TEMPLATE = "amplication_template"
-    RESOURCE = "amplication_resource"
-    ALERT = "amplication_alert"
+from kinds import ObjectKind
 
 
 def init_client() -> AmplicationClient:
