@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field
 
@@ -47,13 +47,22 @@ class MachineResourceConfig(ResourceConfig):
     )
 
 
+class CustomResourceConfig(ResourceConfig):
+    kind: str = Field(
+        title="Custom Resource",
+        description="Use this to map Octopus resources that have a list route in the <a target='_blank' href='https://samples.octopus.app/swaggerui/index.html'>Octopus API</a> in the form GET /{spaceId}/{resources} by setting the kind name to that resource name without the trailing s.\n\nExample: runbook for GET /{spaceId}/runbooks",
+    )
+
+
 class OctopusPortAppConfig(PortAppConfig):
+    allow_custom_kinds: ClassVar[bool] = True
     resources: list[
         SpaceResourceConfig
         | ProjectResourceConfig
         | ReleaseResourceConfig
         | DeploymentResourceConfig
         | MachineResourceConfig
+        | CustomResourceConfig
     ] = Field(
         default_factory=list,
     )  # type: ignore[assignment]
