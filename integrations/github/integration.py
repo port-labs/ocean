@@ -27,7 +27,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
-from typing import Any, Dict, List, Optional, Type, Literal
+from typing import Any, Dict, List, Optional, Type, Literal, Union
 
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
@@ -62,12 +62,74 @@ class IncludedFilesConfig(BaseModel):
         extra = "forbid"
 
 
+class GitHubCollaboratorRelationshipSelector(BaseModel):
+    affiliation: Literal["all", "direct", "outside"] = Field(
+        title="Affiliation",
+        default="all",
+        description="Filter collaborators by affiliation (all, direct, outside).",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GitHubRepositoryRelationSelector(BaseModel):
+    collaborators: Optional[GitHubCollaboratorRelationshipSelector] = Field(
+        title="Collaborators",
+        description="Fetch collaborators of the repository.",
+        default=None,
+    )
+    teams: bool = Field(
+        title="Include Teams",
+        default=False,
+        description="Include teams with access to the repository.",
+    )
+    sbom: bool = Field(
+        title="Include SBOM",
+        default=False,
+        description="Include SBOM for the repository.",
+    )
+
+    class Config:
+        extra = "forbid"
+
+    @property
+    def get_relations_dict(self) -> dict[str, dict[str, Any]]:
+        result = {}
+
+        if self.collaborators:
+            result["collaborators"] = {"include": True, **self.collaborators.dict()}
+
+        if self.teams:
+            result["teams"] = {"include": self.teams}
+
+        if self.sbom:
+            result["sbom"] = {"include": self.sbom}
+
+        return result
+
+
 class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
-    include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
-        title="Additional Repository Data",
-        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
+    include: Optional[
+        Union[
+            List[Literal["collaborators", "teams", "sbom"]],
+            GitHubRepositoryRelationSelector,
+        ]
+    ] = Field(
+        title="Additional Repository Data (Deprecated)",
+        description="(This is being deprecated in favor of the includeRelations selector. Please use the includeRelations selector instead. Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
         default_factory=list,
     )
+
+    @property
+    def cleaned_included_relations(self) -> dict[str, dict[str, Any]]:
+        if isinstance(self.include, GitHubRepositoryRelationSelector):
+            return self.include.get_relations_dict
+
+        if isinstance(self.include, list):
+            return {item: {"include": True} for item in self.include}
+
+        return {}
 
 
 class GithubRepositoryConfig(ResourceConfig):
@@ -481,12 +543,10 @@ class GithubBranchSelector(RepoSearchSelector):
     )
 
 
-class GithubCollaboratorSelector(RepoSearchSelector):
-    affiliation: Literal["all", "direct", "outside"] = Field(
-        title="Affiliation",
-        default="all",
-        description="Filter collaborators by affiliation (all, direct, outside).",
-    )
+class GithubCollaboratorSelector(
+    RepoSearchSelector, GitHubCollaboratorRelationshipSelector
+):
+    pass
 
 
 class GithubBranchConfig(ResourceConfig):
