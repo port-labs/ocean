@@ -180,7 +180,7 @@ class CheckmarxOneKicsResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
-    kind: Literal["sca", "containers", "dast_scan_result"]
+    kind: Literal["sca", "containers"]
     selector: CheckmarxOneResultSelector
 
 
