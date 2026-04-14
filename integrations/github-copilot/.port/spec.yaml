@@ -1,5 +1,7 @@
+title: GitHub Copilot
 description: github-copilot integration for Port Ocean
 icon: GithubCopilot
+formMappingEnabled: true
 recommendedInstallationMethod: Saas
 features:
   - type: exporter
