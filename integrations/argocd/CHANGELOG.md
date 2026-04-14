@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.9 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.3.8 (2026-04-09)
+
+
+### Improvements
+
+- Updated the application webhook to use LiveEventsProcessorManager.
+
+### Bug Fixes
+
+- Fixed an issue where `ocean.register_raw` was not utilizing the `itemsToParse` processor, leading to null records being generated.]
+- Application live events now apply query parameter selectors, ensuring that only applications matching the configured selectors are processed in during live events.
+
+
+## 0.3.7 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.3.6 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
 ## 0.3.5 (2026-04-06)
 
 

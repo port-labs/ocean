@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.285 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.1.284 (2026-04-09)
+
+
+### Bug Fixes
+
+- Fixed entity_types field to accept any valid Dynatrace entity type instead of restricting to APPLICATION and SERVICE only
+
+
+## 0.1.283 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.1.282 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
 ## 0.1.281 (2026-04-06)
 
 
