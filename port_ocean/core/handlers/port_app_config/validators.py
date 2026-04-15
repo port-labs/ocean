@@ -11,9 +11,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from port_ocean.core.handlers.port_app_config.schema_export import (
-    selector_model_for_schema_export,
-)
 from port_ocean.utils.misc import get_subclass_class_from_module
 
 _DEFINITIONS_REF_PREFIX = "#/definitions/"
@@ -132,10 +129,11 @@ def _resolve_selector_class(selector_type: Any, model: type) -> type:
 
 
 def _get_selector_schema(selector_type: Any, model: type) -> dict[str, Any]:
-    """Return JSON schema for the selector; export uses a schema-only subclass with ``extra=forbid``."""
+    """Return JSON schema for the selector with ``additionalProperties: false`` for export."""
     selector_cls = _resolve_selector_class(selector_type, model)
-    export_model = selector_model_for_schema_export(selector_cls)
-    return export_model.schema()
+    schema = selector_cls.schema()
+    schema["additionalProperties"] = False
+    return schema
 
 
 def patch_selector_definitions_for_export(
