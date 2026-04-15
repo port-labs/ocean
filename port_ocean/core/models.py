@@ -143,6 +143,11 @@ class LakehouseOperation(StrEnum):
     DELETE = "delete"
 
 
+class LakehouseEventType(StrEnum):
+    RESYNC = "resync"
+    LIVE_EVENT = "live-event"
+
+
 class RunStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     SUCCESS = "SUCCESS"
