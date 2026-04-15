@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.0 (2026-04-12)
+
+
+### Improvements
+
+- Removed deprecated `copilot-team-metrics` and `copilot-organization-metrics` kinds following GitHub's legacy Copilot Metrics API shutdown on April 2, 2026
+- Updated `pages.json` dashboard to reference `githubCopilotOrganizationUsage` blueprint, removing widgets that depended on team-level metrics
+- Updated dashboard identifier from `copilot_metrics` to `copilot_usage_metrics`
+
+
 ## 0.2.22 (2026-04-12)
 
 
