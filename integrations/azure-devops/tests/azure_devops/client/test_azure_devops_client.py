@@ -4621,3 +4621,67 @@ async def test_get_repository_files_mixed_none_and_valid_downloads() -> None:
     assert results[0]["file"]["path"] == "/src/good.py"
     # Verify None was not included
     assert all(r is not None for r in results)
+
+
+@pytest.mark.asyncio
+async def test_generate_repository_policies_multiple_repos(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify generate_repository_policies fetches policies from all repos concurrently."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": "repo1",
+                "name": "Repo One",
+                "project": {"id": "proj1", "name": "Project One"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "id": "repo2",
+                "name": "Repo Two",
+                "project": {"id": "proj1", "name": "Project One"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "id": "repo3",
+                "name": "Repo Three",
+                "project": {"id": "proj2", "name": "Project Two"},
+                "defaultBranch": "refs/heads/main",
+            },
+        ]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        params = kwargs.get("params", {})
+        repo_id = params.get("repositoryId", "")
+        return Response(
+            status_code=200,
+            json={"value": [{"id": f"policy-{repo_id}", "name": f"Policy-{repo_id}"}]},
+        )
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client,
+                "generate_repositories",
+                side_effect=mock_generate_repositories,
+            ),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            policies: List[Dict[str, Any]] = []
+            async for batch in client.generate_repository_policies():
+                policies.extend(batch)
+
+            policy_ids = {p["id"] for p in policies}
+            assert policy_ids == {"policy-repo1", "policy-repo2", "policy-repo3"}
+            # Verify __repository enrichment
+            for policy in policies:
+                repo_id = policy["id"].replace("policy-", "")
+                assert policy["__repository"]["id"] == repo_id
