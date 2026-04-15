@@ -2,13 +2,15 @@ from typing import Literal
 
 from pydantic import Field
 
-from kinds import ObjectKind
+
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+
+from main import ObjectKind
 
 
 class OrganizationUsageMetricsResourceConfig(ResourceConfig):
@@ -27,9 +29,7 @@ class UserUsageMetricsResourceConfig(ResourceConfig):
 
 class GithubCopilotPortAppConfig(PortAppConfig):
     resources: list[
-        OrganizationUsageMetricsResourceConfig
-        | UserUsageMetricsResourceConfig
-        | ResourceConfig
+        OrganizationUsageMetricsResourceConfig | UserUsageMetricsResourceConfig
     ] = Field(
         default_factory=list,
     )  # type: ignore[assignment]
