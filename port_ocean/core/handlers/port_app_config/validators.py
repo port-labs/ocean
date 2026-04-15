@@ -5,6 +5,8 @@ import json
 import types as _types
 from typing import Any, Literal, Type, Union, get_args, get_origin
 
+from pydantic import BaseModel
+
 from port_ocean.core.handlers.port_app_config.models import (
     CUSTOM_KIND,
     PortAppConfig,
@@ -116,7 +118,7 @@ def _get_advanced_config(config_class: Type[PortAppConfig]) -> dict[str, Any]:
     return {k: v for k, v in schema.get("properties", {}).items() if k != "resources"}
 
 
-def _resolve_selector_class(selector_type: Any, model: type) -> type:
+def _resolve_selector_class(selector_type: Any, model: type) -> Type[BaseModel]:
     """Resolve the concrete selector model (integration-specific or base ``Selector``)."""
     if isinstance(selector_type, type) and hasattr(selector_type, "schema"):
         return selector_type
