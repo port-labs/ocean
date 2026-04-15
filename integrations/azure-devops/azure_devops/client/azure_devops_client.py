@@ -65,6 +65,7 @@ MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
+MAX_CONCURRENT_PROJECTS = 5
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -868,28 +869,42 @@ class AzureDevopsClient(HTTPBaseClient):
                 deployment["__project"] = project
             yield deployments
 
+    async def _fetch_policies_for_repo(
+        self,
+        repo: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        params: dict[str, Any] = {
+            "repositoryId": repo["id"],
+        }
+        if default_branch := repo.get("defaultBranch"):
+            params["refName"] = default_branch
+
+        policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
+        response = await self.send_request("GET", policies_url, params=params)
+        if not response:
+            return
+        repo_policies = response.json()["value"]
+
+        for policy in repo_policies:
+            policy["__repository"] = repo
+        yield repo_policies
+
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for repos in self.generate_repositories(
             include_disabled_repositories=False
         ):
-            for repo in repos:
-                params = {
-                    "repositoryId": repo["id"],
-                }
-                if default_branch := repo.get("defaultBranch"):
-                    params["refName"] = default_branch
-
-                policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
-                response = await self.send_request("GET", policies_url, params=params)
-                if not response:
-                    continue
-                repo_policies = response.json()["value"]
-
-                for policy in repo_policies:
-                    policy["__repository"] = repo
-                yield repo_policies
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(self._fetch_policies_for_repo, repo),
+                )
+                for repo in repos
+            ]
+            async for policies in stream_async_iterators_tasks(*tasks):
+                yield policies
 
     async def generate_work_items(
         self, wiql: Optional[str], expand: str
@@ -1937,6 +1952,19 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return enriched
 
+    async def _fetch_enriched_test_runs(
+        self,
+        project_id: str,
+        include_results: bool,
+        coverage_config: Optional["CodeCoverageConfig"],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
+        params = {"includeRunDetails": True}
+        async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+            yield await self._enrich_test_runs(
+                runs, project_id, include_results, coverage_config
+            )
+
     async def fetch_test_runs(
         self,
         include_results: bool,
@@ -1946,17 +1974,22 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Starting to fetch test runs with include_results={include_results}"
         )
 
-        params = {"includeRunDetails": True}
         async for projects in self.generate_projects():
-            for project in projects:
-                project_id = project["id"]
-                url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-                async for runs in self._get_paginated_by_top_and_skip(
-                    url, params=params
-                ):
-                    yield await self._enrich_test_runs(
-                        runs, project_id, include_results, coverage_config
-                    )
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._fetch_enriched_test_runs,
+                        project["id"],
+                        include_results,
+                        coverage_config,
+                    ),
+                )
+                for project in projects
+            ]
+            async for test_runs in stream_async_iterators_tasks(*tasks):
+                yield test_runs
 
     async def _attach_async_results(
         self,
