@@ -52,4 +52,3 @@ def test_included_relations_forbids_unknown_keys() -> None:
         GithubRepositorySelector.parse_obj(
             {"query": "true", "includedRelations": {"unknown": True}}
         )
-

@@ -27,7 +27,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
-from typing import Any, Dict, List, Optional, Type, Literal, Union
+from typing import Any, Dict, List, Optional, Type, Literal
 
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
