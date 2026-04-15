@@ -30,35 +30,6 @@ class GitHubClient:
         ):
             yield organizations
 
-    async def get_teams_of_organization(
-        self, organization: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        url = self._resolve_route_params(
-            GithubEndpoints.LIST_TEAMS.value, {"org": organization["login"]}
-        )
-        async for teams in self._get_paginated_data(
-            url,
-            ignore_status_code=[self.forbidden_status_code],
-        ):
-            yield teams
-
-    async def get_legacy_metrics_for_organization(
-        self, organization: dict[str, Any]
-    ) -> list[dict[str, Any]] | None:
-        """Fetches the legacy inline-JSON metrics."""
-        url = self._resolve_route_params(
-            GithubEndpoints.COPILOT_ORGANIZATION_METRICS.value,
-            {"org": organization["login"]},
-        )
-        return await self.send_api_request(
-            "get",
-            url,
-            ignore_status_code=[
-                self.copilot_disabled_status_code,
-                self.forbidden_status_code,
-            ],
-        )
-
     async def get_organization_usage_metrics(
         self, organization: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -140,22 +111,6 @@ class GitHubClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching report from signed URL: {e}")
             return []
-
-    async def get_metrics_for_team(
-        self, organization: dict[str, Any], team: dict[str, Any]
-    ) -> list[dict[str, Any]] | None:
-        url = self._resolve_route_params(
-            GithubEndpoints.COPILOT_TEAM_METRICS.value,
-            {"org": organization["login"], "team": team["slug"]},
-        )
-        return await self.send_api_request(
-            "get",
-            url,
-            ignore_status_code=[
-                self.copilot_disabled_status_code,
-                self.forbidden_status_code,
-            ],
-        )
 
     async def _get_users_usage_metrics(
         self, organization: dict[str, Any]
