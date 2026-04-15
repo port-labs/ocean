@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Port app config JSON Schema export (`port-app-config` CLI JSON output) now sets `additionalProperties: false` on selector definitions via a schema-only Pydantic wrapper, so exported schemas reject unknown selector fields without changing runtime integration models.
+- Port app config JSON Schema export (`port-app-config` CLI JSON output) now sets `additionalProperties: false` on selector definitions by patching the exported schema in the CLI, so exported schemas reject unknown selector fields without changing runtime integration models.
 
 ## 0.40.5 (2026-04-09)
 
