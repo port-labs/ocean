@@ -26,16 +26,3 @@ def test_json_schema_export_patches_selector_definitions() -> None:
     patched = patch_selector_definitions_for_export(PortAppConfig, schema)
     selector_schema = patched.get("definitions", {}).get("Selector", {})
     assert selector_schema.get("additionalProperties") is False
-
-
-def _extract_selector_ref(property_schema: dict[str, object]) -> str:
-    """Return the ``$ref`` string from a selector property schema fragment."""
-    direct = property_schema.get("$ref")
-    if isinstance(direct, str):
-        return direct
-    all_of = property_schema.get("allOf")
-    if isinstance(all_of, list) and all_of and isinstance(all_of[0], dict):
-        nested = all_of[0].get("$ref")
-        if isinstance(nested, str):
-            return nested
-    raise AssertionError("selector property does not reference a definition")
