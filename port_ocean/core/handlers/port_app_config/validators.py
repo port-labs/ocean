@@ -5,8 +5,6 @@ import json
 import types as _types
 from typing import Any, Literal, Type, Union, get_args, get_origin
 
-from pydantic import BaseModel
-
 from port_ocean.core.handlers.port_app_config.models import (
     CUSTOM_KIND,
     PortAppConfig,
@@ -14,8 +12,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.utils.misc import get_subclass_class_from_module
-
-_DEFINITIONS_REF_PREFIX = "#/definitions/"
 
 
 def validate_and_get_config_schema(
@@ -118,81 +114,16 @@ def _get_advanced_config(config_class: Type[PortAppConfig]) -> dict[str, Any]:
     return {k: v for k, v in schema.get("properties", {}).items() if k != "resources"}
 
 
-def _resolve_selector_class(selector_type: Any, model: type) -> Type[BaseModel]:
-    """Resolve the concrete selector model (integration-specific or base ``Selector``)."""
+def _get_selector_schema(selector_type: Any, model: type) -> dict[str, Any]:
+    """Return JSON schema for the selector type, or resolve from model's module, or base Selector."""
     if isinstance(selector_type, type) and hasattr(selector_type, "schema"):
-        return selector_type
+        return selector_type.schema()
     selector_class = get_subclass_class_from_module(
         importlib.import_module(model.__module__), Selector
     )
     if selector_class is not None:
-        return selector_class
-    return Selector
-
-
-def _get_selector_schema(selector_type: Any, model: type) -> dict[str, Any]:
-    """Return JSON schema for the selector with ``additionalProperties: false`` for export."""
-    selector_cls = _resolve_selector_class(selector_type, model)
-    schema = selector_cls.schema()
-    schema["additionalProperties"] = False
-    return schema
-
-
-def patch_selector_definitions_for_export(
-    config_class: Type[PortAppConfig], schema: dict[str, Any]
-) -> dict[str, Any]:
-    """Patch top-level JSON Schema so selector definitions export with ``additionalProperties: false``.
-
-    This is used by CLI ``--format json`` output and does not affect runtime parsing.
-    """
-    definitions = schema.get("definitions")
-    if not isinstance(definitions, dict):
-        return schema
-
-    models = _get_resource_config_models(config_class)
-    for model in models:
-        if not (isinstance(model, type) and issubclass(model, ResourceConfig)):
-            continue
-
-        selector_field = model.__fields__.get("selector")
-        if selector_field is None:
-            continue
-
-        ref_key = _selector_ref_key(definitions, model)
-        if ref_key is None:
-            continue
-
-        selector_schema = _get_selector_schema(selector_field.outer_type_, model)
-        nested_definitions = selector_schema.pop("definitions", None)
-        if isinstance(nested_definitions, dict):
-            definitions.update(nested_definitions)
-        definitions[ref_key] = selector_schema
-
-    return schema
-
-
-def _selector_ref_key(definitions: dict[str, Any], model: type) -> str | None:
-    """Return the definitions key that *model*'s selector ``$ref`` points to.
-
-    Pydantic may disambiguate identically-named selector classes with
-    module-prefixed keys; reading the actual ``$ref`` ensures we patch
-    the right entry.
-    """
-    selector_prop = (
-        definitions.get(model.__name__, {}).get("properties", {}).get("selector", {})
-    )
-    ref = selector_prop.get("$ref")
-    if not isinstance(ref, str):
-        for combiner in ("allOf", "anyOf", "oneOf"):
-            for item in selector_prop.get(combiner, ()):
-                if isinstance(item, dict) and isinstance(item.get("$ref"), str):
-                    ref = item["$ref"]
-                    break
-            if isinstance(ref, str):
-                break
-    if isinstance(ref, str) and ref.startswith(_DEFINITIONS_REF_PREFIX):
-        return ref[len(_DEFINITIONS_REF_PREFIX) :]
-    return None
+        return selector_class.schema()
+    return Selector.schema()
 
 
 def _build_kinds_mapping(
