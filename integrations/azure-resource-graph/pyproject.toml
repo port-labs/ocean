@@ -1,17 +1,18 @@
 [tool.poetry]
 name = "azure-rg"
-version = "0.2.83-beta"
+version = "0.2.93-beta"
 description = "Azure multi-subscription integration for Port based on Azure Resource Graph"
 authors = ["Michael Armah <mikeyarmah@gmail.com>", "Melody Anyaegbulam <melody.anyaegbulam@port.io>", "Niv Meshorer <nivm@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.38.24", extras = ["cli"]}
-azure-identity = "^1.21.0"
+port_ocean = {version = "^0.40.5", extras = ["cli"]}
+azure-identity = "^1.25.0"
 azure-mgmt-subscription = "^3.1.1"
 azure-mgmt-resource = "^23.3.0"
 azure-mgmt-resourcegraph = "^8.0.0"
-aiohttp = "^3.11.16"
+aiohttp = "^3.13.4"
+azure-core = "^1.39.0"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration

@@ -8,6 +8,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.4 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.6.3 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.6.2 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.6.1 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.6.0 (2026-04-06)
+
+
+### Improvements
+
+- Removed beta tag for the custom integration
+
+## 0.5.4-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.5.3-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.5.2-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.5.1-beta (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 0.5.0-beta (2026-04-02)
+
+
+### Features
+
+- Added header_link pagination type for APIs using RFC 5988 Link header (GitHub, GitLab, Bitbucket)
+
+
+## 0.4.30-beta (2026-03-30)
+
+
+### Improvements
+
+- Enabled formMappingEnabled flag
+
+
+## 0.4.29-beta (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
 ## 0.4.28-beta (2026-03-25)
 
 

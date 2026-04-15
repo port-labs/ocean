@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 import pytest
 
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
-from port_ocean.core.models import LakehouseOperation
+from port_ocean.core.models import LakehouseOperation, LakehouseEventType
 
 
 TEST_INTEGRATION_IDENTIFIER = "test-integration"
@@ -47,7 +47,7 @@ async def test_post_integration_raw_data_default_operation(
 
     with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
         await lakehouse_integration_client.post_integration_raw_data(
-            raw_data, sync_id, kind
+            raw_data, sync_id, kind, index=0
         )
 
         lakehouse_integration_client.client.post.assert_called_once()
@@ -60,6 +60,7 @@ async def test_post_integration_raw_data_default_operation(
         assert expected_json["items"] == raw_data
         assert expected_json["operation"] == "upsert"
         assert expected_json["eventType"] == "live-event"
+        assert expected_json["resourceIndex"] == 0
         assert "extractionTimestamp" in expected_json
 
 
@@ -73,7 +74,7 @@ async def test_post_integration_raw_data_with_upsert_operation(
 
     with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
         await lakehouse_integration_client.post_integration_raw_data(
-            raw_data, sync_id, kind, operation=LakehouseOperation.UPSERT
+            raw_data, sync_id, kind, index=0, operation=LakehouseOperation.UPSERT
         )
 
         lakehouse_integration_client.client.post.assert_called_once()
@@ -83,6 +84,7 @@ async def test_post_integration_raw_data_with_upsert_operation(
         assert expected_json["items"] == raw_data
         assert expected_json["operation"] == "upsert"
         assert expected_json["eventType"] == "live-event"
+        assert expected_json["resourceIndex"] == 0
 
 
 async def test_post_integration_raw_data_with_delete_operation(
@@ -95,7 +97,7 @@ async def test_post_integration_raw_data_with_delete_operation(
 
     with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
         await lakehouse_integration_client.post_integration_raw_data(
-            raw_data, sync_id, kind, operation=LakehouseOperation.DELETE
+            raw_data, sync_id, kind, index=0, operation=LakehouseOperation.DELETE
         )
 
         lakehouse_integration_client.client.post.assert_called_once()
@@ -105,6 +107,7 @@ async def test_post_integration_raw_data_with_delete_operation(
         assert expected_json["items"] == raw_data
         assert expected_json["operation"] == "delete"
         assert expected_json["eventType"] == "live-event"
+        assert expected_json["resourceIndex"] == 0
 
 
 async def test_post_integration_raw_data_url_construction(
@@ -117,7 +120,7 @@ async def test_post_integration_raw_data_url_construction(
 
     with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
         await lakehouse_integration_client.post_integration_raw_data(
-            raw_data, sync_id, kind, operation=LakehouseOperation.UPSERT
+            raw_data, sync_id, kind, index=2, operation=LakehouseOperation.UPSERT
         )
 
         lakehouse_integration_client.client.post.assert_called_once()
@@ -131,6 +134,7 @@ async def test_post_integration_raw_data_url_construction(
             f"kind/{kind}"
         )
         assert call_args[0][0] == expected_url
+        assert call_args[1]["json"]["resourceIndex"] == 2
 
 
 async def test_post_integration_raw_data_empty_list(
@@ -143,7 +147,7 @@ async def test_post_integration_raw_data_empty_list(
 
     with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
         await lakehouse_integration_client.post_integration_raw_data(
-            raw_data, sync_id, kind, operation=LakehouseOperation.DELETE
+            raw_data, sync_id, kind, index=0, operation=LakehouseOperation.DELETE
         )
 
         lakehouse_integration_client.client.post.assert_called_once()
@@ -153,6 +157,7 @@ async def test_post_integration_raw_data_empty_list(
         assert expected_json["items"] == []
         assert expected_json["operation"] == "delete"
         assert expected_json["eventType"] == "live-event"
+        assert expected_json["resourceIndex"] == 0
 
 
 async def test_post_integration_raw_data_extraction_timestamp(
@@ -165,7 +170,7 @@ async def test_post_integration_raw_data_extraction_timestamp(
 
     with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
         await lakehouse_integration_client.post_integration_raw_data(
-            raw_data, sync_id, kind
+            raw_data, sync_id, kind, index=0
         )
 
         lakehouse_integration_client.client.post.assert_called_once()
@@ -175,12 +180,100 @@ async def test_post_integration_raw_data_extraction_timestamp(
         assert "extractionTimestamp" in expected_json
         assert isinstance(expected_json["extractionTimestamp"], int)
         assert expected_json["extractionTimestamp"] > 0
+        assert expected_json["resourceIndex"] == 0
 
 
 async def test_post_integration_raw_data_with_live_event_type(
     lakehouse_integration_client: IntegrationClientMixin,
 ) -> None:
-    """Test post_integration_raw_data with live-event type."""
+    """Test post_integration_raw_data with event_type parameter for live events."""
+    raw_data = [{"name": "test-entity"}]
+    sync_id = "webhook-event-123"
+    kind = "repository"
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data(
+            raw_data,
+            sync_id,
+            kind,
+            index=0,
+            operation=LakehouseOperation.UPSERT,
+            event_type=LakehouseEventType.LIVE_EVENT,
+        )
+
+        lakehouse_integration_client.client.post.assert_called_once()
+        call_args = lakehouse_integration_client.client.post.call_args
+
+        expected_json = call_args[1]["json"]
+        assert expected_json["items"] == raw_data
+        assert expected_json["operation"] == "upsert"
+        assert expected_json["eventType"] == "live-event"
+        assert expected_json["resourceIndex"] == 0
+
+
+async def test_post_integration_raw_data_with_resync_data_type(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    """Test post_integration_raw_data with event_type parameter for resync."""
+    raw_data = [{"name": "test-entity"}]
+    sync_id = "resync-123"
+    kind = "repository"
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data(
+            raw_data,
+            sync_id,
+            kind,
+            index=0,
+            operation=LakehouseOperation.UPSERT,
+            event_type=LakehouseEventType.RESYNC,
+        )
+
+        lakehouse_integration_client.client.post.assert_called_once()
+        call_args = lakehouse_integration_client.client.post.call_args
+
+        expected_json = call_args[1]["json"]
+        assert expected_json["items"] == raw_data
+        assert expected_json["operation"] == "upsert"
+        assert expected_json["eventType"] == "resync"
+        assert expected_json["resourceIndex"] == 0
+
+
+async def test_post_integration_raw_data_with_kafka_metadata(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    """Test post_integration_raw_data with kafka_metadata parameter."""
+    raw_data = [{"name": "test-entity"}]
+    sync_id = "webhook-event-456"
+    kind = "repository"
+    kafka_metadata = {"originalWebhook": {"event": "push", "repository": "my-repo"}}
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data(
+            raw_data,
+            sync_id,
+            kind,
+            index=0,
+            operation=LakehouseOperation.UPSERT,
+            event_type=LakehouseEventType.LIVE_EVENT,
+            kafka_metadata=kafka_metadata,
+        )
+
+        lakehouse_integration_client.client.post.assert_called_once()
+        call_args = lakehouse_integration_client.client.post.call_args
+
+        expected_json = call_args[1]["json"]
+        assert expected_json["items"] == raw_data
+        assert expected_json["operation"] == "upsert"
+        assert expected_json["eventType"] == "live-event"
+        assert expected_json["resourceIndex"] == 0
+        assert expected_json["kafkaMetadata"] == kafka_metadata
+
+
+async def test_post_integration_raw_data_without_kafka_metadata(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    """Test post_integration_raw_data without kafka_metadata parameter."""
     raw_data = [{"name": "test-entity"}]
     sync_id = "webhook-event-789"
     kind = "repository"
@@ -190,6 +283,7 @@ async def test_post_integration_raw_data_with_live_event_type(
             raw_data,
             sync_id,
             kind,
+            index=0,
             operation=LakehouseOperation.UPSERT,
         )
 
@@ -200,3 +294,5 @@ async def test_post_integration_raw_data_with_live_event_type(
     assert expected_json["items"] == raw_data
     assert expected_json["operation"] == "upsert"
     assert expected_json["eventType"] == "live-event"
+    assert expected_json["resourceIndex"] == 0
+    assert "kafkaMetadata" not in expected_json

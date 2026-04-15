@@ -25,6 +25,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
+from github.webhook.webhook_processors.collaborator_webhook_processor.utils import (
+    skip_if_affiliation_filtered,
+)
 
 
 class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
@@ -69,6 +72,10 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         logger.info(
             f"Handling membership event: {action} for {member_login} in team {team_slug}"
         )
+
+        skipped = skip_if_affiliation_filtered(resource_config)
+        if skipped is not None:
+            return skipped
 
         if action not in COLLABORATOR_UPSERT_EVENTS:
             # Since we cannot ascertain the repos for which the member was a collaborator,

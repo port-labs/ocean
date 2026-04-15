@@ -217,6 +217,19 @@ class IntegrationClientMixin:
         handle_port_status_code(response, should_log=False)
         logger.debug("Finished POST metrics request")
 
+    async def post_integration_metrics_heartbeat(self, event_id: str) -> None:
+        logger.debug("starting PUT metrics heartbeat request", event_id=event_id)
+        metrics_attributes = await self.get_metrics_attributes()
+        url = metrics_attributes["ingestUrl"] + "/heartbeat"
+        headers = await self.auth.headers()
+        response = await self.client.post(
+            url,
+            headers=headers,
+            json={"eventId": event_id},
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Finished PUT metrics heartbeat request")
+
     async def put_integration_sync_metrics(self, kind_metrics: dict[str, Any]) -> None:
         logger.debug("starting PUT metrics request", kind_metrics=kind_metrics)
         metrics_attributes = await self.get_metrics_attributes()
@@ -286,9 +299,11 @@ class IntegrationClientMixin:
         raw_data: list[dict[Any, Any]],
         sync_id: str,
         kind: str,
+        index: int,
         operation: LakehouseOperation = LakehouseOperation.UPSERT,
         resync_start_time: datetime | None = None,
         event_type: LakehouseEventType | None = None,
+        kafka_metadata: dict[str, Any] | None = None,
     ) -> None:
         if not sync_id:
             raise ValueError("sync_id cannot be empty")
@@ -317,12 +332,16 @@ class IntegrationClientMixin:
             "items": raw_data,
             "extractionTimestamp": int(datetime.now().timestamp() * 1000),
             "operation": operation.value,
+            "resourceIndex": index,
             "eventType": (
                 event_type.value if event_type else LakehouseEventType.LIVE_EVENT.value
             ),
         }
         if resync_start_time is not None:
             body["resyncStartTime"] = resync_start_time.isoformat()
+
+        if kafka_metadata:
+            body["kafkaMetadata"] = kafka_metadata
 
         response = await self.client.post(
             f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",

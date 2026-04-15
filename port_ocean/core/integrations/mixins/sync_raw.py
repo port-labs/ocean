@@ -407,7 +407,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     @TimeMetric(MetricPhase.RESYNC)
     async def _register_in_batches(
-        self, resource_config: ResourceConfig, user_agent_type: UserAgentType
+        self, resource_config: ResourceConfig, user_agent_type: UserAgentType, index: int
     ) -> tuple[list[Entity], list[Exception]]:
         with logger.contextualize(etl_phase=ETLPhase.EXTRACT):
             logger.info("Starting extract phase")
@@ -427,6 +427,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     raw_results,
                     event.id,
                     resource_config.kind,
+                    index,
                     resync_start_time=event.attributes.get("resync_start_time"),
                     event_type=LakehouseEventType.RESYNC,
                 )
@@ -474,6 +475,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             items,
                             event.id,
                             resource_config.kind,
+                            index,
                             resync_start_time=event.attributes.get("resync_start_time"),
                             event_type=LakehouseEventType.RESYNC,
                         )
@@ -800,7 +802,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
             task = asyncio.create_task(
-                self._register_in_batches(resource, user_agent_type)
+                self._register_in_batches(resource, user_agent_type, index)
             )
             event.on_abort(lambda: task.cancel())
 

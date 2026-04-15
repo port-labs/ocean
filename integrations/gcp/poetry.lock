@@ -1912,13 +1912,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.38.24"
+version = "0.40.5"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.38.24-py3-none-any.whl", hash = "sha256:261c740a909167ac3c62dbe6bbe4ec48e3b1d5f010d66dfbb78fd32cd6ad79e3"},
-    {file = "port_ocean-0.38.24.tar.gz", hash = "sha256:14a3350a89f76b610736aa733164aff9f78eced09e010527d461b633052a161d"},
+    {file = "port_ocean-0.40.5-py3-none-any.whl", hash = "sha256:53491450e32a0d7d3e4dab8087d9471026fe80036e58de5670a8e9d9c4e94662"},
+    {file = "port_ocean-0.40.5.tar.gz", hash = "sha256:d96b1981ee770058c493dd5c5c8b0182dc66b859a2892fbc76e1e7c90c4586c4"},
 ]
 
 [package.dependencies]
@@ -1944,7 +1944,7 @@ psutil = ">=7.2.1,<8.0.0"
 pydantic = {version = ">=1.10.8,<2.0.0", extras = ["dotenv"]}
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
-pyjwt = ">=2.10.1,<3.0.0"
+pyjwt = ">=2.12.0,<3.0.0"
 pytest-cov = ">=6.0.0,<7.0.0"
 python-dateutil = ">=2.9.0.post0,<3.0.0"
 pyyaml = ">=6.0,<7.0"
@@ -2045,13 +2045,13 @@ test = ["psleak", "pytest", "pytest-instafail", "pytest-xdist", "pywin32", "setu
 
 [[package]]
 name = "pyasn1"
-version = "0.6.2"
+version = "0.6.3"
 description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pyasn1-0.6.2-py3-none-any.whl", hash = "sha256:1eb26d860996a18e9b6ed05e7aae0e9fc21619fcee6af91cca9bad4fbea224bf"},
-    {file = "pyasn1-0.6.2.tar.gz", hash = "sha256:9b59a2b25ba7e4f8197db7686c09fb33e658b98339fadb826e9512629017833b"},
+    {file = "pyasn1-0.6.3-py3-none-any.whl", hash = "sha256:a80184d120f0864a52a073acc6fc642847d0be408e7c7252f31390c0f4eadcde"},
+    {file = "pyasn1-0.6.3.tar.gz", hash = "sha256:697a8ecd6d98891189184ca1fa05d1bb00e2f84b5977c481452050549c8a72cf"},
 ]
 
 [[package]]
@@ -2174,13 +2174,13 @@ files = [
 
 [[package]]
 name = "pyjwt"
-version = "2.11.0"
+version = "2.12.1"
 description = "JSON Web Token implementation in Python"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "pyjwt-2.11.0-py3-none-any.whl", hash = "sha256:94a6bde30eb5c8e04fee991062b534071fd1439ef58d2adc9ccb823e7bcd0469"},
-    {file = "pyjwt-2.11.0.tar.gz", hash = "sha256:35f95c1f0fbe5d5ba6e43f00271c275f7a1a4db1dab27bf708073b75318ea623"},
+    {file = "pyjwt-2.12.1-py3-none-any.whl", hash = "sha256:28ca37c070cad8ba8cd9790cd940535d40274d22f80ab87f3ac6a713e6e8454c"},
+    {file = "pyjwt-2.12.1.tar.gz", hash = "sha256:c74a7a2adf861c04d002db713dd85f84beb242228e671280bf709d765b03672b"},
 ]
 
 [package.extras]
@@ -2787,4 +2787,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "e855470ec28078d350816c3971b7a98b6654dc385a9d4aa302cf3e25a8a16b3b"
+content-hash = "e9734af9db5c8094d6d4bbd5dbeadb195f72f6f037651e36a1ef6c95bf164914"
