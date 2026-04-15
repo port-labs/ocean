@@ -99,7 +99,7 @@ class RepositoryWebhookProcessor(
 
         rest_client = create_github_client()
         exporter = RestRepositoryExporter(rest_client)
-        included_relations = resource_config.selector.cleaned_included_relations
+        included_relations = resource_config.selector.normalized_relations
 
         options = SingleRepositoryOptions(
             organization=organization,

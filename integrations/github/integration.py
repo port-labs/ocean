@@ -93,7 +93,6 @@ class GitHubRepositoryRelationSelector(BaseModel):
     class Config:
         extra = "forbid"
 
-    @property
     def get_relations_dict(self) -> dict[str, dict[str, Any]]:
         result = {}
 
@@ -110,23 +109,35 @@ class GitHubRepositoryRelationSelector(BaseModel):
 
 
 class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
-    include: Optional[
-        Union[
-            List[Literal["collaborators", "teams", "sbom"]],
-            GitHubRepositoryRelationSelector,
-        ]
-    ] = Field(
-        title="Additional Repository Data (Deprecated)",
-        description="(This is being deprecated in favor of the includeRelations selector. Please use the includeRelations selector instead. Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
+    class Config:
+        schema_extra = {
+            "extra": {
+                "ui_schema": {
+                    "mutuallyExclusiveSelectorGroups": [
+                        {"legacyKey": "include", "newKey": "includedRelations"}
+                    ]
+                }
+            }
+        }
+
+    include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
+        title="Additional Repository Data",
+        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
         default_factory=list,
+    )
+    included_relations: Optional[GitHubRepositoryRelationSelector] = Field(
+        alias="includedRelations",
+        title="Included Repository Relations",
+        description="Fetch additional data related to the repository. Configure per-relation options (for example, collaborator `affiliation`). Accepted relations: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>.",
+        default=None,
     )
 
     @property
-    def cleaned_included_relations(self) -> dict[str, dict[str, Any]]:
-        if isinstance(self.include, GitHubRepositoryRelationSelector):
-            return self.include.get_relations_dict
+    def normalized_relations(self) -> dict[str, dict[str, Any]]:
+        if self.included_relations:
+            return self.included_relations.get_relations_dict()
 
-        if isinstance(self.include, list):
+        if self.include:
             return {item: {"include": True} for item in self.include}
 
         return {}
