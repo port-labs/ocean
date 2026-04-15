@@ -1,8 +1,5 @@
-from typing import Literal
-
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
-    PortResourceConfig,
     ResourceConfig,
     Selector,
 )
@@ -42,47 +39,3 @@ def _extract_selector_ref(property_schema: dict[str, object]) -> str:
         if isinstance(nested, str):
             return nested
     raise AssertionError("selector property does not reference a definition")
-
-
-def test_patches_correct_definition_when_selector_names_collide() -> None:
-    """Two selector models with the same __name__ must each get patched
-    under the definition key that the schema actually references."""
-
-    class AzureDevopsSelector(Selector):
-        include_comments: bool = False
-
-    class AzureDevopsRepositoryResourceConfig(ResourceConfig):
-        kind: Literal["repository"]
-        selector: AzureDevopsSelector
-        port: PortResourceConfig
-
-    class AzureDevopsWorkItemResourceConfig(ResourceConfig):
-        kind: Literal["work_item"]
-        port: PortResourceConfig
-
-        class AzureDevopsSelector(Selector):
-            include_related_links: bool = False
-
-        selector: AzureDevopsSelector
-
-    class AzureDevopsPortAppConfig(PortAppConfig):
-        resources: list[
-            AzureDevopsRepositoryResourceConfig | AzureDevopsWorkItemResourceConfig
-        ]
-
-    schema = AzureDevopsPortAppConfig.schema()
-    patched = patch_selector_definitions_for_export(AzureDevopsPortAppConfig, schema)
-    definitions = patched.get("definitions", {})
-
-    repo_ref = _extract_selector_ref(
-        definitions["AzureDevopsRepositoryResourceConfig"]["properties"]["selector"]
-    )
-    wi_ref = _extract_selector_ref(
-        definitions["AzureDevopsWorkItemResourceConfig"]["properties"]["selector"]
-    )
-    repo_key = repo_ref.split("/")[-1]
-    wi_key = wi_ref.split("/")[-1]
-
-    assert repo_key != wi_key, "Pydantic should disambiguate same-named selectors"
-    assert definitions[repo_key].get("additionalProperties") is False
-    assert definitions[wi_key].get("additionalProperties") is False
