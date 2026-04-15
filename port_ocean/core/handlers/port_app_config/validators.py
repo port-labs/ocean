@@ -16,6 +16,8 @@ from port_ocean.core.handlers.port_app_config.schema_export import (
 )
 from port_ocean.utils.misc import get_subclass_class_from_module
 
+_DEFINITIONS_REF_PREFIX = "#/definitions/"
+
 
 def validate_and_get_config_schema(
     config_class: Type[PortAppConfig],
@@ -156,15 +158,41 @@ def patch_selector_definitions_for_export(
         if selector_field is None:
             continue
 
+        ref_key = _selector_ref_key(definitions, model)
+        if ref_key is None:
+            continue
+
         selector_schema = _get_selector_schema(selector_field.outer_type_, model)
-        selector_cls = _resolve_selector_class(selector_field.outer_type_, model)
         nested_definitions = selector_schema.pop("definitions", None)
         if isinstance(nested_definitions, dict):
             definitions.update(nested_definitions)
-
-        definitions[selector_cls.__name__] = selector_schema
+        definitions[ref_key] = selector_schema
 
     return schema
+
+
+def _selector_ref_key(definitions: dict[str, Any], model: type) -> str | None:
+    """Return the definitions key that *model*'s selector ``$ref`` points to.
+
+    Pydantic may disambiguate identically-named selector classes with
+    module-prefixed keys; reading the actual ``$ref`` ensures we patch
+    the right entry.
+    """
+    selector_prop = (
+        definitions.get(model.__name__, {}).get("properties", {}).get("selector", {})
+    )
+    ref = selector_prop.get("$ref")
+    if not isinstance(ref, str):
+        for combiner in ("allOf", "anyOf", "oneOf"):
+            for item in selector_prop.get(combiner, ()):
+                if isinstance(item, dict) and isinstance(item.get("$ref"), str):
+                    ref = item["$ref"]
+                    break
+            if isinstance(ref, str):
+                break
+    if isinstance(ref, str) and ref.startswith(_DEFINITIONS_REF_PREFIX):
+        return ref[len(_DEFINITIONS_REF_PREFIX) :]
+    return None
 
 
 def _build_kinds_mapping(
