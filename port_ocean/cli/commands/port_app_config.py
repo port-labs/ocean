@@ -12,6 +12,7 @@ from jsonref import replace_refs  # type: ignore[import-untyped]
 from port_ocean.cli.commands.main import cli_start
 from port_ocean.core.handlers import BasePortAppConfig
 from port_ocean.core.handlers.port_app_config.validators import (
+    patch_selector_definitions_for_export,
     validate_and_get_config_schema,
 )
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -153,6 +154,7 @@ def port_app_config_schema(
         case "json":
             validate_and_get_config_schema(config_class)
             result = config_class.schema()
+            result = patch_selector_definitions_for_export(config_class, result)
         case "ui":
             result = validate_and_get_config_schema(config_class)
             result = _normalize_schema(result)

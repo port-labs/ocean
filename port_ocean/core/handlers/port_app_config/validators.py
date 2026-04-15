@@ -11,6 +11,9 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.handlers.port_app_config.schema_export import (
+    selector_model_for_schema_export,
+)
 from port_ocean.utils.misc import get_subclass_class_from_module
 
 
@@ -114,16 +117,54 @@ def _get_advanced_config(config_class: Type[PortAppConfig]) -> dict[str, Any]:
     return {k: v for k, v in schema.get("properties", {}).items() if k != "resources"}
 
 
-def _get_selector_schema(selector_type: Any, model: type) -> dict[str, Any]:
-    """Return JSON schema for the selector type, or resolve from model's module, or base Selector."""
+def _resolve_selector_class(selector_type: Any, model: type) -> type:
+    """Resolve the concrete selector model (integration-specific or base ``Selector``)."""
     if isinstance(selector_type, type) and hasattr(selector_type, "schema"):
-        return selector_type.schema()
+        return selector_type
     selector_class = get_subclass_class_from_module(
         importlib.import_module(model.__module__), Selector
     )
     if selector_class is not None:
-        return selector_class.schema()
-    return Selector.schema()
+        return selector_class
+    return Selector
+
+
+def _get_selector_schema(selector_type: Any, model: type) -> dict[str, Any]:
+    """Return JSON schema for the selector; export uses a schema-only subclass with ``extra=forbid``."""
+    selector_cls = _resolve_selector_class(selector_type, model)
+    export_model = selector_model_for_schema_export(selector_cls)
+    return export_model.schema()
+
+
+def patch_selector_definitions_for_export(
+    config_class: Type[PortAppConfig], schema: dict[str, Any]
+) -> dict[str, Any]:
+    """Patch top-level JSON Schema so selector definitions export with ``additionalProperties: false``.
+
+    This is used by CLI ``--format json`` output and does not affect runtime parsing.
+    """
+    definitions = schema.get("definitions")
+    if not isinstance(definitions, dict):
+        return schema
+
+    models = _get_resource_config_models(config_class)
+    for model in models:
+        if not (isinstance(model, type) and issubclass(model, ResourceConfig)):
+            continue
+
+        selector_field = model.__fields__.get("selector")
+        if selector_field is None:
+            continue
+
+        selector_schema = _get_selector_schema(selector_field.outer_type_, model)
+        selector_cls = _resolve_selector_class(selector_field.outer_type_, model)
+        nested_definitions = selector_schema.pop("definitions", None)
+        if isinstance(nested_definitions, dict):
+            definitions.update(nested_definitions)
+
+        definitions[selector_cls.__name__] = selector_schema
+
+    return schema
 
 
 def _build_kinds_mapping(
