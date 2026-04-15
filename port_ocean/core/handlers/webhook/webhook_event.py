@@ -116,6 +116,7 @@ class WebhookEventRawResults:
         webhook_trace_id: str | None = None,
     ) -> None:
         self._resource: ResourceConfig | None = None
+        self._resource_index: int | None = None
         self._updated_raw_results = updated_raw_results
         self._deleted_raw_results = deleted_raw_results
         self._webhook_trace_id = webhook_trace_id
@@ -147,6 +148,14 @@ class WebhookEventRawResults:
     @resource.setter
     def resource(self, value: ResourceConfig) -> None:
         self._resource = value
+
+    @property
+    def resource_index(self) -> int | None:
+        return self._resource_index
+
+    @resource_index.setter
+    def resource_index(self, value: int | None) -> None:
+        self._resource_index = value
 
     @property
     def updated_raw_results(self) -> list[RAW_ITEM]:
