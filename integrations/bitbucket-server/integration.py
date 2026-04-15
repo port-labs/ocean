@@ -36,7 +36,7 @@ class BitbucketPullRequestSelector(BitbucketGenericSelector):
     state: Literal["ALL", "OPEN", "MERGED", "DECLINED"] = Field(
         default="OPEN",
         title="State",
-        description="State of pull requests to sync (ALL, OPEN, MERGED, DECLINED)",
+        description="State of pull requests to sync.",
     )
 
 
