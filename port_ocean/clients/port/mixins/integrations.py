@@ -303,7 +303,6 @@ class IntegrationClientMixin:
         operation: LakehouseOperation = LakehouseOperation.UPSERT,
         resync_start_time: datetime | None = None,
         event_type: LakehouseEventType | None = None,
-        kafka_metadata: dict[str, Any] | None = None,
     ) -> None:
         if not sync_id:
             raise ValueError("sync_id cannot be empty")
@@ -339,9 +338,6 @@ class IntegrationClientMixin:
         }
         if resync_start_time is not None:
             body["resyncStartTime"] = resync_start_time.isoformat()
-
-        if kafka_metadata:
-            body["kafkaMetadata"] = kafka_metadata
 
         response = await self.client.post(
             f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",

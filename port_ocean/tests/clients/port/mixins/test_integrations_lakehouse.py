@@ -239,37 +239,6 @@ async def test_post_integration_raw_data_with_resync_data_type(
         assert expected_json["resourceIndex"] == 0
 
 
-async def test_post_integration_raw_data_with_kafka_metadata(
-    lakehouse_integration_client: IntegrationClientMixin,
-) -> None:
-    """Test post_integration_raw_data with kafka_metadata parameter."""
-    raw_data = [{"name": "test-entity"}]
-    sync_id = "webhook-event-456"
-    kind = "repository"
-    kafka_metadata = {"originalWebhook": {"event": "push", "repository": "my-repo"}}
-
-    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
-        await lakehouse_integration_client.post_integration_raw_data(
-            raw_data,
-            sync_id,
-            kind,
-            index=0,
-            operation=LakehouseOperation.UPSERT,
-            event_type=LakehouseEventType.LIVE_EVENT,
-            kafka_metadata=kafka_metadata,
-        )
-
-        lakehouse_integration_client.client.post.assert_called_once()
-        call_args = lakehouse_integration_client.client.post.call_args
-
-        expected_json = call_args[1]["json"]
-        assert expected_json["items"] == raw_data
-        assert expected_json["operation"] == "upsert"
-        assert expected_json["eventType"] == "live-event"
-        assert expected_json["resourceIndex"] == 0
-        assert expected_json["kafkaMetadata"] == kafka_metadata
-
-
 async def test_post_integration_raw_data_without_kafka_metadata(
     lakehouse_integration_client: IntegrationClientMixin,
 ) -> None:
