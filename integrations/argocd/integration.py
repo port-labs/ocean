@@ -16,26 +16,31 @@ from port_ocean.core.integrations.base import BaseIntegration
 class ApplicationQueryParams(BaseModel):
     selector: Optional[str] = Field(
         default=None,
+        title="Selector",
         description="Selector to filter applications by kubernetes labels",
         alias="selector",
     )
     app_namespace: Optional[str] = Field(
         default=None,
+        title="Application Namespace",
         description="Namespace to filter applications by",
         alias="appNamespace",
     )
     projects: Optional[list[str]] = Field(
         default=None,
+        title="Projects",
         description="Projects to filter applications by",
         alias="projects",
     )
     resource_version: Optional[str] = Field(
         default=None,
+        title="Resource Version",
         description="Resource version to filter applications by",
         alias="resourceVersion",
     )
     repo: Optional[str] = Field(
         default=None,
+        title="Repository",
         description="Repository to filter applications by",
         alias="repo",
     )
@@ -49,7 +54,8 @@ class ApplicationSelector(Selector):
     query_params: Optional[ApplicationQueryParams] = Field(
         default=None,
         alias="queryParams",
-        description="API query parameters to filter applications",
+        title="Application Query Params",
+        description="API query parameters to filter applications by",
     )
 
 
@@ -68,7 +74,8 @@ class ManagedResourceSelector(Selector):
     app_filters: Optional[ApplicationQueryParams] = Field(
         default=None,
         alias="appFilters",
-        description="API query parameters to filter applications",
+        title="Application Query Params",
+        description="API query parameters to filter applications by",
     )
 
 
