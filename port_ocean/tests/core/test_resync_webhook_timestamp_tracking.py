@@ -54,6 +54,7 @@ class TestPostIntegrationRawDataInputValidation:
                 raw_data=[{"test": "data"}],
                 sync_id="",  # Empty - should fail
                 kind="repository",
+                index=0,
             )
 
     @pytest.mark.asyncio
@@ -71,6 +72,7 @@ class TestPostIntegrationRawDataInputValidation:
                 raw_data=[{"test": "data"}],
                 sync_id="test-sync-123",
                 kind="",  # Empty - should fail
+                index=0,
             )
 
     @pytest.mark.asyncio
@@ -89,6 +91,7 @@ class TestPostIntegrationRawDataInputValidation:
                 raw_data=[{"test": "data"}],
                 sync_id="test-sync-123",
                 kind="repository",
+                index=0,
                 resync_start_time=future_time,  # Future - should fail
             )
 
@@ -119,6 +122,7 @@ class TestPostIntegrationRawDataInputValidation:
                 raw_data=[{"test": "data"}],
                 sync_id="test-sync-123",
                 kind="repository",
+                index=0,
                 resync_start_time=past_time,
                 event_type=LakehouseEventType.RESYNC,
             )
@@ -142,6 +146,7 @@ class TestPostIntegrationRawDataInputValidation:
                 raw_data=[{"test": "data"}],
                 sync_id="test-sync-123",
                 kind="repository",
+                index=0,
                 resync_start_time=future_time_naive,
             )
 
@@ -174,6 +179,7 @@ class TestPostIntegrationRawDataInputValidation:
                 raw_data=[{"test": "data"}],
                 sync_id="test-sync-123",
                 kind="repository",
+                index=0,
                 resync_start_time=past_time_naive,
                 event_type=LakehouseEventType.RESYNC,
             )
@@ -209,6 +215,7 @@ class TestPostIntegrationRawDataRequestBody:
                 raw_data=raw_data,
                 sync_id="resync-abc-123",
                 kind="repository",
+                index=0,
                 operation=LakehouseOperation.UPSERT,
                 resync_start_time=resync_time,
                 event_type=LakehouseEventType.RESYNC,
@@ -254,6 +261,7 @@ class TestPostIntegrationRawDataRequestBody:
                 raw_data=raw_data,
                 sync_id="webhook-xyz-789",
                 kind="repository",
+                index=0,
                 operation=LakehouseOperation.UPSERT,
                 resync_start_time=webhook_time,
                 event_type=LakehouseEventType.LIVE_EVENT,
@@ -297,6 +305,7 @@ class TestPostIntegrationRawDataRequestBody:
                 raw_data=raw_data,
                 sync_id="test-sync-123",
                 kind="repository",
+                index=0,
                 # No resync_start_time or event_type
             )
 
@@ -472,6 +481,7 @@ class TestBackwardCompatibility:
                 raw_data=[{"test": "data"}],
                 sync_id="sync-123",
                 kind="repository",
+                index=0,
                 operation=LakehouseOperation.UPSERT,
             )
 
