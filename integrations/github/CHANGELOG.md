@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.3.2 (2026-04-14)
+
+
+### Improvements
+
+- changed log level to debug
+
+
+## 5.3.1 (2026-04-14)
+
+
+### Improvements
+
+- Added warning log for unprocessed dispatch workflow run events due to actor mismatch
+
+
 ## 5.3.0 (2026-04-12)
 
 
