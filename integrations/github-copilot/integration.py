@@ -4,7 +4,10 @@ from pydantic import Field
 
 from kinds import ObjectKind
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
-from port_ocean.core.handlers.port_app_config.models import PortAppConfig, ResourceConfig
+from port_ocean.core.handlers.port_app_config.models import (
+    PortAppConfig,
+    ResourceConfig,
+)
 from port_ocean.core.integrations.base import BaseIntegration
 
 
