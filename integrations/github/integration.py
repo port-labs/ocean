@@ -145,9 +145,11 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
     @root_validator(pre=True)
     def validate_include_and_included_relations(cls, values):
         if values.get("include") and values.get("includedRelations"):
-            raise ValueError("You cannot supply both 'include' and 'includedRelations' at the same time.")
+            raise ValueError(
+                "You cannot supply both 'include' and 'includedRelations' at the same time."
+            )
         return values
-  
+
 
 class GithubRepositoryConfig(ResourceConfig):
     selector: GithubRepositorySelector = Field(
