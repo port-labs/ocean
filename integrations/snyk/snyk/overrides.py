@@ -185,7 +185,7 @@ class VulnerabilitySelector(Selector):
         default=False,
         title="Enrich with Project",
         alias="enrichWithProject",
-        description="Enrich each vulnerability with its associated project data. Warning: when enabled without projectQueryParams, issues are fetched per project across the entire org (O(projects × issues)) — use projectQueryParams to scope the cost.",
+        description="Enrich each vulnerability with its associated project data. For large orgs this is API and memory intensive — use projectQueryParams to limit scope.",
     )
 
 
