@@ -22,18 +22,17 @@ def test_normalized_relations_from_included_relations_alias() -> None:
     }
 
 
-def test_normalized_relations_prefers_included_relations_over_include() -> None:
-    selector = GithubRepositorySelector.parse_obj(
-        {
-            "query": "true",
-            "include": ["teams"],
-            "includedRelations": {"collaborators": {"affiliation": "all"}},
-        }
-    )
+def test_included_relations_cannot_be_supplied_with_include() -> None:
+    with pytest.raises(ValidationError) as exc:
+        GithubRepositorySelector.parse_obj(
+            {
+                "query": "true",
+                "include": ["teams"],
+                "includedRelations": {"collaborators": {"affiliation": "all"}},
+            }
+        )
 
-    assert selector.normalized_relations == {
-        "collaborators": {"include": True, "affiliation": "all"}
-    }
+    assert "You cannot supply both 'include' and 'includedRelations'" in str(exc.value)
 
 
 def test_normalized_relations_falls_back_to_include_list() -> None:
