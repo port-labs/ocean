@@ -113,26 +113,26 @@ class SnykVulnerabilityAPIQueryParams(GenerateQueryParamMixin):
     updated_before: Optional[str] = Field(
         default=None,
         title="Updated Before",
-        description="A filter to select issues updated before this date (e.g. 2021-05-29T09:50:54.014Z).",
-        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$",
+        description="Return issues last updated before this date. Must be RFC3339 with timezone (e.g. 2021-05-29T09:50:54Z).",
+        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
     )
     updated_after: Optional[str] = Field(
         default=None,
         title="Updated After",
-        description="A filter to select issues updated after this date (e.g. 2021-05-29T09:50:54.014Z).",
-        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$",
+        description="Return issues last updated after this date. Must be RFC3339 with timezone (e.g. 2021-05-29T09:50:54Z).",
+        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
     )
     created_before: Optional[str] = Field(
         default=None,
         title="Created Before",
-        description="A filter to select issues created before this date (e.g. 2021-05-29T09:50:54.014Z).",
-        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$",
+        description="Return issues created before this date. Must be RFC3339 with timezone (e.g. 2021-05-29T09:50:54Z).",
+        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
     )
     created_after: Optional[str] = Field(
         default=None,
         title="Created After",
-        description="A filter to select issues created after this date (e.g. 2021-05-29T09:50:54.014Z).",
-        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$",
+        description="Return issues created after this date. Must be RFC3339 with timezone (e.g. 2021-05-29T09:50:54Z).",
+        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
     )
     effective_severity_level: Optional[
         list[Literal["info", "low", "medium", "high", "critical"]]
@@ -145,6 +145,11 @@ class SnykVulnerabilityAPIQueryParams(GenerateQueryParamMixin):
         default=None,
         title="Status",
         description="A filter to select issues with the provided status.",
+    )
+    ignored: Optional[bool] = Field(
+        default=None,
+        title="Ignored Issues Only",
+        description="When true, return only ignored issues. When false, return only non-ignored issues. Omit to return all.",
     )
 
 

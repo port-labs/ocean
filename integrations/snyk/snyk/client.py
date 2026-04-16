@@ -158,10 +158,9 @@ class SnykClient:
                 **query_params,
                 "scan_item.id": project["id"],
                 "scan_item.type": project["type"],
-                "version": self.snyk_api_version,
             },
         ):
-            yield enrich_batch_with_data(issues, project, enricment_key="__project")
+            yield enrich_batch_with_data(issues, project, enrichment_key="__project")
 
     async def get_paginated_issues(
         self, options: IssueOptions

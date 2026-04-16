@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from snyk.overrides import SnykProjectAPIQueryParams, SnykVulnerabilityAPIQueryParams
 
 
@@ -36,6 +39,33 @@ def test_merge_with_combines_params_and_extras() -> None:
     assert result["status"] == ["open"]
     assert result["version"] == "2024-06-21"
     assert result["scan_item.id"] == "abc"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "2026-04-15T00:00:00Z",
+        "2026-04-15T09:50:54.014Z",
+        "2026-04-15T00:00:00+05:30",
+    ],
+)
+def test_vulnerability_date_filter_accepts_valid_formats(value: str) -> None:
+    params = SnykVulnerabilityAPIQueryParams(updated_after=value)
+    assert params.generate_query_params()["updated_after"] == value
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "2026-04-15T00:00:00",  # datetime without timezone — rejected by Snyk API
+        "2026-04-15",  # bare date — rejected by Snyk API
+        "15-04-2026",
+        "not-a-date",
+    ],
+)
+def test_vulnerability_date_filter_rejects_invalid_formats(value: str) -> None:
+    with pytest.raises(ValidationError):
+        SnykVulnerabilityAPIQueryParams(updated_after=value)
 
 
 def test_merge_with_extra_values_override_params() -> None:

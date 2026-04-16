@@ -4,10 +4,10 @@ from typing import Any, Optional
 def enrich_batch_with_data(
     batch: list[dict[str, Any]],
     enrichment_data: Any,
-    enricment_key: str = "__organization",
+    enrichment_key: str = "__organization",
 ) -> list[dict[str, Any]]:
     for item in batch:
-        item[enricment_key] = enrichment_data
+        item[enrichment_key] = enrichment_data
 
     return batch
 
