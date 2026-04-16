@@ -12,7 +12,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 class GenerateQueryParamMixin(BaseModel):
     def generate_query_params(self) -> dict[str, Any]:
         params = self.dict(exclude_none=True, exclude_unset=True)
-        return {k: ",".join(v) if isinstance(v, list) else v for k, v in params.items()}
+        return params
 
     def merge_with(self, other: dict[str, Any]) -> dict[str, Any]:
         query_params = self.generate_query_params()
@@ -247,9 +247,7 @@ class SnykPortAppConfig(PortAppConfig):
         | OrganizationResourceConfig
         | VulnerabilityResourceConfig
         | IssueResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class SnykIntegration(BaseIntegration):

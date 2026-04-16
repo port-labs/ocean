@@ -11,14 +11,14 @@ def test_generate_query_params_excludes_none_fields() -> None:
     assert "ids" not in params.generate_query_params()
 
 
-def test_generate_query_params_joins_list_values_as_csv() -> None:
+def test_generate_query_params_preserves_list_values() -> None:
     params = SnykProjectAPIQueryParams(
         lifecycle=["production", "development"],
         environment=["frontend", "backend"],
     )
     result = params.generate_query_params()
-    assert result["lifecycle"] == "production,development"
-    assert result["environment"] == "frontend,backend"
+    assert result["lifecycle"] == ["production", "development"]
+    assert result["environment"] == ["frontend", "backend"]
 
 
 def test_generate_query_params_preserves_scalar_values() -> None:
@@ -33,7 +33,7 @@ def test_generate_query_params_preserves_scalar_values() -> None:
 def test_merge_with_combines_params_and_extras() -> None:
     params = SnykVulnerabilityAPIQueryParams(status=["open"])
     result = params.merge_with({"version": "2024-06-21", "scan_item.id": "abc"})
-    assert result["status"] == "open"
+    assert result["status"] == ["open"]
     assert result["version"] == "2024-06-21"
     assert result["scan_item.id"] == "abc"
 
