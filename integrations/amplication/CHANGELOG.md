@@ -6,6 +6,22 @@
 - Added Literal kind definitions to `AmplicationPortAppConfig` for schema validation compliance
 
 
+## 0.1.175 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.1.174 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
 ## 0.1.173 (2026-04-12)
 
 
