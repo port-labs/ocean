@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import Request
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -142,6 +142,12 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
 
         return {}
 
+    @root_validator(pre=True)
+    def validate_include_and_included_relations(cls, values):
+        if values.get("include") and values.get("includedRelations"):
+            raise ValueError("You cannot supply both 'include' and 'includedRelations' at the same time.")
+        return values
+  
 
 class GithubRepositoryConfig(ResourceConfig):
     selector: GithubRepositorySelector = Field(
