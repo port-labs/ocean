@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from typing import Any, Dict, List, Generator
 from snyk.client import SnykClient
-from snyk.options import IssueOptions, ProjectOptions
 from snyk.overrides import SnykProjectAPIQueryParams, SnykVulnerabilityAPIQueryParams
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -105,9 +104,7 @@ async def test_get_paginated_resources(
                     "next": "/rest/page2?version=2024-06-21&meta.latest_issue_counts=true&expand=target&limit=50&starting_after=v1.eyJpZCI6ODI3MzI3NjR9"
                 },
             }
-        elif url and url.endswith(
-            "/rest/page2?version=2024-06-21&meta.latest_issue_counts=true&expand=target&limit=50&starting_after=v1.eyJpZCI6ODI3MzI3NjR9"
-        ):
+        elif url and "/rest/page2" in url:
             return {"data": [{"id": "item2"}], "links": {"next": ""}}
         return {}
 
@@ -135,10 +132,12 @@ async def test_get_paginated_issues_with_project_params_fetches_issues_per_proje
     mock_issues = [{"id": "issue-1"}, {"id": "issue-2"}]
     project_params = SnykProjectAPIQueryParams(origins=["github"])
 
-    captured_project_options: list[ProjectOptions] = []
+    captured_api_params: list[Any] = []
 
-    async def mock_get_paginated_projects(options: ProjectOptions) -> Any:
-        captured_project_options.append(options)
+    async def mock_get_paginated_projects(
+        org: dict[str, Any], api_params: Any = None, enrich_with_org: bool = True
+    ) -> Any:
+        captured_api_params.append(api_params)
         yield [mock_project]
 
     async def mock_get_project_vulnerabilities(
@@ -156,15 +155,14 @@ async def test_get_paginated_issues_with_project_params_fetches_issues_per_proje
             new=mock_get_project_vulnerabilities,
         ),
     ):
-        options = IssueOptions(org=mock_org, project_params=project_params)
         results = []
-        async for batch in snyk_client.get_paginated_issues(options):
+        async for batch in snyk_client.get_paginated_issues(org=mock_org, project_params=project_params):
             results.extend(batch)
 
     assert len(results) == 2
     assert all(r["__organization"] == mock_org for r in results)
-    assert len(captured_project_options) == 1
-    assert captured_project_options[0].api_params == project_params
+    assert len(captured_api_params) == 1
+    assert captured_api_params[0] == project_params
 
 
 @pytest.mark.asyncio
@@ -179,7 +177,9 @@ async def test_get_paginated_issues_merges_api_params_with_base_version(
 
     captured_query_params: list[dict[str, Any]] = []
 
-    async def mock_get_paginated_projects(options: ProjectOptions) -> Any:
+    async def mock_get_paginated_projects(
+        org: dict[str, Any], api_params: Any = None, enrich_with_org: bool = True
+    ) -> Any:
         yield [mock_project]
 
     async def mock_get_project_vulnerabilities(
@@ -198,10 +198,7 @@ async def test_get_paginated_issues_merges_api_params_with_base_version(
             new=mock_get_project_vulnerabilities,
         ),
     ):
-        options = IssueOptions(
-            org=mock_org, project_params=project_params, api_params=api_params
-        )
-        async for _ in snyk_client.get_paginated_issues(options):
+        async for _ in snyk_client.get_paginated_issues(org=mock_org, project_params=project_params, api_params=api_params):
             pass
 
     assert len(captured_query_params) == 1
@@ -233,9 +230,8 @@ async def test_get_paginated_issues_without_project_params_uses_org_endpoint(
         ),
         patch.object(snyk_client, "get_paginated_projects") as mock_get_projects,
     ):
-        options = IssueOptions(org=mock_org)
         results = []
-        async for batch in snyk_client.get_paginated_issues(options):
+        async for batch in snyk_client.get_paginated_issues(org=mock_org):
             results.extend(batch)
 
     assert captured_urls == [expected_url]

@@ -1,6 +1,5 @@
 import asyncio
 from typing import Any, cast
-from snyk.options import ProjectOptions, IssueOptions
 from snyk.overrides import TargetResourceConfig, VulnerabilityResourceConfig
 from loguru import logger
 from IntegrationKind import IntegrationKind
@@ -47,9 +46,7 @@ async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(ProjectResourceConfig, event.resource_config).selector
     all_organizations = await snyk_client.get_organizations_in_groups()
     tasks = (
-        snyk_client.get_paginated_projects(
-            ProjectOptions(org=org, api_params=selector.api_query_params)
-        )
+        snyk_client.get_paginated_projects(org=org, api_params=selector.api_query_params)
         for org in all_organizations
     )
     async for projects in stream_async_iterators_tasks(*tasks):
@@ -82,7 +79,7 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     all_organizations = await snyk_client.get_organizations_in_groups()
     project_tasks = (
-        snyk_client.get_paginated_projects(ProjectOptions(org=org))
+        snyk_client.get_paginated_projects(org=org)
         for org in all_organizations
     )
 
@@ -112,12 +109,10 @@ async def on_vulnerability_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(VulnerabilityResourceConfig, event.resource_config).selector
     tasks = (
         snyk_client.get_paginated_issues(
-            IssueOptions(
-                org=org,
-                api_params=selector.api_query_params,
-                project_params=selector.project_query_params,
-                attach_project=selector.enrich_with_project,
-            )
+            org=org,
+            api_params=selector.api_query_params,
+            project_params=selector.project_query_params,
+            attach_project=selector.enrich_with_project,
         )
         for org in all_organizations
     )
