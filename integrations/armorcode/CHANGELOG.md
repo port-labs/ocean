@@ -7,13 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.98-beta (2026-04-16)
+## 0.1.100-beta (2026-04-16)
 
 
 ### Improvements
 
 - Added Literal kind definitions to `ArmorcodePortAppConfig` for schema validation compliance
 - Migrated `ObjectKind` to `StrEnum` for consistent typing with `Literal` kinds
+- Bumped ocean version to ^0.40.7
+
+
+## 0.1.99-beta (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.1.98-beta (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
 
 
 ## 0.1.97-beta (2026-04-12)
