@@ -68,7 +68,7 @@ def test_vulnerability_date_filter_rejects_invalid_formats(value: str) -> None:
         SnykVulnerabilityAPIQueryParams(updated_after=value)
 
 
-def test_merge_with_extra_values_override_params() -> None:
+def test_merge_with_params_take_precedence_over_extra_values() -> None:
     params = SnykVulnerabilityAPIQueryParams(status=["open"])
     result = params.merge_with({"status": "resolved"})
-    assert result["status"] == "resolved"
+    assert result["status"] == ["open"]

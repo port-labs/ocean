@@ -169,7 +169,7 @@ class SnykClient:
         base_params = {"version": self.snyk_api_version}
         query_params = (
             options.api_params.merge_with(base_params)
-            if options.api_params
+            if options.api_params is not None
             else base_params
         )
 

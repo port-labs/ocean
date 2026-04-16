@@ -16,7 +16,7 @@ class GenerateQueryParamMixin(BaseModel):
 
     def merge_with(self, other: dict[str, Any]) -> dict[str, Any]:
         query_params = self.generate_query_params()
-        return {**query_params, **other}
+        return {**other, **query_params}
 
 
 class SnykProjectAPIQueryParams(GenerateQueryParamMixin):
@@ -252,9 +252,7 @@ class SnykPortAppConfig(PortAppConfig):
         | OrganizationResourceConfig
         | VulnerabilityResourceConfig
         | IssueResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class SnykIntegration(BaseIntegration):
