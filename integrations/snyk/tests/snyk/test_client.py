@@ -156,7 +156,9 @@ async def test_get_paginated_issues_with_project_params_fetches_issues_per_proje
         ),
     ):
         results = []
-        async for batch in snyk_client.get_paginated_issues(org=mock_org, project_params=project_params):
+        async for batch in snyk_client.get_paginated_issues(
+            org=mock_org, project_params=project_params
+        ):
             results.extend(batch)
 
     assert len(results) == 2
@@ -198,7 +200,9 @@ async def test_get_paginated_issues_merges_api_params_with_base_version(
             new=mock_get_project_vulnerabilities,
         ),
     ):
-        async for _ in snyk_client.get_paginated_issues(org=mock_org, project_params=project_params, api_params=api_params):
+        async for _ in snyk_client.get_paginated_issues(
+            org=mock_org, project_params=project_params, api_params=api_params
+        ):
             pass
 
     assert len(captured_query_params) == 1
