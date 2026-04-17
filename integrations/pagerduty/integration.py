@@ -77,7 +77,8 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
 
 class PagerdutyScheduleAPIQueryParams(BaseModel):
     include: (
-        list[Literal["schedule_layers", "final_schedule", "overrides_schedule"]] | None
+        list[Literal["schedule_layers", "final_schedule", "overrides_subschedule"]]
+        | None
     ) = Field(
         default=None,
         title="Include",
@@ -407,9 +408,7 @@ class PagerdutyPortAppConfig(PortAppConfig):
         | PagerdutyOncallResourceConfig
         | PagerdutyEscalationPolicyResourceConfig
         | CustomResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
     allow_custom_kinds: ClassVar[bool] = True
 
 
