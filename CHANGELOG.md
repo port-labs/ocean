@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.40.7 (2026-04-15)
+
+### Improvements
+
+- Port app config JSON Schema export (`port-app-config` CLI JSON output) now sets `additionalProperties: false` on selector definitions by patching the exported schema in the CLI, so exported schemas reject unknown selector fields without changing runtime integration models.
+
+## 0.40.6 (2026-04-15)
+
+### Improvements
+
+- Send event_type and resync_start_time to Lakehouse API for better event tracking and audit trail.
+
 ## 0.40.5 (2026-04-09)
 
 ### Features
@@ -77,7 +89,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Added `x-ratelimit-reset` to the list of retry-after headers checked by the Port HTTP transport, so that when Ocean receives a 429 from the Port API it waits until the rate-limit window resets instead of falling back to exponential backoff
-
 
 ## 0.38.24 (2026-03-25)
 
