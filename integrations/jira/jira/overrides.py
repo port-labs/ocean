@@ -97,4 +97,6 @@ class JiraPortAppConfig(PortAppConfig):
         | JiraProjectResourceConfig
         | JiraUserResourceConfig
         | JiraReleaseResourceConfig
-    ] = Field(default_factory=list)  # type: ignore[assignment]
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
