@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.4.0 (2026-04-09)
+## 0.4.0 (2026-04-17)
 
 
 ### Features
@@ -18,6 +18,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add real-time webhook support for the vulnerability kind
 - Allow vulnerabilities to be optionally enriched with their associated project data
+
+
+## 0.3.61 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.3.60 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.3.59 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
 
 
 ## 0.3.58 (2026-04-09)

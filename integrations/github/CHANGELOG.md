@@ -7,13 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.3.6 (2026-04-16)
+
+
+### Improvements
+
+- Added structured repository relations enrichment configuration (teams/sbom/collaborators), including collaborator `affiliation` support.
+- Expanded repository webhook handling to also react to collaborator/team collaborator events so repository entities can be re-enriched when relationships change.
+
+
+## 5.3.5 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 5.3.4 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 5.3.3 (2026-04-15)
+
+
+### Improvements
+
+- Ignore enrich_with_first_commit if the api selector is set to rest instead of throwing ValidationError
+
+
+## 5.3.2 (2026-04-14)
+
+
+### Improvements
+
+- changed log level to debug
+
+
+## 5.3.1 (2026-04-14)
+
+
+### Improvements
+
+- Added warning log for unprocessed dispatch workflow run events due to actor mismatch
+
+
+## 5.3.0 (2026-04-12)
+
+
+### Improvements
+
+- Added optional enrich with first commit selector for PR kind for LTTM metrics
+
+
+## 5.2.19 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
 ## 5.2.18 (2026-04-09)
 
 
 ### Improvements
 
 - Add `selector.affiliation` support for the Collaborator kind (`all`/`direct`/`outside`).
-- Skip Collaborator live events when `selector.affiliation` is not `all` to avoid catalog 
+- Skip Collaborator live events when `selector.affiliation` is not `all` to avoid catalog
 
 
 ## 5.2.17 (2026-04-09)
