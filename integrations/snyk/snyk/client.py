@@ -242,7 +242,7 @@ class SnykClient:
 
     @cache_iterator_result()
     async def _get_paginated_projects(
-        self, org, params: dict[str, Any]
+        self, org: dict[str, Any], params: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Fetching paginated projects for organization: {org['id']}")
         url = f"/orgs/{org['id']}/projects"
