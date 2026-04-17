@@ -21,6 +21,8 @@ from azure_devops.webhooks.events import (
     PipelineEvents,
     PipelineStageEvents,
     PipelineRunEvents,
+    ReleaseEvents,
+    ReleaseDeploymentEvents,
 )
 
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
@@ -54,6 +56,7 @@ WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
 PIPELINES_PUBLISHER_ID = "pipelines"
+RELEASE_PUBLISHER_ID = "rm"
 API_PARAMS = {"api-version": "7.1"}
 WEBHOOK_URL_SUFFIX = "/integration/webhook"
 # Maximum number of work item IDs allowed in a single API request
@@ -119,6 +122,22 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
     WebhookSubscription(
         publisherId=PIPELINES_PUBLISHER_ID,
         eventType=PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseEvents.RELEASE_CREATED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseEvents.RELEASE_ABANDONED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseDeploymentEvents.DEPLOYMENT_STARTED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
     ),
 ]
 
@@ -1189,6 +1208,37 @@ class AzureDevopsClient(HTTPBaseClient):
                 return stage
         return None
 
+    async def get_release(
+        self, project_id: str, release_id: int
+    ) -> dict[Any, Any] | None:
+        release_url = (
+            self._format_service_url("vsrm")
+            + f"/{project_id}/{API_URL_PREFIX}/release/releases/{release_id}"
+        )
+        response = await self.send_request("GET", release_url)
+        if not response:
+            return None
+        return response.json()
+
+    async def get_release_deployment(
+        self, project_id: str, release_id: int, environment_id: int
+    ) -> dict[Any, Any] | None:
+        deployments_url = (
+            self._format_service_url("vsrm")
+            + f"/{project_id}/{API_URL_PREFIX}/release/deployments"
+        )
+        params = {
+            "deploymentStatus": "all",
+            "releaseId": release_id,
+            "definitionEnvironmentId": environment_id,
+            "$top": 1,
+        }
+        response = await self.send_request("GET", deployments_url, params=params)
+        if not response:
+            return None
+        deployments = response.json().get("value", [])
+        return deployments[0] if deployments else None
+
     async def get_columns(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self.get_boards_in_organization():
             for board in boards:
@@ -1292,6 +1342,8 @@ class AzureDevopsClient(HTTPBaseClient):
         if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
             subscription_base_url = self._advsec_base_url
             params = ADVANCED_SECURITY_API_PARAMS
+        elif webhook_subscription.publisherId == RELEASE_PUBLISHER_ID:
+            subscription_base_url = self._format_service_url("vsrm")
 
         create_subscription_url = (
             f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
@@ -1321,6 +1373,8 @@ class AzureDevopsClient(HTTPBaseClient):
         if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
             subscription_base_url = self._advsec_base_url
             params = ADVANCED_SECURITY_API_PARAMS
+        elif webhook_subscription.publisherId == RELEASE_PUBLISHER_ID:
+            subscription_base_url = self._format_service_url("vsrm")
 
         delete_subscription_url = f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_subscription.id}"
         logger.info(f"Deleting subscription to event: {webhook_subscription.json()}")

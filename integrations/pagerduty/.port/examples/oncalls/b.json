@@ -1,0 +1,106 @@
+{
+  "escalation_policy": {
+    "id": "P7LVMYP",
+    "type": "escalation_policy_reference",
+    "summary": "Backend Escalation Policy",
+    "self": "https://api.pagerduty.com/escalation_policies/P7LVMYP",
+    "html_url": "https://getport-io.pagerduty.com/escalation_policies/P7LVMYP"
+  },
+  "escalation_level": 1,
+  "schedule": {
+    "id": "PWAXLIH",
+    "type": "schedule_reference",
+    "summary": "Port Test Service - Weekly Rotation",
+    "self": "https://api.pagerduty.com/schedules/PWAXLIH",
+    "html_url": "https://getport-io.pagerduty.com/schedules/PWAXLIH"
+  },
+  "user": {
+    "name": "John Doe",
+    "email": "jdoe@getport.io",
+    "time_zone": "Asia/Jerusalem",
+    "color": "purple",
+    "avatar_url": "https://secure.gravatar.com/avatar/45c8178b572b583254694ab0aa3aaf4b.png?d=mm&r=PG",
+    "billed": true,
+    "role": "owner",
+    "description": null,
+    "invitation_sent": false,
+    "job_title": null,
+    "teams": [],
+    "created_via_sso": false,
+    "contact_methods": [
+      {
+        "id": "PCQ9T3Z",
+        "type": "email_contact_method_reference",
+        "summary": "Default",
+        "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PCQ9T3Z",
+        "html_url": null
+      },
+      {
+        "id": "PRV0DHB",
+        "type": "phone_contact_method_reference",
+        "summary": "Mobile",
+        "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PRV0DHB",
+        "html_url": null
+      },
+      {
+        "id": "P0CNH3N",
+        "type": "push_notification_contact_method_reference",
+        "summary": "iPhone",
+        "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/P0CNH3N",
+        "html_url": null
+      },
+      {
+        "id": "PV4OEX1",
+        "type": "sms_contact_method_reference",
+        "summary": "Mobile",
+        "self": "https://api.pagerduty.com/users/P4K4DLP/contact_methods/PV4OEX1",
+        "html_url": null
+      }
+    ],
+    "notification_rules": [
+      {
+        "id": "POGJIWU",
+        "type": "assignment_notification_rule_reference",
+        "summary": "0 minutes: channel PCQ9T3Z",
+        "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/POGJIWU",
+        "html_url": null
+      },
+      {
+        "id": "P70207T",
+        "type": "assignment_notification_rule_reference",
+        "summary": "1 minutes: channel PCQ9T3Z",
+        "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P70207T",
+        "html_url": null
+      },
+      {
+        "id": "PNZQ0JG",
+        "type": "assignment_notification_rule_reference",
+        "summary": "3 minutes: channel PRV0DHB",
+        "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/PNZQ0JG",
+        "html_url": null
+      },
+      {
+        "id": "P4DEOZ7",
+        "type": "assignment_notification_rule_reference",
+        "summary": "0 minutes: channel P0CNH3N",
+        "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P4DEOZ7",
+        "html_url": null
+      },
+      {
+        "id": "P3QDMV3",
+        "type": "assignment_notification_rule_reference",
+        "summary": "2 minutes: channel PV4OEX1",
+        "self": "https://api.pagerduty.com/users/P4K4DLP/notification_rules/P3QDMV3",
+        "html_url": null
+      }
+    ],
+    "locale": "en-US",
+    "id": "P4K4DLP",
+    "type": "user",
+    "summary": "John Doe",
+    "self": "https://api.pagerduty.com/users/P4K4DLP",
+    "html_url": "https://getport-io.pagerduty.com/users/P4K4DLP"
+  },
+  "start": "2026-03-30T13:00:00Z",
+  "end": "2026-04-06T13:00:00Z"
+}

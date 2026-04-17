@@ -19,7 +19,7 @@ class SingleOrganizationOptions(TypedDict):
 
 class SingleRepositoryOptions(SingleOrganizationOptions):
     name: str
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class ListRepositoryOptions(SingleOrganizationOptions):
@@ -28,7 +28,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     type: str
     organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
