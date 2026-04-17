@@ -1,20 +1,14 @@
-from fastapi import Request
+from typing import cast
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from client import ArgocdClient, ObjectKind, ResourceKindsWithSpecialHandling
+from integration import ApplicationResourceConfig, ManagedResourceResourceConfig
+from misc import ResourceKindsWithSpecialHandling, ObjectKind, init_client
 from port_ocean.context.ocean import ocean
-
-
-def init_client() -> ArgocdClient:
-    return ArgocdClient(
-        ocean.integration_config["token"],
-        ocean.integration_config["server_url"],
-        ocean.integration_config["ignore_server_error"],
-        ocean.integration_config["allow_insecure"],
-        ocean.integration_config["custom_http_headers"],
-        ocean.config.streaming.enabled,
-    )
+from webhooks.webhook_processor.application_webhook_processor import (
+    ArgocdApplicationWebhookProcessor,
+)
 
 
 @ocean.on_resync()
@@ -24,10 +18,23 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield []
     else:
         argocd_client = init_client()
-        async for cluster in argocd_client.get_resources_for_available_clusters(
+        async for cluster in argocd_client.get_resources(
             resource_kind=ObjectKind(kind)
         ):
             yield cluster
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.APPLICATION)
+async def on_applications_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    argocd_client = init_client()
+    selector = cast(ApplicationResourceConfig, event.resource_config).selector
+    params = (
+        selector.query_params.generate_request_params if selector.query_params else None
+    )
+    async for application in argocd_client.get_resources(
+        resource_kind=ResourceKindsWithSpecialHandling.APPLICATION, query_params=params
+    ):
+        yield application
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLUSTER)
@@ -55,8 +62,11 @@ async def on_managed_k8s_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_T
 async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
 
-    async for app_batch in argocd_client.get_resources_for_available_clusters(
-        resource_kind=ObjectKind.APPLICATION
+    selector = cast(ManagedResourceResourceConfig, event.resource_config).selector
+    app_filters = selector.app_filters
+    params = app_filters.generate_request_params if app_filters else None
+    async for app_batch in argocd_client.get_resources(
+        resource_kind=ResourceKindsWithSpecialHandling.APPLICATION, query_params=params
     ):
         if not app_batch:
             logger.info(
@@ -75,15 +85,4 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield managed_resources
 
 
-@ocean.router.post("/webhook")
-async def on_application_event_webhook_handler(request: Request) -> None:
-    data = await request.json()
-    logger.debug(f"received webhook event data: {data}")
-    argocd_client = init_client()
-
-    if data["action"] == "upsert":
-        application = await argocd_client.get_application_by_name(
-            data["application_name"],
-            namespace=data.get("application_namespace"),
-        )
-        await ocean.register_raw(ObjectKind.APPLICATION, [application])
+ocean.add_webhook_processor("/webhook", ArgocdApplicationWebhookProcessor)

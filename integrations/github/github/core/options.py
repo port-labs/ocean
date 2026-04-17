@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
+from pydantic import BaseModel, Field
 
 
 class ListOrganizationOptions(TypedDict):
@@ -18,7 +19,7 @@ class SingleOrganizationOptions(TypedDict):
 
 class SingleRepositoryOptions(SingleOrganizationOptions):
     name: str
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class ListRepositoryOptions(SingleOrganizationOptions):
@@ -27,7 +28,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     type: str
     organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -41,6 +42,7 @@ class SinglePullRequestOptions(RepositoryIdentifier):
     """Options for fetching a single pull request."""
 
     pr_number: Required[int]
+    enrich_with_first_commit: NotRequired[bool]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -49,6 +51,11 @@ class ListPullRequestOptions(RepositoryIdentifier):
     states: Required[list[str]]
     max_results: Required[int]
     updated_after: Required[datetime]
+    enrich_with_first_commit: NotRequired[bool]
+
+
+class PullRequestGraphQLOptions(BaseModel):
+    enrich_with_first_commit: bool = Field(default=False)
 
 
 class SingleIssueOptions(RepositoryIdentifier):
@@ -250,6 +257,8 @@ class SingleCollaboratorOptions(RepositoryIdentifier):
 
 class ListCollaboratorOptions(RepositoryIdentifier):
     """Options for listing collaborators."""
+
+    affiliation: Required[str]
 
 
 class BaseSecretScanningAlertOptions(RepositoryIdentifier):

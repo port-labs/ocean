@@ -190,7 +190,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_config = cast(GithubRepositoryConfig, event.resource_config)
-    included_relationships = repo_config.selector.include
+    included_relations = repo_config.selector.normalized_relations
     included_files = repo_config.selector.included_files or []
     included_files_enricher = (
         IncludedFilesEnricher(
@@ -210,7 +210,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     organization=org["login"],
                     organization_type=org["type"],
                     type=port_app_config.repository_type,
-                    included_relationships=cast(list[str], included_relationships),
+                    included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
                 )
             )
@@ -432,6 +432,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 states=list(config.selector.states),
                                 max_results=config.selector.max_results,
                                 updated_after=config.selector.updated_after,
+                                enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                             )
                         )
@@ -994,7 +995,9 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     tasks.append(
                         collaborator_exporter.get_paginated_resources(
                             ListCollaboratorOptions(
-                                organization=org_name, repo_name=repo["name"]
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                affiliation=config.selector.affiliation,
                             )
                         )
                     )
