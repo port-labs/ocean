@@ -1,0 +1,27 @@
+{
+  "type": "copilot_code_review",
+  "parameters": {
+    "review_on_push": false,
+    "review_draft_pull_requests": false
+  },
+  "ruleset_source_type": "Repository",
+  "ruleset_source": "codaqui/institucional",
+  "ruleset_id": 3141418,
+  "__branch": "main",
+  "__repository": "institucional",
+  "__repository_object": {
+    "id": 463401014,
+    "name": "institucional",
+    "full_name": "codaqui/institucional",
+    "private": false,
+    "owner": {
+      "login": "codaqui",
+      "id": 104939806,
+      "type": "Organization"
+    },
+    "html_url": "https://github.com/codaqui/institucional",
+    "default_branch": "main",
+    "visibility": "public"
+  },
+  "__organization": "codaqui"
+}

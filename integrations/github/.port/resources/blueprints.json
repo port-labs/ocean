@@ -208,5 +208,56 @@
                 "many": false
             }
         }
+    },
+    {
+        "identifier": "githubBranchRule",
+        "description": "This blueprint represents a GitHub branch rule from a repository ruleset",
+        "title": "Branch Rule",
+        "icon": "Github",
+        "schema": {
+            "properties": {
+                "ruleType": {
+                    "type": "string",
+                    "title": "Rule Type",
+                    "description": "The type of the rule (e.g. pull_request, deletion, non_fast_forward)"
+                },
+                "rulesetSource": {
+                    "type": "string",
+                    "title": "Ruleset Source",
+                    "description": "The source repository or organization of the ruleset"
+                },
+                "rulesetSourceType": {
+                    "type": "string",
+                    "title": "Ruleset Source Type",
+                    "description": "Whether the ruleset is from a Repository or Organization"
+                },
+                "rulesetId": {
+                    "type": "number",
+                    "title": "Ruleset ID",
+                    "description": "The unique identifier of the ruleset"
+                },
+                "parameters": {
+                    "type": "object",
+                    "title": "Parameters",
+                    "description": "The rule parameters and configuration"
+                },
+                "branch": {
+                    "type": "string",
+                    "title": "Branch",
+                    "description": "The branch this rule applies to"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+            "repository": {
+                "title": "Repository",
+                "target": "githubRepository",
+                "required": false,
+                "many": false
+            }
+        }
     }
 ]
