@@ -42,7 +42,7 @@ class SnykProjectAPIQueryParams(GenerateQueryParamMixin):
     )
     names: Optional[list[str]] = Field(
         default=None,
-        title="Name",
+        title="Names",
         description="Return projects that match the provided names",
     )
     names_start_with: Optional[list[str]] = Field(
