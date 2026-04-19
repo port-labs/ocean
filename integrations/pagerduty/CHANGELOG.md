@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.41 (2026-04-17)
+
+
+### Bug Fixes
+
+- Correct Pagerduty schedule options
+
+
+## 0.5.40 (2026-04-17)
+
+
+### Improvements
+
+- Add static examples for Pagerduty
+
+
+## 0.5.39 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.5.38 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
 ## 0.5.37 (2026-04-12)
 
 
