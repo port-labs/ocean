@@ -71,21 +71,23 @@ class ListIssueOptions(RepositoryIdentifier):
     labels: NotRequired[Optional[str]]
 
 
-class SingleUserOptions(SingleOrganizationOptions):
+class BaseUserOptions(SingleOrganizationOptions):
+    include_saml_email: NotRequired[bool]
+
+
+class SingleUserOptions(BaseUserOptions):
     login: Required[str]
 
 
-class ListUserOptions(SingleOrganizationOptions):
+class ListUserOptions(BaseUserOptions):
     """Options for listing users."""
 
-    pass
 
-
-class SingleTeamOptions(SingleOrganizationOptions):
+class SingleTeamOptions(BaseUserOptions):
     slug: Required[str]
 
 
-class ListTeamOptions(SingleOrganizationOptions):
+class ListTeamOptions(BaseUserOptions):
     """Options for listing teams."""
 
 

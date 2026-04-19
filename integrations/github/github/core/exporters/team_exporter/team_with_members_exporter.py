@@ -19,6 +19,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
     ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
+        include_saml_email = bool(options["include_saml_email"])
         organization = options["organization"]
         slug = options["slug"]
         variables = {
@@ -59,7 +60,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
         del team["members"]["pageInfo"]
 
         await enrich_members_with_saml_email(
-            self.client, organization, team["members"]["nodes"]
+            self.client, organization, team["members"]["nodes"], include_saml_email
         )
 
         return team
@@ -67,6 +68,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
     async def get_paginated_resources[
         ExporterOptionT: ListTeamOptions
     ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        include_saml_email = bool(options["include_saml_email"])
         organization = options["organization"]
         variables = {
             "organization": organization,
@@ -96,7 +98,10 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
                 del team["members"]["pageInfo"]
 
                 await enrich_members_with_saml_email(
-                    self.client, organization, team["members"]["nodes"]
+                    self.client,
+                    organization,
+                    team["members"]["nodes"],
+                    include_saml_email,
                 )
 
                 teams_buffer.append(team)

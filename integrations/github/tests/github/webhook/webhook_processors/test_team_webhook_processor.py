@@ -18,7 +18,7 @@ from github.core.options import SingleTeamOptions
 
 from github.helpers.utils import ObjectKind, GithubClientType
 
-from integration import GithubTeamConfig, GithubTeamSector
+from integration import GithubTeamConfig, GithubTeamSelector
 
 
 @pytest.fixture
@@ -114,7 +114,7 @@ class TestTeamWebhookProcessor:
         # Create resource_config based on include_members
         resource_config = GithubTeamConfig(
             kind=ObjectKind.TEAM,
-            selector=GithubTeamSector(members=include_members, query="true"),
+            selector=GithubTeamSelector(members=include_members, query="true"),
             port=PortResourceConfig(
                 entity=MappingsConfig(
                     mappings=EntityMapping(
@@ -157,7 +157,11 @@ class TestTeamWebhookProcessor:
 
                 # Verify exporter was called with correct team slug
                 mock_exporter.get_resource.assert_called_once_with(
-                    SingleTeamOptions(organization="test-org", slug="test-team")
+                    SingleTeamOptions(
+                        organization="test-org",
+                        slug="test-team",
+                        include_saml_email=False,
+                    )
                 )
 
         assert isinstance(result, WebhookEventRawResults)
