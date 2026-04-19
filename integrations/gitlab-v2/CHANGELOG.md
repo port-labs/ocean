@@ -14,11 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added support for project members (direct and inherited) via a new `project-with-members` kind, using GitLab's `/projects/:id/members` and `/projects/:id/members/all` API endpoints
 
-### Improvements
-
-- Skip incomplete GitLab member API rows during group/project member enrichment (with logging) instead of failing the whole batch
-- Return empty webhook update payloads when a group is not found for `group-with-members`, matching `project-with-members` behavior
-
 
 ## 0.6.15 (2026-04-16)
 
