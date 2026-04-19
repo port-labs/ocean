@@ -408,7 +408,9 @@ class PagerdutyPortAppConfig(PortAppConfig):
         | PagerdutyOncallResourceConfig
         | PagerdutyEscalationPolicyResourceConfig
         | CustomResourceConfig
-    ] = Field(default_factory=list)  # type: ignore[assignment]
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
     allow_custom_kinds: ClassVar[bool] = True
 
 
