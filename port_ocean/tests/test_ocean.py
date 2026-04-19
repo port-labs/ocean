@@ -109,6 +109,7 @@ class TestInitializeAppRoutes:
         calls = mock_ocean.fast_api_app.include_router.call_args_list
         assert calls[0].kwargs["prefix"] == expected_integration_path
         assert calls[1].kwargs["prefix"] == expected_metrics_path
+        assert calls[2].kwargs["prefix"] == "/health"
 
 
 # base_url property tests
