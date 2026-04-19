@@ -19,6 +19,26 @@ from gitlab.clients.rest_client import RestClient
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 
+def _member_row_for_port(member: dict[str, Any], context: str) -> dict[str, Any] | None:
+    """Build the Port-facing member dict, or None if the API row is incomplete."""
+    if not all(
+        k in member and member[k] is not None
+        for k in ("id", "username", "name", "access_level")
+    ):
+        logger.warning(
+            f"Skipping malformed GitLab member ({context}): "
+            f"id={member.get('id')!r}, username={member.get('username')!r}"
+        )
+        return None
+    return {
+        "email": member.get("email"),
+        "username": member["username"],
+        "name": member["name"],
+        "access_level": member["access_level"],
+        "id": member["id"],
+    }
+
+
 class GitLabClient:
     DEFAULT_PARAMS: dict[str, Any] = {
         "all_available": True,  # Fetch all resources accessible to the user
@@ -659,15 +679,9 @@ class GitLabClient:
             group["id"], include_bot_members, include_inherited_members
         ):
             for member in members_batch:
-                members.append(
-                    {
-                        "email": member.get("email"),
-                        "username": member["username"],
-                        "name": member["name"],
-                        "access_level": member["access_level"],
-                        "id": member["id"],
-                    }
-                )
+                row = _member_row_for_port(member, f"group {group['id']}")
+                if row:
+                    members.append(row)
 
         group["__members"] = members
         return group
@@ -708,15 +722,9 @@ class GitLabClient:
             str(project["id"]), include_bot_members, include_inherited_members
         ):
             for member in members_batch:
-                members.append(
-                    {
-                        "email": member.get("email"),
-                        "username": member["username"],
-                        "name": member["name"],
-                        "access_level": member["access_level"],
-                        "id": member["id"],
-                    }
-                )
+                row = _member_row_for_port(member, f"project {project['id']}")
+                if row:
+                    members.append(row)
 
         project["__members"] = members
         return project

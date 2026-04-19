@@ -1,6 +1,5 @@
 import re
-import typing
-from typing import Union, cast
+from typing import Any, Dict, Union, cast
 
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -15,7 +14,6 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
     _GitlabAbstractWebhookProcessor,
 )
 from integration import GitlabProjectMemberSelector
-from typing import Dict, Any
 
 # Events where group-hook payloads omit project_id but include project_path_with_namespace
 _MEMBER_EVENTS = frozenset(
@@ -59,8 +57,9 @@ class ProjectWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        # project_id may be absent for group-hook member events; fall back to path.
-        # validate_payload ensures at least one of these is present for non-destroy events.
+        # Ref for API lookup: _MEMBER_EVENTS allow project_id OR project_path_with_namespace;
+        # project_create requires project_id plus name/path fields (see validate_payload).
+        # project_destroy is handled below and does not use this ref for fetch.
         project_ref = cast(
             Union[str, int],
             payload.get("project_id") or payload.get("project_path_with_namespace"),
@@ -78,7 +77,7 @@ class ProjectWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 deleted_raw_results=[deleted_project],
             )
 
-        selector = typing.cast(GitlabProjectMemberSelector, resource_config.selector)
+        selector = cast(GitlabProjectMemberSelector, resource_config.selector)
         include_bot_members = bool(selector.include_bot_members)
         include_inherited_members = selector.include_inherited_members
 

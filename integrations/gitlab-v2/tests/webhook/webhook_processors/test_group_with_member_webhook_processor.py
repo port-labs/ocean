@@ -151,6 +151,24 @@ class TestGroupWithMemberWebhookProcessor:
         assert result.updated_raw_results[0] == expected_group
         assert not result.deleted_raw_results
 
+    async def test_handle_event_group_not_found_returns_empty_updates(
+        self, processor: GroupWithMemberWebhookProcessor, group_payload: dict[str, Any]
+    ) -> None:
+        """When the group no longer exists in GitLab, do not upsert an empty entity."""
+        resource_config = MagicMock()
+        resource_config.selector = MagicMock()
+        resource_config.selector.include_bot_members = True
+        resource_config.selector.include_inherited_members = False
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_group = AsyncMock(return_value=None)
+
+        result = await processor.handle_event(group_payload, resource_config)
+
+        processor._gitlab_webhook_client.enrich_group_with_members.assert_not_called()
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+
     async def test_handle_destroy_event(
         self, processor: GroupWithMemberWebhookProcessor
     ) -> None:

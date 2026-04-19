@@ -632,6 +632,60 @@ class TestGitLabClient:
             assert result["__members"][1]["username"] == "inherited_user"
             mock_get_members.assert_called_once_with("789", False, True)
 
+    async def test_enrich_project_with_members_skips_malformed_rows(
+        self, client: GitLabClient
+    ) -> None:
+        """Incomplete API rows are skipped so one bad member does not fail enrichment."""
+        project = {"id": "789", "name": "Test Project"}
+        mock_members = [
+            {
+                "id": 1,
+                "username": "user1",
+                "name": "User One",
+                "access_level": 30,
+            },
+            {"id": 2, "username": "pending-invite"},
+        ]
+
+        with patch.object(
+            client,
+            "get_project_members",
+            return_value=async_mock_generator([mock_members]),
+        ):
+            result = await client.enrich_project_with_members(
+                project, include_bot_members=True, include_inherited_members=False
+            )
+
+            assert len(result["__members"]) == 1
+            assert result["__members"][0]["username"] == "user1"
+
+    async def test_enrich_group_with_members_skips_malformed_rows(
+        self, client: GitLabClient
+    ) -> None:
+        """Incomplete API rows are skipped for group member enrichment."""
+        group = {"id": "456", "name": "Test Group"}
+        mock_members = [
+            {
+                "id": 1,
+                "username": "user1",
+                "name": "User One",
+                "access_level": 10,
+            },
+            {"username": "broken"},
+        ]
+
+        with patch.object(
+            client,
+            "get_group_members",
+            return_value=async_mock_generator([mock_members]),
+        ):
+            result = await client.enrich_group_with_members(
+                group, include_bot_members=True, include_inherited_members=False
+            )
+
+            assert len(result["__members"]) == 1
+            assert result["__members"][0]["username"] == "user1"
+
     async def test_enrich_batch(self, client: GitLabClient) -> None:
         """Test the _enrich_batch method"""
         # Arrange
