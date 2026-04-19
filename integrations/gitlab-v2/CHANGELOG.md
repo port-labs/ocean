@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.6.15 (2026-04-19)
+## 0.6.16 (2026-04-19)
+
+
+### Improvements
+
+- Skip incomplete GitLab member API rows during group/project member enrichment (with logging) instead of failing the whole batch
+- Return empty webhook update payloads when a group is not found for `group-with-members`, matching `project-with-members` behavior
+
+
+## 0.6.15 (2026-04-16)
 
 
 ### Features
