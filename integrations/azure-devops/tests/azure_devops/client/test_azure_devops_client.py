@@ -4685,3 +4685,95 @@ async def test_generate_repository_policies_multiple_repos(
             for policy in policies:
                 repo_id = policy["id"].replace("policy-", "")
                 assert policy["__repository"]["id"] == repo_id
+
+
+@pytest.mark.asyncio
+async def test_get_release() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+    expected_release = {"id": 42, "name": "Release-42", "status": "active"}
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json=expected_release
+        )
+
+        result = await client.get_release("project-123", 42)
+
+        assert result == expected_release
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "https://your_organization_url.com/project-123/_apis/release/releases/42",
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_release_not_found() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = None
+
+        result = await client.get_release("project-123", 42)
+
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_release_deployment() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+    expected_deployment = {"id": 99, "deploymentStatus": "succeeded"}
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json={"count": 1, "value": [expected_deployment]}
+        )
+
+        result = await client.get_release_deployment("project-123", 10, 5)
+
+        assert result == expected_deployment
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "https://your_organization_url.com/project-123/_apis/release/deployments",
+            params={
+                "deploymentStatus": "all",
+                "releaseId": 10,
+                "definitionEnvironmentId": 5,
+                "$top": 1,
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_release_deployment_not_found() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json={"count": 0, "value": []}
+        )
+
+        result = await client.get_release_deployment("project-123", 10, 5)
+
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_release_deployment_404() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = None
+
+        result = await client.get_release_deployment("project-123", 10, 5)
+
+        assert result is None

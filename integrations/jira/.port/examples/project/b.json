@@ -1,0 +1,22 @@
+{
+  "expand": "description,lead,issueTypes,url,projectKeys,permissions,insight",
+  "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/project/10381",
+  "id": "10381",
+  "key": "DE",
+  "name": "Data Engineering",
+  "avatarUrls": {
+    "48x48": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10402",
+    "24x24": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10402?size=small",
+    "16x16": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10402?size=xsmall",
+    "32x32": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/universal_avatar/view/type/project/avatar/10402?size=medium"
+  },
+  "projectTypeKey": "software",
+  "simplified": false,
+  "style": "classic",
+  "isPrivate": false,
+  "properties": {},
+  "insight": {
+    "totalIssueCount": 31,
+    "lastIssueUpdateTime": "2026-01-26T09:41:04.222+0200"
+  }
+}

@@ -2,6 +2,7 @@ title: Argo CD
 description: Argo CD integration for Port Ocean
 icon: Argo
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/argocd
+formMappingEnabled: true
 features:
   - type: exporter
     section: Kubernetes Stack
