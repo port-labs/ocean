@@ -350,12 +350,12 @@
     },
     {
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/octopus",
-      "envFile": "${workspaceFolder}/integrations/octopus/.env",
+      "cwd": "${workspaceFolder}/integrations/sonarqube",
+      "envFile": "${workspaceFolder}/integrations/sonarqube/.env",
       "justMyCode": true,
-      "name": "Run octopus integration",
-      "program": "${workspaceFolder}/integrations/octopus/debug.py",
-      "python": "${workspaceFolder}/integrations/octopus/.venv/bin/python",
+      "name": "Run sonarqube integration",
+      "program": "${workspaceFolder}/integrations/sonarqube/debug.py",
+      "python": "${workspaceFolder}/integrations/sonarqube/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },
