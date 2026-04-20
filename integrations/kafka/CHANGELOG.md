@@ -7,13 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.305 (2026-04-16)
+## 0.1.305 (2026-04-20)
 
 
 ### Improvements
 
 - Added Literal kind definitions to `KafkaPortAppConfig` for schema validation compliance
-- Bumped ocean version to ^0.40.7
 
 
 ## 0.1.304 (2026-04-16)
