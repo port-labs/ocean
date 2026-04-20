@@ -4,7 +4,7 @@ import jinja2
 from port_ocean.context.event import event
 from newrelic_integration.overrides import (
     NewRelicPortAppConfig,
-    NewRelicResourceConfig,
+    NewRelicCustomResourceConfig,
     NewRelicAlertResourceConfig,
     NewRelicServiceLevelResourceConfig,
     NewRelicAlertConditionResourceConfig,
@@ -15,7 +15,7 @@ NewRelicAnyResourceConfig = (
     NewRelicAlertResourceConfig
     | NewRelicServiceLevelResourceConfig
     | NewRelicAlertConditionResourceConfig
-    | NewRelicResourceConfig
+    | NewRelicCustomResourceConfig
 )
 
 

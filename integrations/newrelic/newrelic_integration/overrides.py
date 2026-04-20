@@ -11,30 +11,46 @@ class NewRelicSelector(Selector):
     newrelic_types: list[str] | None = Field(
         default=None,
         alias="newRelicTypes",
-        title="NewRelic Types",
-        description="List of NewRelic entity types to filter by (e.g. APM_APPLICATION, BROWSER_APPLICATION).",
+        title="Entity Types",
+        description=(
+            "List of NewRelic entity types to filter by. "
+            "Example values: APM_APPLICATION, BROWSER_APPLICATION, HOST, AWSLAMBDAFUNCTION. "
+            "See <a target='_blank' href='https://docs.newrelic.com/docs/new-relic-solutions/new-relic-one/core-concepts/what-entity-new-relic/#entity-type'>NewRelic entity types</a> "
+            "for the full list of supported types."
+        ),
     )
     calculate_open_issue_count: bool = Field(
         default=False,
         alias="calculateOpenIssueCount",
-        title="Calculate Open Issue Count",
+        title="Include Open Issue Count",
         description="Whether to calculate and attach the open issue count to each entity.",
     )
     entity_query_filter: str = Field(
         default="",
         alias="entityQueryFilter",
         title="Entity Query Filter",
-        description="NewRelic entity query filter to scope which entities are fetched.",
+        description=(
+            "NRQL-style filter to scope which NewRelic entities are fetched. "
+            "This is appended to the entity search query. "
+            "Example: type in ('SERVICE','APPLICATION') "
+            "See <a target='_blank' href='https://docs.newrelic.com/docs/apis/nerdgraph/examples/nerdgraph-entities-api-tutorial/#search-query'>NewRelic entity search</a> "
+            "for supported filter syntax."
+        ),
     )
     entity_extra_properties_query: str = Field(
         default="",
         alias="entityExtraPropertiesQuery",
-        title="Entity Extra Properties Query",
-        description="Additional GraphQL query fragment to fetch extra properties for each entity.",
+        title="Additional Properties Query",
+        description=(
+            "Additional GraphQL inline fragment to fetch extra properties for each entity. "
+            "Example: ... on ApmApplicationEntityOutline { language } "
+            "See <a target='_blank' href='https://docs.newrelic.com/docs/apis/nerdgraph/examples/nerdgraph-entities-api-tutorial/'>NewRelic NerdGraph entities API</a> "
+            "for supported fragment types."
+        ),
     )
 
 
-class NewRelicResourceConfig(ResourceConfig):
+class NewRelicCustomResourceConfig(ResourceConfig):
     kind: str = Field(
         title="Custom Kind",
         description=(
@@ -91,7 +107,7 @@ class NewRelicPortAppConfig(PortAppConfig):
         NewRelicAlertResourceConfig
         | NewRelicServiceLevelResourceConfig
         | NewRelicAlertConditionResourceConfig
-        | NewRelicResourceConfig
+        | NewRelicCustomResourceConfig
     ] = Field(
         title="Resources",
         description="List of NewRelic resources to sync into Port (alerts, service levels, alert conditions, and other NewRelic entities).",
