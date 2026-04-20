@@ -12,11 +12,31 @@ from port_ocean.utils.async_iterators import (
 from urllib.parse import quote
 from wcmatch import glob
 
-from gitlab.helpers.utils import parse_file_content, build_search_query
+from gitlab.helpers.utils import parse_file_content, build_search_query, is_bot_member
 
 from gitlab.clients.rest_client import RestClient
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
+
+
+def _member_row_for_port(member: dict[str, Any], context: str) -> dict[str, Any] | None:
+    """Build the Port-facing member dict, or None if the API row is incomplete."""
+    if not all(
+        k in member and member[k] is not None
+        for k in ("id", "username", "name", "access_level")
+    ):
+        logger.warning(
+            f"Skipping malformed GitLab member ({context}): "
+            f"id={member.get('id')!r}, username={member.get('username')!r}"
+        )
+        return None
+    return {
+        "email": member.get("email"),
+        "username": member["username"],
+        "name": member["name"],
+        "access_level": member["access_level"],
+        "id": member["id"],
+    }
 
 
 class GitLabClient:
@@ -153,7 +173,19 @@ class GitLabClient:
                 )
                 enriched_batch = await enricher.enrich_batch(enriched_batch)
 
-            yield enriched_batch
+            # Exclude projects that are pending deletion — their `project_destroy`
+            # webhook only fires after the grace period (7 days on paid GitLab.com
+            # tiers), so they would otherwise linger in Port until then.
+            active_batch = [
+                p for p in enriched_batch if not p.get("marked_for_deletion_at")
+            ]
+            if len(active_batch) < len(enriched_batch):
+                logger.info(
+                    f"Filtered out {len(enriched_batch) - len(active_batch)} project(s) pending deletion"
+                )
+
+            if active_batch:
+                yield active_batch
 
     async def get_groups(
         self,
@@ -172,7 +204,17 @@ class GitLabClient:
             "groups", params=request_params
         ):
             logger.info(f"Received batch with {len(groups_batch)} groups")
-            yield groups_batch
+            # Exclude groups pending deletion (same grace-period behaviour as projects)
+            active_batch = [
+                g for g in groups_batch if not g.get("marked_for_deletion_on")
+            ]
+            if len(active_batch) < len(groups_batch):
+                logger.info(
+                    f"Filtered out {len(groups_batch) - len(active_batch)} group(s) pending deletion"
+                )
+
+            if active_batch:
+                yield active_batch
 
     async def get_tags(
         self,
@@ -613,18 +655,17 @@ class GitLabClient:
         async for batch in self.rest.get_paginated_group_resource(
             group_id, members_api
         ):
-            if batch:
-                filtered_batch = batch
-                if not include_bot_members:
-                    filtered_batch = [
-                        member
-                        for member in batch
-                        if "bot" not in member["username"].lower()
-                    ]
-                logger.info(
-                    f"Fetched {len(filtered_batch)} member(s) from '{members_api}' for group '{group_id}' after bot filtering"
-                )
-                yield filtered_batch
+            filtered_batch = [
+                member
+                for member in batch
+                if include_bot_members or not is_bot_member(member)
+            ]
+            if not filtered_batch:
+                continue
+            logger.info(
+                f"Fetched {len(filtered_batch)} member(s) from '{members_api}' for group '{group_id}'"
+            )
+            yield filtered_batch
 
     async def enrich_group_with_members(
         self,
@@ -638,18 +679,55 @@ class GitLabClient:
             group["id"], include_bot_members, include_inherited_members
         ):
             for member in members_batch:
-                members.append(
-                    {
-                        "email": member.get("email"),
-                        "username": member["username"],
-                        "name": member["name"],
-                        "access_level": member["access_level"],
-                        "id": member["id"],
-                    }
-                )
+                row = _member_row_for_port(member, f"group {group['id']}")
+                if row:
+                    members.append(row)
 
         group["__members"] = members
         return group
+
+    async def get_project_members(
+        self,
+        project_id: str,
+        include_bot_members: bool,
+        include_inherited_members: bool,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        members_api = "members/all" if include_inherited_members else "members"
+        logger.info(f"Fetching members for project {project_id} with {members_api} API")
+        async for batch in self.rest.get_paginated_project_resource(
+            str(project_id), members_api
+        ):
+            if not batch:
+                continue
+            filtered_batch = [
+                member
+                for member in batch
+                if not is_bot_member(member) or include_bot_members
+            ]
+            if filtered_batch:
+                logger.info(
+                    f"Fetched {len(filtered_batch)} member(s) from '{members_api}' for project '{project_id}'"
+                )
+                yield filtered_batch
+
+    async def enrich_project_with_members(
+        self,
+        project: dict[str, Any],
+        include_bot_members: bool,
+        include_inherited_members: bool,
+    ) -> dict[str, Any]:
+        logger.info(f"Enriching project {project['id']} with members")
+        members = []
+        async for members_batch in self.get_project_members(
+            str(project["id"]), include_bot_members, include_inherited_members
+        ):
+            for member in members_batch:
+                row = _member_row_for_port(member, f"project {project['id']}")
+                if row:
+                    members.append(row)
+
+        project["__members"] = members
+        return project
 
     async def _process_file(
         self, file: dict[str, Any], context: str, skip_parsing: bool = False

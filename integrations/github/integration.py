@@ -127,8 +127,8 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
     )
     included_relations: Optional[GitHubRepositoryRelationSelector] = Field(
         alias="includedRelations",
-        title="Included Repository Relations",
-        description="Fetch additional data related to the repository. Configure per-relation options (for example, collaborator `affiliation`). Accepted relations: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>.",
+        title="Additional Repository Data",
+        description="Fetch additional data related to the repository api response. Accepted options: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>.",
         default=None,
     )
 
@@ -260,10 +260,34 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
+class IncludeSAMLEmailSelector(Selector):
+    include_saml_email: bool = Field(
+        title="Include SAML email",
+        alias="includeSAMLEmail",
+        default=False,
+        description=(
+            "When enabled, the integration will enrich exported GitHub users with "
+            "`__SAMLEmail` populated from the organization's SAML external identity (nameId). "
+            "If no SAML identity is found for a user, `__SAMLEmail` will be null."
+        ),
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubUserSelector(IncludeSAMLEmailSelector):
+    pass
+
+
 class GithubUserConfig(ResourceConfig):
     kind: Literal[ObjectKind.USER] = Field(
         title="Github User",
         description="Github user resource kind.",
+    )
+    selector: GithubUserSelector = Field(
+        title="User selector",
+        description="Selector for the user resource.",
     )
 
 
@@ -360,7 +384,7 @@ class GithubIssueConfig(ResourceConfig):
     )
 
 
-class GithubTeamSector(Selector):
+class GithubTeamSelector(IncludeSAMLEmailSelector):
     members: bool = Field(
         title="Include Members",
         default=True,
@@ -369,7 +393,7 @@ class GithubTeamSector(Selector):
 
 
 class GithubTeamConfig(ResourceConfig):
-    selector: GithubTeamSector = Field(
+    selector: GithubTeamSelector = Field(
         title="Team selector",
         description="Selector for the team resource.",
     )

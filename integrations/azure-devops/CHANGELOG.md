@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enriched every synced entity with `__organizationUrl` and `__organizationName` fields so JQ mappings can scope identifiers per organization.
 
 
+## 0.8.17 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
 ## 0.8.16 (2026-04-16)
 
 
