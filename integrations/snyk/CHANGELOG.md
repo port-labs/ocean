@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.0 (2026-04-20)
+
+
+### Improvements
+
+- Set default API version to Snyk-recommended `2024-10-15`
+
+### Features
+
+- Add support for Snyk org-level ignore policies
+
+
 ## 0.4.1 (2026-04-20)
 
 
