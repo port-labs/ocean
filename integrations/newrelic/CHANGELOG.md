@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.316 (2026-04-16)
+
+
+### Improvements
+
+- Updated `NewRelicResourceConfig` to `NewRelicCustomResourceConfig` to clearly reflect its role as a custom kind slot
+- Improved field titles and descriptions for `newRelicTypes`, `entityQueryFilter`, `entityExtraPropertiesQuery`, and `calculateOpenIssueCount` with examples and links to NewRelic documentation
+
 
 ## 0.1.315 (2026-04-16)
 
