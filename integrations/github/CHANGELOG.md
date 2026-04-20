@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.3.8 (2026-04-20)
+
+
+### Improvements
+
+- Added `includeSAMLEmail` selector to enrich exported users and team members with `__SAMLEmail` from the org SAML identity provider, and propagated the option through resync and webhook flows.
+
+
 ## 5.3.7 (2026-04-20)
 
 
