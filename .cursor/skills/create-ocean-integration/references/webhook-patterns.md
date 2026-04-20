@@ -38,12 +38,12 @@ from port_ocean.context.event import event
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from starlette.requests import Request
+from port_ocean.core.handlers.webhook.webhook_event import EventPayload, EventHeaders
 
 class AbstractServiceWebhookProcessor(AbstractWebhookProcessor):
     """Base processor with signature verification."""
     
-    async def authenticate(self, request: Request) -> bool:
+    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True  # Verification happens in should_process_event
     
     async def should_process_event(self, event: WebhookEvent) -> bool:
