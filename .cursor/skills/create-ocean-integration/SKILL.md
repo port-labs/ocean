@@ -292,26 +292,81 @@ integrations/{integration-name}/
 
 **THIS IS NOT OPTIONAL.** The following patterns MUST be implemented. Do not create a monolithic client class.
 
+#### What Goes WHERE (Critical)
+
+| Component | SHOULD Contain | SHOULD NOT Contain |
+|-----------|---------------|-------------------|
+| **Client** (`clients/http/`) | `send_api_request()`, `send_paginated_request()`, rate limiting, error handling | `get_projects()`, `get_tasks()`, `get_users()` - NO resource methods |
+| **Exporter** (`core/exporters/`) | `get_paginated_resources()`, `get_single_resource()`, resource-specific logic | HTTP implementation, auth headers, rate limiting |
+| **main.py** | `@ocean.on_resync` handlers calling exporters | Business logic, direct API calls, client instantiation |
+
 #### Anti-Patterns to AVOID
 
 ```python
-# WRONG: Monolithic client with all resource fetching
-class ServiceClient:
-    async def get_projects(self): ...
-    async def get_all_projects(self): ...
-    async def get_issues(self, project_id): ...
-    async def get_all_issues(self): ...
-    async def get_users(self): ...
-    # 300+ lines of mixed concerns
+# WRONG: Client has resource-specific methods (get_projects, get_issues, etc.)
+class ServiceClient(BaseClient):
+    async def send_api_request(self, endpoint): ...  # OK
+    async def send_paginated_request(self, endpoint): ...  # OK
+    
+    # WRONG - These belong in EXPORTERS, not client:
+    async def get_projects(self): ...  # MOVE TO ProjectExporter
+    async def get_issues(self, project_id): ...  # MOVE TO IssueExporter
+    async def get_users(self): ...  # MOVE TO UserExporter
+    async def get_repositories(self, org_id): ...  # MOVE TO RepositoryExporter
 ```
 
 ```python
-# WRONG: main.py creating client directly
+# WRONG: main.py calling client methods directly
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str):
-    client = ServiceClient(token=ocean.integration_config["token"])
-    projects = await client.get_all_projects()
+    client = ClientFactory.get_client()
+    projects = await client.get_projects()  # WRONG - client shouldn't have this
     yield projects
+```
+
+#### CORRECT Pattern: Client is Generic, Exporter is Specific
+
+```python
+# CORRECT: Client ONLY has generic HTTP methods
+class ServiceClient(BaseClient):
+    async def send_api_request(self, endpoint: str, method: str = "GET", **kwargs):
+        """Generic HTTP request - no resource-specific logic."""
+        ...
+    
+    async def send_paginated_request(self, endpoint: str, **kwargs):
+        """Generic pagination - no resource-specific logic."""
+        ...
+    
+    # NO get_projects(), get_issues(), get_users() methods here!
+```
+
+```python
+# CORRECT: Exporter uses client's generic methods for specific resources
+class ProjectExporter(AbstractExporter[ServiceClient]):
+    async def get_paginated_resources(self, org_id: str) -> AsyncGenerator:
+        # Exporter knows the endpoint and data_key, client doesn't
+        async for batch in self.client.send_paginated_request(
+            f"orgs/{org_id}/projects",
+            params={"state": "all"},
+            data_key="projects"
+        ):
+            yield batch
+    
+    async def get_single_resource(self, project_id: str) -> dict | None:
+        data = await self.client.send_api_request(f"projects/{project_id}")
+        return data if data else None
+```
+
+```python
+# CORRECT: main.py uses exporter, not client directly
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_resync_projects(kind: str):
+    client = ClientFactory.get_client()
+    exporter = ProjectExporter(client)
+    
+    for org in await get_organizations():
+        async for batch in exporter.get_paginated_resources(org["id"]):
+            yield batch
 ```
 
 #### Required Pattern 1: Abstract Exporter
@@ -396,16 +451,33 @@ class ClientFactory:
         cls._instances.clear()
 ```
 
-#### Required Pattern 4: Base HTTP Client
+#### Required Pattern 4: Base HTTP Client (Generic Only)
 
 **File:** `{integration}/clients/http/base_client.py`
 
+**CRITICAL:** The client class should ONLY have these generic methods. NO `get_projects()`, `get_tasks()`, etc.
+
 ```python
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator
 from aiolimiter import AsyncLimiter
 
 class BaseClient(ABC):
+    """
+    Base HTTP client - GENERIC ONLY.
+    
+    This class handles:
+    - HTTP request sending
+    - Rate limiting
+    - Error handling
+    - Pagination mechanics
+    
+    This class does NOT handle:
+    - Resource-specific endpoints (use Exporters)
+    - Data transformation (use Exporters)
+    - Business logic (use Exporters)
+    """
+    
     PAGE_SIZE = 100
     
     def __init__(self, base_url: str, rate_limit_per_minute: int = 100) -> None:
@@ -416,13 +488,18 @@ class BaseClient(ABC):
     async def send_api_request(
         self, endpoint: str, method: str = "GET", **kwargs
     ) -> dict[str, Any]:
+        """Send a generic HTTP request. Endpoint is passed by exporter."""
         pass
     
     @abstractmethod
     async def send_paginated_request(
         self, endpoint: str, **kwargs
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Handle pagination. Endpoint is passed by exporter."""
         pass
+    
+    # DO NOT ADD: get_workspaces(), get_projects(), get_tasks(), etc.
+    # Those belong in EXPORTERS, not here.
 ```
 
 #### Required Pattern 5: Correct main.py Structure
@@ -443,14 +520,19 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 #### Checklist Before Proceeding
 
+**STOP and verify this structure before writing any implementation code:**
+
 - [ ] `clients/client_factory.py` exists with singleton pattern
-- [ ] `clients/http/base_client.py` exists as ABC
+- [ ] `clients/http/base_client.py` exists as ABC with ONLY generic methods
 - [ ] `clients/http/{name}_client.py` extends BaseClient
+- [ ] **Client has NO `get_X()` methods** - Only `send_api_request()` and `send_paginated_request()`
 - [ ] `core/exporters/abstract_exporter.py` exists as ABC
 - [ ] One exporter file per ObjectKind in `core/exporters/`
+- [ ] **Exporters call `self.client.send_api_request(endpoint)`** - NOT `self.client.get_resources()`
 - [ ] `main.py` ONLY wires handlers, uses factory + exporters
 - [ ] No resource fetching logic in main.py
-- [ ] No 200+ line monolithic client class
+
+**If adding a new resource type:** Create a new exporter file, NOT a new method on the client.
 
 ### Step 2.4: Decision Framework
 
@@ -824,11 +906,13 @@ Before finalizing:
 - [ ] `clients/client_factory.py` exists with singleton pattern
 - [ ] `clients/http/base_client.py` exists as ABC
 - [ ] `clients/http/{name}_client.py` extends BaseClient
+- [ ] **Client ONLY has generic methods:** `send_api_request()`, `send_paginated_request()`
+- [ ] **Client has NO resource methods:** No `get_workspaces()`, `get_tasks()`, `get_users()`, etc.
 - [ ] `core/exporters/abstract_exporter.py` exists as ABC
 - [ ] One exporter file exists per ObjectKind in `core/exporters/`
+- [ ] **Exporters call client's generic methods** with specific endpoints
 - [ ] `main.py` ONLY contains @ocean handlers, no business logic
-- [ ] `main.py` uses ClientFactory + Exporters, not direct client instantiation
-- [ ] No monolithic client class (>150 lines with mixed concerns)
+- [ ] `main.py` uses ClientFactory + Exporters, not direct client methods
 
 **API & Data:**
 - [ ] All API endpoints verified against official docs
