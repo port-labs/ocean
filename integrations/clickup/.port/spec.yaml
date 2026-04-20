@@ -1,0 +1,39 @@
+description: ClickUp project management integration for Port Ocean
+icon: ClickUp
+title: ClickUp
+formMappingEnabled: true
+features:
+  - type: exporter
+    section: Project Management
+    resources:
+      - kind: workspace
+      - kind: space
+      - kind: folder
+      - kind: list
+      - kind: task
+configurations:
+  - name: clickupApiToken
+    required: true
+    type: string
+    sensitive: true
+    description: >-
+      ClickUp Personal API Token (starts with pk_). 
+      Generate from ClickUp Settings > Apps > API Token.
+      Reference: https://developer.clickup.com/docs/authentication#personal-token
+  - name: clickupApiBaseUrl
+    type: url
+    required: false
+    default: https://api.clickup.com/api
+    description: Base URL for the ClickUp API (default is production API)
+  - name: clickupWebhookSecret
+    type: string
+    required: false
+    sensitive: true
+    description: >-
+      Optional webhook secret for signature verification.
+      Each webhook has a unique secret provided when created.
+      Reference: https://developer.clickup.com/docs/webhooksignature
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true

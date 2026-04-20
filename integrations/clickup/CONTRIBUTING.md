@@ -1,0 +1,7 @@
+# Contributing to Ocean - clickup
+
+## Running locally
+
+#### NOTE: Add your own instructions of how to run clickup
+
+This could be any gotcha's such as rate limiting, how to setup credentials and so forth

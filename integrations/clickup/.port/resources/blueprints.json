@@ -1,0 +1,286 @@
+[
+  {
+    "identifier": "clickupWorkspace",
+    "title": "ClickUp Workspace",
+    "icon": "ClickUp",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "color": {
+          "type": "string",
+          "title": "Color"
+        },
+        "avatar": {
+          "type": "string",
+          "title": "Avatar URL",
+          "format": "url"
+        },
+        "membersCount": {
+          "type": "number",
+          "title": "Members Count"
+        }
+      },
+      "required": ["name"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "clickupSpace",
+    "title": "ClickUp Space",
+    "icon": "Folder",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "color": {
+          "type": "string",
+          "title": "Color"
+        },
+        "private": {
+          "type": "boolean",
+          "title": "Private"
+        },
+        "archived": {
+          "type": "boolean",
+          "title": "Archived"
+        },
+        "statuses": {
+          "type": "array",
+          "title": "Statuses",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["name"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "workspace": {
+        "title": "Workspace",
+        "target": "clickupWorkspace",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "clickupFolder",
+    "title": "ClickUp Folder",
+    "icon": "Folder",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "archived": {
+          "type": "boolean",
+          "title": "Archived"
+        },
+        "hidden": {
+          "type": "boolean",
+          "title": "Hidden"
+        },
+        "taskCount": {
+          "type": "number",
+          "title": "Task Count"
+        },
+        "listCount": {
+          "type": "number",
+          "title": "List Count"
+        }
+      },
+      "required": ["name"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "space": {
+        "title": "Space",
+        "target": "clickupSpace",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "clickupList",
+    "title": "ClickUp List",
+    "icon": "Checklist",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "archived": {
+          "type": "boolean",
+          "title": "Archived"
+        },
+        "taskCount": {
+          "type": "number",
+          "title": "Task Count"
+        },
+        "dueDate": {
+          "type": "string",
+          "title": "Due Date",
+          "format": "date-time"
+        },
+        "startDate": {
+          "type": "string",
+          "title": "Start Date",
+          "format": "date-time"
+        },
+        "priority": {
+          "type": "number",
+          "title": "Priority"
+        },
+        "content": {
+          "type": "string",
+          "title": "Description"
+        }
+      },
+      "required": ["name"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "folder": {
+        "title": "Folder",
+        "target": "clickupFolder",
+        "required": false,
+        "many": false
+      },
+      "space": {
+        "title": "Space",
+        "target": "clickupSpace",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "clickupTask",
+    "title": "ClickUp Task",
+    "icon": "Task",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status"
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority",
+          "enum": ["urgent", "high", "normal", "low", "none"],
+          "enumColors": {
+            "urgent": "red",
+            "high": "orange",
+            "normal": "yellow",
+            "low": "blue",
+            "none": "lightGray"
+          }
+        },
+        "dueDate": {
+          "type": "string",
+          "title": "Due Date",
+          "format": "date-time"
+        },
+        "startDate": {
+          "type": "string",
+          "title": "Start Date",
+          "format": "date-time"
+        },
+        "dateCreated": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "dateUpdated": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        },
+        "dateClosed": {
+          "type": "string",
+          "title": "Closed At",
+          "format": "date-time"
+        },
+        "archived": {
+          "type": "boolean",
+          "title": "Archived"
+        },
+        "creator": {
+          "type": "string",
+          "title": "Creator"
+        },
+        "assignees": {
+          "type": "array",
+          "title": "Assignees",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "items": {
+            "type": "string"
+          }
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url"
+        },
+        "points": {
+          "type": "number",
+          "title": "Story Points"
+        },
+        "timeEstimate": {
+          "type": "number",
+          "title": "Time Estimate (ms)"
+        },
+        "timeSpent": {
+          "type": "number",
+          "title": "Time Spent (ms)"
+        }
+      },
+      "required": ["name"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "list": {
+        "title": "List",
+        "target": "clickupList",
+        "required": false,
+        "many": false
+      },
+      "parentTask": {
+        "title": "Parent Task",
+        "target": "clickupTask",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

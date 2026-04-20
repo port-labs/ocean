@@ -424,6 +424,17 @@
       "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/clickup",
+      "envFile": "${workspaceFolder}/integrations/clickup/.env",
+      "justMyCode": true,
+      "name": "Run clickup integration",
+      "program": "${workspaceFolder}/integrations/clickup/debug.py",
+      "python": "${workspaceFolder}/integrations/clickup/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }

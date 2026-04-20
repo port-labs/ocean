@@ -1,0 +1,105 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: workspace
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"clickupWorkspace"'
+          properties:
+            name: .name
+            color: .color
+            avatar: .avatar
+            membersCount: .members | length
+
+  - kind: space
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"clickupSpace"'
+          properties:
+            name: .name
+            color: .color
+            private: .private
+            archived: .archived
+            statuses: '[.statuses[]?.status] | unique'
+          relations:
+            workspace: .__workspace_id // .team_id | tostring
+
+  - kind: folder
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"clickupFolder"'
+          properties:
+            name: .name
+            archived: .archived
+            hidden: .hidden
+            taskCount: .task_count
+            listCount: .lists | length
+          relations:
+            space: .__space_id // .space.id | tostring
+
+  - kind: list
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"clickupList"'
+          properties:
+            name: .name
+            archived: .archived
+            taskCount: .task_count
+            dueDate: 'if .due_date then (.due_date | tonumber / 1000 | todate) else null end'
+            startDate: 'if .start_date then (.start_date | tonumber / 1000 | todate) else null end'
+            priority: .priority.priority
+            content: .content
+          relations:
+            folder: 'if .__folder_id then .__folder_id | tostring elif .folder.id then .folder.id | tostring else null end'
+            space: 'if .__space_id then .__space_id | tostring elif .space.id then .space.id | tostring else null end'
+
+  - kind: task
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"clickupTask"'
+          properties:
+            name: .name
+            description: .text_content
+            status: .status.status
+            priority: .priority.priority // "none"
+            dueDate: 'if .due_date then (.due_date | tonumber / 1000 | todate) else null end'
+            startDate: 'if .start_date then (.start_date | tonumber / 1000 | todate) else null end'
+            dateCreated: 'if .date_created then (.date_created | tonumber / 1000 | todate) else null end'
+            dateUpdated: 'if .date_updated then (.date_updated | tonumber / 1000 | todate) else null end'
+            dateClosed: 'if .date_closed then (.date_closed | tonumber / 1000 | todate) else null end'
+            archived: .archived
+            creator: .creator.username
+            assignees: '[.assignees[]?.username]'
+            tags: '[.tags[]?.name]'
+            url: .url
+            points: .points
+            timeEstimate: .time_estimate
+            timeSpent: .time_spent
+          relations:
+            list: '.__list_id // .list.id | tostring'
+            parentTask: 'if .parent then .parent | tostring else null end'
