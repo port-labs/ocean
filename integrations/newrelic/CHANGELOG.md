@@ -4,11 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-- Fixed updatedAt date format in newRelicServiceLevel default mapping to properly transform epoch milliseconds to ISO 8601 date-time
 
 <!-- towncrier release notes start -->
 
-## 0.1.316 (2026-04-16)
+## 0.1.316 (2026-04-20)
 
 
 ### Improvements
@@ -17,12 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved field titles and descriptions for `newRelicTypes`, `entityQueryFilter`, `entityExtraPropertiesQuery`, and `calculateOpenIssueCount` with examples and links to NewRelic documentation
 
 
-## 0.1.315 (2026-04-16)
+## 0.1.315 (2026-04-20)
 
 
 ### Improvements
 
-- Bumped ocean version to ^0.40.7
+- Bumped ocean version to ^0.41.0
 
 
 ## 0.1.314 (2026-04-16)
