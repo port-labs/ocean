@@ -7,12 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.2.68 (2026-04-16)
+# Port_Ocean 0.2.68 (2026-04-20)
 
 ### Improvements
 
 - Added Literal kind definitions to `OctopusPortAppConfig` for schema validation compliance
-- Bumped ocean version to ^0.40.7
 
 
 # Port_Ocean 0.2.67 (2026-04-16)
