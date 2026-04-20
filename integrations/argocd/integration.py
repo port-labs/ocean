@@ -16,8 +16,11 @@ from port_ocean.core.integrations.base import BaseIntegration
 class ApplicationQueryParams(BaseModel):
     selector: Optional[str] = Field(
         default=None,
-        title="Selector",
-        description="Selector to filter applications by kubernetes labels",
+        title="Kubernetes labels",
+        description=(
+            "Passes through to the Argo CD Applications API as a Kubernetes label selector. "
+            "Use multiple selectors as a comma-separated list (e.g. `env=prod,tier=web`)."
+        ),
         alias="selector",
     )
     app_namespace: Optional[str] = Field(
