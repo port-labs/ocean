@@ -63,7 +63,7 @@ class SnykClient:
         self.http_client = OceanAsyncClient(retry_config=retry_config)
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
-        self.snyk_api_version = "2024-10-15"
+        self.snyk_api_version = "2026-03-25"
         self.rate_limiter = rate_limiter
         self.semaphore = asyncio.BoundedSemaphore(CONCURRENT_REQUESTS)
 
