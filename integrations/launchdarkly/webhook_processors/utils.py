@@ -9,13 +9,15 @@ def extract_project_key_from_endpoint(endpoint: str, kind: str) -> str:
     Examples:
       Feature flag: /api/v2/flags/{project_key}/{flag_key}
       Project: /api/v2/projects/{project_key}/...
+      Segment: /api/v2/segments/{project_key}/{environment_key}/{segment_key}
     """
 
-    return (
-        endpoint.split("/api/v2/flags/")[1].split("/")[0]
-        if kind == ObjectKind.FEATURE_FLAG
-        else endpoint.split("/api/v2/projects/")[1].split("/")[0]
-    )
+    if kind == ObjectKind.FEATURE_FLAG:
+        return endpoint.split("/api/v2/flags/")[1].split("/")[0]
+    elif kind == ObjectKind.SEGMENT:
+        return endpoint.split("/api/v2/segments/")[1].split("/")[0]
+    else:
+        return endpoint.split("/api/v2/projects/")[1].split("/")[0]
 
 
 async def enrich_resource_with_project(
