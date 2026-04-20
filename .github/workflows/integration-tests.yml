@@ -17,53 +17,29 @@ jobs:
     runs-on: ubuntu-latest
     needs: detect-changes
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      matrix: >-
+        ${{ ((needs.detect-changes.outputs.has_code_changes != 'true') && '[]')
+        || steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v5
 
-      - name: Code-only change filter (skip doc/changelog-only PRs)
-        id: changed-files
-        uses: tj-actions/changed-files@v46
-        with:
-          dir_names: true
-          json: true
-          dir_names_max_depth: 2
-          escape_json: false
-          files_yaml: |
-            code_changes:
-              - 'port_ocean/**'
-              - 'integrations/**'
-              - '.github/workflows/**'
-              - '!**/*.md'
-              - '!**/changelog/**'
-              - '!**/CHANGELOG*'
-              - '!**/README*'
-
       - name: Set integration test matrix
         id: set-matrix
+        if: ${{ needs.detect-changes.outputs.has_code_changes == 'true' }}
         env:
           INTEGRATIONS_JSON: ${{ needs.detect-changes.outputs.integrations }}
           HAS_CORE: ${{ needs.detect-changes.outputs.core }}
           HAS_CORE_CI: ${{ needs.detect-changes.outputs.core_ci_files_changed }}
-          CODE_CHANGES_FILES: ${{ steps.changed-files.outputs.code_changes_all_changed_files }}
         run: |
-          HAS_CODE_CHANGES=false
-          if [ -n "${CODE_CHANGES_FILES}" ] && [ "${CODE_CHANGES_FILES}" != "[]" ]; then HAS_CODE_CHANGES=true; fi
-
-          if [ "${HAS_CODE_CHANGES}" != "true" ]; then
-            echo "matrix=[]" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
           INTEGRATIONS_WITH_TESTS=$(find integrations -name "integration_tests" -type d 2>/dev/null | while read -r d; do basename "$(dirname "$d")"; done | jq -R -s -c 'split("\n") | map(select(length > 0))')
 
           if [ "${HAS_CORE}" = "true" ] || [ "${HAS_CORE_CI}" = "true" ]; then
             echo "matrix=${INTEGRATIONS_WITH_TESTS}" >> $GITHUB_OUTPUT
           else
-            CHANGED_SET=$(node -e "const changed = ${INTEGRATIONS_JSON}; console.log(JSON.stringify(changed))")
-            WITH_TESTS_SET=$(node -e "const all = ${INTEGRATIONS_WITH_TESTS}; console.log(JSON.stringify(all))")
-            INTERSECTION=$(node -e "const a = new Set(${CHANGED_SET}); const b = new Set(${WITH_TESTS_SET}); console.log(JSON.stringify([...a].filter(x => b.has(x))))")
+            # Intersection: changed integration folders (from detect-changes) ∩ folders that have integration_tests/
+            INTERSECTION=$(jq -nc --argjson changed "$INTEGRATIONS_JSON" --argjson with "$INTEGRATIONS_WITH_TESTS" \
+              '$changed | map(select(. as $x | $with | index($x)))')
             echo "matrix=${INTERSECTION}" >> $GITHUB_OUTPUT
           fi
 
