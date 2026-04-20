@@ -134,7 +134,7 @@ class TestMemberWebhookProcessor:
 
         result = await processor.handle_event(bot_payload, resource_config)
 
-        processor._gitlab_webhook_client.get_group_member.assert_called_once()
+        processor._gitlab_webhook_client.get_group_member.assert_not_called()
         assert not result.updated_raw_results
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == bot_payload
@@ -167,10 +167,36 @@ class TestMemberWebhookProcessor:
 
         result = await processor.handle_event(bot_payload, resource_config)
 
-        processor._gitlab_webhook_client.get_group_member.assert_called_once()
+        processor._gitlab_webhook_client.get_group_member.assert_not_called()
         assert not result.updated_raw_results
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == bot_payload
+
+    async def test_excludes_bot_via_user_bot_payload_without_api(
+        self, processor: MemberWebhookProcessor
+    ) -> None:
+        """When GitLab sends user_bot=True, exclude without fetching the member API."""
+        resource_config = MagicMock()
+        resource_config.selector = MagicMock()
+        resource_config.selector.include_bot_members = False
+        resource_config.selector.include_inherited_members = False
+
+        payload = {
+            "event_name": "user_add_to_group",
+            "group_id": 10,
+            "user_id": 999,
+            "user_username": "some-service-account",
+            "user_bot": True,
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_group_member = AsyncMock()
+
+        result = await processor.handle_event(payload, resource_config)
+
+        processor._gitlab_webhook_client.get_group_member.assert_not_called()
+        assert not result.updated_raw_results
+        assert result.deleted_raw_results == [payload]
 
     async def test_handle_bot_member_username_not_filtered(
         self, processor: MemberWebhookProcessor
