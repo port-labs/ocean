@@ -51,14 +51,7 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {
-      "gitlabMembers": {
-        "title": "Members",
-        "target": "gitlabMember",
-        "required": false,
-        "many": true
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "gitlabMember",

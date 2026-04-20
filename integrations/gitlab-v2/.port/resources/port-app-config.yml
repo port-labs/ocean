@@ -53,19 +53,6 @@ resources:
             description: .description
           relations:
             gitlabMembers: .__members | map(.username)
-  - kind: project-with-members
-    selector:
-      query: 'true'
-      includeInheritedMembers: false
-      includeBotMembers: false
-    port:
-      entity:
-        mappings:
-          identifier: .path_with_namespace | gsub(" "; "")
-          title: .name
-          blueprint: '"service"'
-          relations:
-            gitlabMembers: .__members | map(.username)
   - kind: merge-request
     selector:
       query: 'true'
