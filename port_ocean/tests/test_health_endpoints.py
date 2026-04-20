@@ -18,15 +18,15 @@ def test_health_endpoints_return_json_payload() -> None:
         live_body = live.json()
         assert live_body["status"] == "healthy"
         assert live_body["check"] == "live"
-        assert isinstance(live_body["version"], str)
-        assert live_body["version"]
+        assert isinstance(live_body["core_version"], str)
+        assert live_body["core_version"]
 
         ready = client.get("/health/ready")
         assert ready.status_code == 200
         ready_body = ready.json()
         assert ready_body["status"] == "healthy"
         assert ready_body["check"] == "ready"
-        assert isinstance(ready_body["version"], str)
+        assert isinstance(ready_body["core_version"], str)
 
 
 def test_initialize_app_registers_health_routes() -> None:

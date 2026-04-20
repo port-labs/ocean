@@ -14,9 +14,9 @@ class HealthResponse(BaseModel):
         ...,
         description="Whether this response is from the liveness or readiness endpoint.",
     )
-    version: str = Field(
+    core_version: str = Field(
         default=__version__,
-        description="Installed port-ocean package version.",
+        description="Installed port-ocean (Ocean core) package version.",
     )
 
 
