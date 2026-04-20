@@ -440,9 +440,11 @@ class ClientFactory:
     @classmethod
     def get_client(cls) -> ServiceClient:
         if ServiceClient not in cls._instances:
+            # Config keys come from spec.yaml (camelCase there, snake_case here)
+            # Example: serviceUrl in spec.yaml -> ocean.integration_config["service_url"]
             cls._instances[ServiceClient] = ServiceClient(
-                base_url=ocean.integration_config.get("base_url", "https://api.service.com"),
-                api_token=ocean.integration_config["api_token"],
+                base_url=ocean.integration_config["service_url"],
+                api_token=ocean.integration_config["service_token"],
             )
         return cls._instances[ServiceClient]
     
