@@ -7,6 +7,7 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 
 from kafka_integration.client import KafkaClient
+from kinds import ObjectKind
 from kafka_integration.exceptions import IntegrationMissingConfigError
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -44,14 +45,14 @@ def init_clients() -> list[KafkaClient]:
     ]
 
 
-@ocean.on_resync("cluster")
+@ocean.on_resync(ObjectKind.CLUSTER)
 async def resync_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     kafka_clients = init_clients()
     for kafka_client in kafka_clients:
         yield [await kafka_client.describe_cluster()]
 
 
-@ocean.on_resync("broker")
+@ocean.on_resync(ObjectKind.BROKER)
 async def resync_brokers(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     kafka_clients = init_clients()
     for kafka_client in kafka_clients:
@@ -59,7 +60,7 @@ async def resync_brokers(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield batch
 
 
-@ocean.on_resync("topic")
+@ocean.on_resync(ObjectKind.TOPIC)
 async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     kafka_clients = init_clients()
     for kafka_client in kafka_clients:
@@ -67,7 +68,7 @@ async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield batch
 
 
-@ocean.on_resync("consumer_group")
+@ocean.on_resync(ObjectKind.CONSUMER_GROUP)
 async def resync_consumer_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     kafka_clients = init_clients()
     for kafka_client in kafka_clients:
