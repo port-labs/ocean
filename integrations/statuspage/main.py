@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Any
 from loguru import logger
 
@@ -6,13 +5,7 @@ from client import StatusPageClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-
-class ObjectKind(StrEnum):
-    PAGE = "statuspage"
-    COMPONENT_GROUPS = "component_group"
-    COMPONENT = "component"
-    INCIDENT = "incident"
-    INCIDENT_UPDATE = "incident_update"
+from kinds import ObjectKind
 
 
 def init_client() -> StatusPageClient:

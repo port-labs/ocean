@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.22 (2026-04-19)
+
+
+### Improvements
+
+- After OAuth token refresh on 401 retry, persist bearer auth on the Jira HTTP client so new requests use the updated access token without repeating failed attempts.
+
+
+## 0.6.21 (2026-04-17)
+
+
+### Bug Fixes
+
+- Fix selector propagation for Jira
+
+
 ## 0.6.20 (2026-04-16)
 
 

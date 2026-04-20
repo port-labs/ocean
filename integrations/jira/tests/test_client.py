@@ -6,7 +6,13 @@ from httpx import BasicAuth, Request, Response
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from jira.client import PAGE_SIZE, WEBHOOK_EVENTS, OAUTH2_WEBHOOK_EVENTS, JiraClient
+from jira.client import (
+    PAGE_SIZE,
+    WEBHOOK_EVENTS,
+    OAUTH2_WEBHOOK_EVENTS,
+    BearerAuth,
+    JiraClient,
+)
 from jira.overrides import JiraIssueSelector
 
 
@@ -75,6 +81,21 @@ async def test_send_api_request_failure(mock_jira_client: JiraClient) -> None:
         )
         with pytest.raises(Exception):
             await mock_jira_client._send_api_request("GET", "http://example.com")
+
+
+def test_refresh_request_auth_creds_updates_global_auth(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Token refresh updates request header and default client auth for next requests."""
+    request = Request("GET", "https://example.atlassian.net/rest/api/3/myself")
+    refreshed_auth = BearerAuth("newly_refreshed_token")
+
+    with patch.object(mock_jira_client, "_get_bearer", return_value=refreshed_auth):
+        refreshed_request = mock_jira_client.refresh_request_auth_creds(request)
+
+    assert refreshed_request.headers["Authorization"] == "Bearer newly_refreshed_token"
+    assert mock_jira_client.jira_api_auth is refreshed_auth
+    assert mock_jira_client.client.auth is refreshed_auth
 
 
 @pytest.mark.asyncio
