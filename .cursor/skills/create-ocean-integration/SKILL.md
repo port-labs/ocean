@@ -672,7 +672,7 @@ class AbstractExporter(ABC, Generic[T]):
 Implement clear, actionable error messages when permissions are insufficient:
 
 ```python
-class PermissionError(Exception):
+class MissingScopeError(Exception):
     """Raised when API returns 403 due to missing permissions."""
     pass
 
@@ -686,7 +686,7 @@ async def send_api_request(self, endpoint: str, ...) -> Dict[str, Any]:
             f"Ensure your API token has the '{self._get_required_scope(endpoint)}' scope. "
             f"See {self._docs_url}/permissions for required permissions."
         )
-        raise PermissionError(
+        raise MissingScopeError(
             f"Missing permission for {endpoint}. "
             f"Required scope: {self._get_required_scope(endpoint)}"
         )
