@@ -839,7 +839,7 @@ Key decisions:
 - Define relations that establish hierarchy (child → parent)
 - Use stable, unique identifiers from API (IDs, not names)
 
-### Step 4.3: Mapping Design
+### Step 4.4: Mapping Design
 
 ```yaml
 deleteDependentEntities: true
@@ -860,7 +860,7 @@ resources:
             # Map to related entities
 ```
 
-### Step 4.4: Examples Directory
+### Step 4.5: Examples Directory
 
 Place sample API responses in `{integration_name}/examples/{kind}/`:
 - Used for testing mappings
