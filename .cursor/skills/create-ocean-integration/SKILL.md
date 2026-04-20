@@ -288,22 +288,169 @@ integrations/{integration-name}/
 | `helpers/` | Shared utilities | Enums, exceptions, enrichment functions |
 | `webhook/` | Live event processing | Signature validation, event routing |
 
-### Step 2.3: OOP Patterns
+### Step 2.3: OOP Patterns (MANDATORY)
 
-**Required patterns:**
+**THIS IS NOT OPTIONAL.** The following patterns MUST be implemented. Do not create a monolithic client class.
 
-1. **Abstract Base Classes**
-   - `AbstractExporter[T]` with `get_resource()` and `get_paginated_resources()`
-   - `AbstractAuthenticator` with `get_headers()` or `authenticate()`
-   - `AbstractWebhookProcessor` (extend Ocean's base)
+#### Anti-Patterns to AVOID
 
-2. **Factory Pattern**
-   - `ClientFactory` with singleton caching per client type
-   - Prevents multiple client instantiation
+```python
+# WRONG: Monolithic client with all resource fetching
+class ServiceClient:
+    async def get_projects(self): ...
+    async def get_all_projects(self): ...
+    async def get_issues(self, project_id): ...
+    async def get_all_issues(self): ...
+    async def get_users(self): ...
+    # 300+ lines of mixed concerns
+```
 
-3. **Strategy Pattern**
-   - Authenticator strategies (API key, OAuth, App token)
-   - Pagination strategies (offset, cursor, link-header)
+```python
+# WRONG: main.py creating client directly
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_resync_projects(kind: str):
+    client = ServiceClient(token=ocean.integration_config["token"])
+    projects = await client.get_all_projects()
+    yield projects
+```
+
+#### Required Pattern 1: Abstract Exporter
+
+**File:** `{integration}/core/exporters/abstract_exporter.py`
+
+```python
+from abc import ABC, abstractmethod
+from typing import Generic, TypeVar, AsyncGenerator, Optional
+from port_ocean.core.ocean_types import RAW_ITEM
+
+T = TypeVar("T")  # Client type
+
+class AbstractExporter(ABC, Generic[T]):
+    def __init__(self, client: T) -> None:
+        self.client = client
+    
+    @abstractmethod
+    async def get_paginated_resources(
+        self, **options
+    ) -> AsyncGenerator[list[RAW_ITEM], None]:
+        """Yield batches of resources."""
+        pass
+    
+    @abstractmethod
+    async def get_single_resource(self, resource_id: str) -> Optional[RAW_ITEM]:
+        """Fetch a single resource by ID."""
+        pass
+```
+
+#### Required Pattern 2: Concrete Exporters (One Per Kind)
+
+**File:** `{integration}/core/exporters/project_exporter.py`
+
+```python
+from typing import AsyncGenerator, Optional
+from port_ocean.core.ocean_types import RAW_ITEM
+
+from {integration}.core.exporters.abstract_exporter import AbstractExporter
+from {integration}.clients.http.{name}_client import ServiceClient
+
+class ProjectExporter(AbstractExporter[ServiceClient]):
+    async def get_paginated_resources(
+        self, include_archived: bool = False
+    ) -> AsyncGenerator[list[RAW_ITEM], None]:
+        async for batch in self.client.send_paginated_request(
+            "/projects", params={"archived": include_archived}
+        ):
+            yield batch
+    
+    async def get_single_resource(self, resource_id: str) -> Optional[RAW_ITEM]:
+        return await self.client.send_api_request(f"/projects/{resource_id}")
+```
+
+#### Required Pattern 3: Client Factory
+
+**File:** `{integration}/clients/client_factory.py`
+
+```python
+from typing import TypeVar, Type
+from functools import lru_cache
+
+from port_ocean.context.ocean import ocean
+from {integration}.clients.http.{name}_client import ServiceClient
+
+T = TypeVar("T")
+
+class ClientFactory:
+    _instances: dict[Type, object] = {}
+    
+    @classmethod
+    def get_client(cls) -> ServiceClient:
+        if ServiceClient not in cls._instances:
+            cls._instances[ServiceClient] = ServiceClient(
+                base_url=ocean.integration_config.get("base_url", "https://api.service.com"),
+                api_token=ocean.integration_config["api_token"],
+            )
+        return cls._instances[ServiceClient]
+    
+    @classmethod
+    def clear(cls) -> None:
+        cls._instances.clear()
+```
+
+#### Required Pattern 4: Base HTTP Client
+
+**File:** `{integration}/clients/http/base_client.py`
+
+```python
+from abc import ABC, abstractmethod
+from typing import Any, AsyncGenerator, Optional
+from aiolimiter import AsyncLimiter
+
+class BaseClient(ABC):
+    PAGE_SIZE = 100
+    
+    def __init__(self, base_url: str, rate_limit_per_minute: int = 100) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.rate_limiter = AsyncLimiter(rate_limit_per_minute, 60)
+    
+    @abstractmethod
+    async def send_api_request(
+        self, endpoint: str, method: str = "GET", **kwargs
+    ) -> dict[str, Any]:
+        pass
+    
+    @abstractmethod
+    async def send_paginated_request(
+        self, endpoint: str, **kwargs
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        pass
+```
+
+#### Required Pattern 5: Correct main.py Structure
+
+```python
+# CORRECT: main.py uses factory and exporters
+from {integration}.clients.client_factory import ClientFactory
+from {integration}.core.exporters.project_exporter import ProjectExporter
+
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = ClientFactory.get_client()
+    exporter = ProjectExporter(client)
+    
+    async for batch in exporter.get_paginated_resources():
+        yield batch
+```
+
+#### Checklist Before Proceeding
+
+- [ ] `clients/client_factory.py` exists with singleton pattern
+- [ ] `clients/http/base_client.py` exists as ABC
+- [ ] `clients/http/{name}_client.py` extends BaseClient
+- [ ] `core/exporters/abstract_exporter.py` exists as ABC
+- [ ] One exporter file per ObjectKind in `core/exporters/`
+- [ ] `main.py` ONLY wires handlers, uses factory + exporters
+- [ ] No resource fetching logic in main.py
+- [ ] No 200+ line monolithic client class
 
 ### Step 2.4: Decision Framework
 
@@ -673,20 +820,37 @@ Documentation should cover:
 
 Before finalizing:
 
+**OOP Structure (MANDATORY - verify first):**
+- [ ] `clients/client_factory.py` exists with singleton pattern
+- [ ] `clients/http/base_client.py` exists as ABC
+- [ ] `clients/http/{name}_client.py` extends BaseClient
+- [ ] `core/exporters/abstract_exporter.py` exists as ABC
+- [ ] One exporter file exists per ObjectKind in `core/exporters/`
+- [ ] `main.py` ONLY contains @ocean handlers, no business logic
+- [ ] `main.py` uses ClientFactory + Exporters, not direct client instantiation
+- [ ] No monolithic client class (>150 lines with mixed concerns)
+
+**API & Data:**
 - [ ] All API endpoints verified against official docs
 - [ ] Pagination matches documented behavior
 - [ ] Rate limiting configured per API limits (concurrent vs overall distinguished)
 - [ ] Caching strategy defined for rate-limited resources
 - [ ] Authentication uses exact documented method
+- [ ] No assumed field names (all verified)
+- [ ] Error handling for documented error codes
+
+**Webhooks:**
 - [ ] Webhook events mapped to kinds with upsert/delete actions
 - [ ] Webhook signatures verified per third-party spec
+
+**Configuration:**
 - [ ] Permissions follow least privilege
 - [ ] Permission errors are clear and actionable (log scope needed, link to docs)
 - [ ] Selectors defined per kind with optional flags documented
 - [ ] OOTB defaults are fast (expensive flags default to False)
 - [ ] Blueprint properties represent OOTB value
-- [ ] No assumed field names (all verified)
-- [ ] Error handling for documented error codes
+
+**Testing & Docs:**
 - [ ] Tests cover pagination edge cases
 - [ ] Docs PR created in port-docs with prerequisites, config, resources, troubleshooting
 
