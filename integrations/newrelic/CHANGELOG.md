@@ -115,7 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.303 (2026-03-26)
 
 
-### Improvements
+### Bug Fixes
 
 - Fixed updatedAt date format in newRelicServiceLevel default mapping to properly transform epoch milliseconds to ISO 8601 date-time
 
