@@ -1,8 +1,8 @@
-from enum import Enum
+from enum import StrEnum
 from typing import NamedTuple, Optional
 
 
-class ObjectKind(str, Enum):
+class ObjectKind(StrEnum):
     """Enumeration of ArmorCode object kinds."""
 
     PRODUCT = "product"
