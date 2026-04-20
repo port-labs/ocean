@@ -1,3 +1,4 @@
+from dataclasses import field
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
@@ -153,6 +154,37 @@ class SnykVulnerabilityAPIQueryParams(GenerateQueryParamMixin):
     )
 
 
+class SnykPolicyAPIQueryParams(GenerateQueryParamMixin):
+    search: Optional[str] = Field(
+        default=None,
+        title="Search Filter",
+        description="Filter policies by keyword matched against ignore_type, ignored_by.name, or ignored_by.email in policy rules (e.g. 'wont-fix' or 'alice@example.com').",
+    )
+
+    review: Optional[
+        list[Literal["pending", "approved", "rejected", "not-required"]]
+    ] = Field(
+        default=None,
+        title="Review State",
+        description="Filter policies to only those whose rules match the specified review state(s).",
+    )
+    expires_before: Optional[str] = Field(
+        default=None,
+        title="Expires Before",
+        description="Select only policies with an expiry strictly before the given time. e.g 2024-03-16T00:00:00Z",
+    )
+    expires_after: Optional[str] = Field(
+        default=None,
+        title="Expires After",
+        description="Select only policies with an expiry strictly past the given time. e.g 2024-03-16T00:00:00Z",
+    )
+    expires_never: Optional[bool] = Field(
+        default=None,
+        title="Expires Never",
+        description="Select only policies that never expire.",
+    )
+
+
 class ProjectSelector(Selector):
     attach_issues_to_project: bool = Field(
         alias="attachIssuesToProject",
@@ -186,6 +218,15 @@ class VulnerabilitySelector(Selector):
         title="Enrich with Project",
         alias="enrichWithProject",
         description="Enrich each vulnerability with its associated project data. For large orgs this is API and memory intensive — use projectQueryParams to limit scope.",
+    )
+
+
+class PolicySelector(Selector):
+    api_query_params: Optional[SnykPolicyAPIQueryParams] = Field(
+        alias="apiQueryParams",
+        default=None,
+        title="API Query Params",
+        description="Snyk Org-level Policy API query params.",
     )
 
 
@@ -245,6 +286,16 @@ class IssueResourceConfig(ResourceConfig):
     )
 
 
+class PolicyResourceConfig(ResourceConfig):
+    kind: Literal["policy"] = Field(
+        title="Snyk Policy",
+        description="An org-level Snyk policy that defines rules for ignoring or marking issues across projects.",
+    )
+    selector: PolicySelector = Field(
+        title="Policy Selector", description="Selector to filter Snyk policies"
+    )
+
+
 class SnykPortAppConfig(PortAppConfig):
     resources: list[
         ProjectResourceConfig
@@ -252,9 +303,8 @@ class SnykPortAppConfig(PortAppConfig):
         | OrganizationResourceConfig
         | VulnerabilityResourceConfig
         | IssueResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+        | PolicyResourceConfig
+    ] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class SnykIntegration(BaseIntegration):

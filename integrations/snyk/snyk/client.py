@@ -10,7 +10,11 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
-from snyk.overrides import SnykProjectAPIQueryParams, SnykVulnerabilityAPIQueryParams
+from snyk.overrides import (
+    SnykProjectAPIQueryParams,
+    SnykPolicyAPIQueryParams,
+    SnykVulnerabilityAPIQueryParams,
+)
 from snyk.utils import enrich_batch_with_data
 
 
@@ -59,7 +63,7 @@ class SnykClient:
         self.http_client = OceanAsyncClient(retry_config=retry_config)
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
-        self.snyk_api_version = "2024-06-21"
+        self.snyk_api_version = "2024-10-15"
         self.rate_limiter = rate_limiter
         self.semaphore = asyncio.BoundedSemaphore(CONCURRENT_REQUESTS)
 
@@ -416,6 +420,24 @@ class SnykClient:
             )
 
             return all_organizations
+
+    async def get_paginated_policies(
+        self,
+        org: dict[str, Any],
+        api_params: Optional[SnykPolicyAPIQueryParams] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Fetching paginated policies for organization: {org['id']}")
+        url = f"/orgs/{org['id']}/policies"
+        base_params = {"version": self.snyk_api_version}
+        query_params = (
+            api_params.merge_with(base_params)
+            if api_params is not None
+            else base_params
+        )
+        async for policies in self._get_paginated_resources(
+            url_path=url, query_params=query_params
+        ):
+            yield enrich_batch_with_data(policies, org)
 
     async def process_project_issues(
         self, project: dict[str, Any], enrich_with_org: bool = False
