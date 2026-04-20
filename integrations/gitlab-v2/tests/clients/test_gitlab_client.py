@@ -7,6 +7,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from gitlab.clients.gitlab_client import GitLabClient
+from gitlab.helpers.utils import is_bot_member
 
 
 @pytest.fixture(autouse=True)
@@ -361,9 +362,9 @@ class TestGitLabClient:
         # Arrange
         group_id = "456"
         mock_members = [
-            {"id": 1, "username": "user1", "name": "User One"},
-            {"id": 2, "username": "bot1", "name": "Bot One"},
-            {"id": 3, "username": "user2", "name": "User Two"},
+            {"id": 1, "username": "user1", "name": "User One", "bot": False},
+            {"id": 2, "username": "bot1", "name": "Bot One", "bot": True},
+            {"id": 3, "username": "user2", "name": "User Two", "bot": False},
         ]
 
         with patch.object(
@@ -409,9 +410,9 @@ class TestGitLabClient:
         # Arrange
         group_id = "456"
         mock_members = [
-            {"id": 1, "username": "user1", "name": "User One"},
-            {"id": 2, "username": "bot1", "name": "Bot One"},
-            {"id": 3, "username": "user2", "name": "User Two"},
+            {"id": 1, "username": "user1", "name": "User One", "bot": False},
+            {"id": 2, "username": "bot1", "name": "Bot One", "bot": True},
+            {"id": 3, "username": "user2", "name": "User Two", "bot": False},
         ]
 
         with patch.object(
@@ -468,6 +469,222 @@ class TestGitLabClient:
             assert result["__members"][0]["email"] == "user1@example.com"
             assert result["__members"][1]["email"] is None
             mock_get_members.assert_called_once_with("456", True, False)
+
+    async def test_enrich_group_with_members_inherited(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that enrich_group_with_members passes include_inherited_members=True down"""
+        group = {"id": "456", "name": "Test Group"}
+        mock_members = [
+            {
+                "id": 1,
+                "username": "user1",
+                "name": "User One",
+                "email": "user1@example.com",
+                "access_level": 10,
+            },
+            {
+                "id": 2,
+                "username": "inherited_user",
+                "name": "Inherited User",
+                "access_level": 10,
+            },
+        ]
+
+        with patch.object(
+            client,
+            "get_group_members",
+            return_value=async_mock_generator([mock_members]),
+        ) as mock_get_members:
+            result = await client.enrich_group_with_members(
+                group, include_bot_members=False, include_inherited_members=True
+            )
+
+            assert "__members" in result
+            assert len(result["__members"]) == 2
+            assert result["__members"][1]["username"] == "inherited_user"
+            mock_get_members.assert_called_once_with("456", False, True)
+
+    async def test_get_project_members(self, client: GitLabClient) -> None:
+        """Test fetching project members with and without bot filtering"""
+        project_id = "789"
+        mock_members = [
+            {"id": 1, "username": "user1", "name": "User One", "bot": False},
+            {"id": 2, "username": "bot1", "name": "Bot One", "bot": True},
+            {"id": 3, "username": "user2", "name": "User Two", "bot": False},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_members]),
+        ) as mock_get_resource:
+            results_with_bots = []
+            async for batch in client.get_project_members(
+                project_id, include_bot_members=True, include_inherited_members=False
+            ):
+                results_with_bots.extend(batch)
+
+            assert len(results_with_bots) == 3
+            mock_get_resource.assert_called_with(project_id, "members")
+
+            mock_get_resource.reset_mock()
+            mock_get_resource.return_value = async_mock_generator([mock_members])
+
+            results_without_bots = []
+            async for batch in client.get_project_members(
+                project_id, include_bot_members=False, include_inherited_members=False
+            ):
+                results_without_bots.extend(batch)
+
+            assert len(results_without_bots) == 2
+            assert all(not m["bot"] for m in results_without_bots)
+            mock_get_resource.assert_called_with(project_id, "members")
+
+    async def test_get_project_members_with_inherited(
+        self, client: GitLabClient
+    ) -> None:
+        """Test fetching project members with inherited members uses members/all"""
+        project_id = "789"
+        mock_members = [
+            {"id": 1, "username": "user1", "name": "User One"},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_members]),
+        ) as mock_get_resource:
+            results = []
+            async for batch in client.get_project_members(
+                project_id, include_bot_members=True, include_inherited_members=True
+            ):
+                results.extend(batch)
+
+            assert len(results) == 1
+            mock_get_resource.assert_called_with(project_id, "members/all")
+
+    async def test_enrich_project_with_members(self, client: GitLabClient) -> None:
+        """Test enriching a project with its members"""
+        project = {"id": "789", "name": "Test Project"}
+        mock_members = [
+            {
+                "id": 1,
+                "username": "user1",
+                "name": "User One",
+                "email": "user1@example.com",
+                "access_level": 30,
+            },
+            {"id": 2, "username": "user2", "name": "User Two", "access_level": 20},
+        ]
+
+        with patch.object(
+            client,
+            "get_project_members",
+            return_value=async_mock_generator([mock_members]),
+        ) as mock_get_members:
+            result = await client.enrich_project_with_members(
+                project, include_bot_members=True, include_inherited_members=False
+            )
+
+            assert result["id"] == "789"
+            assert result["name"] == "Test Project"
+            assert "__members" in result
+            assert len(result["__members"]) == 2
+            assert result["__members"][0]["username"] == "user1"
+            assert result["__members"][1]["username"] == "user2"
+            assert result["__members"][0]["email"] == "user1@example.com"
+            assert result["__members"][1]["email"] is None
+            mock_get_members.assert_called_once_with("789", True, False)
+
+    async def test_enrich_project_with_members_inherited(
+        self, client: GitLabClient
+    ) -> None:
+        """Test that enrich_project_with_members passes include_inherited_members=True down"""
+        project = {"id": "789", "name": "Test Project"}
+        mock_members = [
+            {
+                "id": 1,
+                "username": "user1",
+                "name": "User One",
+                "email": "user1@example.com",
+                "access_level": 30,
+            },
+            {
+                "id": 2,
+                "username": "inherited_user",
+                "name": "Inherited User",
+                "access_level": 10,
+            },
+        ]
+
+        with patch.object(
+            client,
+            "get_project_members",
+            return_value=async_mock_generator([mock_members]),
+        ) as mock_get_members:
+            result = await client.enrich_project_with_members(
+                project, include_bot_members=False, include_inherited_members=True
+            )
+
+            assert "__members" in result
+            assert len(result["__members"]) == 2
+            assert result["__members"][1]["username"] == "inherited_user"
+            mock_get_members.assert_called_once_with("789", False, True)
+
+    async def test_enrich_project_with_members_skips_malformed_rows(
+        self, client: GitLabClient
+    ) -> None:
+        """Incomplete API rows are skipped so one bad member does not fail enrichment."""
+        project = {"id": "789", "name": "Test Project"}
+        mock_members = [
+            {
+                "id": 1,
+                "username": "user1",
+                "name": "User One",
+                "access_level": 30,
+            },
+            {"id": 2, "username": "pending-invite"},
+        ]
+
+        with patch.object(
+            client,
+            "get_project_members",
+            return_value=async_mock_generator([mock_members]),
+        ):
+            result = await client.enrich_project_with_members(
+                project, include_bot_members=True, include_inherited_members=False
+            )
+
+            assert len(result["__members"]) == 1
+            assert result["__members"][0]["username"] == "user1"
+
+    async def test_enrich_group_with_members_skips_malformed_rows(
+        self, client: GitLabClient
+    ) -> None:
+        """Incomplete API rows are skipped for group member enrichment."""
+        group = {"id": "456", "name": "Test Group"}
+        mock_members = [
+            {
+                "id": 1,
+                "username": "user1",
+                "name": "User One",
+                "access_level": 10,
+            },
+            {"username": "broken"},
+        ]
+
+        with patch.object(
+            client,
+            "get_group_members",
+            return_value=async_mock_generator([mock_members]),
+        ):
+            result = await client.enrich_group_with_members(
+                group, include_bot_members=True, include_inherited_members=False
+            )
+
+            assert len(result["__members"]) == 1
+            assert result["__members"][0]["username"] == "user1"
 
     async def test_enrich_batch(self, client: GitLabClient) -> None:
         """Test the _enrich_batch method"""
@@ -1228,3 +1445,216 @@ class TestGitLabClient:
             assert len(results) == 2
             result_ids = {group["id"] for group in results}
             assert result_ids == {2, 3}  # Orphan and Parent, not children
+
+    # ------------------------------------------------------------------
+    # is_bot_member helper
+    # ------------------------------------------------------------------
+
+    def test_is_bot_member_bot_field_true(self) -> None:
+        """bot=True in the API response → is a bot."""
+        assert is_bot_member({"username": "anyone", "bot": True}) is True
+
+    def test_is_bot_member_bot_field_false(self) -> None:
+        """bot=False (or absent) → not a bot, regardless of username."""
+        assert (
+            is_bot_member({"username": "project_1_bot_abc123", "bot": False}) is False
+        )
+
+    def test_is_bot_member_bot_field_none_username_pattern_project(self) -> None:
+        """Members API returns bot=None; fall back to project-bot username pattern."""
+        member = {
+            "username": "project_80799742_bot_b13ca8f587d7496b21a2e969f20cae21",
+            "bot": None,
+        }
+        assert is_bot_member(member) is True
+
+    def test_is_bot_member_bot_field_none_username_pattern_group(self) -> None:
+        """Group access-token bot username pattern is also detected."""
+        member = {"username": "group_12345_bot_deadbeef01234567", "bot": None}
+        assert is_bot_member(member) is True
+
+    def test_is_bot_member_regular_user_with_bot_in_name(self) -> None:
+        """A regular user whose name contains 'bot' is NOT flagged."""
+        assert is_bot_member({"username": "botner-elay", "bot": None}) is False
+        assert is_bot_member({"username": "robotics-team", "bot": None}) is False
+
+    def test_is_bot_member_empty_dict(self) -> None:
+        """Missing both fields → not a bot."""
+        assert is_bot_member({}) is False
+
+    # ------------------------------------------------------------------
+    # get_project_members — bot filtering with username-pattern fallback
+    # ------------------------------------------------------------------
+
+    async def test_get_project_members_filters_bot_by_username_pattern(
+        self, client: GitLabClient
+    ) -> None:
+        """When the members API omits the bot field (None), the username pattern filters bots."""
+        mock_members = [
+            {"id": 1, "username": "regular-user", "bot": None},
+            {
+                "id": 2,
+                "username": "project_99_bot_cafebabe12345678",
+                "bot": None,
+            },
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_members]),
+        ):
+            results_no_bots = []
+            async for batch in client.get_project_members(
+                "99", include_bot_members=False, include_inherited_members=False
+            ):
+                results_no_bots.extend(batch)
+
+            assert len(results_no_bots) == 1
+            assert results_no_bots[0]["username"] == "regular-user"
+
+    async def test_get_project_members_includes_bot_when_flag_true(
+        self, client: GitLabClient
+    ) -> None:
+        """With include_bot_members=True, bot users are included regardless of detection."""
+        mock_members = [
+            {"id": 1, "username": "regular-user", "bot": None},
+            {"id": 2, "username": "project_99_bot_cafebabe12345678", "bot": None},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_members]),
+        ):
+            results_with_bots = []
+            async for batch in client.get_project_members(
+                "99", include_bot_members=True, include_inherited_members=False
+            ):
+                results_with_bots.extend(batch)
+
+            assert len(results_with_bots) == 2
+
+    # ------------------------------------------------------------------
+    # get_group_members — bot filtering with username-pattern fallback
+    # ------------------------------------------------------------------
+
+    async def test_get_group_members_filters_bot_by_username_pattern(
+        self, client: GitLabClient
+    ) -> None:
+        """Members API returns bot=None; group bot usernames are still filtered out."""
+        mock_members = [
+            {"id": 1, "username": "normal-dev", "bot": None},
+            {"id": 2, "username": "group_42_bot_0011223344556677", "bot": None},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_group_resource",
+            return_value=async_mock_generator([mock_members]),
+        ):
+            results = []
+            async for batch in client.get_group_members(
+                "42", include_bot_members=False, include_inherited_members=False
+            ):
+                results.extend(batch)
+
+            assert len(results) == 1
+            assert results[0]["username"] == "normal-dev"
+
+    # ------------------------------------------------------------------
+    # get_projects — marked_for_deletion_at filter
+    # ------------------------------------------------------------------
+
+    async def test_get_projects_excludes_pending_deletion(
+        self, client: GitLabClient
+    ) -> None:
+        """Projects with marked_for_deletion_at set are excluded from the batch."""
+        mock_projects = [
+            {"id": 1, "name": "active-project", "marked_for_deletion_at": None},
+            {
+                "id": 2,
+                "name": "deleted-project",
+                "marked_for_deletion_at": "2026-04-01T00:00:00.000Z",
+            },
+            {"id": 3, "name": "another-active"},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_projects]),
+        ):
+            results = []
+            async for batch in client.get_projects():
+                results.extend(batch)
+
+            assert len(results) == 2
+            ids = {p["id"] for p in results}
+            assert ids == {1, 3}
+
+    async def test_get_projects_all_pending_deletion_yields_nothing(
+        self, client: GitLabClient
+    ) -> None:
+        """If every project in a batch is pending deletion, the batch is not yielded."""
+        mock_projects = [
+            {"id": 1, "marked_for_deletion_at": "2026-04-01T00:00:00.000Z"},
+            {"id": 2, "marked_for_deletion_at": "2026-04-02T00:00:00.000Z"},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_projects]),
+        ):
+            results = []
+            async for batch in client.get_projects():
+                results.extend(batch)
+
+            assert results == []
+
+    # ------------------------------------------------------------------
+    # get_groups — marked_for_deletion_on filter
+    # ------------------------------------------------------------------
+
+    async def test_get_groups_excludes_pending_deletion(
+        self, client: GitLabClient
+    ) -> None:
+        """Groups with marked_for_deletion_on set are excluded from the batch."""
+        mock_groups = [
+            {"id": 10, "name": "active-group", "marked_for_deletion_on": None},
+            {
+                "id": 11,
+                "name": "deleted-group",
+                "marked_for_deletion_on": "2026-04-01",
+            },
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ):
+            results = []
+            async for batch in client.get_groups():
+                results.extend(batch)
+
+            assert len(results) == 1
+            assert results[0]["id"] == 10
+
+    async def test_get_groups_no_min_access_level_passes_empty_params(
+        self, client: GitLabClient
+    ) -> None:
+        """get_groups with no params still applies the deletion filter."""
+        mock_groups = [{"id": 20, "name": "good-group"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ):
+            results = []
+            async for batch in client.get_groups():
+                results.extend(batch)
+
+            assert len(results) == 1

@@ -1,6 +1,7 @@
 description: Armorcode integration for Port Ocean
 icon: Armorcode
 title: Armorcode
+formMappingEnabled: true
 features:
   - type: exporter
     section: Code Quality & Security
