@@ -1,0 +1,64 @@
+{
+  "escalation_policy": {
+    "id": "P7LVMYP",
+    "type": "escalation_policy_reference",
+    "summary": "Backend Escalation Policy",
+    "self": "https://api.pagerduty.com/escalation_policies/P7LVMYP",
+    "html_url": "https://getport-io.pagerduty.com/escalation_policies/P7LVMYP"
+  },
+  "escalation_level": 1,
+  "schedule": {
+    "id": "PWAXLIH",
+    "type": "schedule_reference",
+    "summary": "Port Test Service - Weekly Rotation",
+    "self": "https://api.pagerduty.com/schedules/PWAXLIH",
+    "html_url": "https://getport-io.pagerduty.com/schedules/PWAXLIH"
+  },
+  "user": {
+    "name": "John Doe",
+    "email": "jdoe@getport.io",
+    "time_zone": "Asia/Jerusalem",
+    "color": "green",
+    "avatar_url": "https://secure.gravatar.com/avatar/0d5d34ceb820d324d69046a1b2f51dc0.png?d=mm&r=PG",
+    "billed": true,
+    "role": "admin",
+    "description": null,
+    "invitation_sent": false,
+    "job_title": null,
+    "teams": [],
+    "created_via_sso": false,
+    "contact_methods": [
+      {
+        "id": "PKDRC7X",
+        "type": "email_contact_method_reference",
+        "summary": "Default",
+        "self": "https://api.pagerduty.com/users/PJCRRLH/contact_methods/PKDRC7X",
+        "html_url": null
+      }
+    ],
+    "notification_rules": [
+      {
+        "id": "PL8ZDWC",
+        "type": "assignment_notification_rule_reference",
+        "summary": "0 minutes: channel PKDRC7X",
+        "self": "https://api.pagerduty.com/users/PJCRRLH/notification_rules/PL8ZDWC",
+        "html_url": null
+      },
+      {
+        "id": "PRIX7O7",
+        "type": "assignment_notification_rule_reference",
+        "summary": "0 minutes: channel PKDRC7X",
+        "self": "https://api.pagerduty.com/users/PJCRRLH/notification_rules/PRIX7O7",
+        "html_url": null
+      }
+    ],
+    "locale": "en-US",
+    "id": "PJCRRLH",
+    "type": "user",
+    "summary": "isaac",
+    "self": "https://api.pagerduty.com/users/PJCRRLH",
+    "html_url": "https://getport-io.pagerduty.com/users/PJCRRLH"
+  },
+  "start": "2025-12-01T14:00:00Z",
+  "end": "2025-12-15T14:00:00Z"
+}
