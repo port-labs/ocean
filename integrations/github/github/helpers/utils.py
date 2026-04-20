@@ -294,10 +294,13 @@ async def enrich_members_with_saml_email(
         login = member.get("login")
         saml_email = saml_map.get(login) if login else None
 
-        if include_saml_email:
+        member_has_email = member.get("email")
+        should_fallback_to_saml_email = not member_has_email and saml_email
+
+        if include_saml_email or should_fallback_to_saml_email:
             member["__SAMLEmail"] = saml_email
 
-        if not member.get("email") and saml_email:
+        if should_fallback_to_saml_email:
             member["email"] = saml_email
             enriched += 1
 

@@ -135,6 +135,7 @@ class TestGraphQLUserExporter:
             expected_user = {
                 "login": "user2",
                 "email": "user2@email.com",  # Email fetched from external identity
+                "__SAMLEmail": "user2@email.com",
             }
             assert user == expected_user
 
@@ -181,6 +182,7 @@ class TestGraphQLUserExporter:
             {
                 "login": "user2",
                 "email": "user2@email.com",
+                "__SAMLEmail": "user2@email.com",
             },
         ]
 
@@ -314,7 +316,11 @@ class TestGraphQLUserExporter:
 
             expected_users = [
                 {"login": "user1", "email": "johndoe@email.com"},
-                {"login": "user2", "email": "user2@email.com"},
+                {
+                    "login": "user2",
+                    "email": "user2@email.com",
+                    "__SAMLEmail": "user2@email.com",
+                },
             ]
 
             assert initial_users == expected_users
