@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field
 
@@ -60,6 +60,21 @@ class ResourceEntityResourceConfig(ResourceConfig):
     )
 
 
+class CustomResourceConfig(ResourceConfig):
+    kind: str = Field(
+        title="Custom Backstage kind",
+        description=(
+            "Use this to ingest Backstage catalog entities whose kind is not one of the built-in options above. "
+            "In Backstage, each entity has a kind string (for example built-in kinds such as Component or API, "
+            "or kinds registered by plugins). The integration calls the "
+            "<a target='_blank' href='https://backstage.io/docs/features/software-catalog/software-catalog-api/#get-entitiesby-query'>Get Entities by Query</a> "
+            "API and filters results with a catalog filter of the form kind=your-kind, so set this field to the exact kind "
+            "as stored in your software catalog."
+            "\n\nExample: Template"
+        ),
+    )
+
+
 class BackstagePortAppConfig(PortAppConfig):
     resources: list[
         ComponentResourceConfig
@@ -69,9 +84,11 @@ class BackstagePortAppConfig(PortAppConfig):
         | SystemResourceConfig
         | DomainResourceConfig
         | ResourceEntityResourceConfig
+        | CustomResourceConfig
     ] = Field(
         default_factory=list,
     )  # type: ignore[assignment]
+    allow_custom_kinds: ClassVar[bool] = True
 
 
 class BackstageIntegration(BaseIntegration):
