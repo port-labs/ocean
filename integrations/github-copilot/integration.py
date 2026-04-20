@@ -10,7 +10,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 
-from main import ObjectKind
+from kinds import ObjectKind
 
 
 class OrganizationUsageMetricsResourceConfig(ResourceConfig):
