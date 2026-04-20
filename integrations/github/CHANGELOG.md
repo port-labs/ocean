@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.3.7 (2026-04-20)
+
+
+### Improvements
+
+- Added further context to dispatch event evaluation logs
+- Revised include_relations selector's title and description
+
+
+## 5.3.6 (2026-04-16)
+
+
+### Improvements
+
+- Added structured repository relations enrichment configuration (teams/sbom/collaborators), including collaborator `affiliation` support.
+- Expanded repository webhook handling to also react to collaborator/team collaborator events so repository entities can be re-enriched when relationships change.
+
+
 ## 5.3.5 (2026-04-16)
 
 
