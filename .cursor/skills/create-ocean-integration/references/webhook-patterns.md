@@ -15,8 +15,8 @@ class EventType(StrEnum):
     ISSUE_CREATED = "issue.created"
     ISSUE_UPDATED = "issue.updated"
 
-# Event to Kind mapping
-EVENT_KIND_MAP: dict[EventType, str] = {
+# Event to Kind mapping (ObjectKind is defined in helpers/utils.py)
+EVENT_KIND_MAP: dict[EventType, ObjectKind] = {
     EventType.PROJECT_CREATED: ObjectKind.PROJECT,
     EventType.PROJECT_UPDATED: ObjectKind.PROJECT,
     EventType.PROJECT_DELETED: ObjectKind.PROJECT,
