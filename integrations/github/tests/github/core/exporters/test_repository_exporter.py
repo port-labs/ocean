@@ -118,7 +118,7 @@ class TestRestRepositoryExporter:
                     organization="test-org",
                     organization_type="Organization",
                     type=mock_port_app_config.repository_type,
-                    included_relationships=["collaborators"],
+                    included_relations={"collaborators": {"include": True}},
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
@@ -149,11 +149,11 @@ class TestRestRepositoryExporter:
                 expected_collaborator_calls: list[tuple[str, dict[str, Any]]] = [
                     (
                         f"{rest_client.base_url}/repos/test-org/repo1/collaborators",
-                        {},
+                        {"affiliation": "all"},
                     ),
                     (
                         f"{rest_client.base_url}/repos/test-org/repo2/collaborators",
-                        {},
+                        {"affiliation": "all"},
                     ),
                 ]
 

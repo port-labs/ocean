@@ -110,7 +110,11 @@ class JiraClient(OAuthClient):
             method=request.method,
             url=str(request.url),
         )
-        return next(self._get_bearer().auth_flow(request))
+        bearer_auth = self._get_bearer()
+        # Persist refreshed bearer auth so subsequent new requests use the latest token.
+        self.jira_api_auth = bearer_auth
+        self.client.auth = bearer_auth
+        return next(bearer_auth.auth_flow(request))
 
     async def _send_api_request(
         self,
