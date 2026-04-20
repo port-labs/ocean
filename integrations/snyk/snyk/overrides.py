@@ -1,4 +1,3 @@
-from dataclasses import field
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
@@ -304,7 +303,9 @@ class SnykPortAppConfig(PortAppConfig):
         | VulnerabilityResourceConfig
         | IssueResourceConfig
         | PolicyResourceConfig
-    ] = Field(default_factory=list)  # type: ignore[assignment]
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
 
 
 class SnykIntegration(BaseIntegration):
