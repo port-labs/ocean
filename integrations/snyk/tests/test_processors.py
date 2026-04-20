@@ -11,9 +11,18 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.target_webhook_processor import TargetWebhookProcessor
+from webhook_processors.vulnerability_webhook_processor import (
+    VulnerabilityWebhookProcessor,
+)
 from typing import Any
 
-from snyk.overrides import ProjectSelector, TargetSelector, TargetResourceConfig
+from snyk.overrides import (
+    ProjectSelector,
+    TargetSelector,
+    TargetResourceConfig,
+    VulnerabilityResourceConfig,
+    VulnerabilitySelector,
+)
 
 
 @pytest.fixture
@@ -37,6 +46,11 @@ def targetWebhookProcessor(event: WebhookEvent) -> TargetWebhookProcessor:
 
 
 @pytest.fixture
+def vulnerabilityWebhookProcessor(event: WebhookEvent) -> VulnerabilityWebhookProcessor:
+    return VulnerabilityWebhookProcessor(event)
+
+
+@pytest.fixture
 def resource_config() -> ResourceConfig:
     return ResourceConfig(
         kind="project",
@@ -51,6 +65,25 @@ def resource_config() -> ResourceConfig:
                         "url": ".links.html",
                         "origin": ".origin",
                     },
+                    relations={},
+                )
+            )
+        ),
+    )
+
+
+@pytest.fixture
+def vulnerability_resource_config() -> VulnerabilityResourceConfig:
+    return VulnerabilityResourceConfig(
+        kind="vulnerability",
+        selector=VulnerabilitySelector.parse_obj({"query": "true"}),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".title",
+                    blueprint='"snykVulnerability"',
+                    properties={},
                     relations={},
                 )
             )
@@ -382,3 +415,121 @@ async def test_target_webhook_processor_handle_event_should_pass_attach_project_
         mock_client.get_single_target_by_project_id.assert_called_once_with(
             mock_org, snyk_project_id, attach_project_data=True
         )
+
+
+@pytest.mark.asyncio
+async def test_getMatchingKinds_vulnerabilityReturned(
+    vulnerabilityWebhookProcessor: VulnerabilityWebhookProcessor,
+) -> None:
+    event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
+    assert await vulnerabilityWebhookProcessor.get_matching_kinds(event) == [
+        "vulnerability"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_authenticate_vulnerability(
+    vulnerabilityWebhookProcessor: VulnerabilityWebhookProcessor,
+) -> None:
+    result = await vulnerabilityWebhookProcessor.authenticate({}, {})
+    assert result is True
+
+
+@pytest.mark.asyncio
+async def test_validatePayload_vulnerability(
+    vulnerabilityWebhookProcessor: VulnerabilityWebhookProcessor,
+) -> None:
+    assert await vulnerabilityWebhookProcessor.validate_payload({"project": {}}) is True
+    assert await vulnerabilityWebhookProcessor.validate_payload({}) is False
+
+
+@pytest.mark.asyncio
+async def test_shouldProcessEvent_vulnerability(
+    vulnerabilityWebhookProcessor: VulnerabilityWebhookProcessor,
+    mock_context: PortOceanContext,
+) -> None:
+    with patch("webhook_processors.snyk_base_webhook_processor.hmac") as mock_hmac:
+        mock_hmac_obj = mock_hmac.new.return_value
+        mock_hmac_obj.hexdigest.return_value = "1234567890"
+
+        mock_request = AsyncMock()
+        mock_request.body.return_value = b'{"event":"project.snapshot"}'
+
+        event = WebhookEvent(
+            trace_id="test-trace-id",
+            payload={"event": "project.snapshot"},
+            headers={"x-hub-signature": "sha256=1234567890"},
+        )
+        event._original_request = mock_request
+
+        assert await vulnerabilityWebhookProcessor.should_process_event(event) is True
+
+        mock_hmac_obj.hexdigest.return_value = "wrong"
+        assert await vulnerabilityWebhookProcessor.should_process_event(event) is False
+
+
+@pytest.mark.asyncio
+async def test_handleEvent_vulnerability_issuesEnrichedWithOrg(
+    vulnerabilityWebhookProcessor: VulnerabilityWebhookProcessor,
+    vulnerability_resource_config: VulnerabilityResourceConfig,
+) -> None:
+    payload: dict[str, Any] = {
+        "project": {"id": "test-project-id", "type": "npm"},
+        "org": {"id": "test-org-id"},
+    }
+    mock_org = {"id": "test-org-id", "name": "Test Org"}
+    mock_project: dict[str, Any] = {"id": "test-project-id", "type": "npm"}
+    mock_issues: list[dict[str, Any]] = [{"id": "vuln-1", "title": "SQL Injection"}]
+
+    async def mock_get_project_vulnerabilities(*args: Any, **kwargs: Any) -> Any:
+        yield mock_issues
+
+    with patch(
+        "webhook_processors.vulnerability_webhook_processor.init_client"
+    ) as mock_init:
+        mock_client = AsyncMock()
+        mock_init.return_value = mock_client
+        mock_client.get_all_organizations.return_value = [mock_org]
+        mock_client.get_single_project.return_value = mock_project
+        mock_client.get_project_vulnerabilities = mock_get_project_vulnerabilities
+
+        result = await vulnerabilityWebhookProcessor.handle_event(
+            payload, vulnerability_resource_config
+        )
+
+        assert len(result.updated_raw_results) == 1
+        assert len(result.deleted_raw_results) == 0
+        assert result.updated_raw_results[0]["id"] == "vuln-1"
+        assert result.updated_raw_results[0]["__organization"] == mock_org
+
+
+@pytest.mark.asyncio
+async def test_handleEvent_vulnerability_no_org_returns_unenriched_issues(
+    vulnerabilityWebhookProcessor: VulnerabilityWebhookProcessor,
+    vulnerability_resource_config: VulnerabilityResourceConfig,
+) -> None:
+    payload: dict[str, Any] = {
+        "project": {"id": "test-project-id", "type": "npm"},
+        "org": {"id": "unknown-org-id"},
+    }
+    mock_project: dict[str, Any] = {"id": "test-project-id", "type": "npm"}
+    mock_issues: list[dict[str, Any]] = [{"id": "vuln-1", "title": "SQL Injection"}]
+
+    async def mock_get_project_vulnerabilities(*args: Any, **kwargs: Any) -> Any:
+        yield mock_issues
+
+    with patch(
+        "webhook_processors.vulnerability_webhook_processor.init_client"
+    ) as mock_init:
+        mock_client = AsyncMock()
+        mock_init.return_value = mock_client
+        mock_client.get_all_organizations.return_value = [{"id": "other-org-id"}]
+        mock_client.get_single_project.return_value = mock_project
+        mock_client.get_project_vulnerabilities = mock_get_project_vulnerabilities
+
+        result = await vulnerabilityWebhookProcessor.handle_event(
+            payload, vulnerability_resource_config
+        )
+
+        assert result.updated_raw_results == mock_issues
+        assert result.deleted_raw_results == []

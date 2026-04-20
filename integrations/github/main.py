@@ -190,7 +190,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_config = cast(GithubRepositoryConfig, event.resource_config)
-    included_relationships = repo_config.selector.include
+    included_relations = repo_config.selector.normalized_relations
     included_files = repo_config.selector.included_files or []
     included_files_enricher = (
         IncludedFilesEnricher(
@@ -210,7 +210,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     organization=org["login"],
                     organization_type=org["type"],
                     type=port_app_config.repository_type,
-                    included_relationships=cast(list[str], included_relationships),
+                    included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
                 )
             )

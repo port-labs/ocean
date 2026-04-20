@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.0 (2026-04-17)
+
+
+### Features
+
+- Support API query parameters on vulnerabilities and projects for fine-grained filtering
+
+### Improvements
+
+- Add real-time webhook support for the vulnerability kind
+- Allow vulnerabilities to be optionally enriched with their associated project data
+
+
 ## 0.3.61 (2026-04-16)
 
 
