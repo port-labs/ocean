@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Set default API version to Snyk-recommended `2024-10-15`
+- Update default API version to `2026-03-25`
 
 ### Features
 
