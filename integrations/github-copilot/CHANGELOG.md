@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.4 (2026-04-20)
+
+
+### Bug Fixes
+
+- Moved `ObjectKind` into `kinds.py` so `integration.py` no longer imports `main.py`, fixing `ocean port-app-config schema` when PortOcean is not initialized
+
+
+## 0.3.3 (2026-04-20)
+
+
+### Improvements
+
+- Added Literal kind definitions to `GithubCopilotPortAppConfig` for schema validation compliance
+
+
 ## 0.3.2 (2026-04-16)
 
 

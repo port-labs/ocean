@@ -2,6 +2,7 @@ title: Octopus
 description: Octopus Deploy integration for Port Ocean
 icon: Octopus
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cicd/octopus-deploy
+formMappingEnabled: true
 recommendedInstallationMethod: Saas
 features:
   - type: exporter
