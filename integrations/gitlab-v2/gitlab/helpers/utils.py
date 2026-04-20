@@ -1,12 +1,37 @@
+import json
+import re
 from copy import deepcopy
 from enum import IntEnum
 from enum import StrEnum
-from loguru import logger
 from typing import Any, Union
-import json
 
-# import strictyaml as syaml
-from yaml import safe_load, YAMLError
+from loguru import logger
+from yaml import YAMLError, safe_load
+
+# GitLab project/group access-token bots have system-generated usernames like
+# "project_<id>_bot_<hex>" or "group_<id>_bot_<hex>".  The members/all API
+# does NOT return a `bot` field, so we fall back to pattern detection.
+_BOT_USERNAME_RE = re.compile(r"^(?:project|group)_\d+_bot_[a-f0-9]+$")
+
+
+def is_bot_member(member: dict[str, Any]) -> bool:
+    """Return True when *member* looks like a GitLab bot / access-token user.
+
+    Priority:
+    1. Explicit ``bot=True`` from the API  → bot.
+    2. Explicit ``bot=False`` from the API → not a bot (trust the API).
+    3. ``bot`` field absent or ``None``    → fall back to username pattern.
+       GitLab's /members/all endpoint omits the ``bot`` field for access-token
+       users, so we detect them by their system-generated username format.
+    """
+    bot = member.get("bot")
+    if bot is True:
+        return True
+    if bot is False:
+        return False
+    # bot field absent or None — fall back to username pattern
+    username: str = member.get("username") or ""
+    return bool(_BOT_USERNAME_RE.match(username))
 
 
 class ObjectKind(StrEnum):
@@ -15,6 +40,7 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
     GROUP_WITH_MEMBERS = "group-with-members"
+    PROJECT_WITH_MEMBERS = "project-with-members"
     MEMBER = "member"
     FILE = "file"
     PIPELINE = "pipeline"

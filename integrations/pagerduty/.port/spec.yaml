@@ -3,6 +3,7 @@ description: PagerDuty integration for Port Ocean
 icon: pagerduty
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty
 recommendedInstallationMethod: Saas
+formMappingEnabled: true
 features:
   - type: exporter
     section: Incident Management
