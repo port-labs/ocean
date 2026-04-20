@@ -64,6 +64,8 @@ class OctopusPortAppConfig(PortAppConfig):
         | MachineResourceConfig
         | CustomResourceConfig
     ] = Field(
+        title="Resources",
+        description="The list of resource configurations for the integration.",
         default_factory=list,
     )  # type: ignore[assignment]
 
