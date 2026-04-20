@@ -4,11 +4,9 @@ on:
   pull_request:
   workflow_dispatch:
 
-# mikepenz/action-junit-report needs checks:write to publish check runs.
-# Without this, repos with restrictive default GITHUB_TOKEN permissions fail the step.
+# Default: least privilege. The test job adds checks:write for mikepenz/action-junit-report.
 permissions:
   contents: read
-  checks: write
 
 jobs:
   detect-changes:
@@ -75,6 +73,9 @@ jobs:
       - detect-changes
       - integration-test-matrix
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
     if: ${{ needs.integration-test-matrix.outputs.matrix != '[]' }}
     strategy:
       max-parallel: 5
