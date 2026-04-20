@@ -284,6 +284,9 @@ async def enrich_members_with_saml_email(
     if not members:
         return
 
+    if not include_saml_email and all(m.get("email") for m in members):
+        return
+
     saml_map = await get_saml_identities(client, organization)
 
     enriched = 0
