@@ -102,6 +102,7 @@ from integration import (
     GithubDeploymentStatusConfig,
     GithubWorkflowConfig,
     GithubWorkflowRunConfig,
+    GithubUserConfig,
 )
 from github.enrichments.included_files import (
     IncludedFilesEnricher,
@@ -231,6 +232,7 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     graphql_client = create_github_client(GithubClientType.GRAPHQL)
     org_exporter = RestOrganizationExporter(rest_client)
     exporter = GraphQLUserExporter(graphql_client)
+    config = cast(GithubUserConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -240,7 +242,10 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             if org["type"] == "Organization":
                 tasks.append(
                     exporter.get_paginated_resources(
-                        options=ListUserOptions(organization=org["login"])
+                        options=ListUserOptions(
+                            organization=org["login"],
+                            include_saml_email=config.selector.include_saml_email,
+                        )
                     )
                 )
                 continue
@@ -283,7 +288,10 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
                 tasks.append(
                     exporter.get_paginated_resources(
-                        ListTeamOptions(organization=org_name)
+                        ListTeamOptions(
+                            organization=org_name,
+                            include_saml_email=selector.include_saml_email,
+                        )
                     )
                 )
 
