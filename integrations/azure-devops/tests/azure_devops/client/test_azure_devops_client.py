@@ -4773,6 +4773,7 @@ EXPECTED_RELEASE_DEFINITIONS = [
     }
 ]
 
+
 @pytest.mark.asyncio
 async def test_generate_release_definitions(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(
