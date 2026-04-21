@@ -58,9 +58,6 @@ class IncludedFilesConfig(BaseModel):
         description='File paths to fetch and attach to the raw data under `__includedFiles`. E.g. ["README.md", "CODEOWNERS"]',
     )
 
-    class Config:
-        extra = "forbid"
-
 
 class GitHubCollaboratorRelationshipSelector(BaseModel):
     affiliation: Literal["all", "direct", "outside"] = Field(
@@ -68,9 +65,6 @@ class GitHubCollaboratorRelationshipSelector(BaseModel):
         default="all",
         description="Filter collaborators by affiliation (all, direct, outside).",
     )
-
-    class Config:
-        extra = "forbid"
 
 
 class GitHubRepositoryRelationSelector(BaseModel):
@@ -89,9 +83,6 @@ class GitHubRepositoryRelationSelector(BaseModel):
         default=False,
         description="Include SBOM for the repository.",
     )
-
-    class Config:
-        extra = "forbid"
 
     def get_relations_dict(self) -> dict[str, dict[str, Any]]:
         result = {}
@@ -175,9 +166,6 @@ class RepositoryBranchMapping(BaseModel):
         description="Branch to use; repo's default branch will be used if not specified.",
     )
 
-    class Config:
-        extra = "forbid"
-
 
 class RepositorySourceModel(BaseModel):
     organization: Optional[str] = Field(
@@ -191,15 +179,9 @@ class RepositorySourceModel(BaseModel):
         default=None,
     )
 
-    class Config:
-        extra = "forbid"
-
 
 class FolderSelector(RepositorySourceModel, IncludedFilesConfig):
     path: str = Field(default="*")
-
-    class Config:
-        extra = "forbid"
 
 
 class GithubFolderSelector(Selector, IncludedFilesConfig):
@@ -227,9 +209,6 @@ class GithubFilePattern(RepositorySourceModel):
         alias="validationCheck",
         description="Enable validation for this file pattern during pull request processing.",
     )
-
-    class Config:
-        extra = "forbid"
 
 
 class GithubFileSelector(Selector, IncludedFilesConfig):
