@@ -47,3 +47,23 @@ def test_initialize_app_registers_health_routes() -> None:
     }
     assert "/health/live" in paths
     assert "/health/ready" in paths
+
+
+def test_initialize_app_registers_prefixed_health_routes() -> None:
+    with patch("port_ocean.ocean.Ocean.__init__", return_value=None):
+        ocean = Ocean()
+
+    ocean.config = MagicMock()
+    ocean.config.path_prefix = "api/v1"
+    ocean.fast_api_app = FastAPI()
+    ocean.integration_router = MagicMock()
+    ocean.metrics = MagicMock()
+    ocean.metrics.create_mertic_router.return_value = MagicMock()
+
+    ocean.initialize_app()
+
+    paths = {
+        route.path for route in ocean.fast_api_app.routes if isinstance(route, APIRoute)
+    }
+    assert "/api/v1/health/live" in paths
+    assert "/api/v1/health/ready" in paths

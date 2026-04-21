@@ -56,7 +56,7 @@ async def request_handler(
             "DEBUG"
             if request.url.path == "/docs"
             or request.url.path == "/openapi.json"
-            or request.url.path.startswith("/health/")
+            or "/health/" in request.url.path
             else "INFO"
         )
         logger.bind(url=str(request.url), method=request.method).log(
