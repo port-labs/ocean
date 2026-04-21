@@ -76,21 +76,3 @@ resources:
             assignee: .fields.assignee.accountId
             reporter: .fields.reporter.accountId
 
-  - kind: board
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id | tostring
-          title: .name
-          blueprint: '"jiraBoard"'
-          properties:
-            type: .type
-            isPrivate: .isPrivate
-            projectKey: .location.projectKey // null
-            projectTypeKey: .location.projectTypeKey // null
-            adminUsers: '[.admins.users[]? | select(.accountId != null) | .accountId] | if length > 0 then . else null end'
-            adminGroups: '[.admins.groups[]? | select(.name != null) | .name] | if length > 0 then . else null end'
-          relations:
-            project: '.__projectKeys // null'

@@ -121,7 +121,6 @@ async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             *[client.enrich_board_with_projects(board) for board in board_batch]
         )
         logger.info(f"Received board batch with {len(board_batch)} boards")
-        # yield board_batch
         yield list(enriched_boards)
 
 
