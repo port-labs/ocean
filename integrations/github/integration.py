@@ -272,9 +272,6 @@ class IncludeSAMLEmailSelector(Selector):
         ),
     )
 
-    class Config:
-        extra = "forbid"
-
 
 class GithubUserSelector(IncludeSAMLEmailSelector):
     pass

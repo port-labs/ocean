@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.3.11 (2026-04-21)
+
+
+### Bug Fixes
+
+- Removed `extra = "forbid"` from the GitHub user and team selector blocks
+
+
 ## 5.3.10 (2026-04-21)
 
 
