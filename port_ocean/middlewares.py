@@ -54,9 +54,8 @@ async def request_handler(
     with logger.contextualize(request_id=request_id):
         log_level = (
             "DEBUG"
-            if request.url.path == "/docs"
-            or request.url.path == "/openapi.json"
-            or "/health/" in request.url.path
+            if request.url.path
+            in ("/docs", "/openapi.json", "/health/live", "/health/ready")
             else "INFO"
         )
         logger.bind(url=str(request.url), method=request.method).log(
