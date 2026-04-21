@@ -31,7 +31,7 @@ async def test_release_get_matching_kinds(
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     kinds = await release_processor.get_matching_kinds(event)
-    assert kinds == ["release"]
+    assert kinds == ["release", "release-definition"]
 
 
 @pytest.mark.asyncio
@@ -160,7 +160,9 @@ async def test_release_handle_event_success(
         "resource": {"release": {"id": 42}},
     }
 
-    result = await release_processor.handle_event(payload, MagicMock())
+    resource_config = MagicMock()
+    resource_config.kind = "release"
+    result = await release_processor.handle_event(payload, resource_config)
 
     assert isinstance(result, WebhookEventRawResults)
     assert len(result.updated_raw_results) == 1
@@ -187,7 +189,76 @@ async def test_release_handle_event_not_found(
         "resource": {"release": {"id": 42}},
     }
 
-    result = await release_processor.handle_event(payload, MagicMock())
+    resource_config = MagicMock()
+    resource_config.kind = "release"
+    result = await release_processor.handle_event(payload, resource_config)
 
     assert len(result.updated_raw_results) == 0
     assert len(result.deleted_raw_results) == 0
+
+
+@pytest.mark.asyncio
+async def test_release_handle_event_definition_success(
+    release_processor: ReleaseWebhookProcessor,
+    mock_event_context: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_client = MagicMock()
+    mock_client.get_release = AsyncMock(
+        return_value={
+            "id": 42,
+            "name": "Release-1",
+            "releaseDefinition": {"id": 5, "name": "MyPipeline"},
+        }
+    )
+    mock_client.get_release_definition = AsyncMock(
+        return_value={
+            "id": 5,
+            "name": "MyPipeline",
+            "__project": {"id": "project-123"},
+        }
+    )
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.release_webhook_processor.AzureDevopsClient.create_from_ocean_config",
+        lambda: mock_client,
+    )
+
+    payload = {
+        "resourceContainers": {"project": {"id": "project-123"}},
+        "resource": {"release": {"id": 42}},
+    }
+
+    resource_config = MagicMock()
+    resource_config.kind = "release-definition"
+    result = await release_processor.handle_event(payload, resource_config)
+
+    assert len(result.updated_raw_results) == 1
+    assert result.updated_raw_results[0]["id"] == 5
+    assert result.updated_raw_results[0]["name"] == "MyPipeline"
+    mock_client.get_release.assert_called_once_with("project-123", 42)
+    mock_client.get_release_definition.assert_called_once_with("project-123", 5)
+
+
+@pytest.mark.asyncio
+async def test_release_handle_event_definition_release_not_found(
+    release_processor: ReleaseWebhookProcessor,
+    mock_event_context: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_client = MagicMock()
+    mock_client.get_release = AsyncMock(return_value=None)
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.release_webhook_processor.AzureDevopsClient.create_from_ocean_config",
+        lambda: mock_client,
+    )
+
+    payload = {
+        "resourceContainers": {"project": {"id": "project-123"}},
+        "resource": {"release": {"id": 42}},
+    }
+
+    resource_config = MagicMock()
+    resource_config.kind = "release-definition"
+    result = await release_processor.handle_event(payload, resource_config)
+
+    assert len(result.updated_raw_results) == 0
