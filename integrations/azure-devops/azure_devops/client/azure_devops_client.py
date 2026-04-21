@@ -593,7 +593,13 @@ class AzureDevopsClient(HTTPBaseClient):
                     yield pipelines
 
     async def generate_releases(
-        self, expand: str | None = None
+        self,
+        expand: str | None = None,
+        status_filter: str | None = None,
+        tag_filter: str | None = None,
+        source_branch_filter: str | None = None,
+        min_created_time: str | None = None,
+        max_created_time: str | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
@@ -601,16 +607,26 @@ class AzureDevopsClient(HTTPBaseClient):
                     self._format_service_url("vsrm")
                     + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
                 )
-                additional_params = {}
+                additional_params: dict[str, str] = {}
                 if expand:
                     additional_params["$expand"] = expand
+                if status_filter:
+                    additional_params["statusFilter"] = status_filter
+                if tag_filter:
+                    additional_params["tagFilter"] = tag_filter
+                if source_branch_filter:
+                    additional_params["sourceBranchFilter"] = source_branch_filter
+                if min_created_time:
+                    additional_params["minCreatedTime"] = min_created_time
+                if max_created_time:
+                    additional_params["maxCreatedTime"] = max_created_time
                 async for releases in self._get_paginated_by_top_and_continuation_token(
                     releases_url, additional_params=additional_params
                 ):
                     yield releases
 
     async def generate_release_definitions(
-        self,
+        self, expand: str | None = "environments"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
@@ -618,7 +634,9 @@ class AzureDevopsClient(HTTPBaseClient):
                     self._format_service_url("vsrm")
                     + f"/{project['id']}/{API_URL_PREFIX}/release/definitions"
                 )
-                additional_params = {"$expand": "environments"}
+                additional_params = {}
+                if expand:
+                    additional_params["$expand"] = expand
                 async for (
                     definitions
                 ) in self._get_paginated_by_top_and_continuation_token(

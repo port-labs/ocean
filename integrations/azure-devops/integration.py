@@ -367,6 +367,36 @@ class AzureDevopsReleaseSelector(Selector):
         title="Expand",
         description="Comma-separated list of properties to expand on each release (e.g. 'environments'). When set, the expanded data is available in JQ mappings.",
     )
+    status_filter: Optional[str] = Field(
+        alias="statusFilter",
+        default=None,
+        title="Status Filter",
+        description="Filter releases by status (e.g. 'active', 'abandoned', 'draft').",
+    )
+    tag_filter: Optional[str] = Field(
+        alias="tagFilter",
+        default=None,
+        title="Tag Filter",
+        description="Comma-separated list of tags to filter releases by.",
+    )
+    source_branch_filter: Optional[str] = Field(
+        alias="sourceBranchFilter",
+        default=None,
+        title="Source Branch Filter",
+        description="Filter releases by artifact source branch (e.g. 'refs/heads/main').",
+    )
+    min_created_time: Optional[str] = Field(
+        alias="minCreatedTime",
+        default=None,
+        title="Min Created Time",
+        description="Only include releases created after this date (ISO 8601 format, e.g. '2025-01-01').",
+    )
+    max_created_time: Optional[str] = Field(
+        alias="maxCreatedTime",
+        default=None,
+        title="Max Created Time",
+        description="Only include releases created before this date (ISO 8601 format, e.g. '2026-01-01').",
+    )
 
 
 class AzureDevopsReleaseConfig(ResourceConfig):
@@ -424,12 +454,20 @@ class AzureDevopsEnvironmentConfig(ResourceConfig):
     )
 
 
+class AzureDevopsReleaseDefinitionSelector(Selector):
+    expand: Optional[str] = Field(
+        default="environments",
+        title="Expand",
+        description="Comma-separated list of properties to expand on each release definition (e.g. 'environments', 'artifacts', 'triggers', 'variables'). Defaults to 'environments' which provides stage information.",
+    )
+
+
 class AzureDevopsReleaseDefinitionConfig(ResourceConfig):
     kind: Literal[Kind.RELEASE_DEFINITION] = Field(
         title="Azure Devops Release Definition",
         description="Azure Devops release definition resource kind.",
     )
-    selector: AzureDevopsSelector = Field(
+    selector: AzureDevopsReleaseDefinitionSelector = Field(
         title="Release definition selector",
         description="Selector for the release definition resource.",
     )
