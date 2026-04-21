@@ -204,18 +204,20 @@ async def test_release_handle_event_definition_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     mock_client = MagicMock()
+    mock_project_ref = {"id": "project-123", "name": "TestProject"}
     mock_client.get_release = AsyncMock(
         return_value={
             "id": 42,
             "name": "Release-1",
             "releaseDefinition": {"id": 5, "name": "MyPipeline"},
+            "projectReference": mock_project_ref,
         }
     )
     mock_client.get_release_definition = AsyncMock(
         return_value={
             "id": 5,
             "name": "MyPipeline",
-            "__project": {"id": "project-123"},
+            "__project": mock_project_ref,
         }
     )
     monkeypatch.setattr(
@@ -234,9 +236,11 @@ async def test_release_handle_event_definition_success(
 
     assert len(result.updated_raw_results) == 1
     assert result.updated_raw_results[0]["id"] == 5
-    assert result.updated_raw_results[0]["name"] == "MyPipeline"
+    assert result.updated_raw_results[0]["__project"] == mock_project_ref
     mock_client.get_release.assert_called_once_with("project-123", 42)
-    mock_client.get_release_definition.assert_called_once_with("project-123", 5)
+    mock_client.get_release_definition.assert_called_once_with(
+        "project-123", 5, project=mock_project_ref
+    )
 
 
 @pytest.mark.asyncio

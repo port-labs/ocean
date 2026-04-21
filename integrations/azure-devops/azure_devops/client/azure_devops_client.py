@@ -1263,7 +1263,7 @@ class AzureDevopsClient(HTTPBaseClient):
         return response.json()
 
     async def get_release_definition(
-        self, project_id: str, definition_id: int
+        self, project_id: str, definition_id: str, project: dict[str, Any]
     ) -> dict[Any, Any] | None:
         definition_url = (
             self._format_service_url("vsrm")
@@ -1273,7 +1273,7 @@ class AzureDevopsClient(HTTPBaseClient):
         if not response:
             return None
         definition = response.json()
-        definition["__project"] = {"id": project_id}
+        definition["__project"] = project
         return definition
 
     async def get_release_deployment(

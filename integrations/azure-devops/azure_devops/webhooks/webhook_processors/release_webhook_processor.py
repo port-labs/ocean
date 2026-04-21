@@ -56,7 +56,7 @@ class ReleaseWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 )
             definition_id = release["releaseDefinition"]["id"]
             definition = await client.get_release_definition(
-                project_id, definition_id
+                project_id, definition_id, project=release["projectReference"]
             )
             if not definition:
                 logger.warning(
