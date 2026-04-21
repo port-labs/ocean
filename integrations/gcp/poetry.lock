@@ -1912,13 +1912,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.38.27"
+version = "0.41.2"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.38.27-py3-none-any.whl", hash = "sha256:e06177f4ca18c2de6108d7ad3b8e5da38f5e6260e2a939335ffc8ce6ce4c1810"},
-    {file = "port_ocean-0.38.27.tar.gz", hash = "sha256:7a91a836386f46e2d31a6bc73d84768ef834c9dd71e32c30499d4b5a46d9b867"},
+    {file = "port_ocean-0.41.2-py3-none-any.whl", hash = "sha256:fb716eb81356de34ddb66abdaeceadb8c6d5392b4f24cdadc6a74e877653e2ef"},
+    {file = "port_ocean-0.41.2.tar.gz", hash = "sha256:035936130688db21bfdaeaed5027fbfa70431dd9ae6a11eaea72f95e363e78bc"},
 ]
 
 [package.dependencies]
@@ -2045,13 +2045,13 @@ test = ["psleak", "pytest", "pytest-instafail", "pytest-xdist", "pywin32", "setu
 
 [[package]]
 name = "pyasn1"
-version = "0.6.2"
+version = "0.6.3"
 description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pyasn1-0.6.2-py3-none-any.whl", hash = "sha256:1eb26d860996a18e9b6ed05e7aae0e9fc21619fcee6af91cca9bad4fbea224bf"},
-    {file = "pyasn1-0.6.2.tar.gz", hash = "sha256:9b59a2b25ba7e4f8197db7686c09fb33e658b98339fadb826e9512629017833b"},
+    {file = "pyasn1-0.6.3-py3-none-any.whl", hash = "sha256:a80184d120f0864a52a073acc6fc642847d0be408e7c7252f31390c0f4eadcde"},
+    {file = "pyasn1-0.6.3.tar.gz", hash = "sha256:697a8ecd6d98891189184ca1fa05d1bb00e2f84b5977c481452050549c8a72cf"},
 ]
 
 [[package]]
@@ -2787,4 +2787,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "9be987666aa7f54e11304378b3e3beff258eee3f901334f088cdde2fbe3e22c0"
+content-hash = "c1ff076f789365a1c55460c16dadc73d72d38931cf511347908c45d8ce27b3a1"

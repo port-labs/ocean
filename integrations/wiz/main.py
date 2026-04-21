@@ -114,14 +114,18 @@ async def resync_sbom_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(SbomArtifactResourceConfig, event.resource_config).selector
     group_list = selector.group_list
     max_pages = selector.max_pages
+    resource_filter = (
+        selector.resource.dict(exclude_none=True) if selector.resource else None
+    )
 
     logger.info(
-        f"Resyncing {kind.lower()} with group list: {group_list}, max pages: {max_pages}"
+        f"Resyncing {kind.lower()} with group list: {group_list}, max pages: {max_pages}, resource filter: {resource_filter}"
     )
 
     options = SbomArtifactOptions(
         group_list=group_list,
         max_pages=max_pages,
+        resource_filter=resource_filter,
     )
 
     async for sbom_artifacts in wiz_client.get_sbom_artifacts(options):

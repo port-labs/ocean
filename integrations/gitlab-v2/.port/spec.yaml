@@ -1,6 +1,7 @@
 description: gitlab-v2 integration for Port Ocean
 title: GitLab
 icon: GitLab
+formMappingEnabled: true
 features:
   - type: exporter
     section: Git Providers

@@ -27,7 +27,6 @@ from .constants import (
     GRAPH_QUERIES,
     ISSUES_GQL,
     PAGE_SIZE,
-    MAX_SBOM_ARTIFACT_ENTITIES,
 )
 
 
@@ -362,11 +361,55 @@ class WizClient:
 
         return None
 
+    def _build_sbom_artifact_resource_filter(
+        self, resource_filter: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        if not isinstance(resource_filter, dict):
+            return None
+
+        graphql_resource_filter: dict[str, Any] = {}
+
+        cloud_platform = resource_filter.get("cloud_platform")
+        if isinstance(cloud_platform, list):
+            cloud_platform_values = [
+                platform
+                for platform in cloud_platform
+                if isinstance(platform, str) and platform
+            ]
+            if cloud_platform_values:
+                graphql_resource_filter["cloudPlatform"] = cloud_platform_values
+
+        scan_source = resource_filter.get("scan_source")
+        if isinstance(scan_source, str) and scan_source:
+            graphql_resource_filter["scanSource"] = scan_source
+
+        status = resource_filter.get("status")
+        if isinstance(status, list):
+            status_values = [
+                value for value in status if isinstance(value, str) and value
+            ]
+            if status_values:
+                graphql_resource_filter["status"] = status_values
+
+        region = resource_filter.get("region")
+        if isinstance(region, list):
+            region_values = [
+                r.strip() for r in region if isinstance(r, str) and r.strip()
+            ]
+            if region_values:
+                graphql_resource_filter["region"] = region_values
+
+        if not graphql_resource_filter:
+            return None
+
+        return graphql_resource_filter
+
     async def _get_sbom_artifacts_for_grouped_name(
         self,
         grouped_node: dict[str, Any],
         page_size: int,
         max_pages: int,
+        resource_filter: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         name = grouped_node.get("name")
         sbom_type = grouped_node.get("type")
@@ -382,12 +425,16 @@ class WizClient:
             )
             return
 
+        filter_by: dict[str, Any] = {
+            "name": name,
+            "type": type_filter,
+        }
+        if resource_filter:
+            filter_by["resource"] = resource_filter
+
         variables: dict[str, Any] = {
             "first": page_size,
-            "filterBy": {
-                "name": name,
-                "type": type_filter,
-            },
+            "filterBy": filter_by,
         }
 
         async for artifacts in self._get_paginated_resources(
@@ -408,13 +455,15 @@ class WizClient:
         options: SbomArtifactOptions,
         page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        max_pages = min(options.get("max_pages", 500), 500)
+        max_pages = options.get("max_pages", 500)
         selected_groups = set(options.get("group_list") or [])
+        resource_filter = self._build_sbom_artifact_resource_filter(
+            options.get("resource_filter")
+        )
         allow_all_groups = not selected_groups
-        total_ingested = 0
 
         logger.info(
-            f"Resyncing SBOM artifacts with groups: {selected_groups or 'ALL'}, max pages: {max_pages} max artifacts: {MAX_SBOM_ARTIFACT_ENTITIES}"
+            f"Resyncing SBOM artifacts with groups: {selected_groups or 'ALL'}, max pages: {max_pages}, resource filter: {resource_filter}"
         )
 
         grouped_variables: dict[str, Any] = {
@@ -429,13 +478,6 @@ class WizClient:
             variables=grouped_variables,
             max_pages=max_pages,
         ):
-            if total_ingested >= MAX_SBOM_ARTIFACT_ENTITIES:
-                logger.warning(
-                    f"Reached maximum SBOM artifact limit of {MAX_SBOM_ARTIFACT_ENTITIES}. "
-                    f"Stopping ingestion."
-                )
-                return
-
             grouped_artifact_streams = [
                 semaphore_async_iterator(
                     sbom_group_semaphore,
@@ -444,6 +486,7 @@ class WizClient:
                         grouped_node=grouped_node,
                         page_size=page_size,
                         max_pages=max_pages,
+                        resource_filter=resource_filter,
                     ),
                 )
                 for grouped_node in grouped_nodes
@@ -457,17 +500,4 @@ class WizClient:
             async for artifact_batch in stream_async_iterators_tasks(
                 *grouped_artifact_streams
             ):
-                remaining = MAX_SBOM_ARTIFACT_ENTITIES - total_ingested
-
-                if remaining <= 0:
-                    logger.warning(
-                        f"Reached maximum SBOM artifact limit of {MAX_SBOM_ARTIFACT_ENTITIES}. "
-                        f"Stopping ingestion."
-                    )
-                    return
-                # Trim the batch if it would exceed the limit
-                if len(artifact_batch) > remaining:
-                    artifact_batch = artifact_batch[:remaining]
-
-                total_ingested += len(artifact_batch)
                 yield artifact_batch

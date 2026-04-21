@@ -1,0 +1,27 @@
+{
+  "id": "76268945-78a4-4d64-b567-18ac9d3548b8",
+  "name": "Infra Test Team",
+  "url": "[REDACTED]/_apis/projects/31440986-0c26-4def-ae3d-feadd2d3498e/teams/76268945-78a4-4d64-b567-18ac9d3548b8",
+  "description": "",
+  "identityUrl": "https://spsprodweu6.vssps.visualstudio.com/Aa9ef9d0d-7e82-458a-b5b1-0b5069164ca5/_apis/Identities/76268945-78a4-4d64-b567-18ac9d3548b8",
+  "projectName": "test-azure-sync-project",
+  "projectId": "31440986-0c26-4def-ae3d-feadd2d3498e",
+  "__members": [
+    {
+      "isTeamAdmin": true,
+      "identity": {
+        "displayName": "Eri Adeodu",
+        "url": "https://spsprodweu6.vssps.visualstudio.com/Aa9ef9d0d-7e82-458a-b5b1-0b5069164ca5/_apis/Identities/bb0aeb1a-472b-6d57-9393-80e78bfbabd5",
+        "_links": {
+          "avatar": {
+            "href": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ1"
+          }
+        },
+        "id": "bb0aeb1a-472b-6d57-9393-80e78bfbabd5",
+        "uniqueName": "eridotdev@gmail.com",
+        "imageUrl": "[REDACTED]/_api/_common/identityImage?id=bb0aeb1a-472b-6d57-9393-80e78bfbabd5",
+        "descriptor": "aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ1"
+      }
+    }
+  ]
+}

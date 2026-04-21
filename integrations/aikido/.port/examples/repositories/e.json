@@ -1,0 +1,13 @@
+{
+  "id": 1841546,
+  "name": "test-azure-sync-project",
+  "external_repo_id": "6bd9f476-ffca-43da-b324-4e45619af83e",
+  "external_repo_numeric_id": -1,
+  "provider": "azure_devops",
+  "active": true,
+  "url": "https://dev.azure.com/eridotdev/test-azure-sync-project/_git/test-azure-sync-project",
+  "branch": "main",
+  "last_scanned_at": 1775686384,
+  "connectivity": "unknown",
+  "sensitivity": "normal"
+}

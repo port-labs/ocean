@@ -21,6 +21,8 @@ from azure_devops.webhooks.events import (
     PipelineEvents,
     PipelineStageEvents,
     PipelineRunEvents,
+    ReleaseEvents,
+    ReleaseDeploymentEvents,
 )
 
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
@@ -54,6 +56,7 @@ WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
 PIPELINES_PUBLISHER_ID = "pipelines"
+RELEASE_PUBLISHER_ID = "rm"
 API_PARAMS = {"api-version": "7.1"}
 WEBHOOK_URL_SUFFIX = "/integration/webhook"
 # Maximum number of work item IDs allowed in a single API request
@@ -65,6 +68,7 @@ MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
+MAX_CONCURRENT_PROJECTS = 5
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -118,6 +122,22 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
     WebhookSubscription(
         publisherId=PIPELINES_PUBLISHER_ID,
         eventType=PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseEvents.RELEASE_CREATED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseEvents.RELEASE_ABANDONED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseDeploymentEvents.DEPLOYMENT_STARTED,
+    ),
+    WebhookSubscription(
+        publisherId=RELEASE_PUBLISHER_ID,
+        eventType=ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
     ),
 ]
 
@@ -868,28 +888,42 @@ class AzureDevopsClient(HTTPBaseClient):
                 deployment["__project"] = project
             yield deployments
 
+    async def _fetch_policies_for_repo(
+        self,
+        repo: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        params: dict[str, Any] = {
+            "repositoryId": repo["id"],
+        }
+        if default_branch := repo.get("defaultBranch"):
+            params["refName"] = default_branch
+
+        policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
+        response = await self.send_request("GET", policies_url, params=params)
+        if not response:
+            return
+        repo_policies = response.json()["value"]
+
+        for policy in repo_policies:
+            policy["__repository"] = repo
+        yield repo_policies
+
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for repos in self.generate_repositories(
             include_disabled_repositories=False
         ):
-            for repo in repos:
-                params = {
-                    "repositoryId": repo["id"],
-                }
-                if default_branch := repo.get("defaultBranch"):
-                    params["refName"] = default_branch
-
-                policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
-                response = await self.send_request("GET", policies_url, params=params)
-                if not response:
-                    continue
-                repo_policies = response.json()["value"]
-
-                for policy in repo_policies:
-                    policy["__repository"] = repo
-                yield repo_policies
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(self._fetch_policies_for_repo, repo),
+                )
+                for repo in repos
+            ]
+            async for policies in stream_async_iterators_tasks(*tasks):
+                yield policies
 
     async def generate_work_items(
         self, wiql: Optional[str], expand: str
@@ -1174,6 +1208,37 @@ class AzureDevopsClient(HTTPBaseClient):
                 return stage
         return None
 
+    async def get_release(
+        self, project_id: str, release_id: int
+    ) -> dict[Any, Any] | None:
+        release_url = (
+            self._format_service_url("vsrm")
+            + f"/{project_id}/{API_URL_PREFIX}/release/releases/{release_id}"
+        )
+        response = await self.send_request("GET", release_url)
+        if not response:
+            return None
+        return response.json()
+
+    async def get_release_deployment(
+        self, project_id: str, release_id: int, environment_id: int
+    ) -> dict[Any, Any] | None:
+        deployments_url = (
+            self._format_service_url("vsrm")
+            + f"/{project_id}/{API_URL_PREFIX}/release/deployments"
+        )
+        params = {
+            "deploymentStatus": "all",
+            "releaseId": release_id,
+            "definitionEnvironmentId": environment_id,
+            "$top": 1,
+        }
+        response = await self.send_request("GET", deployments_url, params=params)
+        if not response:
+            return None
+        deployments = response.json().get("value", [])
+        return deployments[0] if deployments else None
+
     async def get_columns(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self.get_boards_in_organization():
             for board in boards:
@@ -1277,6 +1342,8 @@ class AzureDevopsClient(HTTPBaseClient):
         if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
             subscription_base_url = self._advsec_base_url
             params = ADVANCED_SECURITY_API_PARAMS
+        elif webhook_subscription.publisherId == RELEASE_PUBLISHER_ID:
+            subscription_base_url = self._format_service_url("vsrm")
 
         create_subscription_url = (
             f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
@@ -1306,6 +1373,8 @@ class AzureDevopsClient(HTTPBaseClient):
         if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
             subscription_base_url = self._advsec_base_url
             params = ADVANCED_SECURITY_API_PARAMS
+        elif webhook_subscription.publisherId == RELEASE_PUBLISHER_ID:
+            subscription_base_url = self._format_service_url("vsrm")
 
         delete_subscription_url = f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_subscription.id}"
         logger.info(f"Deleting subscription to event: {webhook_subscription.json()}")
@@ -1937,6 +2006,19 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return enriched
 
+    async def _fetch_enriched_test_runs(
+        self,
+        project_id: str,
+        include_results: bool,
+        coverage_config: Optional["CodeCoverageConfig"],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
+        params = {"includeRunDetails": True}
+        async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+            yield await self._enrich_test_runs(
+                runs, project_id, include_results, coverage_config
+            )
+
     async def fetch_test_runs(
         self,
         include_results: bool,
@@ -1946,17 +2028,22 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Starting to fetch test runs with include_results={include_results}"
         )
 
-        params = {"includeRunDetails": True}
         async for projects in self.generate_projects():
-            for project in projects:
-                project_id = project["id"]
-                url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-                async for runs in self._get_paginated_by_top_and_skip(
-                    url, params=params
-                ):
-                    yield await self._enrich_test_runs(
-                        runs, project_id, include_results, coverage_config
-                    )
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._fetch_enriched_test_runs,
+                        project["id"],
+                        include_results,
+                        coverage_config,
+                    ),
+                )
+                for project in projects
+            ]
+            async for test_runs in stream_async_iterators_tasks(*tasks):
+                yield test_runs
 
     async def _attach_async_results(
         self,
