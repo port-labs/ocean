@@ -54,11 +54,13 @@ class NewRelicCustomResourceConfig(ResourceConfig):
     kind: str = Field(
         title="Custom Kind",
         description=(
-            "Port resource kind name to use for NewRelic entities. This can be any custom kind "
-            '(for example, "newRelicService") and may map to one or more NewRelic entity types '
-            "configured via selector.newRelicTypes.\n\n"
-            "If you prefer a separate Port kind per NewRelic entity type, you can also set the "
-            'kind name to the NewRelic entity type itself (for example, "APM_APPLICATION").'
+            "Use this to map NewRelic entities by setting the kind name to any custom value "
+            "(for example, 'newRelicService') and configuring selector.newRelicTypes to scope "
+            "which NewRelic entity types are fetched.\n\n"
+            "You can also set the kind name to the NewRelic entity type itself "
+            "(for example, 'APM_APPLICATION') for a one-to-one mapping.\n\n"
+            "See the <a target='_blank' href='https://docs.newrelic.com/docs/new-relic-solutions/new-relic-one/core-concepts/what-entity-new-relic/#entity-type'>"
+            "NewRelic entity types reference</a> for all supported entity types."
         ),
     )
     selector: NewRelicSelector = Field(
