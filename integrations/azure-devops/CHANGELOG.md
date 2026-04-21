@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added `release-definition` and `release-environment` kinds for classic release pipeline coverage
+- Added `release-definition` kind for classic release pipeline definitions
+- Added configurable `expand` selector on the `release` kind, allowing users to expand properties
 
 
 ## 0.8.16 (2026-04-16)

@@ -23,7 +23,6 @@ class Kind(StrEnum):
     COLUMN = "column"
     RELEASE = "release"
     RELEASE_DEFINITION = "release-definition"
-    RELEASE_ENVIRONMENT = "release-environment"
     ENVIRONMENT = "environment"
     RELEASE_DEPLOYMENT = "release-deployment"
     PIPELINE_DEPLOYMENT = "pipeline-deployment"

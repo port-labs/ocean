@@ -361,12 +361,20 @@ class AzureDevopsColumnConfig(ResourceConfig):
     )
 
 
+class AzureDevopsReleaseSelector(Selector):
+    expand: Optional[str] = Field(
+        default=None,
+        title="Expand",
+        description="Comma-separated list of properties to expand on each release (e.g. 'environments'). When set, the expanded data is available in JQ mappings.",
+    )
+
+
 class AzureDevopsReleaseConfig(ResourceConfig):
     kind: Literal[Kind.RELEASE] = Field(
         title="Azure Devops Release",
         description="Azure Devops release resource kind.",
     )
-    selector: AzureDevopsSelector = Field(
+    selector: AzureDevopsReleaseSelector = Field(
         title="Release selector",
         description="Selector for the release resource.",
     )
@@ -424,17 +432,6 @@ class AzureDevopsReleaseDefinitionConfig(ResourceConfig):
     selector: AzureDevopsSelector = Field(
         title="Release definition selector",
         description="Selector for the release definition resource.",
-    )
-
-
-class AzureDevopsReleaseEnvironmentConfig(ResourceConfig):
-    kind: Literal[Kind.RELEASE_ENVIRONMENT] = Field(
-        title="Azure Devops Release Environment",
-        description="Azure Devops release environment resource kind.",
-    )
-    selector: AzureDevopsSelector = Field(
-        title="Release environment selector",
-        description="Selector for the release environment resource.",
     )
 
 
@@ -522,7 +519,6 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsPipelineRunConfig
         | AzureDevopsEnvironmentConfig
         | AzureDevopsReleaseDefinitionConfig
-        | AzureDevopsReleaseEnvironmentConfig
         | AzureDevopsReleaseDeploymentConfig
         | AzureDevopsPipelineDeploymentConfig
         | AzureDevopsIterationConfig

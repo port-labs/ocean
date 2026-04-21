@@ -52,6 +52,7 @@ from integration import (
     AzureDevopsPipelineResourceConfig,
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
+    AzureDevopsReleaseConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     AzureDevopsTestRunResourceConfig,
@@ -248,8 +249,11 @@ async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kind.RELEASE)
 async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = cast(AzureDevopsReleaseConfig, event.resource_config)
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for releases in azure_devops_client.generate_releases():
+    async for releases in azure_devops_client.generate_releases(
+        expand=config.selector.expand
+    ):
         logger.info(f"Resyncing {len(releases)} releases")
         yield releases
 
@@ -260,14 +264,6 @@ async def resync_release_definitions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for definitions in azure_devops_client.generate_release_definitions():
         logger.info(f"Resyncing {len(definitions)} release definitions")
         yield definitions
-
-
-@ocean.on_resync(Kind.RELEASE_ENVIRONMENT)
-async def resync_release_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for environments in azure_devops_client.generate_release_environments():
-        logger.info(f"Resyncing {len(environments)} release environments")
-        yield environments
 
 
 @ocean.on_resync(Kind.BUILD)

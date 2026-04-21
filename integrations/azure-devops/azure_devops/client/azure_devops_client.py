@@ -592,15 +592,20 @@ class AzureDevopsClient(HTTPBaseClient):
                         pipeline["__projectId"] = project["id"]
                     yield pipelines
 
-    async def generate_releases(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_releases(
+        self, expand: str | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
                 releases_url = (
                     self._format_service_url("vsrm")
                     + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
                 )
+                additional_params = {}
+                if expand:
+                    additional_params["$expand"] = expand
                 async for releases in self._get_paginated_by_top_and_continuation_token(
-                    releases_url
+                    releases_url, additional_params=additional_params
                 ):
                     yield releases
 
@@ -622,32 +627,6 @@ class AzureDevopsClient(HTTPBaseClient):
                     for definition in definitions:
                         definition["__project"] = project
                     yield definitions
-
-    async def generate_release_environments(
-        self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for projects in self.generate_projects():
-            for project in projects:
-                releases_url = (
-                    self._format_service_url("vsrm")
-                    + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
-                )
-                additional_params = {"$expand": "environments"}
-                async for releases in self._get_paginated_by_top_and_continuation_token(
-                    releases_url, additional_params=additional_params
-                ):
-                    environments: list[dict[str, Any]] = []
-                    for release in releases:
-                        for env in release.get("environments", []):
-                            env["__release"] = {
-                                "id": release["id"],
-                                "name": release["name"],
-                                "releaseDefinition": release["releaseDefinition"],
-                            }
-                            env["__project"] = project
-                            environments.append(env)
-                    if environments:
-                        yield environments
 
     async def generate_pipeline_runs(
         self,
