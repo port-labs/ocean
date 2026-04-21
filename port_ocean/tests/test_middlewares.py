@@ -1,49 +1,59 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from starlette.requests import Request
 
 from port_ocean import middlewares
+from port_ocean.middlewares import request_handler
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "initialized,route_prefix,expected_prefix",
+    "path,expected_level,route_prefix,initialized",
     [
-        (False, "", "/health/"),
-        (True, "", "/health/"),
-        (True, "/my-prefix", "/my-prefix/health/"),
-        (True, "/foo/health/bar", "/foo/health/bar/health/"),
+        ("/docs", "DEBUG", "", True),
+        ("/openapi.json", "DEBUG", "", True),
+        ("/health/live", "DEBUG", "", True),
+        ("/health/ready", "DEBUG", "", True),
+        ("/my-prefix/health/live", "DEBUG", "/my-prefix", True),
+        ("/my-prefix/health/ready", "DEBUG", "/my-prefix", True),
+        ("/integration/x", "INFO", "", True),
+        ("/foo/health/bar/health/live", "DEBUG", "/foo/health/bar", True),
+        ("/foo/health/bar/health/ready", "DEBUG", "/foo/health/bar", True),
+        ("/foo/health/bar/integration/x", "INFO", "/foo/health/bar", True),
+        ("/health/live", "DEBUG", "", False),
     ],
 )
-def test_health_debug_path_prefix_matches_ocean_mount(
-    initialized: bool, route_prefix: str, expected_prefix: str
+async def test_request_handler_log_level(
+    path: str,
+    expected_level: str,
+    route_prefix: str,
+    initialized: bool,
 ) -> None:
+    request = MagicMock(spec=Request)
+    request.url.path = path
+    request.method = "GET"
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.headers = {}
+
+    mock_bind = MagicMock()
+
     mock_ocean = MagicMock()
     mock_ocean.initialized = initialized
     mock_app = MagicMock()
     mock_app.route_prefix = route_prefix
     mock_ocean.app = mock_app
 
-    with patch.object(middlewares, "ocean", mock_ocean):
-        assert (
-            middlewares._health_request_path_prefix_for_debug_logs() == expected_prefix
-        )
+    with patch("port_ocean.middlewares.logger") as mock_logger:
+        mock_logger.bind.return_value = mock_bind
+        with patch.object(middlewares, "ocean", mock_ocean):
+            with patch(
+                "port_ocean.middlewares._handle_silently",
+                new=AsyncMock(return_value=mock_response),
+            ):
+                await request_handler(request, AsyncMock())
 
-
-def test_integration_path_under_prefix_with_health_segment_not_treated_as_health() -> (
-    None
-):
-    """Regression: ``path_prefix`` may contain ``health``; only ``…/health/…`` mount is DEBUG."""
-    mock_ocean = MagicMock()
-    mock_ocean.initialized = True
-    mock_app = MagicMock()
-    mock_app.route_prefix = "/foo/health/bar"
-    mock_ocean.app = mock_app
-
-    with patch.object(middlewares, "ocean", mock_ocean):
-        prefix = middlewares._health_request_path_prefix_for_debug_logs()
-
-    integration_path = "/foo/health/bar/integration/webhook"
-    health_path = "/foo/health/bar/health/live"
-
-    assert not integration_path.startswith(prefix)
-    assert health_path.startswith(prefix)
+    levels = [c.args[0] for c in mock_bind.log.call_args_list if c.args]
+    assert levels == [expected_level, expected_level]
