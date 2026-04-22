@@ -2,7 +2,7 @@ import asyncio
 from typing import cast, Any
 
 from loguru import logger
-from initialize_client import create_jira_client
+from initialize_client import get_or_create_jira_client
 from kinds import Kinds
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -28,13 +28,13 @@ async def setup_application() -> None:
     if not base_url:
         return
 
-    client = create_jira_client()
+    client = get_or_create_jira_client()
     await client.create_webhooks(base_url)
 
 
 @ocean.on_resync(Kinds.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_jira_client()
+    client = get_or_create_jira_client()
 
     selector = cast(JiraProjectResourceConfig, event.resource_config).selector
     params = {"expand": selector.expand}
@@ -46,7 +46,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kinds.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_jira_client()
+    client = get_or_create_jira_client()
 
     params = {}
     config = cast(JiraIssueConfig, event.resource_config)
@@ -66,7 +66,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kinds.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_jira_client()
+    client = get_or_create_jira_client()
     org_id = ocean.integration_config.get("atlassian_organization_id")
 
     if not org_id:
@@ -85,7 +85,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kinds.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_jira_client()
+    client = get_or_create_jira_client()
 
     async for users_batch in client.get_paginated_users():
         logger.info(f"Received users batch with {len(users_batch)} users")
@@ -94,7 +94,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kinds.RELEASE)
 async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_jira_client()
+    client = get_or_create_jira_client()
 
     async for projects in client.get_paginated_projects():
         logger.info(f"Fetching versions for {len(projects)} projects concurrently")
@@ -107,7 +107,7 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kinds.BOARD)
 async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_jira_client()
+    client = get_or_create_jira_client()
     selector = cast(JiraBoardResourceConfig, event.resource_config).selector
 
     params: dict[str, Any] = {}

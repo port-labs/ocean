@@ -1,6 +1,6 @@
 from loguru import logger
 
-from initialize_client import create_jira_client
+from initialize_client import get_or_create_jira_client
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -45,7 +45,7 @@ class BoardWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[board],
             )
 
-        client = create_jira_client()
+        client = get_or_create_jira_client()
         logger.debug(f"Fetching board with id: {board_id}")
         item = await client.get_single_board(board_id)
 

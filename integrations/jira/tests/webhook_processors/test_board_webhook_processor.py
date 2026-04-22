@@ -257,7 +257,7 @@ class TestBoardWebhookProcessorHandleEvent:
         }
 
         with patch(
-            "webhook_processors.board_webhook_processor.create_jira_client"
+            "webhook_processors.board_webhook_processor.get_or_create_jira_client"
         ) as mock_create_client:
             mock_client = AsyncMock()
             mock_client.get_single_board = AsyncMock(return_value=MOCK_BOARD)
@@ -283,7 +283,7 @@ class TestBoardWebhookProcessorHandleEvent:
         }
 
         with patch(
-            "webhook_processors.board_webhook_processor.create_jira_client"
+            "webhook_processors.board_webhook_processor.get_or_create_jira_client"
         ) as mock_create_client:
             mock_client = AsyncMock()
             mock_client.get_single_board = AsyncMock(return_value=MOCK_BOARD)
@@ -313,7 +313,7 @@ class TestBoardWebhookProcessorHandleEvent:
         }
 
         with patch(
-            "webhook_processors.board_webhook_processor.create_jira_client"
+            "webhook_processors.board_webhook_processor.get_or_create_jira_client"
         ) as mock_create_client:
             mock_client = AsyncMock()
             mock_client.get_single_board = AsyncMock(
@@ -343,7 +343,7 @@ class TestBoardWebhookProcessorHandleEvent:
         }
 
         with patch(
-            "webhook_processors.board_webhook_processor.create_jira_client"
+            "webhook_processors.board_webhook_processor.get_or_create_jira_client"
         ) as mock_create_client:
             mock_client = AsyncMock()
             mock_client.get_single_board = AsyncMock(return_value=None)
@@ -369,7 +369,7 @@ async def test_board_created_enriches_board_with_project_keys(
     enriched_board = {**MOCK_BOARD, "__projectKeys": ["PORT"]}
 
     with patch(
-        "webhook_processors.board_webhook_processor.create_jira_client"
+        "webhook_processors.board_webhook_processor.get_or_create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
         mock_client.get_single_board = AsyncMock(return_value=MOCK_BOARD)
@@ -397,7 +397,7 @@ async def test_board_updated_enriches_board_with_project_keys(
     enriched_board = {**MOCK_BOARD, "__projectKeys": ["PORT", "DEMO"]}
 
     with patch(
-        "webhook_processors.board_webhook_processor.create_jira_client"
+        "webhook_processors.board_webhook_processor.get_or_create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
         mock_client.get_single_board = AsyncMock(return_value=MOCK_BOARD)
@@ -424,7 +424,7 @@ async def test_board_deleted_does_not_enrich_board_with_project_keys(
     }
 
     with patch(
-        "webhook_processors.board_webhook_processor.create_jira_client"
+        "webhook_processors.board_webhook_processor.get_or_create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
         mock_create_client.return_value = mock_client
