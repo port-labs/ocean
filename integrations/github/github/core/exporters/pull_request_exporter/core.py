@@ -255,31 +255,27 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         logger.info(f"[GraphQL] Fetching open PRs from {organization}/{repo_name}")
 
-        try:
-            async for pr_nodes in self.client.send_paginated_request(
-                generate_list_pull_requests_gql(pr_gql_options),
-                variables,
-            ):
-                if not pr_nodes:
-                    continue
+        async for pr_nodes in self.client.send_paginated_request(
+            generate_list_pull_requests_gql(pr_gql_options),
+            variables,
+        ):
+            if not pr_nodes:
+                continue
 
-                batch = [
-                    self._normalize_pr_node(
-                        pr_node,
-                        repo,
-                        organization,
-                        gql_options=pr_gql_options,
-                    )
-                    for pr_node in pr_nodes
-                ]
-
-                logger.info(
-                    f"[GraphQL] Yielding open PRs batch of {len(batch)} from {organization}/{repo_name}"
+            batch = [
+                self._normalize_pr_node(
+                    pr_node,
+                    repo,
+                    organization,
+                    gql_options=pr_gql_options,
                 )
-                yield batch
-        except Exception:
-            logger.error(f"[GraphQL] Failed fetching open PRs from {organization}/{repo_name}")
-            raise
+                for pr_node in pr_nodes
+            ]
+
+            logger.info(
+                f"[GraphQL] Yielding open PRs batch of {len(batch)} from {organization}/{repo_name}"
+            )
+            yield batch
 
     async def _fetch_closed_pull_requests(
         self,
@@ -301,47 +297,43 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         logger.info(f"[GraphQL] Fetching closed PRs from {organization}/{repo_name}")
 
         total_count = 0
-        try:
-            async for pr_nodes in self.client.send_paginated_request(
-                generate_list_pull_requests_gql(pr_gql_options),
-                variables,
-            ):
-                if not pr_nodes:
-                    logger.info(
-                        f"[GraphQL] No more closed pull requests returned for repository {repo_name} from {organization}; stopping."
-                    )
-                    break
-
-                remaining = max_results - total_count
-                if remaining <= 0:
-                    break
-
-                limited_batch = pr_nodes[:remaining]
-                batch_count = len(limited_batch)
-
+        async for pr_nodes in self.client.send_paginated_request(
+            generate_list_pull_requests_gql(pr_gql_options),
+            variables,
+        ):
+            if not pr_nodes:
                 logger.info(
-                    f"[GraphQL] Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
-                    f"(total so far: {total_count + batch_count}/{max_results})"
+                    f"[GraphQL] No more closed pull requests returned for repository {repo_name} from {organization}; stopping."
                 )
+                break
 
-                enriched_batch = [
-                    self._normalize_pr_node(
-                        pr,
-                        repo,
-                        organization,
-                        gql_options=pr_gql_options,
-                    )
-                    for pr in filter_prs_by_updated_at(
-                        limited_batch, "updatedAt", updated_after
-                    )
-                ]
+            remaining = max_results - total_count
+            if remaining <= 0:
+                break
 
-                yield enriched_batch
+            limited_batch = pr_nodes[:remaining]
+            batch_count = len(limited_batch)
 
-                total_count += batch_count
-        except Exception:
-            logger.error(f"[GraphQL] Failed fetching closed PRs from {organization}/{repo_name}")
-            raise
+            logger.info(
+                f"[GraphQL] Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
+                f"(total so far: {total_count + batch_count}/{max_results})"
+            )
+
+            enriched_batch = [
+                self._normalize_pr_node(
+                    pr,
+                    repo,
+                    organization,
+                    gql_options=pr_gql_options,
+                )
+                for pr in filter_prs_by_updated_at(
+                    limited_batch, "updatedAt", updated_after
+                )
+            ]
+
+            yield enriched_batch
+
+            total_count += batch_count
 
         logger.info(
             f"[GraphQL] Fetched total of {total_count} closed pull requests from {organization}/{repo_name}"
