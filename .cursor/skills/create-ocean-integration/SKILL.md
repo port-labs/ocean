@@ -1210,8 +1210,29 @@ make test
 | `clients/auth/authenticator.py` | `test_authenticator.py` | Token refresh, header generation |
 | `clients/rate_limiter.py` | `test_rate_limiter.py` | Concurrent limits, header parsing |
 | `core/exporters/{kind}_exporter.py` | `test_{kind}_exporter.py` | `get_single_resource`, `get_paginated_resources` |
-| `webhook/webhook_processors/{kind}_processor.py` | `test_{kind}_processor.py` | All 5 abstract methods |
+| `webhook/webhook_processors/{kind}_processor.py` | `test_{kind}_processor.py` | All 5 abstract methods (see validation note below) |
 | `helpers/utils.py` | `test_utils.py` | Each utility function |
+
+### Webhook Processor Validation Strategy
+
+**`validate_payload` must validate exactly what `handle_event` will access directly.**
+
+1. In `validate_payload`: Check presence of fields that `handle_event` accesses
+2. In `handle_event`: Use `[]` indexing for validated fields (not `.get()`)
+
+```python
+# validate_payload: use .get() to safely check without raising KeyError
+async def validate_payload(self, payload: EventPayload) -> bool:
+    project = payload.get("project")
+    return isinstance(project, dict) and project.get("id") is not None
+
+# handle_event: use [] for validated fields (guaranteed to exist)
+async def handle_event(self, payload, resource_config) -> WebhookEventRawResults:
+    project_id = payload["project"]["id"]  # CORRECT: use []
+    # NOT: payload.get("project", {}).get("id")  # WRONG: implies uncertainty
+```
+
+See `references/webhook-patterns.md` for full validation patterns.
 
 ## Quality Checklist
 

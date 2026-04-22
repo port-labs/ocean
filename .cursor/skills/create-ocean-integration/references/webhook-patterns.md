@@ -74,6 +74,88 @@ class AbstractServiceWebhookProcessor(AbstractWebhookProcessor):
         pass
 ```
 
+## Payload Validation Strategy
+
+**Rule: Validate exactly what `handle_event` will access directly.**
+
+The `validate_payload` method serves as a contract: if it returns `True`, then `handle_event` can safely access those fields using direct indexing `[]` instead of `.get()`.
+
+### How to Decide What to Validate
+
+1. **Write `handle_event` first** (or outline it) to identify which payload fields you access
+2. **Validate those exact fields** in `validate_payload`
+3. **Use `[]` indexing** in `handle_event` for validated fields (not `.get()`)
+
+### Example: Trace Validation to Usage
+
+```python
+class ProjectWebhookProcessor(AbstractServiceWebhookProcessor):
+    
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        # Validate ONLY fields that handle_event will access directly
+        # Use .get() in validation to avoid KeyError on malformed payloads
+        
+        if not payload.get("event_type"):
+            return False
+        
+        project = payload.get("project")
+        if not isinstance(project, dict):
+            return False
+        if not project.get("id"):
+            return False
+            
+        return True
+    
+    async def handle_event(
+        self, payload: EventPayload, resource_config: ResourceConfig
+    ) -> WebhookEventRawResults:
+        # CORRECT: Use [] for validated fields - they are guaranteed to exist
+        event_type = payload["event_type"]
+        project_id = payload["project"]["id"]
+        
+        # WRONG: Don't use .get() for validated fields - it implies uncertainty
+        # project_id = payload.get("project", {}).get("id")  # NO!
+        
+        if event_type == EventType.PROJECT_DELETED:
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[{"id": project_id}],
+            )
+        
+        # Fetch full resource data
+        client = ClientFactory.get_client()
+        exporter = ProjectExporter(client)
+        project = await exporter.get_single_resource(project_id)
+        
+        return WebhookEventRawResults(
+            updated_raw_results=[project] if project else [],
+            deleted_raw_results=[],
+        )
+```
+
+### Validation Patterns
+
+| Payload Structure | Validation in validate_payload (use .get()) | Usage in handle_event (use []) |
+|-------------------|---------------------------------------------|-------------------------------|
+| `payload["id"]` | `payload.get("id")` | `payload["id"]` |
+| `payload["project"]["id"]` | `payload.get("project", {}).get("id")` | `payload["project"]["id"]` |
+| `payload["action"]` | `payload.get("action") in VALID_ACTIONS` | `payload["action"]` |
+| Optional field | Don't validate | `payload.get("description")` |
+
+### Anti-Pattern: Using .get() for Validated Fields
+
+```python
+# BAD: Implies the field might not exist, but we validated it
+async def handle_event(self, payload, resource_config):
+    project_id = payload.get("project", {}).get("id")  # Wrong!
+    if not project_id:  # Defensive code that shouldn't be needed
+        return WebhookEventRawResults([], [])
+
+# GOOD: Direct access for validated fields
+async def handle_event(self, payload, resource_config):
+    project_id = payload["project"]["id"]  # Correct - validated in validate_payload
+```
+
 ## Resource Webhook Processor
 
 ```python
@@ -84,20 +166,32 @@ class ResourceWebhookProcessor(AbstractServiceWebhookProcessor):
         event_type = event.payload.get("event_type")
         return event_type in [e.value for e in self.events]
     
-    async def get_matching_kinds(self, event: WebhookEvent) -> List[str]:
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        # Use .get() to safely check fields that handle_event will access
+        resource = payload.get("resource")
+        if not isinstance(resource, dict):
+            return False
+        if not resource.get("id"):
+            return False
+        return True
+    
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.RESOURCE]
     
     async def handle_event(
-        self, payload: Dict[str, Any], resource_config: ResourceConfig
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        resource_id = payload.get("resource_id")
+        self, payload: EventPayload, resource_config: ResourceConfig
+    ) -> WebhookEventRawResults:
+        # Use [] indexing - fields were validated
+        resource_id = payload["resource"]["id"]
         
-        client = create_client()
+        client = ClientFactory.get_client()
         exporter = ResourceExporter(client)
         
-        resource = await exporter.get_resource(resource_id)
-        if resource:
-            yield [resource]
+        resource = await exporter.get_single_resource(resource_id)
+        return WebhookEventRawResults(
+            updated_raw_results=[resource] if resource else [],
+            deleted_raw_results=[],
+        )
 ```
 
 ## Webhook Registration
