@@ -26,7 +26,7 @@ class ObjectKind:
 class SonarQubeComponentSearchFilter(BaseModel):
     query: str | None = Field(
         title="Query",
-        description="Limit search to component names that contain the supplied string",
+        description="Limit search to component names that contain the supplied string (e.g. 'my-service' matches 'my-service-api')",
     )
     metrics: list[dict[str, str]] | None = Field(
         title="Metrics",
@@ -34,16 +34,16 @@ class SonarQubeComponentSearchFilter(BaseModel):
     )
     alert_status: str | None = Field(
         alias="alertStatus",
-        title="Alert Status",
+        title="Quality Gate Status",
         description="Filter by Quality Gate status (e.g. OK, WARN, ERROR)",
     )
     languages: Union[str, list[str]] | None = Field(
         title="Languages",
-        description="List of languages or a single language",
+        description="Include only components whose primary language matches one of the specified values (e.g. 'java', ['python', 'js'])",
     )
     tags: Union[str, list[str]] | None = Field(
         title="Tags",
-        description="List of tags or a single tag",
+        description="Include only components that have at least one of the specified tags (e.g. 'security', ['security', 'finance'])",
     )
 
     def generate_search_filters(self) -> str:
@@ -72,7 +72,7 @@ class BaseSonarQubeApiFilter(BaseModel):
 class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
     filter: SonarQubeComponentSearchFilter | None = Field(
         title="Component Search Filter",
-        description="Search filter to limit which SonarQube components are retrieved",
+        description="Criteria used to narrow which SonarQube components are retrieved, including name substring, metric thresholds, Quality Gate status, languages, and tags",
     )
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -97,7 +97,7 @@ class SonarQubeGAProjectAPIFilter(BaseSonarQubeApiFilter):
     )
     on_provisioned_only: bool | None = Field(
         alias="onProvisionedOnly",
-        title="On Provisioned Only",
+        title="Provisioned Projects",
         description="Retrieve only provisioned projects that have not yet been analyzed",
     )
     projects: list[str] | None = Field(
@@ -135,12 +135,12 @@ class SonarQubeIssueApiFilter(BaseSonarQubeApiFilter):
     ) = Field(
         alias="cleanCodeAttributeCategories",
         title="Clean Code Attribute Categories",
-        description="List of clean code attribute categories",
+        description="Include only issues belonging to one of the specified clean code attribute categories",
     )
     code_variants: list[str] | None = Field(
         alias="codeVariants",
         title="Code Variants",
-        description="List of code variants",
+        description="Include only issues affecting one of the specified code variants (e.g. ['variant1', 'variant2'])",
     )
     created_before: str | None = Field(
         alias="createdBefore",
@@ -154,7 +154,7 @@ class SonarQubeIssueApiFilter(BaseSonarQubeApiFilter):
     )
     cwe: list[str] | None = Field(
         title="CWE",
-        description="List of CWE identifiers",
+        description="Include only issues mapped to one of the specified CWE identifiers (e.g. ['89', '352'])",
     )
     impact_severities: list[Literal["HIGH", "LOW", "MEDIUM"]] | None = Field(
         alias="impactSeverities",
@@ -176,7 +176,7 @@ class SonarQubeIssueApiFilter(BaseSonarQubeApiFilter):
     )
     languages: list[str] | None = Field(
         title="Languages",
-        description="List of languages",
+        description="Include only issues in files written in one of the specified languages (e.g. ['java', 'python'])",
     )
     owasp_asvs_level: Literal["1", "2", "3"] | None = Field(
         alias="owaspAsvsLevel",
@@ -189,7 +189,7 @@ class SonarQubeIssueApiFilter(BaseSonarQubeApiFilter):
     )
     rules: list[str] | None = Field(
         title="Rules",
-        description="List of coding rule keys",
+        description="Include only issues raised by one of the specified coding rule keys (e.g. ['java:S1234', 'python:S5678'])",
     )
     scopes: list[Literal["MAIN", "TESTS"]] | None = Field(
         title="Scopes",
@@ -198,11 +198,11 @@ class SonarQubeIssueApiFilter(BaseSonarQubeApiFilter):
     sonarsource_security: list[str] | None = Field(
         alias="sonarsourceSecurity",
         title="SonarSource Security",
-        description="List of SonarSource security categories",
+        description="Include only issues mapped to one of the specified SonarSource security categories (e.g. ['sql-injection', 'xss'])",
     )
     tags: list[str] | None = Field(
         title="Tags",
-        description="List of tags",
+        description="Include only issues that have at least one of the specified tags (e.g. ['security', 'performance'])",
     )
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -235,7 +235,7 @@ def default_metrics() -> list[str]:
 
 class SonarQubeMetricsSelector(CustomSelector):
     metrics: list[str] = Field(
-        default_factory=default_metrics,
+        default=default_metrics(),
         title="Metrics",
         description="List of metrics to retrieve",
     )
@@ -255,7 +255,10 @@ class SelectorWithApiFilters(CustomSelector):
 
 
 class CustomResourceConfig(ResourceConfig):
-    selector: CustomSelector
+    selector: CustomSelector = Field(
+        title="Selector",
+        description="Defines which SonarQube resources to sync and how to filter them",
+    )
 
 
 class SonarQubeAnalysisResourceConfig(CustomResourceConfig):
