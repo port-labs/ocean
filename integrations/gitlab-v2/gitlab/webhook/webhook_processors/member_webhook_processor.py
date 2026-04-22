@@ -6,12 +6,13 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from gitlab.helpers.utils import ObjectKind
+from gitlab.helpers.utils import ObjectKind, is_bot_member
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
+from typing import Any, cast
+
 from integration import GitlabMemberSelector
-import typing
 
 
 class MemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
@@ -49,17 +50,22 @@ class MemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[payload]
             )
 
-        selector: GitlabMemberSelector = typing.cast(
-            GitlabMemberSelector, resource_config.selector
-        )
+        selector = cast(GitlabMemberSelector, resource_config.selector)
 
-        if not selector.include_bot_members and "bot" in user_name.lower():
-            logger.info(
-                f"Excluding bot member '{user_name}' from group '{group_id}' because include_bot_members is false"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[payload]
-            )
+        # Fast path: classify bots from webhook username (and optional user_bot) without
+        # calling the members API — saves rate limits for obvious project/group token bots.
+        if not selector.include_bot_members:
+            hook_hints: dict[str, Any] = {"username": user_name}
+            if "user_bot" in payload:
+                hook_hints["bot"] = payload["user_bot"]
+            if is_bot_member(hook_hints):
+                logger.info(
+                    f"Excluding bot member '{user_name}' from group '{group_id}' "
+                    "(from webhook hints, include_bot_members is false)"
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[payload]
+                )
 
         group_member = await self._gitlab_webhook_client.get_group_member(
             group_id, user_id, selector.include_inherited_members
@@ -70,6 +76,14 @@ class MemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 f"Group member '{user_name}' not found in group '{group_id}'"
             )
             group_member = {}
+
+        if not selector.include_bot_members and is_bot_member(group_member):
+            logger.info(
+                f"Excluding bot member '{user_name}' from group '{group_id}' because include_bot_members is false"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[payload]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[group_member], deleted_raw_results=[]

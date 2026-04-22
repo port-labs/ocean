@@ -1,5 +1,7 @@
+title: Amplication
 description: Amplication integration for Port Ocean
 icon: Amplication
+formMappingEnabled: true
 recommendedInstallationMethod: Saas
 features:
   - type: exporter

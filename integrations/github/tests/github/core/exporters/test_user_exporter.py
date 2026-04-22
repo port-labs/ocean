@@ -4,14 +4,13 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
-    Selector,
 )
 import copy
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.user_exporter import GraphQLUserExporter
-from integration import GithubPortAppConfig, GithubUserConfig
+from integration import GithubPortAppConfig, GithubUserConfig, GithubUserSelector
 from port_ocean.context.event import event_context
 from github.core.options import SingleUserOptions, ListUserOptions
 from github.helpers.gql_queries import (
@@ -49,7 +48,7 @@ def mock_port_app_config() -> GithubPortAppConfig:
         resources=[
             GithubUserConfig(
                 kind=ObjectKind.USER,
-                selector=Selector(query="true"),
+                selector=GithubUserSelector(query="true"),
                 port=PortResourceConfig(
                     entity=MappingsConfig(
                         mappings=EntityMapping(
@@ -73,11 +72,23 @@ class TestGraphQLUserExporter:
 
         exporter = GraphQLUserExporter(graphql_client)
 
-        with patch.object(
-            graphql_client, "send_api_request", return_value=mock_response_data
-        ) as mock_request:
+        # This test is not about SAML lookups; stub it so the exporter doesn't
+        # consume the `send_api_request` mock via GraphQL pagination.
+        with (
+            patch.object(
+                graphql_client, "send_api_request", return_value=mock_response_data
+            ) as mock_request,
+            patch(
+                "github.helpers.utils.get_saml_identities",
+                new=AsyncMock(return_value={}),
+            ),
+        ):
             user = await exporter.get_resource(
-                SingleUserOptions(organization="test-org", login="user1")
+                SingleUserOptions(
+                    organization="test-org",
+                    login="user1",
+                    include_saml_email=False,
+                )
             )
 
             assert user == TEST_USERS_NO_EMAIL_INITIAL[0]
@@ -114,12 +125,17 @@ class TestGraphQLUserExporter:
                 side_effect=mock_external_identities_request,
             ) as mock_paginated_request_identities,
         ):
-            user_options = SingleUserOptions(organization="test-org", login="user2")
+            user_options = SingleUserOptions(
+                organization="test-org",
+                login="user2",
+                include_saml_email=False,
+            )
             user = await exporter.get_resource(user_options)
 
             expected_user = {
                 "login": "user2",
                 "email": "user2@email.com",  # Email fetched from external identity
+                "__SAMLEmail": "user2@email.com",
             }
             assert user == expected_user
 
@@ -166,6 +182,7 @@ class TestGraphQLUserExporter:
             {
                 "login": "user2",
                 "email": "user2@email.com",
+                "__SAMLEmail": "user2@email.com",
             },
         ]
 
@@ -182,7 +199,7 @@ class TestGraphQLUserExporter:
 
                 users: list[list[dict[str, Any]]] = []
                 async for batch in exporter.get_paginated_resources(
-                    ListUserOptions(organization="test-org")
+                    ListUserOptions(organization="test-org", include_saml_email=False)
                 ):
                     users.append(batch)
 
@@ -205,6 +222,64 @@ class TestGraphQLUserExporter:
                         "__node_key": "edges",
                     },
                 )
+
+    async def test_get_paginated_resources_include_saml_email_adds_field(
+        self,
+        graphql_client: GithubGraphQLClient,
+    ) -> None:
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [
+                {"login": "user1", "email": "personal@email.com"},
+                {"login": "user2", "email": "another-personal@email.com"},
+                {"login": "user3"},
+            ]
+
+        async def mock_paginated_request_with_external_identities(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [
+                {
+                    "node": {
+                        "user": {"login": "user2"},
+                        "samlIdentity": {"nameId": "user2@corp.com"},
+                    }
+                }
+            ]
+
+        with patch.object(
+            graphql_client,
+            "send_paginated_request",
+            side_effect=[
+                mock_paginated_request(),
+                mock_paginated_request_with_external_identities(),
+            ],
+        ):
+            async with event_context("test_event"):
+                exporter = GraphQLUserExporter(graphql_client)
+
+                users: list[list[dict[str, Any]]] = []
+                async for batch in exporter.get_paginated_resources(
+                    ListUserOptions(organization="test-org", include_saml_email=True)
+                ):
+                    users.append(batch)
+
+                assert users == [
+                    [
+                        {
+                            "login": "user1",
+                            "email": "personal@email.com",
+                            "__SAMLEmail": None,
+                        },
+                        {
+                            "login": "user2",
+                            "email": "another-personal@email.com",
+                            "__SAMLEmail": "user2@corp.com",
+                        },
+                        {"login": "user3", "__SAMLEmail": None},
+                    ]
+                ]
 
     async def test_enrich_members_with_saml_email_modifies_in_place(
         self, graphql_client: GithubGraphQLClient
@@ -236,12 +311,16 @@ class TestGraphQLUserExporter:
             side_effect=[mock_paginated_request_external_identities()],
         ) as mock_request:
             await enrich_members_with_saml_email(
-                graphql_client, "test-org", initial_users
+                graphql_client, "test-org", initial_users, include_saml_email=False
             )
 
             expected_users = [
                 {"login": "user1", "email": "johndoe@email.com"},
-                {"login": "user2", "email": "user2@email.com"},
+                {
+                    "login": "user2",
+                    "email": "user2@email.com",
+                    "__SAMLEmail": "user2@email.com",
+                },
             ]
 
             assert initial_users == expected_users
