@@ -37,7 +37,7 @@ class AWSDescribeResourcesSelector(Selector):
         alias="listGroupResources",
         default=False,
         title="List Group Resources",
-        description="When enabled, lists resources belonging to AWS Resource Groups instead of querying all resources of the given type.",
+        description="When enabled, fetch resource groups via AWS AWS Resource Group API <a target='_blank' https://docs.aws.amazon.com/ARG/latest/APIReference/API_ListGroupResources.html </a>, if not, fetch resource groups via cloud control API"
     )
 
     def is_region_allowed(self, region: str) -> bool:
