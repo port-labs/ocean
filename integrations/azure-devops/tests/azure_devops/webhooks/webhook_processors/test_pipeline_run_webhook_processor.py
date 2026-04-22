@@ -82,7 +82,7 @@ async def test_pipeline_run_get_matching_kinds(
 ) -> None:
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     kinds = await pipeline_run_processor.get_matching_kinds(event)
-    assert kinds == ["pipeline-run"]
+    assert kinds == ["pipeline-run", "test-run"]
 
 
 @pytest.mark.asyncio
@@ -260,6 +260,76 @@ async def test_pipeline_run_handle_event_pipeline_not_found(
         },
     }
     result = await pipeline_run_processor.handle_event(payload, MagicMock())
+
+    assert len(result.updated_raw_results) == 0
+    assert len(result.deleted_raw_results) == 0
+
+
+@pytest.mark.asyncio
+async def test_pipeline_run_handle_event_test_run_success(
+    pipeline_run_processor: PipelineRunWebhookProcessor,
+    mock_event_context: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_test_runs = [
+        {"id": 10, "name": "Test Run 1", "state": "Completed"},
+        {"id": 11, "name": "Test Run 2", "state": "Completed"},
+    ]
+    mock_client = MagicMock()
+    mock_client.get_test_runs_by_build = AsyncMock(return_value=mock_test_runs)
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
+        lambda: mock_client,
+    )
+
+    payload = {
+        "resourceContainers": {"project": {"id": "project-123"}},
+        "resource": {
+            "run": {"id": 456},
+            "pipeline": {"id": "pipeline-789"},
+        },
+    }
+    resource_config = MagicMock()
+    resource_config.kind = "test-run"
+    resource_config.selector.include_results = True
+    resource_config.selector.code_coverage = None
+
+    result = await pipeline_run_processor.handle_event(payload, resource_config)
+
+    assert len(result.updated_raw_results) == 2
+    assert result.updated_raw_results[0]["id"] == 10
+    assert result.updated_raw_results[1]["id"] == 11
+    mock_client.get_test_runs_by_build.assert_called_once_with(
+        "project-123", "456", True, None
+    )
+
+
+@pytest.mark.asyncio
+async def test_pipeline_run_handle_event_test_run_no_results(
+    pipeline_run_processor: PipelineRunWebhookProcessor,
+    mock_event_context: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mock_client = MagicMock()
+    mock_client.get_test_runs_by_build = AsyncMock(return_value=[])
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
+        lambda: mock_client,
+    )
+
+    payload = {
+        "resourceContainers": {"project": {"id": "project-123"}},
+        "resource": {
+            "run": {"id": 456},
+            "pipeline": {"id": "pipeline-789"},
+        },
+    }
+    resource_config = MagicMock()
+    resource_config.kind = "test-run"
+    resource_config.selector.include_results = False
+    resource_config.selector.code_coverage = None
+
+    result = await pipeline_run_processor.handle_event(payload, resource_config)
 
     assert len(result.updated_raw_results) == 0
     assert len(result.deleted_raw_results) == 0

@@ -1,3 +1,5 @@
+from typing import cast
+
 from loguru import logger
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
@@ -14,11 +16,12 @@ from azure_devops.client.azure_devops_client import (
     AzureDevopsClient,
     PIPELINES_PUBLISHER_ID,
 )
+from integration import AzureDevopsTestRunResourceConfig
 
 
 class PipelineRunWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [Kind.PIPELINE_RUN]
+        return [Kind.PIPELINE_RUN, Kind.TEST_RUN]
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         if not await super().validate_payload(payload):
@@ -45,6 +48,11 @@ class PipelineRunWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         pipeline_id = payload["resource"]["pipeline"]["id"]
         project_id = payload["resourceContainers"]["project"]["id"]
         run_id = payload["resource"]["run"]["id"]
+
+        if resource_config.kind == Kind.TEST_RUN:
+            return await self._handle_test_run(
+                client, project_id, str(run_id), resource_config
+            )
 
         pipeline_run = await client.get_pipeline_run(project_id, pipeline_id, run_id)
         if not pipeline_run:
@@ -78,5 +86,36 @@ class PipelineRunWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         return WebhookEventRawResults(
             updated_raw_results=[pipeline_run],
+            deleted_raw_results=[],
+        )
+
+    async def _handle_test_run(
+        self,
+        client: AzureDevopsClient,
+        project_id: str,
+        build_id: str,
+        resource_config: ResourceConfig,
+    ) -> WebhookEventRawResults:
+        config = cast(AzureDevopsTestRunResourceConfig, resource_config)
+        test_runs = await client.get_test_runs_by_build(
+            project_id,
+            build_id,
+            config.selector.include_results,
+            config.selector.code_coverage,
+        )
+        if not test_runs:
+            logger.info(
+                f"No test runs found for build {build_id} in project {project_id}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
+
+        logger.info(
+            f"Found {len(test_runs)} test runs for build {build_id} in project {project_id}"
+        )
+        return WebhookEventRawResults(
+            updated_raw_results=test_runs,
             deleted_raw_results=[],
         )
