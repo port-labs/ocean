@@ -33,12 +33,6 @@ class AWSDescribeResourcesSelector(Selector):
         title="Region Policy",
         description="Controls which AWS regions are included or excluded when syncing resources. Uses allow/deny lists to filter regions.",
     )
-    list_group_resources: bool = Field(
-        alias="listGroupResources",
-        default=False,
-        title="List Group Resources",
-        description="When enabled, fetch resource groups via AWS AWS Resource Group API <a target='_blank' https://docs.aws.amazon.com/ARG/latest/APIReference/API_ListGroupResources.html </a>, if not, fetch resource groups via cloud control API"
-    )
 
     def is_region_allowed(self, region: str) -> bool:
         """
@@ -72,6 +66,15 @@ class AWSDescribeResourcesSelector(Selector):
         if self.region_policy.allow and not self.region_policy.deny:
             return False
         return False
+
+
+class AWSResourceGroupSelector(AWSDescribeResourcesSelector):
+    list_group_resources: bool = Field(
+        alias="listGroupResources",
+        default=False,
+        title="List Group Resources",
+        description="When enabled, fetch resource groups via AWS AWS Resource Group API <a target='_blank' https://docs.aws.amazon.com/ARG/latest/APIReference/API_ListGroupResources.html </a>, if not, fetch resource groups via cloud control API",
+    )
 
 
 class AWSResourceConfig(ResourceConfig):
@@ -139,6 +142,10 @@ class AWSResourceGroupResourceConfig(AWSResourceConfig):
         title="AWS Resource Group",
         description="An AWS Resource Group that organizes resources by tags or CloudFormation stacks.",
     )
+    selector: AWSResourceGroupSelector = Field(
+        title="Selector",
+        description="Defines which AWS resource groups are synced, including region filtering, API options, and how group members are fetched.",
+    )
 
 
 class AWSS3BucketResourceConfig(AWSResourceConfig):
@@ -160,5 +167,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSResourceGroupResourceConfig
         | AWSS3BucketResourceConfig
         | AWSResourceConfig
-    ] = Field(default_factory=list)  # type: ignore
+    ] = Field(
+        default_factory=list
+    )  # type: ignore
     allow_custom_kinds: ClassVar[bool] = True
