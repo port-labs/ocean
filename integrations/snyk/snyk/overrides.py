@@ -106,9 +106,7 @@ class SnykProjectAPIQueryParams(GenerateQueryParamMixin):
 
 class SnykVulnerabilityAPIQueryParams(GenerateQueryParamMixin):
     type: Optional[
-        Literal[
-            "package", "vulnerability", "license", "cloud", "code", "custom", "config"
-        ]
+        Literal["package_vulnerability", "license", "cloud", "code", "custom", "config"]
     ] = Field(default=None, title="Type", description="The type of an issue.")
     updated_before: Optional[str] = Field(
         default=None,
@@ -252,9 +250,7 @@ class SnykPortAppConfig(PortAppConfig):
         | OrganizationResourceConfig
         | VulnerabilityResourceConfig
         | IssueResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class SnykIntegration(BaseIntegration):
