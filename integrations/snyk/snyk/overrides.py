@@ -250,7 +250,9 @@ class SnykPortAppConfig(PortAppConfig):
         | OrganizationResourceConfig
         | VulnerabilityResourceConfig
         | IssueResourceConfig
-    ] = Field(default_factory=list)  # type: ignore[assignment]
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
 
 
 class SnykIntegration(BaseIntegration):
