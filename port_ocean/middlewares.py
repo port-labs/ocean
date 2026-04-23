@@ -52,11 +52,16 @@ async def request_handler(
     request_id = generate_uuid()
 
     with logger.contextualize(request_id=request_id):
+        route_prefix = ocean.app.route_prefix if ocean.initialized else ""
         log_level = (
             "DEBUG"
-            if request.url.path == "/docs"
-            or request.url.path == "/openapi.json"
-            or request.url.path.startswith("/health/")
+            if request.url.path
+            in (
+                "/docs",
+                "/openapi.json",
+                f"{route_prefix}/health/live",
+                f"{route_prefix}/health/ready",
+            )
             else "INFO"
         )
         logger.bind(url=str(request.url), method=request.method).log(
