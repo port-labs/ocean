@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.3.13 (2026-04-23)
+## 5.3.14 (2026-04-23)
 
 
 ### Improvements
 
 - Added `closedPrsUpdatedSince` selector to fetch closed pull requests from a fixed ISO-8601 timestamp instead of a relative lookback window.
+
+
+## 5.3.13 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
 
 
 ## 5.3.12 (2026-04-21)

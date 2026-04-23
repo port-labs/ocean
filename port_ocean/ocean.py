@@ -295,7 +295,9 @@ class Ocean:
         self.fast_api_app.include_router(
             self.metrics.create_mertic_router(), prefix=f"{self.route_prefix}/metrics"
         )
-        self.fast_api_app.include_router(create_health_router(), prefix="/health")
+        self.fast_api_app.include_router(
+            create_health_router(), prefix=f"{self.route_prefix}/health"
+        )
 
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:

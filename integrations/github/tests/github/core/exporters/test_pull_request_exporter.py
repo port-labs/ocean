@@ -828,10 +828,12 @@ class TestGithubPullRequestSelectorClosedPrs:
         assert sel.updated_after == datetime(2025, 6, 15, 0, 0, 0, tzinfo=UTC)
 
     def test_updated_after_property_accepts_iso8601_string(self) -> None:
-        sel = GithubPullRequestSelector(
-            query="true",
-            states=["closed"],
-            closedPrsUpdatedSince="2025-06-15T00:00:00+00:00",
+        sel = GithubPullRequestSelector.model_validate(
+            {
+                "query": "true",
+                "states": ["closed"],
+                "closedPrsUpdatedSince": "2025-06-15T00:00:00+00:00",
+            }
         )
         assert sel.updated_after == datetime(2025, 6, 15, 0, 0, 0, tzinfo=UTC)
 
@@ -845,10 +847,12 @@ class TestGithubPullRequestSelectorClosedPrs:
 
     def test_invalid_datetime_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            GithubPullRequestSelector(
-                query="true",
-                states=["closed"],
-                closedPrsUpdatedSince="not-a-timestamp",
+            GithubPullRequestSelector.model_validate(
+                {
+                    "query": "true",
+                    "states": ["closed"],
+                    "closedPrsUpdatedSince": "not-a-timestamp",
+                }
             )
 
 
