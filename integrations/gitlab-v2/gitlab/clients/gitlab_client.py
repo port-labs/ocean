@@ -250,6 +250,75 @@ class GitLabClient:
             logger.info(f"Received batch with {len(releases_batch)} releases")
             yield releases_batch
 
+    async def get_single_branch(
+        self, project_id: str, project_path: str, branch_name: str
+    ) -> dict[str, Any] | None:
+        """Fetch a single branch by name from the given project."""
+        encoded_id = quote(str(project_id), safe="")
+        encoded_branch = quote(branch_name, safe="")
+        branch = await self.rest.send_api_request(
+            "GET", f"projects/{encoded_id}/repository/branches/{encoded_branch}"
+        )
+        if not branch:
+            return None
+        return self.enrich_with_project_path(branch, project_path)
+
+    async def _fetch_default_branch(
+        self, project: dict[str, Any], semaphore: asyncio.Semaphore
+    ) -> dict[str, Any] | None:
+        async with semaphore:
+            default_branch = project.get("default_branch")
+            if not default_branch:
+                return None
+            return await self.get_single_branch(
+                project["id"], project["path_with_namespace"], default_branch
+            )
+
+    async def _get_default_branches(
+        self,
+        projects_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        semaphore = asyncio.Semaphore(max_concurrent)
+        results = await asyncio.gather(
+            *[
+                self._fetch_default_branch(project, semaphore)
+                for project in projects_batch
+            ],
+            return_exceptions=True,
+        )
+        branches = []
+        for project, result in zip(projects_batch, results):
+            if isinstance(result, BaseException):
+                logger.error(
+                    f"Failed to fetch default branch for project "
+                    f"'{project.get('path_with_namespace', project.get('id'))}': {result}"
+                )
+            elif isinstance(result, dict) and result:
+                branches.append(result)
+        if branches:
+            logger.info(f"Received batch with {len(branches)} default branches")
+            yield branches
+
+    async def get_branches(
+        self,
+        projects_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+        default_branches_only: bool = True,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        if default_branches_only:
+            async for branches in self._get_default_branches(
+                projects_batch, max_concurrent
+            ):
+                yield branches
+        else:
+            async for branches_batch in self.get_projects_resource_with_enrichment(
+                projects_batch, "repository/branches", max_concurrent, params=params
+            ):
+                logger.info(f"Received batch with {len(branches_batch)} branches")
+                yield branches_batch
+
     async def _enrich_project_resources(
         self,
         project: dict[str, Any],
@@ -275,6 +344,7 @@ class GitLabClient:
         projects_batch: list[dict[str, Any]],
         resource_type: str,
         max_concurrent: int = 10,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         semaphore = asyncio.Semaphore(max_concurrent)
 
@@ -285,8 +355,7 @@ class GitLabClient:
                     self._enrich_project_resources,
                     project,
                     self.rest.get_paginated_project_resource(
-                        str(project["id"]),
-                        resource_type,
+                        str(project["id"]), resource_type, params=params
                     ),
                 ),
             )
@@ -822,7 +891,7 @@ class GitLabClient:
         query: str,
         skip_parsing: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        logger.debug(
+        logger.info(
             f"Starting search in group '{group_id}' for query '{query}' with scope '{scope}'"
         )
         params = {"scope": scope, "search": query, "search_type": "advanced"}
@@ -832,7 +901,7 @@ class GitLabClient:
             async for file_batch in self.rest.get_paginated_resource(
                 path, params=params
             ):
-                logger.debug(f"Found {len(file_batch)} files in group '{group_id}'")
+                logger.info(f"Found {len(file_batch)} files in group '{group_id}'")
                 processed_batch = await self._process_file_batch(
                     file_batch, group_id, skip_parsing
                 )

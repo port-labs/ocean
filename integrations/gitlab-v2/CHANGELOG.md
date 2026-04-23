@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.0 (2026-04-23)
+
+
+### Features
+
+- Added support for `branch` kind, enabling scheduled syncing of GitLab branches
+- Added live event updates for `branch` kind via webhooks
+
+
 ## 0.6.21 (2026-04-23)
 
 
