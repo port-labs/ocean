@@ -1226,7 +1226,6 @@ class TestGitLabClient:
 
     async def test_get_single_branch(self, client: GitLabClient) -> None:
         """Test fetching a single branch by name enriches it with the project path"""
-        project = {"id": 1, "path_with_namespace": "test/project"}
         mock_branch = {"name": "main", "protected": True, "merged": False}
 
         with patch.object(
@@ -1234,7 +1233,7 @@ class TestGitLabClient:
             "send_api_request",
             AsyncMock(return_value=mock_branch),
         ) as mock_request:
-            result = await client.get_single_branch(project, "main")
+            result = await client.get_single_branch(1, "test/project", "main")
 
             assert result is not None
             assert result["name"] == "main"
@@ -1247,7 +1246,6 @@ class TestGitLabClient:
         self, client: GitLabClient
     ) -> None:
         """Branch names with slashes (e.g. feature/foo-bar) must be percent-encoded in the URL."""
-        project = {"id": 1, "path_with_namespace": "test/project"}
         mock_branch = {"name": "feature/foo-bar", "protected": False, "merged": False}
 
         with patch.object(
@@ -1255,7 +1253,7 @@ class TestGitLabClient:
             "send_api_request",
             AsyncMock(return_value=mock_branch),
         ) as mock_request:
-            result = await client.get_single_branch(project, "feature/foo-bar")
+            result = await client.get_single_branch(1, "test/project", "feature/foo-bar")
 
             assert result is not None
             assert result["name"] == "feature/foo-bar"
@@ -1267,7 +1265,6 @@ class TestGitLabClient:
         self, client: GitLabClient
     ) -> None:
         """Branch names with hashes (e.g. bugfix#123) must be percent-encoded in the URL."""
-        project = {"id": 1, "path_with_namespace": "test/project"}
         mock_branch = {"name": "bugfix#123", "protected": False, "merged": False}
 
         with patch.object(
@@ -1275,7 +1272,7 @@ class TestGitLabClient:
             "send_api_request",
             AsyncMock(return_value=mock_branch),
         ) as mock_request:
-            result = await client.get_single_branch(project, "bugfix#123")
+            result = await client.get_single_branch(1, "test/project", "bugfix#123")
 
             assert result is not None
             assert result["name"] == "bugfix#123"
@@ -1287,14 +1284,12 @@ class TestGitLabClient:
         self, client: GitLabClient
     ) -> None:
         """Test that get_single_branch returns None when the API returns an empty response"""
-        project = {"id": 1, "path_with_namespace": "test/project"}
-
         with patch.object(
             client.rest,
             "send_api_request",
             AsyncMock(return_value={}),
         ):
-            result = await client.get_single_branch(project, "main")
+            result = await client.get_single_branch(1, "test/project", "main")
 
             assert result is None
 

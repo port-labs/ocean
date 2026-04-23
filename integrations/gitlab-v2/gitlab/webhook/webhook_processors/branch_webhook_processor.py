@@ -84,9 +84,8 @@ class BranchWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[deleted_branch]
             )
 
-        project = {"id": project_id, "path_with_namespace": project_path}
         branch = await self._gitlab_webhook_client.get_single_branch(
-            project, branch_name
+            project_id, project_path, branch_name
         )
         if branch:
             return WebhookEventRawResults(
