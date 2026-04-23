@@ -139,7 +139,9 @@ class GithubGraphQLClient(AbstractGithubClient):
                     ignored_errors=ignored_errors,
                 )
             except GraphQLErrorGroup:
-                logger.exception(f"[GraphQL] Query failed for path {path} with variables {params}")
+                logger.exception(
+                    f"[GraphQL] Query failed for path {path} with variables {params}"
+                )
                 raise
             if not response:
                 break
