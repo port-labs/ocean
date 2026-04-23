@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.3.13 (2026-04-22)
+## 5.3.13 (2026-04-23)
 
 
-### Bug Fixes
+### Improvements
 
-- Removed unused `PageInfoFields` GraphQL fragment from the single pull request detail query, which caused all webhook-triggered PR updates to fail when using `api: graphql`
+- Bumped ocean version to ^0.41.3
 
 
 ## 5.3.12 (2026-04-21)
