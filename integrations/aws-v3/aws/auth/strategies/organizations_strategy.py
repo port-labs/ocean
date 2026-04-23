@@ -10,6 +10,7 @@ from loguru import logger
 import asyncio
 from typing import Any, AsyncIterator, Dict, List
 from botocore.utils import ArnParser
+from botocore.client import BaseClient
 
 
 class OrganizationDiscoveryMixin(AWSSessionStrategy):
@@ -94,37 +95,109 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
             logger.error(f"Failed to assume organization role: {e}")
             raise AWSSessionError(f"Cannot assume organization role: {e}")
 
+    async def _get_accounts_for_ou(
+        self, parent_id: str, org_client: BaseClient
+    ) -> list[dict]:
+        """
+        Asynchronously fetch and return a flat list of all accounts under a given OU (including child OUs).
+        Returns a list of AWS account dicts.
+        """
+        accounts = []
+        logger.debug(f"Start fetching accounts for OU: {parent_id}")
+        organization_session = await self._get_organization_session()
+        async with organization_session.create_client("organizations") as org_client:
+            # 1. Get direct accounts
+            paginator = org_client.get_paginator("list_accounts_for_parent")
+            async for page in paginator.paginate(ParentId=parent_id):
+                logger.debug(
+                    f"Fetched page of accounts for OU {parent_id}: {len(page['Accounts'])} accounts"
+                )
+                filtered_accounts = self.filter_active_accounts(page["Accounts"])
+                logger.debug(
+                    f"Filtered active accounts for OU {parent_id}: {len(filtered_accounts)} accounts"
+                )
+                accounts.extend(filtered_accounts)
+            # 2. Get child OUs
+            child_ou_ids = []
+            ou_paginator = org_client.get_paginator(
+                "list_organizational_units_for_parent"
+            )
+            async for page in ou_paginator.paginate(ParentId=parent_id):
+                logger.debug(
+                    f"Fetched page of OUs for OU {parent_id}: {len(page['OrganizationalUnits'])} child OUs"
+                )
+                for ou in page["OrganizationalUnits"]:
+                    logger.debug(
+                        f"Discovered child OU {ou['Id']} under parent OU {parent_id}"
+                    )
+                    child_ou_ids.append(ou["Id"])
+            # 3. Recursively get accounts in child OUs
+            for child_ou_id in child_ou_ids:
+                logger.debug(
+                    f"Recursively fetching accounts for child OU: {child_ou_id}"
+                )
+                child_accounts = await self._get_accounts_for_ou(
+                    child_ou_id, org_client
+                )
+                logger.debug(
+                    f"Discovered {len(child_accounts)} accounts in child OU {child_ou_id}"
+                )
+                accounts.extend(child_accounts)
+        logger.debug(
+            f"Finished fetching accounts for OU {parent_id}. Total accounts found: {len(accounts)}"
+        )
+        return accounts
+
+    async def _get_active_accounts_from_organizations(self, org_client: BaseClient):
+        discovered_accounts: List[Dict[str, str]] = []
+        logger.info("Discovering accounts via AWS Organizations API")
+
+        paginator = org_client.get_paginator("list_accounts")
+        async for page in paginator.paginate():
+            # Only include active accounts
+            filtered_accounts = self.filter_active_accounts(page["Accounts"])
+            discovered_accounts.extend(filtered_accounts)
+
+        logger.info(f"Discovered {len(discovered_accounts)} active accounts")
+        return discovered_accounts
+
+    def filter_active_accounts(
+        self, accounts: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
+        """Filter the accounts to only include active accounts."""
+        return [
+            {
+                "Id": account["Id"],
+                "Name": account["Name"],
+                "Email": account.get("Email", ""),
+                "Arn": account.get("Arn", ""),
+            }
+            for account in accounts
+            if account["State"] == "ACTIVE"
+        ]
+
     async def discover_accounts(self) -> List[Dict[str, str]]:
         """Discover all accounts in the AWS Organization."""
         if self._discovered_accounts:
             return self._discovered_accounts
 
-        organization_session = await self._get_organization_session()
-        discovered_accounts = []
+        ou_id = self.config.get("organization_unit_id")
 
         try:
+            organization_session = await self._get_organization_session()
             async with organization_session.create_client(
                 "organizations"
             ) as org_client:
-                logger.info("Discovering accounts via AWS Organizations API")
-
-                paginator = org_client.get_paginator("list_accounts")
-                async for page in paginator.paginate():
-                    for account in page["Accounts"]:
-                        # Only include active accounts
-                        if account["Status"] == "ACTIVE":
-                            discovered_accounts.append(
-                                {
-                                    "Id": account["Id"],
-                                    "Name": account["Name"],
-                                    "Email": account.get("Email", ""),
-                                    "Arn": account.get("Arn", ""),
-                                }
-                            )
-
-                logger.info(f"Discovered {len(discovered_accounts)} active accounts")
-                self._discovered_accounts = discovered_accounts
-                return discovered_accounts
+                if ou_id:
+                    discovered_accounts = await self._get_accounts_for_ou(
+                        ou_id, org_client
+                    )
+                    return discovered_accounts
+                else:
+                    discovered_accounts = (
+                        await self._get_active_accounts_from_organizations(org_client)
+                    )
+                    return discovered_accounts
 
         except Exception as e:
             if "AccessDenied" in str(e):

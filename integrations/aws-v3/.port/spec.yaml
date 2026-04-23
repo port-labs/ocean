@@ -12,6 +12,11 @@ features:
       - kind: AWS::ECS::Cluster
       - kind: AWS::ECR::Repository
 configurations:
+  - name: organizationUnitId
+    required: false
+    type: string
+    sensitive: false
+    description: AWS Organization Unit (OU) ID to discover accounts from. When provided, the integration will only attempt to use discover accounts from the specified OU.
   - name: accountRoleArn
     required: false
     type: string

@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.1.81-beta (2026-04-23)
+## 2.2.0-beta (2026-04-23)
+
+### Feature
+
+- Added support to fetch resources exclusively from a user-specified AWS Organization Unit (OU), allowing targeted account discovery.
 
 
 ### Improvements
