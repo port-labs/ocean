@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.0 (2026-04-23)
+
+
+### Improvements
+
+- Added `board` kind to sync Jira boards into Port using the Jira Software Cloud Agile REST API.
+
+
 ## 0.6.26 (2026-04-23)
 
 

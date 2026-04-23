@@ -1,4 +1,5 @@
 from loguru import logger
+
 from initialize_client import get_or_create_jira_client
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -13,54 +14,53 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-class ProjectWebhookProcessor(AbstractWebhookProcessor):
+class BoardWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("webhookEvent", "").startswith("project_")
+        return event.payload.get("webhookEvent", "").startswith("board_")
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [Kinds.PROJECT]
+        return [Kinds.BOARD]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return True
+        board = payload.get("board")
+        if not isinstance(board, dict):
+            logger.warning("Invalid payload: missing board information")
+            return False
+        return board.get("id") is not None
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         webhook_event = payload.get("webhookEvent", "")
+        board = payload["board"]
+        board_id: int = board["id"]
 
-        client = get_or_create_jira_client()
-        project_key = payload["project"]["key"]
-
-        if webhook_event == "project_soft_deleted":
-            logger.info(f"Project {project_key} was deleted")
+        if webhook_event == "board_deleted":
+            logger.info(f"Board {board_id} was deleted")
             return WebhookEventRawResults(
                 updated_raw_results=[],
-                deleted_raw_results=[payload["project"]],
+                deleted_raw_results=[board],
             )
 
-        logger.debug(f"Fetching project with key: {project_key}")
-        item = await client.get_single_project(project_key)
+        client = get_or_create_jira_client()
+        logger.debug(f"Fetching board with id: {board_id}")
+        item = await client.get_single_board(board_id)
 
         if not item:
-            logger.warning(f"Failed to retrieve {Kinds.PROJECT}")
+            logger.warning(
+                f"Board {board_id} could not be retrieved after {webhook_event} event"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[],
             )
 
-        data_to_update = []
-        data_to_delete = []
-        logger.debug(f"Retrieved {Kinds.PROJECT} item: {item}")
-
-        if "deleted" in webhook_event:
-            data_to_delete.extend([item])
-        else:
-            data_to_update.extend([item])
-
+        enriched_board = await client.enrich_board_with_projects(item)
+        logger.debug(f"Retrieved and enriched board {board_id}")
         return WebhookEventRawResults(
-            updated_raw_results=data_to_update,
-            deleted_raw_results=data_to_delete,
+            updated_raw_results=[enriched_board],
+            deleted_raw_results=[],
         )

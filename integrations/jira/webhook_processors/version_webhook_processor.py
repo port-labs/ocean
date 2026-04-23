@@ -1,6 +1,6 @@
 from loguru import logger
 
-from initialize_client import create_jira_client
+from initialize_client import get_or_create_jira_client
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -35,7 +35,7 @@ class VersionWebhookProcessor(AbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         version = payload["version"]
         webhook_event = payload["webhookEvent"]
-        client = create_jira_client()
+        client = get_or_create_jira_client()
 
         if webhook_event == "jira:version_deleted":
             logger.info(f"Received deletion event for version {version.get('id')}")
