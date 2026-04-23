@@ -1233,7 +1233,7 @@ class TestGitLabClient:
             "send_api_request",
             AsyncMock(return_value=mock_branch),
         ) as mock_request:
-            result = await client.get_single_branch(1, "test/project", "main")
+            result = await client.get_single_branch("1", "test/project", "main")
 
             assert result is not None
             assert result["name"] == "main"
@@ -1254,7 +1254,7 @@ class TestGitLabClient:
             AsyncMock(return_value=mock_branch),
         ) as mock_request:
             result = await client.get_single_branch(
-                1, "test/project", "feature/foo-bar"
+                "1", "test/project", "feature/foo-bar"
             )
 
             assert result is not None
@@ -1274,7 +1274,7 @@ class TestGitLabClient:
             "send_api_request",
             AsyncMock(return_value=mock_branch),
         ) as mock_request:
-            result = await client.get_single_branch(1, "test/project", "bugfix#123")
+            result = await client.get_single_branch("1", "test/project", "bugfix#123")
 
             assert result is not None
             assert result["name"] == "bugfix#123"
@@ -1291,7 +1291,7 @@ class TestGitLabClient:
             "send_api_request",
             AsyncMock(return_value={}),
         ):
-            result = await client.get_single_branch(1, "test/project", "main")
+            result = await client.get_single_branch("1", "test/project", "main")
 
             assert result is None
 
