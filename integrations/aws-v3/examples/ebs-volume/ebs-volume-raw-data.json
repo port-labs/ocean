@@ -1,0 +1,29 @@
+{
+  "Type": "AWS::EC2::Volume",
+  "Properties": {
+    "VolumeId": "vol-09a13562b4dacdee2",
+    "VolumeType": "gp2",
+    "Size": 10,
+    "Iops": 100,
+    "Throughput": null,
+    "AvailabilityZone": "eu-west-1c",
+    "State": "available",
+    "CreateTime": "2024-04-17T19:45:45.700000+00:00",
+    "Encrypted": false,
+    "MultiAttachEnabled": false,
+    "SnapshotId": "",
+    "Attachments": [],
+    "KmsKeyId": null,
+    "AutoEnableIO": false,
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "zinc"
+      }
+    ]
+  },
+  "__ExtraContext": {
+    "AccountId": "851725549828",
+    "Region": "eu-west-1"
+  }
+}
