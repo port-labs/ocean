@@ -1332,8 +1332,16 @@ class TestGitLabClient:
             assert len(results) == 2
             assert results[0]["name"] == "main"
             assert results[1]["name"] == "master"
-            mock_get_single.assert_any_call(mock_projects[0], "main")
-            mock_get_single.assert_any_call(mock_projects[1], "master")
+            mock_get_single.assert_any_call(
+                mock_projects[0]["id"],
+                mock_projects[0]["path_with_namespace"],
+                "main",
+            )
+            mock_get_single.assert_any_call(
+                mock_projects[1]["id"],
+                mock_projects[1]["path_with_namespace"],
+                "master",
+            )
 
     async def test_get_branches_default_only_skips_project_without_default_branch(
         self, client: GitLabClient
@@ -1369,7 +1377,11 @@ class TestGitLabClient:
 
             assert len(results) == 1
             assert results[0]["name"] == "main"
-            mock_get_single.assert_called_once_with(mock_projects[0], "main")
+            mock_get_single.assert_called_once_with(
+                mock_projects[0]["id"],
+                mock_projects[0]["path_with_namespace"],
+                "main",
+            )
 
     async def test_get_branches_default_only_logs_and_skips_failed_project(
         self, client: GitLabClient
