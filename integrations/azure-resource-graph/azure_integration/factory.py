@@ -1,6 +1,6 @@
 from port_ocean.context.ocean import ocean
 from azure.core.credentials_async import AsyncTokenCredential
-from azure.identity.aio import ClientSecretCredential
+from azure.identity.aio import ClientSecretCredential, DefaultAzureCredential
 from azure_integration.clients.base import AbstractAzureClient
 from enum import StrEnum
 from loguru import logger
@@ -11,7 +11,7 @@ from azure_integration.clients.rest.resource_management_client import (
 from azure_integration.clients.rest.resource_graph_client import (
     AzureResourceGraphClient,
 )
-from azure_integration.helpers.exceptions import MissingAzureCredentials
+
 from azure_integration.helpers.rate_limiter import (
     AdaptiveTokenBucketRateLimiter,
     AZURERM_BUCKET_REFILL_RATE,
@@ -59,9 +59,9 @@ class AzureClientFactory:
         """
         base_url = ocean.integration_config["azure_base_url"]
         credential = AzureAuthenticatorFactory.create(
-            tenant_id=ocean.integration_config["azure_tenant_id"],
-            client_id=ocean.integration_config["azure_client_id"],
-            client_secret=ocean.integration_config["azure_client_secret"],
+            tenant_id=ocean.integration_config.get("azure_tenant_id"),
+            client_id=ocean.integration_config.get("azure_client_id"),
+            client_secret=ocean.integration_config.get("azure_client_secret"),
         )
         rate_limiter = AdaptiveTokenBucketRateLimiter(
             capacity=AZURERM_RATELIMIT_CAPACITY,
@@ -75,20 +75,23 @@ class AzureClientFactory:
 class AzureAuthenticatorFactory:
     @staticmethod
     def create(
-        tenant_id: str,
-        client_id: str,
-        client_secret: str,
+        tenant_id: str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
     ) -> AsyncTokenCredential:
-        if not (tenant_id and client_id and client_secret):
-            raise MissingAzureCredentials(
-                "Missing Azure credentials: tenant_id, client_id, and client_secret are required."
+        if tenant_id and client_id and client_secret:
+            logger.info("Using ClientSecretCredential (explicit credentials provided)")
+            return ClientSecretCredential(
+                tenant_id=tenant_id,
+                client_id=client_id,
+                client_secret=client_secret,
             )
 
-        return ClientSecretCredential(
-            tenant_id=tenant_id,
-            client_id=client_id,
-            client_secret=client_secret,
+        logger.info(
+            "Using DefaultAzureCredential — supports OIDC, workload identity, "
+            "managed identity, and Azure CLI authentication"
         )
+        return DefaultAzureCredential()
 
 
 def create_azure_client(
