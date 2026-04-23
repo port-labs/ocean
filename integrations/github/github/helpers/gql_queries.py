@@ -327,7 +327,7 @@ query ListPullRequests(
       first: $first,
       after: $after,
       states: $states,
-      orderBy: {{ field: CREATED_AT, direction: DESC }}
+      orderBy: {{ field: UPDATED_AT, direction: DESC }}
     ) {{
       nodes {{
 {generate_pr_fields(options)}

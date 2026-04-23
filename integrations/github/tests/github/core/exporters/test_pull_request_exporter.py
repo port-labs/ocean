@@ -1,7 +1,10 @@
 from typing import Any, AsyncGenerator, Generator
 import pytest
+from pydantic import ValidationError
 from unittest.mock import patch, AsyncMock
 from datetime import datetime, UTC, timedelta
+
+from integration import GithubPullRequestSelector
 from github.core.exporters.pull_request_exporter import (
     RestPullRequestExporter,
     GraphQLPullRequestExporter,
@@ -736,6 +739,117 @@ class TestGraphQLPullRequestExporter:
             },
         )
         assert mock_normalize.call_count == 2
+
+    async def test_graphql_closed_prs_apply_updated_after_filter(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        pr_nodes = [
+            {
+                "id": 1,
+                "updatedAt": "2025-08-10T15:08:15Z",
+                "state": "CLOSED",
+                "assignees": {"nodes": []},
+                "reviewRequests": {"nodes": []},
+                "comments": {"totalCount": 0},
+                "reviewThreads": {"totalCount": 0},
+                "commits": {"totalCount": 1},
+                "labels": {"nodes": []},
+                "mergeStateStatus": "CLEAN",
+                "mergeable": "UNKNOWN",
+            },
+        ]
+
+        async def mock_closed(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield pr_nodes
+
+        anchor = datetime(2025, 1, 1, 0, 0, 0, tzinfo=UTC)
+
+        with (
+            patch.object(
+                graphql_client,
+                "send_paginated_request",
+                side_effect=mock_closed,
+            ) as mock_paginated,
+            patch(
+                "github.core.exporters.pull_request_exporter.core.filter_prs_by_updated_at",
+            ) as mock_filter,
+            patch.object(
+                GraphQLPullRequestExporter,
+                "_normalize_pr_node",
+                side_effect=lambda pr, repo, org, **kwargs: {
+                    **pr,
+                    "__repository": repo,
+                    "__organization": org,
+                },
+            ),
+        ):
+            mock_filter.side_effect = lambda prs, field, updated_after: prs
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=10,
+                    updated_after=anchor,
+                    repo={"name": "repo1"},
+                )
+                batches = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        mock_filter.assert_called_once()
+        assert len(batches) == 1
+        assert len(batches[0]) == 1
+        expected_gql = generate_list_pull_requests_gql(
+            PullRequestGraphQLOptions(enrich_with_first_commit=False)
+        )
+        mock_paginated.assert_called_once_with(
+            expected_gql,
+            {
+                "organization": "test-org",
+                "repo": "repo1",
+                "states": ["CLOSED", "MERGED"],
+                "__path": "repository.pullRequests",
+            },
+        )
+
+
+class TestGithubPullRequestSelectorClosedPrs:
+    def test_updated_after_property_uses_closed_prs_updated_since(self) -> None:
+        sel = GithubPullRequestSelector(
+            query="true",
+            states=["closed"],
+            closedPrsUpdatedSince=datetime(2025, 6, 15, 0, 0, 0, tzinfo=UTC),
+        )
+        assert sel.updated_after == datetime(2025, 6, 15, 0, 0, 0, tzinfo=UTC)
+
+    def test_updated_after_property_accepts_iso8601_string(self) -> None:
+        sel = GithubPullRequestSelector(
+            query="true",
+            states=["closed"],
+            closedPrsUpdatedSince="2025-06-15T00:00:00+00:00",
+        )
+        assert sel.updated_after == datetime(2025, 6, 15, 0, 0, 0, tzinfo=UTC)
+
+    def test_naive_datetime_treated_as_utc(self) -> None:
+        sel = GithubPullRequestSelector(
+            query="true",
+            states=["closed"],
+            closedPrsUpdatedSince=datetime(2025, 6, 15, 12, 0, 0),
+        )
+        assert sel.updated_after == datetime(2025, 6, 15, 12, 0, 0, tzinfo=UTC)
+
+    def test_invalid_datetime_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            GithubPullRequestSelector(
+                query="true",
+                states=["closed"],
+                closedPrsUpdatedSince="not-a-timestamp",
+            )
 
 
 class TestGraphQLPullRequestExporterInternals:

@@ -312,11 +312,21 @@ class GithubPullRequestSelector(RepoSearchSelector):
         ge=1,
         description="Max number of merged pull requests. Note: large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
     )
+    closed_prs_updated_since: Optional[datetime] = Field(
+        title="Closed pull requests updated since",
+        alias="closedPrsUpdatedSince",
+        default=None,
+        description=(
+            "When set (and 'closed' is in states), only closed pull requests with updated_at on or after "
+            "this instant are ingested. Use an ISO 8601 datetime (e.g. 2025-01-01T00:00:00Z). "
+            "Naive values are interpreted as UTC. When omitted, closed PRs use Closed PRs Lookback Days (since) instead."
+        ),
+    )
     since: int = Field(
         title="Closed PRs Lookback Days",
         default=60,
         ge=1,
-        description="Numbers of days back for closed pull requests.",
+        description="Number of days back for closed pull requests, combined with maxResults. Not used when closedPrsUpdatedSince is set.",
     )
     api: Literal["rest", "graphql"] = Field(
         title="API",
@@ -337,7 +347,12 @@ class GithubPullRequestSelector(RepoSearchSelector):
 
     @property
     def updated_after(self) -> datetime:
-        """Convert the since days to a timezone-aware datetime object."""
+        """Lower bound for closed PR updated_at filtering (UTC)."""
+        if self.closed_prs_updated_since is not None:
+            dt = self.closed_prs_updated_since
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.astimezone(timezone.utc)
         return datetime.now(timezone.utc) - timedelta(days=self.since)
 
 
