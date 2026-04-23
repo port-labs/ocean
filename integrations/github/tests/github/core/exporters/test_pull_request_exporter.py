@@ -828,7 +828,7 @@ class TestGithubPullRequestSelectorClosedPrs:
         assert sel.updated_after == datetime(2025, 6, 15, 0, 0, 0, tzinfo=UTC)
 
     def test_updated_after_property_accepts_iso8601_string(self) -> None:
-        sel = GithubPullRequestSelector.model_validate(
+        sel = GithubPullRequestSelector.parse_obj(
             {
                 "query": "true",
                 "states": ["closed"],
@@ -847,7 +847,7 @@ class TestGithubPullRequestSelectorClosedPrs:
 
     def test_invalid_datetime_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            GithubPullRequestSelector.model_validate(
+            GithubPullRequestSelector.parse_obj(
                 {
                     "query": "true",
                     "states": ["closed"],
