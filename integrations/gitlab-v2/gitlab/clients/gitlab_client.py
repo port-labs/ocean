@@ -251,17 +251,17 @@ class GitLabClient:
             yield releases_batch
 
     async def get_single_branch(
-        self, project: dict[str, Any], branch_name: str
+        self, project_id: str, project_path: str, branch_name: str
     ) -> dict[str, Any] | None:
         """Fetch a single branch by name from the given project."""
-        encoded_id = quote(str(project["id"]), safe="")
+        encoded_id = quote(str(project_id), safe="")
         encoded_branch = quote(branch_name, safe="")
         branch = await self.rest.send_api_request(
             "GET", f"projects/{encoded_id}/repository/branches/{encoded_branch}"
         )
         if not branch:
             return None
-        return self.enrich_with_project_path(branch, project["path_with_namespace"])
+        return self.enrich_with_project_path(branch, project_path)
 
     async def _fetch_default_branch(
         self, project: dict[str, Any], semaphore: asyncio.Semaphore
@@ -270,7 +270,9 @@ class GitLabClient:
             default_branch = project.get("default_branch")
             if not default_branch:
                 return None
-            return await self.get_single_branch(project, default_branch)
+            return await self.get_single_branch(
+                project["id"], project["path_with_namespace"], default_branch
+            )
 
     async def _get_default_branches(
         self,
