@@ -18,9 +18,9 @@
         "Value": "zinc"
       }
     ],
-    "arn": "arn:aws:ec2:eu-west-1:851725549828:volume/vol-09a13562b4dacdee2"
+    "arn": "arn:aws:ec2:eu-west-1:123456789012:volume/vol-09a13562b4dacdee2"
   },
   "relations": {
-    "account": "851725549828"
+    "account": "123456789012"
   }
 }
