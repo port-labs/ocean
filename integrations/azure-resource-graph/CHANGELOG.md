@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added OIDC and workload identity authentication support. When client secret is not provided, the integration falls back to DefaultAzureCredential, which supports OIDC, workload identity, managed identity, and Azure CLI authentication.
+- Added OIDC and workload identity authentication support. 
 
 
 ## 0.2.99-beta (2026-04-23)
