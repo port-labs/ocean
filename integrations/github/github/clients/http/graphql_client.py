@@ -131,12 +131,16 @@ class GithubGraphQLClient(AbstractGithubClient):
 
         while True:
             payload = self.build_graphql_payload(resource, params, cursor=cursor)
-            response = await self.send_api_request(
-                self.base_url,
-                method=method,
-                json_data=payload,
-                ignored_errors=ignored_errors,
-            )
+            try:
+                response = await self.send_api_request(
+                    self.base_url,
+                    method=method,
+                    json_data=payload,
+                    ignored_errors=ignored_errors,
+                )
+            except GraphQLErrorGroup:
+                logger.error(f"[GraphQL] Query failed for path {path} with variables {params}")
+                raise
             if not response:
                 break
 
