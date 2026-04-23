@@ -53,5 +53,3 @@ def test_create_azure_client_returns_rest_client(
 
     client = create_azure_client(AzureClientType.RESOURCE_MANAGER)
     assert isinstance(client, AzureRestClient)
-
-

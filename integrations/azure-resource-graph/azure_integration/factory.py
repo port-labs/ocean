@@ -91,7 +91,13 @@ class AzureAuthenticatorFactory:
             "Using DefaultAzureCredential — supports OIDC, workload identity, "
             "managed identity, and Azure CLI authentication"
         )
-        return DefaultAzureCredential()
+        kwargs = {}
+        if client_id:
+            kwargs["workload_identity_client_id"] = client_id
+            kwargs["managed_identity_client_id"] = client_id
+        if tenant_id:
+            kwargs["workload_identity_tenant_id"] = tenant_id
+        return DefaultAzureCredential(**kwargs)
 
 
 def create_azure_client(
