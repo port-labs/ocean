@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.1.83-beta (2026-04-24)
+
+
+### Features
+
+- Added support for AWS::ECS::TaskDefinition resource kind, enabling ingestion of ECS task definitions into the Port catalog with attributes such as container definitions, CPU, memory, network mode, and IAM roles.
+
+
 ## 2.1.82-beta (2026-04-23)
 
 
