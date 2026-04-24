@@ -31,7 +31,7 @@ inputs:
     description: Docker Hub User
   docker-password:
     required: false
-    description: Docker Hub User
+    description: Docker Hub Password
   skip-push:
     required: false
     description: Optionally skip push

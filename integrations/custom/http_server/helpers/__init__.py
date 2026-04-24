@@ -7,6 +7,26 @@ from http_server.helpers.endpoint_resolver import (
     query_api_for_parameters,
     resolve_dynamic_endpoints,
 )
+from http_server.helpers.endpoint_cache import (
+    EndpointCache,
+    make_cache_key,
+    analyze_cacheable_endpoints,
+    initialize_endpoint_cache,
+    get_endpoint_cache,
+    clear_endpoint_cache,
+)
+from http_server.helpers.template_utils import (
+    evaluate_templates_in_dict,
+    validate_templates_in_dict,
+    evaluate_template,
+    validate_template_syntax,
+)
+from http_server.helpers.utils import (
+    inject_path_params,
+    extract_and_enrich_batch,
+    process_endpoints_concurrently,
+    DEFAULT_CONCURRENCY_LIMIT,
+)
 
 __all__ = [
     "extract_path_parameters",
@@ -14,4 +34,18 @@ __all__ = [
     "generate_resolved_endpoints",
     "query_api_for_parameters",
     "resolve_dynamic_endpoints",
+    "EndpointCache",
+    "make_cache_key",
+    "analyze_cacheable_endpoints",
+    "initialize_endpoint_cache",
+    "get_endpoint_cache",
+    "clear_endpoint_cache",
+    "evaluate_templates_in_dict",
+    "validate_templates_in_dict",
+    "evaluate_template",
+    "validate_template_syntax",
+    "inject_path_params",
+    "extract_and_enrich_batch",
+    "process_endpoints_concurrently",
+    "DEFAULT_CONCURRENCY_LIMIT",
 ]

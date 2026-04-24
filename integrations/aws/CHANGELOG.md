@@ -7,6 +7,774 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.37 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.3.36 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.3.35 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.3.34 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.3.33 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.3.32 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.3.31 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.3.30 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.3.29 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.3.28 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.3.27 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.3.26 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.3.25 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.3.24 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.3.23 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 0.3.22 (2026-03-31)
+
+
+### Bug Fixes
+
+- Added `aiohttp` `^3.13.4` to resolve security vulnerability in transitive dependency `aiohttp`
+
+
+## 0.3.21 (2026-03-30)
+
+
+### Bug Fixes
+
+- Enhanced missing resource exception handling for opt-in regions
+
+
+## 0.3.20 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 0.3.19 (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.3.18 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.3.17 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.3.16 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.3.15 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.3.14 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.3.13 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.3.12 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+## 0.3.11 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+## 0.3.10 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+## 0.3.9 (2026-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+
+
+## 0.3.8 (2026-03-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
+## 0.3.7 (2026-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.10
+
+
+## 0.3.6 (2026-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.9
+
+
+## 0.3.5 (2026-03-09)
+
+
+### Bug Fixes
+
+- Added a check in `resync_cloudcontrol` for skipping unavailable resources for a region so syncs can continue to run for other resources within the same region
+
+
+## 0.3.4 (2026-03-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+## 0.3.3 (2026-03-04)
+
+
+### Bug Fixes
+
+- Improved handling of missing resources in a region so syncs no longer fail on these exceptions.
+
+
+## 0.3.2 (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+## 0.3.1 (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
+
+
+## 0.3.0 (2026-03-02)
+
+
+### Bug Fixes
+
+- Fixed an issue where harmless region errors (like TypeNotFoundException) during multi-region sync could stop cleanup and prevent old entities from being removed, so cleanup now continues and old entities are properly removed while genuine failures still raise an ExceptionGroup to block reconciliation.
+
+
+## 0.2.258 (2026-03-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+## 0.2.257 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+## 0.2.256 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+## 0.2.255 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+## 0.2.254 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+## 0.2.253 (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+## 0.2.252 (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
+## 0.2.251 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.1
+
+
+## 0.2.250 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
+
+
+## 0.2.249 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+## 0.2.248 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+## 0.2.247 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+## 0.2.246 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
+## 0.2.245 (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.2.244 (2026-02-03)
+
+
+### Bug Fixes
+
+- Fixed S3 bucket resync to handle buckets in opt-in regions. When get_resource fails with NotFound, the integration now uses get_bucket_location to find the actual region and retries, ensuring buckets in opt-in regions (e.g., af-south-1) are correctly synced.
+
+
+## 0.2.243 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 0.2.242 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+## 0.2.241 (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+## 0.2.240 (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
+## 0.2.239 (2026-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
+
+
+## 0.2.238 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.1
+
+
+## 0.2.237 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.0
+
+
+## 0.2.236 (2026-01-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.17
+
+
+## 0.2.235 (2026-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.16
+
+
+## 0.2.234 (2026-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
+
+
+## 0.2.233 (2026-01-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
+## 0.2.232 (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+## 0.2.231 (2026-01-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+## 0.2.230 (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 0.2.229 (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 0.2.228 (2025-12-25)
+
+
+## Bug Fixes
+
+- Fixed spec.yaml conventions
+
+
+## 0.2.227 (2025-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.9
+
+
+## 0.2.226 (2025-12-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.8
+
+
+## 0.2.225 (2025-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.7
+
+
+## 0.2.224 (2025-12-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.5
+
+
+## 0.2.223 (2025-12-08)
+
+### Bug Fixes
+
+- Move account discovery to resync start. AWS account list is now refreshed before each resync cycle, fixing an issue where changes in AWS Organizations (e.g., added/removed accounts) weren't detected unless the integration was restarted. (Fixes PORT-16916)
+
+
+
+## 0.2.222 (2025-12-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
+## 0.2.221 (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 0.2.220 (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 0.2.219 (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
+## 0.2.218 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
+
+
+## 0.2.217 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.7
+
+
+## 0.2.216 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
+## 0.2.215 (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+## 0.2.214 (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.3
+
+
+## 0.2.213 (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 0.2.212 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.2.211 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 0.2.210 (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 0.2.209 (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 0.2.208 (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.2.207 (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.2.206 (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.2.205 (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.2.204 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.2.203 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.2.202 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.2.201 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
 ## 0.2.200 (2025-11-19)
 
 

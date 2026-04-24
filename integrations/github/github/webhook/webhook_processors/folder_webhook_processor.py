@@ -13,6 +13,10 @@ from github.helpers.utils import ObjectKind, extract_changed_files, fetch_commit
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
+from github.enrichments.included_files import (
+    IncludedFilesEnricher,
+    FolderIncludedFilesStrategy,
+)
 from integration import FolderSelector, GithubFolderResourceConfig
 from github.core.exporters.repository_exporter import RestRepositoryExporter
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -39,7 +43,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         repository = payload["repository"]
         branch = payload.get("ref", "").replace("refs/heads/", "")
         ref = payload["after"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing push event for repository {repository['name']} of organization: {organization} on branch {branch} at ref {ref}"
@@ -55,6 +59,18 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
                 f"No folders found matching patterns for {repository['name']} of organization: {organization} at ref {ref}"
             )
         else:
+            if config.selector.included_files or any(
+                sel.included_files for sel in config.selector.folders
+            ):
+                client = create_github_client()
+                enricher = IncludedFilesEnricher(
+                    client=client,
+                    strategy=FolderIncludedFilesStrategy(
+                        folder_selectors=config.selector.folders,
+                        global_included_files=config.selector.included_files,
+                    ),
+                )
+                folders = await enricher.enrich_batch(folders)
             logger.info(
                 f"Completed push event processing; updated {len(folders)} folders of organization: {organization}"
             )
@@ -113,7 +129,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         event_payload: EventPayload,
     ) -> list[dict[str, Any]]:
         client = create_github_client()
-        organization = event_payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(event_payload)["login"]
 
         commit_diff = await fetch_commit_diff(
             client,
@@ -139,26 +155,28 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         repo_options = SingleRepositoryOptions(
             organization=organization, name=repository["name"]
         )
-        repository = await repo_exporter.get_resource(repo_options)
+        repo_data = await repo_exporter.get_resource(repo_options)
+        if not repo_data:
+            return []
 
         for pattern in folder_selector:
-            if not self._has_matched_repo(pattern, repository, branch):
+            if not self._has_matched_repo(pattern, repo_data, branch):
                 continue
 
             logger.debug(
-                f"Fetching folders for path '{pattern.path}' in {repository['name']} of organization: {organization} on branch {branch}"
+                f"Fetching folders for path '{pattern.path}' in {repo_data['name']} of organization: {organization} on branch {branch}"
             )
 
             options = [
                 ListFolderOptions(
                     organization=organization,
-                    repo_name=repository["name"],
+                    repo_name=repo_data["name"],
                     folders=[
                         FolderSearchOptions(
                             organization=organization,
                             path=pattern.path,
                             branch=branch,
-                            repo=repository,
+                            repo=repo_data,
                         )
                     ],
                 )

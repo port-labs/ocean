@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from client import SonarQubeClient
 from integration import SonarQubeComponentProjectSelector
@@ -16,11 +16,3 @@ def produce_component_params(
     if client.is_onpremise and selector:
         component_query_params.update(selector.generate_request_params())
     return component_query_params
-
-
-def extract_metrics_from_payload(payload: Dict[str, Any]) -> list[str]:
-    """Extracts a list of metrics from the qualityGate conditions in the payload."""
-    return [
-        condition["metric"]
-        for condition in payload.get("qualityGate", {}).get("conditions", [])
-    ]

@@ -5,12 +5,13 @@ from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
-from starlette import status
+from starlette import status as starlette_status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
 from port_ocean.clients.port.utils import (
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
+    get_event_context_params,
     handle_port_status_code,
 )
 from port_ocean.context.ocean import ocean
@@ -107,18 +108,20 @@ class EntityClientMixin:
                 f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
             headers = await self.auth.headers(user_agent_type)
+            params = {
+                "upsert": "true",
+                "merge": str(request_options["merge"]).lower(),
+                "create_missing_related_entities": str(
+                    request_options["create_missing_related_entities"]
+                ).lower(),
+                "validation_only": str(validation_only).lower(),
+                **get_event_context_params(),
+            }
             response = await self.client.post(
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities",
                 json=entity.dict(exclude_unset=True, by_alias=True),
                 headers=headers,
-                params={
-                    "upsert": "true",
-                    "merge": str(request_options["merge"]).lower(),
-                    "create_missing_related_entities": str(
-                        request_options["create_missing_related_entities"]
-                    ).lower(),
-                    "validation_only": str(validation_only).lower(),
-                },
+                params=params,
                 extensions={"retryable": True},
             )
         if response.is_error:
@@ -139,7 +142,7 @@ class EntityClientMixin:
             )
 
             if (
-                response.status_code == status.HTTP_404_NOT_FOUND
+                response.status_code == starlette_status.HTTP_404_NOT_FOUND
                 and not result.get("ok")
                 and result.get("error") == PortAPIErrorMessage.NOT_FOUND.value
             ):
@@ -206,6 +209,15 @@ class EntityClientMixin:
                 f"{'Validating' if validation_only else 'Upserting'} {len(entities)} of blueprint: {blueprint}"
             )
             headers = await self.auth.headers(user_agent_type)
+            params = {
+                "upsert": "true",
+                "merge": str(request_options["merge"]).lower(),
+                "create_missing_related_entities": str(
+                    request_options["create_missing_related_entities"]
+                ).lower(),
+                "validation_only": str(validation_only).lower(),
+                **get_event_context_params(),
+            }
             response = await self.client.post(
                 f"{self.auth.api_url}/blueprints/{blueprint}/entities/bulk",
                 json={
@@ -215,14 +227,7 @@ class EntityClientMixin:
                     ]
                 },
                 headers=headers,
-                params={
-                    "upsert": "true",
-                    "merge": str(request_options["merge"]).lower(),
-                    "create_missing_related_entities": str(
-                        request_options["create_missing_related_entities"]
-                    ).lower(),
-                    "validation_only": str(validation_only).lower(),
-                },
+                params=params,
                 extensions={"retryable": True},
             )
         if response.is_error:
@@ -261,34 +266,55 @@ class EntityClientMixin:
         }
         error_entities = {error["index"]: error for error in result.get("errors", [])}
 
+        if error_entities:
+            sample_errors = {
+                idx: {
+                    "identifier": entities[idx].identifier,
+                    "blueprint": entities[idx].blueprint,
+                    "error": error_entities[idx].get("message")
+                    or error_entities[idx].get("error"),
+                }
+                for idx in list(error_entities.keys())[:5]  # Sample up to 5 errors
+            }
+
+            logger.error(
+                "Bulk upsert completed with entity-specific failures",
+                extra={
+                    "failed_count": len(error_entities),
+                    "sample_errors": sample_errors,
+                },
+            )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                MetricPhase.LoadResult.LOADED,
+            ],
+            value=len(successful_entities),
+        )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                MetricPhase.LoadResult.FAILED,
+            ],
+            value=len(error_entities),
+        )
+
         batch_results: list[tuple[bool | None, Entity]] = []
         for entity_index, original_entity in index_to_entity.items():
             reduced_entity = self._reduce_entity(original_entity)
             if entity_index in successful_entities:
-                ocean.metrics.inc_metric(
-                    name=MetricType.OBJECT_COUNT_NAME,
-                    labels=[
-                        ocean.metrics.current_resource_kind(),
-                        MetricPhase.LOAD,
-                        MetricPhase.LoadResult.LOADED,
-                    ],
-                    value=1,
-                )
                 success_entity = successful_entities[entity_index]
                 # Create a copy of the original entity with the new identifier
                 updated_entity = reduced_entity.copy()
                 updated_entity.identifier = success_entity["identifier"]
                 batch_results.append((True, updated_entity))
             elif entity_index in error_entities:
-                ocean.metrics.inc_metric(
-                    name=MetricType.OBJECT_COUNT_NAME,
-                    labels=[
-                        ocean.metrics.current_resource_kind(),
-                        MetricPhase.LOAD,
-                        MetricPhase.LoadResult.FAILED,
-                    ],
-                    value=1,
-                )
                 error = error_entities[entity_index]
                 if (
                     error.get("identifier") == "unknown"
@@ -432,14 +458,16 @@ class EntityClientMixin:
             logger.info(
                 f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
+            params = {
+                "delete_dependents": str(
+                    request_options["delete_dependent_entities"]
+                ).lower(),
+                **get_event_context_params(),
+            }
             response = await self.client.delete(
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
                 headers=await self.auth.headers(user_agent_type),
-                params={
-                    "delete_dependents": str(
-                        request_options["delete_dependent_entities"]
-                    ).lower()
-                },
+                params=params,
             )
 
             if response.is_error:
@@ -556,7 +584,6 @@ class EntityClientMixin:
         if query.get("rules"):
             query["rules"].extend(default_query["rules"])
 
-        logger.info(f"Searching entities with custom query: {query}")
         response = await self.client.post(
             f"{self.auth.api_url}/entities/search",
             json=query,

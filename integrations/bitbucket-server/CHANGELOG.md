@@ -7,6 +7,758 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.167-beta (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.1.166-beta (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.1.165-beta (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.1.164-beta (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.1.163-beta (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.1.162-beta (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.1.161-beta (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.1.160-beta (2026-04-14)
+
+
+### Improvements
+
+- Split multi-value Literal kind definitions into dedicated resource config models in `BitbucketAppConfig` for schema validation compliance
+
+
+## 0.1.159-beta (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.1.158-beta (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.1.157-beta (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.1.156-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.1.155-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.1.154-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.1.153-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.1.152-beta (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 0.1.151-beta (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 0.1.150-beta (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.1.149-beta (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.1.148-beta (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.1.147-beta (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.1.146-beta (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.1.145-beta (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.1.144-beta (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.1.143-beta (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+## 0.1.142-beta (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+## 0.1.141-beta (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+## 0.1.140-beta (2026-03-15)
+
+
+### Bug Fixes
+
+- Delete the old repository entity on `repo:modified` when a repository is moved between projects or renamed, preventing orphan repositories in Port.
+
+
+## 0.1.139-beta (2026-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+
+
+## 0.1.138-beta (2026-03-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
+## 0.1.137-beta (2026-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.10
+
+
+## 0.1.136-beta (2026-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.9
+
+
+## 0.1.135-beta (2026-03-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+## 0.1.134-beta (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+## 0.1.133-beta (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
+
+
+## 0.1.132-beta (2026-03-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+## 0.1.131-beta (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+## 0.1.130-beta (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+## 0.1.129-beta (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+## 0.1.128-beta (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+## 0.1.127-beta (2026-02-25)
+
+
+### Bug Fixes
+
+- Fixed bug where project filter regex is None though the selector was set
+
+
+## 0.1.126-beta (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+## 0.1.125-beta (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
+## 0.1.124-beta (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.1
+
+
+## 0.1.123-beta (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
+
+
+## 0.1.122-beta (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+## 0.1.121-beta (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+## 0.1.120-beta (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+## 0.1.119-beta (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
+## 0.1.118-beta (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.1.117-beta (2026-02-11)
+
+
+### Bug Fixes
+
+- Fixed future attached to a different loop error when syncing large numbers of pull requests in multiprocess mode
+
+
+## 0.1.116-beta (2026-02-09)
+
+
+### Bug Fixes
+
+- Fixed authentication not persisting across resource kinds by passing auth per-request instead of mutating the shared HTTP client state
+
+
+## 0.1.115-beta (2025-02-05)
+
+
+### Bug Fixes
+
+- Fixed Integration takes a long time before completing resync
+
+
+## 0.1.114-beta (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 0.1.113-beta (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+## 0.1.112-beta (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+## 0.1.111-beta (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
+## 0.1.110-beta (2026-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
+
+
+## 0.1.109-beta (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.1
+
+
+## 0.1.108-beta (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.0
+
+
+## 0.1.107-beta (2026-01-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.17
+
+
+## 0.1.106-beta (2026-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.16
+
+
+## 0.1.105-beta (2026-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
+
+
+## 0.1.104-beta (2026-01-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
+## 0.1.103-beta (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+## 0.1.102-beta (2026-01-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+## 0.1.101-beta (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 0.1.100-beta (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 0.1.99-beta (2025-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.9
+
+
+## 0.1.98-beta (2025-12-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.8
+
+
+## 0.1.97-beta (2025-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.7
+
+
+## 0.1.96-beta (2025-12-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.5
+
+
+## 0.1.95-beta (2025-12-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
+## 0.1.94-beta (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 0.1.93-beta (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 0.1.92-beta (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
+## 0.1.91-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
+
+
+## 0.1.90-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.7
+
+
+## 0.1.89-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
+## 0.1.88-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+## 0.1.87-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.3
+
+
+## 0.1.86-beta (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 0.1.85-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.1.84-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 0.1.83-beta (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 0.1.82-beta (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 0.1.81-beta (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.1.80-beta (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.1.79-beta (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.1.78-beta (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.1.77-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.1.76-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.1.75-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.1.74-beta (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
 ## 0.1.73-beta (2025-11-19)
 
 
@@ -100,6 +852,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.28.19
+
 
 
 ## 0.1.62-beta (2025-10-27)

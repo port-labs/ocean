@@ -33,6 +33,8 @@ class FileEntityProcessor(JQEntityProcessor):
                 branch=branch,
             )
         )
+        if not file_content_response:
+            return None
         decoded_content = file_content_response["content"]
         if not decoded_content:
             logger.info(f"File too large, size - {file_content_response['size']} bytes")
@@ -43,7 +45,9 @@ class FileEntityProcessor(JQEntityProcessor):
         )
         return decoded_content
 
-    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+    async def _search(
+        self, data: dict[str, Any], pattern: str, field: str | None = None
+    ) -> Any:
         """
         Search for a file in the repository and return its content.
 

@@ -1,3 +1,4 @@
+from wcmatch import glob
 from enum import StrEnum
 from typing import (
     Any,
@@ -13,10 +14,15 @@ from typing import (
 from loguru import logger
 
 from port_ocean.utils import cache
+from port_ocean.utils.cache import cache_coroutine_result
 
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
+    from github.clients.http.graphql_client import GithubGraphQLClient
+
+
+BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE
 
 
 class GithubClientType(StrEnum):
@@ -41,6 +47,7 @@ class ObjectKind(StrEnum):
     BRANCH = "branch"
     ENVIRONMENT = "environment"
     DEPLOYMENT = "deployment"
+    DEPLOYMENT_STATUS = "deployment-status"
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
     SECRET_SCANNING_ALERT = "secret-scanning-alerts"
@@ -62,7 +69,10 @@ def enrich_with_organization(
 
 
 def enrich_with_repository(
-    response: Dict[str, Any], repo_name: str, key: str = "__repository"
+    response: Dict[str, Any],
+    repo_name: str,
+    key: str = "__repository",
+    repo: Optional[dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Helper function to enrich response with repository information.
     Args:
@@ -72,7 +82,10 @@ def enrich_with_repository(
     Returns:
         The enriched response
     """
+
     response[key] = repo_name
+    if repo:
+        response["__repository_object"] = repo
     return response
 
 
@@ -97,6 +110,11 @@ async def fetch_commit_diff(
     """
     resource = f"{client.base_url}/repos/{organization}/{repo_name}/compare/{before_sha}...{after_sha}"
     response = await client.send_api_request(resource)
+    if not response:
+        logger.warning(
+            f"No commit diff found for {before_sha}...{after_sha} in {repo_name} from {organization}"
+        )
+        return {"files": []}
 
     logger.info(
         f"Found {len(response['files'])} files in commit diff of organization: {organization}"
@@ -150,3 +168,144 @@ async def get_repository_metadata(
     url = f"{client.base_url}/repos/{organization}/{repo_name}"
     logger.info(f"Fetching metadata for repository: {repo_name} from {organization}")
     return await client.send_api_request(url)
+
+
+@cache.cache_coroutine_result()
+async def enrich_user_with_primary_email(
+    client: "AbstractGithubClient", user: Dict[str, Any]
+) -> Dict[str, Any]:
+    response = await client.make_request(f"{client.base_url}/user/emails")
+    data: list[dict[str, Any]] = response.json()
+    if not data:
+        logger.error("Failed to fetch user emails")
+        return user
+
+    primary_email = next((item for item in data if item["primary"] is True), None)
+    if primary_email:
+        user["email"] = primary_email["email"]
+    return user
+
+
+def issue_matches_labels(
+    issue_labels: list[dict[str, Any]], required_labels: Optional[list[str]]
+) -> bool:
+    """
+    Check if an issue's labels match the required labels filter.
+
+    Args:
+        issue_labels: List of label objects from webhook payload
+        required_labels: List of required labels
+
+    Returns:
+        True if issue matches (has ALL of the required labels), False otherwise
+    """
+    if not required_labels:
+        return True
+
+    required_set = {label.lower() for label in required_labels}
+    if not required_set:
+        return True
+
+    issue_label_names = {label["name"].lower() for label in issue_labels}
+
+    return required_set.issubset(issue_label_names)
+
+
+def has_exhausted_rate_limit_headers(headers: Any) -> bool:
+    """
+    Return True when GitHub's rate limit headers indicate an exhausted quota.
+
+    Accepts any headers-like mapping (e.g. `httpx.Headers`, `dict[str, str]`).
+    """
+
+    return (
+        headers.get("x-ratelimit-remaining") == "0"
+        and headers.get("x-ratelimit-reset") is not None
+    )
+
+
+def matches_glob_pattern(path: str, pattern: str, flags: int = 0) -> bool:
+    combined_flags = BASE_GLOB_FLAGS | flags
+    return glob.globmatch(path, pattern, flags=combined_flags)
+
+
+@cache_coroutine_result()
+async def get_saml_identities(
+    client: "GithubGraphQLClient", organization: str
+) -> dict[str, str]:
+    """Fetch and cache SAML identities for an organization.
+
+    Returns a mapping of GitHub login -> SAML nameId (email).
+    """
+    from github.helpers.gql_queries import LIST_EXTERNAL_IDENTITIES_GQL
+
+    variables = {
+        "organization": organization,
+        "first": 100,
+        "__path": "organization.samlIdentityProvider.externalIdentities",
+        "__node_key": "edges",
+    }
+
+    saml_users: dict[str, str] = {}
+
+    logger.info(f"Starting SAML identity fetch for organization '{organization}'")
+
+    try:
+        async for identity_batch in client.send_paginated_request(
+            LIST_EXTERNAL_IDENTITIES_GQL,
+            variables,
+        ):
+            for user in identity_batch:
+                if user["node"].get("user"):
+                    login = user["node"]["user"]["login"]
+                    name_id = user["node"]["samlIdentity"]["nameId"]
+                    saml_users[login] = name_id
+
+        logger.info(
+            f"SAML fetch complete for '{organization}': {len(saml_users)} identities"
+        )
+    except TypeError:
+        logger.info(f"SAML not enabled for organization '{organization}'")
+
+    return saml_users
+
+
+async def enrich_members_with_saml_email(
+    client: "GithubGraphQLClient",
+    organization: str,
+    members: list[dict[str, Any]],
+    include_saml_email: bool,
+) -> None:
+    """
+    Enrich members in-place:
+    - If include_saml_email=True: add '__SAMLEmail' field for all members
+    - Always: fill 'email' field from SAML when it's missing
+    """
+    if not members:
+        return
+
+    if not include_saml_email and all(m.get("email") for m in members):
+        return
+
+    saml_map = await get_saml_identities(client, organization)
+
+    enriched = 0
+    for member in members:
+        login = member.get("login")
+        saml_email = saml_map.get(login) if login else None
+
+        member_has_email = member.get("email")
+        should_fallback_to_saml_email = not member_has_email and saml_email
+
+        if include_saml_email or should_fallback_to_saml_email:
+            member["__SAMLEmail"] = saml_email
+
+        if should_fallback_to_saml_email:
+            member["email"] = saml_email
+            enriched += 1
+
+    if enriched > 0:
+        logger.info(
+            f"Enriched {enriched}/{len(members)} members with SAML email "
+            f"for organization '{organization}'"
+        )

@@ -1,0 +1,48 @@
+{
+  "user": {
+    "subjectKind": "user",
+    "metaType": "guest",
+    "directoryAlias": "jdoe_contoso.com#EXT#",
+    "domain": "8b2a3c91-11d2-4e89-a2c3-99b8d7621a55",
+    "principalName": "jdoe@contoso.com",
+    "mailAddress": "jdoe@contoso.com",
+    "origin": "aad",
+    "originId": "a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6",
+    "displayName": "John Doe",
+    "_links": {
+      "self": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/Users/aad.QzFlMmQzYzRiNWE2ZzdoOGk5ajBrMWwybTNvNHA1cTZycw=="
+      },
+      "memberships": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/Memberships/aad.QzFlMmQzYzRiNWE2ZzdoOGk5ajBrMWwybTNvNHA1cTZycw=="
+      },
+      "membershipState": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/MembershipStates/aad.QzFlMmQzYzRiNWE2ZzdoOGk5ajBrMWwybTNvNHA1cTZycw=="
+      },
+      "storageKey": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/StorageKeys/aad.QzFlMmQzYzRiNWE2ZzdoOGk5ajBrMWwybTNvNHA1cTZycw=="
+      },
+      "avatar": {
+        "href": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.QzFlMmQzYzRiNWE2ZzdoOGk5ajBrMWwybTNvNHA1cTZycw=="
+      }
+    },
+    "url": "https://vssps.dev.azure.com/technova/_apis/Graph/Users/aad.QzFlMmQzYzRiNWE2ZzdoOGk5ajBrMWwybTNvNHA1cTZycw==",
+    "descriptor": "aad.QzFlMmQzYzRiNWE2ZzdoOGk5ajBrMWwybTNvNHA1cTZycw=="
+  },
+  "extensions": [],
+  "id": "33333333-4444-5555-6666-777777777777",
+  "accessLevel": {
+    "licensingSource": "msdn",
+    "accountLicenseType": "none",
+    "msdnLicenseType": "enterprise",
+    "gitHubLicenseType": "none",
+    "licenseDisplayName": "Visual Studio Enterprise",
+    "status": "active",
+    "statusMessage": "",
+    "assignmentSource": "unknown"
+  },
+  "lastAccessedDate": "2026-04-06T12:00:00.1234567Z",
+  "dateCreated": "2026-01-05T15:15:15.1515151Z",
+  "projectEntitlements": [],
+  "groupAssignments": []
+}

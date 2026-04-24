@@ -7,13 +7,742 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.60-beta (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.2.59-beta (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.2.58-beta (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.2.57-beta (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.2.56-beta (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.2.55-beta (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.2.54-beta (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.2.53-beta (2026-04-14)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions, missing resource configs, and field metadata to `JiraServerPortAppConfig` for schema validation compliance
+
+
+## 0.2.52-beta (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.2.51-beta (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.2.50-beta (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.2.49-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.2.48-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.2.47-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.2.46-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.2.45-beta (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 0.2.44-beta (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 0.2.43-beta (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.2.42-beta (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.2.41-beta (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.2.40-beta (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.2.39-beta (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.2.38-beta (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.2.37-beta (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.2.36-beta (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+## 0.2.35-beta (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+## 0.2.34-beta (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+## 0.2.33-beta (2026-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+
+
+## 0.2.32-beta (2026-03-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
+## 0.2.31-beta (2026-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.10
+
+
+## 0.2.30-beta (2026-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.9
+
+
+## 0.2.29-beta (2026-03-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+## 0.2.28-beta (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+## 0.2.27-beta (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
+
+
+## 0.2.26-beta (2026-03-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+## 0.2.25-beta (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+## 0.2.24-beta (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+## 0.2.23-beta (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+## 0.2.22-beta (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+## 0.2.21-beta (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+## 0.2.20-beta (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
+## 0.2.19-beta (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.1
+
+
+## 0.2.18-beta (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
+
+
+## 0.2.17-beta (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+## 0.2.16-beta (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+## 0.2.15-beta (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+## 0.2.14-beta (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
+## 0.2.13-beta (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.2.12-beta (2026-02-10)
+
+
+### Improvements
+
+- Added log for descriptive error messages from Jira API responses.
+- Added 404 to ignored errors
+
+
+## 0.2.11-beta (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 0.2.10-beta (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+## 0.2.9-beta (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+## 0.2.8-beta (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
+## 0.2.7-beta (2026-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
+
+
+## 0.2.6-beta (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.1
+
+
+## 0.2.5-beta (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.0
+
+
+## 0.2.4-beta (2026-01-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.17
+
+
+## 0.2.3-beta (2026-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.16
+
+
+## 0.2.2-beta (2026-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
+
+
+## 0.2.1-beta (2026-01-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
+## 0.2.0-beta (2026-01-15)
+
+
+### Features
+
+- Added support for live events for `user`, `project` and `issue` kinds
+
+
+## 0.1.110-beta (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+## 0.1.109-beta (2026-01-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+## 0.1.108-beta (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 0.1.107-beta (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 0.1.106-beta (2025-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.9
+
+
+## 0.1.105-beta (2025-12-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.8
+
+
+## 0.1.104-beta (2025-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.7
+
+
+## 0.1.103-beta (2025-12-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.5
+
+
+## 0.1.102-beta (2025-12-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
+## 0.1.101-beta (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 0.1.100-beta (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 0.1.99-beta (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
+## 0.1.98-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
+
+
+## 0.1.97-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.7
+
+
+## 0.1.96-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
+## 0.1.95-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+## 0.1.94-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.3
+
+
+## 0.1.93-beta (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 0.1.92-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.1.91-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 0.1.90-beta (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 0.1.89-beta (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 0.1.88-beta (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.1.87-beta (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.1.86-beta (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.1.85-beta (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.1.84-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.1.83-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.1.82-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.1.81-beta (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
 ## 0.1.80-beta (2025-11-19)
 
 
 ### Improvements
 
-- Prefer Jira users list endpoint with cursor pagination when available, with automatic fallback to legacy `/user/search`. 
-- Adds cursor pagination helper and updates tests to cover list-first and fallback flows. 
+- Prefer Jira users list endpoint with cursor pagination when available, with automatic fallback to legacy `/user/search`.
+- Adds cursor pagination helper and updates tests to cover list-first and fallback flows.
 - Aligns with Atlassian guidance to move away from broad `/search` usage for scalable user retrieval.
 
 

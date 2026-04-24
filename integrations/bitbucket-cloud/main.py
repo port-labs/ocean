@@ -1,4 +1,4 @@
-from typing import Union, cast
+from typing import Union, cast, Any
 
 from loguru import logger
 
@@ -24,11 +24,16 @@ from integration import (
     BitbucketFolderSelector,
     BitbucketFileResourceConfig,
     BitbucketFileSelector,
+    RepositoryResourceConfig,
+    PullRequestResourceConfig,
 )
+from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
 )
 from bitbucket_cloud.helpers.file_kind import process_file_patterns
+from bitbucket_cloud.utils import build_repo_params, build_pull_request_params
+from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
 
 
 @ocean.on_start()
@@ -55,11 +60,38 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
+async def _enrich_repos_batch_with_included_files(
+    client: BitbucketClient,
+    repositories: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of repositories with included files."""
+    if not file_paths or not repositories:
+        return repositories
+    from bitbucket_cloud.enrichments.included_files import (
+        IncludedFilesEnricher,
+        RepositoryIncludedFilesStrategy,
+    )
+
+    enricher = IncludedFilesEnricher(
+        client=client,
+        strategy=RepositoryIncludedFilesStrategy(included_files=file_paths),
+    )
+    return await enricher.enrich_batch(repositories)
+
+
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the workspace."""
     client = init_client()
-    async for repositories in client.get_repositories():
+    selector = cast(RepositoryResourceConfig, event.resource_config).selector
+    params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    included_files = selector.included_files or []
+    async for repositories in client.get_repositories(params=params):
+        if included_files:
+            repositories = await _enrich_repos_batch_with_included_files(
+                client, repositories, included_files
+            )
         yield repositories
 
 
@@ -67,15 +99,30 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests from all repositories."""
     client = init_client()
-    async for repositories in client.get_repositories():
+    selector = cast(PullRequestResourceConfig, event.resource_config).selector
+    params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    options = PullRequestSelectorOptions(
+        user_role=selector.user_role,
+        repo_query=selector.repo_query,
+        pull_request_query=selector.pull_request_query,
+    )
+    async for repositories in client.get_repositories(params=params):
         tasks = [
             client.get_pull_requests(
-                repo.get("slug", repo["name"].lower().replace(" ", "-"))
+                repo.get("slug", repo["name"].lower().replace(" ", "-")),
+                params=build_pull_request_params(options),
             )
             for repo in repositories
         ]
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
+
+
+from bitbucket_cloud.enrichments.included_files import (  # noqa: E402
+    IncludedFilesEnricher,
+    FileIncludedFilesStrategy,
+    FolderIncludedFilesStrategy,
+)
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
@@ -86,8 +133,22 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = cast(BitbucketFolderSelector, config.selector)
     client = init_client()
-
-    async for matching_folders in process_folder_patterns(selector.folders, client):
+    params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    included_files = selector.included_files or []
+    async for matching_folders in process_folder_patterns(
+        selector.folders,
+        client,
+        params=params,
+    ):
+        if included_files:
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=FolderIncludedFilesStrategy(
+                    folder_selectors=selector.folders,
+                    global_included_files=included_files,
+                ),
+            )
+            matching_folders = await enricher.enrich_batch(matching_folders)
         yield matching_folders
 
 
@@ -98,7 +159,15 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         Union[ResourceConfig, BitbucketFileResourceConfig], event.resource_config
     )
     selector = cast(BitbucketFileSelector, config.selector)
+    included_files = selector.included_files or []
+    client = init_client() if included_files else None
     async for file_result in process_file_patterns(selector.files):
+        if included_files and client:
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=FileIncludedFilesStrategy(included_files=included_files),
+            )
+            file_result = await enricher.enrich_batch(file_result)
         yield file_result
 
 

@@ -16,12 +16,14 @@ if TYPE_CHECKING:
 
 async def fetch_dast_scan_results(
     dast_scan_id: str,
+    dast_project_id: str,
     selector: "CheckmarxOneDastScanResultSelector",
     dast_scan_result_exporter: "CheckmarxDastScanResultExporter",
 ) -> list[Dict[str, Any]]:
     """Fetch all paginated DAST results for a single scan."""
     options = ListDastScanResultOptions(
         dast_scan_id=dast_scan_id,
+        dast_project_id=dast_project_id,
         severity=selector.filter.severity,
         status=selector.filter.status,
         state=selector.filter.state,
@@ -61,10 +63,11 @@ async def fetch_dast_scan_results_for_environment(
     ):
         for dast_scan in dast_scans_batch:
             scan_id = dast_scan["scanId"]
+            project_id = dast_scan["projectId"]
             tasks.append(
                 asyncio.create_task(
                     fetch_dast_scan_results(
-                        scan_id, selector, dast_scan_result_exporter
+                        scan_id, project_id, selector, dast_scan_result_exporter
                     )
                 )
             )

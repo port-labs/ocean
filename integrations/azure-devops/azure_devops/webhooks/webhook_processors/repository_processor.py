@@ -1,4 +1,4 @@
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, cast
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import Kind
@@ -6,6 +6,7 @@ from azure_devops.webhooks.events import RepositoryEvents
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
 )
+from integration import AzureDevopsRepositoryResourceConfig
 from loguru import logger
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -13,6 +14,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
+)
+from azure_devops.enrichments.included_files import (
+    IncludedFilesEnricher,
+    RepositoryIncludedFilesStrategy,
 )
 
 
@@ -37,18 +42,33 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         repository_id = payload["resource"]["repository"]["id"]
-        repository = await self._get_repository_data(repository_id)
+        client = AzureDevopsClient.create_from_ocean_config()
+        repository = await self._get_repository_data(client, repository_id)
+        if not repository:
+            return WebhookEventRawResults(
+                updated_raw_results=[],
+                deleted_raw_results=[],
+            )
+
+        selector = cast(AzureDevopsRepositoryResourceConfig, resource_config).selector
+        included_files = selector.included_files or []
+        if included_files:
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=RepositoryIncludedFilesStrategy(included_files=included_files),
+            )
+            repository = (await enricher.enrich_batch([repository]))[0]
 
         return WebhookEventRawResults(
-            updated_raw_results=[repository] if repository else [],
+            updated_raw_results=[repository],
             deleted_raw_results=[],
         )
 
     @staticmethod
-    async def _get_repository_data(repository_id: str) -> Optional[Dict[str, Any]]:
-        repository = await AzureDevopsClient.create_from_ocean_config().get_repository(
-            repository_id
-        )
+    async def _get_repository_data(
+        client: AzureDevopsClient, repository_id: str
+    ) -> Optional[Dict[str, Any]]:
+        repository = await client.get_repository(repository_id)
         if not repository:
             logger.warning(f"Repository with ID {repository_id} not found")
             return None

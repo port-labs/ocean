@@ -7,6 +7,757 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.105 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.1.104 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.1.103 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.1.102 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.1.101 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.1.100 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.1.99 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.1.98 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.1.97 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.1.96 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.1.95 (2026-04-07)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions and introduced OktaGroupResourceConfig
+- Removed bare ResourceConfig from the union
+- Added title metadata to all selector fields in OktaUserSelector
+- Added resource metadata in OktaAppConfig for schema validation compliance.
+
+
+## 0.1.94 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.1.93 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.1.92 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.1.91 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.1.90 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 0.1.89 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 0.1.88 (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.1.87 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.1.86 (2026-03-22)
+
+
+### Bug Fixes
+
+- Fixed user group and app enrichment to paginate through all results instead of returning only the first 200
+- Fixed pagination URL handling when using an Okta admin domain whose Link header returns a different subdomain
+
+
+## 0.1.85 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.1.84 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.1.83 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.1.82 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.1.81 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.1.80 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+## 0.1.79 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+## 0.1.78 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+## 0.1.77 (2026-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+
+
+## 0.1.76 (2026-03-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
+## 0.1.75 (2026-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.10
+
+
+## 0.1.74 (2026-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.9
+
+
+## 0.1.73 (2026-03-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+## 0.1.72 (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+## 0.1.71 (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
+
+
+## 0.1.70 (2026-03-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+## 0.1.69 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+## 0.1.68 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+## 0.1.67 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+## 0.1.66 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+## 0.1.65 (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+## 0.1.64 (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
+## 0.1.63 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.1
+
+
+## 0.1.62 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
+
+
+## 0.1.61 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+## 0.1.60 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+## 0.1.59 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+## 0.1.58 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
+## 0.1.57 (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.1.56 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 0.1.55 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+## 0.1.54 (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+## 0.1.53 (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
+## 0.1.52 (2026-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
+
+
+## 0.1.51 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.1
+
+
+## 0.1.50 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.0
+
+
+## 0.1.49 (2026-01-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.17
+
+
+## 0.1.48 (2026-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.16
+
+
+## 0.1.47 (2026-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
+
+
+## 0.1.46 (2026-01-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
+## 0.1.45 (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+## 0.1.44 (2026-01-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+## 0.1.43 (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 0.1.42 (2026-01-13)
+
+
+### Improvements
+
+- Fixed non-existing docs reference in installation docs
+
+## 0.1.41 (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 0.1.40 (2025-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.9
+
+
+## 0.1.39 (2025-12-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.8
+
+
+## 0.1.38 (2025-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.7
+
+
+## 0.1.37 (2025-12-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.5
+
+
+## 0.1.36 (2025-12-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
+## 0.1.35 (2025-12-15)
+
+
+### Improvements
+
+- Released the Okta integration as GA
+
+## 0.1.34-beta (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 0.1.33-beta (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 0.1.32-beta (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
+## 0.1.31-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
+
+
+## 0.1.30-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.7
+
+
+## 0.1.29-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
+## 0.1.28-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+## 0.1.27-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.3
+
+
+## 0.1.26-beta (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 0.1.25-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.1.24-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 0.1.23-beta (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 0.1.22-beta (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 0.1.21-beta (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.1.20-beta (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.1.19-beta (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.1.18-beta (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.1.17-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.1.16-beta (2025-11-23)
+
+### Features
+
+- Move Okta to Identity Providers
+-
+## 0.1.15-beta (2025-11-23)
+
+
+### Improvements
+
+- Changed `createMissingRelatedEntities` to `false` by default
+
+## 0.1.14-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.1.13-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.1.12-beta (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
 ## 0.1.11-beta (2025-11-19)
 
 

@@ -93,6 +93,33 @@ class TestPagerDutyClient:
             assert collected_data == TEST_DATA["users"]
 
     @pytest.mark.asyncio
+    async def test_paginate_request_to_pager_duty_max_limit(
+        self, client: PagerDutyClient
+    ) -> None:
+        from clients.pagerduty import MAX_PAGERDUTY_RESOURCES, PAGE_SIZE
+
+        num_pages = MAX_PAGERDUTY_RESOURCES // PAGE_SIZE
+        mock_responses: list[Any] = []
+
+        for _ in range(num_pages):
+            mock_responses.append(
+                MagicMock(
+                    json=lambda: {
+                        "users": [{"id": "some_id"}],
+                        "more": True,
+                        "limit": PAGE_SIZE,
+                    }
+                )
+            )
+
+        with patch.object(client.http_client, "request", side_effect=mock_responses):
+            collected_data: list[dict[str, Any]] = []
+            async for page in client.paginate_request_to_pager_duty("users"):
+                collected_data.extend(page)
+
+            assert len(collected_data) == num_pages
+
+    @pytest.mark.asyncio
     async def test_get_single_resource(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {"user": TEST_DATA["users"][0]}
@@ -330,3 +357,92 @@ class TestPagerDutyClient:
 
         # Assert
         assert result.headers["Authorization"] == "Token token=mock-token"
+
+    @pytest.mark.asyncio
+    async def test_get_entity_custom_fields(self, client: PagerDutyClient) -> None:
+        """Test fetching custom fields for a single entity."""
+        custom_fields_response = {
+            "custom_fields": [
+                {
+                    "id": "FIELD1",
+                    "name": "team",
+                    "display_name": "Team",
+                    "data_type": "string",
+                    "field_type": "single_value",
+                    "type": "field_value",
+                    "value": {"value": "Platform"},
+                }
+            ]
+        }
+        mock_response = MagicMock()
+        mock_response.json.return_value = custom_fields_response
+        mock_response.raise_for_status.return_value = None
+
+        with patch.object(client.http_client, "request", return_value=mock_response):
+            result = await client.get_entity_custom_fields("services", "PS123")
+            assert len(result) == 1
+            assert result[0]["name"] == "team"
+            assert result[0]["value"]["value"] == "Platform"
+
+    @pytest.mark.asyncio
+    async def test_get_entity_custom_fields_empty(
+        self, client: PagerDutyClient
+    ) -> None:
+        """Test that custom fields returns empty list when no fields exist."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"custom_fields": []}
+        mock_response.raise_for_status.return_value = None
+
+        with patch.object(client.http_client, "request", return_value=mock_response):
+            result = await client.get_entity_custom_fields("services", "PS123")
+            assert result == []
+
+    @pytest.mark.asyncio
+    async def test_enrich_entities_with_custom_fields(
+        self, client: PagerDutyClient
+    ) -> None:
+        """Test batch enrichment of entities with custom fields."""
+        entities = [
+            {"id": "PS123", "name": "Service 1"},
+            {"id": "PS456", "name": "Service 2"},
+        ]
+
+        custom_fields_1 = [{"id": "F1", "name": "team", "value": {"value": "Alpha"}}]
+        custom_fields_2 = [{"id": "F1", "name": "team", "value": {"value": "Beta"}}]
+
+        with patch.object(
+            client,
+            "get_entity_custom_fields",
+            side_effect=[custom_fields_1, custom_fields_2],
+        ):
+            result = await client.enrich_entities_with_custom_fields(
+                entities, "services"
+            )
+
+        assert len(result) == 2
+        assert result[0]["__custom_fields"] == custom_fields_1
+        assert result[1]["__custom_fields"] == custom_fields_2
+
+    @pytest.mark.asyncio
+    async def test_enrich_entities_with_custom_fields_partial_empty(
+        self, client: PagerDutyClient
+    ) -> None:
+        """Test that entities with no custom fields get an empty list."""
+        entities = [
+            {"id": "PS123", "name": "Service 1"},
+            {"id": "PS456", "name": "Service 2"},
+        ]
+
+        custom_fields_1 = [{"id": "F1", "name": "team", "value": {"value": "Alpha"}}]
+
+        with patch.object(
+            client,
+            "get_entity_custom_fields",
+            side_effect=[custom_fields_1, []],
+        ):
+            result = await client.enrich_entities_with_custom_fields(
+                entities, "services"
+            )
+
+        assert result[0]["__custom_fields"] == custom_fields_1
+        assert result[1]["__custom_fields"] == []

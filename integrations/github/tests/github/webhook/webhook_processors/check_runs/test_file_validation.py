@@ -8,6 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 
+from github.helpers.utils import ObjectKind
 from integration import (
     GithubFilePattern,
     GithubFileResourceConfig,
@@ -40,7 +41,7 @@ class MockAsyncGenerator:
 @pytest.fixture
 def file_resource_config() -> GithubFileResourceConfig:
     return GithubFileResourceConfig(
-        kind="file",
+        kind=ObjectKind.FILE,
         selector=GithubFileSelector(
             query="true",
             files=[
@@ -141,6 +142,7 @@ class TestFileValidation:
             metadata={"name": "config.yaml", "path": "config.yaml"},
             branch="main",
             name="config.yaml",
+            __base_jq=".content",
         )
 
         with (
@@ -185,6 +187,7 @@ class TestFileValidation:
             metadata={"name": "config.yaml", "path": "config.yaml"},
             branch="main",
             name="config.yaml",
+            __base_jq=".content",
         )
 
         with (
@@ -229,6 +232,7 @@ class TestFileValidation:
             metadata={"name": "config.yaml", "path": "config.yaml"},
             branch="main",
             name="config.yaml",
+            __base_jq=".content",
         )
 
         with (

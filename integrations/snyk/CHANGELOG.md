@@ -7,6 +7,786 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.6 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.4.5 (2026-04-23)
+
+
+### Bug Fixes
+
+- Correct Query API enum option in vulnerability kind
+
+
+## 0.4.4 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.4.3 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.4.2 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.4.1 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.4.0 (2026-04-17)
+
+
+### Features
+
+- Support API query parameters on vulnerabilities and projects for fine-grained filtering
+
+### Improvements
+
+- Add real-time webhook support for the vulnerability kind
+- Allow vulnerabilities to be optionally enriched with their associated project data
+
+
+## 0.3.61 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.3.60 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.3.59 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.3.58 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.3.57 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.3.56 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.3.55 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.3.54 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.3.53 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.3.52 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 0.3.51 (2026-03-30)
+
+### Improvements
+
+- Enabled formMappingEnabled flag
+
+
+## 0.3.50 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 0.3.49 (2026-03-27)
+
+
+### Improvements
+
+- Added Literal kind definitions to `SnykPortAppConfig` for schema validation compliance
+
+
+## 0.3.48 (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.3.47 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.3.46 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.3.45 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.3.44 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+## 0.3.43 (2026-03-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+## 0.3.42 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+## 0.3.41 (2026-03-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+## 0.3.40 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+## 0.3.39 (2026-03-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+## 0.3.38 (2026-03-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+
+
+## 0.3.37 (2026-03-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
+## 0.3.36 (2026-03-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.10
+
+
+## 0.3.35 (2026-03-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.9
+
+
+## 0.3.34 (2026-03-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+## 0.3.33 (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+## 0.3.32 (2026-03-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
+
+
+## 0.3.31 (2026-03-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+## 0.3.30 (2026-03-02)
+
+
+### Bug Fixes
+
+- Add an optional attachProjectData flag to allow opt-in org-wide project enrichment on the target kind.
+
+
+## 0.3.29 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+## 0.3.28 (2026-03-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+## 0.3.27 (2026-02-27)
+
+
+### Bug Fixes
+
+- Fix semaphore leakage
+
+
+## 0.3.26 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+## 0.3.25 (2026-02-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+## 0.3.24 (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+## 0.3.23 (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
+## 0.3.22 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.1
+
+
+## 0.3.21 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
+
+
+## 0.3.20 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+## 0.3.19 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+## 0.3.18 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+## 0.3.17 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
+## 0.3.16 (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.3.15 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 0.3.14 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+## 0.3.13 (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+## 0.3.12 (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
+## 0.3.11 (2026-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
+
+
+## 0.3.10 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.1
+
+
+## 0.3.9 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.0
+
+
+## 0.3.8 (2026-01-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.17
+
+
+## 0.3.7 (2026-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.16
+
+
+## 0.3.6 (2026-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
+
+
+## 0.3.5 (2026-01-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
+## 0.3.4 (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+## 0.3.3 (2026-01-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+## 0.3.2 (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 0.3.1 (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 0.3.0 (2025-12-17)
+
+
+### Improvements
+
+- Refactor the integration to make requests more concurrent
+
+
+## 0.2.123 (2025-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.9
+
+
+## 0.2.122 (2025-12-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.8
+
+
+## 0.2.121 (2025-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.7
+
+
+## 0.2.120 (2025-12-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.5
+
+
+## 0.2.119 (2025-12-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
+## 0.2.118 (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 0.2.117 (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 0.2.116 (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
+## 0.2.115 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
+
+
+## 0.2.114 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.7
+
+
+## 0.2.113 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
+## 0.2.112 (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+## 0.2.111 (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.3
+
+
+## 0.2.110 (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 0.2.109 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.2.108 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 0.2.107 (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 0.2.106 (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 0.2.105 (2025-11-27)
+
+
+### Improvements
+
+- Auto-retry requests with 429s in `get-aggregated-issues` endpoint
+
+
+## 0.2.104 (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.2.103 (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.2.102 (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.2.101 (2025-11-24)
+
+
+### Bug Fixes
+
+- Fix cache-miss when syncing target kind
+
+
+## 0.2.100 (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.2.99 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.2.98 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.2.97 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.2.96 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
 ## 0.2.95 (2025-11-19)
 
 

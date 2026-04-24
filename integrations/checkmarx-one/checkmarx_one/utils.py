@@ -14,6 +14,7 @@ class ObjectKind(StrEnum):
     DAST_SCAN_ENVIRONMENT = "dast-scan-environment"
     DAST_SCAN = "dast-scan"
     DAST_SCAN_RESULT = "dast-scan-result"
+    APPLICATION = "application"
 
 
 class ScanResultObjectKind(StrEnum):

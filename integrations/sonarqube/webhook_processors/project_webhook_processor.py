@@ -1,5 +1,5 @@
 from initialize_client import init_sonar_client
-from utils import extract_metrics_from_payload
+
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -7,7 +7,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from integration import ObjectKind
+from typing import cast, Union
+from integration import (
+    ObjectKind,
+    SonarQubeProjectResourceConfig,
+    SonarQubeGAProjectResourceConfig,
+)
 
 
 class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
@@ -17,13 +22,19 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        metrics = extract_metrics_from_payload(payload)
-        sonar_client = init_sonar_client(metrics)
+        sonar_client = init_sonar_client()
+
+        selector = cast(
+            Union[SonarQubeProjectResourceConfig, SonarQubeGAProjectResourceConfig],
+            resource_config,
+        ).selector
+        sonar_client.metrics = selector.metrics
 
         project = await sonar_client.get_single_component(payload["project"])
-        project_data = await sonar_client.get_single_project(project)
+
+        updated_project = await sonar_client.get_single_project(project)
 
         return WebhookEventRawResults(
-            updated_raw_results=[project_data],
+            updated_raw_results=[updated_project],
             deleted_raw_results=[],
         )

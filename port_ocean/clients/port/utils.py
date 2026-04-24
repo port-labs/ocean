@@ -1,6 +1,9 @@
 from typing import TYPE_CHECKING
 
 import httpx
+
+from port_ocean.context.event import EventType, event
+from port_ocean.exceptions.context import EventContextNotFoundError
 from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
@@ -29,6 +32,9 @@ PORT_HTTPX_LIMITS = httpx.Limits(
 _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
 FIVE_MINUETS = 60 * 5
+
+# Prefix for ocean info query params (ocean_info_event_type, ocean_info_resync_id)
+OCEAN_INFO_PREFIX = "ocean_info_"
 
 
 def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
@@ -62,11 +68,28 @@ def get_internal_http_client(port_client: "PortClient") -> httpx.AsyncClient:
     return _port_internal_async_client
 
 
+def get_event_context_params() -> dict[str, str]:
+    """Get ocean info query params when in an event context.
+
+    Uses underscore prefix notation (ocean_info_event_type, ocean_info_resync_id).
+    resyncId is only included for RESYNC events.
+    """
+    try:
+        params: dict[str, str] = {f"{OCEAN_INFO_PREFIX}event_type": event.event_type}
+        if event.event_type == EventType.RESYNC:
+            params[f"{OCEAN_INFO_PREFIX}resync_id"] = event.id
+        return params
+    except EventContextNotFoundError:
+        pass
+    return {}
+
+
 def handle_port_status_code(
     response: httpx.Response, should_raise: bool = True, should_log: bool = True
 ) -> None:
     if should_log and response.is_error:
-        error_message = f"Request failed with status code: {response.status_code}, Error: {response.text}"
+        escaped_response_text = response.text.replace("{", "{{").replace("}", "}}")
+        error_message = f"Request failed with status code: {response.status_code}, Error: {escaped_response_text}"
         if response.status_code >= 500 and response.headers.get("x-trace-id"):
             logger.error(
                 error_message,

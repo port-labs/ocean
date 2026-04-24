@@ -17,7 +17,7 @@ from webhook_processors.services import ServiceWebhookProcessor
 from webhook_processors.incidents import IncidentWebhookProcessor
 from kinds import Kinds
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from integration import PagerdutyIncidentResourceConfig
+from integration import PagerdutyIncidentResourceConfig, PagerdutyServiceResourceConfig
 
 
 @pytest.fixture(autouse=True)
@@ -85,17 +85,30 @@ def resource_config() -> ResourceConfig:
 
 
 @pytest.fixture(
-    params=[True, False], ids=["incidentAnalytics=True", "incidentAnalytics=False"]
+    params=[
+        (False, False),
+        (True, False),
+        (False, True),
+        (True, True),
+    ],
+    ids=[
+        "analytics=False,customFields=False",
+        "analytics=True,customFields=False",
+        "analytics=False,customFields=True",
+        "analytics=True,customFields=True",
+    ],
 )
 def incident_resource_config(
     request: pytest.FixtureRequest,
 ) -> PagerdutyIncidentResourceConfig:
-    """Typed incident resource config so selector has incident_analytics."""
+    """Typed incident resource config so selector has incident_analytics and include_custom_fields."""
+    analytics_enabled, custom_fields_enabled = request.param
     return PagerdutyIncidentResourceConfig(
         kind="incidents",
         selector=PagerdutyIncidentResourceConfig.PagerdutySelector(
             query="true",
-            incidentAnalytics=request.param,
+            incidentAnalytics=analytics_enabled,
+            includeCustomFields=custom_fields_enabled,
         ),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -103,6 +116,33 @@ def incident_resource_config(
                     identifier=".id",
                     title=".title",
                     blueprint='"pagerdutyIncident"',
+                    properties={},
+                )
+            )
+        ),
+    )
+
+
+@pytest.fixture(
+    params=[True, False],
+    ids=["customFields=True", "customFields=False"],
+)
+def service_resource_config(
+    request: pytest.FixtureRequest,
+) -> PagerdutyServiceResourceConfig:
+    """Typed service resource config so selector has include_custom_fields."""
+    return PagerdutyServiceResourceConfig(
+        kind="services",
+        selector=PagerdutyServiceResourceConfig.PagerdutySelector(
+            query="true",
+            includeCustomFields=request.param,
+        ),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".name",
+                    blueprint='"pagerdutyService"',
                     properties={},
                 )
             )
@@ -170,7 +210,7 @@ class TestServiceWebhookProcessor:
         self,
         service_webhook_processor: ServiceWebhookProcessor,
         mock_client: MagicMock,
-        resource_config: ResourceConfig,
+        service_resource_config: PagerdutyServiceResourceConfig,
     ) -> None:
         service_id = "SERVICE123"
         service_data = {
@@ -184,12 +224,17 @@ class TestServiceWebhookProcessor:
             return_value={"service": service_data}
         )
         mock_client.update_oncall_users = AsyncMock(return_value=[service_data])
+        mock_client.enrich_entities_with_custom_fields = AsyncMock(
+            return_value=[service_data]
+        )
 
         payload = {
             "event": {"event_type": "service.created", "data": {"id": service_id}}
         }
 
-        result = await service_webhook_processor.handle_event(payload, resource_config)
+        result = await service_webhook_processor.handle_event(
+            payload, service_resource_config
+        )
         assert isinstance(result, WebhookEventRawResults)
         assert result.updated_raw_results == [service_data]
         assert result.deleted_raw_results == []
@@ -199,6 +244,45 @@ class TestServiceWebhookProcessor:
             object_type=Kinds.SERVICES, identifier=service_id
         )
         mock_client.update_oncall_users.assert_called_once_with([service_data])
+
+    async def test_handle_event_upsert_with_custom_fields(
+        self,
+        service_webhook_processor: ServiceWebhookProcessor,
+        mock_client: MagicMock,
+        service_resource_config: PagerdutyServiceResourceConfig,
+    ) -> None:
+        service_id = "SERVICE123"
+        service_data = {
+            "id": service_id,
+            "name": "Test Service",
+            "escalation_policy": {"id": "EP123"},
+        }
+
+        mock_client.get_single_resource = AsyncMock(
+            return_value={"service": service_data}
+        )
+        mock_client.update_oncall_users = AsyncMock(return_value=[service_data])
+        mock_client.enrich_entities_with_custom_fields = AsyncMock(
+            return_value=[service_data]
+        )
+
+        payload = {
+            "event": {"event_type": "service.created", "data": {"id": service_id}}
+        }
+
+        result = await service_webhook_processor.handle_event(
+            payload, service_resource_config
+        )
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == [service_data]
+        assert result.deleted_raw_results == []
+
+        if service_resource_config.selector.include_custom_fields:
+            mock_client.enrich_entities_with_custom_fields.assert_called_once_with(
+                [service_data], Kinds.SERVICES
+            )
+        else:
+            mock_client.enrich_entities_with_custom_fields.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -282,6 +366,9 @@ class TestIncidentWebhookProcessor:
         mock_client.enrich_incidents_with_analytics_data = AsyncMock(
             return_value=[incident_data]
         )
+        mock_client.enrich_entities_with_custom_fields = AsyncMock(
+            return_value=[incident_data]
+        )
 
         payload = {
             "event": {"event_type": "incident.triggered", "data": {"id": incident_id}}
@@ -307,3 +394,10 @@ class TestIncidentWebhookProcessor:
             )
         else:
             mock_client.enrich_incidents_with_analytics_data.assert_not_called()
+
+        if incident_resource_config.selector.include_custom_fields:
+            mock_client.enrich_entities_with_custom_fields.assert_called_once_with(
+                [incident_data], Kinds.INCIDENTS
+            )
+        else:
+            mock_client.enrich_entities_with_custom_fields.assert_not_called()

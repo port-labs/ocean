@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -5,14 +6,26 @@ from httpx import AsyncClient
 
 from webhook_processors.webhook_client import BitbucketServerWebhookClient
 
+SPEC_DEFAULT_RATE_LIMIT = 1000
+SPEC_DEFAULT_RATE_LIMIT_WINDOW = 3600
+
+
+def _build_client(**overrides: Any) -> BitbucketServerWebhookClient:
+    base_kwargs: dict[str, Any] = {
+        "base_url": "https://bitbucket.example.com",
+        "username": "test-user",
+        "password": "test-password",
+        "rate_limit": SPEC_DEFAULT_RATE_LIMIT,
+        "rate_limit_window": SPEC_DEFAULT_RATE_LIMIT_WINDOW,
+    }
+    base_kwargs.update(overrides)
+    return BitbucketServerWebhookClient(**base_kwargs)
+
 
 @pytest.fixture
 def mock_client() -> BitbucketServerWebhookClient:
     """Create a mocked Bitbucket Server client."""
-    client = BitbucketServerWebhookClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
+    client = _build_client(
         webhook_secret="test-secret",
         app_host="https://app.example.com",
     )

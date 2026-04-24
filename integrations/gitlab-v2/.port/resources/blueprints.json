@@ -11,6 +11,11 @@
           "format": "markdown",
           "icon": "Book"
         },
+        "codeowners": {
+          "title": "CODEOWNERS",
+          "type": "string",
+          "format": "markdown"
+        },
         "url": {
           "title": "URL",
           "format": "url",

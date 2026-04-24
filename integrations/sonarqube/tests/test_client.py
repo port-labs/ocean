@@ -125,6 +125,53 @@ async def test_sonarqube_client_will_send_api_request(
     assert response == PURE_PROJECTS[0]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status_code", [401, 403, 404])
+async def test_send_api_request_should_not_raise_exception_for_ignored_errors(
+    status_code: int,
+    mock_ocean_context: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    sonarqube_client.http_client = MockHttpxClient(  # type: ignore
+        [
+            {"status_code": status_code, "json": {"errors": [{"msg": "some error"}]}},
+        ]
+    )
+
+    result = await sonarqube_client._send_api_request("test")
+
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_should_raise_exception_for_unignored_errors(
+    mock_ocean_context: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    sonarqube_client.http_client = MockHttpxClient(  # type: ignore
+        [
+            {"status_code": 500, "json": {"errors": [{"msg": "some error"}]}},
+        ]
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await sonarqube_client._send_api_request("test")
+
+
 async def test_sonarqube_client_will_repeatedly_make_pagination_request(
     projects: list[dict[str, Any]], monkeypatch: Any, mock_ocean_context: Any
 ) -> None:
@@ -203,7 +250,6 @@ async def test_pagination_with_large_dataset(
     ]
 
     async with event_context("test_event"):
-
         monkeypatch.setattr(
             sonarqube_client, "get_single_project", mock_get_single_project
         )
@@ -1099,3 +1145,89 @@ async def test_sonarqube_client_normalizes_trailing_slashes(
     assert client_without_app_host.base_url == "https://sonarqube.com"
     assert client_without_app_host.app_host is None
     assert client_without_app_host.webhook_invoke_url == ""
+
+
+@pytest.mark.asyncio
+async def test_get_issues_by_component_pops_pagination_param_and_resets(
+    mock_ocean_context: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    component = {"key": "test-project"}
+    query_params = {"some_other_param": "value"}
+
+    mock_http_client = AsyncMock()
+
+    # Prepare mock responses
+    mock_responses = [
+        httpx.Response(
+            200,
+            json={
+                "issues": [{"key": "issue1"}],
+                "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
+            },
+            request=httpx.Request("GET", "https://sonarqube.com"),
+        ),
+        httpx.Response(
+            200,
+            json={
+                "issues": [{"key": "issue2"}],
+                "paging": {"pageIndex": 2, "pageSize": 1, "total": 2},
+            },
+            request=httpx.Request("GET", "https://sonarqube.com"),
+        ),
+        httpx.Response(
+            200,
+            json={"issues": [], "paging": {"pageIndex": 1, "pageSize": 1, "total": 0}},
+            request=httpx.Request("GET", "https://sonarqube.com"),
+        ),
+    ]
+
+    captured_params: list[dict[str, Any]] = []
+
+    async def capture_request(*args: Any, **kwargs: Any) -> httpx.Response:
+        captured_params.append(dict(kwargs.get("params", {})))
+        return mock_responses.pop(0)
+
+    mock_http_client.request.side_effect = capture_request
+    sonarqube_client.http_client = mock_http_client
+
+    # First call: processes 2 pages
+    batches = []
+    async for batch in sonarqube_client.get_issues_by_component(
+        component, query_params=query_params
+    ):
+        batches.append(batch)
+
+    assert len(batches) == 2
+
+    # First request: no pagination param
+    sent_params_1 = captured_params[0]
+    assert "p" not in sent_params_1
+    assert sent_params_1["ps"] == 100
+    assert sent_params_1["some_other_param"] == "value"
+    assert sent_params_1["componentKeys"] == "test-project"
+
+    # Second request: pagination applied
+    sent_params_2 = captured_params[1]
+    assert sent_params_2["p"] == 2
+    assert sent_params_2["ps"] == 100
+
+    # Original query params must remain untouched
+    assert query_params == {"some_other_param": "value"}
+
+    # Second call: should reset pagination (no 'p' again)
+    async for _ in sonarqube_client.get_issues_by_component(
+        component, query_params=query_params
+    ):
+        pass
+
+    sent_params_3 = captured_params[2]
+    assert "p" not in sent_params_3
+    assert sent_params_3["ps"] == 100

@@ -461,11 +461,11 @@ async def test_wait_for_next_slot() -> None:
         await limiter.acquire()
         assert len(limiter._timestamps) == 1
 
-        # Instead of waiting for real time, mock time
-        with patch.object(limiter, "wait_for_next_slot") as mock_wait:
-            mock_wait.return_value = None
+        # Mock asyncio.sleep instead of the method itself (due to __slots__)
+        with patch("asyncio.sleep") as mock_sleep:
+            mock_sleep.return_value = None
             await limiter.wait_for_next_slot()
-            assert mock_wait.called
+            assert mock_sleep.called
 
         # After simulated waiting, we should be able to acquire again
         # First purge to simulate expired timestamps

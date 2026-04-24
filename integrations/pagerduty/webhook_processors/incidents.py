@@ -41,6 +41,11 @@ class IncidentWebhookProcessor(PagerdutyAbstractWebhookProcessor):
         if selector.incident_analytics:
             incidents = await client.enrich_incidents_with_analytics_data(incidents)
 
+        if selector.include_custom_fields:
+            incidents = await client.enrich_entities_with_custom_fields(
+                incidents, Kinds.INCIDENTS
+            )
+
         return WebhookEventRawResults(
             updated_raw_results=incidents,
             deleted_raw_results=[],

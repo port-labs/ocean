@@ -10,6 +10,8 @@ export OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS=$latency_ms
 export OCEAN__METRICS="1"
 export ENTITY_AMOUNT=45000
 export THIRD_PARTY_BATCH_SIZE=500
+# Use latest image from registry for local metric tests
+export SMOKE_TEST_IMAGE="ghcr.io/port-labs/port-ocean-fake-integration:latest"
 make -f "$ROOT_DIR/Makefile" build
 
 make -f "$ROOT_DIR/Makefile" smoke/start-mock-api

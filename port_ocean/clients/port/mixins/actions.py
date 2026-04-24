@@ -28,7 +28,7 @@ class ActionsClientMixin:
 
         handle_port_status_code(response, should_log=should_log)
 
-    async def claim_pending_runs(
+    async def claim_pending_action_runs(
         self, limit: int, visibility_timeout_ms: int
     ) -> list[ActionRun]:
         response = await self.client.post(
@@ -68,7 +68,7 @@ class ActionsClientMixin:
         )
         handle_port_status_code(response, should_raise=should_raise)
 
-    async def acknowledge_run(self, run_id: str) -> None:
+    async def acknowledge_action_run(self, run_id: str) -> None:
         try:
             response = await self.client.patch(
                 f"{self.auth.api_url}/actions/runs/ack",
@@ -84,7 +84,7 @@ class ActionsClientMixin:
                 raise RunAlreadyAcknowledgedError()
             raise
 
-    async def post_run_log(self, run_id: str, message: str) -> None:
+    async def post_action_run_log(self, run_id: str, message: str) -> None:
         response = await self.client.post(
             f"{self.auth.api_url}/actions/runs/{run_id}/logs",
             headers=await self.auth.headers(),

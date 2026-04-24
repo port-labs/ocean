@@ -43,7 +43,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/prod install/local-core lint lint/fix run test clean seed
+.SILENT: install install/prod install/local-core lint lint/fix run test test/integration clean seed
 
 install:
 	$(call deactivate_virtualenv) && \
@@ -51,7 +51,7 @@ install:
 	poetry install --with dev --no-root
 
 install/local-core: install
-	# NOTE: This is a temporary change that shouldn't be committed
+	# For local development only: installs local Ocean core in editable mode - Note: do not commit the resulting environment changes
 	$(ACTIVATE) && pip install -e ../../
 
 install/prod:
@@ -72,6 +72,9 @@ run:
 
 test:
 	$(ACTIVATE) && poetry run pytest -n auto
+
+test/integration:
+	$(ACTIVATE) && poetry run pytest integration_tests/ -xvs -o "addopts="
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;

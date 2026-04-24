@@ -15,7 +15,9 @@ class EventListenerType(StrEnum):
 
 
 class CreatePortResourcesOrigin(StrEnum):
+    Empty = "Empty"
     Ocean = "Ocean"
+    Default = "Default"
     Port = "Port"
 
 
@@ -134,13 +136,38 @@ class EntityPortDiff:
 class IntegrationFeatureFlag(StrEnum):
     USE_PROVISIONED_DEFAULTS = "USE_PROVISIONED_DEFAULTS"
     LAKEHOUSE_ELIGIBLE = "LAKEHOUSE_ELIGIBLE"
-    OCEAN_ACTIONS_PROCESSING_ENABLED = "OCEAN_ACTIONS_PROCESSING_ENABLED"
+
+
+class LakehouseOperation(StrEnum):
+    UPSERT = "upsert"
+    DELETE = "delete"
+
+
+class LakehouseEventType(StrEnum):
+    RESYNC = "resync"
+    LIVE_EVENT = "live-event"
 
 
 class RunStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
+
+
+class WorkflowNodeRunStatus(StrEnum):
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+
+
+class WorkflowNodeRunResult(StrEnum):
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class WorkflowNodeRunLog(BaseModel):
+    level: Literal["INFO", "WARN", "ERROR", "DEBUG"]
+    message: str
 
 
 class IntegrationActionInvocationPayload(BaseModel):
@@ -154,3 +181,49 @@ class ActionRun(BaseModel):
     id: str
     status: RunStatus
     payload: IntegrationActionInvocationPayload
+
+    @property
+    def action_type(self) -> str:
+        return self.payload.integrationActionType
+
+    @property
+    def execution_properties(self) -> dict[str, Any]:
+        return self.payload.integrationActionExecutionProperties
+
+
+class WorkflowNodeRun(BaseModel):
+    identifier: str
+    status: WorkflowNodeRunStatus
+    node: dict[str, Any] | None = None
+
+    @property
+    def id(self) -> str:
+        return self.identifier
+
+    @property
+    def action_type(self) -> str:
+        if not self.node:
+            return ""
+        return self.node.get("config", {}).get("integrationInvocationType", "")
+
+    @property
+    def execution_properties(self) -> dict[str, Any]:
+        if not self.node:
+            return {}
+        return self.node.get("config", {}).get(
+            "integrationActionExecutionProperties", {}
+        )
+
+
+class ClaimedWorkflowNodeRun(WorkflowNodeRun):
+    config: dict[str, Any]
+    result: WorkflowNodeRunResult | None = None
+    output: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def action_type(self) -> str:
+        return self.config["integrationInvocationType"]
+
+    @property
+    def execution_properties(self) -> dict[str, Any]:
+        return self.config.get("integrationActionExecutionProperties", {})

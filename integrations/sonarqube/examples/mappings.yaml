@@ -4,9 +4,6 @@ resources:
   - kind: projects_ga
     selector:
       query: 'true'
-      apiFilters:
-        qualifier:
-          - TRK
       metrics:
         - code_smells
         - coverage

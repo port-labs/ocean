@@ -26,7 +26,7 @@ from github.core.options import FileContentOptions
 @pytest.fixture
 def resource_config() -> GithubFileResourceConfig:
     return GithubFileResourceConfig(
-        kind="file",
+        kind=ObjectKind.FILE,
         selector=GithubFileSelector(
             query="true",
             files=[

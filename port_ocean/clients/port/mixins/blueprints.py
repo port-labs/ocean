@@ -5,7 +5,10 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.clients.port.utils import (
+    get_event_context_params,
+    handle_port_status_code,
+)
 from port_ocean.core.models import Blueprint
 
 
@@ -74,8 +77,9 @@ class BlueprintClientMixin:
             return None
         else:
             response = await self.client.delete(
-                f"{self.auth.api_url}/blueprints/{identifier}/all-entities?delete_blueprint=true",
-                headers=await self.auth.headers(),
+                f"{self.auth.api_url}/blueprints/{identifier}/all-entities",
+                headers=headers,
+                params={"delete_blueprint": "true", **get_event_context_params()},
             )
 
             handle_port_status_code(response, should_raise)

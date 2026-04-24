@@ -1,6 +1,8 @@
+from datetime import datetime
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
+from pydantic import BaseModel, Field
 
 
 class ListOrganizationOptions(TypedDict):
@@ -8,6 +10,7 @@ class ListOrganizationOptions(TypedDict):
 
     organization: NotRequired[str]
     allowed_multi_organizations: NotRequired[List[str]]
+    include_authenticated_user: NotRequired[bool]
 
 
 class SingleOrganizationOptions(TypedDict):
@@ -16,27 +19,30 @@ class SingleOrganizationOptions(TypedDict):
 
 class SingleRepositoryOptions(SingleOrganizationOptions):
     name: str
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class ListRepositoryOptions(SingleOrganizationOptions):
     """Options for listing repositories."""
 
     type: str
+    organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
     """Options for identifying a repository."""
 
     repo_name: Required[str]
+    repo: NotRequired[Optional[dict[str, Any]]]
 
 
 class SinglePullRequestOptions(RepositoryIdentifier):
     """Options for fetching a single pull request."""
 
     pr_number: Required[int]
+    enrich_with_first_commit: NotRequired[bool]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -44,7 +50,12 @@ class ListPullRequestOptions(RepositoryIdentifier):
 
     states: Required[list[str]]
     max_results: Required[int]
-    since: Required[int]
+    updated_after: Required[datetime]
+    enrich_with_first_commit: NotRequired[bool]
+
+
+class PullRequestGraphQLOptions(BaseModel):
+    enrich_with_first_commit: bool = Field(default=False)
 
 
 class SingleIssueOptions(RepositoryIdentifier):
@@ -57,23 +68,26 @@ class ListIssueOptions(RepositoryIdentifier):
     """Options for listing issues."""
 
     state: Required[str]
+    labels: NotRequired[Optional[str]]
 
 
-class SingleUserOptions(SingleOrganizationOptions):
+class BaseUserOptions(SingleOrganizationOptions):
+    include_saml_email: NotRequired[bool]
+
+
+class SingleUserOptions(BaseUserOptions):
     login: Required[str]
 
 
-class ListUserOptions(SingleOrganizationOptions):
+class ListUserOptions(BaseUserOptions):
     """Options for listing users."""
 
-    include_bots: Required[bool]
 
-
-class SingleTeamOptions(SingleOrganizationOptions):
+class SingleTeamOptions(BaseUserOptions):
     slug: Required[str]
 
 
-class ListTeamOptions(SingleOrganizationOptions):
+class ListTeamOptions(BaseUserOptions):
     """Options for listing teams."""
 
 
@@ -128,6 +142,8 @@ class ListBranchOptions(RepositoryIdentifier):
 
     protection_rules: Required[bool]
     detailed: Required[bool]
+    branch_names: NotRequired[Optional[list[str]]]
+    default_branch_only: NotRequired[bool]
 
 
 class SingleEnvironmentOptions(RepositoryIdentifier):
@@ -149,6 +165,22 @@ class SingleDeploymentOptions(RepositoryIdentifier):
 class ListDeploymentsOptions(RepositoryIdentifier):
     """Options for listing deployments."""
 
+    task: NotRequired[Optional[str]]
+    environment: NotRequired[Optional[str]]
+
+
+class SingleDeploymentStatusOptions(RepositoryIdentifier):
+    """Options for fetching a single deployment status."""
+
+    deployment_id: Required[str]
+    status_id: Required[str]
+
+
+class ListDeploymentStatusesOptions(RepositoryIdentifier):
+    """Options for listing deployment statuses."""
+
+    deployment_id: Required[str]
+
 
 class SingleDependabotAlertOptions(RepositoryIdentifier):
     """Options for fetching a single Dependabot alert."""
@@ -160,6 +192,8 @@ class ListDependabotAlertOptions(RepositoryIdentifier):
     """Options for listing Dependabot alerts."""
 
     state: Required[list[str]]
+    severity: NotRequired[Optional[str]]
+    ecosystem: NotRequired[Optional[str]]
 
 
 class SingleCodeScanningAlertOptions(RepositoryIdentifier):
@@ -172,6 +206,7 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
     """Options for listing code scanning alerts."""
 
     state: Required[str]
+    severity: NotRequired[Optional[str]]
 
 
 class FileContentOptions(RepositoryIdentifier):
@@ -224,6 +259,8 @@ class SingleCollaboratorOptions(RepositoryIdentifier):
 
 class ListCollaboratorOptions(RepositoryIdentifier):
     """Options for listing collaborators."""
+
+    affiliation: Required[str]
 
 
 class BaseSecretScanningAlertOptions(RepositoryIdentifier):

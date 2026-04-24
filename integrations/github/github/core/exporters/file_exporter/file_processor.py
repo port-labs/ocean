@@ -41,6 +41,7 @@ class FileProcessor:
             path=file_path,
             name=file_name,
             metadata=metadata or {},
+            __base_jq=".content",
         )
 
         if skip_parsing:
@@ -119,6 +120,7 @@ class FileProcessor:
                     path=file_path,
                     name=file_name,
                     metadata=file_metadata,
+                    __base_jq=".content",
                 )
 
         return result
@@ -153,6 +155,7 @@ class FileProcessor:
             path=file_path,
             name=file_name,
             metadata=file_info,
+            __base_jq=".content",
         )
 
     async def _process_list_content(
@@ -190,6 +193,7 @@ class FileProcessor:
             path=file_path,
             name=file_name,
             metadata=file_info,
+            __base_jq=".content",
         )
 
     async def _process_file_value(
@@ -225,6 +229,9 @@ class FileProcessor:
                 branch=branch,
             )
         )
+        if not file_content_response:
+            logger.warning(f"File {file_path} not found from {organization}")
+            return ""
         decoded_content = file_content_response.get("content")
         if not decoded_content:
             logger.warning(f"File {file_path} has no content from {organization}")

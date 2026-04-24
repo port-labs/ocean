@@ -35,6 +35,7 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         selector = config.selector
         search_path = selector.files.path
         repos = selector.files.repos
+        included_files = selector.included_files or []
 
         # If repos is provided and doesn't include the event's repo, skip processing
         if repos and repo_path not in repos:
@@ -106,6 +107,19 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                     processed_removed_batch
                 )
             )
+
+        # Enrich updated file results with included files if configured
+        if included_files and updated_results:
+            from gitlab.enrichments.included_files import (
+                IncludedFilesEnricher,
+                FileIncludedFilesStrategy,
+            )
+
+            enricher = IncludedFilesEnricher(
+                client=self._gitlab_webhook_client,
+                strategy=FileIncludedFilesStrategy(included_files=included_files),
+            )
+            updated_results = await enricher.enrich_batch(updated_results)
 
         logger.info(
             f"Completed push event processing; updated {len(updated_results)} entities, deleted {len(deleted_results)} entities"

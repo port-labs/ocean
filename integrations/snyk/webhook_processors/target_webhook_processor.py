@@ -1,4 +1,5 @@
 from IntegrationKind import IntegrationKind
+from typing import cast
 from initialize_client import init_client
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -6,7 +7,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
+from snyk.utils import get_matching_organization
 from webhook_processors.snyk_base_webhook_processor import SnykBaseWebhookProcessor
+from snyk.overrides import TargetResourceConfig
 
 
 class TargetWebhookProcessor(SnykBaseWebhookProcessor):
@@ -19,11 +22,25 @@ class TargetWebhookProcessor(SnykBaseWebhookProcessor):
         # no deletion in snyk events https://docs.snyk.io/snyk-api/how-to-use-snyk-webhooks-apis/webhooks
         snyk_client = init_client()
 
+        selector = cast(TargetResourceConfig, resource_config).selector
+
         project_id = payload["project"]["id"]
         organization_id = payload["org"]["id"]
-        data_to_update = await snyk_client.get_single_target_by_project_id(
-            organization_id, project_id
+        organization = get_matching_organization(
+            await snyk_client.get_all_organizations(), organization_id
         )
+        if not organization:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+        data_to_update = await snyk_client.get_single_target_by_project_id(
+            organization, project_id, attach_project_data=selector.attach_project_data
+        )
+
+        if not data_to_update:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_update], deleted_raw_results=[]

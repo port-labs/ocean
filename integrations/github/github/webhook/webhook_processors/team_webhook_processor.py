@@ -41,7 +41,7 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         action = payload["action"]
         team = payload["team"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(f"Processing org event: {action} of {organization}")
 
@@ -67,8 +67,16 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
             exporter = RestTeamExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleTeamOptions(organization=organization, slug=team["slug"])
+            SingleTeamOptions(
+                organization=organization,
+                slug=team["slug"],
+                include_saml_email=selector.include_saml_email,
+            )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         logger.info(f"Team {team['slug']} of organization: {organization} was upserted")
         return WebhookEventRawResults(

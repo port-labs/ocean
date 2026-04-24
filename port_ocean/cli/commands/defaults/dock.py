@@ -5,7 +5,7 @@ import click
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.cli.commands.main import print_logo, console
-from port_ocean.core.defaults.initialize import initialize_defaults
+from port_ocean.core.defaults.initialization.initialize import initialize_defaults
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import load_module
 from .group import defaults

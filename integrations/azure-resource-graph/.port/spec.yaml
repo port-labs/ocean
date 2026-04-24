@@ -12,6 +12,7 @@ configurations:
     type: string
     required: false
     default: "https://management.azure.com"
+    description: "The base URL of the Azure."
   - name: azureClientId
     type: string
     required: true
@@ -27,3 +28,8 @@ configurations:
     required: true
     sensitive: true
     description: "The tenant ID of your Azure service principal."
+  - name: azureSubscriptionBatchSize
+    type: integer
+    required: false
+    default: 100
+    description: "The number of subscriptions to query in a single batch. Reduce if experiencing inconsistent results."

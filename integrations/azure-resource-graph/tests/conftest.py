@@ -55,6 +55,7 @@ def mock_httpx_client() -> AsyncMock:
 def mock_ocean_context() -> None:
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.is_saas.return_value = False
         mock_ocean_app.config.integration.config = {
             "azure_client_id": "123",
             "azure_client_secret": "secret",

@@ -1,5 +1,5 @@
 resources:
-  - kind: {{ cookiecutter.integration_slug}}-example-kind
+  - kind: example-kind
     selector:
       query: 'true'
     port:

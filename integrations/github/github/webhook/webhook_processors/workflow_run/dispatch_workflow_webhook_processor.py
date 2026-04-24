@@ -10,10 +10,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from port_ocean.core.models import (
-    ActionRun,
-    RunStatus,
-)
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
 )
@@ -52,13 +48,26 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
             return False
 
         workflow_run = event.payload["workflow_run"]
-        actor = await get_authenticated_actor()
-        should_process = (
-            workflow_run["status"] == "completed"
-            and workflow_run["actor"]["login"] == actor
-        )
+        workflow_run_actor = (workflow_run.get("actor") or {}).get("login")
+        workflow_run_status = workflow_run.get("status")
+        with logger.contextualize(
+            workflow_run_id=workflow_run.get("id"),
+            workflow_run_actor=workflow_run_actor,
+            workflow_run_status=workflow_run_status,
+        ):
+            if workflow_run_status != "completed":
+                logger.debug("Skipping workflow run event as it's not completed yet")
+                return False
 
-        return should_process
+            integration_actor = await get_authenticated_actor()
+            if workflow_run_actor == integration_actor:
+                return True
+
+            logger.debug(
+                "Skipping workflow run event as it was not triggered by this integration",
+                integration_actor=integration_actor,
+            )
+            return False
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -67,29 +76,23 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         Handle a workflow run completion webhook event.
         """
         workflow_run = payload["workflow_run"]
-
         external_id = build_external_id(workflow_run)
-        action_run: ActionRun | None = await ocean.port_client.get_run_by_external_id(
-            external_id
-        )
 
+        run = await ocean.port_client.find_run_by_external_id(external_id)
         if (
-            action_run
-            and action_run.status == RunStatus.IN_PROGRESS
-            and action_run.payload.integrationActionExecutionProperties.get(
-                "reportWorkflowStatus", False
-            )
+            run
+            and ocean.port_client.is_run_in_progress(run)
+            and run.execution_properties.get("reportWorkflowStatus", False)
         ):
-            status = (
-                RunStatus.SUCCESS
-                if workflow_run["conclusion"] in ["success", "skipped", "neutral"]
-                else RunStatus.FAILURE
-            )
+            conclusion = workflow_run["conclusion"]
+            success = conclusion in ("success", "skipped", "neutral")
             logger.info(
-                f"Updating action run {action_run.id} status to {status}",
-                action_run_id=action_run.id,
-                status=status,
+                f"Updating run {run.id} with workflow conclusion: {conclusion}",
+                run_id=run.id,
+                conclusion=conclusion,
             )
-            await ocean.port_client.patch_run(action_run.id, {"status": status})
+            await ocean.port_client.report_run_completed(
+                run, success, f"Workflow completed: {conclusion}"
+            )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])

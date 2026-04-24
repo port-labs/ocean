@@ -35,6 +35,7 @@ class BaseEntitiesStateApplier(BaseHandler):
         self,
         entities: EntityDiff,
         user_agent: UserAgentType,
+        entity_deletion_threshold: float | None = None,
     ) -> None:
         """Delete the specified entity differences from the state.
 

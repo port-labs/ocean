@@ -9,8 +9,10 @@ from typing import (
     Optional,
     TYPE_CHECKING,
     AsyncGenerator,
+    AsyncIterator,
     Iterator,
 )
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from collections import deque
 from loguru import logger
 
@@ -41,6 +43,29 @@ class CloudControlThrottlingConfig(enum.Enum):
     RETRY_MODE: Literal["legacy", "standard", "adaptive"] = "adaptive"
 
 
+OPT_IN_REGIONS = frozenset(
+    {
+        "af-south-1",
+        "ap-east-1",
+        "ap-south-2",
+        "ap-southeast-3",
+        "ap-southeast-4",
+        "ap-southeast-5",
+        "ap-southeast-6",
+        "ap-east-2",
+        "ap-southeast-7",
+        "ca-west-1",
+        "eu-south-1",
+        "eu-south-2",
+        "eu-central-2",
+        "il-central-1",
+        "mx-central-1",
+        "me-south-1",
+        "me-central-1",
+    }
+)
+
+
 class CustomProperties(enum.StrEnum):
     ACCOUNT_ID = "__AccountId"
     KIND = "__Kind"
@@ -56,6 +81,7 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     ELBV2_LOAD_BALANCER = "AWS::ELBV2::LoadBalancer"
     SQS_QUEUE = "AWS::SQS::Queue"
     RESOURCE_GROUP = "AWS::ResourceGroups::Group"
+    S3_BUCKET = "AWS::S3::Bucket"
 
 
 def _check_general_service_exception(e: Exception, patterns: List[str]) -> bool:
@@ -123,6 +149,62 @@ def is_resource_not_found_exception(e: Exception) -> bool:
         ]
         if _check_general_service_exception(e, not_found_patterns):
             return True
+
+    return False
+
+
+def is_region_not_supported_exception(e: Exception, region: str) -> bool:
+    """Check if the exception indicates the resource or region is not supported.
+
+    This covers two scenarios:
+    1. The resource type is not available/registered in the region.
+    2. An opt-in region that hasn't been enabled in the account.
+    """
+    if not hasattr(e, "response") or e.response is None:
+        return False
+
+    error_code = e.response.get("Error", {}).get("Code")
+
+    # Resource type not available (applies to all regions)
+    not_available_error_codes = [
+        "TypeNotFoundException",
+        "CFNRegistryException",
+        "UnsupportedActionException",
+        "ResourceNotExistsError",
+    ]
+    if error_code in not_available_error_codes:
+        return True
+
+    not_available_patterns = [
+        "type not found",
+        "is not registered",
+        "resource type is not available in this region",
+    ]
+    if _check_general_service_exception(e, not_available_patterns):
+        return True
+
+    if region not in OPT_IN_REGIONS:
+        return False
+
+    region_not_enabled_error_codes = [
+        "InvalidClientTokenId",
+        "AuthFailure",
+        "RegionDisabledException",
+        "UnrecognizedClientException",
+    ]
+    if error_code in region_not_enabled_error_codes:
+        return True
+
+    region_disabled_patterns = [
+        "region is disabled",
+        "region has not been enabled",
+        "opt-in required",
+    ]
+    if is_general_exception := _check_general_service_exception(
+        e, region_disabled_patterns
+    ):
+        logger.debug(f"Region {region} not enabled: {is_general_exception}")
+        return is_general_exception
 
     return False
 
@@ -297,3 +379,34 @@ class AsyncPaginator:
                 f"Buffering the final {len(final_batch)} queried {self.service_name} resources fetched from page {page_count} for account {self.account_id} in {self.region_name}"
             )
             yield final_batch
+
+
+async def safe_iterate(
+    resync_iter: AsyncIterator[list[dict[Any, Any]]],
+    region: str,
+    kind: str,
+    errors: list[Exception],
+    failed_regions: list[str],
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Safely iterate over an async iterator, isolating errors per-iterator."""
+    try:
+        async for resources in resync_iter:
+            if resources:
+                yield resources
+    except Exception as e:
+        if is_access_denied_exception(e):
+            logger.bind(traceback=e, kind=kind, region=region).warning(
+                f"{region} failed during resync of {kind}, skipping..."
+            )
+            return
+        if is_region_not_supported_exception(e, region):
+            logger.bind(traceback=e, kind=kind, region=region).warning(
+                f"{region} skipped during resync of {kind}: {e}"
+                f"resource or region not supported"
+            )
+            return
+        logger.bind(traceback=e, kind=kind, region=region).error(
+            f"{region} encountered an error during resync of {kind}: {e}"
+        )
+        errors.append(e)
+        failed_regions.append(region)

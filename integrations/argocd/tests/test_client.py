@@ -1,12 +1,10 @@
+import json
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from client import (
-    ArgocdClient,
-    ClusterState,
-    ObjectKind,
-)
+from client import ArgocdClient, ClusterState
+from misc import ObjectKind, ResourceKindsWithSpecialHandling
 
 
 @pytest.fixture
@@ -16,14 +14,15 @@ def mock_argocd_client() -> ArgocdClient:
         server_url="https://localhost:8080",
         ignore_server_error=True,
         allow_insecure=True,
+        use_streaming=True,
     )
 
 
 @pytest.mark.asyncio
-async def test_get_resources_for_available_clusters(
+async def test_get_resources(
     mock_argocd_client: ArgocdClient,
 ) -> None:
-    kinds = [ObjectKind.PROJECT, ObjectKind.APPLICATION]
+    kinds = [ObjectKind.PROJECT, ResourceKindsWithSpecialHandling.APPLICATION]
 
     for kind in kinds:
         response_data = {}
@@ -36,7 +35,7 @@ async def test_get_resources_for_available_clusters(
                     }
                 ]
             }
-        elif kind == ObjectKind.APPLICATION:
+        elif kind == ResourceKindsWithSpecialHandling.APPLICATION:
             response_data = {
                 "items": [
                     {
@@ -54,30 +53,97 @@ async def test_get_resources_for_available_clusters(
                 ]
             }
 
+        async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+            yield response_data["items"]
+
         with patch.object(
-            mock_argocd_client, "get_available_clusters", new_callable=AsyncMock
-        ) as mock_clusters:
-            mock_clusters.return_value = [
-                {
-                    "name": "test-cluster",
-                    "connectionState": {"status": ClusterState.AVAILABLE.value},
-                }
-            ]
-            with patch.object(
-                mock_argocd_client, "_send_api_request", new_callable=AsyncMock
-            ) as mock_request:
-                mock_request.return_value = response_data
-                resources = (
-                    await mock_argocd_client.get_resources_for_available_clusters(
-                        resource_kind=kind
-                    )
-                )
-                assert resources == response_data["items"]
-                mock_request.assert_called_with(
-                    url=f"{mock_argocd_client.api_url}/{kind}s",
-                    query_params={"cluster": "test-cluster"},
-                )
-            mock_clusters.assert_called_once()
+            mock_argocd_client.streaming_client,
+            "stream_json",
+            side_effect=mock_stream_json,
+        ) as mock_stream:
+            resources = []
+            async for resource_batch in mock_argocd_client.get_resources(
+                resource_kind=kind
+            ):
+                resources.extend(resource_batch)
+
+            assert resources == response_data["items"]
+            mock_stream.assert_called_with(
+                url=f"{mock_argocd_client.api_url}/{kind}s",
+                target_items_path="items",
+                params=None,
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_resources_with_query_params(
+    mock_argocd_client: ArgocdClient,
+) -> None:
+    kinds = [ObjectKind.PROJECT, ResourceKindsWithSpecialHandling.APPLICATION]
+
+    for kind in kinds:
+        response_data = {}
+        if kind == ObjectKind.PROJECT:
+            response_data = {
+                "items": [
+                    {
+                        "spec": {"destinations": [{"server": "*", "namespace": "*"}]},
+                        "metadata": {"name": "test-project", "uid": "test-uid"},
+                    }
+                ]
+            }
+        elif kind == ResourceKindsWithSpecialHandling.APPLICATION:
+            response_data = {
+                "items": [
+                    {
+                        "labels": {"cluster": "test-cluster"},
+                        "spec": {
+                            "destinations": [
+                                {
+                                    "server": "https://kubernetes.default.svc",
+                                    "namespace": "default",
+                                }
+                            ],
+                            "project": "default",
+                        },
+                        "metadata": {"name": "test-project-1", "uid": "test-uid"},
+                    },
+                    {
+                        "spec": {
+                            "destinations": [
+                                {
+                                    "server": "https://kubernetes.default.svc",
+                                    "namespace": "default",
+                                }
+                            ],
+                            "project": "default",
+                        },
+                        "metadata": {"name": "test-project-2", "uid": "test-uid"},
+                    },
+                ]
+            }
+
+        async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+            yield response_data["items"]
+
+        with patch.object(
+            mock_argocd_client.streaming_client,
+            "stream_json",
+            side_effect=mock_stream_json,
+        ) as mock_stream:
+            resources = []
+            params: dict[str, Any] = {"selector": "cluster=test-cluster"}
+            async for resource_batch in mock_argocd_client.get_resources(
+                resource_kind=kind, query_params=params
+            ):
+                resources.extend(resource_batch)
+
+            assert resources == response_data["items"]
+            mock_stream.assert_called_with(
+                url=f"{mock_argocd_client.api_url}/{kind}s",
+                target_items_path="items",
+                params=params,
+            )
 
 
 @pytest.mark.asyncio
@@ -103,6 +169,35 @@ async def test_get_application_by_name(mock_argocd_client: ArgocdClient) -> None
             name=application_name
         )
         assert application == response_data
+        mock_request.assert_called_once_with(
+            url=f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{application_name}",
+            query_params=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_application_by_name_with_params(
+    mock_argocd_client: ArgocdClient,
+) -> None:
+    application_name = "test-application"
+    request_params: dict[str, Any] = {"projects": ["default"], "repo": "test-repo"}
+    response_data = {
+        "metadata": {"name": "test-project", "uid": "test-uid"},
+    }
+
+    with patch.object(
+        mock_argocd_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = response_data
+        application = await mock_argocd_client.get_application_by_name(
+            name=application_name,
+            params=request_params,
+        )
+        assert application == response_data
+        mock_request.assert_called_once_with(
+            url=f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{application_name}",
+            query_params=request_params,
+        )
 
 
 @pytest.mark.asyncio
@@ -138,16 +233,18 @@ async def test_get_deployment_history(mock_argocd_client: ArgocdClient) -> None:
             }
         ]
     }
-    with patch.object(
-        mock_argocd_client,
-        "get_resources_for_available_clusters",
-        new_callable=AsyncMock,
+
+    async def mock_resources_generator(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
+    with patch(
+        "client.ArgocdClient.get_resources",
+        side_effect=mock_resources_generator,
     ) as mock_request:
-        mock_request.return_value = response_data["items"]
-        kind = ObjectKind.APPLICATION
+        kind = ResourceKindsWithSpecialHandling.APPLICATION
         async for all_history in mock_argocd_client.get_deployment_history():
-            mock_request.assert_called_with(resource_kind=kind)
             assert len(all_history) == 1
+        mock_request.assert_called_with(resource_kind=kind)
 
 
 @pytest.mark.asyncio
@@ -171,16 +268,20 @@ async def test_get_deployment_history_without_history_data(
             }
         ]
     }
-    with patch.object(
-        mock_argocd_client,
-        "get_resources_for_available_clusters",
-        new_callable=AsyncMock,
+
+    async def mock_resources_generator(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
+    with patch(
+        "client.ArgocdClient.get_resources",
+        side_effect=mock_resources_generator,
     ) as mock_request:
-        mock_request.return_value = response_data["items"]
-        kind = ObjectKind.APPLICATION
-        async for all_history in mock_argocd_client.get_deployment_history():
-            assert len(all_history) == 0
-            mock_request.assert_called_with(resource_kind=kind)
+        kind = ResourceKindsWithSpecialHandling.APPLICATION
+        histories = [
+            history async for history in mock_argocd_client.get_deployment_history()
+        ]
+        assert not histories
+        mock_request.assert_called_with(resource_kind=kind)
 
 
 @pytest.mark.asyncio
@@ -213,16 +314,18 @@ async def test_get_kubernetes_resource(mock_argocd_client: ArgocdClient) -> None
             }
         ]
     }
-    with patch.object(
-        mock_argocd_client,
-        "get_resources_for_available_clusters",
-        new_callable=AsyncMock,
+
+    async def mock_resources_generator(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
+    with patch(
+        "client.ArgocdClient.get_resources",
+        side_effect=mock_resources_generator,
     ) as mock_request:
-        mock_request.return_value = response_data["items"]
-        kind = ObjectKind.APPLICATION
+        kind = ResourceKindsWithSpecialHandling.APPLICATION
         async for resources in mock_argocd_client.get_kubernetes_resource():
-            mock_request.assert_called_with(resource_kind=kind)
             assert len(resources) == 1
+        mock_request.assert_called_with(resource_kind=kind)
 
 
 @pytest.mark.asyncio
@@ -246,15 +349,21 @@ async def test_get_kubernetes_resource_without_resource_data(
             }
         ]
     }
-    with patch.object(
-        mock_argocd_client,
-        "get_resources_for_available_clusters",
-        new_callable=AsyncMock,
+
+    async def mock_resources_generator(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
+    with patch(
+        "client.ArgocdClient.get_resources",
+        side_effect=mock_resources_generator,
     ) as mock_request:
-        mock_request.return_value = response_data["items"]
-        async for resources in mock_argocd_client.get_kubernetes_resource():
-            assert len(resources) == 0
-            mock_request.assert_called_with(resource_kind=ObjectKind.APPLICATION)
+        resources_list = [
+            res async for res in mock_argocd_client.get_kubernetes_resource()
+        ]
+        assert not resources_list
+        mock_request.assert_called_with(
+            resource_kind=ResourceKindsWithSpecialHandling.APPLICATION
+        )
 
 
 @pytest.mark.asyncio
@@ -277,19 +386,25 @@ async def test_get_managed_resources(
             },
         ]
     }
-    with patch.object(
-        mock_argocd_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value = response_data
 
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
+    with patch.object(
+        mock_argocd_client.streaming_client,
+        "stream_json",
+        side_effect=mock_stream_json,
+    ) as mock_stream:
         for application in response_data["items"]:
             async for resources in mock_argocd_client.get_managed_resources(
                 application
             ):
                 assert len(resources) == len(response_data["items"])
                 application_name = application["metadata"]["name"]
-                mock_request.assert_called_with(
-                    url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
+                mock_stream.assert_called_with(
+                    url=f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{application_name}/managed-resources",
+                    target_items_path="items",
+                    params=None,
                 )
 
 
@@ -317,11 +432,15 @@ async def test_get_clusters_with_only_available_clusters(
             },
         ]
     }
-    with patch.object(
-        mock_argocd_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value = response_data
 
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
+    with patch.object(
+        mock_argocd_client.streaming_client,
+        "stream_json",
+        side_effect=mock_stream_json,
+    ) as mock_stream:
         all_clusters = []
         async for cluster_batch in mock_argocd_client.get_clusters():
             all_clusters.extend(cluster_batch)
@@ -331,14 +450,18 @@ async def test_get_clusters_with_only_available_clusters(
             cluster["connectionState"]["status"] == ClusterState.AVAILABLE.value
             for cluster in all_clusters
         )
-        mock_request.assert_called_with(url=f"{mock_argocd_client.api_url}/clusters")
+        mock_stream.assert_called_with(
+            url=f"{mock_argocd_client.api_url}/clusters",
+            target_items_path="items",
+            params=None,
+        )
 
 
 @pytest.mark.asyncio
-async def test_get_clusters_filters_unavailable_clusters(
+async def test_get_clusters_returns_all_clusters(
     mock_argocd_client: ArgocdClient,
 ) -> None:
-    """Test that get_clusters filters out unavailable clusters."""
+    """Test that get_clusters returns all clusters regardless of status."""
     response_data = {
         "items": [
             {
@@ -368,24 +491,276 @@ async def test_get_clusters_filters_unavailable_clusters(
             },
         ]
     }
-    with patch.object(
-        mock_argocd_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value = response_data
 
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
+    with patch.object(
+        mock_argocd_client.streaming_client,
+        "stream_json",
+        side_effect=mock_stream_json,
+    ) as mock_stream:
         all_clusters = []
-        async for cluster_batch in mock_argocd_client.get_clusters(
-            skip_unavailable_clusters=True
-        ):
+        async for cluster_batch in mock_argocd_client.get_clusters():
             all_clusters.extend(cluster_batch)
 
-        # Only 3 out of 5 clusters have "Successful" status
-        assert len(all_clusters) == 3
-        assert all(
-            cluster["connectionState"]["status"] == ClusterState.AVAILABLE.value
-            for cluster in all_clusters
-        )
-        # Verify the correct clusters were included
+        # All 5 clusters are returned regardless of status
+        assert len(all_clusters) == 5
         cluster_names = [cluster["name"] for cluster in all_clusters]
-        assert cluster_names == ["cluster-1", "cluster-3", "cluster-5"]
-        mock_request.assert_called_with(url=f"{mock_argocd_client.api_url}/clusters")
+        assert cluster_names == [
+            "cluster-1",
+            "cluster-2",
+            "cluster-3",
+            "cluster-4",
+            "cluster-5",
+        ]
+        mock_stream.assert_called_with(
+            url=f"{mock_argocd_client.api_url}/clusters",
+            target_items_path="items",
+            params=None,
+        )
+
+
+# Tests for streaming vs non-streaming functionality
+
+
+@pytest.mark.asyncio
+async def test_get_clusters_with_streaming_enabled() -> None:
+    """Test get_clusters uses streaming when enabled"""
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=False,
+        allow_insecure=True,
+        use_streaming=True,
+    )
+
+    response_data = {
+        "items": [
+            {"name": "cluster-1", "connectionState": {"status": "Successful"}},
+            {"name": "cluster-2", "connectionState": {"status": "Failed"}},
+        ]
+    }
+
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
+    with patch.object(
+        client.streaming_client, "stream_json", side_effect=mock_stream_json
+    ) as mock_stream:
+        with patch.object(client, "_send_api_request") as mock_request:
+            clusters = []
+            async for cluster_batch in client.get_clusters():
+                clusters.extend(cluster_batch)
+
+            # Should use streaming, not direct API request
+            mock_stream.assert_called_once()
+            mock_request.assert_not_called()
+            assert len(clusters) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_clusters_with_streaming_disabled() -> None:
+    """Test get_clusters uses direct API requests when streaming disabled"""
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=False,
+        allow_insecure=True,
+        use_streaming=False,
+    )
+
+    response_data = {
+        "items": [
+            {"name": "cluster-1", "connectionState": {"status": "Successful"}},
+            {"name": "cluster-2", "connectionState": {"status": "Failed"}},
+        ]
+    }
+
+    with patch.object(client.streaming_client, "stream_json") as mock_stream:
+        with patch.object(
+            client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            return_value=response_data,
+        ) as mock_request:
+            clusters = []
+            async for cluster_batch in client.get_clusters():
+                clusters.extend(cluster_batch)
+
+            # Should use direct API request, not streaming
+            mock_request.assert_called_once()
+            mock_stream.assert_not_called()
+            assert len(clusters) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_clusters_returns_all_with_streaming_disabled() -> None:
+    """Test get_clusters returns all clusters when streaming disabled"""
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=False,
+        allow_insecure=True,
+        use_streaming=False,
+    )
+
+    response_data = {
+        "items": [
+            {"name": "cluster-1", "connectionState": {"status": "Successful"}},
+            {"name": "cluster-2", "connectionState": {"status": "Failed"}},
+            {"name": "cluster-3", "connectionState": {"status": "Successful"}},
+        ]
+    }
+
+    with patch.object(
+        client, "_send_api_request", new_callable=AsyncMock, return_value=response_data
+    ):
+        clusters = []
+        async for cluster_batch in client.get_clusters():
+            clusters.extend(cluster_batch)
+
+        # All clusters are returned regardless of status
+        assert len(clusters) == 3
+
+
+@pytest.mark.asyncio
+async def test_get_resources_with_streaming_disabled() -> None:
+    """Test get_resources uses direct API requests when streaming disabled"""
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=False,
+        allow_insecure=True,
+        use_streaming=False,
+    )
+
+    response_data = {
+        "items": [
+            {"name": "app1", "metadata": {"uid": "uid1"}},
+            {"name": "app2", "metadata": {"uid": "uid2"}},
+        ]
+    }
+
+    with patch.object(client.streaming_client, "stream_json") as mock_stream:
+        with patch.object(
+            client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            return_value=response_data,
+        ) as mock_request:
+            resources = []
+            async for resource_batch in client.get_resources(
+                ResourceKindsWithSpecialHandling.APPLICATION
+            ):
+                resources.extend(resource_batch)
+
+            # Should use direct API request, not streaming
+            mock_request.assert_called_once_with(
+                url=f"{client.api_url}/applications",
+                query_params=None,
+            )
+            mock_stream.assert_not_called()
+            assert len(resources) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_managed_resources_with_streaming_disabled() -> None:
+    """Test get_managed_resources uses direct API requests when streaming disabled"""
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=False,
+        allow_insecure=True,
+        use_streaming=False,
+    )
+
+    application = {"metadata": {"name": "test-app"}}
+    response_data = {
+        "items": [
+            {"kind": "Service", "name": "svc1"},
+            {"kind": "Deployment", "name": "deploy1"},
+        ]
+    }
+
+    with patch.object(client.streaming_client, "stream_json") as mock_stream:
+        with patch.object(
+            client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            return_value=response_data,
+        ) as mock_request:
+            resources = []
+            async for resource_batch in client.get_managed_resources(application):
+                resources.extend(resource_batch)
+
+            # Should use direct API request, not streaming
+            mock_request.assert_called_once_with(
+                url=f"{client.api_url}/applications/test-app/managed-resources",
+                query_params=None,
+            )
+            mock_stream.assert_not_called()
+            assert len(resources) == 2
+            # Verify application is added to each resource
+            assert all("__application" in resource for resource in resources)
+
+
+# Tests for custom HTTP headers
+def test_argocd_client_custom_headers() -> None:
+    custom_headers: dict[str, str] = {
+        "X-Custom-Header": "value",
+        "CF-Access-Client-Id": "id",
+    }
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://argocd.example.com",
+        ignore_server_error=False,
+        allow_insecure=True,
+        custom_http_headers=json.dumps(custom_headers),
+    )
+
+    # Check if Authorization header is present
+    assert client.http_client.headers["Authorization"] == "Bearer test_token"
+    # Check if custom headers are present
+    assert client.http_client.headers["X-Custom-Header"] == "value"
+    assert client.http_client.headers["CF-Access-Client-Id"] == "id"
+
+
+def test_argocd_client_without_custom_headers() -> None:
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://argocd.example.com",
+        ignore_server_error=False,
+        allow_insecure=True,
+    )
+
+    assert client.http_client.headers["Authorization"] == "Bearer test_token"
+    assert "X-Custom-Header" not in client.http_client.headers
+
+
+@pytest.mark.asyncio
+async def test_get_resources_yields_all_batches(
+    mock_argocd_client: ArgocdClient,
+) -> None:
+    """Test that all batches from get_paginated_resources are yielded."""
+    batch_1 = [{"name": f"item-{j}"} for j in range(3)]
+    batch_2 = [{"name": f"item-{j}"} for j in range(3, 5)]
+
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+        yield batch_1
+        yield batch_2
+
+    with patch.object(
+        mock_argocd_client.streaming_client,
+        "stream_json",
+        side_effect=mock_stream_json,
+    ):
+        all_resources: list[dict[str, Any]] = []
+        async for batch in mock_argocd_client.get_resources(
+            resource_kind=ResourceKindsWithSpecialHandling.APPLICATION
+        ):
+            all_resources.extend(batch)
+
+    assert len(all_resources) == 5
+    for j in range(5):
+        assert {"name": f"item-{j}"} in all_resources

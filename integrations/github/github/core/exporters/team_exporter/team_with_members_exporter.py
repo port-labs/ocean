@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
@@ -10,6 +10,7 @@ from github.helpers.gql_queries import (
     FETCH_TEAM_WITH_MEMBERS_GQL,
     LIST_TEAM_MEMBERS_GQL,
 )
+from github.helpers.utils import enrich_members_with_saml_email
 
 
 class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]):
@@ -17,10 +18,12 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
+        include_saml_email = bool(options["include_saml_email"])
         organization = options["organization"]
+        slug = options["slug"]
         variables = {
-            "slug": options["slug"],
+            "slug": slug,
             "organization": organization,
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
@@ -32,7 +35,10 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             self.client.base_url, method="POST", json_data=payload
         )
         if not response:
-            return response
+            logger.warning(
+                f"No team found with slug: {slug} in organization {organization}"
+            )
+            return None
 
         data = response["data"]
         team = data["organization"]["team"]
@@ -53,11 +59,16 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
         del team["members"]["pageInfo"]
 
+        await enrich_members_with_saml_email(
+            self.client, organization, team["members"]["nodes"], include_saml_email
+        )
+
         return team
 
     async def get_paginated_resources[
         ExporterOptionT: ListTeamOptions
     ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        include_saml_email = bool(options["include_saml_email"])
         organization = options["organization"]
         variables = {
             "organization": organization,
@@ -85,6 +96,13 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
                     team["members"]["nodes"] = all_member_nodes_for_team
 
                 del team["members"]["pageInfo"]
+
+                await enrich_members_with_saml_email(
+                    self.client,
+                    organization,
+                    team["members"]["nodes"],
+                    include_saml_email,
+                )
 
                 teams_buffer.append(team)
 
@@ -134,6 +152,11 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             response = await self.client.send_api_request(
                 self.client.base_url, method="POST", json_data=payload
             )
+            if not response or "data" not in response:
+                logger.warning(
+                    f"No data returned while paginating members for team '{team_slug}', stopping pagination"
+                )
+                break
 
             team_data = response["data"]["organization"]["team"]
 

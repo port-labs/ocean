@@ -5,9 +5,9 @@ import httpx
 
 from loguru import logger
 
-from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from port_ocean.context.ocean import ocean
+from port_ocean.utils.cache import cache_iterator_result
 
 
 PAGE_SIZE = 50
@@ -75,32 +75,28 @@ class JenkinsClient:
             logger.error(f"HTTP error for {method} request to {endpoint}: {e}")
             raise
 
+    @cache_iterator_result()
     async def get_jobs(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if cache := event.attributes.get(ResourceKey.JOBS):
-            logger.info("picking jenkins jobs from cache")
-            yield cache
-            return
-
+        """
+        Fetch Jenkins jobs in paginated chunks.
+        """
         async for jobs in self._get_paginated_resources(ResourceKey.JOBS):
-            event.attributes.setdefault(ResourceKey.JOBS, []).extend(jobs)
             yield jobs
 
+    @cache_iterator_result()
     async def get_builds(
         self,
         max_builds_per_job: int,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if cache := event.attributes.get(ResourceKey.BUILDS):
-            logger.info("picking jenkins builds from cache")
-            yield cache
-            return
-
+        """
+        Fetch Jenkins builds in paginated chunks.
+        """
         async for _jobs in self._get_paginated_resources(
             ResourceKey.BUILDS,
             max_builds_per_job=max_builds_per_job,
         ):
             builds = [build for job in _jobs for build in job.get("builds", [])]
             logger.debug(f"Builds received {builds}")
-            event.attributes.setdefault(ResourceKey.BUILDS, []).extend(builds)
             yield builds
 
     async def _get_build_stages(self, build_url: str) -> list[dict[str, Any]]:

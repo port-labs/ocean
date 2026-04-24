@@ -2,9 +2,10 @@ title: Okta
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/identity-access-management/okta
 description: okta integration for Port Ocean
 icon: Okta
+formMappingEnabled: true
 features:
   - type: exporter
-    section: Other
+    section: Identity Providers
     resources:
       - kind: okta-user
       - kind: okta-group
@@ -34,14 +35,14 @@ installationDocs:
       enabled: false
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/other/okta?installation-methods=hosted-by-port
+      docs: build-your-software-catalog/sync-data-to-catalog/identity-providers/okta?installation-methods=hosted-by-port
   githubWorkflow:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/other/okta?installation-methods=one-time-ci&cicd-method=github
+    docs: build-your-software-catalog/sync-data-to-catalog/identity-providers/okta?installation-methods=one-time-ci&cicd-method=github
   gitlabCI:
     enabled: false
   helm:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/other/okta?installation-methods=real-time-self-hosted
+    docs: build-your-software-catalog/sync-data-to-catalog/identity-providers/okta?installation-methods=real-time-self-hosted
   docker:
     enabled: false

@@ -3,10 +3,12 @@ from typing import Any, Dict, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-from integration import GithubPortAppConfig
+from integration import (
+    GithubPortAppConfig,
+    GithubRepositoryConfig,
+    GithubRepositorySelector,
+)
 from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
@@ -20,7 +22,7 @@ from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
 from github.clients.client_factory import create_github_client
-from github.helpers.utils import GithubClientType
+from github.helpers.utils import GithubClientType, ObjectKind
 from github.clients.http.base_client import AbstractGithubClient
 
 TEST_INTEGRATION_CONFIG: Dict[str, Any] = {
@@ -39,6 +41,7 @@ def mock_ocean_context() -> None:
 
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.is_saas = MagicMock(return_value=False)
         mock_ocean_app.config.integration.config = {
             "github_token": TEST_INTEGRATION_CONFIG["github_token"],
             "github_organization": TEST_INTEGRATION_CONFIG["github_organization"],
@@ -114,9 +117,9 @@ def mock_port_app_config() -> GithubPortAppConfig:
         create_missing_related_entities=False,
         repository_type="all",
         resources=[
-            ResourceConfig(
-                kind="repository",
-                selector=Selector(query="true"),
+            GithubRepositoryConfig(
+                kind=ObjectKind.REPOSITORY,
+                selector=GithubRepositorySelector(query="true"),
                 port=PortResourceConfig(
                     entity=MappingsConfig(
                         mappings=EntityMapping(

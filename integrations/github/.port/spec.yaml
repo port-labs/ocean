@@ -1,9 +1,11 @@
+title: GitHub
 description: GitHub integration for Port Ocean
 icon: Github
-docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github/
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean
+formMappingEnabled: true
 features:
   - type: exporter
-    section: Git
+    section: Git Providers
     resources:
       - kind: organization
       - kind: repository
@@ -19,6 +21,7 @@ features:
       - kind: branch
       - kind: environment
       - kind: deployment
+      - kind: deployment-status
       - kind: dependabot-alert
       - kind: code-scanning-alerts
       - kind: file
@@ -39,6 +42,11 @@ configurations:
     required: false
     sensitive: false
     description: App id if you want the integration to interact with Github as an app. This is mandatory if githubToken is not passed in.
+  - name: githubAppInstallationId
+    type: string
+    required: false
+    sensitive: false
+    description: Installation ID if you want the integration to interact with Github as an app. This is mandatory if githubAppId is passed in.
   - name: githubAppPrivateKey
     required: false
     type: string
@@ -66,6 +74,7 @@ saas:
       integrationSpec:
         githubHost: "'https://api.github.com'"
         githubAppId: .oauthData.appId
+        githubAppInstallationId: .oauthData.installationId
         githubOrganization: .oauthData.githubOrganization
 actionsProcessingEnabled: true
 actions:
@@ -97,3 +106,22 @@ actions:
         title: Workflow inputs
         type: jqObject
         description: 'The following values will be sent upon the action invocation. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. You can reference secrets using {{ .secrets["secret-name"] }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: true
+      docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=installation-method&s1=hosted-by-port#setup
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=install&s1=ci-deployment&cicd-method=github#setup
+  gitlabCI:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=install&s1=ci-deployment&cicd-method=gitlab#setup
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=prerequisites&s1=kubernetes#setup
+  docker:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=prerequisites&s1=docker#setup

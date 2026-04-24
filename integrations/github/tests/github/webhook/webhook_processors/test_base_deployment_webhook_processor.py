@@ -38,7 +38,7 @@ class TestBaseDeploymentWebhookProcessor:
         "github_event,result",
         [
             ("deployment", True),
-            ("deployment_status", True),
+            ("deployment_status", False),
             ("push", False),
             ("pull_request", False),
         ],

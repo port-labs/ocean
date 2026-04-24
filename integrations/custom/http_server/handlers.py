@@ -1,83 +1,13 @@
 """
 Handlers for HTTP Server integration.
 
-Provides authentication and pagination handlers using strategy pattern.
+Provides pagination handlers using strategy pattern.
 """
 
-import httpx
-
-from typing import Dict, Any, List, Callable, Awaitable
+from typing import Dict, Any, List, Callable, Awaitable, Optional
 from collections.abc import AsyncGenerator as AsyncGenType
 
-
-# ============================================================================
-# Authentication Handlers
-# ============================================================================
-
-
-class AuthHandler:
-    """Base class for authentication handlers"""
-
-    def __init__(self, client: httpx.AsyncClient, config: Dict[str, Any]):
-        self.client = client
-        self.config = config
-
-    def setup(self) -> None:
-        """Setup authentication - override in subclasses"""
-        pass
-
-
-class BearerTokenAuth(AuthHandler):
-    """Bearer token authentication"""
-
-    def setup(self) -> None:
-        token = self.config.get("api_token")
-        if token:
-            self.client.headers["Authorization"] = f"Bearer {token}"
-
-
-class ApiKeyAuth(AuthHandler):
-    """API key authentication"""
-
-    def setup(self) -> None:
-        api_key = self.config.get("api_key")
-        key_header = self.config.get("api_key_header", "X-API-Key")
-        if api_key and key_header:
-            self.client.headers[key_header] = api_key
-
-
-class BasicAuth(AuthHandler):
-    """Basic authentication"""
-
-    def setup(self) -> None:
-        username = self.config.get("username")
-        password = self.config.get("password")
-        if username and password:
-            self.client.auth = httpx.BasicAuth(username, password)
-
-
-class NoAuth(AuthHandler):
-    """No authentication"""
-
-    def setup(self) -> None:
-        pass
-
-
-# Registry of available auth handlers
-AUTH_HANDLERS = {
-    "bearer_token": BearerTokenAuth,
-    "api_key": ApiKeyAuth,
-    "basic": BasicAuth,
-    "none": NoAuth,
-}
-
-
-def get_auth_handler(
-    auth_type: str, client: httpx.AsyncClient, config: Dict[str, Any]
-) -> AuthHandler:
-    """Get the appropriate authentication handler"""
-    handler_class = AUTH_HANDLERS.get(auth_type, NoAuth)
-    return handler_class(client, config)
+import httpx
 
 
 # ============================================================================
@@ -94,7 +24,14 @@ class PaginationHandler:
         config: Dict[str, Any],
         extract_items_fn: Callable[[Any], List[Dict[str, Any]]],
         make_request_fn: Callable[
-            [str, str, Dict[str, Any], Dict[str, str]], Awaitable[httpx.Response]
+            [
+                str,
+                str,
+                Optional[Dict[str, Any]],
+                Dict[str, str],
+                Optional[Dict[str, Any]],
+            ],
+            Awaitable[httpx.Response],
         ],
         get_nested_value_fn: Callable[[Dict[str, Any], str], Any],
     ) -> None:
@@ -111,6 +48,7 @@ class PaginationHandler:
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         """Fetch all pages - override in subclasses"""
         raise NotImplementedError
@@ -126,8 +64,9 @@ class NonePagination(PaginationHandler):
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
-        response = await self.make_request(url, method, params, headers)
+        response = await self.make_request(url, method, params, headers, body)
         response_data = response.json()
         # Yield raw response as single-item batch for Ocean's data_path extraction
         yield [response_data]
@@ -142,6 +81,7 @@ class PagePagination(PaginationHandler):
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         page_param = self.config.get("pagination_param", "page")
         size_param = self.config.get("size_param", "size")
@@ -157,7 +97,9 @@ class PagePagination(PaginationHandler):
                 size_param: self.page_size,
             }
 
-            response = await self.make_request(url, method, current_params, headers)
+            response = await self.make_request(
+                url, method, current_params, headers, body
+            )
             response_data = response.json()
 
             # Yield raw response as single-item batch
@@ -195,6 +137,7 @@ class OffsetPagination(PaginationHandler):
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         offset_param = self.config.get("pagination_param", "offset")
         limit_param = self.config.get("size_param", "limit")
@@ -209,7 +152,9 @@ class OffsetPagination(PaginationHandler):
                 limit_param: self.page_size,
             }
 
-            response = await self.make_request(url, method, current_params, headers)
+            response = await self.make_request(
+                url, method, current_params, headers, body
+            )
             response_data = response.json()
 
             # Yield raw response as single-item batch
@@ -245,6 +190,7 @@ class CursorPagination(PaginationHandler):
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         cursor_param = self.config.get("pagination_param", "cursor")
         limit_param = self.config.get("size_param", "limit")
@@ -259,7 +205,9 @@ class CursorPagination(PaginationHandler):
             if cursor:
                 current_params[cursor_param] = cursor
 
-            response = await self.make_request(url, method, current_params, headers)
+            response = await self.make_request(
+                url, method, current_params, headers, body
+            )
             response_data = response.json()
 
             # Yield raw response as single-item batch
@@ -303,12 +251,96 @@ class CursorPagination(PaginationHandler):
                 break
 
 
+class NextLinkPagination(PaginationHandler):
+    """URL-based pagination for APIs that return a full URL for the next page.
+    The next link URL is used directly for subsequent requests - all query
+    parameters are already embedded in the URL.
+    """
+
+    async def fetch_all(
+        self,
+        url: str,
+        method: str,
+        params: Dict[str, Any],
+        headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenType[List[Dict[str, Any]], None]:
+        next_link_path = self.config.get("next_link_path", "@odata.nextLink")
+
+        current_url = url
+        current_params: Optional[Dict[str, Any]] = params
+
+        while True:
+            response = await self.make_request(
+                current_url, method, current_params, headers, body
+            )
+            response_data = response.json()
+
+            yield [response_data]
+
+            next_url = None
+            if isinstance(response_data, dict):
+                if next_link_path in response_data:
+                    next_url = response_data[next_link_path]
+                elif "." in next_link_path:
+                    next_url = self.get_nested_value(response_data, next_link_path)
+
+            if not next_url:
+                break
+
+            current_url = next_url
+            current_params = None
+
+
+class HeaderLinkPagination(PaginationHandler):
+    """Pagination using RFC 5988 Link header.
+
+    Uses httpx's built-in response.links property to parse Link headers.
+    The next link URL is used directly for subsequent requests.
+
+    Example Link header:
+        Link: <https://api.example.com/items?page=2>; rel="next",
+              <https://api.example.com/items?page=10>; rel="last"
+    """
+
+    async def fetch_all(
+        self,
+        url: str,
+        method: str,
+        params: Dict[str, Any],
+        headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenType[List[Dict[str, Any]], None]:
+        link_rel = self.config.get("header_link_rel", "next")
+
+        current_url = url
+        current_params: Optional[Dict[str, Any]] = params
+
+        while True:
+            response = await self.make_request(
+                current_url, method, current_params, headers, body
+            )
+            response_data = response.json()
+
+            yield [response_data]
+
+            next_url = response.links.get(link_rel, {}).get("url")
+
+            if not next_url:
+                break
+
+            current_url = next_url
+            current_params = None
+
+
 # Registry of available pagination handlers
 PAGINATION_HANDLERS = {
     "none": NonePagination,
     "page": PagePagination,
     "offset": OffsetPagination,
     "cursor": CursorPagination,
+    "next_link": NextLinkPagination,
+    "header_link": HeaderLinkPagination,
 }
 
 
@@ -318,7 +350,8 @@ def get_pagination_handler(
     config: Dict[str, Any],
     extract_items_fn: Callable[[Any], List[Dict[str, Any]]],
     make_request_fn: Callable[
-        [str, str, Dict[str, Any], Dict[str, str]], Awaitable[httpx.Response]
+        [str, str, Optional[Dict[str, Any]], Dict[str, str], Optional[Dict[str, Any]]],
+        Awaitable[httpx.Response],
     ],
     get_nested_value_fn: Callable[[Dict[str, Any], str], Any],
 ) -> PaginationHandler:

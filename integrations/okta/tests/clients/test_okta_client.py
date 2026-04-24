@@ -73,6 +73,36 @@ class TestOktaClient:
         next_url = client._get_next_link(link_header)
         assert next_url is None
 
+    def test_normalize_url_relative_endpoint(self, client: OktaClient) -> None:
+        """Test _normalize_url with a relative endpoint."""
+        assert client._normalize_url("users") == "https://test.okta.com/api/v1/users"
+
+    def test_normalize_url_relative_with_leading_slash(
+        self, client: OktaClient
+    ) -> None:
+        """Test _normalize_url strips leading slash before joining."""
+        assert client._normalize_url("/users") == "https://test.okta.com/api/v1/users"
+
+    def test_normalize_url_absolute_same_domain(self, client: OktaClient) -> None:
+        """Test _normalize_url passes through absolute URL on the same domain."""
+        url = "https://test.okta.com/api/v1/groups?after=abc&limit=200"
+        assert client._normalize_url(url) == url
+
+    def test_normalize_url_absolute_different_domain(self, client: OktaClient) -> None:
+        """Test _normalize_url passes through absolute URL when domain differs (admin vs non-admin)."""
+        url = "https://test-admin.okta.com/api/v1/groups?after=abc&limit=200"
+        assert client._normalize_url(url) == url
+
+    def test_normalize_url_admin_domain_with_nonadmin_next_link(self) -> None:
+        """Test the real-world case: client configured with -admin domain,
+        but Link header returns non-admin domain URL."""
+        admin_client = OktaClient(
+            okta_domain="test-admin.okta.com",
+            api_token="test_token",
+        )
+        next_url = "https://test.okta.com/api/v1/groups?after=abcd1234xyz&limit=200"
+        assert admin_client._normalize_url(next_url) == next_url
+
     @pytest.mark.asyncio
     async def test_send_paginated_request_users(self, client: OktaClient) -> None:
         """Test pagination helper yields pages for users resource."""

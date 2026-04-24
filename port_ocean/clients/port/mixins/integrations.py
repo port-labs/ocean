@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 from urllib.parse import quote_plus
 
@@ -8,6 +8,11 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.core.models import (
+    CreatePortResourcesOrigin,
+    LakehouseOperation,
+    LakehouseEventType,
+)
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 
@@ -77,33 +82,10 @@ class IntegrationClientMixin:
         self,
         should_raise: bool = True,
         should_log: bool = True,
-        has_provision_feature_flag: bool = False,
     ) -> dict[str, Any]:
         response = await self._get_current_integration()
         handle_port_status_code(response, should_raise, should_log)
-        integration = response.json().get("integration", {})
-        if integration.get("config", None) or not integration:
-            return integration
-        is_provision_enabled_for_integration = (
-            integration.get("installationAppType", None)
-            and (
-                await self.is_integration_provision_enabled(
-                    integration.get("installationAppType", ""),
-                    should_raise,
-                    should_log,
-                )
-            )
-            and has_provision_feature_flag
-        )
-
-        if is_provision_enabled_for_integration:
-            logger.info(
-                "integration type is enabled, polling until provisioning is complete"
-            )
-            integration = (
-                await self._poll_integration_until_default_provisioning_is_complete()
-            )
-        return integration
+        return response.json().get("integration", {})
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:
@@ -117,7 +99,7 @@ class IntegrationClientMixin:
             self._metrics_attributes = response["metricAttributes"]
         return self._metrics_attributes
 
-    async def _poll_integration_until_default_provisioning_is_complete(
+    async def poll_integration_until_default_provisioning_is_complete(
         self,
     ) -> Dict[str, Any]:
         attempts = 0
@@ -150,7 +132,7 @@ class IntegrationClientMixin:
         _type: str,
         changelog_destination: dict[str, Any],
         port_app_config: Optional["PortAppConfig"] = None,
-        create_port_resources_origin_in_port: Optional[bool] = False,
+        create_port_resources_origin: CreatePortResourcesOrigin = CreatePortResourcesOrigin.Ocean,
         actions_processing_enabled: Optional[bool] = False,
     ) -> Dict[str, Any]:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
@@ -162,14 +144,15 @@ class IntegrationClientMixin:
             "changelogDestination": changelog_destination,
             "config": {},
             "actionsProcessingEnabled": actions_processing_enabled,
+            "createPortResourcesOrigin": create_port_resources_origin.value,
         }
 
         query_params = {}
 
-        if create_port_resources_origin_in_port:
+        if create_port_resources_origin == CreatePortResourcesOrigin.Port:
             query_params[CREATE_RESOURCES_PARAM_NAME] = CREATE_RESOURCES_PARAM_VALUE
 
-        if port_app_config and not create_port_resources_origin_in_port:
+        if port_app_config:
             json["config"] = port_app_config.to_request()
         response = await self.client.post(
             f"{self.auth.api_url}/integration",
@@ -178,9 +161,9 @@ class IntegrationClientMixin:
             params=query_params,
         )
         handle_port_status_code(response)
-        if create_port_resources_origin_in_port:
+        if create_port_resources_origin == CreatePortResourcesOrigin.Port:
             result = (
-                await self._poll_integration_until_default_provisioning_is_complete()
+                await self.poll_integration_until_default_provisioning_is_complete()
             )
             return result["integration"]
         return response.json()["integration"]
@@ -190,19 +173,23 @@ class IntegrationClientMixin:
         _type: str | None = None,
         changelog_destination: dict[str, Any] | None = None,
         port_app_config: Optional["PortAppConfig"] = None,
-        actions_processing_enabled: Optional[bool] = False,
+        actions_processing_enabled: Optional[bool] = None,
+        are_port_resources_initialized: Optional[bool] = None,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
         json: dict[str, Any] = {}
         if _type:
             json["installationAppType"] = _type
-        if changelog_destination:
-            json["changelogDestination"] = changelog_destination
         if port_app_config:
             json["config"] = port_app_config.to_request()
+        if are_port_resources_initialized is not None:
+            json["arePortResourcesInitialized"] = are_port_resources_initialized
+        if actions_processing_enabled is not None:
+            json["actionsProcessingEnabled"] = actions_processing_enabled
+        if changelog_destination is not None:
+            json["changelogDestination"] = changelog_destination
 
-        json["actionsProcessingEnabled"] = actions_processing_enabled
         json["version"] = self.integration_version
 
         response = await self.client.patch(
@@ -229,6 +216,19 @@ class IntegrationClientMixin:
         )
         handle_port_status_code(response, should_log=False)
         logger.debug("Finished POST metrics request")
+
+    async def post_integration_metrics_heartbeat(self, event_id: str) -> None:
+        logger.debug("starting PUT metrics heartbeat request", event_id=event_id)
+        metrics_attributes = await self.get_metrics_attributes()
+        url = metrics_attributes["ingestUrl"] + "/heartbeat"
+        headers = await self.auth.headers()
+        response = await self.client.post(
+            url,
+            headers=headers,
+            json={"eventId": event_id},
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Finished PUT metrics heartbeat request")
 
     async def put_integration_sync_metrics(self, kind_metrics: dict[str, Any]) -> None:
         logger.debug("starting PUT metrics request", kind_metrics=kind_metrics)
@@ -295,17 +295,54 @@ class IntegrationClientMixin:
         return response.json()
 
     async def post_integration_raw_data(
-        self, raw_data: list[dict[Any, Any]], sync_id: str, kind: str
+        self,
+        raw_data: list[dict[Any, Any]],
+        sync_id: str,
+        kind: str,
+        index: int,
+        operation: LakehouseOperation = LakehouseOperation.UPSERT,
+        resync_start_time: datetime | None = None,
+        event_type: LakehouseEventType | None = None,
     ) -> None:
-        logger.debug("starting POST raw data request", raw_data=raw_data)
-        headers = await self.auth.headers()
-        response = await self.client.post(
-            f"{self.auth.ingest_url}/lakehouse/integration-type/{self.auth.integration_type}/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
-            headers=headers,
-            json={
-                "items": raw_data,
-                "extractionTimestamp": int(datetime.now().timestamp() * 1000),
-            },
+        if not sync_id:
+            raise ValueError("sync_id cannot be empty")
+        if not kind:
+            raise ValueError("kind cannot be empty")
+        if resync_start_time is not None:
+            # Normalize both timestamps to UTC for comparison
+            # If resync_start_time is naive, treat it as UTC
+            if resync_start_time.tzinfo is None:
+                resync_time_utc = resync_start_time.replace(tzinfo=timezone.utc)
+            else:
+                resync_time_utc = resync_start_time
+
+            now_utc = datetime.now(timezone.utc)
+            if resync_time_utc > now_utc:
+                raise ValueError(
+                    f"resync_start_time cannot be in the future: {resync_start_time}"
+                )
+
+        logger.debug(
+            "starting POST raw data request", raw_data=raw_data, operation=operation
         )
-        handle_port_status_code(response, should_log=False)
+        headers = await self.auth.headers()
+
+        body: dict[str, Any] = {
+            "items": raw_data,
+            "extractionTimestamp": int(datetime.now().timestamp() * 1000),
+            "operation": operation.value,
+            "resourceIndex": index,
+            "eventType": (
+                event_type.value if event_type else LakehouseEventType.LIVE_EVENT.value
+            ),
+        }
+        if resync_start_time is not None:
+            body["resyncStartTime"] = resync_start_time.isoformat()
+
+        response = await self.client.post(
+            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",
+            headers=headers,
+            json=body,
+        )
+        handle_port_status_code(response, should_raise=False, should_log=True)
         logger.debug("Finished POST raw data request")

@@ -21,6 +21,7 @@ from integration import (
 from github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor import (
     CheckRunValidatorWebhookProcessor,
 )
+from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.check_runs.file_validation import (
     ResourceConfigToPatternMapping,
 )
@@ -51,7 +52,7 @@ def checkrun_validator_webhook_processor(
 @pytest.fixture
 def pull_request_resource_config() -> GithubPullRequestConfig:
     return GithubPullRequestConfig(
-        kind="pull-request",
+        kind=ObjectKind.PULL_REQUEST,
         selector=GithubPullRequestSelector(
             query="true",
             states=["open"],
@@ -72,7 +73,7 @@ def pull_request_resource_config() -> GithubPullRequestConfig:
 @pytest.fixture
 def file_resource_config() -> GithubFileResourceConfig:
     return GithubFileResourceConfig(
-        kind="file",
+        kind=ObjectKind.FILE,
         selector=GithubFileSelector(
             query="true",
             files=[
@@ -172,6 +173,12 @@ class TestCheckRunValidatorWebhookProcessor:
                 return_value=[validation_mapping],
             ),
             patch(
+                "github.core.exporters.organization_exporter.RestOrganizationExporter.get_paginated_resources",
+                new=lambda *args, **kwargs: MockAsyncGenerator(
+                    [[{"login": "test-org", "type": "Organization"}]]
+                ),
+            ),
+            patch(
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.create_github_client",
                 return_value=(lambda: None)(),
             ),
@@ -225,6 +232,12 @@ class TestCheckRunValidatorWebhookProcessor:
             patch(
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.get_file_validation_mappings",
                 return_value=[validation_mapping],
+            ),
+            patch(
+                "github.core.exporters.organization_exporter.RestOrganizationExporter.get_paginated_resources",
+                new=lambda *args, **kwargs: MockAsyncGenerator(
+                    [[{"login": "test-org", "type": "Organization"}]]
+                ),
             ),
             patch(
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.create_github_client",

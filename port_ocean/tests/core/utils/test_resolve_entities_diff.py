@@ -5,7 +5,7 @@ from port_ocean.core.utils.utils import (
     resolve_entities_diff,
     are_entities_fields_equal,
 )
-from typing import Any
+from typing import Any, AsyncGenerator
 
 
 def create_test_entity(
@@ -24,6 +24,22 @@ def create_test_entity(
         title=title,
         team=team,
     )
+
+
+async def entities_to_async_generator(
+    entities: list[Entity],
+) -> AsyncGenerator[list[Entity], None]:
+    """Helper function to convert a list of entities to an async generator"""
+    if entities:
+        yield entities
+
+
+async def empty_async_generator() -> AsyncGenerator[list[Entity], None]:
+    """Helper function to create an empty async generator"""
+    # Empty generator - just don't yield anything
+    # Using a condition that's always False to satisfy type checker
+    if False:  # pragma: no cover
+        yield []
 
 
 def test_are_entities_fields_equal_identical_properties_should_be_true() -> None:
@@ -537,73 +553,85 @@ entity_with_search_relation = create_test_entity(
 )
 
 
-def test_resolve_entities_diff_empty_lists() -> None:
+async def test_resolve_entities_diff_empty_lists() -> None:
     """Test when both input lists are empty"""
-    changed = resolve_entities_diff([], [])
+    changed = await resolve_entities_diff([], empty_async_generator())
     assert len(changed) == 0
 
 
-def test_resolve_entities_diff_new_entities() -> None:
+async def test_resolve_entities_diff_new_entities() -> None:
     """Test when there are simple third party entities that are not in Port"""
-    changed = resolve_entities_diff([entity1, entity2], [])
+    changed = await resolve_entities_diff([entity1, entity2], empty_async_generator())
     assert len(changed) == 2
     assert changed[0] == entity1
     assert changed[1] == entity2
 
 
-def test_resolve_entities_diff_deleted_entities() -> None:
+async def test_resolve_entities_diff_deleted_entities() -> None:
     """Test when entities exist in Port but not in third party"""
-    changed = resolve_entities_diff([], [entity1, entity2])
+    changed = await resolve_entities_diff(
+        [], entities_to_async_generator([entity1, entity2])
+    )
     assert len(changed) == 0
 
 
-def test_resolve_entities_diff_identical_entities() -> None:
+async def test_resolve_entities_diff_identical_entities() -> None:
     """Test when entities are identical in both sources"""
-    changed = resolve_entities_diff([entity1], [entity1])
+    changed = await resolve_entities_diff(
+        [entity1], entities_to_async_generator([entity1])
+    )
     assert len(changed) == 0
 
 
-def test_resolve_entities_diff_modified_properties() -> None:
+async def test_resolve_entities_diff_modified_properties() -> None:
     """Test when entities exist but have different properties"""
-    changed = resolve_entities_diff([entity1_modified_properties], [entity1])
+    changed = await resolve_entities_diff(
+        [entity1_modified_properties], entities_to_async_generator([entity1])
+    )
     assert len(changed) == 1
     assert changed[0] == entity1_modified_properties
 
 
-def test_resolve_entities_diff_modified_relations() -> None:
+async def test_resolve_entities_diff_modified_relations() -> None:
     """Test when entities exist but have different relations"""
-    changed = resolve_entities_diff([entity1_modified_relations], [entity1])
+    changed = await resolve_entities_diff(
+        [entity1_modified_relations], entities_to_async_generator([entity1])
+    )
     assert len(changed) == 1
     assert changed[0] == entity1_modified_relations
 
 
-def test_resolve_entities_diff_search_identifier_entity() -> None:
+async def test_resolve_entities_diff_search_identifier_entity() -> None:
     """Test when entity uses search identifier"""
     with patch(
         "port_ocean.core.utils.utils.are_entities_different", return_value=False
     ) as mock_are_different:
-        changed = resolve_entities_diff([entity_with_search_identifier], [])
+        changed = await resolve_entities_diff(
+            [entity_with_search_identifier], empty_async_generator()
+        )
         assert len(changed) == 1
         assert changed[0] == entity_with_search_identifier
         mock_are_different.assert_not_called()
 
 
-def test_resolve_entities_diff_search_relation_entity() -> None:
+async def test_resolve_entities_diff_search_relation_entity() -> None:
     """Test when entity uses search relation"""
     with patch(
         "port_ocean.core.utils.utils.are_entities_different", return_value=False
     ) as mock_are_different:
-        changed = resolve_entities_diff([entity_with_search_relation], [])
+        changed = await resolve_entities_diff(
+            [entity_with_search_relation], empty_async_generator()
+        )
         assert len(changed) == 1
         assert changed[0] == entity_with_search_relation
         mock_are_different.assert_not_called()
 
 
-def test_resolve_entities_diff_multiple_entities() -> None:
+async def test_resolve_entities_diff_multiple_entities() -> None:
     """Test with multiple entities in both sources"""
-    changed = resolve_entities_diff(
+    changed = await resolve_entities_diff(
         [entity1_modified_properties, entity2, entity_with_search_identifier],
-        [entity1, entity3],
+        entities_to_async_generator([entity1, entity3]),
     )
     assert len(changed) == 3
     assert changed[0] == entity1_modified_properties

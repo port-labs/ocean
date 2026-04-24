@@ -1,6 +1,10 @@
 from loguru import logger
 from github.webhook.events import RELEASE_DELETE_EVENTS
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_organization,
+    enrich_with_repository,
+)
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
@@ -33,15 +37,23 @@ class ReleaseWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         release_id = release["id"]
         repo_name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing release event: {action} for release {release_id} in {repo_name} from {organization}"
         )
 
-        if action in RELEASE_DELETE_EVENTS:
+        if not await self.should_process_repo_search(payload, resource_config):
             return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[release]
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        if action in RELEASE_DELETE_EVENTS:
+            data_to_delete = enrich_with_organization(
+                enrich_with_repository(release, repo_name, repo=repo), organization
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[data_to_delete]
             )
 
         rest_client = create_github_client()
@@ -52,6 +64,10 @@ class ReleaseWebhookProcessor(BaseRepositoryWebhookProcessor):
                 organization=organization, repo_name=repo_name, release_id=release_id
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

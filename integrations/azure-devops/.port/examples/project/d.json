@@ -1,0 +1,25 @@
+{
+  "id": "55554444-3333-2222-1111-000099998888",
+  "name": "open-source-utils",
+  "url": "[REDACTED]/_apis/projects/55554444-3333-2222-1111-000099998888",
+  "state": "wellFormed",
+  "revision": 14,
+  "_links": {
+    "self": {
+      "href": "[REDACTED]/_apis/projects/55554444-3333-2222-1111-000099998888"
+    },
+    "collection": {
+      "href": "[REDACTED]/_apis/projectCollections/1d8e3089-8f24-43f5-96f6-7a561518619b"
+    },
+    "web": {
+      "href": "[REDACTED]/open-source-utils"
+    }
+  },
+  "visibility": "public",
+  "defaultTeam": {
+    "id": "98765432-10ab-cdef-9876-543210abcdef",
+    "name": "open-source-utils Team",
+    "url": "[REDACTED]/_apis/projects/55554444-3333-2222-1111-000099998888/teams/98765432-10ab-cdef-9876-543210abcdef"
+  },
+  "lastUpdateTime": "2026-04-06T08:00:00.00Z"
+}

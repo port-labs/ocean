@@ -3,6 +3,7 @@ from typing import Any, AsyncGenerator, Optional
 import httpx
 from httpx import BasicAuth, ReadTimeout, Response
 from loguru import logger
+from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from azure_devops.client.rate_limiter import (
@@ -26,6 +27,7 @@ class HTTPBaseClient:
                     LIMIT_RETRY_AFTER_HEADER,
                 ],
             ),
+            timeout=ocean.config.client_timeout,
         )
         self._personal_access_token = personal_access_token
         self._rate_limiter = AzureDevOpsRateLimiter()
@@ -37,7 +39,6 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
-        timeout: int = 5,
     ) -> Response | None:
         self._client.auth = BasicAuth("", self._personal_access_token)
         self._client.follow_redirects = True
@@ -50,7 +51,6 @@ class HTTPBaseClient:
                     data=data,
                     params=params,
                     headers=headers,
-                    timeout=timeout,
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
@@ -130,12 +130,21 @@ class HTTPBaseClient:
                     raise e
 
     async def _get_paginated_by_top_and_skip(
-        self, url: str, params: Optional[dict[str, Any]] = None
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        max_results: Optional[int] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
         timeout_retries = 0
+        total_items_fetched = 0
         while True:
+            if max_results and total_items_fetched >= max_results:
+                break
+            if max_results:
+                params["$top"] = min(PAGE_SIZE, max_results - total_items_fetched)
+
             try:
                 response = await self.send_request("GET", url, params=params)
                 if not response:
@@ -144,10 +153,11 @@ class HTTPBaseClient:
                 objects_page = response.json()["value"]
                 if objects_page:
                     logger.info(
-                        f"Found {len(objects_page)} objects in url {url} with params: {params}"
+                        f"Found {len(objects_page)} objects in url {url} with params: {params} and max_results: {max_results}"
                     )
                     yield objects_page
-                    params["$skip"] += PAGE_SIZE
+                    total_items_fetched += len(objects_page)
+                    params["$skip"] += len(objects_page)
                     timeout_retries = 0
                 else:
                     break

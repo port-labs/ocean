@@ -1,12 +1,26 @@
 import pytest
+from typing import cast
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.auth.retry_transport import GitHubRetryTransport
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 
+_GQL_HOST = "https://api.github.com"
+_GQL_ORG = "test-org"
 
-@pytest.mark.asyncio
+
+def _make_gql_client(
+    authenticator: AbstractGitHubAuthenticator,
+) -> GithubGraphQLClient:
+    return GithubGraphQLClient(
+        organization=_GQL_ORG,
+        github_host=_GQL_HOST,
+        authenticator=authenticator,
+    )
+
+
 class TestGithubGraphQLClient:
     def test_graphql_base_url_github_com(
         self, authenticator: AbstractGitHubAuthenticator
@@ -28,6 +42,7 @@ class TestGithubGraphQLClient:
         )
         assert client.base_url == "https://ghe.example.com/api/graphql"
 
+    @pytest.mark.asyncio
     async def test_handle_graphql_errors(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -69,6 +84,7 @@ class TestGithubGraphQLClient:
             assert str(exc_info.value.errors[0]) == "Error 1"
             assert str(exc_info.value.errors[1]) == "Error 2"
 
+    @pytest.mark.asyncio
     async def test_handle_graphql_success(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -100,6 +116,7 @@ class TestGithubGraphQLClient:
                 {"id": 1, "name": "repo1"}
             ]
 
+    @pytest.mark.asyncio
     async def test_send_paginated_request_single_page(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -133,6 +150,7 @@ class TestGithubGraphQLClient:
             assert len(results) == 1
             assert results[0] == [{"id": 1, "name": "repo1"}]
 
+    @pytest.mark.asyncio
     async def test_send_paginated_request_multiple_pages(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -183,6 +201,7 @@ class TestGithubGraphQLClient:
             assert results[0] == [{"id": 1, "name": "repo1"}]
             assert results[1] == [{"id": 2, "name": "repo2"}]
 
+    @pytest.mark.asyncio
     async def test_send_paginated_request_empty_response(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -215,6 +234,7 @@ class TestGithubGraphQLClient:
 
             assert len(results) == 0
 
+    @pytest.mark.asyncio
     async def test_send_paginated_request_missing_path(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -229,3 +249,98 @@ class TestGithubGraphQLClient:
         ):
             async for _ in client.send_paginated_request("query"):
                 pass
+
+
+class TestGithubGraphQLClientRetryConfig:
+    """Tests for client property override — POST retryability and caching."""
+
+    def test_graphql_client_transport_has_post_retryable(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        gql_client = _make_gql_client(authenticator)
+
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+            transport = cast(GitHubRetryTransport, gql_client.client._transport)
+            retryable = transport._retry_config.retryable_methods
+
+        assert "POST" in retryable
+
+    def test_rest_client_transport_does_not_have_post_retryable(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+            transport = cast(GitHubRetryTransport, authenticator.client._transport)
+            retryable = transport._retry_config.retryable_methods
+
+        assert "POST" not in retryable
+
+    def test_client_is_cached_per_instance(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        gql_client = _make_gql_client(authenticator)
+
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+            first = gql_client.client
+            second = gql_client.client
+
+        assert first is second
+
+    def test_client_is_separate_from_authenticator_default_client(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        gql_client = _make_gql_client(authenticator)
+
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+            assert gql_client.client is not authenticator.client
+
+    def test_different_graphql_instances_have_independent_client_caches(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        gql1 = _make_gql_client(authenticator)
+        gql2 = _make_gql_client(authenticator)
+
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+            assert gql1.client is not gql2.client
+
+    @pytest.mark.asyncio
+    async def test_graphql_client_retries_post_on_transient_error(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        gql_client = _make_gql_client(authenticator)
+        calls: list[int] = []
+
+        async def fake_handle(
+            self: httpx.AsyncHTTPTransport, request: httpx.Request
+        ) -> httpx.Response:
+            calls.append(1)
+            headers = {"Content-Length": "0"}
+            if len(calls) == 1:
+                return httpx.Response(502, headers=headers, request=request)
+            return httpx.Response(200, headers=headers, request=request)
+
+        with (
+            patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean,
+            patch.object(httpx.AsyncHTTPTransport, "handle_async_request", fake_handle),
+            patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+            patch.object(
+                authenticator,
+                "get_headers",
+                AsyncMock(
+                    return_value=AsyncMock(
+                        as_dict=lambda: {"Authorization": "Bearer test"}
+                    )
+                ),
+            ),
+        ):
+            mock_ocean.config.client_timeout = 60
+            client = gql_client.client
+            resp = await client.post(f"{_GQL_HOST}/graphql", json={})
+            await client.aclose()
+
+        assert resp.status_code == 200
+        assert len(calls) == 2

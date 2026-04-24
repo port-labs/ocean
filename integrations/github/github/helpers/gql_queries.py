@@ -1,9 +1,12 @@
+from github.core.options import PullRequestGraphQLOptions
+
 PAGE_INFO_FRAGMENT = """
 fragment PageInfoFields on PageInfo {
   hasNextPage
   endCursor
 }
 """
+
 
 LIST_ORG_MEMBER_GQL = f"""
 {PAGE_INFO_FRAGMENT}
@@ -18,35 +21,10 @@ query OrgMemberQuery(
         after: $after
       ) {{
         nodes {{
-          login
-          ... on User {{
-            email
-            name
-          }}
-        }}
-        pageInfo {{
-        ...PageInfoFields
-        }}
-      }}
-    }}
-}}
-"""
-
-LIST_ORG_MEMBER_WITHOUT_BOTS_GQL = f"""
-{PAGE_INFO_FRAGMENT}
-query OrgMemberQuery(
-  $organization: String!
-  $first: Int = 25
-  $after: String
-) {{
-    organization(login: $organization) {{
-      membersWithRole(
-        first: $first
-        after: $after
-      ) {{
-        nodes {{
             ... on User {{
               login
+              id
+              databaseId
               email
               name
             }}
@@ -69,8 +47,22 @@ FETCH_GITHUB_USER_GQL = """
         }
         """
 
+TEAM_FIELDS_FRAGMENT = """
+fragment TeamFields on Team {
+  slug
+  id
+  databaseId
+  name
+  description
+  privacy
+  notificationSetting
+  url
+}
+"""
+
 LIST_TEAM_MEMBERS_GQL = f"""
 {PAGE_INFO_FRAGMENT}
+{TEAM_FIELDS_FRAGMENT}
 query getTeamMembers(
   $organization: String!,
   $first: Int = 25,         # For team pagination (default handled by GraphQL client if not overridden)
@@ -81,13 +73,7 @@ query getTeamMembers(
   organization(login: $organization){{
     teams(first: $first, after: $after){{ # Team pagination
       nodes{{
-        slug
-        id
-        name
-        description
-        privacy
-        notificationSetting
-        url
+        ...TeamFields
 
         members(first: $memberFirst, after: $memberAfter){{
           nodes{{
@@ -110,20 +96,6 @@ query getTeamMembers(
 }}
 """
 
-
-TEAM_FIELDS_FRAGMENT = """
-fragment TeamFields on Team {
-  slug
-  id
-  name
-  description
-  privacy
-  notificationSetting
-  url
-}
-"""
-
-
 TEAM_MEMBER_FRAGMENT = """
 fragment TeamMemberFields on Team {
   members(first: $memberFirst, after: $memberAfter) {
@@ -132,6 +104,7 @@ fragment TeamMemberFields on Team {
       login
       name
       isSiteAdmin
+      email
     }
     pageInfo {
       ...PageInfoFields
@@ -193,6 +166,197 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
       }}
     }}
 """
+
+PR_COMMITS_TOTAL_ONLY = """
+commits { totalCount }
+"""
+
+PR_COMMITS_WITH_FIRST = """
+commits(first: 1) {
+    totalCount
+    nodes {
+      commit {
+        oid
+        committedDate
+      }
+    }
+  }
+"""
+
+
+def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
+    return f"""
+  url
+  id
+  fullDatabaseId
+  number
+  state
+  locked
+  title
+  body
+  createdAt
+  updatedAt
+  closedAt
+  mergedAt
+  isDraft
+  headRefName
+  baseRefName
+  mergeable
+  mergeStateStatus
+  reviewDecision
+  authorAssociation
+  activeLockReason
+  merged
+  permalink
+  canBeRebased
+  closed
+  maintainerCanModify
+  lastEditedAt
+
+  additions
+  deletions
+  changedFiles
+
+  headRefOid
+  headRef {{
+    name
+    target {{
+      ... on Commit {{
+        oid
+      }}
+    }}
+  }}
+
+  baseRef {{
+    name
+    target {{
+      ... on Commit {{
+        oid
+      }}
+    }}
+  }}
+
+  author {{
+    login
+    avatarUrl
+    url
+    __typename
+  }}
+
+  mergedBy {{
+    login
+    avatarUrl
+    url
+    __typename
+  }}
+
+  mergeCommit {{
+    oid
+  }}
+
+  potentialMergeCommit {{
+    oid
+  }}
+
+  assignees(first: 10) {{
+    nodes {{
+      login
+      avatarUrl
+    }}
+  }}
+
+  reviewRequests(first: 10) {{
+    nodes {{
+      requestedReviewer {{
+        __typename
+        ... on User {{
+          login
+          avatarUrl
+        }}
+        ... on Team {{
+          name
+          slug
+        }}
+      }}
+    }}
+  }}
+
+  labels(first: 10) {{
+    nodes {{
+      id
+      url
+      name
+      color
+      isDefault
+      description
+    }}
+  }}
+
+  milestone {{
+    number
+    title
+    description
+    dueOn
+    url
+  }}
+
+  comments {{ totalCount }}
+  reviewThreads {{ totalCount }}
+  {PR_COMMITS_WITH_FIRST if options.enrich_with_first_commit else PR_COMMITS_TOTAL_ONLY}
+  autoMergeRequest {{
+    enabledAt
+    mergeMethod
+    commitHeadline
+    commitBody
+  }}
+"""
+
+
+def generate_list_pull_requests_gql(options: PullRequestGraphQLOptions) -> str:
+    return f"""
+{PAGE_INFO_FRAGMENT}
+query ListPullRequests(
+  $organization: String!,
+  $repo: String!,
+  $states: [PullRequestState!],
+  $first: Int = 25,
+  $after: String
+) {{
+  repository(owner: $organization, name: $repo) {{
+    pullRequests(
+      first: $first,
+      after: $after,
+      states: $states,
+      orderBy: {{ field: CREATED_AT, direction: DESC }}
+    ) {{
+      nodes {{
+{generate_pr_fields(options)}
+      }}
+      pageInfo {{
+        ...PageInfoFields
+      }}
+    }}
+  }}
+}}
+"""
+
+
+def generate_pull_request_details_gql(options: PullRequestGraphQLOptions) -> str:
+    return f"""
+{PAGE_INFO_FRAGMENT}
+query PullRequestDetails(
+  $organization: String!,
+  $repo: String!,
+  $prNumber: Int!
+) {{
+  repository(owner: $organization, name: $repo) {{
+    pullRequest(number: $prNumber) {{
+{generate_pr_fields(options)}
+    }}
+  }}
+}}
+"""
+
 
 REPOSITORY_FRAGMENT = """
 fragment RepositoryFields on Repository {

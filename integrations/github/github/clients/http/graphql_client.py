@@ -1,5 +1,6 @@
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
+import httpx
 from loguru import logger
 
 from github.clients.http.base_client import AbstractGithubClient
@@ -22,6 +23,7 @@ class GithubGraphQLClient(AbstractGithubClient):
     ) -> None:
         super().__init__(github_host=github_host, authenticator=authenticator, **kwargs)
         self._graphql_url = self._compute_graphql_base_url(self.github_host)
+        self._graphql_client: Optional[httpx.AsyncClient] = None
 
     def _compute_graphql_base_url(self, github_host: str) -> str:
         parsed = urlparse(github_host.rstrip("/"))
@@ -29,6 +31,12 @@ class GithubGraphQLClient(AbstractGithubClient):
         return urlunparse(
             parsed._replace(path=graphql_path, params="", query="", fragment="")
         )
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        if self._graphql_client is None:
+            self._graphql_client = self.authenticator._make_client(frozenset({"POST"}))
+        return self._graphql_client
 
     @property
     def base_url(self) -> str:
@@ -119,7 +127,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             )
 
         cursor = None
-        logger.info(f"Starting GraphQL pagination for query with path {path}")
+        logger.info(f"[GraphQL] Starting pagination for query with path {path}")
 
         while True:
             payload = self.build_graphql_payload(resource, params, cursor=cursor)
@@ -143,7 +151,7 @@ class GithubGraphQLClient(AbstractGithubClient):
                 break
 
             cursor = page_info.get("endCursor")
-            logger.debug(f"Next page cursor: {cursor}")
+            logger.debug(f"[GraphQL] Next page cursor: {cursor}")
 
     def _extract_nodes(
         self, data: Dict[str, Any], path: str, node_key: str = "nodes"
