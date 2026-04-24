@@ -1,6 +1,7 @@
+import os
 from port_ocean.context.ocean import ocean
 from azure.core.credentials_async import AsyncTokenCredential
-from azure.identity.aio import ClientSecretCredential, DefaultAzureCredential
+from azure.identity.aio import DefaultAzureCredential
 from azure_integration.clients.base import AbstractAzureClient
 from enum import StrEnum
 from loguru import logger
@@ -59,9 +60,9 @@ class AzureClientFactory:
         """
         base_url = ocean.integration_config["azure_base_url"]
         credential = AzureAuthenticatorFactory.create(
-            tenant_id=ocean.integration_config["azure_tenant_id"],
-            client_id=ocean.integration_config["azure_client_id"],
-            client_secret=ocean.integration_config["azure_client_secret"],
+            ocean.integration_config["azure_tenant_id"],
+            ocean.integration_config["azure_client_id"],
+            ocean.integration_config["azure_client_secret"],
         )
         rate_limiter = AdaptiveTokenBucketRateLimiter(
             capacity=AZURERM_RATELIMIT_CAPACITY,
@@ -79,25 +80,16 @@ class AzureAuthenticatorFactory:
         client_id: str | None = None,
         client_secret: str | None = None,
     ) -> AsyncTokenCredential:
-        if tenant_id and client_id and client_secret:
-            logger.info("Using ClientSecretCredential (explicit credentials provided)")
-            return ClientSecretCredential(
-                tenant_id=tenant_id,
-                client_id=client_id,
-                client_secret=client_secret,
-            )
 
-        logger.info(
-            "Using DefaultAzureCredential — supports OIDC, workload identity, "
-            "managed identity, and Azure CLI authentication"
-        )
-        kwargs = {}
-        if client_id:
-            kwargs["workload_identity_client_id"] = client_id
-            kwargs["managed_identity_client_id"] = client_id
         if tenant_id:
-            kwargs["workload_identity_tenant_id"] = tenant_id
-        return DefaultAzureCredential(**kwargs)
+            os.environ["AZURE_TENANT_ID"] = tenant_id
+        if client_id:
+            os.environ["AZURE_CLIENT_ID"] = client_id
+        if client_secret:
+            os.environ["AZURE_CLIENT_SECRET"] = client_secret
+
+        logger.info("Using DefaultAzureCredential for authentication")
+        return DefaultAzureCredential()
 
 
 def create_azure_client(
