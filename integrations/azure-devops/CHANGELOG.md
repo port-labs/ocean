@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.23 (2026-04-24)
+
+
+### Improvements
+
+- Added concurrency support for repository fetching across projects
+
+
 ## 0.8.22 (2026-04-23)
 
 
