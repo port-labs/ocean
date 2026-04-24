@@ -4903,7 +4903,7 @@ async def test_get_test_runs_by_build_with_enrichment(
                 client,
                 "_enrich_test_runs",
                 side_effect=mock_enrich_test_runs,
-            ):
+            ) as mock_enrich:
                 result = await client.get_test_runs_by_build(
                     "proj1", "789", include_results=True
                 )
@@ -4911,7 +4911,7 @@ async def test_get_test_runs_by_build_with_enrichment(
                 assert len(result) == 2
                 assert "__testResults" in result[0]
                 assert result[0]["__testResults"][0]["id"] == 100000
-                client._enrich_test_runs.assert_called_once_with(
+                mock_enrich.assert_called_once_with(
                     result, "proj1", True, None
                 )
 
