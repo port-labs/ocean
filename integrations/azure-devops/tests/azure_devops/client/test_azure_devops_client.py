@@ -4911,9 +4911,7 @@ async def test_get_test_runs_by_build_with_enrichment(
                 assert len(result) == 2
                 assert "__testResults" in result[0]
                 assert result[0]["__testResults"][0]["id"] == 100000
-                mock_enrich.assert_called_once_with(
-                    result, "proj1", True, None
-                )
+                mock_enrich.assert_called_once_with(result, "proj1", True, None)
 
 
 @pytest.mark.asyncio
