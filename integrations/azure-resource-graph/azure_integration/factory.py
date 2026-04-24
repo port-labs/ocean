@@ -59,9 +59,9 @@ class AzureClientFactory:
         """
         base_url = ocean.integration_config["azure_base_url"]
         credential = AzureAuthenticatorFactory.create(
-            tenant_id=ocean.integration_config.get("azure_tenant_id"),
-            client_id=ocean.integration_config.get("azure_client_id"),
-            client_secret=ocean.integration_config.get("azure_client_secret"),
+            tenant_id=ocean.integration_config["azure_tenant_id"],
+            client_id=ocean.integration_config["azure_client_id"],
+            client_secret=ocean.integration_config["azure_client_secret"],
         )
         rate_limiter = AdaptiveTokenBucketRateLimiter(
             capacity=AZURERM_RATELIMIT_CAPACITY,
