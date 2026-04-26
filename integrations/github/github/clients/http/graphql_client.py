@@ -53,6 +53,8 @@ class GithubGraphQLClient(AbstractGithubClient):
         self,
         response: Dict[str, Any],
         ignored_errors: Optional[List[IgnoredError]] = None,
+        query_path: Optional[str] = None,
+        query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         if "errors" not in response:
             return response
@@ -72,6 +74,9 @@ class GithubGraphQLClient(AbstractGithubClient):
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
 
         if non_ignored_exceptions:
+            logger.error(
+                f"[GraphQL] Query failed for path {query_path} with variables {query_params}"
+            )
             raise GraphQLErrorGroup(non_ignored_exceptions)
 
         return {}
@@ -85,6 +90,8 @@ class GithubGraphQLClient(AbstractGithubClient):
         ignored_errors: Optional[List[IgnoredError]] = None,
         ignore_default_errors: bool = True,
         authenticator_headers_params: Optional[Dict[str, Any]] = {},
+        query_path: Optional[str] = None,
+        query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         response = await super().send_api_request(
             resource=resource,
@@ -94,7 +101,9 @@ class GithubGraphQLClient(AbstractGithubClient):
             ignored_errors=ignored_errors,
             authenticator_headers_params=authenticator_headers_params,
         )
-        response = self._handle_graphql_errors(response, ignored_errors)
+        response = self._handle_graphql_errors(
+            response, ignored_errors, query_path=query_path, query_params=query_params
+        )
         return response
 
     def build_graphql_payload(
@@ -131,18 +140,14 @@ class GithubGraphQLClient(AbstractGithubClient):
 
         while True:
             payload = self.build_graphql_payload(resource, params, cursor=cursor)
-            try:
-                response = await self.send_api_request(
-                    self.base_url,
-                    method=method,
-                    json_data=payload,
-                    ignored_errors=ignored_errors,
-                )
-            except GraphQLErrorGroup:
-                logger.exception(
-                    f"[GraphQL] Query failed for path {path} with variables {params}"
-                )
-                raise
+            response = await self.send_api_request(
+                self.base_url,
+                method=method,
+                json_data=payload,
+                ignored_errors=ignored_errors,
+                query_path=path,
+                query_params=params,
+            )
             if not response:
                 break
 
