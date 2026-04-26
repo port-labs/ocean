@@ -27,6 +27,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.models import ProcessExecutionMode
+from port_ocean.health import create_health_router
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.misc import IntegrationStateStatus
@@ -293,6 +294,9 @@ class Ocean:
         )
         self.fast_api_app.include_router(
             self.metrics.create_mertic_router(), prefix=f"{self.route_prefix}/metrics"
+        )
+        self.fast_api_app.include_router(
+            create_health_router(), prefix=f"{self.route_prefix}/health"
         )
 
         @asynccontextmanager

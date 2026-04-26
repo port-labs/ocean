@@ -274,25 +274,38 @@ async def enrich_members_with_saml_email(
     client: "GithubGraphQLClient",
     organization: str,
     members: list[dict[str, Any]],
+    include_saml_email: bool,
 ) -> None:
-    """Enrich members in-place with SAML email where email is missing."""
-    members_without_email = [m for m in members if not m.get("email")]
-    if not members_without_email:
+    """
+    Enrich members in-place:
+    - If include_saml_email=True: add '__SAMLEmail' field for all members
+    - Always: fill 'email' field from SAML when it's missing
+    """
+    if not members:
         return
 
-    logger.info(
-        f"Found {len(members_without_email)} members without email, "
-        f"fetching from SAML for organization '{organization}'"
-    )
-    saml_users = await get_saml_identities(client, organization)
+    if not include_saml_email and all(m.get("email") for m in members):
+        return
+
+    saml_map = await get_saml_identities(client, organization)
 
     enriched = 0
-    for member in members_without_email:
-        if member["login"] in saml_users:
-            member["email"] = saml_users[member["login"]]
+    for member in members:
+        login = member.get("login")
+        saml_email = saml_map.get(login) if login else None
+
+        member_has_email = member.get("email")
+        should_fallback_to_saml_email = not member_has_email and saml_email
+
+        if include_saml_email or should_fallback_to_saml_email:
+            member["__SAMLEmail"] = saml_email
+
+        if should_fallback_to_saml_email:
+            member["email"] = saml_email
             enriched += 1
 
-    logger.info(
-        f"Enriched {enriched}/{len(members_without_email)} members with SAML email "
-        f"for organization '{organization}'"
-    )
+    if enriched > 0:
+        logger.info(
+            f"Enriched {enriched}/{len(members)} members with SAML email "
+            f"for organization '{organization}'"
+        )

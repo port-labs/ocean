@@ -12,6 +12,7 @@ features:
       - kind: team
       - kind: user
       - kind: release
+      - kind: board
 configurations:
   - name: appHost
     required: false
