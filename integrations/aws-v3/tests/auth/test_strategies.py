@@ -701,7 +701,7 @@ class TestOUScopedAccountDiscovery:
     def strategy_with_ou(self) -> OrganizationsStrategy:
         config = {
             "account_role_arn": "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole",
-            "organization_unit_id": "ou-root-abc123",
+            "ou_id": "ou-root-abc123",
         }
         provider = StaticCredentialProvider(config=config)
         return OrganizationsStrategy(provider=provider, config=config)
@@ -850,7 +850,7 @@ class TestOUScopedAccountDiscovery:
         assert len(result) == 2
         assert {r["Id"] for r in result} == {"111", "222"}
 
-    # --- _get_accounts_for_ou ---
+    # --- _get_active_accounts_for_ou ---
 
     def _make_ou_org_client(
         self,
@@ -885,7 +885,7 @@ class TestOUScopedAccountDiscovery:
         return mock_org_client
 
     @pytest.mark.asyncio
-    async def test_get_accounts_for_ou_returns_direct_accounts(
+    async def test_get_active_accounts_for_ou_returns_direct_accounts(
         self, strategy: OrganizationsStrategy, mock_aiosession: AsyncMock
     ) -> None:
         mock_org_client = self._make_ou_org_client(
@@ -921,13 +921,13 @@ class TestOUScopedAccountDiscovery:
         with patch.object(
             strategy, "_get_organization_session", return_value=mock_aiosession
         ):
-            result = await strategy._get_accounts_for_ou("ou-root", MagicMock())
+            result = await strategy._get_active_accounts_for_ou("ou-root", MagicMock())
 
         assert len(result) == 1
         assert result[0]["Id"] == "111"
 
     @pytest.mark.asyncio
-    async def test_get_accounts_for_ou_recursively_includes_child_ou_accounts(
+    async def test_get_active_accounts_for_ou_recursively_includes_child_ou_accounts(
         self, strategy: OrganizationsStrategy, mock_aiosession: AsyncMock
     ) -> None:
         mock_org_client = self._make_ou_org_client(
@@ -968,13 +968,13 @@ class TestOUScopedAccountDiscovery:
         with patch.object(
             strategy, "_get_organization_session", return_value=mock_aiosession
         ):
-            result = await strategy._get_accounts_for_ou("ou-root", MagicMock())
+            result = await strategy._get_active_accounts_for_ou("ou-root", MagicMock())
 
         assert len(result) == 2
         assert {r["Id"] for r in result} == {"111", "222"}
 
     @pytest.mark.asyncio
-    async def test_get_accounts_for_ou_filters_inactive_accounts(
+    async def test_get_active_accounts_for_ou_filters_inactive_accounts(
         self, strategy: OrganizationsStrategy, mock_aiosession: AsyncMock
     ) -> None:
         mock_org_client = self._make_ou_org_client(
@@ -1010,7 +1010,7 @@ class TestOUScopedAccountDiscovery:
         with patch.object(
             strategy, "_get_organization_session", return_value=mock_aiosession
         ):
-            result = await strategy._get_accounts_for_ou("ou-root", MagicMock())
+            result = await strategy._get_active_accounts_for_ou("ou-root", MagicMock())
 
         assert len(result) == 1
         assert result[0]["Id"] == "111"
@@ -1018,7 +1018,7 @@ class TestOUScopedAccountDiscovery:
     # --- discover_accounts routing ---
 
     @pytest.mark.asyncio
-    async def test_discover_accounts_routes_to_ou_when_organization_unit_id_set(
+    async def test_discover_accounts_routes_to_ou_when_ou_id_set(
         self, strategy_with_ou: OrganizationsStrategy, mock_aiosession: AsyncMock
     ) -> None:
         mock_accounts = [{"Id": "111", "Name": "A1", "Email": "", "Arn": ""}]
@@ -1035,7 +1035,9 @@ class TestOUScopedAccountDiscovery:
             strategy_with_ou, "_get_organization_session", return_value=mock_aiosession
         ):
             with patch.object(
-                strategy_with_ou, "_get_accounts_for_ou", return_value=mock_accounts
+                strategy_with_ou,
+                "_get_active_accounts_for_ou",
+                return_value=mock_accounts,
             ) as mock_ou_fn:
                 result = await strategy_with_ou.discover_accounts()
 
