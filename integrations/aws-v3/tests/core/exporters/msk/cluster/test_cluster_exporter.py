@@ -43,6 +43,14 @@ class TestMskClusterExporter:
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
+        cluster_info = {
+            "ClusterArn": "arn:aws:kafka:us-west-2:123456789012:cluster/test-cluster/abc123",
+            "ClusterName": "test-cluster",
+            "State": "ACTIVE",
+            "NumberOfBrokerNodes": 3,
+        }
+        mock_client.describe_cluster.return_value = {"ClusterInfo": cluster_info}
+
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
 
@@ -67,11 +75,10 @@ class TestMskClusterExporter:
 
         assert result == expected_cluster.dict(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "kafka")
-        mock_inspector_class.assert_called_once()
-        mock_inspector.inspect.assert_called_once_with(
-            ["arn:aws:kafka:us-west-2:123456789012:cluster/test-cluster/abc123"],
-            [],
+        mock_client.describe_cluster.assert_called_once_with(
+            ClusterArn="arn:aws:kafka:us-west-2:123456789012:cluster/test-cluster/abc123"
         )
+        mock_inspector.inspect.assert_called_once_with([cluster_info], [])
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.msk.cluster.exporter.AioBaseClientProxy")
@@ -86,6 +93,8 @@ class TestMskClusterExporter:
         mock_client = AsyncMock()
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+        mock_client.describe_cluster.return_value = {"ClusterInfo": {}}
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
@@ -104,8 +113,10 @@ class TestMskClusterExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.msk.cluster.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.msk.cluster.exporter.ResourceInspector")
     async def test_get_paginated_resources_success(
         self,
+        mock_inspector_class: MagicMock,
         mock_proxy_class: MagicMock,
         exporter: MskClusterExporter,
     ) -> None:
@@ -114,48 +125,56 @@ class TestMskClusterExporter:
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
+        clusters_page1 = [
+            {
+                "ClusterArn": "arn:aws:kafka:us-west-2:123456789012:cluster/cluster1/abc",
+                "ClusterName": "cluster1",
+                "State": "ACTIVE",
+            },
+            {
+                "ClusterArn": "arn:aws:kafka:us-west-2:123456789012:cluster/cluster2/def",
+                "ClusterName": "cluster2",
+                "State": "ACTIVE",
+            },
+        ]
+        clusters_page2 = [
+            {
+                "ClusterArn": "arn:aws:kafka:us-west-2:123456789012:cluster/cluster3/ghi",
+                "ClusterName": "cluster3",
+                "State": "CREATING",
+            },
+        ]
+
         async def mock_paginate() -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield [
-                {
-                    "ClusterArn": "arn:aws:kafka:us-west-2:123456789012:cluster/cluster1/abc",
-                    "ClusterName": "cluster1",
-                    "State": "ACTIVE",
-                },
-                {
-                    "ClusterArn": "arn:aws:kafka:us-west-2:123456789012:cluster/cluster2/def",
-                    "ClusterName": "cluster2",
-                    "State": "ACTIVE",
-                },
-            ]
-            yield [
-                {
-                    "ClusterArn": "arn:aws:kafka:us-west-2:123456789012:cluster/cluster3/ghi",
-                    "ClusterName": "cluster3",
-                    "State": "CREATING",
-                },
-            ]
+            yield clusters_page1
+            yield clusters_page2
 
         class MockPaginator:
             def paginate(self) -> AsyncGenerator[list[dict[str, Any]], None]:
                 return mock_paginate()
 
-        paginator_instance = MockPaginator()
-        mock_proxy.get_paginator = MagicMock(return_value=paginator_instance)
+        mock_proxy.get_paginator = MagicMock(return_value=MockPaginator())
 
-        def mock_describe_cluster(ClusterArn: str) -> dict[str, Any]:
-            cluster_name = ClusterArn.split("/")[1]
-            return {
-                "ClusterInfo": {
-                    "ClusterArn": ClusterArn,
-                    "ClusterName": cluster_name,
-                    "State": "ACTIVE",
-                    "NumberOfBrokerNodes": 3,
-                    "BrokerNodeGroupInfo": {"InstanceType": "kafka.m5.large"},
-                    "Tags": {},
-                }
-            }
-
-        mock_client.describe_cluster.side_effect = mock_describe_cluster
+        mock_inspector = AsyncMock()
+        mock_inspector_class.return_value = mock_inspector
+        mock_inspector.inspect.side_effect = [
+            [
+                {
+                    "Type": "AWS::MSK::Cluster",
+                    "Properties": {"ClusterName": "cluster1"},
+                },
+                {
+                    "Type": "AWS::MSK::Cluster",
+                    "Properties": {"ClusterName": "cluster2"},
+                },
+            ],
+            [
+                {
+                    "Type": "AWS::MSK::Cluster",
+                    "Properties": {"ClusterName": "cluster3"},
+                },
+            ],
+        ]
 
         options = PaginatedMskClusterRequest(
             region="us-west-2",
@@ -198,8 +217,7 @@ class TestMskClusterExporter:
             def paginate(self) -> AsyncGenerator[list[dict[str, Any]], None]:
                 return mock_paginate()
 
-        paginator_instance = MockPaginator()
-        mock_proxy.get_paginator = MagicMock(return_value=paginator_instance)
+        mock_proxy.get_paginator = MagicMock(return_value=MockPaginator())
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
@@ -233,6 +251,8 @@ class TestMskClusterExporter:
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
+        mock_client.describe_cluster.return_value = {"ClusterInfo": {}}
+
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
         mock_inspector.inspect.side_effect = Exception("Cluster not found")
@@ -257,8 +277,16 @@ class TestMskClusterExporter:
         exporter: MskClusterExporter,
     ) -> None:
         mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
         mock_proxy_class.return_value.__aexit__ = AsyncMock()
+
+        cluster_info = {
+            "ClusterArn": "arn:aws:kafka:us-west-2:123456789012:cluster/test-cluster/abc",
+            "ClusterName": "test-cluster",
+        }
+        mock_client.describe_cluster.return_value = {"ClusterInfo": cluster_info}
 
         mock_inspector = AsyncMock()
         mock_cluster = MskCluster(

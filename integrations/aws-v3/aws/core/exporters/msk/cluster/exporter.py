@@ -25,13 +25,17 @@ class MskClusterExporter(IResourceExporter):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            response = await proxy.client.describe_cluster(  # type: ignore[attr-defined]
+                ClusterArn=options.cluster_arn
+            )
+            cluster_info = response.get("ClusterInfo", {})
 
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await inspector.inspect([options.cluster_arn], options.include)
+            result = await inspector.inspect([cluster_info], options.include)
 
-            return response[0] if response else {}
+            return result[0] if result else {}
 
     async def get_paginated_resources(
         self, options: PaginatedMskClusterRequest
@@ -48,9 +52,8 @@ class MskClusterExporter(IResourceExporter):
 
             async for clusters in paginator.paginate():
                 if clusters:
-                    cluster_arns = [c["ClusterArn"] for c in clusters]
                     action_result = await inspector.inspect(
-                        cluster_arns,
+                        clusters,
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
