@@ -223,11 +223,13 @@ async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     config = cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
-    async for work_items in azure_devops_client.generate_work_items(
-        wiql=config.selector.wiql, expand=config.selector.expand
-    ):
-        logger.info(f"Resyncing {len(work_items)} work items")
-        yield work_items
+    for iteration in range(100):
+        logger.info(f"Load test iteration {iteration + 1}/100")
+        async for work_items in azure_devops_client.generate_work_items(
+            wiql=config.selector.wiql, expand=config.selector.expand
+        ):
+            logger.info(f"Resyncing {len(work_items)} work items (iteration {iteration + 1}/100)")
+            yield work_items
 
 
 @ocean.on_resync(Kind.COLUMN)
