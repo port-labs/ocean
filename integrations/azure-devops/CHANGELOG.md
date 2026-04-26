@@ -12,7 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Bumped ocean version to ^0.41.5
 - Released HTTP response objects earlier in paginated API calls to reduce memory pressure during large resyncs
 
 
