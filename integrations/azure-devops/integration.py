@@ -362,19 +362,23 @@ class AzureDevopsColumnConfig(ResourceConfig):
 
 
 class AzureDevopsReleaseSelector(Selector):
-    expand: Literal[
-        "environments",
-        "artifacts",
-        "approvals",
-        "manualInterventions",
-        "variables",
-        "tags",
+    expand: Optional[
+        Literal[
+            "environments",
+            "artifacts",
+            "approvals",
+            "manualInterventions",
+            "variables",
+            "tags",
+        ]
     ] = Field(
         default=None,
         title="Expand",
         description="Property to expand on each release. When set, the expanded data is available in JQ mappings.",
     )
-    status_filter: Literal["abandoned", "active", "draft", "undefined"] = Field(
+    status_filter: Optional[
+        Literal["abandoned", "active", "draft", "undefined"]
+    ] = Field(
         alias="statusFilter",
         default=None,
         title="Status Filter",
