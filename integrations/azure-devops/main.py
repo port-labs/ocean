@@ -253,12 +253,7 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsReleaseConfig, event.resource_config)
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for releases in azure_devops_client.generate_releases(
-        expand=config.selector.expand,
-        status_filter=config.selector.status_filter,
-        tag_filter=config.selector.tag_filter,
-        source_branch_filter=config.selector.source_branch_filter,
-        min_created_time=config.selector.min_created_time,
-        max_created_time=config.selector.max_created_time,
+        additional_params=config.selector.to_params(),
     ):
         logger.info(f"Resyncing {len(releases)} releases")
         yield releases

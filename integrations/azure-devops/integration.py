@@ -362,16 +362,23 @@ class AzureDevopsColumnConfig(ResourceConfig):
 
 
 class AzureDevopsReleaseSelector(Selector):
-    expand: Optional[str] = Field(
+    expand: Literal[
+        "environments",
+        "artifacts",
+        "approvals",
+        "manualInterventions",
+        "variables",
+        "tags",
+    ] = Field(
         default=None,
         title="Expand",
-        description="Comma-separated list of properties to expand on each release (e.g. 'environments'). When set, the expanded data is available in JQ mappings.",
+        description="Property to expand on each release. When set, the expanded data is available in JQ mappings.",
     )
-    status_filter: Optional[str] = Field(
+    status_filter: Literal["abandoned", "active", "draft", "undefined"] = Field(
         alias="statusFilter",
         default=None,
         title="Status Filter",
-        description="Filter releases by status (e.g. 'active', 'abandoned', 'draft').",
+        description="Filter releases by status.",
     )
     tag_filter: Optional[str] = Field(
         alias="tagFilter",
@@ -397,6 +404,22 @@ class AzureDevopsReleaseSelector(Selector):
         title="Max Created Time",
         description="Only include releases created before this date (ISO 8601 format, e.g. '2026-01-01').",
     )
+
+    def to_params(self) -> dict[str, str]:
+        params: dict[str, str] = {}
+        if self.expand:
+            params["$expand"] = self.expand
+        if self.status_filter:
+            params["statusFilter"] = self.status_filter
+        if self.tag_filter:
+            params["tagFilter"] = self.tag_filter
+        if self.source_branch_filter:
+            params["sourceBranchFilter"] = self.source_branch_filter
+        if self.min_created_time:
+            params["minCreatedTime"] = self.min_created_time
+        if self.max_created_time:
+            params["maxCreatedTime"] = self.max_created_time
+        return params
 
 
 class AzureDevopsReleaseConfig(ResourceConfig):
