@@ -101,13 +101,13 @@ class TestListTagsForResourceAction:
 
         expected_result = [
             {
-                "Tags": [
+                "TagList": [
                     {"Key": "Environment", "Value": "production"},
                     {"Key": "Project", "Value": "web-app"},
                 ]
             },
             {
-                "Tags": [
+                "TagList": [
                     {"Key": "Environment", "Value": "staging"},
                     {"Key": "Owner", "Value": "devops-team"},
                 ]
@@ -162,7 +162,7 @@ class TestListTagsForResourceAction:
         result = await action.execute(cache_clusters)
 
         expected_result = [
-            {"Tags": [{"Key": "Environment", "Value": "production"}]},
+            {"TagList": [{"Key": "Environment", "Value": "production"}]},
             {},
         ]
         assert result == expected_result
@@ -214,12 +214,12 @@ class TestListTagsForResourceAction:
 
         expected_result = [
             {},
-            {"Tags": [{"Key": "Environment", "Value": "staging"}]},
+            {"TagList": [{"Key": "Environment", "Value": "staging"}]},
         ]
         assert result == expected_result
         assert len(result) == 2
         assert result[0] == {}
-        assert result[1] == {"Tags": [{"Key": "Environment", "Value": "staging"}]}
+        assert result[1] == {"TagList": [{"Key": "Environment", "Value": "staging"}]}
 
         mock_logger.warning.assert_called_once()
         warning_call = mock_logger.warning.call_args[0][0]
@@ -273,7 +273,7 @@ class TestListTagsForResourceAction:
 
         result = await action.execute(cache_clusters)
 
-        expected_result: list[dict[str, Any]] = [{"Tags": []}]
+        expected_result: list[dict[str, Any]] = [{"TagList": []}]
         assert result == expected_result
 
         action.client.list_tags_for_resource.assert_called_once_with(

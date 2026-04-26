@@ -50,7 +50,7 @@ class ListTagsForResourceAction(Action):
         response = await self.client.list_tags_for_resource(
             ResourceName=cache_cluster["ARN"]
         )
-        return [{"Tags": response.get("TagList", [])}]
+        return [{"TagList": response.get("TagList", [])}]
 
 
 class ElastiCacheClusterActionsMap(ActionMap):

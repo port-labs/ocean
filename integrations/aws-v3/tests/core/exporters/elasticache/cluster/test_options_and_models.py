@@ -118,7 +118,7 @@ class TestCacheClusterProperties:
             NumCacheNodes=1,
             TransitEncryptionEnabled=True,
             AtRestEncryptionEnabled=True,
-            Tags=[{"Key": "Environment", "Value": "test"}],
+            TagList=[{"Key": "Environment", "Value": "test"}],
         )
         assert properties.CacheClusterId == "my-cluster"
         assert properties.CacheNodeType == "cache.t3.micro"
@@ -127,18 +127,18 @@ class TestCacheClusterProperties:
         assert properties.NumCacheNodes == 1
         assert properties.TransitEncryptionEnabled is True
         assert properties.AtRestEncryptionEnabled is True
-        assert properties.Tags == [{"Key": "Environment", "Value": "test"}]
+        assert properties.TagList == [{"Key": "Environment", "Value": "test"}]
 
     def test_dict_exclude_none(self) -> None:
         properties = CacheClusterProperties(
             CacheClusterId="cluster-123",
             Engine="memcached",
-            Tags=[{"Key": "Project", "Value": "demo"}],
+            TagList=[{"Key": "Project", "Value": "demo"}],
         )
         result = properties.dict(exclude_none=True)
         assert result["CacheClusterId"] == "cluster-123"
         assert result["Engine"] == "memcached"
-        assert result["Tags"] == [{"Key": "Project", "Value": "demo"}]
+        assert result["TagList"] == [{"Key": "Project", "Value": "demo"}]
         assert "CacheNodeType" in result
         assert result["CacheNodeType"] == ""
 
@@ -181,7 +181,7 @@ class TestCacheClusterProperties:
             NetworkType="ipv4",
             IpDiscovery="ipv4",
             TransitEncryptionMode="required",
-            Tags=[{"Key": "Name", "Value": "my-redis-cluster"}],
+            TagList=[{"Key": "Name", "Value": "my-redis-cluster"}],
         )
 
         assert properties.CacheClusterId == "my-redis-cluster"
@@ -190,7 +190,7 @@ class TestCacheClusterProperties:
         assert properties.NumCacheNodes == 1
         assert properties.TransitEncryptionEnabled is True
         assert properties.AtRestEncryptionEnabled is True
-        assert properties.Tags == [{"Key": "Name", "Value": "my-redis-cluster"}]
+        assert properties.TagList == [{"Key": "Name", "Value": "my-redis-cluster"}]
 
     def test_memcached_configuration_endpoint(self) -> None:
         properties = CacheClusterProperties(
@@ -276,7 +276,7 @@ class TestCacheCluster:
             SecurityGroups=[
                 {"SecurityGroupId": "sg-12345678", "Status": "active"},
             ],
-            Tags=[
+            TagList=[
                 {"Key": "Environment", "Value": "production"},
                 {"Key": "Project", "Value": "web-app"},
             ],
@@ -290,4 +290,4 @@ class TestCacheCluster:
         )
         assert data["Properties"]["CacheNodes"][0]["Endpoint"]["Port"] == 6379
         assert len(data["Properties"]["SecurityGroups"]) == 1
-        assert len(data["Properties"]["Tags"]) == 2
+        assert len(data["Properties"]["TagList"]) == 2

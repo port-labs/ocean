@@ -38,7 +38,7 @@ class CacheClusterProperties(BaseModel):
     TransitEncryptionMode: Optional[str] = Field(default=None)
     ConfigurationEndpoint: Optional[dict[str, Any]] = Field(default=None)
     ClientDownloadLandingPage: Optional[str] = Field(default=None)
-    Tags: list[dict[str, Any]] = Field(default_factory=list)
+    TagList: list[dict[str, Any]] = Field(default_factory=list)
 
     class Config:
         extra = "ignore"

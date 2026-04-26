@@ -33,6 +33,6 @@ resources:
             networkType: .Properties.NetworkType
             ipDiscovery: .Properties.IpDiscovery
             logDeliveryConfigurations: .Properties.LogDeliveryConfigurations
-            tags: .Properties.Tags
+            tags: .Properties.TagList
           relations:
             account: .__ExtraContext.AccountId
