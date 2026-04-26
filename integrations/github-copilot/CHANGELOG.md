@@ -7,6 +7,152 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.9 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.3.8 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.3.7 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.3.6 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.3.5 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.3.4 (2026-04-20)
+
+
+### Bug Fixes
+
+- Moved `ObjectKind` into `kinds.py` so `integration.py` no longer imports `main.py`, fixing `ocean port-app-config schema` when PortOcean is not initialized
+
+
+## 0.3.3 (2026-04-20)
+
+
+### Improvements
+
+- Added Literal kind definitions to `GithubCopilotPortAppConfig` for schema validation compliance
+
+
+## 0.3.2 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.3.1 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.3.0 (2026-04-12)
+
+
+### Improvements
+
+- Removed deprecated `copilot-team-metrics` and `copilot-organization-metrics` kinds following GitHub's legacy Copilot Metrics API shutdown on April 2, 2026
+- Updated `pages.json` dashboard to reference `githubCopilotOrganizationUsage` blueprint, removing widgets that depended on team-level metrics
+- Updated dashboard identifier from `copilot_metrics` to `copilot_usage_metrics`
+
+
+## 0.2.22 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.2.21 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.2.20 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.2.19 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.2.18 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.2.17 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.2.16 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.2.15 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
 ## 0.2.14 (2026-03-30)
 
 

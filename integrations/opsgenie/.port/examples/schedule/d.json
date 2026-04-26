@@ -1,0 +1,103 @@
+{
+  "item": {
+    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0035",
+    "name": "Rota3",
+    "startDate": "2024-09-02T08:00:00Z",
+    "endDate": null,
+    "type": "daily",
+    "length": 1,
+    "participants": [
+      {
+        "type": "escalation",
+        "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0037",
+        "name": "Devops Team_escalation"
+      }
+    ],
+    "timeRestriction": null
+  },
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0022",
+  "name": "Data Science Team_schedule",
+  "description": "",
+  "timezone": "Africa/Monrovia",
+  "enabled": true,
+  "ownerTeam": {
+    "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012",
+    "name": "Data Science Team"
+  },
+  "rotations": [
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0033",
+      "name": "Rot1",
+      "startDate": "2023-09-11T00:00:00Z",
+      "endDate": null,
+      "type": "weekly",
+      "length": 1,
+      "participants": [
+        {
+          "type": "user",
+          "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0002",
+          "username": "user2@example.com"
+        },
+        {
+          "type": "user",
+          "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001",
+          "username": "user1@example.com"
+        }
+      ],
+      "timeRestriction": null
+    },
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0035",
+      "name": "Rota3",
+      "startDate": "2024-09-02T08:00:00Z",
+      "endDate": null,
+      "type": "daily",
+      "length": 1,
+      "participants": [
+        {
+          "type": "escalation",
+          "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0037",
+          "name": "Devops Team_escalation"
+        }
+      ],
+      "timeRestriction": null
+    },
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0036",
+      "name": "Rota4",
+      "startDate": "2024-09-02T08:00:00Z",
+      "endDate": "2024-09-02T09:00:00Z",
+      "type": "daily",
+      "length": 5,
+      "participants": [
+        {
+          "type": "user",
+          "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001",
+          "username": "user1@example.com"
+        }
+      ],
+      "timeRestriction": null
+    },
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0034",
+      "name": "Rota2",
+      "startDate": "2024-09-02T08:00:00Z",
+      "endDate": null,
+      "type": "weekly",
+      "length": 1,
+      "participants": [
+        {
+          "type": "user",
+          "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001",
+          "username": "user1@example.com"
+        },
+        {
+          "type": "user",
+          "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0003",
+          "username": "user3@example.com"
+        }
+      ],
+      "timeRestriction": null
+    }
+  ]
+}

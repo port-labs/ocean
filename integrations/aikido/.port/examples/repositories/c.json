@@ -1,0 +1,13 @@
+{
+  "id": 1841544,
+  "name": "sample-value-file",
+  "external_repo_id": "50503ffa-8b11-4eee-91ad-5a963767c426",
+  "external_repo_numeric_id": -1,
+  "provider": "azure_devops",
+  "active": true,
+  "url": "https://dev.azure.com/eridotdev/test-azure-sync-project/_git/sample-value-file",
+  "branch": "copilot/add-contributing-guide",
+  "last_scanned_at": 1775686381,
+  "connectivity": "unknown",
+  "sensitivity": "normal"
+}

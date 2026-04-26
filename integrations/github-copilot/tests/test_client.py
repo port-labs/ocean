@@ -8,8 +8,6 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 from clients.github_client import GitHubClient
 from tests.mocks import (
     organizations_response,
-    teams_response,
-    copilot_metrics_response,
     mock_single_json_signed_url_content,
     mock_ndjson_signed_url_content,
 )
@@ -59,64 +57,6 @@ async def test_get_organizations_single_page(github_client: GitHubClient) -> Non
 
 
 @pytest.mark.asyncio
-async def test_get_teams_of_organization_403_ignored(
-    github_client: GitHubClient,
-) -> None:
-    error_response = httpx.Response(
-        status_code=403, request=httpx.Request("GET", "https://fake")
-    )
-    async_mock = AsyncMock(
-        side_effect=httpx.HTTPStatusError(
-            "Forbidden", request=error_response.request, response=error_response
-        )
-    )
-
-    with patch.object(github_client._client, "request", new=async_mock):
-        results = []
-        async for teams in github_client.get_teams_of_organization(
-            organizations_response[0]
-        ):
-            results.extend(teams)
-
-        assert results == []
-
-
-@pytest.mark.asyncio
-async def test_get_legacy_metrics_for_organization(github_client: GitHubClient) -> None:
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = copilot_metrics_response
-
-    with patch.object(
-        github_client._client, "request", new=AsyncMock(return_value=mock_response)
-    ):
-        result = await github_client.get_legacy_metrics_for_organization(
-            organizations_response[0]
-        )
-        assert result == copilot_metrics_response
-
-
-@pytest.mark.asyncio
-async def test_get_metrics_for_team_422_ignored(github_client: GitHubClient) -> None:
-    error_response = httpx.Response(
-        status_code=422, request=httpx.Request("get", "https://fake")
-    )
-    async_mock = AsyncMock(
-        side_effect=httpx.HTTPStatusError(
-            "Unprocessable Entity",
-            request=error_response.request,
-            response=error_response,
-        )
-    )
-
-    with patch.object(github_client._client, "request", new=async_mock):
-        result = await github_client.get_metrics_for_team(
-            organizations_response[0], teams_response[0]
-        )
-        assert result == []
-
-
-@pytest.mark.asyncio
 async def test_paginated_response(github_client: GitHubClient) -> None:
     first_response = MagicMock()
     first_response.status_code = 200
@@ -155,10 +95,10 @@ async def test_send_api_request_404_returns_empty(github_client: GitHubClient) -
 
 
 def test_resolve_route_params() -> None:
-    endpoint = "/orgs/{org}/teams/{team}/metrics"
-    params = {"org": "acme", "team": "devs"}
+    endpoint = "/orgs/{org}/copilot/metrics/users"
+    params = {"org": "acme"}
     result = GitHubClient._resolve_route_params(endpoint, params)
-    assert result == "/orgs/acme/teams/devs/metrics"
+    assert result == "/orgs/acme/copilot/metrics/users"
 
 
 @pytest.mark.asyncio

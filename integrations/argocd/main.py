@@ -1,24 +1,14 @@
 from typing import cast
-from fastapi import Request
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from client import ArgocdClient
 from integration import ApplicationResourceConfig, ManagedResourceResourceConfig
-from misc import ResourceKindsWithSpecialHandling, ObjectKind
+from misc import ResourceKindsWithSpecialHandling, ObjectKind, init_client
 from port_ocean.context.ocean import ocean
-
-
-def init_client() -> ArgocdClient:
-    return ArgocdClient(
-        ocean.integration_config["token"],
-        ocean.integration_config["server_url"],
-        ocean.integration_config["ignore_server_error"],
-        ocean.integration_config["allow_insecure"],
-        ocean.integration_config["custom_http_headers"],
-        ocean.config.streaming.enabled,
-    )
+from webhooks.webhook_processor.application_webhook_processor import (
+    ArgocdApplicationWebhookProcessor,
+)
 
 
 @ocean.on_resync()
@@ -95,17 +85,4 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield managed_resources
 
 
-@ocean.router.post("/webhook")
-async def on_application_event_webhook_handler(request: Request) -> None:
-    data = await request.json()
-    logger.debug(f"received webhook event data: {data}")
-    argocd_client = init_client()
-
-    if data["action"] == "upsert":
-        application = await argocd_client.get_application_by_name(
-            data["application_name"],
-            namespace=data.get("application_namespace"),
-        )
-        await ocean.register_raw(
-            ResourceKindsWithSpecialHandling.APPLICATION, [application]
-        )
+ocean.add_webhook_processor("/webhook", ArgocdApplicationWebhookProcessor)

@@ -1406,7 +1406,7 @@ async def test_register_in_batches_sets_extract_etl_phase_in_logger_context(
             event.port_app_config = mock_port_app_config
             async with resource_context(mock_resource_config, 0):
                 await mock_sync_raw_mixin._register_in_batches(
-                    mock_resource_config, UserAgentType.exporter
+                    mock_resource_config, UserAgentType.exporter, index=0
                 )
     finally:
         logger.remove(sink_id)

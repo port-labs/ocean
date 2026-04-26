@@ -1,6 +1,8 @@
-import json
 import hmac
 import hashlib
+import json
+
+from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -18,14 +20,21 @@ class _SentryBaseWebhookProcessor(AbstractWebhookProcessor):
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         """Authenticate the webhook request."""
-        expected_digest = headers.get("sentry-hook-signature")
-        if not expected_digest:
-            return False
-
         webhook_secret: str | None = ocean.integration_config.get(
             "sentry_webhook_secret"
         )
         if not webhook_secret:
+            logger.debug(
+                "Skipping webhook signature verification because no secret is configured"
+            )
+            return True
+
+        expected_digest = headers.get("sentry-hook-signature")
+        if not expected_digest:
+            logger.error(
+                "Webhook secret is configured but the incoming event is missing "
+                "the 'sentry-hook-signature' header. Rejecting event."
+            )
             return False
 
         body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode(

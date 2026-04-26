@@ -76,7 +76,11 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
         exporter = GraphQLTeamWithMembersExporter(graphql_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleTeamOptions(organization=organization, slug=team["slug"])
+            SingleTeamOptions(
+                organization=organization,
+                slug=team["slug"],
+                include_saml_email=selector.include_saml_email,
+            )
         )
         if not data_to_upsert:
             return WebhookEventRawResults(

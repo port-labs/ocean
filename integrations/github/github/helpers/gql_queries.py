@@ -1,3 +1,5 @@
+from github.core.options import PullRequestGraphQLOptions
+
 PAGE_INFO_FRAGMENT = """
 fragment PageInfoFields on PageInfo {
   hasNextPage
@@ -165,8 +167,25 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
     }}
 """
 
+PR_COMMITS_TOTAL_ONLY = """
+commits { totalCount }
+"""
 
-PR_FIELDS = """
+PR_COMMITS_WITH_FIRST = """
+commits(first: 1) {
+    totalCount
+    nodes {
+      commit {
+        oid
+        committedDate
+      }
+    }
+  }
+"""
+
+
+def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
+    return f"""
   url
   id
   fullDatabaseId
@@ -199,101 +218,102 @@ PR_FIELDS = """
   changedFiles
 
   headRefOid
-  headRef {
+  headRef {{
     name
-    target {
-      ... on Commit {
+    target {{
+      ... on Commit {{
         oid
-      }
-    }
-  }
+      }}
+    }}
+  }}
 
-  baseRef {
+  baseRef {{
     name
-    target {
-      ... on Commit {
+    target {{
+      ... on Commit {{
         oid
-      }
-    }
-  }
+      }}
+    }}
+  }}
 
-  author {
+  author {{
     login
     avatarUrl
     url
     __typename
-  }
+  }}
 
-  mergedBy {
+  mergedBy {{
     login
     avatarUrl
     url
     __typename
-  }
+  }}
 
-  mergeCommit {
+  mergeCommit {{
     oid
-  }
+  }}
 
-  potentialMergeCommit {
+  potentialMergeCommit {{
     oid
-  }
+  }}
 
-  assignees(first: 10) {
-    nodes {
+  assignees(first: 10) {{
+    nodes {{
       login
       avatarUrl
-    }
-  }
+    }}
+  }}
 
-  reviewRequests(first: 10) {
-    nodes {
-      requestedReviewer {
+  reviewRequests(first: 10) {{
+    nodes {{
+      requestedReviewer {{
         __typename
-        ... on User {
+        ... on User {{
           login
           avatarUrl
-        }
-        ... on Team {
+        }}
+        ... on Team {{
           name
           slug
-        }
-      }
-    }
-  }
+        }}
+      }}
+    }}
+  }}
 
-  labels(first: 10) {
-    nodes {
+  labels(first: 10) {{
+    nodes {{
       id
       url
       name
       color
       isDefault
       description
-    }
-  }
+    }}
+  }}
 
-  milestone {
+  milestone {{
     number
     title
     description
     dueOn
     url
-  }
+  }}
 
-  comments { totalCount }
-  reviewThreads { totalCount }
-  commits { totalCount }
-
-  autoMergeRequest {
+  comments {{ totalCount }}
+  reviewThreads {{ totalCount }}
+  {PR_COMMITS_WITH_FIRST if options.enrich_with_first_commit else PR_COMMITS_TOTAL_ONLY}
+  autoMergeRequest {{
     enabledAt
     mergeMethod
     commitHeadline
     commitBody
-  }
+  }}
 """
 
-LIST_PULL_REQUESTS_GQL = f"""
+
+def generate_list_pull_requests_gql(options: PullRequestGraphQLOptions) -> str:
+    return f"""
 {PAGE_INFO_FRAGMENT}
 query ListPullRequests(
   $organization: String!,
@@ -310,7 +330,7 @@ query ListPullRequests(
       orderBy: {{ field: CREATED_AT, direction: DESC }}
     ) {{
       nodes {{
-{PR_FIELDS}
+{generate_pr_fields(options)}
       }}
       pageInfo {{
         ...PageInfoFields
@@ -320,7 +340,9 @@ query ListPullRequests(
 }}
 """
 
-PULL_REQUEST_DETAILS_GQL = f"""
+
+def generate_pull_request_details_gql(options: PullRequestGraphQLOptions) -> str:
+    return f"""
 {PAGE_INFO_FRAGMENT}
 query PullRequestDetails(
   $organization: String!,
@@ -329,11 +351,12 @@ query PullRequestDetails(
 ) {{
   repository(owner: $organization, name: $repo) {{
     pullRequest(number: $prNumber) {{
-{PR_FIELDS}
+{generate_pr_fields(options)}
     }}
   }}
 }}
 """
+
 
 REPOSITORY_FRAGMENT = """
 fragment RepositoryFields on Repository {
