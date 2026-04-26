@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.41.5 (2026-04-26)
+
+### Improvements
+
+- Reduced peak memory usage during resync by processing JQ entity mappings in fixed-size chunks (default 50) instead of passing the entire dataset to forked workers, significantly lowering COW-induced memory overhead.
+- Optimized reconciliation memory footprint by storing minimal entity stubs (identifier + blueprint only) in the passed entities list, allowing full entity data to be garbage collected after upsert.
+- Released raw results from memory earlier in the parse pipeline by dropping the reference before the merge phase.
+
 ## 0.41.4 (2026-04-23)
 
 ### Bug fixes
