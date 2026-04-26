@@ -1,6 +1,7 @@
 from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.ec2.volume.actions import (
     DescribeVolumesAction,
@@ -80,14 +81,31 @@ class TestDescribeVolumeAttributeAction:
     ) -> None:
         volumes = [{"VolumeId": "vol-denied"}]
 
-        error_response = {"Error": {"Code": "AccessDenied", "Message": "Denied"}}
-        action.client.describe_volume_attribute.side_effect = Exception(
-            str(error_response)
+        error = ClientError(
+            error_response={"Error": {"Code": "AccessDenied", "Message": "Denied"}},
+            operation_name="DescribeVolumeAttribute",
         )
+        action.client.describe_volume_attribute.side_effect = error
 
-        # access denied exceptions are handled by execute_concurrent_aws_operations,
-        # which re-raises non-recoverable exceptions
-        with pytest.raises(Exception):
+        result = await action.execute(volumes)
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_execute_non_recoverable_exception_raises(
+        self, mock_logger: MagicMock, action: DescribeVolumeAttributeAction
+    ) -> None:
+        volumes = [{"VolumeId": "vol-111"}]
+
+        error = ClientError(
+            error_response={
+                "Error": {"Code": "InternalError", "Message": "Server error"}
+            },
+            operation_name="DescribeVolumeAttribute",
+        )
+        action.client.describe_volume_attribute.side_effect = error
+
+        with pytest.raises(ClientError):
             await action.execute(volumes)
 
 

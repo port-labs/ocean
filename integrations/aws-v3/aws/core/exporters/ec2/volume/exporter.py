@@ -2,8 +2,8 @@ from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.ec2.volume.actions import EbsVolumeActionsMap
-from aws.core.exporters.ec2.volume.models import EbsVolume
 from aws.core.exporters.ec2.volume.models import (
+    EbsVolume,
     SingleEbsVolumeRequest,
     PaginatedEbsVolumeRequest,
 )
