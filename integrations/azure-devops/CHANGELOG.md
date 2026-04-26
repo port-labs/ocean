@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.24 (2026-04-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+- Released HTTP response objects earlier in paginated API calls to reduce memory pressure during large resyncs
+
+
 ## 0.8.23 (2026-04-24)
 
 
