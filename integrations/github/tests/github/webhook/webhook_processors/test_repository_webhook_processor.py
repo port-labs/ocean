@@ -1,4 +1,4 @@
-from typing import Dict, Literal, List, cast
+from typing import Dict, Literal, List
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -131,7 +131,7 @@ class TestRepositoryWebhookProcessor:
                     SingleRepositoryOptions(
                         organization="test-org",
                         name="test-repo",
-                        included_relationships=[],
+                        included_relations={},
                     )
                 )
 
@@ -196,7 +196,9 @@ class TestRepositoryWebhookProcessor:
             SingleRepositoryOptions(
                 organization="test-org",
                 name="test-repo",
-                included_relationships=cast(list[str], include_relationships),
+                included_relations={
+                    item: {"include": True} for item in include_relationships
+                },
             )
         )
 

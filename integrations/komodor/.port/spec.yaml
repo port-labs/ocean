@@ -1,6 +1,7 @@
 title: Komodor
 description: Komodor integration for Port Ocean
 icon: Komodor
+formMappingEnabled: true
 type: komodor
 recommendedInstallationMethod: Saas
 provider:

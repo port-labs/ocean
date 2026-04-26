@@ -18,6 +18,8 @@ from aws.core.exporters.rds.db_instance.exporter import RdsDbInstanceExporter
 from aws.core.exporters.rds.db_instance.models import PaginatedDbInstanceRequest
 from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
 from aws.core.exporters.ecs.service.models import PaginatedServiceRequest
+from aws.core.exporters.ecs.task_definition.exporter import EcsTaskDefinitionExporter
+from aws.core.exporters.ecs.task_definition.models import PaginatedTaskDefinitionRequest
 from aws.core.exporters.organizations.account.exporter import (
     OrganizationsAccountExporter,
 )
@@ -108,6 +110,15 @@ async def resync_lambda_function(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ecs_service(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EcsServiceExporter, PaginatedServiceRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.ECS_TASK_DEFINITION)
+async def resync_ecs_task_definition(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, EcsTaskDefinitionExporter, PaginatedTaskDefinitionRequest, regional=True
     )
     async for batch in service:
         yield batch

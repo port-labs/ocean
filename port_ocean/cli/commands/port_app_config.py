@@ -14,7 +14,7 @@ from port_ocean.core.handlers import BasePortAppConfig
 from port_ocean.core.handlers.port_app_config.validators import (
     validate_and_get_config_schema,
 )
-from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig, Selector
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.utils.misc import get_integration_class
 
@@ -66,6 +66,19 @@ def _flatten_single_allof(obj: Any) -> Any:
     if allof is not None:
         out["allOf"] = _flatten_single_allof(allof)
     return out
+
+
+def _seal_selector_definitions(schema: dict[str, Any]) -> None:
+    """Set ``additionalProperties: false`` on every Selector definition."""
+    selector_names = {Selector.__name__}
+    queue = list(Selector.__subclasses__())
+    while queue:
+        cls = queue.pop()
+        selector_names.add(cls.__name__)
+        queue.extend(cls.__subclasses__())
+    for name in selector_names:
+        if name in schema.get("definitions", {}):
+            schema["definitions"][name]["additionalProperties"] = False
 
 
 def _normalize_schema(result: dict[str, Any]) -> dict[str, Any]:
@@ -153,6 +166,7 @@ def port_app_config_schema(
         case "json":
             validate_and_get_config_schema(config_class)
             result = config_class.schema()
+            _seal_selector_definitions(result)
         case "ui":
             result = validate_and_get_config_schema(config_class)
             result = _normalize_schema(result)

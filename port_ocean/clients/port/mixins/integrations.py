@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 from urllib.parse import quote_plus
 
@@ -8,7 +8,11 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.models import CreatePortResourcesOrigin, LakehouseOperation
+from port_ocean.core.models import (
+    CreatePortResourcesOrigin,
+    LakehouseOperation,
+    LakehouseEventType,
+)
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 
@@ -297,9 +301,27 @@ class IntegrationClientMixin:
         kind: str,
         index: int,
         operation: LakehouseOperation = LakehouseOperation.UPSERT,
-        data_type: str | None = None,
-        kafka_metadata: dict[str, Any] | None = None,
+        resync_start_time: datetime | None = None,
+        event_type: LakehouseEventType | None = None,
     ) -> None:
+        if not sync_id:
+            raise ValueError("sync_id cannot be empty")
+        if not kind:
+            raise ValueError("kind cannot be empty")
+        if resync_start_time is not None:
+            # Normalize both timestamps to UTC for comparison
+            # If resync_start_time is naive, treat it as UTC
+            if resync_start_time.tzinfo is None:
+                resync_time_utc = resync_start_time.replace(tzinfo=timezone.utc)
+            else:
+                resync_time_utc = resync_start_time
+
+            now_utc = datetime.now(timezone.utc)
+            if resync_time_utc > now_utc:
+                raise ValueError(
+                    f"resync_start_time cannot be in the future: {resync_start_time}"
+                )
+
         logger.debug(
             "starting POST raw data request", raw_data=raw_data, operation=operation
         )
@@ -310,11 +332,12 @@ class IntegrationClientMixin:
             "extractionTimestamp": int(datetime.now().timestamp() * 1000),
             "operation": operation.value,
             "resourceIndex": index,
+            "eventType": (
+                event_type.value if event_type else LakehouseEventType.LIVE_EVENT.value
+            ),
         }
-        if data_type is not None:
-            body["type"] = data_type
-        if kafka_metadata:
-            body["kafkaMetadata"] = kafka_metadata
+        if resync_start_time is not None:
+            body["resyncStartTime"] = resync_start_time.isoformat()
 
         response = await self.client.post(
             f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",
