@@ -102,53 +102,71 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         Asynchronously fetch and return a flat list of all accounts under a given OU (including child OUs).
         Returns a list of AWS account dicts.
         """
-        accounts = []
         logger.debug(f"Fetching AWS accounts for organizational unit '{parent_id}'...")
-        organization_session = await self._get_organization_session()
-        async with organization_session.create_client("organizations") as org_client:
-            # 1. Get direct accounts
-            paginator = org_client.get_paginator("list_accounts_for_parent")
-            async for page in cast(
-                AsyncIterator[Any], paginator.paginate(ParentId=parent_id)
-            ):
-                filtered_accounts = self.filter_active_accounts(page["Accounts"])
-                if filtered_accounts:
-                    logger.debug(
-                        f"Found {len(filtered_accounts)} active account(s) directly under OU '{parent_id}'."
-                    )
-                accounts.extend(filtered_accounts)
 
-            # 2. Get child OUs
-            child_ou_ids = []
-            ou_paginator = org_client.get_paginator(
-                "list_organizational_units_for_parent"
-            )
-            async for page in cast(
-                AsyncIterator[Any], ou_paginator.paginate(ParentId=parent_id)
-            ):
-                for ou in page["OrganizationalUnits"]:
-                    logger.debug(
-                        f"Found child organizational unit '{ou['Id']}' under parent OU '{parent_id}'."
-                    )
-                    child_ou_ids.append(ou["Id"])
+        accounts = await self._fetch_direct_accounts_for_ou(parent_id, org_client)
+        child_ou_ids = await self._fetch_child_ou_ids(parent_id, org_client)
+        child_accounts = await self._fetch_accounts_from_child_ous(
+            child_ou_ids, org_client
+        )
 
-            # 3. Recursively get accounts in child OUs
-            for child_ou_id in child_ou_ids:
-                logger.debug(
-                    f"Fetching accounts from child OU '{child_ou_id}' recursively..."
-                )
-                child_accounts = await self._get_active_accounts_for_ou(
-                    child_ou_id, org_client
-                )
-                if child_accounts:
-                    logger.debug(
-                        f"Found {len(child_accounts)} account(s) in child OU '{child_ou_id}'."
-                    )
-                accounts.extend(child_accounts)
+        accounts.extend(child_accounts)
 
         logger.info(
             f"Finished fetching accounts for OU '{parent_id}'. {len(accounts)} active accounts found."
         )
+        return accounts
+
+    async def _fetch_direct_accounts_for_ou(
+        self, parent_id: str, org_client: AioBaseClient
+    ) -> List[Dict[str, str]]:
+        """Fetch active AWS accounts directly under the given OU."""
+        accounts: List[Dict[str, str]] = []
+        paginator = org_client.get_paginator("list_accounts_for_parent")
+        async for page in cast(
+            AsyncIterator[Any], paginator.paginate(ParentId=parent_id)
+        ):
+            filtered_accounts = self.filter_active_accounts(page["Accounts"])
+            if filtered_accounts:
+                logger.debug(
+                    f"Found {len(filtered_accounts)} active account(s) directly under OU '{parent_id}'."
+                )
+            accounts.extend(filtered_accounts)
+        return accounts
+
+    async def _fetch_child_ou_ids(
+        self, parent_id: str, org_client: AioBaseClient
+    ) -> List[str]:
+        """Fetch child organizational unit IDs for a given parent OU."""
+        child_ou_ids: List[str] = []
+        ou_paginator = org_client.get_paginator("list_organizational_units_for_parent")
+        async for page in cast(
+            AsyncIterator[Any], ou_paginator.paginate(ParentId=parent_id)
+        ):
+            for ou in page["OrganizationalUnits"]:
+                logger.debug(
+                    f"Found child organizational unit '{ou['Id']}' under parent OU '{parent_id}'."
+                )
+                child_ou_ids.append(ou["Id"])
+        return child_ou_ids
+
+    async def _fetch_accounts_from_child_ous(
+        self, child_ou_ids: List[str], org_client: AioBaseClient
+    ) -> List[Dict[str, str]]:
+        """Recursively fetch accounts from all child OUs."""
+        accounts: List[Dict[str, str]] = []
+        for child_ou_id in child_ou_ids:
+            logger.debug(
+                f"Fetching accounts from child OU '{child_ou_id}' recursively..."
+            )
+            child_accounts = await self._get_active_accounts_for_ou(
+                child_ou_id, org_client
+            )
+            if child_accounts:
+                logger.debug(
+                    f"Found {len(child_accounts)} account(s) in child OU '{child_ou_id}'."
+                )
+            accounts.extend(child_accounts)
         return accounts
 
     async def _get_active_accounts_from_organizations(
