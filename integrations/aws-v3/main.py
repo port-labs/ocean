@@ -30,6 +30,8 @@ from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.exporters.ecr import EcrRepositoryExporter
 from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
+from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
+from aws.core.exporters.memorydb.user.models import PaginatedMemoryDbUserRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -191,6 +193,15 @@ async def resync_sqs_queue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ecr_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EcrRepositoryExporter, PaginatedRepositoryRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.MEMORYDB_USER)
+async def resync_memorydb_user(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, MemoryDbUserExporter, PaginatedMemoryDbUserRequest, regional=True
     )
     async for batch in service:
         yield batch

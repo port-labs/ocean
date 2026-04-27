@@ -1,0 +1,20 @@
+resources:
+  - kind: AWS::MemoryDB::User
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ARN
+          title: .Properties.UserName
+          blueprint: '"memoryDbUser"'
+          properties:
+            arn: .Properties.ARN
+            status: .Properties.Status
+            accessString: .Properties.AccessString
+            aclNames: .Properties.ACLNames
+            minimumEngineVersion: .Properties.MinimumEngineVersion
+            authentication: .Properties.Authentication
+            tags: .Properties.TagList
+          relations:
+            account: .__ExtraContext.AccountId
