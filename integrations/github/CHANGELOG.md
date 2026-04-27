@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.3.14 (2026-04-23)
+## 5.3.14 (2026-04-27)
 
 
-### Improvements
+### Features
 
-- Bumped ocean version to ^0.41.4
+- Added `skipWebhookManagement` configuration option to disable automatic webhook creation and patching. 
 
 
 ## 5.3.13 (2026-04-23)
