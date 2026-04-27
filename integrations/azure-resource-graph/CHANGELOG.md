@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added OIDC and workload identity authentication support. 
+- Expanded Azure authentication support by adopting default credential flows, enabling compatibility with a wider range of auth strategies (e.g., OIDC, workload identity)
 
 
 ## 0.2.99-beta (2026-04-23)
