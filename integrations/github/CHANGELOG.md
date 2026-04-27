@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.3.15 (2026-04-27)
+
+
+### Improvements
+
+- Enriched GitHub team export and team webhook upsert payloads with organization context, and consolidated GraphQL team-member enrichment.
+
+
 ## 5.3.14 (2026-04-23)
 
 
