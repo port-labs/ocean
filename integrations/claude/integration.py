@@ -30,7 +30,7 @@ class ClaudeUsageSelector(ClaudeSelector):
         description="ISO-8601 UTC start date used as the starting_at query parameter.",
         pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
     )
-    bucket_width: Literal["1m", "1h", "1d", "1w", "1M"] = Field(
+    bucket_width: Literal["1m", "1h", "1d"] = Field(
         alias="bucketWidth",
         default="1d",
         title="Bucket Width",
@@ -64,7 +64,7 @@ class ClaudeCostSelector(ClaudeSelector):
         description="ISO-8601 UTC start date used as the starting_at query parameter.",
         pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
     )
-    bucket_width: Literal["1m", "1h", "1d", "1w", "1M"] = Field(
+    bucket_width: Literal["1d"] = Field(
         alias="bucketWidth",
         default="1d",
         title="Bucket Width",
