@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.42.0 (2026-04-27)
+
+### Improvements
+
+- Changed uvicorn to gunicorn to handle different requests in different subprocesses
+
 ## 0.41.4 (2026-04-23)
 
 ### Bug fixes
