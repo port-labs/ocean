@@ -121,6 +121,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> tuple[RESYNC_RESULT, list[RAW_RESULT | Exception]]:
         tasks = []
         results = []
+        shared_examples_budget = {"remaining": max(0, send_raw_data_examples_amount)}
         for task in fns:
             if inspect.isasyncgenfunction(task):
                 logger.info(
@@ -133,7 +134,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resource_config.port.items_to_parse_name,
                         resource_config.port.items_to_parse,
                         resource_config.port.items_to_parse_top_level_transform,
-                        send_raw_data_examples_amount,
+                        send_raw_data_examples_amount=send_raw_data_examples_amount,
+                        shared_examples_budget=shared_examples_budget,
                     )
                 )
             else:

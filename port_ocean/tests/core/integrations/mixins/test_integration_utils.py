@@ -624,3 +624,55 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
                     {"id": "1", "keep_this": "should stay", "item": {"sub_id": "b"}},
                 ]
             ]
+
+    @pytest.mark.asyncio
+    async def test_items_to_parse_retries_examples_on_later_batch_after_failure(
+        self,
+        mock_context: PortOceanContext,
+        mock_entity_processor: JQEntityProcessor,
+    ) -> None:
+        first_batch = [{"id": "1", "items": [{"sub_id": "a"}]}]
+        second_batch = [{"id": "2", "items": [{"sub_id": "b"}]}]
+
+        async def fake_generator(kind: str) -> Any:
+            yield first_batch
+            yield second_batch
+
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.yield_items_to_parse_batch_size = 100
+            mock_ocean_context.app.integration.entity_processor = mock_entity_processor
+            mock_ocean_context.metrics = mock_context.app.metrics
+            mock_ocean_context.port_client.ingest_integration_kind_examples = AsyncMock(
+                side_effect=[Exception("temporary failure"), None]
+            )
+
+            _expanded_batches = [
+                batch
+                async for batch in resync_generator_wrapper(
+                    fake_generator,
+                    "test-kind",
+                    items_to_parse_name="item",
+                    items_to_parse=".items",
+                    send_raw_data_examples_amount=1,
+                )
+            ]
+
+            assert (
+                mock_ocean_context.port_client.ingest_integration_kind_examples.await_count
+                == 2
+            )
+            calls = (
+                mock_ocean_context.port_client.ingest_integration_kind_examples.await_args_list
+            )
+            assert calls[0].args == (
+                "test-kind",
+                [{"id": "1", "items": [{"sub_id": "a"}]}],
+            )
+            assert calls[0].kwargs == {"should_log": False}
+            assert calls[1].args == (
+                "test-kind",
+                [{"id": "2", "items": [{"sub_id": "b"}]}],
+            )
+            assert calls[1].kwargs == {"should_log": False}

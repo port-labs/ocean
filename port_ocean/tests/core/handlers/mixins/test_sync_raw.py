@@ -1489,3 +1489,36 @@ async def test_parse_items_sets_both_kind_and_resource_kind_in_logger_context(
     assert any(
         r.get("resource_kind") == mock_resource_config.kind for r in records
     ), "Expected 'resource_kind' to be set in logger context"
+
+
+@pytest.mark.asyncio
+async def test_execute_resync_tasks_shares_examples_budget_across_async_generators(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    async def generator_one(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if False:
+            yield [{"kind": kind}]
+
+    async def generator_two(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if False:
+            yield [{"kind": kind}]
+
+    wrapped_generator_one = generator_one("test-kind")
+    wrapped_generator_two = generator_two("test-kind")
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.resync_generator_wrapper",
+        side_effect=[wrapped_generator_one, wrapped_generator_two],
+    ) as mock_wrapper:
+        await mock_sync_raw_mixin._execute_resync_tasks(
+            [generator_one, generator_two],
+            mock_resource_config,
+            send_raw_data_examples_amount=5,
+        )
+
+    assert mock_wrapper.call_count == 2
+    first_budget = mock_wrapper.call_args_list[0].kwargs["shared_examples_budget"]
+    second_budget = mock_wrapper.call_args_list[1].kwargs["shared_examples_budget"]
+    assert first_budget is second_budget
+    assert first_budget["remaining"] == 5

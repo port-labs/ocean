@@ -177,15 +177,22 @@ async def send_raw_data_examples_before_transform(
         await ocean.port_client.ingest_integration_kind_examples(
             kind, examples_to_send, should_log=False
         )
+        return len(examples_to_send)
     except Exception as ex:
         logger.warning(
             f"Failed to send raw data example {ex}",
             exc_info=True,
         )
-    return len(examples_to_send)
+        return 0
 
 async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None, items_to_parse_top_level_transform: bool = True, send_raw_data_examples_amount: int = 0
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE],
+    kind: str,
+    items_to_parse_name: str,
+    items_to_parse: str | None = None,
+    items_to_parse_top_level_transform: bool = True,
+    send_raw_data_examples_amount: int = 0,
+    shared_examples_budget: dict[str, int] | None = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
     errors = []
@@ -197,12 +204,22 @@ async def resync_generator_wrapper(
                     result = validate_result(await anext(generator))
 
                     if items_to_parse:
+                        current_remaining_examples = (
+                            max(0, shared_examples_budget.get("remaining", 0))
+                            if shared_examples_budget is not None
+                            else remaining_examples_to_send
+                        )
                         sent_examples = await send_raw_data_examples_before_transform(
-                            result, kind, remaining_examples_to_send
+                            result, kind, current_remaining_examples
                         )
-                        remaining_examples_to_send = max(
-                            0, remaining_examples_to_send - sent_examples
-                        )
+                        if shared_examples_budget is not None:
+                            shared_examples_budget["remaining"] = max(
+                                0, current_remaining_examples - sent_examples
+                            )
+                        else:
+                            remaining_examples_to_send = max(
+                                0, remaining_examples_to_send - sent_examples
+                            )
                         items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse, items_to_parse_top_level_transform)
                         del result
                         async for batch in items_to_parse_generator:
