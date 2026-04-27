@@ -41,6 +41,7 @@ class CacheClusterProperties(BaseModel):
     TagList: list[dict[str, Any]] = Field(default_factory=list)
 
     class Config:
+        allow_population_by_field_name = True
         extra = "ignore"
 
 
