@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.6 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.4.5 (2026-04-23)
+
+
+### Bug Fixes
+
+- Correct Query API enum option in vulnerability kind
+
+
 ## 0.4.4 (2026-04-23)
 
 
