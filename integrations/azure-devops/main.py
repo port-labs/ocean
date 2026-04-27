@@ -45,6 +45,9 @@ from azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor imp
 from azure_devops.webhooks.webhook_processors.release_webhook_processor import (
     ReleaseWebhookProcessor,
 )
+from azure_devops.webhooks.webhook_processors.release_definition_webhook_processor import (
+    ReleaseDefinitionWebhookProcessor,
+)
 from azure_devops.webhooks.webhook_processors.release_deployment_webhook_processor import (
     ReleaseDeploymentWebhookProcessor,
 )
@@ -460,4 +463,5 @@ ocean.add_webhook_processor("/webhook", PipelineWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PipelineStageWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PipelineRunWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ReleaseWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ReleaseDefinitionWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ReleaseDeploymentWebhookProcessor)
