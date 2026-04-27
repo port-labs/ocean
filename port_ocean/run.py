@@ -2,7 +2,6 @@ import asyncio
 from inspect import getmembers
 from typing import Dict, Any, Type
 
-import uvicorn
 from pydantic import BaseModel
 
 from port_ocean.bootstrap import create_default_app
@@ -13,6 +12,7 @@ from port_ocean.core.utils.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
+from port_ocean.run_utils import GunicornApplication
 from port_ocean.utils.signal import init_signal_handler
 
 
@@ -58,4 +58,9 @@ def run(
         app.config.initialize_port_resources = initialize_port_resources
     initialize_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config)
 
-    uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
+    options = {
+        "bind": f"0.0.0.0:{application_settings.port}",
+        "workers": application_settings.workers,
+        "worker_class": "uvicorn.workers.UvicornWorker",
+    }
+    GunicornApplication(app, options).run()

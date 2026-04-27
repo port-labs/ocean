@@ -1,7 +1,8 @@
-import uvicorn
 import os
 from typing import Dict, Any
 from fastapi import FastAPI, Request
+
+from port_ocean.run_utils import GunicornApplication
 
 SMOKE_TEST_SUFFIX = os.environ.get("SMOKE_TEST_SUFFIX", "smoke")
 
@@ -184,7 +185,12 @@ async def catch_all(full_path: str, request: Request) -> str:
 
 
 def start() -> None:
-    uvicorn.run(app, host="0.0.0.0", port=5555)
+    options = {
+        "bind": "0.0.0.0:5555",
+        "workers": 4,
+        "worker_class": "uvicorn.workers.UvicornWorker",
+    }
+    GunicornApplication(app, options).run()
 
 
 if __name__ == "__main__":
