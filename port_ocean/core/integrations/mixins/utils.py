@@ -166,11 +166,30 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
         if batch:
             yield batch
 
+async def send_raw_data_examples_before_transform(
+    result: RAW_RESULT, kind: str, amount: int
+) -> int:
+    if amount <= 0 or not result:
+        return 0
+
+    examples_to_send = [item.copy() for item in result[:amount]]
+    try:
+        await ocean.port_client.ingest_integration_kind_examples(
+            kind, examples_to_send, should_log=False
+        )
+    except Exception as ex:
+        logger.warning(
+            f"Failed to send raw data example {ex}",
+            exc_info=True,
+        )
+    return len(examples_to_send)
+
 async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None, items_to_parse_top_level_transform: bool = True
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None, items_to_parse_top_level_transform: bool = True, send_raw_data_examples_amount: int = 0
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
     errors = []
+    remaining_examples_to_send = send_raw_data_examples_amount
     try:
         while True:
             try:
@@ -178,6 +197,12 @@ async def resync_generator_wrapper(
                     result = validate_result(await anext(generator))
 
                     if items_to_parse:
+                        sent_examples = await send_raw_data_examples_before_transform(
+                            result, kind, remaining_examples_to_send
+                        )
+                        remaining_examples_to_send = max(
+                            0, remaining_examples_to_send - sent_examples
+                        )
                         items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse, items_to_parse_top_level_transform)
                         del result
                         async for batch in items_to_parse_generator:

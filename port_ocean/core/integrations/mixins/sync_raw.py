@@ -78,7 +78,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         raise NotImplementedError("on_resync must be implemented")
 
     async def _get_resource_raw_results(
-        self, resource_config: ResourceConfig
+        self,
+        resource_config: ResourceConfig,
+        send_raw_data_examples_amount: int = 0,
     ) -> tuple[RESYNC_RESULT, list[Exception]]:
         logger.info(f"Fetching {resource_config.kind} resync results")
 
@@ -92,7 +94,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         fns = self._collect_resync_functions(resource_config)
         logger.info(f"Found {len(fns)} resync functions for {resource_config.kind}")
 
-        results, errors = await self._execute_resync_tasks(fns, resource_config)
+        results, errors = await self._execute_resync_tasks(
+            fns, resource_config, send_raw_data_examples_amount
+        )
 
         return results, errors
 
@@ -113,6 +117,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self,
         fns: list[Callable[[str], Awaitable[RAW_RESULT]]],
         resource_config: ResourceConfig,
+        send_raw_data_examples_amount: int = 0,
     ) -> tuple[RESYNC_RESULT, list[RAW_RESULT | Exception]]:
         tasks = []
         results = []
@@ -128,6 +133,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resource_config.port.items_to_parse_name,
                         resource_config.port.items_to_parse,
                         resource_config.port.items_to_parse_top_level_transform,
+                        send_raw_data_examples_amount,
                     )
                 )
             else:
@@ -409,9 +415,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def _register_in_batches(
         self, resource_config: ResourceConfig, user_agent_type: UserAgentType, index: int
     ) -> tuple[list[Entity], list[Exception]]:
+        send_raw_data_examples_amount = (
+            SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
+        )
+
         with logger.contextualize(etl_phase=ETLPhase.EXTRACT):
             logger.info("Starting extract phase")
-            results, errors = await self._get_resource_raw_results(resource_config)
+            results, errors = await self._get_resource_raw_results(
+                resource_config, send_raw_data_examples_amount
+            )
             async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
             raw_results: RAW_RESULT = []
             lakehouse_data_enabled = await is_lakehouse_data_enabled()
@@ -437,10 +449,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 raw_items=len(raw_results),
                 async_generators=len(async_generators),
             )
-
-        send_raw_data_examples_amount = (
-            SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
-        )
 
         passed_entities = []
         number_of_raw_results = 0
@@ -489,7 +497,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resource_config,
                         items,
                         user_agent_type,
-                        send_raw_data_examples_amount=send_raw_data_examples_amount,
+                        send_raw_data_examples_amount=(
+                            0
+                            if resource_config.port.items_to_parse
+                            else send_raw_data_examples_amount
+                        ),
                         batch_index=batch_index,
                     )
                     passed_entities.extend(

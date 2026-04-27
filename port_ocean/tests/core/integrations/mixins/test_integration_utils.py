@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -570,3 +570,57 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
 
             # The original list must NOT have been mutated
             assert len(original_batch) == original_length
+
+    @pytest.mark.asyncio
+    async def test_items_to_parse_sends_examples_before_expansion(
+        self,
+        mock_context: PortOceanContext,
+        mock_entity_processor: JQEntityProcessor,
+    ) -> None:
+        original_batch = [
+            {
+                "id": "1",
+                "keep_this": "should stay",
+                "items": [{"sub_id": "a"}, {"sub_id": "b"}],
+            }
+        ]
+
+        async def fake_generator(kind: str) -> Any:
+            yield original_batch
+
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.config.yield_items_to_parse_batch_size = 100
+            mock_ocean_context.app.integration.entity_processor = mock_entity_processor
+            mock_ocean_context.metrics = mock_context.app.metrics
+            mock_ocean_context.port_client.ingest_integration_kind_examples = AsyncMock()
+
+            expanded_batches = [
+                batch
+                async for batch in resync_generator_wrapper(
+                    fake_generator,
+                    "test-kind",
+                    items_to_parse_name="item",
+                    items_to_parse=".items",
+                    send_raw_data_examples_amount=1,
+                )
+            ]
+
+            mock_ocean_context.port_client.ingest_integration_kind_examples.assert_awaited_once_with(
+                "test-kind",
+                [
+                    {
+                        "id": "1",
+                        "keep_this": "should stay",
+                        "items": [{"sub_id": "a"}, {"sub_id": "b"}],
+                    }
+                ],
+                should_log=False,
+            )
+            assert expanded_batches == [
+                [
+                    {"id": "1", "keep_this": "should stay", "item": {"sub_id": "a"}},
+                    {"id": "1", "keep_this": "should stay", "item": {"sub_id": "b"}},
+                ]
+            ]
