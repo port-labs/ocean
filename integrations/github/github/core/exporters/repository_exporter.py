@@ -237,12 +237,14 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         if "custom_properties" in repository:
             return repository
         repo_name = repository["name"]
-        properties = await self.client.send_api_request(
+        properties: list[Dict[str, Any]] = await self.client.send_api_request(
             f"{self.client.base_url}/repos/{organization}/{repo_name}/properties/values"
         )
-        repository["custom_properties"] = {
-            prop["property_name"]: prop["value"] for prop in properties
-        } if properties else {}
+        repository["custom_properties"] = (
+            {prop["property_name"]: prop["value"] for prop in properties}
+            if properties
+            else {}
+        )
         return repository
 
     async def _enrich_repository_with_sbom(
