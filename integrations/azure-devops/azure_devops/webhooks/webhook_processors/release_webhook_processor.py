@@ -18,7 +18,7 @@ from azure_devops.client.azure_devops_client import (
 
 class ReleaseWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [Kind.RELEASE, Kind.RELEASE_DEFINITION]
+        return [Kind.RELEASE]
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         if not await super().validate_payload(payload):
@@ -43,33 +43,6 @@ class ReleaseWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         client = AzureDevopsClient.create_from_ocean_config()
         project_id = payload["resourceContainers"]["project"]["id"]
         release_id = payload["resource"]["release"]["id"]
-
-        if resource_config.kind == Kind.RELEASE_DEFINITION:
-            release = await client.get_release(project_id, release_id)
-            if not release:
-                logger.warning(
-                    f"Release with ID {release_id} not found in project {project_id}, skipping event..."
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[],
-                    deleted_raw_results=[],
-                )
-            definition_id = release["releaseDefinition"]["id"]
-            definition = await client.get_release_definition(
-                project_id, definition_id, project=release["projectReference"]
-            )
-            if not definition:
-                logger.warning(
-                    f"Release definition {definition_id} not found in project {project_id}, skipping event..."
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[],
-                    deleted_raw_results=[],
-                )
-            return WebhookEventRawResults(
-                updated_raw_results=[definition],
-                deleted_raw_results=[],
-            )
 
         release = await client.get_release(project_id, release_id)
         if not release:
