@@ -80,6 +80,7 @@ from github.helpers.utils import (
     ObjectKind,
     GithubClientType,
     enrich_user_with_primary_email,
+    tag_batch_with_org,
 )
 
 from integration import (
@@ -282,13 +283,16 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 rest_exporter = RestTeamExporter(rest_client)
 
                 tasks.append(
-                    rest_exporter.get_paginated_resources(
-                        ListTeamOptions(organization=org_name)
+                    tag_batch_with_org(
+                        org_name,
+                        rest_exporter.get_paginated_resources(
+                            ListTeamOptions(organization=org_name)
+                        ),
                     )
                 )
 
         if tasks:
-            async for teams in stream_async_iterators_tasks(*tasks):
+            async for org_name, teams in stream_async_iterators_tasks(*tasks):
                 if selector.members:
                     graphql_exporter = GraphQLTeamWithMembersExporter(graphql_client)
                     teams = await graphql_exporter._enrich_team_with_extras(
