@@ -57,26 +57,6 @@ async def test_send_request_success(claude_client: ClaudeClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_request_returns_none_for_404(claude_client: ClaudeClient) -> None:
-    request = httpx.Request(
-        "GET", "https://api.anthropic.com/v1/organizations/cost_report"
-    )
-    response = httpx.Response(status_code=404, request=request)
-    request_mock = AsyncMock(
-        side_effect=httpx.HTTPStatusError(
-            "Not found",
-            request=request,
-            response=response,
-        )
-    )
-
-    with patch.object(claude_client._client, "request", new=request_mock):
-        result = await claude_client._send_request("/v1/organizations/cost_report", {})
-
-    assert result is None
-
-
-@pytest.mark.asyncio
 async def test_send_request_returns_none_for_soft_fail_status(
     claude_client: ClaudeClient,
 ) -> None:

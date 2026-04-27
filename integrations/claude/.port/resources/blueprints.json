@@ -1,282 +1,295 @@
 [
-    {
-        "identifier": "claude_usage_record",
-        "description": "Daily Claude AI API usage metrics",
-        "title": "Claude AI Usage Record",
-        "icon": "Claude",
-        "schema": {
-          "properties": {
-            "record_date": {
-              "type": "string",
-              "format": "date-time",
-              "title": "Record Date (UTC)"
-            },
-            "uncached_input_tokens": {
-              "type": "number",
-              "title": "Uncached Input Tokens"
-            },
-            "output_tokens": {
-              "type": "number",
-              "title": "Output Tokens"
-            },
-            "cache_read_input_tokens": {
-              "type": "number",
-              "title": "Cache Read Input Tokens"
-            },
-            "cache_creation_5m_tokens": {
-              "type": "number",
-              "title": "Cache Creation (5min) Tokens"
-            },
-            "cache_creation_1h_tokens": {
-              "type": "number",
-              "title": "Cache Creation (1hr) Tokens"
-            },
-            "web_search_requests": {
-              "type": "number",
-              "title": "Web Search Requests"
-            }
-          },
-          "required": ["record_date"]
+  {
+    "identifier": "claude_usage_record",
+    "description": "Daily Claude AI API usage metrics",
+    "title": "Claude AI Usage Record",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "record_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Record Date (UTC)"
         },
-        "mirrorProperties": {},
-        "calculationProperties": {
-          "total_input_tokens": {
-            "title": "Total Input Tokens",
-            "description": "Sum of uncached input and cache read tokens",
-            "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens",
-            "type": "number"
-          },
-          "total_tokens": {
-            "title": "Total Tokens",
-            "description": "Sum of all input and output tokens",
-            "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens + .properties.output_tokens",
-            "type": "number"
-          }
+        "uncached_input_tokens": {
+          "type": "number",
+          "title": "Uncached Input Tokens"
         },
-        "aggregationProperties": {},
-        "relations": {}
+        "output_tokens": {
+          "type": "number",
+          "title": "Output Tokens"
+        },
+        "cache_read_input_tokens": {
+          "type": "number",
+          "title": "Cache Read Input Tokens"
+        },
+        "cache_creation_5m_tokens": {
+          "type": "number",
+          "title": "Cache Creation (5min) Tokens"
+        },
+        "cache_creation_1h_tokens": {
+          "type": "number",
+          "title": "Cache Creation (1hr) Tokens"
+        },
+        "web_search_requests": {
+          "type": "number",
+          "title": "Web Search Requests"
+        }
       },
-      {
-        "identifier": "claude_cost_record",
-        "description": "Daily cost tracking for Claude API usage",
-        "title": "Claude AI Cost Record",
-        "icon": "Claude",
-        "schema": {
-          "properties": {
-            "record_date": {
-              "type": "string",
-              "format": "date-time",
-              "title": "Record Date (UTC)"
-            },
-            "amount": {
-              "type": "number",
-              "title": "Cost Amount"
-            },
-            "currency": {
-              "type": "string",
-              "title": "Currency"
-            }
-          },
-          "required": ["record_date"]
-        },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "aggregationProperties": {},
-        "relations": {}
+      "required": [
+        "record_date"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "total_input_tokens": {
+        "title": "Total Input Tokens",
+        "description": "Sum of uncached input and cache read tokens",
+        "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens",
+        "type": "number"
       },
-      {
-        "identifier": "claude_workspace_usage",
-        "description": "Usage metrics broken down by workspace",
-        "title": "Claude AI Workspace Usage",
-        "icon": "Claude",
-        "schema": {
-          "properties": {
-            "record_date": {
-              "type": "string",
-              "format": "date-time",
-              "title": "Record Date (UTC)"
-            },
-            "workspace_id": {
-              "type": "string",
-              "title": "Workspace ID"
-            },
-            "uncached_input_tokens": {
-              "type": "number",
-              "title": "Uncached Input Tokens"
-            },
-            "output_tokens": {
-              "type": "number",
-              "title": "Output Tokens"
-            },
-            "cache_read_input_tokens": {
-              "type": "number",
-              "title": "Cache Read Input Tokens"
-            },
-            "cache_creation_5m_tokens": {
-              "type": "number",
-              "title": "Cache Creation (5min) Tokens"
-            },
-            "cache_creation_1h_tokens": {
-              "type": "number",
-              "title": "Cache Creation (1hr) Tokens"
-            },
-            "web_search_requests": {
-              "type": "number",
-              "title": "Web Search Requests"
-            }
-          },
-          "required": ["record_date", "workspace_id"]
-        },
-        "mirrorProperties": {},
-        "calculationProperties": {
-          "total_tokens": {
-            "title": "Total Tokens",
-            "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens + .properties.output_tokens",
-            "type": "number"
-          }
-        },
-        "aggregationProperties": {},
-        "relations": {}
-      },
-      {
-        "identifier": "claude_model_usage",
-        "description": "Usage metrics broken down by Claude model type",
-        "title": "Claude AI Model Usage",
-        "icon": "Claude",
-        "schema": {
-          "properties": {
-            "record_date": {
-              "type": "string",
-              "format": "date-time",
-              "title": "Record Date (UTC)"
-            },
-            "model": {
-              "type": "string",
-              "title": "Model"
-            },
-            "uncached_input_tokens": {
-              "type": "number",
-              "title": "Uncached Input Tokens"
-            },
-            "output_tokens": {
-              "type": "number",
-              "title": "Output Tokens"
-            },
-            "cache_read_input_tokens": {
-              "type": "number",
-              "title": "Cache Read Input Tokens"
-            },
-            "cache_creation_5m_tokens": {
-              "type": "number",
-              "title": "Cache Creation (5min) Tokens"
-            },
-            "cache_creation_1h_tokens": {
-              "type": "number",
-              "title": "Cache Creation (1hr) Tokens"
-            },
-            "web_search_requests": {
-              "type": "number",
-              "title": "Web Search Requests"
-            }
-          },
-          "required": ["record_date", "model"]
-        },
-        "mirrorProperties": {},
-        "calculationProperties": {
-          "total_tokens": {
-            "title": "Total Tokens",
-            "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens + .properties.output_tokens",
-            "type": "number"
-          }
-        },
-        "aggregationProperties": {},
-        "relations": {}
-      },
-      {
-        "identifier": "claude_code_analytics",
-        "description": "Daily Claude Code usage metrics including sessions, lines of code, commits, and PRs",
-        "title": "Claude Code Analytics",
-        "icon": "Claude",
-        "schema": {
-          "properties": {
-            "record_date": {
-              "type": "string",
-              "format": "date-time",
-              "title": "Record Date (UTC)"
-            },
-            "organization_id": {
-              "type": "string",
-              "title": "Organization ID"
-            },
-            "actor_type": {
-              "type": "string",
-              "title": "Actor Type"
-            },
-            "actor_name": {
-              "type": "string",
-              "title": "Actor Name"
-            },
-            "terminal_type": {
-              "type": "string",
-              "title": "Terminal Type"
-            },
-            "num_sessions": {
-              "type": "number",
-              "title": "Sessions"
-            },
-            "lines_added": {
-              "type": "number",
-              "title": "Lines Added"
-            },
-            "lines_removed": {
-              "type": "number",
-              "title": "Lines Removed"
-            },
-            "commits": {
-              "type": "number",
-              "title": "Commits by Claude Code"
-            },
-            "pull_requests": {
-              "type": "number",
-              "title": "Pull Requests by Claude Code"
-            },
-            "edit_tool_accepted": {
-              "type": "number",
-              "title": "Edit Tool Accepted"
-            },
-            "edit_tool_rejected": {
-              "type": "number",
-              "title": "Edit Tool Rejected"
-            },
-            "write_tool_accepted": {
-              "type": "number",
-              "title": "Write Tool Accepted"
-            },
-            "write_tool_rejected": {
-              "type": "number",
-              "title": "Write Tool Rejected"
-            },
-            "model_breakdown": {
-              "type": "array",
-              "title": "Model Breakdown"
-            }
-          },
-          "required": ["record_date", "organization_id"]
-        },
-        "mirrorProperties": {},
-        "calculationProperties": {
-          "total_lines_changed": {
-            "title": "Total Lines Changed",
-            "calculation": ".properties.lines_added + .properties.lines_removed",
-            "type": "number"
-          },
-          "edit_acceptance_rate": {
-            "title": "Edit Acceptance Rate",
-            "calculation": "if (.properties.edit_tool_accepted + .properties.edit_tool_rejected) > 0 then (.properties.edit_tool_accepted / (.properties.edit_tool_accepted + .properties.edit_tool_rejected)) * 100 else 0 end",
-            "type": "number"
-          }
-        },
-        "aggregationProperties": {},
-        "relations": {}
+      "total_tokens": {
+        "title": "Total Tokens",
+        "description": "Sum of all input and output tokens",
+        "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens + .properties.output_tokens",
+        "type": "number"
       }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "claude_cost_record",
+    "description": "Daily cost tracking for Claude API usage",
+    "title": "Claude AI Cost Record",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "record_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Record Date (UTC)"
+        },
+        "amount": {
+          "type": "number",
+          "title": "Cost Amount"
+        },
+        "currency": {
+          "type": "string",
+          "title": "Currency"
+        }
+      },
+      "required": [
+        "record_date"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "claude_workspace_usage",
+    "description": "Usage metrics broken down by workspace",
+    "title": "Claude AI Workspace Usage",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "record_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Record Date (UTC)"
+        },
+        "workspace_id": {
+          "type": "string",
+          "title": "Workspace ID"
+        },
+        "uncached_input_tokens": {
+          "type": "number",
+          "title": "Uncached Input Tokens"
+        },
+        "output_tokens": {
+          "type": "number",
+          "title": "Output Tokens"
+        },
+        "cache_read_input_tokens": {
+          "type": "number",
+          "title": "Cache Read Input Tokens"
+        },
+        "cache_creation_5m_tokens": {
+          "type": "number",
+          "title": "Cache Creation (5min) Tokens"
+        },
+        "cache_creation_1h_tokens": {
+          "type": "number",
+          "title": "Cache Creation (1hr) Tokens"
+        },
+        "web_search_requests": {
+          "type": "number",
+          "title": "Web Search Requests"
+        }
+      },
+      "required": [
+        "record_date",
+        "workspace_id"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "total_tokens": {
+        "title": "Total Tokens",
+        "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens + .properties.output_tokens",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "claude_model_usage",
+    "description": "Usage metrics broken down by Claude model type",
+    "title": "Claude AI Model Usage",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "record_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Record Date (UTC)"
+        },
+        "model": {
+          "type": "string",
+          "title": "Model"
+        },
+        "uncached_input_tokens": {
+          "type": "number",
+          "title": "Uncached Input Tokens"
+        },
+        "output_tokens": {
+          "type": "number",
+          "title": "Output Tokens"
+        },
+        "cache_read_input_tokens": {
+          "type": "number",
+          "title": "Cache Read Input Tokens"
+        },
+        "cache_creation_5m_tokens": {
+          "type": "number",
+          "title": "Cache Creation (5min) Tokens"
+        },
+        "cache_creation_1h_tokens": {
+          "type": "number",
+          "title": "Cache Creation (1hr) Tokens"
+        },
+        "web_search_requests": {
+          "type": "number",
+          "title": "Web Search Requests"
+        }
+      },
+      "required": [
+        "record_date",
+        "model"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "total_tokens": {
+        "title": "Total Tokens",
+        "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens + .properties.output_tokens",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "claude_code_analytics",
+    "description": "Daily Claude Code usage metrics including sessions, lines of code, commits, and PRs",
+    "title": "Claude Code Analytics",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "record_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Record Date (UTC)"
+        },
+        "organization_id": {
+          "type": "string",
+          "title": "Organization ID"
+        },
+        "actor_type": {
+          "type": "string",
+          "title": "Actor Type"
+        },
+        "actor_name": {
+          "type": "string",
+          "title": "Actor Name"
+        },
+        "terminal_type": {
+          "type": "string",
+          "title": "Terminal Type"
+        },
+        "num_sessions": {
+          "type": "number",
+          "title": "Sessions"
+        },
+        "lines_added": {
+          "type": "number",
+          "title": "Lines Added"
+        },
+        "lines_removed": {
+          "type": "number",
+          "title": "Lines Removed"
+        },
+        "commits": {
+          "type": "number",
+          "title": "Commits by Claude Code"
+        },
+        "pull_requests": {
+          "type": "number",
+          "title": "Pull Requests by Claude Code"
+        },
+        "edit_tool_accepted": {
+          "type": "number",
+          "title": "Edit Tool Accepted"
+        },
+        "edit_tool_rejected": {
+          "type": "number",
+          "title": "Edit Tool Rejected"
+        },
+        "write_tool_accepted": {
+          "type": "number",
+          "title": "Write Tool Accepted"
+        },
+        "write_tool_rejected": {
+          "type": "number",
+          "title": "Write Tool Rejected"
+        },
+        "model_breakdown": {
+          "type": "array",
+          "title": "Model Breakdown"
+        }
+      },
+      "required": [
+        "record_date",
+        "organization_id"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "total_lines_changed": {
+        "title": "Total Lines Changed",
+        "calculation": ".properties.lines_added + .properties.lines_removed",
+        "type": "number"
+      },
+      "edit_acceptance_rate": {
+        "title": "Edit Acceptance Rate",
+        "calculation": "if (.properties.edit_tool_accepted + .properties.edit_tool_rejected) > 0 then (.properties.edit_tool_accepted / (.properties.edit_tool_accepted + .properties.edit_tool_rejected)) * 100 else 0 end",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  }
 ]
