@@ -1,5 +1,5 @@
 from graphlib import CycleError
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Awaitable, Callable, cast
 
 from loguru import logger
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
@@ -1511,8 +1511,12 @@ async def test_execute_resync_tasks_shares_examples_budget_across_async_generato
         "port_ocean.core.integrations.mixins.sync_raw.resync_generator_wrapper",
         side_effect=[wrapped_generator_one, wrapped_generator_two],
     ) as mock_wrapper:
+        resync_handlers = [
+            cast(Callable[[str], Awaitable[list[dict[Any, Any]]]], generator_one),
+            cast(Callable[[str], Awaitable[list[dict[Any, Any]]]], generator_two),
+        ]
         await mock_sync_raw_mixin._execute_resync_tasks(
-            [generator_one, generator_two],
+            resync_handlers,
             mock_resource_config,
             send_raw_data_examples_amount=5,
         )
