@@ -17,17 +17,17 @@ configurations:
     type: string
     required: false
     sensitive: true
-    description: "The client ID of your Azure app registration. Required for client-secret and OIDC/workload-identity authentication."
+    description: "The client ID of your Azure app registration. Optional when using managed identity or workload identity."
   - name: azureClientSecret
     type: string
     required: false
     sensitive: true
-    description: "The client secret of your Azure service principal. Not required when using OIDC, workload identity, or managed identity authentication."
+    description: "The client secret of your Azure service principal. Optional when using OIDC, workload identity, or managed identity."
   - name: azureTenantId
     type: string
     required: false
     sensitive: true
-    description: "The tenant ID of your Azure directory. Required for client-secret and OIDC/workload-identity authentication."
+    description: "The tenant ID of your Azure directory. Optional when using managed identity or workload identity."
   - name: azureSubscriptionBatchSize
     type: integer
     required: false
