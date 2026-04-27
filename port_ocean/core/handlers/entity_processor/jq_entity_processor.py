@@ -100,31 +100,35 @@ class JQEntityProcessor(BaseEntityProcessor):
             f"Search failed{field_info} - pattern: {pattern}: {error_summary}",
         )
 
+    @staticmethod
+    def _execute_jq_first(compiled_pattern: Any, data: Any) -> Any:
+        """Run a compiled JQ pattern against data synchronously.
+
+        Extracted so it can be dispatched to a thread via ``asyncio.to_thread``,
+        keeping the main event loop free for health-check probes and other I/O.
+        """
+        try:
+            func = compile_jq(compiled_pattern, data)
+        except JQInputNotJsonSerializableError:
+            func = compile_jq(compiled_pattern, make_json_compatible(data))
+        return func.first()
+
     async def _search(
         self, data: dict[str, Any], pattern: str, field: str | None = None
     ) -> Any:
         """Execute a JQ pattern against data, logging a structured ERROR with field context on failure."""
         try:
             compiled_pattern = self._compile(pattern)
-            try:
-                func = compile_jq(compiled_pattern, data)
-            except JQInputNotJsonSerializableError:
-                func = compile_jq(compiled_pattern, make_json_compatible(data))
-            return func.first()
+            return await asyncio.to_thread(
+                self._execute_jq_first, compiled_pattern, data
+            )
         except Exception as exc:
             self._log_search_failure(pattern, exc, field)
             return None
 
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
-
         compiled_pattern = self._compile(pattern)
-
-        try:
-            func = compile_jq(compiled_pattern, data)
-        except JQInputNotJsonSerializableError:
-            func = compile_jq(compiled_pattern, make_json_compatible(data))
-
-        value = func.first()
+        value = await asyncio.to_thread(self._execute_jq_first, compiled_pattern, data)
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(
