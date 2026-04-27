@@ -32,6 +32,7 @@ class ApplicationSettings(BaseSettings):
     log_level: LogLevelType = "INFO"
     enable_http_logging: bool = True
     port: int = 8000
+    workers: int = Field(default_factory=get_cgroup_cpu_limit)
 
     class Config:
         env_prefix = "APPLICATION__"
