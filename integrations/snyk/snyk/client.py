@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 
 import httpx
-from httpx import URL, Timeout
+from httpx import Timeout
 from loguru import logger
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -15,7 +15,7 @@ from snyk.overrides import (
     SnykPolicyAPIQueryParams,
     SnykVulnerabilityAPIQueryParams,
 )
-from snyk.utils import enrich_batch_with_data
+from snyk.utils import enrich_batch_with_data, parse_next_page_params
 
 
 class CacheKeys(StrEnum):
@@ -125,9 +125,7 @@ class SnykClient:
                 # Check if there is a "next" URL in the links object
                 next_url = data.get("links", {}).get("next", "")
                 if next_url:
-                    parsed_url = URL(next_url)
-                    url_path = parsed_url.raw_path.decode().replace("/rest", "")
-                    query_params = dict(parsed_url.params)
+                    url_path, query_params = parse_next_page_params(next_url)
                 else:
                     url_path = ""
                     query_params = {}
