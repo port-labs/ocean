@@ -143,7 +143,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
                 tasks.append(
                     resync_function_wrapper(
-                        task, resource_config.kind, resource_config.port.items_to_parse
+                        task,
+                        resource_config.kind,
+                        send_raw_data_examples_amount=send_raw_data_examples_amount,
                     )
                 )
 
@@ -168,13 +170,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self,
         raw_diff: list[tuple[ResourceConfig, list[RAW_ITEM]]],
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
     ) -> list[CalculationResult]:
         return await asyncio.gather(
             *(
-                self.entity_processor.parse_items(
-                    mapping, results, parse_all, send_raw_data_examples_amount
-                )
+                self.entity_processor.parse_items(mapping, results, parse_all)
                 for mapping, results in raw_diff
             )
         )
@@ -273,7 +272,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
         batch_index: int = 1,
     ) -> CalculationResult:
         with logger.contextualize(etl_phase=ETLPhase.TRANSFORM):
@@ -282,9 +280,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 batch_index=batch_index,
                 raw_items=len(results),
             )
-            objects_diff = await self._calculate_raw(
-                [(resource, results)], parse_all, send_raw_data_examples_amount
-            )
+            objects_diff = await self._calculate_raw([(resource, results)], parse_all)
             entities_transformed = len(objects_diff[0].entity_selector_diff.passed)
             entities_failed = len(objects_diff[0].entity_selector_diff.failed)
             logger.info(
@@ -413,7 +409,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     @TimeMetric(MetricPhase.RESYNC)
     async def _register_in_batches(
-        self, resource_config: ResourceConfig, user_agent_type: UserAgentType, index: int
+        self,
+        resource_config: ResourceConfig,
+        user_agent_type: UserAgentType,
+        index: int,
     ) -> tuple[list[Entity], list[Exception]]:
         send_raw_data_examples_amount = (
             SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
@@ -462,7 +461,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 resource_config,
                 raw_results,
                 user_agent_type,
-                send_raw_data_examples_amount=send_raw_data_examples_amount,
                 batch_index=batch_index,
             )
             errors.extend(calculation_result.errors)
@@ -488,20 +486,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             event_type=LakehouseEventType.RESYNC,
                         )
                     number_of_raw_results += len(items)
-                    if send_raw_data_examples_amount > 0:
-                        send_raw_data_examples_amount = max(
-                            0, send_raw_data_examples_amount - len(passed_entities)
-                        )
-
                     calculation_result = await self._register_resource_raw(
                         resource_config,
                         items,
                         user_agent_type,
-                        send_raw_data_examples_amount=(
-                            0
-                            if resource_config.port.items_to_parse
-                            else send_raw_data_examples_amount
-                        ),
                         batch_index=batch_index,
                     )
                     passed_entities.extend(
@@ -556,6 +544,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
         return passed_entities, errors
+
 
 
     async def register_raw(

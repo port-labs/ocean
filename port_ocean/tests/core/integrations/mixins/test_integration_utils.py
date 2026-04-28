@@ -17,6 +17,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.integrations.mixins.utils import (
     extract_jq_deletion_path_revised,
     handle_items_to_parse,
+    resync_function_wrapper,
     resync_generator_wrapper,
 )
 
@@ -624,6 +625,60 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
                     {"id": "1", "keep_this": "should stay", "item": {"sub_id": "b"}},
                 ]
             ]
+
+    @pytest.mark.asyncio
+    async def test_resync_function_wrapper_sends_examples_before_parsing(
+        self,
+    ) -> None:
+        raw_results = [{"id": "1"}, {"id": "2"}]
+
+        async def fake_resync(kind: str) -> list[dict[str, Any]]:
+            return raw_results
+
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.port_client.ingest_integration_kind_examples = AsyncMock()
+
+            result = await resync_function_wrapper(
+                fake_resync,
+                "test-kind",
+                send_raw_data_examples_amount=1,
+            )
+
+            assert result == raw_results
+            mock_ocean_context.port_client.ingest_integration_kind_examples.assert_awaited_once_with(
+                "test-kind", [{"id": "1"}], should_log=False
+            )
+
+    @pytest.mark.asyncio
+    async def test_resync_generator_wrapper_sends_examples_without_items_to_parse(
+        self,
+    ) -> None:
+        raw_results = [{"id": "1"}, {"id": "2"}]
+
+        async def fake_generator(kind: str) -> Any:
+            yield raw_results
+
+        with patch(
+            "port_ocean.core.integrations.mixins.utils.ocean"
+        ) as mock_ocean_context:
+            mock_ocean_context.port_client.ingest_integration_kind_examples = AsyncMock()
+
+            batches = [
+                batch
+                async for batch in resync_generator_wrapper(
+                    fake_generator,
+                    "test-kind",
+                    items_to_parse_name="item",
+                    send_raw_data_examples_amount=1,
+                )
+            ]
+
+            assert batches == [raw_results]
+            mock_ocean_context.port_client.ingest_integration_kind_examples.assert_awaited_once_with(
+                "test-kind", [{"id": "1"}], should_log=False
+            )
 
     @pytest.mark.asyncio
     async def test_items_to_parse_retries_examples_on_later_batch_after_failure(

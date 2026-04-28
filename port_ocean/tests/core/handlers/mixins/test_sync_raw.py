@@ -1108,7 +1108,7 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
     - Raw data has users with 'name' and 'email' fields
     - Mapping tries to use '.nonexistent_field' as identifier (doesn't exist)
     - Transformation should fail (no valid entities created)
-    - BUT examples should still be sent to Port
+    - BUT examples should already be sent to Port by the extraction wrapper
     """
     # Create a resource config with a broken mapping (identifier field doesn't exist)
     broken_resource_config = ResourceConfig(
@@ -1147,6 +1147,9 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
     # Enable sending raw data examples
     mock_ocean.config.send_raw_data_examples = True
 
+    async def resync_handler(kind: str) -> list[dict[str, Any]]:
+        return raw_results
+
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
@@ -1154,12 +1157,20 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
     ) as event:
         event.port_app_config = broken_app_config
 
-        # Call _register_resource_raw which will process the data
+        extracted_results, errors = (
+            await mock_sync_raw_mixin_with_jq_processor._execute_resync_tasks(
+                [resync_handler],
+                broken_resource_config,
+                send_raw_data_examples_amount=2,
+            )
+        )
+        assert errors == []
+
+        # Call _register_resource_raw which will process the data after examples were sent
         result = await mock_sync_raw_mixin_with_jq_processor._register_resource_raw(
             broken_resource_config,
-            raw_results,
+            cast(list[dict[Any, Any]], extracted_results),
             UserAgentType.exporter,
-            send_raw_data_examples_amount=2,  # Request 2 examples
         )
 
         # KEY ASSERTION: Examples should be sent even though transformation failed
