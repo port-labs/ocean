@@ -1,0 +1,116 @@
+[
+  {
+    "identifier": "ecsTaskDefinition",
+    "title": "ECS Task Definition",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "taskDefinitionArn": {
+          "type": "string",
+          "title": "Task Definition ARN",
+          "description": "The full ARN of the task definition"
+        },
+        "family": {
+          "type": "string",
+          "title": "Family",
+          "description": "The family name of the task definition"
+        },
+        "revision": {
+          "type": "number",
+          "title": "Revision",
+          "description": "The revision number of the task definition"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the task definition",
+          "enum": ["ACTIVE", "INACTIVE", "DELETE_IN_PROGRESS"]
+        },
+        "containerDefinitions": {
+          "type": "array",
+          "title": "Container Definitions",
+          "description": "The container definitions that describe the containers in the task",
+          "items": {
+            "type": "object"
+          }
+        },
+        "cpu": {
+          "type": "string",
+          "title": "CPU",
+          "description": "The number of CPU units used by the task (e.g. 256, 512, 1024)"
+        },
+        "memory": {
+          "type": "string",
+          "title": "Memory",
+          "description": "The amount of memory (in MiB) used by the task (e.g. 512, 1024, 2048)"
+        },
+        "networkMode": {
+          "type": "string",
+          "title": "Network Mode",
+          "description": "The Docker networking mode to use for the containers",
+          "enum": ["bridge", "host", "awsvpc", "none"]
+        },
+        "requiresCompatibilities": {
+          "type": "array",
+          "title": "Requires Compatibilities",
+          "description": "The task launch types the task definition was validated against",
+          "items": {
+            "type": "string"
+          }
+        },
+        "taskRoleArn": {
+          "type": "string",
+          "title": "Task Role ARN",
+          "description": "The ARN of the IAM role that grants containers permission to call AWS APIs"
+        },
+        "executionRoleArn": {
+          "type": "string",
+          "title": "Execution Role ARN",
+          "description": "The ARN of the task execution IAM role"
+        },
+        "volumes": {
+          "type": "array",
+          "title": "Volumes",
+          "description": "The list of data volume definitions for the task",
+          "items": {
+            "type": "object"
+          }
+        },
+        "placementConstraints": {
+          "type": "array",
+          "title": "Placement Constraints",
+          "description": "The placement constraint objects to use for tasks",
+          "items": {
+            "type": "object"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "The tags associated with the task definition",
+          "items": {
+            "type": "object"
+          }
+        },
+        "registeredAt": {
+          "type": "string",
+          "title": "Registered At",
+          "format": "date-time",
+          "description": "The timestamp when the task definition was registered"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
