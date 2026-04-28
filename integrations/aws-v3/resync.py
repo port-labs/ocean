@@ -160,8 +160,11 @@ class ResyncAWSService:
         )
         exporter = self.exporter_cls(session)
 
-        if exporter._supported_regions:
-            filtered = [r for r in regions if r in exporter._supported_regions]
+        supported_regions: frozenset[str] | None = getattr(
+            exporter, "_supported_regions", None
+        )
+        if supported_regions:
+            filtered = [r for r in regions if r in supported_regions]
             if not filtered:
                 logger.warning(
                     f"Account {account['Id']} has no supported regions for {self.kind}, skipping"
