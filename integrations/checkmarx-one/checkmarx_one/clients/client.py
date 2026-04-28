@@ -34,6 +34,16 @@ class CheckmarxOneClient:
             status=404,
             message="Resource not found at endpoint",
         ),
+        IgnoredError(
+            status=502,
+            message="Bad Gateway — transient upstream error",
+            type="BAD_GATEWAY",
+        ),
+        IgnoredError(
+            status=503,
+            message="Service Unavailable — transient server error",
+            type="SERVICE_UNAVAILABLE",
+        ),
     ]
 
     def __init__(

@@ -2,6 +2,7 @@ title: Wiz
 description: Wiz integration for Port Ocean
 icon: Wiz
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz
+formMappingEnabled: true
 features:
   - type: exporter
     section: Code Quality & Security

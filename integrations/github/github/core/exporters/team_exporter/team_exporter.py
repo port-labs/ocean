@@ -49,3 +49,14 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched {len(repos)} repos for team {options['slug']} from {organization}"
             )
             yield repos
+
+    async def get_team_members_by_slug[
+        ExporterOptionT: SingleTeamOptions
+    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        organization = options["organization"]
+        url = f"{self.client.base_url}/orgs/{organization}/teams/{options['slug']}/members"
+        async for members in self.client.send_paginated_request(url):
+            logger.info(
+                f"Fetched {len(members)} members for team {options['slug']} from {organization}"
+            )
+            yield members

@@ -401,7 +401,7 @@ jobs:
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
             INTEGRATION_VERSION=${{ needs.validate-inputs.outputs.version }}
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
-          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          docker-password: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
 
       - name: '[DRY RUN] Skip Docker build and push'
         if: inputs.dry_run

@@ -15,175 +15,6 @@ organizations_response = [
     }
 ]
 
-teams_response = [
-    {
-        "id": 1,
-        "node_id": "MDQ6VGVhbTE=",
-        "url": "https://api.github.com/teams/1",
-        "html_url": "https://github.com/orgs/github/teams/justice-league",
-        "name": "Justice League",
-        "slug": "justice-league",
-        "description": "A great team.",
-        "privacy": "closed",
-        "notification_setting": "notifications_enabled",
-        "permission": "admin",
-        "members_url": "https://api.github.com/teams/1/members{/member}",
-        "repositories_url": "https://api.github.com/teams/1/repos",
-        "parent": None,
-    }
-]
-
-
-# LEGACY: This is a mock response for the old Copilot Metrics API.
-# It is used in tests to ensure that the API client can handle the expected structure of the response.
-copilot_metrics_response = [
-    {
-        "date": "2024-06-24",
-        "total_active_users": 24,
-        "total_engaged_users": 20,
-        "copilot_ide_code_completions": {
-            "total_engaged_users": 20,
-            "languages": [
-                {"name": "python", "total_engaged_users": 10},
-                {"name": "ruby", "total_engaged_users": 10},
-            ],
-            "editors": [
-                {
-                    "name": "vscode",
-                    "total_engaged_users": 13,
-                    "models": [
-                        {
-                            "name": "default",
-                            "is_custom_model": False,
-                            "custom_model_training_date": None,
-                            "total_engaged_users": 13,
-                            "languages": [
-                                {
-                                    "name": "python",
-                                    "total_engaged_users": 6,
-                                    "total_code_suggestions": 249,
-                                    "total_code_acceptances": 123,
-                                    "total_code_lines_suggested": 225,
-                                    "total_code_lines_accepted": 135,
-                                },
-                                {
-                                    "name": "ruby",
-                                    "total_engaged_users": 7,
-                                    "total_code_suggestions": 496,
-                                    "total_code_acceptances": 253,
-                                    "total_code_lines_suggested": 520,
-                                    "total_code_lines_accepted": 270,
-                                },
-                            ],
-                        }
-                    ],
-                },
-                {
-                    "name": "neovim",
-                    "total_engaged_users": 7,
-                    "models": [
-                        {
-                            "name": "a-custom-model",
-                            "is_custom_model": True,
-                            "custom_model_training_date": "2024-02-01",
-                            "languages": [
-                                {
-                                    "name": "typescript",
-                                    "total_engaged_users": 3,
-                                    "total_code_suggestions": 112,
-                                    "total_code_acceptances": 56,
-                                    "total_code_lines_suggested": 143,
-                                    "total_code_lines_accepted": 61,
-                                },
-                                {
-                                    "name": "go",
-                                    "total_engaged_users": 4,
-                                    "total_code_suggestions": 132,
-                                    "total_code_acceptances": 67,
-                                    "total_code_lines_suggested": 154,
-                                    "total_code_lines_accepted": 72,
-                                },
-                            ],
-                        }
-                    ],
-                },
-            ],
-        },
-        "copilot_ide_chat": {
-            "total_engaged_users": 13,
-            "editors": [
-                {
-                    "name": "vscode",
-                    "total_engaged_users": 13,
-                    "models": [
-                        {
-                            "name": "default",
-                            "is_custom_model": False,
-                            "custom_model_training_date": None,
-                            "total_engaged_users": 12,
-                            "total_chats": 45,
-                            "total_chat_insertion_events": 12,
-                            "total_chat_copy_events": 16,
-                        },
-                        {
-                            "name": "a-custom-model",
-                            "is_custom_model": True,
-                            "custom_model_training_date": "2024-02-01",
-                            "total_engaged_users": 1,
-                            "total_chats": 10,
-                            "total_chat_insertion_events": 11,
-                            "total_chat_copy_events": 3,
-                        },
-                    ],
-                }
-            ],
-        },
-        "copilot_dotcom_chat": {
-            "total_engaged_users": 14,
-            "models": [
-                {
-                    "name": "default",
-                    "is_custom_model": False,
-                    "custom_model_training_date": None,
-                    "total_engaged_users": 14,
-                    "total_chats": 38,
-                }
-            ],
-        },
-        "copilot_dotcom_pull_requests": {
-            "total_engaged_users": 12,
-            "repositories": [
-                {
-                    "name": "demo/repo1",
-                    "total_engaged_users": 8,
-                    "models": [
-                        {
-                            "name": "default",
-                            "is_custom_model": False,
-                            "custom_model_training_date": None,
-                            "total_pr_summaries_created": 6,
-                            "total_engaged_users": 8,
-                        }
-                    ],
-                },
-                {
-                    "name": "demo/repo2",
-                    "total_engaged_users": 4,
-                    "models": [
-                        {
-                            "name": "a-custom-model",
-                            "is_custom_model": True,
-                            "custom_model_training_date": "2024-02-01",
-                            "total_pr_summaries_created": 10,
-                            "total_engaged_users": 4,
-                        }
-                    ],
-                },
-            ],
-        },
-    }
-]
-
 
 mock_copilot_28_day_manifest_response = {
     "download_links": [
@@ -206,3 +37,17 @@ mock_copilot_schema_a_day_totals_wrapper = {
         }
     ],
 }
+
+# Single JSON object — small orgs with little Copilot activity produce this format.
+# response.json() handles this correctly.
+mock_single_json_signed_url_content = (
+    '{"report_start_day":"2026-01-01","report_end_day":"2026-01-28","day_totals":[{"org":"small-test-org","daily_active_users":1,"day":"2026-01-15","code_generation_activity_count":3}]}'
+).encode()
+
+# Reproduces the real GitHub API response format for signed URLs:
+# NDJSON — two JSON objects separated by a newline, as seen in production.
+# response.json() crashes with "Extra data: line 2 column 1" on this content.
+mock_ndjson_signed_url_content = (
+    '{"report_start_day":"2026-02-01","report_end_day":"2026-02-28","day_totals":[{"org":"acme-corp-test-org","daily_active_users":5,"day":"2026-02-01","code_generation_activity_count":100}]}\n'
+    '{"report_start_day":"2026-02-01","report_end_day":"2026-02-28","day_totals":[{"org":"acme-corp-test-org","daily_active_users":42,"day":"2026-03-05","code_generation_activity_count":150}]}'
+).encode()

@@ -1,0 +1,90 @@
+{
+  "__typename": "Control",
+  "id": "wc-id-3206",
+  "name": "Publicly exposed cloud resource with non-PQC compliant transport encryption",
+  "controlDescription": "This cloud resource is publicly accessible from the internet and uses transport encryption (TLS/SSL) that does not support Post-Quantum Cryptography (PQC) compliant cipher suites or key exchange algorithms. The public exposure combined with classical cryptographic protocols creates an increased attack surface.\n\nPublicly exposed resources are more easily targeted by attackers than internal ones. An attacker can intercept encrypted traffic from this publicly accessible resource and store it for future decryption using quantum computers. This \"Harvest Now, Decrypt Later\" attack vector is particularly concerning for publicly exposed endpoints where traffic interception is more feasible.",
+  "resolutionRecommendation": "### Limit external exposure\n* Restrict access to resources that do not need to be accessible from the internet.\n* Ensure that exposed ports allow only encrypted communications.\n\n### Ensure quantum-resistant cryptography\n* Configure TLS settings to enforce modern protocol versions (TLS 1.2 or higher) with PQC-compliant cipher suites.\n* Enable Hybrid Post-Quantum Key Exchange (e.g., ECDHE + ML-KEM) to protect data in transit.\n* Update security policies to mandate quantum-safe key exchange algorithms.\n* Disable support for deprecated cryptographic protocols and cipher suites.\n* Prioritize PQC migration for publicly exposed endpoints.",
+  "securitySubCategories": [
+    {
+      "title": "2 Data-in-transit is protected",
+      "category": {
+        "name": "9 Data Security (PR.DS)",
+        "framework": {
+          "name": "NIST CSF v1.1"
+        }
+      }
+    },
+    {
+      "title": "3.10 Encrypt Sensitive Data in Transit",
+      "category": {
+        "name": "3 Data Protection",
+        "framework": {
+          "name": "CIS Controls v8"
+        }
+      }
+    },
+    {
+      "title": "3.13.8 Implement cryptographic mechanisms to prevent unauthorized disclosure of CUI during transmission unless otherwise protected by alternative physical safeguards.",
+      "category": {
+        "name": "3.13 System and Communications Protection",
+        "framework": {
+          "name": "NIST 800-171 Rev.2"
+        }
+      }
+    },
+    {
+      "title": "4.1 Use strong cryptography and security protocols to safeguard sensitive cardholder data during transmission over open, public networks",
+      "category": {
+        "name": "4 encrypt transmission of cardholder data across open, public networks",
+        "framework": {
+          "name": "PCI DSS v3.1.0"
+        }
+      }
+    },
+    {
+      "title": "Data Encrypted for Impact",
+      "category": {
+        "name": "Impact",
+        "framework": {
+          "name": "MITRE ATT&CK Cloud Matrix"
+        }
+      }
+    },
+    {
+      "title": "Data Encrypted for Impact",
+      "category": {
+        "name": "Impact",
+        "framework": {
+          "name": "MITRE ATT&CK Matrix"
+        }
+      }
+    },
+    {
+      "title": "SC-13 Cryptographic Protection",
+      "category": {
+        "name": "SC System And Communications Protection",
+        "framework": {
+          "name": "NIST SP 800-53 Revision 5"
+        }
+      }
+    },
+    {
+      "title": "SC-8 Transmission Confidentiality and Integrity",
+      "category": {
+        "name": "SC System And Communications Protection",
+        "framework": {
+          "name": "NIST SP 800-53 Revision 5"
+        }
+      }
+    },
+    {
+      "title": "Security policies",
+      "category": {
+        "name": "Session Negotiation - PQC Compliance",
+        "framework": {
+          "name": "Wiz for Post-Quantum Cryptography Security"
+        }
+      }
+    }
+  ]
+}

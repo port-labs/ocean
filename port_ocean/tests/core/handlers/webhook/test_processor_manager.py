@@ -355,10 +355,11 @@ async def test_extractMatchingProcessors_processorMatch(
         )
 
         assert len(processors) == 1
-        config, processor = processors[0]
+        config, processor, resource_index = processors[0]
         assert isinstance(processor, MockProcessor)
         assert config is not None
         assert config.kind == "repository"
+        assert resource_index == 0
         assert processor.event != webhook_event
         assert processor.event.payload == webhook_event.payload
 
@@ -403,8 +404,8 @@ async def test_extractMatchingProcessors_multipleMatches(
         )
 
     assert len(processors) == 2
-    assert all(isinstance(p, MockProcessor) for _, p in processors)
-    assert all(p.event != webhook_event for _, p in processors)
+    assert all(isinstance(p, MockProcessor) for _, p, _ in processors)
+    assert all(p.event != webhook_event for _, p, _ in processors)
 
 
 @pytest.mark.asyncio
@@ -424,10 +425,11 @@ async def test_extractMatchingProcessors_onlyOneMatches(
         )
 
     assert len(processors) == 1
-    config, processor = processors[0]
+    config, processor, resource_index = processors[0]
     assert isinstance(processor, MockProcessor)
     assert config is not None
     assert config.kind == "repository"
+    assert resource_index == 0
     assert processor.event != webhook_event
     assert processor.event.payload == webhook_event.payload
 
@@ -535,6 +537,170 @@ def test_registerProcessor_invalidHandlerRegistration_throwsError(
 
     with pytest.raises(ValueError):
         processor_manager.register_processor("/test", object)  # type: ignore
+
+
+def test_log_webhook_event_logs_base64_payload_and_trace_id(
+    processor_manager: LiveEventsProcessorManager,
+    webhook_event: WebhookEvent,
+) -> None:
+    """Test that _log_webhook_event logs webhook with base64-encoded payload and trace_id for traceability."""
+    import base64
+    import json
+
+    with patch(
+        "port_ocean.core.handlers.webhook.processor_manager.logger"
+    ) as mock_logger:
+        processor_manager._log_webhook_event(webhook_event)
+
+    expected_b64 = base64.b64encode(
+        json.dumps(webhook_event.payload).encode("utf-8")
+    ).decode("utf-8")
+    mock_logger.info.assert_called_once_with(
+        "Got webhook event",
+        base64_masked_webhook_debug_payload=expected_b64,
+        trace_id=webhook_event.trace_id,
+    )
+
+
+def test_log_webhook_event_with_payload_logs_correct_base64(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    """Test that _log_webhook_event base64-encodes the payload correctly."""
+    import base64
+    import json
+
+    event = WebhookEvent(
+        trace_id="trace-123",
+        payload={"event": "issue_created", "id": 42},
+        headers={},
+    )
+    with patch(
+        "port_ocean.core.handlers.webhook.processor_manager.logger"
+    ) as mock_logger:
+        processor_manager._log_webhook_event(event)
+
+    expected_b64 = base64.b64encode(json.dumps(event.payload).encode("utf-8")).decode(
+        "utf-8"
+    )
+    mock_logger.info.assert_called_once_with(
+        "Got webhook event",
+        base64_masked_webhook_debug_payload=expected_b64,
+        trace_id="trace-123",
+    )
+
+
+def test_log_webhook_event_truncates_json_when_over_1mb(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    """JSON before base64 is capped at 1 MiB; log marks truncation."""
+    import base64
+
+    # Patch limit to keep the test fast; production cap is 1 MiB.
+    small_limit = 128
+    padding = "x" * 200
+    event = WebhookEvent(
+        trace_id="trace-huge",
+        payload={"data": padding},
+        headers={},
+    )
+    with (
+        patch(
+            "port_ocean.core.handlers.webhook.processor_manager._WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES",
+            small_limit,
+        ),
+        patch(
+            "port_ocean.core.handlers.webhook.processor_manager.logger"
+        ) as mock_logger,
+    ):
+        processor_manager._log_webhook_event(event)
+
+    call_kwargs = mock_logger.info.call_args.kwargs
+    assert call_kwargs["trace_id"] == "trace-huge"
+    assert call_kwargs["webhook_debug_log_json_truncated"] is True
+    decoded = base64.b64decode(call_kwargs["base64_masked_webhook_debug_payload"])
+    assert len(decoded) == small_limit
+
+
+def test_log_webhook_event_on_serialization_error_logs_error_and_returns(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    """Test that _log_webhook_event catches serialization errors and logs without raising."""
+    # payload with non-JSON-serializable value (e.g. object)
+    event = WebhookEvent(
+        trace_id="trace-456",
+        payload={"bad": object()},
+        headers={},
+    )
+    with patch(
+        "port_ocean.core.handlers.webhook.processor_manager.logger"
+    ) as mock_logger:
+        processor_manager._log_webhook_event(event)
+
+    mock_logger.error.assert_called_once()
+    mock_logger.info.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_handle_webhook_calls_log_webhook_event_when_events_debug_logging_enabled(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    """Test that _log_webhook_event is called when events_debug_logging is True."""
+    test_path = "/webhook-debug-log"
+    processor_manager.register_processor(test_path, MockProcessor)
+    app = FastAPI()
+    app.include_router(processor_manager._router)
+
+    with (
+        patch("port_ocean.core.handlers.webhook.processor_manager.ocean") as mock_ocean,
+        patch.object(
+            processor_manager,
+            "_log_webhook_event",
+            new_callable=MagicMock,
+        ) as mock_log_webhook_event,
+    ):
+        mock_ocean.config.events_debug_logging = True
+        client = TestClient(app)
+        response = client.post(
+            test_path,
+            json={"event": "test"},
+            headers={"Content-Type": "application/json"},
+        )
+
+    assert response.status_code == 200
+    mock_log_webhook_event.assert_called_once()
+    call_args = mock_log_webhook_event.call_args[0][0]
+    assert isinstance(call_args, WebhookEvent)
+    assert call_args.payload == {"event": "test"}
+
+
+@pytest.mark.asyncio
+async def test_handle_webhook_does_not_call_log_webhook_event_when_events_debug_logging_disabled(
+    processor_manager: LiveEventsProcessorManager,
+) -> None:
+    """Test that _log_webhook_event is not called when events_debug_logging is False."""
+    test_path = "/webhook-no-debug-log"
+    processor_manager.register_processor(test_path, MockProcessor)
+    app = FastAPI()
+    app.include_router(processor_manager._router)
+
+    with (
+        patch("port_ocean.core.handlers.webhook.processor_manager.ocean") as mock_ocean,
+        patch.object(
+            processor_manager,
+            "_log_webhook_event",
+            new_callable=MagicMock,
+        ) as mock_log_webhook_event,
+    ):
+        mock_ocean.config.events_debug_logging = False
+        client = TestClient(app)
+        response = client.post(
+            test_path,
+            json={"event": "test"},
+            headers={"Content-Type": "application/json"},
+        )
+
+    assert response.status_code == 200
+    mock_log_webhook_event.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -784,9 +950,12 @@ async def test_integrationTest_postRequestSent_reachedTimeout_entityNotUpserted(
         processor: AbstractWebhookProcessor,
         path: str,
         resource: ResourceConfig,
+        resource_index: int | None = None,
     ) -> WebhookEventRawResults:
         try:
-            return await original_process_data(self, processor, path, resource)
+            return await original_process_data(
+                self, processor, path, resource, resource_index
+            )
         except Exception as e:
             test_state["exception_thrown"] = e  # type: ignore
             raise e
@@ -906,7 +1075,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
 
     async def patched_extract_matching_processors(
         self: LiveEventsProcessorManager, event: WebhookEvent, path: str
-    ) -> list[tuple[ResourceConfig | None, AbstractWebhookProcessor]]:
+    ) -> list[tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]]:
         try:
             return await original_process_data(self, event, path)
         except Exception as e:
@@ -1380,9 +1549,12 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
         self: LiveEventsProcessorManager,
         processor: AbstractWebhookProcessor,
         resource: ResourceConfig,
+        resource_index: int | None = None,
     ) -> WebhookEventRawResults:
         try:
-            return await original_process_data(self, processor, resource)
+            return await original_process_data(
+                self, processor, resource, resource_index
+            )
         except Exception as e:
             test_state["exception"] = True
             raise e

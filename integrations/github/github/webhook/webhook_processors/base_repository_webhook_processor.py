@@ -1,7 +1,8 @@
 from abc import abstractmethod
 from typing import Any, Optional, cast
+from github.webhook.events import COLLABORATOR_EVENTS, TEAM_COLLABORATOR_EVENTS
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import EventPayload
+from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
 from port_ocean.context.event import event
 from github.clients.client_factory import create_github_client
 from github.core.exporters.repository_exporter import RestRepositoryExporter
@@ -123,3 +124,77 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
             configured_visibility == "all"
             or repository_visibility == configured_visibility
         )
+
+
+class CollaboratorEventValidator:
+
+    async def validate_member_collaborator_payload(self, payload: EventPayload) -> bool:
+        has_required_fields = not ({"action", "repository", "member"} - payload.keys())
+
+        return has_required_fields and "login" in payload.get("member", {})
+
+    async def should_process_member_collaborator_event(
+        self, event: WebhookEvent
+    ) -> bool:
+        return (
+            event.headers.get("x-github-event") == "member"
+            and event.payload.get("action") in COLLABORATOR_EVENTS
+        )
+
+    async def validate_membership_collaborator_payload(
+        self, payload: EventPayload
+    ) -> bool:
+
+        has_required_fields = not (
+            {"action", "organization", "team", "member"} - payload.keys()
+        )
+
+        has_org_login = "login" in payload.get("organization", {})
+        has_team_name = "name" in payload.get("team", {})
+        has_member_login = "login" in payload.get("member", {})
+
+        return (
+            has_required_fields and has_org_login and has_team_name and has_member_login
+        )
+
+    async def should_process_membership_collaborator_event(
+        self, event: WebhookEvent
+    ) -> bool:
+        return (
+            event.headers.get("x-github-event") == "membership"
+            and event.payload.get("action") in COLLABORATOR_EVENTS
+        )
+
+    async def validate_team_collaborator_payload(self, payload: EventPayload) -> bool:
+
+        has_required_fields = not (
+            {"action", "repository", "organization", "team"} - payload.keys()
+        )
+
+        has_org_login = "login" in payload.get("organization", {})
+        has_team_name = "name" in payload.get("team", {})
+
+        return has_required_fields and has_org_login and has_team_name
+
+    async def should_process_team_collaborator_event(self, event: WebhookEvent) -> bool:
+        return (
+            event.headers.get("x-github-event") == "team"
+            and event.payload.get("action") in TEAM_COLLABORATOR_EVENTS
+        )
+
+    async def should_process_collaborator_event(self, event: WebhookEvent) -> bool:
+        match event.headers.get("x-github-event"):
+            case "member":
+                return await self.should_process_member_collaborator_event(
+                    event
+                ) and await self.validate_member_collaborator_payload(event.payload)
+            case "membership":
+                return await self.should_process_membership_collaborator_event(
+                    event
+                ) and await self.validate_membership_collaborator_payload(event.payload)
+            case "team":
+                return await self.should_process_team_collaborator_event(
+                    event
+                ) and await self.validate_team_collaborator_payload(event.payload)
+            case _:
+                return False

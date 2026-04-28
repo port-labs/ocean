@@ -1,6 +1,6 @@
 from typing import cast
 from loguru import logger
-from initialize_client import create_jira_client
+from initialize_client import get_or_create_jira_client
 from jira.overrides import JiraIssueConfig
 from kinds import Kinds
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -25,7 +25,7 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        client = create_jira_client()
+        client = get_or_create_jira_client()
         config = cast(JiraIssueConfig, resource_config)
         issue_key = payload["issue"]["key"]
         issue_id = int(payload["issue"]["id"])
@@ -44,11 +44,16 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         if config.selector.jql:
             jql = f"({config.selector.jql}) AND key = {issue_key}"
 
-        issues = await client.get_reconciled_issues(
-            jql=jql,
-            issue_ids=[issue_id],
-            fields=config.selector.fields,
-        )
+        issues = []
+        async for batch in client.get_paginated_issues(
+            params={
+                "jql": jql,
+                "fields": config.selector.fields,
+                "expand": config.selector.expand,
+                "reconcileIssues": [issue_id],
+            }
+        ):
+            issues.extend(batch)
 
         data_to_update = []
         data_to_delete = []

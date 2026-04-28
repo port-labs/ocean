@@ -1,5 +1,6 @@
 import pytest
 import httpx
+from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, patch, MagicMock
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -7,8 +8,8 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 from clients.github_client import GitHubClient
 from tests.mocks import (
     organizations_response,
-    teams_response,
-    copilot_metrics_response,
+    mock_single_json_signed_url_content,
+    mock_ndjson_signed_url_content,
 )
 
 BASE_URL = "https://api.github.com"
@@ -56,64 +57,6 @@ async def test_get_organizations_single_page(github_client: GitHubClient) -> Non
 
 
 @pytest.mark.asyncio
-async def test_get_teams_of_organization_403_ignored(
-    github_client: GitHubClient,
-) -> None:
-    error_response = httpx.Response(
-        status_code=403, request=httpx.Request("GET", "https://fake")
-    )
-    async_mock = AsyncMock(
-        side_effect=httpx.HTTPStatusError(
-            "Forbidden", request=error_response.request, response=error_response
-        )
-    )
-
-    with patch.object(github_client._client, "request", new=async_mock):
-        results = []
-        async for teams in github_client.get_teams_of_organization(
-            organizations_response[0]
-        ):
-            results.extend(teams)
-
-        assert results == []
-
-
-@pytest.mark.asyncio
-async def test_get_legacy_metrics_for_organization(github_client: GitHubClient) -> None:
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = copilot_metrics_response
-
-    with patch.object(
-        github_client._client, "request", new=AsyncMock(return_value=mock_response)
-    ):
-        result = await github_client.get_legacy_metrics_for_organization(
-            organizations_response[0]
-        )
-        assert result == copilot_metrics_response
-
-
-@pytest.mark.asyncio
-async def test_get_metrics_for_team_422_ignored(github_client: GitHubClient) -> None:
-    error_response = httpx.Response(
-        status_code=422, request=httpx.Request("get", "https://fake")
-    )
-    async_mock = AsyncMock(
-        side_effect=httpx.HTTPStatusError(
-            "Unprocessable Entity",
-            request=error_response.request,
-            response=error_response,
-        )
-    )
-
-    with patch.object(github_client._client, "request", new=async_mock):
-        result = await github_client.get_metrics_for_team(
-            organizations_response[0], teams_response[0]
-        )
-        assert result == []
-
-
-@pytest.mark.asyncio
 async def test_paginated_response(github_client: GitHubClient) -> None:
     first_response = MagicMock()
     first_response.status_code = 200
@@ -152,10 +95,10 @@ async def test_send_api_request_404_returns_empty(github_client: GitHubClient) -
 
 
 def test_resolve_route_params() -> None:
-    endpoint = "/orgs/{org}/teams/{team}/metrics"
-    params = {"org": "acme", "team": "devs"}
+    endpoint = "/orgs/{org}/copilot/metrics/users"
+    params = {"org": "acme"}
     result = GitHubClient._resolve_route_params(endpoint, params)
-    assert result == "/orgs/acme/teams/devs/metrics"
+    assert result == "/orgs/acme/copilot/metrics/users"
 
 
 @pytest.mark.asyncio
@@ -182,7 +125,7 @@ async def test_get_new_usage_metrics_returns_empty_when_manifest_has_empty_links
 
 
 @pytest.mark.asyncio
-async def test_fetch_report_from_signed_url_returns_none_on_forbidden_error(
+async def test_fetch_report_from_signed_url_returns_empty_on_forbidden_error(
     github_client: GitHubClient,
 ) -> None:
     signed_url = "https://signed.example.com/copilot-report-expired.json"
@@ -199,7 +142,7 @@ async def test_fetch_report_from_signed_url_returns_none_on_forbidden_error(
 
     with patch.object(github_client._client, "request", new=request_mock):
         result = await github_client._fetch_report_from_signed_url(signed_url)
-        assert result is None
+        assert result == []
 
 
 @pytest.mark.asyncio
@@ -230,9 +173,11 @@ async def test_get_new_usage_metrics_skips_unexpected_schema(
         "report_end_day": "2026-03-09",
     }
 
-    unexpected_schema_response = MagicMock()
-    unexpected_schema_response.status_code = 200
-    unexpected_schema_response.json.return_value = {"unexpected_key": "some_value"}
+    unexpected_schema_response = httpx.Response(
+        status_code=200,
+        content=b'{"unexpected_key": "some_value"}',
+        request=httpx.Request("GET", "https://signed.example.com/unexpected.json"),
+    )
 
     request_mock = AsyncMock(
         side_effect=[manifest_response, unexpected_schema_response]
@@ -246,3 +191,187 @@ async def test_get_new_usage_metrics_skips_unexpected_schema(
             )
         ]
     assert result == [[{"unexpected_key": "some_value"}]]
+
+
+@pytest.mark.asyncio
+async def test_fetch_report_from_signed_url_parses_single_line_json(
+    github_client: GitHubClient,
+) -> None:
+    """_fetch_report_from_signed_url handles a single-line JSON report."""
+    import json
+
+    signed_url = "https://signed.example.com/copilot-report-single.json"
+    single_json_response = httpx.Response(
+        status_code=200,
+        content=mock_single_json_signed_url_content,
+        request=httpx.Request("GET", signed_url),
+    )
+    expected = [json.loads(mock_single_json_signed_url_content)]
+
+    with patch.object(
+        github_client._client,
+        "request",
+        new=AsyncMock(return_value=single_json_response),
+    ):
+        result = await github_client._fetch_report_from_signed_url(signed_url)
+        assert result == expected
+
+
+@pytest.mark.asyncio
+async def test_fetch_report_from_signed_url_parses_ndjson(
+    github_client: GitHubClient,
+) -> None:
+    """_fetch_report_from_signed_url parses NDJSON with one JSON object per line."""
+    signed_url = "https://signed.example.com/copilot-report-ndjson.json"
+    ndjson_response = httpx.Response(
+        status_code=200,
+        content=mock_ndjson_signed_url_content,
+        request=httpx.Request("GET", signed_url),
+    )
+
+    expected = [
+        {
+            "report_start_day": "2026-02-01",
+            "report_end_day": "2026-02-28",
+            "day_totals": [
+                {
+                    "org": "acme-corp-test-org",
+                    "daily_active_users": 5,
+                    "day": "2026-02-01",
+                    "code_generation_activity_count": 100,
+                }
+            ],
+        },
+        {
+            "report_start_day": "2026-02-01",
+            "report_end_day": "2026-02-28",
+            "day_totals": [
+                {
+                    "org": "acme-corp-test-org",
+                    "daily_active_users": 42,
+                    "day": "2026-03-05",
+                    "code_generation_activity_count": 150,
+                }
+            ],
+        },
+    ]
+
+    with patch.object(
+        github_client._client, "request", new=AsyncMock(return_value=ndjson_response)
+    ):
+        result = await github_client._fetch_report_from_signed_url(signed_url)
+        assert result == expected
+
+
+@pytest.mark.asyncio
+async def test_get_users_usage_metrics_returns_batches_from_signed_urls(
+    github_client: GitHubClient,
+) -> None:
+    organization = {"login": "acme-corp-test-org"}
+    manifest_response = MagicMock()
+    manifest_response.status_code = 200
+    manifest_response.json.return_value = {
+        "download_links": [
+            "https://signed.example.com/users-report-1.ndjson",
+            "https://signed.example.com/users-report-2.ndjson",
+        ],
+        "report_start_day": "2026-03-01",
+        "report_end_day": "2026-03-28",
+    }
+
+    fetch_report_mock = AsyncMock(
+        side_effect=[
+            [
+                {
+                    "day": "2026-03-12",
+                    "organization_id": "1234567890",
+                    "user_login": "bob",
+                    "code_generation_activity_count": 19,
+                    "code_acceptance_activity_count": 8,
+                }
+            ],
+            [
+                {
+                    "day": "2026-03-12",
+                    "organization_id": "1234567890",
+                    "user_login": "alice",
+                    "code_generation_activity_count": 11,
+                    "code_acceptance_activity_count": 5,
+                }
+            ],
+        ]
+    )
+
+    with (
+        patch.object(
+            github_client,
+            "_send_api_request",
+            new=AsyncMock(return_value=manifest_response),
+        ),
+        patch.object(
+            github_client, "_fetch_report_from_signed_url", new=fetch_report_mock
+        ),
+    ):
+        result = [
+            batch
+            async for batch in github_client._get_users_usage_metrics(organization)
+        ]
+
+    assert result == [
+        [
+            {
+                "day": "2026-03-12",
+                "organization_id": "1234567890",
+                "user_login": "bob",
+                "code_generation_activity_count": 19,
+                "code_acceptance_activity_count": 8,
+            }
+        ],
+        [
+            {
+                "day": "2026-03-12",
+                "organization_id": "1234567890",
+                "user_login": "alice",
+                "code_generation_activity_count": 11,
+                "code_acceptance_activity_count": 5,
+            }
+        ],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_users_usage_metrics_enriches_records_across_org_batches(
+    github_client: GitHubClient,
+) -> None:
+    org_a = {"login": "acme-a", "id": 1}
+    org_b = {"login": "acme-b", "id": 2}
+    org_c = {"login": "acme-c", "id": 3}
+
+    async def organizations_generator() -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield [org_a, org_b]
+        yield [org_c]
+
+    async def users_usage_generator(
+        organization: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if organization["login"] == "acme-a":
+            yield [{"user_login": "alice", "day": "2026-03-12"}]
+            return
+        if organization["login"] == "acme-b":
+            yield [{"user_login": "bob", "day": "2026-03-12"}]
+            return
+        yield [{"user_login": "charlie", "day": "2026-03-12"}]
+
+    with (
+        patch.object(github_client, "get_organizations", new=organizations_generator),
+        patch.object(
+            github_client, "_get_users_usage_metrics", new=users_usage_generator
+        ),
+    ):
+        result = [batch async for batch in github_client.fetch_users_usage_metrics()]
+
+    assert result == [
+        [{"user_login": "alice", "day": "2026-03-12", "__organization": org_a}],
+        [{"user_login": "bob", "day": "2026-03-12", "__organization": org_b}],
+        [{"user_login": "charlie", "day": "2026-03-12", "__organization": org_c}],
+    ]

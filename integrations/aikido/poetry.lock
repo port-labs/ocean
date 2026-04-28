@@ -12,6 +12,17 @@ files = [
 ]
 
 [[package]]
+name = "aiolimiter"
+version = "1.2.1"
+description = "asyncio rate limiter, a leaky bucket implementation"
+optional = false
+python-versions = "<4.0,>=3.8"
+files = [
+    {file = "aiolimiter-1.2.1-py3-none-any.whl", hash = "sha256:d3f249e9059a20badcb56b61601a83556133655c11d1eb3dd3e04ff069e5f3c7"},
+    {file = "aiolimiter-1.2.1.tar.gz", hash = "sha256:e02a37ea1a855d9e832252a105420ad4d15011505512a1a1d814647451b5cca9"},
+]
+
+[[package]]
 name = "aiostream"
 version = "0.6.4"
 description = "Generator-based operators for asynchronous iteration"
@@ -1492,13 +1503,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.38.21"
+version = "0.41.4"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.38.21-py3-none-any.whl", hash = "sha256:f00b67601668c582037e0a21a0122fb94a383a91de04a34a2425b7d71bbc1b71"},
-    {file = "port_ocean-0.38.21.tar.gz", hash = "sha256:294bc48691ed7d34d7758682b893fa655ee65e29f59712d4e82a830081842129"},
+    {file = "port_ocean-0.41.4-py3-none-any.whl", hash = "sha256:dc975feb1cf5469a5a94553e7cb49426f0bbb51751a34d12c562a879513d516d"},
+    {file = "port_ocean-0.41.4.tar.gz", hash = "sha256:499210ed7a16e6286640f9c24fbc9b5d002aac239c23803588561557a6497247"},
 ]
 
 [package.dependencies]
@@ -1524,7 +1535,7 @@ psutil = ">=7.2.1,<8.0.0"
 pydantic = {version = ">=1.10.8,<2.0.0", extras = ["dotenv"]}
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
-pyjwt = ">=2.10.1,<3.0.0"
+pyjwt = ">=2.12.0,<3.0.0"
 pytest-cov = ">=6.0.0,<7.0.0"
 python-dateutil = ">=2.9.0.post0,<3.0.0"
 pyyaml = ">=6.0,<7.0"
@@ -2255,4 +2266,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "ba09f81e031a895e618d978f3584c73d05344547dbacde9e22e5a8be1d4b3fd5"
+content-hash = "7e6b5d455018f6bbbcd13fe1a199ea1a827cde3c310f0f8cee95f11d34cbaa8a"

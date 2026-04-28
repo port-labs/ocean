@@ -2,6 +2,7 @@ title: Ocean Custom
 description: Universal HTTP REST API integration with dynamic path parameters and flexible authentication
 icon: RestAPI
 docs: https://docs.port.io/build-your-software-catalog/custom-integration/ocean-custom-integration/overview
+formMappingEnabled: true
 features:
   - type: exporter
     section: Other
@@ -77,8 +78,8 @@ configurations:
     required: false
     type: string
     default: "none"
-    description: "Pagination method: none, offset, page, cursor, or next_link"
-    enum: ["offset", "page", "cursor", "next_link", "none"]
+    description: "Pagination method: none, offset, page, cursor, next_link, or header_link"
+    enum: ["offset", "page", "cursor", "next_link", "header_link", "none"]
   - name: pageSize
     required: false
     type: string
@@ -152,6 +153,17 @@ configurations:
           equals: next_link
         then:
           required: false
+  - name: headerLinkRel
+    required: false
+    type: string
+    default: "next"
+    description: "The rel value to look for in the Link header when using header_link pagination. Default is 'next'. Some APIs use different values like 'nextPage'."
+    dependencies:
+      - on: paginationType
+        when:
+          equals: header_link
+        then:
+          required: false
   - name: timeout
     required: false
     type: string
@@ -199,6 +211,7 @@ interface:
         - cursorPath
         - hasMorePath
         - nextLinkPath
+        - headerLinkRel
         - timeout
         - verifySsl
         - maxConcurrentRequests

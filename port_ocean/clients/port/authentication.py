@@ -59,6 +59,7 @@ class PortAuthentication:
         response = await self.client.post(
             f"{self.api_url}/auth/access_token",
             json=credentials,
+            headers={"User-Agent": self.user_agent()},
             extensions={"retryable": True},
         )
         handle_port_status_code(response)

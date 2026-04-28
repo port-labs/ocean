@@ -1,10 +1,12 @@
-from integration import GithubPortAppConfig
+from integration import (
+    GithubCollaboratorConfig,
+    GithubCollaboratorSelector,
+    GithubPortAppConfig,
+)
 from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
     PortResourceConfig,
-    ResourceConfig,
-    Selector,
 )
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
@@ -45,10 +47,10 @@ INVALID_MEMBER_COLLABORATOR_PAYLOADS: dict[str, Any] = {
 
 
 @pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+def resource_config() -> GithubCollaboratorConfig:
+    return GithubCollaboratorConfig(
         kind=ObjectKind.COLLABORATOR,
-        selector=Selector(query="true"),
+        selector=GithubCollaboratorSelector(query="true", affiliation="all"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -143,7 +145,7 @@ class TestCollaboratorMemberWebhookProcessor:
     async def test_handle_event_member_events(
         self,
         member_webhook_processor: CollaboratorMemberWebhookProcessor,
-        resource_config: ResourceConfig,
+        resource_config: GithubCollaboratorConfig,
         action: str,
         expected_updated: bool,
         expected_deleted: bool,
@@ -199,8 +201,37 @@ class TestCollaboratorMemberWebhookProcessor:
                         "login": "test-user",
                         "id": 1,
                         "__repository": "test-repo",
-                        "__repository_object": {"name": "test-repo"},
                         "__organization": "test-org",
                     }
                     assert result.deleted_raw_results == [expected_deleted_data]
                     mock_exporter.get_resource.assert_not_called()
+
+    async def test_handle_event_skips_when_affiliation_filter_enabled(
+        self,
+        member_webhook_processor: CollaboratorMemberWebhookProcessor,
+        resource_config: GithubCollaboratorConfig,
+    ) -> None:
+        payload = VALID_MEMBER_COLLABORATOR_PAYLOADS.copy()
+        payload["action"] = "added"
+
+        # Enable affiliation filtering -> skip collaborator live events
+        resource_config.selector.affiliation = "direct"
+
+        with (
+            patch(
+                "github.webhook.webhook_processors.collaborator_webhook_processor.member_webhook_processor.create_github_client"
+            ) as mock_create_client,
+            patch(
+                "github.webhook.webhook_processors.collaborator_webhook_processor.member_webhook_processor.RestCollaboratorExporter"
+            ) as mock_exporter_class,
+        ):
+            result = await member_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == []
+
+            mock_create_client.assert_not_called()
+            mock_exporter_class.assert_not_called()

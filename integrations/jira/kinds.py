@@ -6,4 +6,5 @@ class Kinds(StrEnum):
     ISSUE = "issue"
     USER = "user"
     TEAM = "team"
-    VERSION = "version"
+    RELEASE = "release"
+    BOARD = "board"

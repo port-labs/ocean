@@ -1,0 +1,35 @@
+{
+  "seen": true,
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0063-1695830593128",
+  "tinyId": "11",
+  "alias": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0043_aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0045",
+  "message": "Devops Research Incident",
+  "status": "open",
+  "acknowledged": true,
+  "isSeen": true,
+  "tags": [],
+  "snoozed": false,
+  "count": 1,
+  "lastOccurredAt": "2023-09-27T16:03:13.128Z",
+  "createdAt": "2023-09-27T16:03:13.128Z",
+  "updatedAt": "2023-09-27T16:07:06.6Z",
+  "source": "",
+  "owner": "user1@example.com",
+  "priority": "P3",
+  "teams": [
+    {
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012"
+    }
+  ],
+  "responders": [
+    {
+      "type": "team",
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012"
+    }
+  ],
+  "report": {
+    "ackTime": 190942,
+    "acknowledgedBy": "System"
+  },
+  "ownerTeamId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012"
+}

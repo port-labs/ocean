@@ -145,7 +145,7 @@ class HttpServerClient:
         self,
         url: str,
         method: str,
-        params: Dict[str, Any],
+        params: Optional[Dict[str, Any]],
         headers: Dict[str, str],
         body: Optional[Dict[str, Any]] = None,
     ) -> httpx.Response:

@@ -102,6 +102,10 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     allow_environment_variables_jq_access: bool = True
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
+    status_heartbeat_interval_seconds: int = Field(
+        default=10,  # Interval in seconds for sending metrics heartbeat (liveness).
+        gt=0,
+    )
     client_timeout: int = 60
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
@@ -115,6 +119,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         )
     )
     event_workers_count: int = 1
+    events_debug_logging: bool = False
     # If an identifier or type is not provided, it will be generated based on the integration name
     integration: IntegrationSettings = Field(
         default_factory=lambda: IntegrationSettings(type="", identifier="")
