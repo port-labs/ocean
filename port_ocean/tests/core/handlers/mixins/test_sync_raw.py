@@ -1492,7 +1492,7 @@ async def test_parse_items_sets_both_kind_and_resource_kind_in_logger_context(
 
 
 @pytest.mark.asyncio
-async def test_execute_resync_tasks_shares_examples_budget_across_async_generators(
+async def test_execute_resync_tasks_passes_examples_amount_to_each_async_generator(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_resource_config: ResourceConfig,
 ) -> None:
@@ -1522,7 +1522,5 @@ async def test_execute_resync_tasks_shares_examples_budget_across_async_generato
         )
 
     assert mock_wrapper.call_count == 2
-    first_budget = mock_wrapper.call_args_list[0].kwargs["shared_examples_budget"]
-    second_budget = mock_wrapper.call_args_list[1].kwargs["shared_examples_budget"]
-    assert first_budget is second_budget
-    assert first_budget["remaining"] == 5
+    assert mock_wrapper.call_args_list[0].kwargs == {"send_raw_data_examples_amount": 5}
+    assert mock_wrapper.call_args_list[1].kwargs == {"send_raw_data_examples_amount": 5}
