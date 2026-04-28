@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.3.15 (2026-04-28)
+
+
+### Improvements
+
+- Fix repo search query in live-events
+
+
 ## 5.3.14 (2026-04-23)
 
 
