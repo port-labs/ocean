@@ -1,6 +1,5 @@
 import asyncio
 from asyncio.tasks import Task
-from functools import lru_cache
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 import re
@@ -274,7 +273,6 @@ class JQEntityProcessor(BaseEntityProcessor):
         )
         return formatted_filter
 
-    @lru_cache
     def _compile(self, pattern: str) -> Any:
         pattern = self._format_filter(pattern)
         if not ocean.config.allow_environment_variables_jq_access:

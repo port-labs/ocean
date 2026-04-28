@@ -1,3 +1,4 @@
+import copy
 from typing import Any, cast
 
 from loguru import logger
@@ -223,13 +224,21 @@ async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     config = cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
+    total_yielded = 0
     for iteration in range(100):
-        logger.info(f"Load test iteration {iteration + 1}/100")
+        iteration_count = 0
         async for work_items in azure_devops_client.generate_work_items(
             wiql=config.selector.wiql, expand=config.selector.expand
         ):
-            logger.info(f"Resyncing {len(work_items)} work items (iteration {iteration + 1}/100)")
-            yield work_items
+            iteration_count += len(work_items)
+            total_yielded += len(work_items)
+            # Deep-copy so each iteration allocates fresh objects, forcing realistic
+            # COW page faults in forked subprocesses instead of inheriting shared pages.
+            yield copy.deepcopy(work_items)
+        logger.info(
+            f"Load test iteration {iteration + 1}/100 complete — "
+            f"iteration: {iteration_count:,}, total yielded: {total_yielded:,}"
+        )
 
 
 @ocean.on_resync(Kind.COLUMN)

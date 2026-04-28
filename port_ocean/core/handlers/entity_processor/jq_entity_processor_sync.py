@@ -13,8 +13,6 @@ from port_ocean.core.utils.json_compat import (
 )
 from port_ocean.exceptions.core import EntityProcessorException
 
-_COMPILED_PATTERNS: dict[str, Any] = {}
-
 
 class JQEntityProcessorSync:
     """Processes and parses entities using JQ expressions.
@@ -69,11 +67,7 @@ class JQEntityProcessorSync:
         pattern = JQEntityProcessorSync._format_filter(pattern)
         if not ocean.config.allow_environment_variables_jq_access:
             pattern = "def env: {}; {} as $ENV | " + pattern
-        if pattern in _COMPILED_PATTERNS:
-
-            return _COMPILED_PATTERNS[pattern]
         compiled_pattern = jq.compile(pattern)
-        _COMPILED_PATTERNS[pattern] = compiled_pattern
         return compiled_pattern
 
     @staticmethod
