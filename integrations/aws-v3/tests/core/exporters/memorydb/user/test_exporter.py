@@ -12,7 +12,7 @@ from aws.core.exporters.memorydb.user.models import (
 
 SAMPLE_USERS = [
     {
-        "UserName": "alice",
+        "Name": "alice",
         "Status": "active",
         "AccessString": "on ~* &* +@all",
         "ACLNames": ["my-acl"],
@@ -89,7 +89,7 @@ async def test_get_paginated_resources_yields_batch(
             batches.append(batch)
 
     assert len(batches) == 1
-    assert batches[0][0]["Properties"]["UserName"] == "alice"
+    assert batches[0][0]["Properties"]["Name"] == "alice"
 
 
 async def test_get_paginated_resources_empty_page_yields_empty(

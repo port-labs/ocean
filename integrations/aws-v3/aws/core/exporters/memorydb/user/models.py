@@ -4,7 +4,7 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 
 class MemoryDbUserProperties(BaseModel):
-    UserName: str = Field(default_factory=str)
+    Name: str = Field(default_factory=str)
     Status: str = Field(default_factory=str)
     AccessString: Optional[str] = Field(default=None)
     ACLNames: list[str] = Field(default_factory=list)

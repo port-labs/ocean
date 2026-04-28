@@ -7,7 +7,7 @@ from aws.core.exporters.memorydb.user.models import (
     PaginatedMemoryDbUserRequest,
     SingleMemoryDbUserRequest,
 )
-from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.types import MEMORYDB_SUPPORTED_REGIONS, SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
@@ -16,6 +16,7 @@ class MemoryDbUserExporter(IResourceExporter):
     _service_name: SupportedServices = "memorydb"
     _model_cls: Type[MemoryDbUser] = MemoryDbUser
     _actions_map: Type[MemoryDbUserActionsMap] = MemoryDbUserActionsMap
+    _supported_regions: frozenset[str] = MEMORYDB_SUPPORTED_REGIONS
 
     async def get_resource(self, options: SingleMemoryDbUserRequest) -> dict[str, Any]:
         """Fetch detailed attributes of a single MemoryDB user."""

@@ -159,6 +159,22 @@ class ResyncAWSService:
             f"Resyncing {self.kind} for account {account['Id']} across {len(regions)} regions"
         )
         exporter = self.exporter_cls(session)
+
+        if exporter._supported_regions:
+            filtered = [r for r in regions if r in exporter._supported_regions]
+            if not filtered:
+                logger.warning(
+                    f"Account {account['Id']} has no supported regions for {self.kind}, skipping"
+                )
+                return
+            if len(filtered) < len(regions):
+                logger.info(
+                    f"{self.kind} is not available in "
+                    f"{len(regions) - len(filtered)} region(s); "
+                    f"restricting to {len(filtered)} supported region(s)"
+                )
+            regions = filtered
+
         options_factory = self._create_options_factory(account["Id"])
 
         strategy: ResyncStrategy

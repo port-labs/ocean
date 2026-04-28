@@ -1,7 +1,7 @@
 {
   "Type": "AWS::MemoryDB::User",
   "Properties": {
-    "UserName": "default",
+    "Name": "default",
     "Status": "active",
     "AccessString": "on ~* &* +@all",
     "ACLNames": [

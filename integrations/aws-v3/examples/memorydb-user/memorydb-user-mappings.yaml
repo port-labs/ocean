@@ -6,7 +6,7 @@ resources:
       entity:
         mappings:
           identifier: .Properties.ARN
-          title: .Properties.UserName
+          title: .Properties.Name
           blueprint: '"memoryDbUser"'
           properties:
             arn: .Properties.ARN

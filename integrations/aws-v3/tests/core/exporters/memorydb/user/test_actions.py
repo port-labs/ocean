@@ -10,7 +10,7 @@ from aws.core.exporters.memorydb.user.actions import (
 
 SAMPLE_USERS = [
     {
-        "UserName": "alice",
+        "Name": "alice",
         "Status": "active",
         "AccessString": "on ~* &* +@all",
         "ACLNames": ["my-acl"],
@@ -19,7 +19,7 @@ SAMPLE_USERS = [
         "Authentication": {"Type": "password", "PasswordCount": 1},
     },
     {
-        "UserName": "bob",
+        "Name": "bob",
         "Status": "active",
         "AccessString": "off",
         "ACLNames": [],

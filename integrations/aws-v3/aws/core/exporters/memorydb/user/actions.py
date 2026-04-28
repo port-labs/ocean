@@ -18,12 +18,13 @@ class ListTagsForMemoryDbUserAction(Action):
         return await execute_concurrent_aws_operations(
             input_items=users,
             operation_func=self._fetch_tags,
-            get_resource_identifier=lambda user: user.get("UserName", "unknown"),
+            get_resource_identifier=lambda user: user["Name"],
             operation_name="tags for MemoryDB user",
         )
 
     async def _fetch_tags(self, user: dict[str, Any]) -> dict[str, Any]:
-        return await self.client.list_tags(ResourceArn=user["ARN"])
+        response = await self.client.list_tags(ResourceArn=user["ARN"])
+        return {"TagList": response["TagList"]}
 
 
 class MemoryDbUserActionsMap(ActionMap):
