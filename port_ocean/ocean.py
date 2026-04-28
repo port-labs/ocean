@@ -130,7 +130,7 @@ class Ocean:
                         status=IntegrationStateStatus.Aborted
                     )
                     logger.info(
-                        "Graceful shutdown completed - sync state set to aborted"
+                        "Graceful shutdown completed - sync state set to aborted asdasdasd"
                     )
                 else:
                     logger.info(
