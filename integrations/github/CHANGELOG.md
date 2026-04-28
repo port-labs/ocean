@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added `skipWebhookManagement` configuration option to disable automatic webhook creation and patching. 
+- Added `skipWebhookManagement` configuration option to disable automatic webhook creation and patching.
 
 
 ## 5.3.13 (2026-04-23)
