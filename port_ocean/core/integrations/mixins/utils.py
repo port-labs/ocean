@@ -132,7 +132,7 @@ async def resync_function_wrapper(
 ) -> RAW_RESULT:
     with resync_error_handling():
         results = validate_result(await fn(kind))
-        await send_raw_data_examples_before_transform(
+        await send_raw_data_examples(
             results, kind, send_raw_data_examples_amount
         )
         return results
@@ -171,7 +171,7 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
         if batch:
             yield batch
 
-async def send_raw_data_examples_before_transform(
+async def send_raw_data_examples(
     result: RAW_RESULT, kind: str, amount: int
 ) -> int:
     if amount <= 0 or not result:
@@ -206,7 +206,7 @@ async def resync_generator_wrapper(
             try:
                 with resync_error_handling():
                     result = validate_result(await anext(generator))
-                    sent_examples = await send_raw_data_examples_before_transform(
+                    sent_examples = await send_raw_data_examples(
                         result, kind, remaining_examples_to_send
                     )
                     remaining_examples_to_send = max(
