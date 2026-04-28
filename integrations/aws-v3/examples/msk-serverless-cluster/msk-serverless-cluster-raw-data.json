@@ -1,0 +1,39 @@
+{
+  "Type": "AWS::MSK::ServerlessCluster",
+  "Properties": {
+    "activeOperationArn": null,
+    "clusterArn": "arn:aws:kafka:us-east-1:123456789012:cluster/my-serverless-cluster/abcd1234-ab12-cd34-ef56-abcdef012345-1",
+    "clusterName": "my-serverless-cluster",
+    "clusterType": "SERVERLESS",
+    "creationTime": "2024-03-15T10:30:00+00:00",
+    "currentVersion": "K3AEGXETSR30VB",
+    "state": "ACTIVE",
+    "stateInfo": null,
+    "tags": {
+      "Environment": "production",
+      "Team": "platform"
+    },
+    "serverless": {
+      "vpcConfigs": [
+        {
+          "subnetIds": ["subnet-0a1b2c3d4e5f67890", "subnet-0f9e8d7c6b5a43210"],
+          "securityGroupIds": ["sg-0123456789abcdef0"]
+        }
+      ],
+      "clientAuthentication": {
+        "sasl": {
+          "iam": {
+            "enabled": true
+          }
+        }
+      },
+      "connectivityInfo": {
+        "networkType": "IPV4"
+      }
+    }
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}

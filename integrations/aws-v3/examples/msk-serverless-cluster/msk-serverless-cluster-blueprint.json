@@ -1,0 +1,75 @@
+{
+  "identifier": "mskServerlessCluster",
+  "title": "MSK Serverless Cluster",
+  "icon": "Kafka",
+  "schema": {
+    "properties": {
+      "arn": {
+        "type": "string",
+        "title": "ARN",
+        "description": "The Amazon Resource Name (ARN) of the MSK serverless cluster"
+      },
+      "clusterName": {
+        "type": "string",
+        "title": "Cluster Name",
+        "description": "The name of the MSK serverless cluster"
+      },
+      "state": {
+        "type": "string",
+        "title": "State",
+        "description": "The current state of the cluster",
+        "enum": [
+          "ACTIVE",
+          "CREATING",
+          "DELETING",
+          "FAILED",
+          "HEALING",
+          "MAINTENANCE",
+          "REBOOTING_BROKER",
+          "UPDATING"
+        ]
+      },
+      "creationTime": {
+        "type": "string",
+        "title": "Creation Time",
+        "description": "The date and time when the cluster was created",
+        "format": "date-time"
+      },
+      "currentVersion": {
+        "type": "string",
+        "title": "Current Version",
+        "description": "The current version of the MSK cluster"
+      },
+      "vpcConfigs": {
+        "type": "array",
+        "title": "VPC Configs",
+        "description": "The VPC configuration for the serverless cluster",
+        "items": {
+          "type": "object"
+        }
+      },
+      "clientAuthentication": {
+        "type": "object",
+        "title": "Client Authentication",
+        "description": "The client authentication configuration for the cluster"
+      },
+      "tags": {
+        "type": "object",
+        "title": "Tags",
+        "description": "Tags associated with the cluster"
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}

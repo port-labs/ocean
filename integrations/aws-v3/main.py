@@ -30,6 +30,10 @@ from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.exporters.ecr import EcrRepositoryExporter
 from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
+from aws.core.exporters.msk import MskServerlessClusterExporter
+from aws.core.exporters.msk.serverless_cluster.models import (
+    PaginatedMskServerlessClusterRequest,
+)
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -191,6 +195,18 @@ async def resync_sqs_queue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ecr_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EcrRepositoryExporter, PaginatedRepositoryRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.MSK_SERVERLESS_CLUSTER)
+async def resync_msk_serverless_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind,
+        MskServerlessClusterExporter,
+        PaginatedMskServerlessClusterRequest,
+        regional=True,
     )
     async for batch in service:
         yield batch

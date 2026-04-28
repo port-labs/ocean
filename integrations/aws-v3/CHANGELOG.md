@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.1.84-beta (2026-04-28)
+
+
+### Features
+
+- Added support for AWS::MSK::ServerlessCluster resource kind, enabling ingestion of MSK serverless clusters into the Port catalog with attributes such as cluster state, creation time, VPC configuration, client authentication, and tags.
+
+
 ## 2.1.83-beta (2026-04-24)
 
 
