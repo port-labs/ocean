@@ -13,11 +13,12 @@ from .github_endpoints import GithubEndpoints
 
 
 class GitHubClient:
-    def __init__(self, base_url: str, token: str):
+    def __init__(self, base_url: str, token: str, enterprise: Optional[str] = None):
         self._token = token
         self._client = http_async_client
         self._headers = self._get_headers()
         self.base_url = base_url
+        self.enterprise = enterprise
         self.NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
         self.pagination_page_size_limit = 100
         self.pagination_header_name = "Link"
@@ -65,18 +66,8 @@ class GitHubClient:
             f"covering {response_data['report_start_day']} to {response_data['report_end_day']}"
         )
 
-        for signed_urls_batch in batched(
-            download_links, self.pagination_page_size_limit
-        ):
-            results = await asyncio.gather(
-                *[
-                    self._fetch_report_from_signed_url(signed_url)
-                    for signed_url in signed_urls_batch
-                ]
-            )
-            for records in results:
-                if records:
-                    yield records
+        async for batch in self._download_and_yield_reports(download_links):
+            yield batch
 
     async def fetch_organization_usage_metrics(
         self,
@@ -154,32 +145,10 @@ class GitHubClient:
             f"Received {len(download_links)} user activity report download links for organization {org_login} "
             f"covering {report_start_day} to {report_end_day}"
         )
-        for signed_urls_batch in batched(
-            download_links, self.pagination_page_size_limit
+        async for batch in self._download_and_yield_reports_safe(
+            download_links, context=f"organization {org_login}"
         ):
-            tasks = [
-                self._fetch_report_from_signed_url(signed_url)
-                for signed_url in signed_urls_batch
-            ]
-
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            for signed_url, result in zip(signed_urls_batch, results):
-                if isinstance(result, BaseException):
-                    if isinstance(
-                        result, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)
-                    ):
-                        raise result
-
-                    logger.warning(
-                        f"Failed to fetch Copilot usage report for organization {org_login} from signed URL {signed_url}: {result}"
-                    )
-                    continue
-
-                if not result:
-                    continue
-
-                yield result
+            yield batch
 
     async def fetch_users_usage_metrics(
         self,
@@ -195,6 +164,179 @@ class GitHubClient:
                         {**record, "__organization": organization} for record in reports
                     ]
                     yield enriched_reports
+
+    async def _get_enterprise_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetches the 28-day enterprise-level usage manifest and downloads metrics."""
+        assert self.enterprise, "Enterprise slug must be set to use this method"
+        logger.info(f"Fetching enterprise metrics download links for {self.enterprise}")
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_ENTERPRISE_METRICS_28_DAY.value,
+            {"enterprise": self.enterprise},
+        )
+        response = await self._send_api_request(
+            "get",
+            url,
+            ignore_status_code=[self.forbidden_status_code],
+        )
+
+        if not response:
+            logger.info(f"No usage metrics found for enterprise {self.enterprise}")
+            return
+
+        response_data = response.json()
+        download_links = response_data.get("download_links", [])
+        if not download_links:
+            logger.info(
+                f"No usage metrics download links found for enterprise {self.enterprise}"
+            )
+            return
+
+        logger.info(
+            f"Received {len(download_links)} report download links for enterprise "
+            f"{self.enterprise} covering {response_data.get('report_start_day')} "
+            f"to {response_data.get('report_end_day')}"
+        )
+
+        async for batch in self._download_and_yield_reports(download_links):
+            yield batch
+
+    async def fetch_enterprise_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Fetch enterprise-level Copilot usage metrics, extract ``day_totals``,
+        and enrich each record with an ``__enterprise`` key.
+        """
+        enterprise_context = {"slug": self.enterprise}
+
+        async for reports in self._get_enterprise_usage_metrics():
+            day_totals = [
+                day
+                for report in reports
+                if report and "day_totals" in report
+                for day in report["day_totals"]
+            ]
+            if not day_totals:
+                continue
+
+            for metric in day_totals:
+                metric["__enterprise"] = enterprise_context
+
+            yield day_totals
+
+    async def _get_enterprise_users_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetches the 28-day enterprise-level users usage manifest and downloads reports."""
+        assert self.enterprise, "Enterprise slug must be set to use this method"
+        logger.info(
+            f"Fetching enterprise user metrics download links for {self.enterprise}"
+        )
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_ENTERPRISE_USERS_USAGE_METRICS_28_DAY.value,
+            {"enterprise": self.enterprise},
+        )
+        response = await self._send_api_request(
+            "get",
+            url,
+            ignore_status_code=[self.forbidden_status_code],
+        )
+
+        if not response:
+            logger.info(
+                f"No users usage metrics found for enterprise {self.enterprise}"
+            )
+            return
+
+        response_data = response.json()
+        download_links = response_data.get("download_links", [])
+        if not download_links:
+            logger.info(
+                f"No users usage metrics download links found for enterprise {self.enterprise}"
+            )
+            return
+
+        logger.info(
+            f"Received {len(download_links)} user activity report download links for "
+            f"enterprise {self.enterprise} covering "
+            f"{response_data.get('report_start_day')} to {response_data.get('report_end_day')}"
+        )
+
+        async for batch in self._download_and_yield_reports_safe(
+            download_links, context=f"enterprise {self.enterprise}"
+        ):
+            yield batch
+
+    async def fetch_enterprise_users_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Fetch enterprise-level Copilot user usage metrics and enrich each
+        record with an ``__enterprise`` key.
+        """
+        enterprise_context = {"slug": self.enterprise}
+
+        async for reports in self._get_enterprise_users_usage_metrics():
+            enriched_reports = [
+                {**record, "__enterprise": enterprise_context} for record in reports
+            ]
+            yield enriched_reports
+
+    async def _download_and_yield_reports(
+        self, download_links: list[str]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Download signed-URL report batches concurrently and yield each
+        non-empty result list. Does not swallow exceptions.
+        """
+        for signed_urls_batch in batched(
+            download_links, self.pagination_page_size_limit
+        ):
+            results = await asyncio.gather(
+                *[
+                    self._fetch_report_from_signed_url(signed_url)
+                    for signed_url in signed_urls_batch
+                ]
+            )
+            for records in results:
+                if records:
+                    yield records
+
+    async def _download_and_yield_reports_safe(
+        self, download_links: list[str], context: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Download signed-URL report batches concurrently, logging warnings for
+        individual failures without aborting the whole batch.
+        """
+        for signed_urls_batch in batched(
+            download_links, self.pagination_page_size_limit
+        ):
+            tasks = [
+                self._fetch_report_from_signed_url(signed_url)
+                for signed_url in signed_urls_batch
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for signed_url, result in zip(signed_urls_batch, results):
+                if isinstance(result, BaseException):
+                    if isinstance(
+                        result, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)
+                    ):
+                        raise result
+
+                    logger.warning(
+                        f"Failed to fetch Copilot usage report for {context} "
+                        f"from signed URL {signed_url}: {result}"
+                    )
+                    continue
+
+                if not result:
+                    continue
+
+                yield result
 
     async def _get_paginated_data(
         self,

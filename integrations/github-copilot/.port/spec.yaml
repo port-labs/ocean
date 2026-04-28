@@ -22,3 +22,7 @@ configurations:
     type: url
     default: https://api.github.com
     description: The host of the Github api instance. If not specified, the default will be https://api.github.com.
+  - name: githubEnterprise
+    required: false
+    type: string
+    description: Optional enterprise slug used to fetch Copilot usage metrics from enterprise-level endpoints.

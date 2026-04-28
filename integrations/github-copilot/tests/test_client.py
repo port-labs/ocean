@@ -375,3 +375,181 @@ async def test_fetch_users_usage_metrics_enriches_records_across_org_batches(
         [{"user_login": "bob", "day": "2026-03-12", "__organization": org_b}],
         [{"user_login": "charlie", "day": "2026-03-12", "__organization": org_c}],
     ]
+
+
+@pytest.mark.asyncio
+async def test_get_enterprise_usage_metrics_returns_batches_from_signed_urls() -> None:
+    enterprise_slug = "acme-enterprise"
+    enterprise_client = GitHubClient(
+        base_url=BASE_URL,
+        token=TOKEN,
+        enterprise=enterprise_slug,
+    )
+    manifest_response = MagicMock()
+    manifest_response.status_code = 200
+    manifest_response.json.return_value = {
+        "download_links": [
+            "https://signed.example.com/enterprise-report-1.ndjson",
+            "https://signed.example.com/enterprise-report-2.ndjson",
+        ],
+        "report_start_day": "2026-03-01",
+        "report_end_day": "2026-03-28",
+    }
+    fetch_report_mock = AsyncMock(
+        side_effect=[
+            [{"day_totals": [{"day": "2026-03-12", "daily_active_users": 11}]}],
+            [{"day_totals": [{"day": "2026-03-13", "daily_active_users": 9}]}],
+        ]
+    )
+
+    with (
+        patch.object(
+            enterprise_client,
+            "_send_api_request",
+            new=AsyncMock(return_value=manifest_response),
+        ),
+        patch.object(
+            enterprise_client, "_fetch_report_from_signed_url", new=fetch_report_mock
+        ),
+    ):
+        result = [
+            batch async for batch in enterprise_client._get_enterprise_usage_metrics()
+        ]
+
+    assert result == [
+        [{"day_totals": [{"day": "2026-03-12", "daily_active_users": 11}]}],
+        [{"day_totals": [{"day": "2026-03-13", "daily_active_users": 9}]}],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_enterprise_usage_metrics_enriches_day_totals() -> None:
+    enterprise_slug = "acme-enterprise"
+    enterprise_client = GitHubClient(
+        base_url=BASE_URL,
+        token=TOKEN,
+        enterprise=enterprise_slug,
+    )
+
+    async def enterprise_usage_generator() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
+        yield [{"day_totals": [{"day": "2026-03-12", "daily_active_users": 7}]}]
+        yield [{"day_totals": [{"day": "2026-03-13", "daily_active_users": 5}]}]
+
+    with patch.object(
+        enterprise_client,
+        "_get_enterprise_usage_metrics",
+        new=enterprise_usage_generator,
+    ):
+        result = [
+            batch async for batch in enterprise_client.fetch_enterprise_usage_metrics()
+        ]
+
+    assert result == [
+        [
+            {
+                "day": "2026-03-12",
+                "daily_active_users": 7,
+                "__enterprise": {"slug": enterprise_slug},
+            }
+        ],
+        [
+            {
+                "day": "2026-03-13",
+                "daily_active_users": 5,
+                "__enterprise": {"slug": enterprise_slug},
+            }
+        ],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_enterprise_users_usage_metrics_returns_batches_from_signed_urls() -> (
+    None
+):
+    enterprise_slug = "acme-enterprise"
+    enterprise_client = GitHubClient(
+        base_url=BASE_URL,
+        token=TOKEN,
+        enterprise=enterprise_slug,
+    )
+    manifest_response = MagicMock()
+    manifest_response.status_code = 200
+    manifest_response.json.return_value = {
+        "download_links": [
+            "https://signed.example.com/enterprise-users-report-1.ndjson",
+            "https://signed.example.com/enterprise-users-report-2.ndjson",
+        ],
+        "report_start_day": "2026-03-01",
+        "report_end_day": "2026-03-28",
+    }
+    fetch_report_mock = AsyncMock(
+        side_effect=[
+            [{"day": "2026-03-12", "user_login": "alice"}],
+            [{"day": "2026-03-12", "user_login": "bob"}],
+        ]
+    )
+
+    with (
+        patch.object(
+            enterprise_client,
+            "_send_api_request",
+            new=AsyncMock(return_value=manifest_response),
+        ),
+        patch.object(
+            enterprise_client, "_fetch_report_from_signed_url", new=fetch_report_mock
+        ),
+    ):
+        result = [
+            batch
+            async for batch in enterprise_client._get_enterprise_users_usage_metrics()
+        ]
+
+    assert result == [
+        [{"day": "2026-03-12", "user_login": "alice"}],
+        [{"day": "2026-03-12", "user_login": "bob"}],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_enterprise_users_usage_metrics_enriches_records() -> None:
+    enterprise_slug = "acme-enterprise"
+    enterprise_client = GitHubClient(
+        base_url=BASE_URL,
+        token=TOKEN,
+        enterprise=enterprise_slug,
+    )
+
+    async def enterprise_users_usage_generator() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
+        yield [{"day": "2026-03-12", "user_login": "alice"}]
+        yield [{"day": "2026-03-12", "user_login": "bob"}]
+
+    with patch.object(
+        enterprise_client,
+        "_get_enterprise_users_usage_metrics",
+        new=enterprise_users_usage_generator,
+    ):
+        result = [
+            batch
+            async for batch in enterprise_client.fetch_enterprise_users_usage_metrics()
+        ]
+
+    assert result == [
+        [
+            {
+                "day": "2026-03-12",
+                "user_login": "alice",
+                "__enterprise": {"slug": enterprise_slug},
+            }
+        ],
+        [
+            {
+                "day": "2026-03-12",
+                "user_login": "bob",
+                "__enterprise": {"slug": enterprise_slug},
+            }
+        ],
+    ]
