@@ -117,6 +117,7 @@ MAX_CONCURRENT_REPOS = 10
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
     github_host = ocean.integration_config["github_host"]
     webhook_secret = ocean.integration_config["webhook_secret"]
+    skip_patching = ocean.integration_config.get("skip_webhook_patching", False)
     authenticator = GitHubAuthenticatorFactory.create(
         github_host=github_host,
         organization=org_name,
@@ -130,6 +131,7 @@ async def _create_webhooks_for_organization(org_name: str, base_url: str) -> Non
         authenticator=authenticator,
         organization=org_name,
         webhook_secret=webhook_secret,
+        skip_patching=skip_patching,
     )
 
     logger.info(f"Subscribing to GitHub webhooks for organization: {org_name}")
@@ -139,13 +141,6 @@ async def _create_webhooks_for_organization(org_name: str, base_url: str) -> Non
 @ocean.on_start()
 async def on_start() -> None:
     """Initialize the integration and set up webhooks."""
-    if ocean.integration_config.get("skip_webhook_management"):
-        logger.info(
-            "Skipping webhook management because 'skipWebhookManagement' is enabled. "
-            "Webhooks must be managed externally."
-        )
-        return
-
     if not ocean.app.config.event_listener.should_process_webhooks:
         logger.info(
             "Skipping webhook creation as it's not supported for this event listener"
