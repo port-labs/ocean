@@ -47,7 +47,7 @@ class RestBranchRuleExporter(AbstractGithubExporter[GithubRestClient]):
         branch_names = params.pop("branch_names", []) or []
         default_branch_only = bool(params.pop("default_branch_only", True))
 
-        if default_branch_only and repo:
+        if default_branch_only:
             branch_names = [repo["default_branch"]]
         elif not branch_names:
             branch_names = await self._list_branch_names(organization, repo_name)
