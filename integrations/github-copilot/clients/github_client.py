@@ -25,6 +25,11 @@ class GitHubClient:
         self.copilot_disabled_status_code = 422
         self.forbidden_status_code = 403
 
+    def _get_required_enterprise_slug(self) -> str:
+        if not self.enterprise:
+            raise ValueError("Enterprise slug must be set to use this method")
+        return self.enterprise
+
     async def get_organizations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for organizations in self._get_paginated_data(
             GithubEndpoints.LIST_ACCESSIBLE_ORGS.value
@@ -169,11 +174,11 @@ class GitHubClient:
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetches the 28-day enterprise-level usage manifest and downloads metrics."""
-        assert self.enterprise, "Enterprise slug must be set to use this method"
-        logger.info(f"Fetching enterprise metrics download links for {self.enterprise}")
+        enterprise = self._get_required_enterprise_slug()
+        logger.info(f"Fetching enterprise metrics download links for {enterprise}")
         url = self._resolve_route_params(
             GithubEndpoints.COPILOT_ENTERPRISE_METRICS_28_DAY.value,
-            {"enterprise": self.enterprise},
+            {"enterprise": enterprise},
         )
         response = await self._send_api_request(
             "get",
@@ -182,20 +187,20 @@ class GitHubClient:
         )
 
         if not response:
-            logger.info(f"No usage metrics found for enterprise {self.enterprise}")
+            logger.info(f"No usage metrics found for enterprise {enterprise}")
             return
 
         response_data = response.json()
         download_links = response_data.get("download_links", [])
         if not download_links:
             logger.info(
-                f"No usage metrics download links found for enterprise {self.enterprise}"
+                f"No usage metrics download links found for enterprise {enterprise}"
             )
             return
 
         logger.info(
             f"Received {len(download_links)} report download links for enterprise "
-            f"{self.enterprise} covering {response_data.get('report_start_day')} "
+            f"{enterprise} covering {response_data.get('report_start_day')} "
             f"to {response_data.get('report_end_day')}"
         )
 
@@ -209,7 +214,8 @@ class GitHubClient:
         Fetch enterprise-level Copilot usage metrics, extract ``day_totals``,
         and enrich each record with an ``__enterprise`` key.
         """
-        enterprise_context = {"slug": self.enterprise}
+        enterprise = self._get_required_enterprise_slug()
+        enterprise_context = {"slug": enterprise}
 
         async for reports in self._get_enterprise_usage_metrics():
             day_totals = [
@@ -230,13 +236,11 @@ class GitHubClient:
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetches the 28-day enterprise-level users usage manifest and downloads reports."""
-        assert self.enterprise, "Enterprise slug must be set to use this method"
-        logger.info(
-            f"Fetching enterprise user metrics download links for {self.enterprise}"
-        )
+        enterprise = self._get_required_enterprise_slug()
+        logger.info(f"Fetching enterprise user metrics download links for {enterprise}")
         url = self._resolve_route_params(
             GithubEndpoints.COPILOT_ENTERPRISE_USERS_USAGE_METRICS_28_DAY.value,
-            {"enterprise": self.enterprise},
+            {"enterprise": enterprise},
         )
         response = await self._send_api_request(
             "get",
@@ -245,27 +249,25 @@ class GitHubClient:
         )
 
         if not response:
-            logger.info(
-                f"No users usage metrics found for enterprise {self.enterprise}"
-            )
+            logger.info(f"No users usage metrics found for enterprise {enterprise}")
             return
 
         response_data = response.json()
         download_links = response_data.get("download_links", [])
         if not download_links:
             logger.info(
-                f"No users usage metrics download links found for enterprise {self.enterprise}"
+                f"No users usage metrics download links found for enterprise {enterprise}"
             )
             return
 
         logger.info(
             f"Received {len(download_links)} user activity report download links for "
-            f"enterprise {self.enterprise} covering "
+            f"enterprise {enterprise} covering "
             f"{response_data.get('report_start_day')} to {response_data.get('report_end_day')}"
         )
 
         async for batch in self._download_and_yield_reports_safe(
-            download_links, context=f"enterprise {self.enterprise}"
+            download_links, context=f"enterprise {enterprise}"
         ):
             yield batch
 
@@ -276,7 +278,8 @@ class GitHubClient:
         Fetch enterprise-level Copilot user usage metrics and enrich each
         record with an ``__enterprise`` key.
         """
-        enterprise_context = {"slug": self.enterprise}
+        enterprise = self._get_required_enterprise_slug()
+        enterprise_context = {"slug": enterprise}
 
         async for reports in self._get_enterprise_users_usage_metrics():
             enriched_reports = [
