@@ -424,6 +424,17 @@
       "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/claude",
+      "envFile": "${workspaceFolder}/integrations/claude/.env",
+      "justMyCode": true,
+      "name": "Run claude integration",
+      "program": "${workspaceFolder}/integrations/claude/debug.py",
+      "python": "${workspaceFolder}/integrations/claude/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }
