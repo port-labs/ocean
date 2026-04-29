@@ -899,6 +899,67 @@ async def test_generate_repositories(mock_event_context: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_repositories_multiple_projects(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify concurrent fetch across multiple projects, including a 404 project."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {"id": "proj1", "name": "Project One"},
+            {"id": "proj2", "name": "Project Two"},
+            {"id": "proj_404", "name": "Missing Project"},
+        ]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "proj_404" in url:
+            return None
+        if "proj1" in url:
+            return Response(
+                status_code=200,
+                json={
+                    "value": [
+                        {"id": "repo1", "name": "Repo One", "project": {"id": "proj1"}},
+                        {"id": "repo2", "name": "Repo Two", "project": {"id": "proj1"}},
+                    ]
+                },
+            )
+        if "proj2" in url:
+            return Response(
+                status_code=200,
+                json={
+                    "value": [
+                        {
+                            "id": "repo3",
+                            "name": "Repo Three",
+                            "project": {"id": "proj2"},
+                        },
+                    ]
+                },
+            )
+        return None
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            repositories: List[Dict[str, Any]] = []
+            async for batch in client.generate_repositories():
+                repositories.extend(batch)
+
+            repo_ids = {r["id"] for r in repositories}
+            assert repo_ids == {"repo1", "repo2", "repo3"}
+
+
+@pytest.mark.asyncio
 async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME

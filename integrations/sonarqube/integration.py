@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Annotated, Any, Literal, Union
+from typing import Any, Literal, Union
 
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -25,19 +25,25 @@ class ObjectKind:
 
 class SonarQubeComponentSearchFilter(BaseModel):
     query: str | None = Field(
-        description="Limit search to component names that contain the supplied string"
+        title="Query",
+        description="Limit search to component names that contain the supplied string (e.g. 'my-service' matches 'my-service-api')",
     )
     metrics: list[dict[str, str]] | None = Field(
-        description="List of metric keys and their values such as security_rating>=2 or coverage<=80"
+        title="Metrics",
+        description="List of metric keys and their values such as security_rating>=2 or coverage<=80",
     )
     alert_status: str | None = Field(
-        alias="alertStatus", description="To filter on a Quality Gate status"
+        alias="alertStatus",
+        title="Quality Gate Status",
+        description="Filter by Quality Gate status (e.g. OK, WARN, ERROR)",
     )
     languages: Union[str, list[str]] | None = Field(
-        description="List of languages or a single language"
+        title="Languages",
+        description="Include only components whose primary language matches one of the specified values (e.g. 'java', ['python', 'js'])",
     )
     tags: Union[str, list[str]] | None = Field(
-        description="List of tags or a single tag"
+        title="Tags",
+        description="Include only components that have at least one of the specified tags (e.g. 'security', ['security', 'finance'])",
     )
 
     def generate_search_filters(self) -> str:
@@ -64,7 +70,10 @@ class BaseSonarQubeApiFilter(BaseModel):
 
 
 class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
-    filter: SonarQubeComponentSearchFilter | None
+    filter: SonarQubeComponentSearchFilter | None = Field(
+        title="Component Search Filter",
+        description="Criteria used to narrow which SonarQube components are retrieved, including name substring, metric thresholds, Quality Gate status, languages, and tags",
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -83,13 +92,18 @@ class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
 class SonarQubeGAProjectAPIFilter(BaseSonarQubeApiFilter):
     analyzed_before: str | None = Field(
         alias="analyzedBefore",
-        description="To retrieve projects analyzed before the given date",
+        title="Analyzed Before",
+        description="Retrieve only projects last analyzed before this date",
     )
     on_provisioned_only: bool | None = Field(
         alias="onProvisionedOnly",
-        description="To retrieve projects on provisioned only",
+        title="Provisioned Projects",
+        description="Retrieve only provisioned projects that have not yet been analyzed",
     )
-    projects: list[str] | None = Field(description="List of projects")
+    projects: list[str] | None = Field(
+        title="Projects",
+        description="List of project keys to include",
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -101,9 +115,13 @@ class SonarQubeGAProjectAPIFilter(BaseSonarQubeApiFilter):
 
 class SonarQubeIssueApiFilter(BaseSonarQubeApiFilter):
     assigned: Literal["yes", "no", "true", "false"] | None = Field(
-        description="To retrieve assigned or unassigned issues"
+        title="Assigned",
+        description="To retrieve assigned or unassigned issues",
     )
-    assignees: list[str] | None = Field(description="List of assignees")
+    assignees: list[str] | None = Field(
+        title="Assignees",
+        description="List of assignee login names to filter by",
+    )
     clean_code_attribute_categories: (
         list[
             Literal[
@@ -116,45 +134,76 @@ class SonarQubeIssueApiFilter(BaseSonarQubeApiFilter):
         | None
     ) = Field(
         alias="cleanCodeAttributeCategories",
-        description="List of clean code attribute categories",
+        title="Clean Code Attribute Categories",
+        description="Include only issues belonging to one of the specified clean code attribute categories",
     )
     code_variants: list[str] | None = Field(
-        alias="codeVariants", description="List of code variants"
+        alias="codeVariants",
+        title="Code Variants",
+        description="Include only issues affecting one of the specified code variants (e.g. ['variant1', 'variant2'])",
     )
     created_before: str | None = Field(
         alias="createdBefore",
+        title="Created Before",
         description="To retrieve issues created before the given date",
     )
     created_after: str | None = Field(
         alias="createdAfter",
+        title="Created After",
         description="To retrieve issues created after the given date",
     )
-    cwe: list[str] | None = Field(description="List of CWE identifiers")
+    cwe: list[str] | None = Field(
+        title="CWE",
+        description="Include only issues mapped to one of the specified CWE identifiers (e.g. ['89', '352'])",
+    )
     impact_severities: list[Literal["HIGH", "LOW", "MEDIUM"]] | None = Field(
-        alias="impactSeverities", description="List of impact severities"
+        alias="impactSeverities",
+        title="Impact Severities",
+        description="Filter issues by their impact severity",
     )
     impact_software_qualities: (
         list[Literal["MAINTAINABILITY", "RELIABILITY", "SECURITY"]] | None
     ) = Field(
-        alias="impactSoftwareQualities", description="List of impact software qualities"
+        alias="impactSoftwareQualities",
+        title="Impact Software Qualities",
+        description="Filter issues by the software quality dimension they affect",
     )
     statuses: (
         list[Literal["OPEN", "CONFIRMED", "FALSE_POSITIVE", "ACCEPTED", "FIXED"]] | None
-    ) = Field(description="List of statuses")
-    languages: list[str] | None = Field(description="List of languages")
+    ) = Field(
+        title="Statuses",
+        description="Filter issues by their status",
+    )
+    languages: list[str] | None = Field(
+        title="Languages",
+        description="Include only issues in files written in one of the specified languages (e.g. ['java', 'python'])",
+    )
     owasp_asvs_level: Literal["1", "2", "3"] | None = Field(
-        alias="owaspAsvsLevel", description="OWASP ASVS level"
+        alias="owaspAsvsLevel",
+        title="OWASP ASVS Level",
+        description="Filter issues by OWASP Application Security Verification Standard (ASVS) level",
     )
     resolved: Literal["yes", "no", "true", "false"] | None = Field(
-        description="To retrieve resolved or unresolved issues"
+        title="Resolved",
+        description="To retrieve resolved or unresolved issues",
     )
-    rules: list[str] | None = Field(description="List of coding rule keys")
-    scopes: list[Literal["MAIN", "TESTS"]] | None = Field(description="List of scopes")
+    rules: list[str] | None = Field(
+        title="Rules",
+        description="Include only issues raised by one of the specified coding rule keys (e.g. ['java:S1234', 'python:S5678'])",
+    )
+    scopes: list[Literal["MAIN", "TESTS"]] | None = Field(
+        title="Scopes",
+        description="Filter by issue scope: MAIN for source code, TESTS for test code",
+    )
     sonarsource_security: list[str] | None = Field(
         alias="sonarsourceSecurity",
-        description="List of SonarSource security categories",
+        title="SonarSource Security",
+        description="Include only issues mapped to one of the specified SonarSource security categories (e.g. ['sql-injection', 'xss'])",
     )
-    tags: list[str] | None = Field(description="List of tags")
+    tags: list[str] | None = Field(
+        title="Tags",
+        description="Include only issues that have at least one of the specified tags (e.g. ['security', 'performance'])",
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True, by_alias=True)
@@ -186,13 +235,18 @@ def default_metrics() -> list[str]:
 
 class SonarQubeMetricsSelector(CustomSelector):
     metrics: list[str] = Field(
-        default_factory=default_metrics,
+        default=default_metrics(),
+        title="Metrics",
         description="List of metrics to retrieve",
     )
 
 
 class SelectorWithApiFilters(CustomSelector):
-    api_filters: BaseSonarQubeApiFilter | None = Field(alias="apiFilters")
+    api_filters: BaseSonarQubeApiFilter | None = Field(
+        alias="apiFilters",
+        title="API Filters",
+        description="Query parameters to filter the resources to retrieve",
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         if self.api_filters:
@@ -201,69 +255,125 @@ class SelectorWithApiFilters(CustomSelector):
 
 
 class CustomResourceConfig(ResourceConfig):
-    selector: CustomSelector
-    kind: Literal[
-        "analysis",
-        "saas_analysis",
-        "portfolios",
-    ]
+    selector: CustomSelector = Field(
+        title="Selector",
+        description="Defines which SonarQube resources to sync and how to filter them",
+    )
+
+
+class SonarQubeAnalysisResourceConfig(CustomResourceConfig):
+    kind: Literal["analysis"] = Field(
+        title="Analysis",
+        description="SonarQube project analysis",
+    )
+
+
+class SonarQubeSaasAnalysisResourceConfig(CustomResourceConfig):
+    kind: Literal["saas_analysis"] = Field(
+        title="SaaS Analysis",
+        description="SonarQube SaaS project analysis",
+    )
+
+
+class SonarQubePortfoliosResourceConfig(CustomResourceConfig):
+    kind: Literal["portfolios"] = Field(
+        title="Portfolios",
+        description="SonarQube portfolios",
+    )
 
 
 class SonarQubeComponentProjectSelector(
     SonarQubeMetricsSelector, SelectorWithApiFilters
 ):
-    api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
+    api_filters: SonarQubeProjectApiFilter | None = Field(
+        alias="apiFilters",
+        title="API Filters",
+        description="Query parameters to filter the projects to retrieve",
+    )
 
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
-    kind: Literal["projects"]  # type: ignore
-    selector: SonarQubeComponentProjectSelector
+    kind: Literal["projects"] = Field(
+        title="Projects",
+        description="SonarQube projects",
+    )
+    selector: SonarQubeComponentProjectSelector = Field(
+        title="SonarQube Project Selector",
+        description="Defines which SonarQube projects to sync, including which metrics and filters to apply",
+    )
 
 
 class SonarQubeGAProjectSelector(SonarQubeMetricsSelector):
-    api_filters: SonarQubeGAProjectAPIFilter | None = Field(alias="apiFilters")
+    api_filters: SonarQubeGAProjectAPIFilter | None = Field(
+        alias="apiFilters",
+        title="API Filters",
+        description="Query parameters to filter the projects to retrieve",
+    )
 
 
 class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
-    kind: Literal["projects_ga"]  # type: ignore
-    selector: SonarQubeGAProjectSelector
+    kind: Literal["projects_ga"] = Field(
+        title="Projects (GA)",
+        description="SonarQube projects using the General Availability API",
+    )
+    selector: SonarQubeGAProjectSelector = Field(
+        title="SonarQube GA Project Selector",
+        description="Defines which SonarQube projects to sync via the General Availability API, including which metrics and filters to apply",
+    )
 
 
 class SonarQubeIssueSelector(SelectorWithApiFilters):
-    api_filters: SonarQubeIssueApiFilter | None = Field(alias="apiFilters")
+    api_filters: SonarQubeIssueApiFilter | None = Field(
+        alias="apiFilters",
+        title="API Filters",
+        description="Query parameters to filter the issues to retrieve. For example, you can use the 'assigned' parameter to retrieve only assigned or unassigned issues.",
+    )
     project_api_filters: SonarQubeGAProjectAPIFilter | None = Field(
         alias="projectApiFilters",
+        title="Project API Filters",
         description="Allows users to control which projects to query the issues for",
     )
 
 
 class SonarQubeIssueResourceConfig(CustomResourceConfig):
-    kind: Literal["issues"]  # type: ignore
-    selector: SonarQubeIssueSelector
+    kind: Literal["issues"] = Field(
+        title="Issues",
+        description="SonarQube issues",
+    )
+    selector: SonarQubeIssueSelector = Field(
+        title="SonarQube Issue Selector",
+        description="Defines which SonarQube issues to sync, including issue filters and which projects to query",
+    )
 
 
 class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector): ...
 
 
 class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):
-    kind: Literal["onprem_analysis"]  # type: ignore
-    selector: SonarQubeOnPremAnalysisSelector
-
-
-SonarResourcesConfig = Annotated[
-    Union[
-        SonarQubeProjectResourceConfig,
-        SonarQubeIssueResourceConfig,
-        SonarQubeGAProjectResourceConfig,
-        SonarQubeOnPremAnalysisResourceConfig,
-        CustomResourceConfig,
-    ],
-    Field(discriminator="kind"),
-]
+    kind: Literal["onprem_analysis"] = Field(
+        title="On-Premise Analysis",
+        description="SonarQube on-premise project analysis",
+    )
+    selector: SonarQubeOnPremAnalysisSelector = Field(
+        title="SonarQube On-Premise Analysis Selector",
+        description="Defines which SonarQube on-premise project analyses to sync, including which metrics to include",
+    )
 
 
 class SonarQubePortAppConfig(PortAppConfig):
-    resources: list[SonarResourcesConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[
+        SonarQubeProjectResourceConfig
+        | SonarQubeIssueResourceConfig
+        | SonarQubeOnPremAnalysisResourceConfig
+        | SonarQubeGAProjectResourceConfig
+        | SonarQubeAnalysisResourceConfig
+        | SonarQubeSaasAnalysisResourceConfig
+        | SonarQubePortfoliosResourceConfig
+    ] = Field(
+        default_factory=list,
+        field="Resources",
+        description="Sonarqube resource mappings",
+    )  # type: ignore[assignment]
 
 
 class SonarQubeIntegration(BaseIntegration):

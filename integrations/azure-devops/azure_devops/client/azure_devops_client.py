@@ -467,25 +467,40 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 yield members
 
+    async def _fetch_repositories_for_project(
+        self,
+        project: dict[str, Any],
+        include_disabled_repositories: bool,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
+        response = await self.send_request("GET", repos_url)
+        if not response:
+            return
+        repositories = response.json()["value"]
+        if include_disabled_repositories:
+            yield repositories
+        else:
+            yield [repo for repo in repositories if self._repository_is_healthy(repo)]
+
     @cache_iterator_result()
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
-            for project in projects:
-                repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-                response = await self.send_request("GET", repos_url)
-                if not response:
-                    continue
-                repositories = response.json()["value"]
-                if include_disabled_repositories:
-                    yield repositories
-                else:
-                    yield [
-                        repo
-                        for repo in repositories
-                        if self._repository_is_healthy(repo)
-                    ]
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._fetch_repositories_for_project,
+                        project,
+                        include_disabled_repositories,
+                    ),
+                )
+                for project in projects
+            ]
+            async for repositories in stream_async_iterators_tasks(*tasks):
+                yield repositories
 
     async def generate_branches(
         self,
