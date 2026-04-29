@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 5.3.15 (2026-04-29)
 
 
-### Bug Fixes
+### Improvements
 
-- Removed unused `PageInfoFields` GraphQL fragment from the single pull request detail query, which caused all webhook-triggered PR updates to fail when using `api: graphql`
+- Bumped ocean version to ^0.41.5
 
 
 ## 5.3.14 (2026-04-23)
