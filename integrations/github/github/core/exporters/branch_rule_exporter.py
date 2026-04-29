@@ -43,7 +43,7 @@ class RestBranchRuleExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all branch rules for the repository's branches."""
         repo_name, organization, params = parse_github_options(dict(options))
         repo_name = cast(str, repo_name)
-        repo = params.pop("repo", None)
+        repo = params.pop("repo")
         branch_names = params.pop("branch_names", []) or []
         default_branch_only = bool(params.pop("default_branch_only", True))
 
