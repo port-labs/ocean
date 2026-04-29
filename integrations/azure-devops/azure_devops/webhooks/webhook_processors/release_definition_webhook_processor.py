@@ -27,7 +27,11 @@ class ReleaseDefinitionWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         project_id = payload.get("resourceContainers", {}).get("project", {}).get("id")
         release_id = payload.get("resource", {}).get("release", {}).get("id")
         resource_project = payload.get("resource", {}).get("project", {}).get("id")
-        return project_id is not None and release_id is not None and resource_project is not None
+        return (
+            project_id is not None
+            and release_id is not None
+            and resource_project is not None
+        )
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:

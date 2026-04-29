@@ -195,5 +195,3 @@ async def test_release_handle_event_not_found(
 
     assert len(result.updated_raw_results) == 0
     assert len(result.deleted_raw_results) == 0
-
-

@@ -376,13 +376,13 @@ class AzureDevopsReleaseSelector(Selector):
         title="Expand",
         description="Property to expand on each release. When set, the expanded data is available in JQ mappings.",
     )
-    status_filter: Optional[
-        Literal["abandoned", "active", "draft", "undefined"]
-    ] = Field(
-        alias="statusFilter",
-        default=None,
-        title="Status Filter",
-        description="Filter releases by status.",
+    status_filter: Optional[Literal["abandoned", "active", "draft", "undefined"]] = (
+        Field(
+            alias="statusFilter",
+            default=None,
+            title="Status Filter",
+            description="Filter releases by status.",
+        )
     )
     tag_filter: Optional[str] = Field(
         alias="tagFilter",
@@ -482,12 +482,12 @@ class AzureDevopsEnvironmentConfig(ResourceConfig):
 
 
 class AzureDevopsReleaseDefinitionSelector(Selector):
-    expand: Optional[
-        Literal["environments", "artifacts", "triggers", "variables"]
-    ] = Field(
-        default="environments",
-        title="Expand",
-        description="Property to expand on each release definition. Defaults to 'environments' which provides stage information.",
+    expand: Optional[Literal["environments", "artifacts", "triggers", "variables"]] = (
+        Field(
+            default="environments",
+            title="Expand",
+            description="Property to expand on each release definition. Defaults to 'environments' which provides stage information.",
+        )
     )
 
 
