@@ -77,7 +77,8 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
 
 class PagerdutyScheduleAPIQueryParams(BaseModel):
     include: (
-        list[Literal["schedule_layers", "final_schedule", "overrides_schedule"]] | None
+        list[Literal["schedule_layers", "final_schedule", "overrides_subschedule"]]
+        | None
     ) = Field(
         default=None,
         title="Include",
