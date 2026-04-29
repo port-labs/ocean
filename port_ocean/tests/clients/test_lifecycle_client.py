@@ -113,12 +113,13 @@ class TestLifecycleClientNotifyFinished:
             await lifecycle_client.notify_finished(
                 resync_id="r1",
                 integration_id="i1",
+                integration_type="github",
             )
 
         call_kwargs = mock_client.post.call_args
         assert call_kwargs[0][0] == "http://localhost:3017/v1/lifecycle/r1/i1"
         body = call_kwargs[1]["json"]
-        assert body == {"status": "finished"}
+        assert body == {"status": "finished", "integration_type": "github"}
 
 
 class TestLifecycleClientNotifyFailed:
@@ -139,17 +140,16 @@ class TestLifecycleClientNotifyFailed:
             await lifecycle_client.notify_failed(
                 resync_id="r1",
                 integration_id="i1",
+                integration_type="github",
             )
 
         call_kwargs = mock_client.post.call_args
         assert call_kwargs[0][0] == "http://localhost:3017/v1/lifecycle/r1/i1"
         body = call_kwargs[1]["json"]
-        assert body == {"status": "failed"}
+        assert body == {"status": "failed", "integration_type": "github"}
 
     @pytest.mark.asyncio
-    async def test_swallows_exception(
-        self, lifecycle_client: LifecycleClient
-    ) -> None:
+    async def test_swallows_exception(self, lifecycle_client: LifecycleClient) -> None:
         with patch("port_ocean.clients.lifecycle.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -158,7 +158,9 @@ class TestLifecycleClientNotifyFailed:
             mock_client_cls.return_value = mock_client
 
             # Should not raise
-            await lifecycle_client.notify_failed(resync_id="r1", integration_id="i1")
+            await lifecycle_client.notify_failed(
+                resync_id="r1", integration_id="i1", integration_type="github"
+            )
 
 
 class TestLifecycleClientNotifyAborted:
@@ -179,12 +181,13 @@ class TestLifecycleClientNotifyAborted:
             await lifecycle_client.notify_aborted(
                 resync_id="r1",
                 integration_id="i1",
+                integration_type="github",
             )
 
         call_kwargs = mock_client.post.call_args
         assert call_kwargs[0][0] == "http://localhost:3017/v1/lifecycle/r1/i1"
         body = call_kwargs[1]["json"]
-        assert body == {"status": "aborted"}
+        assert body == {"status": "aborted", "integration_type": "github"}
 
     @pytest.mark.asyncio
     async def test_logs_warning_on_error_response(
@@ -205,7 +208,9 @@ class TestLifecycleClientNotifyAborted:
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client_cls.return_value = mock_client
 
-            await lifecycle_client.notify_aborted(resync_id="r1", integration_id="i1")
+            await lifecycle_client.notify_aborted(
+                resync_id="r1", integration_id="i1", integration_type="github"
+            )
 
         mock_logger.warning.assert_called_once()
         warning_msg = mock_logger.warning.call_args[0][0]
@@ -226,7 +231,9 @@ class TestLifecycleClientNotifyAborted:
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client_cls.return_value = mock_client
 
-            await client.notify_aborted(resync_id="r1", integration_id="i1")
+            await client.notify_aborted(
+                resync_id="r1", integration_id="i1", integration_type="github"
+            )
 
         url = mock_client.post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1/i1"

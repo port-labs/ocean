@@ -59,7 +59,9 @@ class LifecycleClient:
             "integration_type": integration_type,
             "started_at": started_at.isoformat(),
         }
-        logger.info(f"Notifying lifecycle API for status=started, resync_id={resync_id}, integration_id={integration_id}")
+        logger.info(
+            f"Notifying lifecycle API for status=started, resync_id={resync_id}, integration_id={integration_id}"
+        )
         await self._notify(resync_id, integration_id, body)
 
     async def notify_finished(
@@ -72,7 +74,9 @@ class LifecycleClient:
             "status": "finished",
             "integration_type": integration_type,
         }
-        logger.info(f"Notifying lifecycle API for status=finished, resync_id={resync_id}, integration_id={integration_id}")
+        logger.info(
+            f"Notifying lifecycle API for status=finished, resync_id={resync_id}, integration_id={integration_id}"
+        )
         await self._notify(resync_id, integration_id, body)
 
     async def notify_failed(
@@ -85,7 +89,9 @@ class LifecycleClient:
             "status": "failed",
             "integration_type": integration_type,
         }
-        logger.info(f"Notifying lifecycle API for status=failed, resync_id={resync_id}, integration_id={integration_id}")
+        logger.info(
+            f"Notifying lifecycle API for status=failed, resync_id={resync_id}, integration_id={integration_id}"
+        )
         await self._notify(resync_id, integration_id, body)
 
     async def notify_aborted(
@@ -98,5 +104,7 @@ class LifecycleClient:
             "status": "aborted",
             "integration_type": integration_type,
         }
-        logger.info(f"Notifying lifecycle API for status=aborted, resync_id={resync_id}, integration_id={integration_id}")
+        logger.info(
+            f"Notifying lifecycle API for status=aborted, resync_id={resync_id}, integration_id={integration_id}"
+        )
         await self._notify(resync_id, integration_id, body)
