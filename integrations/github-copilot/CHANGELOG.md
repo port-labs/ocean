@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.11 (2026-04-29)
+## 0.3.12 (2026-04-30)
+
+
+### Improvements
 
 - Added optional `githubEnterprise` configuration to fetch Copilot usage reports from enterprise-level endpoints while preserving existing organization-level sync behavior
+
+
+## 0.3.11 (2026-04-29)
+
 
 ### Improvements
 
