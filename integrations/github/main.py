@@ -117,7 +117,7 @@ MAX_CONCURRENT_REPOS = 10
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
     github_host = ocean.integration_config["github_host"]
     webhook_secret = ocean.integration_config["webhook_secret"]
-    skip_patching = ocean.integration_config.get("skip_webhook_patching", False)
+    skip_patching = ocean.integration_config.get("skip_webhook_patching")
     authenticator = GitHubAuthenticatorFactory.create(
         github_host=github_host,
         organization=org_name,
