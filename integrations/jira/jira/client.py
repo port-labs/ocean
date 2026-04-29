@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator, Literal
 
 import httpx
 import re
@@ -676,3 +676,52 @@ class JiraClient(OAuthClient):
 
         board["__projectKeys"] = project_keys
         return board
+
+    async def get_paginated_sprints_for_board(
+        self,
+        board_id: int,
+        sprint_state: list[Literal["active", "closed", "future"]] | None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield sprint batches for a board, filtered by state.
+
+        Sprint retrieval is per-board and state values are joined as a comma-separated string per the Jira Agile API
+        contract: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/
+        #api-rest-agile-1-0-board-boardid-sprint-get
+        """
+        if not board_id:
+            logger.warning(
+                f"Skipping sprint fetch — board_id '{board_id}' is not a valid Jira board ID"
+            )
+            return
+
+        agile_url = await self._get_agile_api_url()
+        url = f"{agile_url}/board/{board_id}/sprint"
+
+        query_params: dict[str, Any] = {}
+        if sprint_state is not None:
+            query_params["state"] = ",".join(sprint_state)
+
+        try:
+            async for sprint_batch in self._get_agile_paginated_data(
+                url=url,
+                initial_params=query_params,
+            ):
+                yield sprint_batch
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                f"Failed to fetch sprints for board {board_id}: "
+                f"HTTP {e.response.status_code} — skipping board and continuing resync"
+            )
+        except httpx.RequestError as e:
+            logger.warning(
+                f"Network error fetching sprints for board {board_id}: "
+                f"{e} — skipping board and continuing resync"
+            )
+
+    async def get_single_sprint(self, sprint_id: int) -> dict[str, Any]:
+        """Fetch a single sprint by ID."""
+        agile_url = await self._get_agile_api_url()
+        return await self._send_api_request(
+            "GET",
+            f"{agile_url}/sprint/{sprint_id}",
+        )

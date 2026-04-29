@@ -1,5 +1,6 @@
 from typing import Any
 import asyncio
+import httpx
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -87,6 +88,38 @@ MOCK_BOARD_WITHOUT_ADMINS = {
     # admins field absent entirely
 }
 
+MOCK_SPRINT = {
+    "id": 1,
+    "self": "https://example.atlassian.net/rest/agile/latest/sprint/1",
+    "state": "active",
+    "name": "Sprint 1",
+    "startDate": "2026-03-01T00:00:00.000Z",
+    "endDate": "2026-03-15T00:00:00.000Z",
+    "completeDate": None,
+    "createdDate": "2026-02-28T00:00:00.000Z",
+    "originBoardId": 1,
+    "goal": "Ship board kind",
+}
+
+MOCK_SPRINT_CLOSED = {
+    **MOCK_SPRINT,
+    "id": 2,
+    "name": "Sprint 2",
+    "state": "closed",
+    "completeDate": "2026-03-16T00:00:00.000Z",
+}
+
+MOCK_SPRINT_FUTURE = {
+    **MOCK_SPRINT,
+    "id": 3,
+    "name": "Sprint 3",
+    "state": "future",
+    "startDate": None,
+    "endDate": None,
+    "completeDate": None,
+    "goal": None,
+}
+
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
@@ -119,6 +152,25 @@ def mock_jira_client() -> JiraClient:
         jira_email="test@example.com",
         jira_token="test_token",
     )
+
+
+def _build_mock_sprint_page(
+    board_id: int,
+    sprint_count: int,
+) -> dict[str, Any]:
+    """Build a single-page sprint response for a board with N sprints."""
+    return {
+        "isLast": True,
+        "values": [
+            {
+                **MOCK_SPRINT,
+                "id": board_id * 1000 + i,
+                "name": f"Board {board_id} Sprint {i}",
+                "originBoardId": board_id,
+            }
+            for i in range(sprint_count)
+        ],
+    }
 
 
 @pytest.mark.asyncio
@@ -1381,3 +1433,438 @@ async def test_enrich_board_with_projects_returns_empty_list_when_board_has_no_i
 
     assert enriched["__projectKeys"] == []
     mock_request.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_sprints_for_board_returns_active_sprints_by_default(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "isLast": True,
+            "values": [MOCK_SPRINT],
+        }
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in mock_jira_client.get_paginated_sprints_for_board(
+            board_id=1,
+            sprint_state=["active"],
+        ):
+            batches.append(batch)
+
+        call_params = (
+            mock_request.call_args[1].get("params") or mock_request.call_args[0][2]
+        )
+        assert call_params.get("state") == "active"
+        assert len(batches) == 1
+        assert batches[0][0]["id"] == 1
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_sprints_for_board_passes_multiple_states_as_comma_joined_string(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Multiple states must be joined as comma-separated string per Jira Agile API contract.
+    See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/#api-rest-agile-1-0-board-boardid-sprint-get
+    """
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "isLast": True,
+            "values": [MOCK_SPRINT, MOCK_SPRINT_FUTURE],
+        }
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in mock_jira_client.get_paginated_sprints_for_board(
+            board_id=1,
+            sprint_state=["active", "future"],
+        ):
+            batches.append(batch)
+
+        call_params = (
+            mock_request.call_args[1].get("params") or mock_request.call_args[0][2]
+        )
+        assert call_params.get("state") == "active,future"
+        assert len(batches[0]) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_sprints_for_board_omits_state_param_when_sprint_state_is_none(
+    mock_jira_client: JiraClient,
+) -> None:
+    """None sprint_state must not send state param to API — fetches all states."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "isLast": True,
+            "values": [MOCK_SPRINT, MOCK_SPRINT_CLOSED, MOCK_SPRINT_FUTURE],
+        }
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in mock_jira_client.get_paginated_sprints_for_board(
+            board_id=1,
+            sprint_state=None,
+        ):
+            batches.append(batch)
+
+        call_params = (
+            mock_request.call_args[1].get("params") or mock_request.call_args[0][2]
+        )
+        assert "state" not in call_params
+        assert len(batches[0]) == 3
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_sprints_for_board_paginates_until_is_last_true(
+    mock_jira_client: JiraClient,
+) -> None:
+    page_1 = {
+        "startAt": 0,
+        "maxResults": 1,
+        "isLast": False,
+        "values": [MOCK_SPRINT],
+    }
+    page_2 = {
+        "startAt": 1,
+        "maxResults": 1,
+        "isLast": True,
+        "values": [MOCK_SPRINT_CLOSED],
+    }
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [page_1, page_2]
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in mock_jira_client.get_paginated_sprints_for_board(
+            board_id=1,
+            sprint_state=["active", "closed"],
+        ):
+            batches.append(batch)
+
+        assert len(batches) == 2
+        assert mock_request.call_count == 2
+        assert batches[0][0]["id"] == 1
+        assert batches[1][0]["id"] == 2
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_sprints_for_board_returns_empty_when_board_has_no_sprints(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "isLast": True,
+            "values": [],
+        }
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in mock_jira_client.get_paginated_sprints_for_board(
+            board_id=1,
+            sprint_state=["active"],
+        ):
+            batches.append(batch)
+
+        assert len(batches) == 0
+        assert mock_request.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_sprints_for_board_skips_board_and_logs_warning_on_http_error(
+    mock_jira_client: JiraClient,
+) -> None:
+    """A board returning HTTPStatusError must yield nothing and log a warning —
+    one inaccessible board must not abort the entire resync fan-out."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = httpx.HTTPStatusError(
+            "Forbidden",
+            request=Request(
+                "GET",
+                "https://example.atlassian.net/rest/agile/latest/board/99/sprint",
+            ),
+            response=Response(
+                403,
+                request=Request("GET", "https://example.atlassian.net"),
+            ),
+        )
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in mock_jira_client.get_paginated_sprints_for_board(
+            board_id=99,
+            sprint_state=["active"],
+        ):
+            batches.append(batch)
+
+        assert len(batches) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_single_sprint_returns_sprint_by_id(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_SPRINT
+
+        result = await mock_jira_client.get_single_sprint(sprint_id=1)
+
+        assert result == MOCK_SPRINT
+        call_url = mock_request.call_args[0][1]
+        assert call_url.endswith("/sprint/1")
+
+
+@pytest.mark.asyncio
+async def test_get_single_sprint_propagates_http_status_error_on_not_found(
+    mock_jira_client: JiraClient,
+) -> None:
+    """get_single_sprint must propagate HTTPStatusError — webhook processors
+    must handle sprint fetch failures explicitly, not silently swallow them."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = httpx.HTTPStatusError(
+            "Not Found",
+            request=Request(
+                "GET",
+                "https://example.atlassian.net/rest/agile/latest/sprint/999",
+            ),
+            response=Response(
+                404,
+                request=Request("GET", "https://example.atlassian.net"),
+            ),
+        )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            await mock_jira_client.get_single_sprint(sprint_id=999)
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_sprints_for_board_skips_board_and_logs_warning_on_http_status_error(
+    mock_jira_client: JiraClient,
+) -> None:
+    """HTTPStatusError on a board must yield nothing and log warning —
+    one inaccessible board must not abort the entire resync fan-out."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = httpx.HTTPStatusError(
+            "Forbidden",
+            request=Request(
+                "GET",
+                "https://example.atlassian.net/rest/agile/latest/board/99/sprint",
+            ),
+            response=Response(
+                403,
+                request=Request("GET", "https://example.atlassian.net"),
+            ),
+        )
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in mock_jira_client.get_paginated_sprints_for_board(
+            board_id=99,
+            sprint_state=["active"],
+        ):
+            batches.append(batch)
+
+        assert len(batches) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_sprints_for_board_skips_board_and_logs_warning_on_request_error(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Network-level RequestError on a board must yield nothing and log warning —
+    a timeout on one board must not abort a large resync fan-out."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = httpx.RequestError(
+            "Connection timeout",
+            request=Request(
+                "GET",
+                "https://example.atlassian.net/rest/agile/latest/board/99/sprint",
+            ),
+        )
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in mock_jira_client.get_paginated_sprints_for_board(
+            board_id=99,
+            sprint_state=["active"],
+        ):
+            batches.append(batch)
+
+        assert len(batches) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_sprints_for_board_skips_when_board_id_is_zero(
+    mock_jira_client: JiraClient,
+) -> None:
+    """board_id=0 is not a valid Jira board ID — must yield nothing without
+    making an API call."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in mock_jira_client.get_paginated_sprints_for_board(
+            board_id=0,
+            sprint_state=["active"],
+        ):
+            batches.append(batch)
+
+        assert len(batches) == 0
+        mock_request.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_single_sprint_propagates_request_error_on_network_failure(
+    mock_jira_client: JiraClient,
+) -> None:
+    """get_single_sprint must propagate RequestError — webhook processors
+    must handle network failures explicitly."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = httpx.RequestError(
+            "Connection timeout",
+            request=Request(
+                "GET",
+                "https://example.atlassian.net/rest/agile/latest/sprint/1",
+            ),
+        )
+
+        with pytest.raises(httpx.RequestError):
+            await mock_jira_client.get_single_sprint(sprint_id=1)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "board_count, sprints_per_board",
+    [
+        (200, 5),
+        (500, 3),
+        (1000, 1),
+        (2000, 2),
+        (5000, 1),
+    ],
+    ids=[
+        "200_boards_5_sprints_each",
+        "500_boards_3_sprints_each",
+        "1000_boards_1_sprint_each",
+        "2000_boards_2_sprints_each",
+        "5000_boards_1_sprint_each",
+    ],
+)
+async def test_get_paginated_sprints_fan_out_fetches_all_sprints_across_large_board_counts(
+    mock_jira_client: JiraClient,
+    board_count: int,
+    sprints_per_board: int,
+) -> None:
+    """Fan-out across N boards must fetch all sprints — verifies correctness
+    under large board counts representative of enterprise Jira instances."""
+    boards = [{"id": i, "name": f"Board {i}"} for i in range(1, board_count + 1)]
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            _build_mock_sprint_page(int(board["id"]), sprints_per_board)
+            for board in boards
+        ]
+
+        all_sprints: list[dict[str, Any]] = []
+
+        async def collect_sprints_for_board(board: dict[str, Any]) -> None:
+            board_id = int(board["id"])
+            async for batch in mock_jira_client.get_paginated_sprints_for_board(
+                board_id=board_id,
+                sprint_state=["active"],
+            ):
+                all_sprints.extend(batch)
+
+        await asyncio.gather(*[collect_sprints_for_board(board) for board in boards])
+
+        assert mock_request.call_count == board_count
+        assert len(all_sprints) == board_count * sprints_per_board
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "board_count, failing_board_ids",
+    [
+        (200, [10, 50, 100]),
+        (500, [1, 100, 250, 499]),
+        (1000, list(range(100, 1000, 100))),
+    ],
+    ids=[
+        "200_boards_3_failing",
+        "500_boards_4_failing",
+        "1000_boards_10_failing",
+    ],
+)
+async def test_get_paginated_sprints_fan_out_skips_failing_boards_and_continues(
+    mock_jira_client: JiraClient,
+    board_count: int,
+    failing_board_ids: list[int],
+) -> None:
+    """Fan-out must skip boards that fail with HTTPStatusError or RequestError
+    and continue collecting sprints from all other boards."""
+    boards = [{"id": i, "name": f"Board {i}"} for i in range(1, board_count + 1)]
+    failing_set = set(failing_board_ids)
+
+    def side_effect_for_board(board_id: int) -> dict[str, Any]:
+        if board_id in failing_set:
+            raise httpx.HTTPStatusError(
+                "Forbidden",
+                request=Request(
+                    "GET", f"https://example.atlassian.net/board/{board_id}/sprint"
+                ),
+                response=Response(
+                    403, request=Request("GET", "https://example.atlassian.net")
+                ),
+            )
+        return _build_mock_sprint_page(board_id, 1)
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+
+        async def dynamic_side_effect(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            url: str = args[1] if len(args) > 1 else kwargs.get("url", "")
+            board_id = int(url.split("/board/")[1].split("/")[0])
+            if board_id in failing_set:
+                raise httpx.HTTPStatusError(
+                    "Forbidden",
+                    request=Request("GET", url),
+                    response=Response(
+                        403,
+                        request=Request("GET", "https://example.atlassian.net"),
+                    ),
+                )
+            return _build_mock_sprint_page(board_id, 1)
+
+        mock_request.side_effect = dynamic_side_effect
+        all_sprints: list[dict[str, Any]] = []
+
+        async def collect_sprints_for_board(board: dict[str, Any]) -> None:
+            board_id = int(board["id"])
+            async for batch in mock_jira_client.get_paginated_sprints_for_board(
+                board_id=board_id,
+                sprint_state=["active"],
+            ):
+                all_sprints.extend(batch)
+
+        await asyncio.gather(*[collect_sprints_for_board(board) for board in boards])
+
+        expected_successful_boards = board_count - len(failing_board_ids)
+        assert len(all_sprints) == expected_successful_boards
