@@ -40,6 +40,10 @@ WEBHOOK_EVENTS = [
     "board_created",
     "board_updated",
     "board_deleted",
+    "sprint_created",
+    "sprint_updated",
+    "sprint_deleted",
+    "sprint_closed",
 ]
 
 OAUTH2_WEBHOOK_EVENTS = [
@@ -55,6 +59,10 @@ OAUTH2_WEBHOOK_EVENTS = [
     "board_created",
     "board_updated",
     "board_deleted",
+    "sprint_created",
+    "sprint_updated",
+    "sprint_deleted",
+    "sprint_closed",
 ]
 
 

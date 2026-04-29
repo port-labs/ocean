@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 import asyncio
 import httpx
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -1770,24 +1770,22 @@ async def test_get_paginated_sprints_fan_out_fetches_all_sprints_across_large_bo
     board_count: int,
     sprints_per_board: int,
 ) -> None:
-    """Fan-out across N boards must fetch all sprints — verifies correctness
-    under large board counts representative of enterprise Jira instances."""
-    boards = [{"id": i, "name": f"Board {i}"} for i in range(1, board_count + 1)]
+    board_ids: list[int] = list(range(1, board_count + 1))
+    boards: list[dict[str, Any]] = [{"id": i, "name": f"Board {i}"} for i in board_ids]
 
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [
-            _build_mock_sprint_page(int(board["id"]), sprints_per_board)
-            for board in boards
+            _build_mock_sprint_page(board_id, sprints_per_board)
+            for board_id in board_ids
         ]
 
         all_sprints: list[dict[str, Any]] = []
 
         async def collect_sprints_for_board(board: dict[str, Any]) -> None:
-            board_id = int(board["id"])
             async for batch in mock_jira_client.get_paginated_sprints_for_board(
-                board_id=board_id,
+                board_id=cast(int, board["id"]),
                 sprint_state=["active"],
             ):
                 all_sprints.extend(batch)
@@ -1857,7 +1855,7 @@ async def test_get_paginated_sprints_fan_out_skips_failing_boards_and_continues(
         all_sprints: list[dict[str, Any]] = []
 
         async def collect_sprints_for_board(board: dict[str, Any]) -> None:
-            board_id = int(board["id"])
+            board_id = board["id"]
             async for batch in mock_jira_client.get_paginated_sprints_for_board(
                 board_id=board_id,
                 sprint_state=["active"],
