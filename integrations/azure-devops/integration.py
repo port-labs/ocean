@@ -482,10 +482,12 @@ class AzureDevopsEnvironmentConfig(ResourceConfig):
 
 
 class AzureDevopsReleaseDefinitionSelector(Selector):
-    expand: Optional[str] = Field(
+    expand: Optional[
+        Literal["environments", "artifacts", "triggers", "variables"]
+    ] = Field(
         default="environments",
         title="Expand",
-        description="Comma-separated list of properties to expand on each release definition (e.g. 'environments', 'artifacts', 'triggers', 'variables'). Defaults to 'environments' which provides stage information.",
+        description="Property to expand on each release definition. Defaults to 'environments' which provides stage information.",
     )
 
 
