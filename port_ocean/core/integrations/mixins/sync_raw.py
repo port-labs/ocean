@@ -22,6 +22,7 @@ from port_ocean.core.integrations.mixins.utils import (
     clear_http_client_context,
     is_lakehouse_data_enabled,
     is_resource_supported,
+    is_transform_enabled,
     start_kind_tracking,
     stop_kind_tracking,
     unsupported_kind_response,
@@ -1166,6 +1167,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             for resync_start_fn in self.event_strategy["resync_start"]:
                 await resync_start_fn()
 
+            if await is_transform_enabled():
+                await ocean.app.lifecycle_client.notify_started(
+                    resync_id=event.id,
+                    integration_id=ocean.config.integration.identifier,
+                    integration_type=ocean.config.integration.type,
+                    started_at=datetime.now(timezone.utc),
+                )
+
             try:
                 did_fetched_current_state = True
             except httpx.HTTPError as e:
@@ -1199,10 +1208,22 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
                 await self._handle_resync_abortion(creation_results, app_config)
+                if await is_transform_enabled():
+                    await ocean.app.lifecycle_client.notify_aborted(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
                 raise
             except Exception as e:
                 logger.error(f"Error in resync: {e}")
                 await self._handle_resync_abortion(creation_results, app_config)
+                if await is_transform_enabled():
+                    await ocean.app.lifecycle_client.notify_failed(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
                 raise
             else:
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
@@ -1242,6 +1263,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     await ocean.metrics.report_kind_sync_metrics(
                         kind=MetricResourceKind.RECONCILIATION
                     )
+
+                if await is_transform_enabled():
+                    if success:
+                        await ocean.app.lifecycle_client.notify_finished(
+                            resync_id=event.id,
+                            integration_id=ocean.config.integration.identifier,
+                            integration_type=ocean.config.integration.type,
+                        )
+                    else:
+                        await ocean.app.lifecycle_client.notify_failed(
+                            resync_id=event.id,
+                            integration_id=ocean.config.integration.identifier,
+                            integration_type=ocean.config.integration.type,
+                        )
 
                 return success
             finally:

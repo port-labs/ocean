@@ -81,6 +81,11 @@ class MetricsSettings(BaseOceanModel, extra=Extra.allow):
     webhook_url: str | None = Field(default=None)
 
 
+class TransformSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = Field(default=False)
+    base_url: str | None = Field(default=None)
+
+
 class StreamingSettings(BaseOceanModel, extra=Extra.allow):
     enabled: bool = Field(default=False)
     max_buffer_size_mb: int = Field(default=1024 * 1024 * 20)  # 20 mb
@@ -141,6 +146,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
+    transform: TransformSettings = Field(default_factory=lambda: TransformSettings())
     yield_items_to_parse_batch_size: int = 200
     process_in_queue_timeout: int = 120
     process_in_queue_max_workers: int = Field(
