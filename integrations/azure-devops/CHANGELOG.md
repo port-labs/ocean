@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.8.22 (2026-04-27)
+## 0.8.25 (2026-04-29)
 
 
-### Features
+### Improvements
 
-- Added live event support for the `test-run` kind by piggybacking on pipeline run state change events
+- Bumped ocean version to ^0.41.5
+
+
+## 0.8.24 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
 
 
 ## 0.8.23 (2026-04-24)
