@@ -623,7 +623,8 @@ class AzureDevopsClient(HTTPBaseClient):
                     yield releases
 
     async def generate_release_definitions(
-        self, expand: str | None = "environments"
+        self,
+        additional_params: dict[str, str] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
@@ -631,13 +632,10 @@ class AzureDevopsClient(HTTPBaseClient):
                     self._format_service_url("vsrm")
                     + f"/{project['id']}/{API_URL_PREFIX}/release/definitions"
                 )
-                additional_params = {}
-                if expand:
-                    additional_params["$expand"] = expand
                 async for (
                     definitions
                 ) in self._get_paginated_by_top_and_continuation_token(
-                    definitions_url, additional_params=additional_params
+                    definitions_url, additional_params=additional_params or {}
                 ):
                     for definition in definitions:
                         definition["__project"] = project

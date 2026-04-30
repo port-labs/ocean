@@ -476,13 +476,29 @@ class AzureDevopsEnvironmentConfig(ResourceConfig):
 
 
 class AzureDevopsReleaseDefinitionSelector(Selector):
-    expand: Optional[Literal["environments", "artifacts", "triggers", "variables"]] = (
-        Field(
-            default="environments",
-            title="Expand",
-            description="Property to expand on each release definition. Defaults to 'environments' which provides stage information.",
-        )
+    expand: Optional[
+        Literal["environments", "artifacts", "triggers", "variables", "tags", "lastRelease"]
+    ] = Field(
+        default="environments",
+        title="Expand",
+        description="Property to expand on each release definition. Defaults to 'environments' which provides stage information.",
     )
+    tag_filter: Optional[str] = Field(
+        alias="tagFilter",
+        default=None,
+        title="Tag Filter",
+        description="Comma-separated list of tags. Only release definitions with these tags will be returned.",
+    )
+
+    def to_params(self) -> dict[str, str]:
+        data = self.dict(
+            by_alias=True,
+            exclude_none=True,
+            exclude={"query"},
+        )
+        if "expand" in data:
+            data["$expand"] = data.pop("expand")
+        return data
 
 
 class AzureDevopsReleaseDefinitionConfig(ResourceConfig):

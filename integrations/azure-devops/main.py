@@ -267,7 +267,7 @@ async def resync_release_definitions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsReleaseDefinitionConfig, event.resource_config)
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for definitions in azure_devops_client.generate_release_definitions(
-        expand=config.selector.expand
+        additional_params=config.selector.to_params(),
     ):
         logger.info(f"Resyncing {len(definitions)} release definitions")
         yield definitions
