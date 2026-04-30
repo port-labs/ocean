@@ -477,7 +477,9 @@ class AzureDevopsEnvironmentConfig(ResourceConfig):
 
 class AzureDevopsReleaseDefinitionSelector(Selector):
     expand: Optional[
-        Literal["environments", "artifacts", "triggers", "variables", "tags", "lastRelease"]
+        Literal[
+            "environments", "artifacts", "triggers", "variables", "tags", "lastRelease"
+        ]
     ] = Field(
         default="environments",
         title="Expand",
