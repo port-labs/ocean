@@ -410,20 +410,14 @@ class AzureDevopsReleaseSelector(Selector):
     )
 
     def to_params(self) -> dict[str, str]:
-        params: dict[str, str] = {}
-        if self.expand:
-            params["$expand"] = self.expand
-        if self.status_filter:
-            params["statusFilter"] = self.status_filter
-        if self.tag_filter:
-            params["tagFilter"] = self.tag_filter
-        if self.source_branch_filter:
-            params["sourceBranchFilter"] = self.source_branch_filter
-        if self.min_created_time:
-            params["minCreatedTime"] = self.min_created_time
-        if self.max_created_time:
-            params["maxCreatedTime"] = self.max_created_time
-        return params
+        data = self.dict(
+            by_alias=True,
+            exclude_none=True,
+            exclude={"query"},
+        )
+        if "expand" in data:
+            data["$expand"] = data.pop("expand")
+        return data
 
 
 class AzureDevopsReleaseConfig(ResourceConfig):
