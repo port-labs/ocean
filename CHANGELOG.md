@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.41.6 (2026-04-27)
+
+### Bug fixes
+
+- Fixed outbound requests to SentinelOne dropping hostname-based routing by adding sentinelone.net to the trusted subdomains list in the IP blocker
+
 ## 0.41.5 (2026-04-27)
 
 ### Bug fixes

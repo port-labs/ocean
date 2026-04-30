@@ -92,6 +92,7 @@ _TRUSTED_SUBDOMAINS = (
     ".statuspage.io",
     ".terraform.io",
     ".wiz.io",
+    ".sentinelone.net"
 )
 
 
