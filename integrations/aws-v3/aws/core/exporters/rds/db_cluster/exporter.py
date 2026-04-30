@@ -2,8 +2,8 @@ from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.rds.db_cluster.actions import RdsDbClusterActionsMap
-from aws.core.exporters.rds.db_cluster.models import DbCluster
 from aws.core.exporters.rds.db_cluster.models import (
+    DbCluster,
     SingleDbClusterRequest,
     PaginatedDbClusterRequest,
 )
