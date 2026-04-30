@@ -177,7 +177,11 @@ class TestDbClusterProperties:
         assert properties.MultiAZ is True
         assert properties.StorageEncrypted is True
         assert properties.Port == 3306
-        assert properties.AvailabilityZones == ["us-east-1a", "us-east-1b", "us-east-1c"]
+        assert properties.AvailabilityZones == [
+            "us-east-1a",
+            "us-east-1b",
+            "us-east-1c",
+        ]
         assert len(properties.DBClusterMembers) == 1
         assert properties.Tags == [{"Key": "Environment", "Value": "production"}]
 

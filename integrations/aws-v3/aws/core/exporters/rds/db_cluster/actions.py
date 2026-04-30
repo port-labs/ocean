@@ -8,18 +8,14 @@ import asyncio
 class DescribeDBClustersAction(Action):
     """Pass-through action that returns raw cluster dicts from the paginator."""
 
-    async def _execute(
-        self, db_clusters: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    async def _execute(self, db_clusters: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return db_clusters
 
 
 class ListTagsForResourceAction(Action):
     """Fetches tags for RDS DB clusters."""
 
-    async def _execute(
-        self, db_clusters: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    async def _execute(self, db_clusters: list[dict[str, Any]]) -> list[dict[str, Any]]:
         tag_results = await asyncio.gather(
             *(self._fetch_tags(cluster) for cluster in db_clusters),
             return_exceptions=True,

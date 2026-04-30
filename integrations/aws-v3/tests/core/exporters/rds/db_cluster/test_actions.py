@@ -151,7 +151,10 @@ class TestListTagsForResourceAction:
 
         assert result == [{"Tags": [{"Key": "Environment", "Value": "production"}]}]
         mock_logger.warning.assert_called_once()
-        assert "Skipping tags for DB cluster 'cluster-2'" in mock_logger.warning.call_args[0][0]
+        assert (
+            "Skipping tags for DB cluster 'cluster-2'"
+            in mock_logger.warning.call_args[0][0]
+        )
         mock_logger.info.assert_called_once_with(
             "Successfully fetched tags for 1 DB clusters"
         )
@@ -179,7 +182,10 @@ class TestListTagsForResourceAction:
 
         assert exc_info.value.response["Error"]["Code"] == "NetworkError"
         mock_logger.error.assert_called_once()
-        assert "Error fetching tags for DB cluster 'cluster-1'" in mock_logger.error.call_args[0][0]
+        assert (
+            "Error fetching tags for DB cluster 'cluster-1'"
+            in mock_logger.error.call_args[0][0]
+        )
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.rds.db_cluster.actions.logger")

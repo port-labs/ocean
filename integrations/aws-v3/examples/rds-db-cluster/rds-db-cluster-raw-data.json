@@ -49,8 +49,8 @@
     "StorageEncrypted": true,
     "StorageType": "aurora",
     "Tags": [
-      { "Key": "Environment", "Value": "production" },
-      { "Key": "Team", "Value": "platform" }
+      {"Key": "Environment", "Value": "production"},
+      {"Key": "Team", "Value": "platform"}
     ],
     "VpcSecurityGroups": [
       {
