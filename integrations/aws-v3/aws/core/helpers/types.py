@@ -9,6 +9,7 @@ class ObjectKind(StrEnum):
     ORGANIZATIONS_ACCOUNT = "AWS::Organizations::Account"
     AccountInfo = "AWS::Account::Info"
     RDS_DB_INSTANCE = "AWS::RDS::DBInstance"
+    RDS_DB_CLUSTER = "AWS::RDS::DBCluster"
     EKS_CLUSTER = "AWS::EKS::Cluster"
     LAMBDA_FUNCTION = "AWS::Lambda::Function"
     ECS_SERVICE = "AWS::ECS::Service"
