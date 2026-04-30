@@ -13,12 +13,14 @@ from .github_endpoints import GithubEndpoints
 
 
 class GitHubClient:
-    def __init__(self, base_url: str, token: str, enterprise: Optional[str] = None):
+    def __init__(
+        self, base_url: str, token: str, enterprise_name: Optional[str] = None
+    ):
         self._token = token
         self._client = http_async_client
         self._headers = self._get_headers()
         self.base_url = base_url
-        self.enterprise = enterprise
+        self.enterprise_name = enterprise_name
         self.NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
         self.pagination_page_size_limit = 100
         self.pagination_header_name = "Link"
@@ -26,9 +28,9 @@ class GitHubClient:
         self.forbidden_status_code = 403
 
     def _get_required_enterprise_slug(self) -> str:
-        if not self.enterprise:
+        if not self.enterprise_name:
             raise ValueError("Enterprise slug must be set to use this method")
-        return self.enterprise
+        return self.enterprise_name
 
     async def get_organizations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for organizations in self._get_paginated_data(

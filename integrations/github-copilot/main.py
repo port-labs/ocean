@@ -12,7 +12,7 @@ async def on_resync_organization_usage_metrics(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github_client = create_github_client()
-    if github_client.enterprise:
+    if github_client.enterprise_name:
         logger.info(
             "Skipping organization-usage-metrics resync: integration is configured "
             "in enterprise mode. Use enterprise-usage-metrics instead."
@@ -28,7 +28,7 @@ async def on_resync_organization_user_usage_metrics(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github_client = create_github_client()
-    if github_client.enterprise:
+    if github_client.enterprise_name:
         logger.info(
             "Skipping organization-user-usage-metrics resync: integration is configured in "
             "enterprise mode. Use enterprise-user-usage-metrics instead."
@@ -43,7 +43,7 @@ async def on_resync_enterprise_usage_metrics(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github_client = create_github_client()
-    if not github_client.enterprise:
+    if not github_client.enterprise_name:
         logger.info(
             "Skipping enterprise-usage-metrics resync: integration is configured "
             "in organization mode. Use organization-usage-metrics instead."
@@ -58,7 +58,7 @@ async def on_resync_enterprise_users_usage_metrics(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     github_client = create_github_client()
-    if not github_client.enterprise:
+    if not github_client.enterprise_name:
         logger.info(
             "Skipping enterprise-user-usage-metrics resync: integration is configured "
             "in organization mode. Use user-usage-metrics instead."
@@ -72,8 +72,8 @@ async def on_resync_enterprise_users_usage_metrics(
 async def on_start() -> None:
     github_client = create_github_client()
     mode = (
-        f"enterprise mode (enterprise={github_client.enterprise})"
-        if github_client.enterprise
+        f"enterprise mode (enterprise={github_client.enterprise_name})"
+        if github_client.enterprise_name
         else "organization mode"
     )
     logger.info(f"Starting github-copilot integration in {mode}")

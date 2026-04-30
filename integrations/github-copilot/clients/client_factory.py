@@ -14,6 +14,6 @@ def create_github_client() -> GitHubClient:
     _github_client = GitHubClient(
         integration_config["github_host"],
         integration_config["github_token"],
-        integration_config.get("github_enterprise"),
+        integration_config.get("github_enterprise_name"),
     )
     return _github_client

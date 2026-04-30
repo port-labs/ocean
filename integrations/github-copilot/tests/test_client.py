@@ -379,11 +379,11 @@ async def test_fetch_users_usage_metrics_enriches_records_across_org_batches(
 
 @pytest.mark.asyncio
 async def test_get_enterprise_usage_metrics_returns_batches_from_signed_urls() -> None:
-    enterprise_slug = "acme-enterprise"
+    enterprise_name = "acme-enterprise"
     enterprise_client = GitHubClient(
         base_url=BASE_URL,
         token=TOKEN,
-        enterprise=enterprise_slug,
+        enterprise_name=enterprise_name,
     )
     manifest_response = MagicMock()
     manifest_response.status_code = 200
@@ -424,11 +424,11 @@ async def test_get_enterprise_usage_metrics_returns_batches_from_signed_urls() -
 
 @pytest.mark.asyncio
 async def test_fetch_enterprise_usage_metrics_enriches_day_totals() -> None:
-    enterprise_slug = "acme-enterprise"
+    enterprise_name = "acme-enterprise"
     enterprise_client = GitHubClient(
         base_url=BASE_URL,
         token=TOKEN,
-        enterprise=enterprise_slug,
+        enterprise_name=enterprise_name,
     )
 
     async def enterprise_usage_generator() -> (
@@ -451,14 +451,14 @@ async def test_fetch_enterprise_usage_metrics_enriches_day_totals() -> None:
             {
                 "day": "2026-03-12",
                 "daily_active_users": 7,
-                "__enterprise": {"slug": enterprise_slug},
+                "__enterprise": {"slug": enterprise_name},
             }
         ],
         [
             {
                 "day": "2026-03-13",
                 "daily_active_users": 5,
-                "__enterprise": {"slug": enterprise_slug},
+                "__enterprise": {"slug": enterprise_name},
             }
         ],
     ]
@@ -468,11 +468,11 @@ async def test_fetch_enterprise_usage_metrics_enriches_day_totals() -> None:
 async def test_get_enterprise_users_usage_metrics_returns_batches_from_signed_urls() -> (
     None
 ):
-    enterprise_slug = "acme-enterprise"
+    enterprise_name = "acme-enterprise"
     enterprise_client = GitHubClient(
         base_url=BASE_URL,
         token=TOKEN,
-        enterprise=enterprise_slug,
+        enterprise_name=enterprise_name,
     )
     manifest_response = MagicMock()
     manifest_response.status_code = 200
@@ -514,11 +514,11 @@ async def test_get_enterprise_users_usage_metrics_returns_batches_from_signed_ur
 
 @pytest.mark.asyncio
 async def test_fetch_enterprise_users_usage_metrics_enriches_records() -> None:
-    enterprise_slug = "acme-enterprise"
+    enterprise_name = "acme-enterprise"
     enterprise_client = GitHubClient(
         base_url=BASE_URL,
         token=TOKEN,
-        enterprise=enterprise_slug,
+        enterprise_name=enterprise_name,
     )
 
     async def enterprise_users_usage_generator() -> (
@@ -542,14 +542,14 @@ async def test_fetch_enterprise_users_usage_metrics_enriches_records() -> None:
             {
                 "day": "2026-03-12",
                 "user_login": "alice",
-                "__enterprise": {"slug": enterprise_slug},
+                "__enterprise": {"slug": enterprise_name},
             }
         ],
         [
             {
                 "day": "2026-03-12",
                 "user_login": "bob",
-                "__enterprise": {"slug": enterprise_slug},
+                "__enterprise": {"slug": enterprise_name},
             }
         ],
     ]
