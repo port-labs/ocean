@@ -84,6 +84,7 @@ _TRUSTED_SUBDOMAINS = (
     ".okta.com",
     ".opsgenie.com",
     ".pagerduty.com",
+    ".sentinelone.net",
     ".sentry.io",
     ".servicenow.com",
     ".service-now.com",
@@ -92,7 +93,6 @@ _TRUSTED_SUBDOMAINS = (
     ".statuspage.io",
     ".terraform.io",
     ".wiz.io",
-    ".sentinelone.net"
 )
 
 
