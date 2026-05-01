@@ -10,10 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.8.26 (2026-04-30)
 
 
-### Features
+### Improvements
 
-- Added `release-definition` kind for classic release pipeline definitions
-- Added configurable selector on the `release` kind with expand, status, tag, source branch, and date filters
+- Bumped ocean version to ^0.41.6
 
 
 ## 0.8.25 (2026-04-29)
