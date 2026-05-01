@@ -46,6 +46,7 @@ class ObjectKind(StrEnum):
     TAG = "tag"
     BRANCH = "branch"
     ENVIRONMENT = "environment"
+    PAGES = "pages"
     DEPLOYMENT = "deployment"
     DEPLOYMENT_STATUS = "deployment-status"
     DEPENDABOT_ALERT = "dependabot-alert"

@@ -661,6 +661,17 @@ class GithubEnvironmentConfig(ResourceConfig):
     )
 
 
+class GithubPagesConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PAGES] = Field(
+        title="Github Pages",
+        description="Github Pages resource kind.",
+    )
+    selector: RepoSearchSelector = Field(
+        title="Pages selector",
+        description="Selector for the GitHub Pages resource.",
+    )
+
+
 class GithubCollaboratorConfig(ResourceConfig):
     kind: Literal[ObjectKind.COLLABORATOR] = Field(
         title="Github Collaborator",
@@ -715,6 +726,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubReleaseConfig
         | GithubTagConfig
         | GithubEnvironmentConfig
+        | GithubPagesConfig
         | GithubCollaboratorConfig
     ] = Field(
         title="Resources",
