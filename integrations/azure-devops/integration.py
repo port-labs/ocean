@@ -384,11 +384,11 @@ class AzureDevopsReleaseSelector(Selector):
             description="Filter releases by status.",
         )
     )
-    tag_filter: Optional[str] = Field(
+    tag_filter: Optional[list[str]] = Field(
         alias="tagFilter",
         default=None,
         title="Tag Filter",
-        description="Comma-separated list of tags to filter releases by.",
+        description="List of tags to filter releases by.",
     )
     source_branch_filter: Optional[str] = Field(
         alias="sourceBranchFilter",
@@ -417,6 +417,8 @@ class AzureDevopsReleaseSelector(Selector):
         )
         if "expand" in data:
             data["$expand"] = data.pop("expand")
+        if "tagFilter" in data:
+            data["tagFilter"] = ",".join(data["tagFilter"])
         return data
 
 
@@ -485,11 +487,11 @@ class AzureDevopsReleaseDefinitionSelector(Selector):
         title="Expand",
         description="Property to expand on each release definition. Defaults to 'environments' which provides stage information.",
     )
-    tag_filter: Optional[str] = Field(
+    tag_filter: Optional[list[str]] = Field(
         alias="tagFilter",
         default=None,
         title="Tag Filter",
-        description="Comma-separated list of tags. Only release definitions with these tags will be returned.",
+        description="List of tags. Only release definitions with these tags will be returned.",
     )
 
     def to_params(self) -> dict[str, str]:
@@ -500,6 +502,8 @@ class AzureDevopsReleaseDefinitionSelector(Selector):
         )
         if "expand" in data:
             data["$expand"] = data.pop("expand")
+        if "tagFilter" in data:
+            data["tagFilter"] = ",".join(data["tagFilter"])
         return data
 
 
