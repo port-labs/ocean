@@ -125,6 +125,33 @@ class JiraBoardResourceConfig(ResourceConfig):
     )
 
 
+class JiraEpicSelector(Selector):
+    done: Literal["true", "false"] | None = Field(
+        alias="done",
+        default="false",
+        title="Epic Completion Filter",
+        description=(
+            "Filter epics by completion status. Defaults to 'false' (incomplete epics only) "
+            "for performance — large Jira instances accumulate thousands of completed epics "
+            "over time, pulling them all significantly increases resync duration. "
+            "Set to 'true' to fetch only completed epics, or null to fetch all epics. "
+            "See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/"
+            "#api-rest-agile-1-0-board-boardid-epic-get"
+        ),
+    )
+
+
+class JiraEpicResourceConfig(ResourceConfig):
+    kind: Literal["epic"] = Field(
+        title="Jira Epic",
+        description="Jira epic resource kind.",
+    )
+    selector: JiraEpicSelector = Field(
+        title="Epic Selector",
+        description="Selector for Jira epic resources.",
+    )
+
+
 class JiraPortAppConfig(PortAppConfig):
     resources: list[
         TeamResourceConfig
@@ -133,6 +160,7 @@ class JiraPortAppConfig(PortAppConfig):
         | JiraUserResourceConfig
         | JiraReleaseResourceConfig
         | JiraBoardResourceConfig
+        | JiraEpicResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore[assignment]

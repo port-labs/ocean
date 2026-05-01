@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator, Literal
 
 import httpx
 import re
@@ -676,3 +676,92 @@ class JiraClient(OAuthClient):
 
         board["__projectKeys"] = project_keys
         return board
+
+    async def get_paginated_epics_for_board(
+        self,
+        board_id: int,
+        done: Literal["true", "false"] | None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield epic batches for a board, filtered by completion status.
+
+        Epic retrieval is per-board. The done query param is optional:
+        - done='false' (default) — incomplete epics only, protects large instances
+          from pulling full epic history on first install
+        - done='true' — completed epics only
+        - done=None — omits the param entirely, fetches all epics
+
+        See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/
+        #api-rest-agile-1-0-board-boardid-epic-get
+        """
+        if not board_id:
+            logger.warning(
+                f"Skipping epic fetch - board_id '{board_id}' is not a valid Jira board ID"
+            )
+            return
+
+        agile_url = await self._get_agile_api_url()
+        url = f"{agile_url}/board/{board_id}/epic"
+
+        query_params: dict[str, Any] = {}
+        if done is not None:
+            query_params["done"] = done
+
+        try:
+            async for epic_batch in self._get_agile_paginated_data(
+                url=url,
+                initial_params=query_params,
+            ):
+                for epic in epic_batch:
+                    epic["__boardId"] = board_id
+                yield epic_batch
+        except httpx.HTTPStatusError as err:
+            status_code = err.response.status_code
+            match status_code:
+                case 401:
+                    logger.error(
+                        f"Authentication failed fetching epics for board {board_id} — "
+                        f"token is invalid or expired, propagating to fail resync fast"
+                    )
+                    raise
+                case 404:
+                    logger.warning(
+                        f"Board {board_id} not found or user has no permission to view it "
+                        f"(HTTP 404) — skipping board and continuing resync. "
+                        f"This is expected when boards are deleted between resync cycles "
+                        f"or when the token lacks board-level view permissions."
+                    )
+                case 403:
+                    logger.warning(
+                        f"User does not have a valid license to access board {board_id} "
+                        f"(HTTP 403) — skipping board and continuing resync."
+                    )
+                case _:
+                    logger.error(
+                        f"Unexpected HTTP {status_code} fetching epics for board {board_id} — "
+                        f"skipping board and continuing resync. "
+                        f"URL: {url}, response: {err.response.text[:500]}"
+                    )
+        except httpx.RequestError as err:
+            logger.warning(
+                f"Network error fetching epics for board {board_id}: {err} — "
+                f"skipping board and continuing resync"
+            )
+
+    async def get_single_epic(
+        self,
+        epic_id_or_key: int | str,
+    ) -> dict[str, Any]:
+        """Fetch a single epic by numeric ID or Jira issue key.
+
+        Accepts both formats per the Jira Agile API contract:
+        - Numeric ID: 17022
+        - Issue key: EXAMPLEISSUE-6459
+
+        See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-epic/
+        #api-rest-agile-1-0-epic-epicidorkey-get
+        """
+        agile_url = await self._get_agile_api_url()
+        return await self._send_api_request(
+            "GET",
+            f"{agile_url}/epic/{epic_id_or_key}",
+        )
