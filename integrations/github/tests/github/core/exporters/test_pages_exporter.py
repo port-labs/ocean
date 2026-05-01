@@ -82,9 +82,14 @@ class TestRestPagesExporter:
     async def test_get_paginated_resources_skips_missing_pages(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
-        with patch.object(
-            rest_client, "send_api_request", new_callable=AsyncMock
-        ) as mock_request:
+        with (
+            patch.object(
+                rest_client, "send_api_request", new_callable=AsyncMock
+            ) as mock_request,
+            patch(
+                "github.core.exporters.pages_exporter.logger.warning"
+            ) as mock_warning,
+        ):
             mock_request.return_value = {}
             async with event_context("test_event"):
                 options = ListPagesOptions(
@@ -97,6 +102,7 @@ class TestRestPagesExporter:
                 ]
 
                 assert pages == []
+                mock_warning.assert_not_called()
 
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/repos/test-org/test-repo/pages",

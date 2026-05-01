@@ -22,8 +22,8 @@ class RestPagesExporter(AbstractGithubExporter[GithubRestClient]):
         params.pop("repo", None)
         response = await self._fetch_pages(cast(str, repo_name), organization, params)
         if not response:
-            logger.warning(
-                f"No GitHub Pages configuration found in repository: {repo_name} from {organization}"
+            logger.debug(
+                f"Skipping GitHub Pages sync for repository {repo_name} from {organization}: empty response"
             )
             return None
 
@@ -42,8 +42,8 @@ class RestPagesExporter(AbstractGithubExporter[GithubRestClient]):
         params.pop("repo", None)
         response = await self._fetch_pages(cast(str, repo_name), organization, params)
         if not response:
-            logger.warning(
-                f"No GitHub Pages configuration found in repository: {repo_name} from {organization}"
+            logger.debug(
+                f"Skipping GitHub Pages sync for repository {repo_name} from {organization}: empty response"
             )
             return
 
