@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.103-beta (2026-04-30)
 
 
-### Features
+### Improvements
 
-- Expanded Azure authentication support by adopting default credential flows, enabling compatibility with a wider range of auth strategies (e.g., OIDC, workload identity)
+- Bumped ocean version to ^0.41.6
 
 
 ## 0.2.102-beta (2026-04-29)

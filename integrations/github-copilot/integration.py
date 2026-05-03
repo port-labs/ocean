@@ -27,9 +27,34 @@ class UserUsageMetricsResourceConfig(ResourceConfig):
     )
 
 
+class OrganizationUserUsageMetricsResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.ORGANIZATION_USER_USAGE_METRICS] = Field(
+        title="GitHub Copilot Organization User Usage Metrics",
+        description="GitHub Copilot organization user usage metrics resource kind.",
+    )
+
+
+class EnterpriseUsageMetricsResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.ENTERPRISE_USAGE_METRICS] = Field(
+        title="GitHub Copilot Enterprise Usage Metrics",
+        description="GitHub Copilot enterprise usage metrics resource kind.",
+    )
+
+
+class EnterpriseUserUsageMetricsResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.ENTERPRISE_USER_USAGE_METRICS] = Field(
+        title="GitHub Copilot Enterprise User Usage Metrics",
+        description="GitHub Copilot enterprise user usage metrics resource kind.",
+    )
+
+
 class GithubCopilotPortAppConfig(PortAppConfig):
     resources: list[
-        OrganizationUsageMetricsResourceConfig | UserUsageMetricsResourceConfig
+        OrganizationUsageMetricsResourceConfig
+        | UserUsageMetricsResourceConfig
+        | OrganizationUserUsageMetricsResourceConfig
+        | EnterpriseUsageMetricsResourceConfig
+        | EnterpriseUserUsageMetricsResourceConfig
     ] = Field(
         default_factory=list,
     )  # type: ignore[assignment]
