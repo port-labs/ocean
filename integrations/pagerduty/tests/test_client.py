@@ -5,6 +5,7 @@ import httpx
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from clients.pagerduty import PagerDutyClient
+from clients.rate_limiter import PagerDutyDailyRateLimitExceededError
 
 
 TEST_INTEGRATION_CONFIG: dict[str, str] = {
@@ -266,6 +267,69 @@ class TestPagerDutyClient:
         ):
             result = await client.send_api_request("nonexistent/endpoint")
             assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_short_circuits_after_daily_quota_429(
+        self, client: PagerDutyClient
+    ) -> None:
+        """First analytics 429 with daily quota exhausted should arm the limiter
+        so that subsequent analytics calls short-circuit without hitting HTTP."""
+        rate_limit_429 = MagicMock()
+        rate_limit_429.status_code = 429
+        rate_limit_429.headers = httpx.Headers(
+            {
+                "ratelimit-limit": "960",
+                "ratelimit-remaining": "959",
+                "ratelimit-reset": "56",
+                "daily-ratelimit-limit": "10",
+                "daily-ratelimit-remaining": "-273",
+                "daily-ratelimit-reset": "49015",
+            }
+        )
+        rate_limit_429.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Too Many Requests", request=MagicMock(), response=rate_limit_429
+        )
+
+        request_mock = AsyncMock(return_value=rate_limit_429)
+        with patch.object(client.http_client, "request", request_mock):
+            with pytest.raises(PagerDutyDailyRateLimitExceededError):
+                await client.send_api_request(
+                    "analytics/metrics/incidents/services", method="POST"
+                )
+
+            with pytest.raises(PagerDutyDailyRateLimitExceededError):
+                await client.send_api_request(
+                    "analytics/metrics/incidents/services", method="POST"
+                )
+
+        # Only the first call hits the network; the second short-circuits via check_daily_budget
+        assert request_mock.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_daily_quota_does_not_block_rest_endpoints(
+        self, client: PagerDutyClient
+    ) -> None:
+        """Daily-quota state from a prior analytics 429 must not block REST calls."""
+        from clients.rate_limiter import RateLimitInfo
+
+        client._rate_limiter.daily_rate_limit_info = RateLimitInfo(
+            limit=10, remaining=-1, seconds_until_reset=49015
+        )
+
+        rest_response = MagicMock()
+        rest_response.json.return_value = {"result": "ok"}
+        rest_response.raise_for_status.return_value = None
+        rest_response.headers = httpx.Headers(
+            {
+                "ratelimit-limit": "960",
+                "ratelimit-remaining": "900",
+                "ratelimit-reset": "30",
+            }
+        )
+
+        with patch.object(client.http_client, "request", return_value=rest_response):
+            result = await client.send_api_request("services")
+            assert result == {"result": "ok"}
 
     @pytest.mark.asyncio
     async def test_transform_user_ids_to_emails(self, client: PagerDutyClient) -> None:
