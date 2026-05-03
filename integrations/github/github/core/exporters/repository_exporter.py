@@ -237,6 +237,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         if "custom_properties" in repository:
             return repository
         repo_name = repository["name"]
+        logger.info(
+            f"Fetching custom properties for repository {repo_name} in organization {organization}"
+        )
         properties = cast(
             list[Dict[str, Any]],
             await self.client.send_api_request(
@@ -247,6 +250,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             {prop["property_name"]: prop["value"] for prop in properties}
             if properties
             else {}
+        )
+        logger.info(
+            f"Fetched {len(repository['custom_properties'])} custom properties for repository {repo_name}"
         )
         return repository
 
