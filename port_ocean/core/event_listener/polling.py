@@ -9,7 +9,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
-from port_ocean.core.models import EventListenerType
+from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 
@@ -47,6 +47,7 @@ class PollingEventListener(BaseEventListener):
     ):
         super().__init__(events)
         self.event_listener_config = event_listener_config
+        self._is_resync_requests_polling_enabled: bool | None = None
 
     def should_resync(self, last_updated_at: str) -> bool:
         _last_updated_at = (
@@ -57,6 +58,17 @@ class PollingEventListener(BaseEventListener):
             return self.event_listener_config.resync_on_start
 
         return _last_updated_at != last_updated_at
+
+    async def is_resync_requests_polling_enabled(self) -> bool:
+        if self._is_resync_requests_polling_enabled is None:
+            organization_flags = (
+                await ocean.app.port_client.get_organization_feature_flags()
+            )
+            self._is_resync_requests_polling_enabled = (
+                IntegrationFeatureFlag.OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED
+                in organization_flags
+            )
+        return self._is_resync_requests_polling_enabled
 
     async def _start(self) -> None:
         """
@@ -77,9 +89,19 @@ class PollingEventListener(BaseEventListener):
                 is_polling=True
             )
             last_updated_at = integration["updatedAt"]
+            should_resync = self.should_resync(last_updated_at)
+            resync_reason = "Detected change in integration, resyncing"
 
-            if self.should_resync(last_updated_at):
-                logger.info("Detected change in integration, resyncing")
+            if not should_resync and await self.is_resync_requests_polling_enabled():
+                resync_request = (
+                    await ocean.app.port_client.get_integration_resync_requests()
+                )
+                should_resync = self.should_resync(resync_request.get("updatedAt", ""))
+                if should_resync:
+                    resync_reason = "Detected integration resync request"
+
+            if should_resync:
+                logger.info(resync_reason)
                 ocean.app.resync_state_updater.last_integration_state_updated_at = (
                     last_updated_at
                 )

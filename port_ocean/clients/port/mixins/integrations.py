@@ -100,6 +100,22 @@ class IntegrationClientMixin:
         handle_port_status_code(response, should_raise, should_log)
         return response.json().get("integration", {})
 
+    async def _get_integration_resync_request(self) -> httpx.Response:
+        logger.info(
+            f"Fetching integration resync request for id: {self.integration_identifier}"
+        )
+        return await self.client.get(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/resync-request",
+            headers=await self.auth.headers(),
+        )
+
+    async def get_integration_resync_requests(
+        self, should_raise: bool = True, should_log: bool = True
+    ) -> list[dict[str, Any]]:
+        response = await self._get_integration_resync_request()
+        handle_port_status_code(response, should_raise, should_log)
+        return response.json().get("request", {})
+
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:
             response = await self.get_current_integration()

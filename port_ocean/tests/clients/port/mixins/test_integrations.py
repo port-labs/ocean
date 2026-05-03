@@ -60,6 +60,10 @@ def integration_client(monkeypatch: Any) -> IntegrationClientMixin:
     client.post.return_value = MagicMock()
     client.post.return_value.status_code = 200
     client.post.return_value.is_error = False
+    client.get = AsyncMock()
+    client.get.return_value = MagicMock()
+    client.get.return_value.status_code = 200
+    client.get.return_value.is_error = False
 
     integration_client = IntegrationClientMixin(
         integration_identifier=TEST_INTEGRATION_IDENTIFIER,
@@ -244,3 +248,35 @@ async def test_post_integration_metrics_heartbeat_appends_to_ingest_url(
 
         call_args = integration_client.client.post.call_args
         assert call_args[0][0] == f"{ingest_url}/heartbeat"
+
+
+async def test_get_integration_resync_request(
+    integration_client: IntegrationClientMixin,
+) -> None:
+    integration_client.client.get.return_value.json.return_value = {
+        "request": {"id": "request-1", "updatedAt": "2024-01-01T00:00:00.000Z"}
+    }
+    with patch(
+        "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+    ) as mock_handle:
+        result = await integration_client.get_integration_resync_requests()
+
+    integration_client.auth.headers.assert_called_once()
+    integration_client.client.get.assert_called_once_with(
+        f"{integration_client.auth.api_url}/integration/{TEST_INTEGRATION_IDENTIFIER}/resync-request",
+        headers={"Authorization": "Bearer test-token"},
+    )
+    mock_handle.assert_called_once_with(
+        integration_client.client.get.return_value, True, True
+    )
+    assert result == {"id": "request-1", "updatedAt": "2024-01-01T00:00:00.000Z"}
+
+
+async def test_get_integration_resync_requests_returns_empty_dict_when_missing_key(
+    integration_client: IntegrationClientMixin,
+) -> None:
+    integration_client.client.get.return_value.json.return_value = {}
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        result = await integration_client.get_integration_resync_requests()
+
+    assert result == {}
