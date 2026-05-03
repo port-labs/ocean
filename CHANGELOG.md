@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.41.7 (2026-05-03)
+
+### Features
+
+- Polling event listener: when the organization feature flag `OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED` is present, Ocean polls the integration resync-request endpoint when the integration document’s `updatedAt` is unchanged, and runs a resync when the request’s `updatedAt` is newer than the last stored watermark.
+
 ## 0.41.6 (2026-04-30)
 
 ### Improvements

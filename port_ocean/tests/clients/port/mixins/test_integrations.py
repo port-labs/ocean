@@ -9,6 +9,7 @@ from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 
 TEST_INTEGRATION_IDENTIFIER = "test-integration"
 TEST_INTEGRATION_VERSION = "1.0.0"
+TEST_API_URL = "https://api.example.com/v1"
 TEST_INGEST_URL = "https://api.example.com"
 
 BASIC_KIND_METRICS = {
@@ -50,6 +51,7 @@ def integration_client(monkeypatch: Any) -> IntegrationClientMixin:
     auth = MagicMock()
     auth.headers = AsyncMock()
     auth.headers.return_value = {"Authorization": "Bearer test-token"}
+    auth.api_url = TEST_API_URL
 
     client = MagicMock()
     client.put = AsyncMock()
@@ -263,7 +265,7 @@ async def test_get_integration_resync_request(
 
     integration_client.auth.headers.assert_called_once()
     integration_client.client.get.assert_called_once_with(
-        f"{integration_client.auth.api_url}/integration/{TEST_INTEGRATION_IDENTIFIER}/resync-request",
+        f"{TEST_API_URL}/integration/{TEST_INTEGRATION_IDENTIFIER}/resync-request",
         headers={"Authorization": "Bearer test-token"},
     )
     mock_handle.assert_called_once_with(
