@@ -99,7 +99,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         self, parent_id: str, org_client: AioBaseClient
     ) -> List[Dict[str, str]]:
         """
-        Asynchronously fetch and return a flat list of all accounts under a given OU (including child OUs).
+        Fetch and return a flat list of all accounts under a given OU (including child OUs).
         Returns a list of AWS account dicts.
         """
         logger.debug(f"Fetching AWS accounts for organizational unit '{parent_id}'...")
