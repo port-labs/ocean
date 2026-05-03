@@ -15,6 +15,7 @@ from port_ocean.core.models import (
 )
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
+from port_ocean.version import __version__ as ocean_core_version
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -70,11 +71,21 @@ class IntegrationClientMixin:
 
         return response.json().get("integrations", [])
 
-    async def _get_current_integration(self) -> httpx.Response:
+    async def _get_current_integration(
+        self, *, is_polling: bool = False
+    ) -> httpx.Response:
         logger.info(f"Fetching integration with id: {self.integration_identifier}")
+        request_kwargs: dict[str, Any] = {
+            "headers": await self.auth.headers(),
+        }
+        if is_polling:
+            request_kwargs["params"] = {
+                "oceanCoreVersion": ocean_core_version,
+                "isPolling": "true",
+            }
         response = await self.client.get(
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
-            headers=await self.auth.headers(),
+            **request_kwargs,
         )
         return response
 
@@ -82,8 +93,10 @@ class IntegrationClientMixin:
         self,
         should_raise: bool = True,
         should_log: bool = True,
+        *,
+        is_polling: bool = False,
     ) -> dict[str, Any]:
-        response = await self._get_current_integration()
+        response = await self._get_current_integration(is_polling=is_polling)
         handle_port_status_code(response, should_raise, should_log)
         return response.json().get("integration", {})
 
