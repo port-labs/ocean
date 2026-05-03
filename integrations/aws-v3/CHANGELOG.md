@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.1.84-beta (2026-04-26)
+## 2.1.87-beta (2026-04-26)
 
 
 ### Features
 
 - Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind. 
+
+
+## 2.1.86-beta (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 2.1.85-beta (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 2.1.84-beta (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
 
 
 ## 2.1.83-beta (2026-04-24)

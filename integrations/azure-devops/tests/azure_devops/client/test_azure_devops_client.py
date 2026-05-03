@@ -4838,3 +4838,103 @@ async def test_get_release_deployment_404() -> None:
         result = await client.get_release_deployment("project-123", 10, 5)
 
         assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_test_runs_by_build(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        assert "proj1/_apis/test/runs" in url
+        assert params is not None
+        assert params["buildUri"] == "vstfs:///Build/Build/456"
+        assert params["includeRunDetails"] is True
+        yield EXPECTED_TEST_RUNS
+
+    async with event_context("test_event"):
+        with patch.object(
+            client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_get_paginated_by_top_and_skip,
+        ):
+            result = await client.get_test_runs_by_build("proj1", "456")
+
+            assert len(result) == 2
+            assert result[0]["id"] == 1
+            assert result[1]["id"] == 2
+
+
+@pytest.mark.asyncio
+async def test_get_test_runs_by_build_with_enrichment(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        assert params is not None
+        assert params["buildUri"] == "vstfs:///Build/Build/789"
+        yield EXPECTED_TEST_RUNS
+
+    async def mock_enrich_test_runs(
+        test_runs: List[Dict[str, Any]],
+        project_id: str,
+        include_results: bool = False,
+        coverage_config: Any = None,
+    ) -> None:
+        for run in test_runs:
+            if include_results:
+                run["__testResults"] = [{"id": 100000}]
+
+    async with event_context("test_event"):
+        with patch.object(
+            client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_get_paginated_by_top_and_skip,
+        ):
+            with patch.object(
+                client,
+                "_enrich_test_runs",
+                side_effect=mock_enrich_test_runs,
+            ) as mock_enrich:
+                result = await client.get_test_runs_by_build(
+                    "proj1", "789", include_results=True
+                )
+
+                assert len(result) == 2
+                assert "__testResults" in result[0]
+                assert result[0]["__testResults"][0]["id"] == 100000
+                mock_enrich.assert_called_once_with(result, "proj1", True, None)
+
+
+@pytest.mark.asyncio
+async def test_get_test_runs_by_build_empty(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_get_paginated_by_top_and_skip,
+        ):
+            with patch.object(client, "_enrich_test_runs") as mock_enrich:
+                result = await client.get_test_runs_by_build("proj1", "999")
+
+                assert len(result) == 0
+                mock_enrich.assert_not_called()

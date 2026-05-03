@@ -343,7 +343,6 @@ query ListPullRequests(
 
 def generate_pull_request_details_gql(options: PullRequestGraphQLOptions) -> str:
     return f"""
-{PAGE_INFO_FRAGMENT}
 query PullRequestDetails(
   $organization: String!,
   $repo: String!,
