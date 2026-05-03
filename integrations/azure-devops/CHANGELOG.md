@@ -7,13 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.8.27 (2026-05-01)
+## 0.8.27 (2026-05-03)
 
 
 ### Features
 
-- Added `release-definition` kind for classic release pipeline definitions
-- Added configurable selector on the `release` kind with expand, status, tag, source branch, and date filters
+- Added live event support for the `test-run` kind by piggybacking on pipeline run state change events
 
 
 ## 0.8.26 (2026-04-30)

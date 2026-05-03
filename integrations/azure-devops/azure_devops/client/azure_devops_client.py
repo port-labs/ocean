@@ -14,6 +14,7 @@ from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.webhooks.events import (
+    BuildEvents,
     RepositoryEvents,
     PullRequestEvents,
     PushEvents,
@@ -86,6 +87,7 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_COMMENTED
     ),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_DELETED),
+    WebhookSubscription(publisherId="tfs", eventType=BuildEvents.BUILD_COMPLETE),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_RESTORED),
     WebhookSubscription(
         publisherId=ADVANCED_SECURITY_PUBLISHER_ID,
@@ -2194,3 +2196,24 @@ class AzureDevopsClient(HTTPBaseClient):
     async def _no_coverage(self) -> dict[str, Any]:
         """Return empty coverage for test runs without a build (e.g., manual test runs)."""
         return {}
+
+    async def get_test_runs_by_build(
+        self,
+        project_id: str,
+        build_id: str,
+        include_results: bool = False,
+        coverage_config: Optional["CodeCoverageConfig"] = None,
+    ) -> list[dict[str, Any]]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
+        params: dict[str, Any] = {
+            "includeRunDetails": True,
+            "buildUri": f"vstfs:///Build/Build/{build_id}",
+        }
+        all_runs: list[dict[str, Any]] = []
+        async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+            all_runs.extend(runs)
+        if all_runs:
+            await self._enrich_test_runs(
+                all_runs, project_id, include_results, coverage_config
+            )
+        return all_runs
