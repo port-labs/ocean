@@ -7,6 +7,262 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.3.18 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 5.3.17 (2026-04-29)
+
+
+### Bug Fixes
+
+- Removed unused `PageInfoFields` GraphQL fragment from the single pull request detail query, which caused all webhook-triggered PR updates to fail when using `api: graphql`
+
+
+## 5.3.16 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 5.3.15 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 5.3.14 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 5.3.13 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 5.3.12 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 5.3.11 (2026-04-21)
+
+
+### Bug Fixes
+
+- Removed `extra = "forbid"` from the GitHub user and team selector blocks
+
+
+## 5.3.10 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 5.3.9 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 5.3.8 (2026-04-20)
+
+
+### Improvements
+
+- Added `includeSAMLEmail` selector to enrich exported users and team members with `__SAMLEmail` from the org SAML identity provider, and propagated the option through resync and webhook flows.
+
+
+## 5.3.7 (2026-04-20)
+
+
+### Improvements
+
+- Added further context to dispatch event evaluation logs
+- Revised include_relations selector's title and description
+
+
+## 5.3.6 (2026-04-16)
+
+
+### Improvements
+
+- Added structured repository relations enrichment configuration (teams/sbom/collaborators), including collaborator `affiliation` support.
+- Expanded repository webhook handling to also react to collaborator/team collaborator events so repository entities can be re-enriched when relationships change.
+
+
+## 5.3.5 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 5.3.4 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 5.3.3 (2026-04-15)
+
+
+### Improvements
+
+- Ignore enrich_with_first_commit if the api selector is set to rest instead of throwing ValidationError
+
+
+## 5.3.2 (2026-04-14)
+
+
+### Improvements
+
+- changed log level to debug
+
+
+## 5.3.1 (2026-04-14)
+
+
+### Improvements
+
+- Added warning log for unprocessed dispatch workflow run events due to actor mismatch
+
+
+## 5.3.0 (2026-04-12)
+
+
+### Improvements
+
+- Added optional enrich with first commit selector for PR kind for LTTM metrics
+
+
+## 5.2.19 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 5.2.18 (2026-04-09)
+
+
+### Improvements
+
+- Add `selector.affiliation` support for the Collaborator kind (`all`/`direct`/`outside`).
+- Skip Collaborator live events when `selector.affiliation` is not `all` to avoid catalog
+
+
+## 5.2.17 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 5.2.16 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 5.2.15 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 5.2.14 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 5.2.13 (2026-04-06)
+
+
+### Bug fixes
+
+- Fixed spacing for file kind's descriptions
+
+## 5.2.12 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 5.2.11 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 5.2.10 (2026-04-05)
+
+### Improvements
+
+- Make github CI and gitlab CI docs more specific
+
+
+## 5.2.9 (2026-04-05)
+
+### Bug fixes
+
+- Fixed installation docs
+
+
+## 5.2.8 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 5.2.7 (2026-03-31)
+
+
+### Bug Fixes
+
+- Increased retries count in fetching dispatched workflow run and revised created filter to be more accurate
+
+
 ## 5.2.6 (2026-03-30)
 
 

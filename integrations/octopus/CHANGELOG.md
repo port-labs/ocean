@@ -7,6 +7,139 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.2.76 (2026-04-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+# Port_Ocean 0.2.75 (2026-04-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+# Port_Ocean 0.2.74 (2026-04-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+# Port_Ocean 0.2.73 (2026-04-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+# Port_Ocean 0.2.72 (2026-04-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+# Port_Ocean 0.2.71 (2026-04-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+# Port_Ocean 0.2.70 (2026-04-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+# Port_Ocean 0.2.69 (2026-04-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+# Port_Ocean 0.2.68 (2026-04-20)
+
+### Improvements
+
+- Added Literal kind definitions to `OctopusPortAppConfig` for schema validation compliance
+
+
+# Port_Ocean 0.2.67 (2026-04-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+# Port_Ocean 0.2.66 (2026-04-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+# Port_Ocean 0.2.65 (2026-04-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+# Port_Ocean 0.2.64 (2026-04-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+# Port_Ocean 0.2.63 (2026-04-08)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+# Port_Ocean 0.2.62 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+# Port_Ocean 0.2.61 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+# Port_Ocean 0.2.60 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+# Port_Ocean 0.2.59 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+# Port_Ocean 0.2.58 (2026-04-05)
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
 # Port_Ocean 0.2.57 (2026-03-30)
 
 ### Improvements

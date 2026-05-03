@@ -181,6 +181,7 @@ async def event_context(
         try:
             yield event
         except EmptyPortAppConfigError as e:
+            success = False
             logger.bind(traceback=traceback.format_exc()).error(
                 f"Skipping resync due to empty mapping: {str(e)}"
             )

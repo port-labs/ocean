@@ -28,7 +28,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, ProcessExecutionMode
+from port_ocean.core.models import Entity, ProcessExecutionMode, LakehouseEventType
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -78,7 +78,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         raise NotImplementedError("on_resync must be implemented")
 
     async def _get_resource_raw_results(
-        self, resource_config: ResourceConfig
+        self,
+        resource_config: ResourceConfig,
+        send_raw_data_examples_amount: int = 0,
     ) -> tuple[RESYNC_RESULT, list[Exception]]:
         logger.info(f"Fetching {resource_config.kind} resync results")
 
@@ -92,7 +94,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         fns = self._collect_resync_functions(resource_config)
         logger.info(f"Found {len(fns)} resync functions for {resource_config.kind}")
 
-        results, errors = await self._execute_resync_tasks(fns, resource_config)
+        results, errors = await self._execute_resync_tasks(
+            fns, resource_config, send_raw_data_examples_amount
+        )
 
         return results, errors
 
@@ -113,6 +117,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self,
         fns: list[Callable[[str], Awaitable[RAW_RESULT]]],
         resource_config: ResourceConfig,
+        send_raw_data_examples_amount: int = 0,
     ) -> tuple[RESYNC_RESULT, list[RAW_RESULT | Exception]]:
         tasks = []
         results = []
@@ -128,6 +133,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resource_config.port.items_to_parse_name,
                         resource_config.port.items_to_parse,
                         resource_config.port.items_to_parse_top_level_transform,
+                        send_raw_data_examples_amount=send_raw_data_examples_amount,
                     )
                 )
             else:
@@ -137,7 +143,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
                 tasks.append(
                     resync_function_wrapper(
-                        task, resource_config.kind, resource_config.port.items_to_parse
+                        task,
+                        resource_config.kind,
+                        send_raw_data_examples_amount=send_raw_data_examples_amount,
                     )
                 )
 
@@ -162,13 +170,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self,
         raw_diff: list[tuple[ResourceConfig, list[RAW_ITEM]]],
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
     ) -> list[CalculationResult]:
         return await asyncio.gather(
             *(
-                self.entity_processor.parse_items(
-                    mapping, results, parse_all, send_raw_data_examples_amount
-                )
+                self.entity_processor.parse_items(mapping, results, parse_all)
                 for mapping, results in raw_diff
             )
         )
@@ -267,7 +272,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
         batch_index: int = 1,
     ) -> CalculationResult:
         with logger.contextualize(etl_phase=ETLPhase.TRANSFORM):
@@ -276,9 +280,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 batch_index=batch_index,
                 raw_items=len(results),
             )
-            objects_diff = await self._calculate_raw(
-                [(resource, results)], parse_all, send_raw_data_examples_amount
-            )
+            objects_diff = await self._calculate_raw([(resource, results)], parse_all)
             entities_transformed = len(objects_diff[0].entity_selector_diff.passed)
             entities_failed = len(objects_diff[0].entity_selector_diff.failed)
             logger.info(
@@ -407,11 +409,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     @TimeMetric(MetricPhase.RESYNC)
     async def _register_in_batches(
-        self, resource_config: ResourceConfig, user_agent_type: UserAgentType
+        self,
+        resource_config: ResourceConfig,
+        user_agent_type: UserAgentType,
+        index: int,
     ) -> tuple[list[Entity], list[Exception]]:
+        send_raw_data_examples_amount = (
+            SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
+        )
+
         with logger.contextualize(etl_phase=ETLPhase.EXTRACT):
             logger.info("Starting extract phase")
-            results, errors = await self._get_resource_raw_results(resource_config)
+            results, errors = await self._get_resource_raw_results(
+                resource_config, send_raw_data_examples_amount
+            )
             async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
             raw_results: RAW_RESULT = []
             lakehouse_data_enabled = await is_lakehouse_data_enabled()
@@ -424,7 +435,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             if lakehouse_data_enabled and raw_results:
                 await ocean.port_client.post_integration_raw_data(
-                    raw_results, event.id, resource_config.kind, data_type="resync"
+                    raw_results,
+                    event.id,
+                    resource_config.kind,
+                    index,
+                    resync_start_time=event.attributes.get("resync_start_time"),
+                    event_type=LakehouseEventType.RESYNC,
                 )
 
             logger.info(
@@ -432,10 +448,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 raw_items=len(raw_results),
                 async_generators=len(async_generators),
             )
-
-        send_raw_data_examples_amount = (
-            SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
-        )
 
         passed_entities = []
         number_of_raw_results = 0
@@ -449,7 +461,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 resource_config,
                 raw_results,
                 user_agent_type,
-                send_raw_data_examples_amount=send_raw_data_examples_amount,
                 batch_index=batch_index,
             )
             errors.extend(calculation_result.errors)
@@ -467,19 +478,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     batch_index += 1
                     if lakehouse_data_enabled:
                         await ocean.port_client.post_integration_raw_data(
-                            items, event.id, resource_config.kind, data_type="resync"
+                            items,
+                            event.id,
+                            resource_config.kind,
+                            index,
+                            resync_start_time=event.attributes.get("resync_start_time"),
+                            event_type=LakehouseEventType.RESYNC,
                         )
                     number_of_raw_results += len(items)
-                    if send_raw_data_examples_amount > 0:
-                        send_raw_data_examples_amount = max(
-                            0, send_raw_data_examples_amount - len(passed_entities)
-                        )
-
                     calculation_result = await self._register_resource_raw(
                         resource_config,
                         items,
                         user_agent_type,
-                        send_raw_data_examples_amount=send_raw_data_examples_amount,
                         batch_index=batch_index,
                     )
                     passed_entities.extend(
@@ -534,6 +544,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
         return passed_entities, errors
+
 
 
     async def register_raw(
@@ -792,7 +803,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
             task = asyncio.create_task(
-                self._register_in_batches(resource, user_agent_type)
+                self._register_in_batches(resource, user_agent_type, index)
             )
             event.on_abort(lambda: task.cancel())
 

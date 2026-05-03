@@ -2,6 +2,7 @@ title: Kafka
 description: Kafka integration for Port Ocean
 icon: Kafka
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/event-processing/kafka
+formMappingEnabled: true
 features:
   - type: exporter
     section: Event Processing

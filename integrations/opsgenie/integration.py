@@ -13,37 +13,60 @@ from port_ocean.core.integrations.base import BaseIntegration
 class APIQueryParams(BaseModel):
     created_at: str | None = Field(
         alias="createdAt",
-        description="The date and time the alert or incident was created",
+        title="Created At",
+        description="The date and time the alert or incident was created (e.g. 2024-01-31T12:00:00Z)",
     )
     last_occurred_at: str | None = Field(
         alias="lastOccurredAt",
-        description="The date and time the alert was last occurred",
+        title="Last Occurred At",
+        description="The date and time the alert was last occurred (e.g. 2024-01-31T12:00:00Z)",
     )
     snoozed_until: str | None = Field(
         alias="snoozedUntil",
-        description="The date and time the alert was snoozed until",
+        title="Snoozed Until",
+        description="The date and time the alert was snoozed until (e.g. 2024-01-31T12:00:00Z)",
     )
-    message: str | None = Field(description="The message of the alert or incident")
+    message: str | None = Field(
+        title="Message",
+        description="The message of the alert or incident",
+    )
     status: Literal["open", "resolved", "closed"] | None = Field(
-        description="The status of the alert"
+        title="Status",
+        description="The status of the alert",
     )
-    is_seen: bool | None = Field(description="Whether the alert has been seen")
+    is_seen: bool | None = Field(
+        title="Is Seen",
+        description="Whether the alert has been seen",
+    )
     acknowledged: bool | None = Field(
-        description="Whether the alert has been acknowledged"
+        title="Acknowledged",
+        description="Whether the alert has been acknowledged",
     )
-    snoozed: bool | None = Field(description="Whether the alert has been snoozed")
+    snoozed: bool | None = Field(
+        title="Snoozed",
+        description="Whether the alert has been snoozed",
+    )
     priority: Literal["P1", "P2", "P3", "P4", "P5"] | None = Field(
-        description="The priority of the alert"
+        title="Priority",
+        description="The priority of the alert",
     )
     owner: str | None = Field(
-        description="The owner of the alert. Accepts OpsGenie username"
+        title="Owner",
+        description="The owner of the alert. Accepts OpsGenie username",
     )
-    teams: str | None = Field(description="The teams associated with the alert")
+    teams: str | None = Field(
+        title="Teams",
+        description="The teams associated with the alert. Accepts a comma-separated string of team names (e.g. 'team-a, team-b')",
+    )
     acknowledged_by: str | None = Field(
-        alias="acknowledgedBy", description="The user who acknowledged the alert"
+        alias="acknowledgedBy",
+        title="Acknowledged By",
+        description="The user who acknowledged the alert",
     )
     closed_by: str | None = Field(
-        alias="closedBy", description="The user who closed the alert"
+        alias="closedBy",
+        title="Closed By",
+        description="The user who closed the alert",
     )
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -62,7 +85,8 @@ class APIQueryParams(BaseModel):
 
 class ScheduleAPIQueryParams(BaseModel):
     expand: Literal["rotation"] | None = Field(
-        description="The field to expand in the response"
+        title="Expand",
+        description="When set to 'rotation', the schedule response will include the full rotation details instead of just a reference",
     )
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -76,6 +100,7 @@ class ScheduleAPIQueryParams(BaseModel):
 class AlertAndIncidentSelector(Selector):
     api_query_params: APIQueryParams | None = Field(
         alias="apiQueryParams",
+        title="API Query Parameters",
         description="The query parameters to filter alerts or incidents",
     )
 
@@ -83,6 +108,7 @@ class AlertAndIncidentSelector(Selector):
 class ScheduleSelector(Selector):
     api_query_params: ScheduleAPIQueryParams | None = Field(
         alias="apiQueryParams",
+        title="API Query Parameters",
         description="The query parameters to filter schedules",
     )
 
@@ -90,33 +116,101 @@ class ScheduleSelector(Selector):
 class TeamSelector(Selector):
     include_members: bool = Field(
         alias="includeMembers",
+        title="Include Members",
         default=False,
         description="Whether to include the members of the team, defaults to false",
     )
 
 
-class AlertAndIncidentResourceConfig(ResourceConfig):
-    kind: Literal["alert", "incident"]
-    selector: AlertAndIncidentSelector
+class AlertResourceConfig(ResourceConfig):
+    kind: Literal["alert"] = Field(
+        title="OpsGenie Alert",
+        description="An alert synced from your OpsGenie account",
+    )
+    selector: AlertAndIncidentSelector = Field(
+        title="Alert Selector",
+        description="The selector to filter which alerts to sync",
+    )
+
+
+class IncidentResourceConfig(ResourceConfig):
+    kind: Literal["incident"] = Field(
+        title="OpsGenie Incident",
+        description="An incident synced from your OpsGenie account",
+    )
+    selector: AlertAndIncidentSelector = Field(
+        title="Incident Selector",
+        description="The selector to filter which incidents to sync",
+    )
+
+
+class ServiceResourceConfig(ResourceConfig):
+    kind: Literal["service"] = Field(
+        title="OpsGenie Service",
+        description="A service synced from your OpsGenie account",
+    )
+    selector: Selector = Field(
+        title="Service Selector",
+        description="The selector to filter which services to sync",
+    )
 
 
 class ScheduleResourceConfig(ResourceConfig):
-    kind: Literal["schedule"]
-    selector: ScheduleSelector
+    kind: Literal["schedule"] = Field(
+        title="OpsGenie Schedule",
+        description="A schedule synced from your OpsGenie account",
+    )
+    selector: ScheduleSelector = Field(
+        title="Schedule Selector",
+        description="The selector to filter which schedules to sync",
+    )
+
+
+class ScheduleOncallResourceConfig(ResourceConfig):
+    kind: Literal["schedule-oncall"] = Field(
+        title="OpsGenie Schedule On-Call",
+        description="On-call data for a schedule synced from your OpsGenie account",
+    )
+    selector: Selector = Field(
+        title="Schedule On-Call Selector",
+        description="The selector to filter which on-call schedules to sync",
+    )
 
 
 class TeamResourceConfig(ResourceConfig):
-    kind: Literal["team"]
-    selector: TeamSelector
+    kind: Literal["team"] = Field(
+        title="OpsGenie Team",
+        description="A team synced from your OpsGenie account",
+    )
+    selector: TeamSelector = Field(
+        title="Team Selector",
+        description="The selector to filter which teams to sync",
+    )
+
+
+class UserResourceConfig(ResourceConfig):
+    kind: Literal["user"] = Field(
+        title="OpsGenie User",
+        description="A user synced from your OpsGenie account",
+    )
+    selector: Selector = Field(
+        title="User Selector",
+        description="The selector to filter which users to sync",
+    )
 
 
 class OpsGeniePortAppConfig(PortAppConfig):
     resources: list[
-        AlertAndIncidentResourceConfig
+        AlertResourceConfig
+        | IncidentResourceConfig
+        | ServiceResourceConfig
         | ScheduleResourceConfig
+        | ScheduleOncallResourceConfig
         | TeamResourceConfig
-        | ResourceConfig
-    ] = Field(default_factory=list)
+        | UserResourceConfig
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
 
 
 class OpsGenieIntegration(BaseIntegration):

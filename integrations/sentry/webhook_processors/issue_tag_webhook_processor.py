@@ -33,7 +33,6 @@ class SentryIssueTagWebhookProcessor(_SentryBaseWebhookProcessor):
         deleted_results: list[dict[str, Any]] = []
 
         selector = cast(IssueResourceConfig, resource_config).selector
-        logger.info(f"Selector: {selector.include_archived} & {selector.tag}")
         client = init_webhook_client()
         issue_tags = await client.get_issues_tags_from_issues(selector.tag, [issue])
 

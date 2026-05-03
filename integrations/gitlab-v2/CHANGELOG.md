@@ -7,6 +7,201 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.4 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 0.7.3 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.7.2 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.7.1 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.7.0 (2026-04-23)
+
+
+### Features
+
+- Added support for `branch` kind, enabling scheduled syncing of GitLab branches
+- Added live event updates for `branch` kind via webhooks
+
+
+## 0.6.21 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.6.20 (2026-04-22)
+
+
+### Improvements
+
+- Add 500 internal server errors to retry status codes
+
+
+## 0.6.19 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.6.18 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.6.17 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.6.16 (2026-04-19)
+
+
+### Features
+
+- Added support for project members (direct and inherited) via a new `project-with-members` kind, using GitLab's `/projects/:id/members` and `/projects/:id/members/all` API endpoints
+
+
+## 0.6.15 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.6.14 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.6.13 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.6.12 (2026-04-09)
+
+
+### Bug Fixes
+
+- Fix silent under-ingestion of projects and groups by reverting `includeOnlyActiveProjects` and `includeOnlyActiveGroups` selectors to default to unset (`None`) instead of `false`, which was causing unintended active-status filtering on GitLab API requests
+
+
+## 0.6.11 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.6.10 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.6.9 (2026-04-07)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions and removed bare ResourceConfig from the union
+- Added title/description metadata to selector fields in GitlabPortAppConfig for improved schema validation compliance
+- Renamed field titles from "Attached files" and "Additional files" to "Included Files" for consistency across ProjectSelectorandGitLabFilesSelector
+
+
+## 0.6.8 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.6.7 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.6.6 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.6.5 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.6.4 (2026-04-05)
+
+
+### Improvements
+
+- Fall back to repository-level search when the `blobs` scope is unavailable for group search (e.g. when GitLab advanced search is not enabled)
+
+
+## 0.6.3 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
 ## 0.6.2 (2026-03-30)
 
 

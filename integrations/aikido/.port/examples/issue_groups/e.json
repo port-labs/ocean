@@ -1,0 +1,19 @@
+{
+  "id": 26362012,
+  "type": "sast",
+  "title": "Remote Code Execution possible via eval()-type functions",
+  "description": "in extHostExtensionService.ts and cancellation.ts",
+  "severity_score": 91,
+  "severity": "critical",
+  "group_status": "new",
+  "time_to_fix_minutes": 120,
+  "locations": [
+    {
+      "id": 1841547,
+      "name": "vscode",
+      "type": "code_repository"
+    }
+  ],
+  "how_to_fix": "If possible, avoid using these functions altogether. If not, use a list of allowed inputs that can feed into these functions.",
+  "related_cve_ids": []
+}

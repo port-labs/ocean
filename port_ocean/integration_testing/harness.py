@@ -84,6 +84,9 @@ class IntegrationTestHarness:
             _config_factory_cache[self.integration_path] = config_factory
 
         # Build config override with test defaults
+        # Force single_process: the Port mock captures entities in-process. On Linux CI,
+        # the default is multi_process, so subprocesses would have their own copy of
+        # upserted_entities and the harness would see an empty list.
         config = {
             "port": {
                 "client_id": "test-client-id",
@@ -96,6 +99,7 @@ class IntegrationTestHarness:
                 "type": "test",
             },
             "send_raw_data_examples": False,
+            "process_execution_mode": "single_process",
             **self.config_overrides,
         }
 

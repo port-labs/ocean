@@ -26,20 +26,21 @@ EntityFieldsType = Annotated[
 
 
 class DynatraceEntitySelector(Selector):
-    entity_types: list[
-        Literal[
-            "APPLICATION",
-            "SERVICE",
-        ]
-    ] = Field(
+    entity_types: list[str] = Field(
         default=["APPLICATION", "SERVICE"],
         title="Entity Types",
-        description="List of entity types to be fetched",
+        description=(
+            "List of Dynatrace entity types to fetch. "
+            "See <a target='_blank' href='https://docs.dynatrace.com/docs/dynatrace-api/environment-api/entity-v2/get-entity-types'>"
+            "Dynatrace Entity Types API</a> for all available types."
+        ),
         alias="entityTypes",
     )
 
     entity_fields: EntityFieldsType | None = Field(
-        description="List of fields to include in each entity", alias="entityFields"
+        description="List of fields to include in each entity",
+        alias="entityFields",
+        title="Entity Fields",
     )
 
 

@@ -9,8 +9,15 @@ from github.core.exporters.pull_request_exporter import (
 from github.clients.http.rest_client import GithubRestClient
 from github.clients.http.graphql_client import GithubGraphQLClient
 from port_ocean.context.event import event_context
-from github.core.options import SinglePullRequestOptions, ListPullRequestOptions
-from github.helpers.gql_queries import LIST_PULL_REQUESTS_GQL, PULL_REQUEST_DETAILS_GQL
+from github.core.options import (
+    SinglePullRequestOptions,
+    ListPullRequestOptions,
+    PullRequestGraphQLOptions,
+)
+from github.helpers.gql_queries import (
+    generate_list_pull_requests_gql,
+    generate_pull_request_details_gql,
+)
 
 TEST_PULL_REQUESTS = [
     {
@@ -383,7 +390,9 @@ class TestGraphQLPullRequestExporter:
             "prNumber": 101,
         }
         expected_payload = graphql_client.build_graphql_payload(
-            query=PULL_REQUEST_DETAILS_GQL,
+            query=generate_pull_request_details_gql(
+                PullRequestGraphQLOptions(enrich_with_first_commit=False)
+            ),
             variables=expected_variables,
         )
 
@@ -402,6 +411,88 @@ class TestGraphQLPullRequestExporter:
         assert pr["review_comments"] == 1
         assert pr["commits"] == 3
         assert pr["state"] == "open"
+        assert "firstCommit" not in pr
+
+    async def test_get_resource_enrich_with_first_commit(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        mock_pr_node = {
+            "id": 1,
+            "number": 101,
+            "title": "GraphQL PR",
+            "state": "OPEN",
+            "assignees": {"nodes": []},
+            "reviewRequests": {"nodes": []},
+            "comments": {"totalCount": 2},
+            "reviewThreads": {"totalCount": 1},
+            "commits": {
+                "totalCount": 3,
+                "nodes": [
+                    {
+                        "commit": {
+                            "oid": "abc123def",
+                            "committedDate": "2025-01-15T10:00:00Z",
+                        }
+                    }
+                ],
+            },
+            "labels": {"nodes": []},
+            "mergeStateStatus": "CLEAN",
+            "mergeable": "MERGEABLE",
+        }
+        mock_response = {
+            "data": {"repository": {"pullRequest": mock_pr_node}},
+        }
+
+        with (
+            patch(
+                "github.core.exporters.pull_request_exporter.core.parse_github_options",
+                return_value=(
+                    "repo1",
+                    "test-org",
+                    {
+                        "pr_number": 101,
+                        "repo": {"name": "repo1"},
+                        "enrich_with_first_commit": True,
+                    },
+                ),
+            ),
+            patch.object(
+                graphql_client,
+                "send_api_request",
+                return_value=mock_response,
+            ) as mock_request,
+        ):
+            pr = await exporter.get_resource(
+                SinglePullRequestOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    pr_number=101,
+                    repo={"name": "repo1"},
+                    enrich_with_first_commit=True,
+                )
+            )
+
+        expected_payload = graphql_client.build_graphql_payload(
+            query=generate_pull_request_details_gql(
+                PullRequestGraphQLOptions(enrich_with_first_commit=True)
+            ),
+            variables={
+                "organization": "test-org",
+                "repo": "repo1",
+                "prNumber": 101,
+            },
+        )
+        mock_request.assert_called_once_with(
+            graphql_client.base_url,
+            method="POST",
+            json_data=expected_payload,
+        )
+        assert pr is not None
+        assert pr["firstCommit"]["oid"] == "abc123def"
+        assert pr["firstCommit"]["committedDate"] == "2025-01-15T10:00:00Z"
 
     async def test_get_paginated_resources_open_and_closed(
         self, graphql_client: GithubGraphQLClient, mock_datetime: Any
@@ -484,7 +575,9 @@ class TestGraphQLPullRequestExporter:
 
         # Ensure GraphQL variables were built correctly for both calls
         mock_paginated.assert_any_call(
-            LIST_PULL_REQUESTS_GQL,
+            generate_list_pull_requests_gql(
+                PullRequestGraphQLOptions(enrich_with_first_commit=False)
+            ),
             {
                 "organization": "test-org",
                 "repo": "repo1",
@@ -493,11 +586,82 @@ class TestGraphQLPullRequestExporter:
             },
         )
         mock_paginated.assert_any_call(
-            LIST_PULL_REQUESTS_GQL,
+            generate_list_pull_requests_gql(
+                PullRequestGraphQLOptions(enrich_with_first_commit=False)
+            ),
             {
                 "organization": "test-org",
                 "repo": "repo1",
                 "states": ["CLOSED", "MERGED"],
+                "__path": "repository.pullRequests",
+            },
+        )
+
+    async def test_get_paginated_resources_passes_enriched_query_when_enabled(
+        self, graphql_client: GithubGraphQLClient, mock_datetime: Any
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        async def mock_open(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [
+                {
+                    "id": 1,
+                    "number": 11,
+                    "title": "Open PR",
+                    "state": "OPEN",
+                    "assignees": {"nodes": []},
+                    "reviewRequests": {"nodes": []},
+                    "comments": {"totalCount": 0},
+                    "reviewThreads": {"totalCount": 0},
+                    "commits": {
+                        "totalCount": 1,
+                        "nodes": [
+                            {
+                                "commit": {
+                                    "oid": "sha1",
+                                    "committedDate": "2025-02-01T00:00:00Z",
+                                }
+                            }
+                        ],
+                    },
+                    "labels": {"nodes": []},
+                    "mergeStateStatus": "CLEAN",
+                    "mergeable": "MERGEABLE",
+                }
+            ]
+
+        with patch.object(
+            graphql_client,
+            "send_paginated_request",
+            side_effect=[mock_open()],
+        ) as mock_paginated:
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    states=["open"],
+                    repo_name="repo1",
+                    max_results=10,
+                    updated_after=mock_datetime.now(mock_datetime.UTC)
+                    - mock_datetime.timedelta(days=30),
+                    repo={"name": "repo1"},
+                    enrich_with_first_commit=True,
+                )
+                batches = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        assert len(batches) == 1
+        assert batches[0][0]["firstCommit"]["oid"] == "sha1"
+        mock_paginated.assert_called_once_with(
+            generate_list_pull_requests_gql(
+                PullRequestGraphQLOptions(enrich_with_first_commit=True)
+            ),
+            {
+                "organization": "test-org",
+                "repo": "repo1",
+                "states": ["OPEN"],
                 "__path": "repository.pullRequests",
             },
         )
@@ -531,7 +695,7 @@ class TestGraphQLPullRequestExporter:
             patch.object(
                 GraphQLPullRequestExporter,
                 "_normalize_pr_node",
-                side_effect=lambda pr, repo, org: {
+                side_effect=lambda pr, repo, org, **kwargs: {
                     **pr,
                     "__repository": repo,
                     "__organization": org,
@@ -561,7 +725,9 @@ class TestGraphQLPullRequestExporter:
         assert mock_filter.call_args.args[1] == "updatedAt"
 
         mock_paginated.assert_called_once_with(
-            LIST_PULL_REQUESTS_GQL,
+            generate_list_pull_requests_gql(
+                PullRequestGraphQLOptions(enrich_with_first_commit=False)
+            ),
             {
                 "organization": "test-org",
                 "repo": "repo1",
@@ -585,23 +751,112 @@ class TestGraphQLPullRequestExporterInternals:
             "reviewRequests": {"nodes": []},
             "comments": {"totalCount": 5},
             "reviewThreads": {"totalCount": 2},
-            "commits": {"totalCount": 3},
+            "commits": {
+                "totalCount": 3,
+                "nodes": [
+                    {
+                        "commit": {
+                            "oid": "firstsha",
+                            "committedDate": "2025-03-01T08:30:00Z",
+                        }
+                    }
+                ],
+            },
             "labels": {"nodes": []},
             "mergeStateStatus": "CLEAN",
             "mergeable": "MERGEABLE",
         }
 
         repo = {"name": "repo1"}
-        normalized = exporter._normalize_pr_node(pr_node, repo, "test-org")
+        normalized = exporter._normalize_pr_node(
+            pr_node,
+            repo,
+            "test-org",
+            gql_options=PullRequestGraphQLOptions(enrich_with_first_commit=True),
+        )
 
         assert normalized["assignees"] == [{"login": "assignee"}]
         assert normalized["requested_reviewers"] == []
         assert normalized["comments"] == 5
         assert normalized["review_comments"] == 2
         assert normalized["commits"] == 3
+        assert normalized["firstCommit"]["oid"] == "firstsha"
+        assert normalized["firstCommit"]["committedDate"] == "2025-03-01T08:30:00Z"
         assert normalized["state"] == "open"
         assert normalized["__repository"] == "repo1"
         assert normalized["__organization"] == "test-org"
+
+    def test_normalize_pr_node_skips_first_commit_fields_when_disabled(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        pr_node = {
+            "id": "PR_kw",
+            "state": "OPEN",
+            "assignees": {"nodes": []},
+            "reviewRequests": {"nodes": []},
+            "comments": {"totalCount": 1},
+            "reviewThreads": {"totalCount": 0},
+            "commits": {
+                "totalCount": 2,
+                "nodes": [
+                    {
+                        "commit": {
+                            "oid": "should_not_appear",
+                            "committedDate": "2025-01-01T00:00:00Z",
+                        }
+                    }
+                ],
+            },
+            "labels": {"nodes": []},
+            "mergeStateStatus": "CLEAN",
+            "mergeable": "MERGEABLE",
+        }
+        normalized = exporter._normalize_pr_node(
+            pr_node,
+            {"name": "repo1"},
+            "org",
+            gql_options=PullRequestGraphQLOptions(),
+        )
+        assert normalized["commits"] == 2
+        assert "firstCommit" not in normalized
+
+    def test_normalize_pr_node_no_commits(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        pr_node = {
+            "id": "PR_empty",
+            "state": "OPEN",
+            "assignees": {"nodes": []},
+            "reviewRequests": {"nodes": []},
+            "comments": {"totalCount": 0},
+            "reviewThreads": {"totalCount": 0},
+            "commits": {"totalCount": 0, "nodes": []},
+            "labels": {"nodes": []},
+            "mergeStateStatus": "CLEAN",
+            "mergeable": "MERGEABLE",
+        }
+
+        enriched = exporter._normalize_pr_node(
+            pr_node,
+            {"name": "r"},
+            "org",
+            gql_options=PullRequestGraphQLOptions(enrich_with_first_commit=True),
+        )
+        assert enriched["commits"] == 0
+        assert "firstCommit" not in enriched
+
+        minimal = exporter._normalize_pr_node(
+            pr_node,
+            {"name": "r"},
+            "org",
+            gql_options=PullRequestGraphQLOptions(),
+        )
+        assert minimal["commits"] == 0
+        assert "first_commit_oid" not in minimal
+        assert "first_commit_committed_at" not in minimal
 
     def test_extract_requested_reviewers_handles_users_and_teams(
         self, graphql_client: GithubGraphQLClient
