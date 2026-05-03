@@ -156,10 +156,6 @@ class ListEnvironmentsOptions(RepositoryIdentifier):
     """Options for listing environments."""
 
 
-class SinglePagesOptions(RepositoryIdentifier):
-    """Options for fetching GitHub Pages configuration."""
-
-
 class ListPagesOptions(RepositoryIdentifier):
     """Options for listing GitHub Pages configuration."""
 
