@@ -7,13 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.9.0 (2026-04-20)
+## 0.9.0 (2026-05-03)
 
 
 ### Features
 
 - Added multi-organization support via Microsoft Entra ID Service Principal authentication. Configure `organizationUrls` together with `clientId`, `clientSecret`, and `tenantId` to sync multiple Azure DevOps organizations from a single integration.
 - Enriched every synced entity with `__organizationUrl` and `__organizationName` fields so JQ mappings can scope identifiers per organization.
+
+
+## 0.8.27 (2026-05-03)
+
+
+### Features
+
+- Added live event support for the `test-run` kind by piggybacking on pipeline run state change events
+
+
+## 0.8.26 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 0.8.25 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.8.24 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.8.23 (2026-04-24)
+
+
+### Improvements
+
+- Added concurrency support for repository fetching across projects
+
+
+## 0.8.22 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.8.21 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.8.20 (2026-04-21)
+
+
+### Improvements
+
+- Added default WIQL filter to work-item port-app-config to exclude closed/done/removed items
+
+
+## 0.8.19 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.8.18 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
 
 
 ## 0.8.17 (2026-04-20)

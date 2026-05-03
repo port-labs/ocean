@@ -12,6 +12,7 @@ from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.webhooks.events import (
+    BuildEvents,
     RepositoryEvents,
     PullRequestEvents,
     PushEvents,
@@ -85,6 +86,7 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_COMMENTED
     ),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_DELETED),
+    WebhookSubscription(publisherId="tfs", eventType=BuildEvents.BUILD_COMPLETE),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_RESTORED),
     WebhookSubscription(
         publisherId=ADVANCED_SECURITY_PUBLISHER_ID,
@@ -466,6 +468,22 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 yield members
 
+    async def _fetch_repositories_for_project(
+        self,
+        org_identifier: str,
+        project: dict[str, Any],
+        include_disabled_repositories: bool,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        repos_url = f"{org_identifier}/{project['id']}/{API_URL_PREFIX}/git/repositories"
+        response = await self.send_request("GET", repos_url)
+        if not response:
+            return
+        repositories = response.json()["value"]
+        if include_disabled_repositories:
+            yield repositories
+        else:
+            yield [repo for repo in repositories if self._repository_is_healthy(repo)]
+
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
@@ -481,20 +499,21 @@ class AzureDevopsClient(HTTPBaseClient):
         include_disabled_repositories: bool = True,
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
-            for project in projects:
-                repos_url = f"{org_identifier}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-                response = await self.send_request("GET", repos_url)
-                if not response:
-                    continue
-                repositories = response.json()["value"]
-                if include_disabled_repositories:
-                    yield repositories
-                else:
-                    yield [
-                        repo
-                        for repo in repositories
-                        if self._repository_is_healthy(repo)
-                    ]
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._fetch_repositories_for_project,
+                        org_identifier,
+                        project,
+                        include_disabled_repositories,
+                    ),
+                )
+                for project in projects
+            ]
+            async for repositories in stream_async_iterators_tasks(*tasks):
+                yield repositories
 
     async def generate_branches(
         self,
@@ -2168,3 +2187,24 @@ class AzureDevopsClient(HTTPBaseClient):
     async def _no_coverage(self) -> dict[str, Any]:
         """Return empty coverage for test runs without a build (e.g., manual test runs)."""
         return {}
+
+    async def get_test_runs_by_build(
+        self,
+        project_id: str,
+        build_id: str,
+        include_results: bool = False,
+        coverage_config: Optional["CodeCoverageConfig"] = None,
+    ) -> list[dict[str, Any]]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
+        params: dict[str, Any] = {
+            "includeRunDetails": True,
+            "buildUri": f"vstfs:///Build/Build/{build_id}",
+        }
+        all_runs: list[dict[str, Any]] = []
+        async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+            all_runs.extend(runs)
+        if all_runs:
+            await self._enrich_test_runs(
+                all_runs, project_id, include_results, coverage_config
+            )
+        return all_runs
