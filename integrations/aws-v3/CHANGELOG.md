@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.2.0-beta (2026-04-23)
+
+
+### Features
+
+- Added support to fetch resources exclusively from a user-specified AWS Organization Unit (OU), allowing targeted account discovery.
+
+### Improvements
+
+- Updated account activity checks to use the `State` property instead of `Status`, in preparation for AWS deprecating the `Status` field on September 9, 2026.
+
+
 ## 2.1.86-beta (2026-04-30)
 
 
