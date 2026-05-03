@@ -14,6 +14,11 @@ features:
       - kind: AWS::ECR::Repository
       - kind: AWS::EC2::Volume
 configurations:
+  - name: ouId
+    required: false
+    type: string
+    sensitive: false
+    description: AWS Organization Unit (OU) ID to discover active accounts from. When provided, the integration will only attempt to use discover active accounts from the specified OU.
   - name: accountRoleArn
     required: false
     type: string
