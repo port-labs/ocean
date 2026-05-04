@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.1-beta (2026-05-03)
+## 2.2.2-beta (2026-05-04)
 
 
 ### Improvements
 
 - Introduce `CREDENTIAL_PROVIDER_PRIORITY` environment variable, allowing users to customize and control the priority order in which AWS credential providers are selected for authentication.
+
+
+## 2.2.1-beta (2026-04-26)
+
+
+### Features
+
+- Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind. 
 
 
 ## 2.2.0-beta (2026-04-23)
