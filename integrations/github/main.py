@@ -31,7 +31,6 @@ from github.core.exporters.deployment_status_exporter import (
     RestDeploymentStatusExporter,
 )
 from github.core.exporters.environment_exporter import RestEnvironmentExporter
-from github.core.exporters.pages_exporter import RestPagesExporter
 from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import (
@@ -63,7 +62,6 @@ from github.core.options import (
     ListDeploymentsOptions,
     ListDeploymentStatusesOptions,
     ListEnvironmentsOptions,
-    ListPagesOptions,
     ListIssueOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
@@ -87,7 +85,6 @@ from github.helpers.utils import (
 from integration import (
     GithubCollaboratorConfig,
     GithubEnvironmentConfig,
-    GithubPagesConfig,
     GithubFolderResourceConfig,
     GithubReleaseConfig,
     GithubIssueConfig,
@@ -677,49 +674,6 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
                 async for environments in stream_async_iterators_tasks(*tasks):
                     yield environments
-
-
-@ocean.on_resync(ObjectKind.PAGES)
-async def resync_pages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync GitHub Pages configuration in the organization."""
-    logger.info(f"Starting resync for kind {kind}")
-
-    rest_client = create_github_client()
-    org_exporter = RestOrganizationExporter(rest_client)
-    repository_exporter = RestRepositoryExporter(rest_client)
-    pages_exporter = RestPagesExporter(rest_client)
-
-    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubPagesConfig, event.resource_config)
-
-    async for organizations in org_exporter.get_paginated_resources(
-        get_github_organizations()
-    ):
-        for org in organizations:
-            org_name = org["login"]
-            repo_options = ListRepositoryOptions(
-                organization=org_name,
-                organization_type=org["type"],
-                type=port_app_config.repository_type,
-                search_params=config.selector.repo_search,
-            )
-
-            async for repositories in repository_exporter.get_paginated_resources(
-                repo_options
-            ):
-                tasks = []
-                for repo in repositories:
-                    tasks.append(
-                        pages_exporter.get_paginated_resources(
-                            ListPagesOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                            )
-                        )
-                    )
-
-                async for pages in stream_async_iterators_tasks(*tasks):
-                    yield pages
 
 
 @ocean.on_resync(ObjectKind.DEPLOYMENT)

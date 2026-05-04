@@ -11,6 +11,7 @@ def test_normalized_relations_from_included_relations_alias() -> None:
             "includedRelations": {
                 "teams": True,
                 "sbom": False,
+                "pages": True,
                 "collaborators": {"affiliation": "direct"},
             },
         }
@@ -18,6 +19,7 @@ def test_normalized_relations_from_included_relations_alias() -> None:
 
     assert selector.normalized_relations == {
         "teams": {"include": True},
+        "pages": {"include": True},
         "collaborators": {"include": True, "affiliation": "direct"},
     }
 
@@ -37,12 +39,13 @@ def test_included_relations_cannot_be_supplied_with_include() -> None:
 
 def test_normalized_relations_falls_back_to_include_list() -> None:
     selector = GithubRepositorySelector.parse_obj(
-        {"query": "true", "include": ["teams", "sbom"]}
+        {"query": "true", "include": ["teams", "sbom", "pages"]}
     )
 
     assert selector.normalized_relations == {
         "teams": {"include": True},
         "sbom": {"include": True},
+        "pages": {"include": True},
     }
 
 

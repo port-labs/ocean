@@ -89,6 +89,11 @@ class GitHubRepositoryRelationSelector(BaseModel):
         default=False,
         description="Include SBOM for the repository.",
     )
+    pages: bool = Field(
+        title="Include GitHub Pages",
+        default=False,
+        description="Include GitHub Pages configuration for the repository.",
+    )
 
     class Config:
         extra = "forbid"
@@ -105,6 +110,9 @@ class GitHubRepositoryRelationSelector(BaseModel):
         if self.sbom:
             result["sbom"] = {"include": self.sbom}
 
+        if self.pages:
+            result["pages"] = {"include": self.pages}
+
         return result
 
 
@@ -120,15 +128,15 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
             }
         }
 
-    include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
+    include: Optional[List[Literal["collaborators", "teams", "sbom", "pages"]]] = Field(
         title="Additional Repository Data",
-        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
+        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>, pages",
         default_factory=list,
     )
     included_relations: Optional[GitHubRepositoryRelationSelector] = Field(
         alias="includedRelations",
         title="Additional Repository Data",
-        description="Fetch additional data related to the repository api response. Accepted options: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>.",
+        description="Fetch additional data related to the repository api response. Accepted options: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>, pages.",
         default=None,
     )
 
@@ -661,17 +669,6 @@ class GithubEnvironmentConfig(ResourceConfig):
     )
 
 
-class GithubPagesConfig(ResourceConfig):
-    kind: Literal[ObjectKind.PAGES] = Field(
-        title="Github Pages",
-        description="Github Pages resource kind.",
-    )
-    selector: RepoSearchSelector = Field(
-        title="Pages selector",
-        description="Selector for the GitHub Pages resource.",
-    )
-
-
 class GithubCollaboratorConfig(ResourceConfig):
     kind: Literal[ObjectKind.COLLABORATOR] = Field(
         title="Github Collaborator",
@@ -726,7 +723,6 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubReleaseConfig
         | GithubTagConfig
         | GithubEnvironmentConfig
-        | GithubPagesConfig
         | GithubCollaboratorConfig
     ] = Field(
         title="Resources",

@@ -22,11 +22,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "collaborators": "_enrich_repository_with_collaborators",
         "teams": "_enrich_repository_with_teams",
         "sbom": "_enrich_repository_with_sbom",
+        "pages": "_enrich_repository_with_pages",
     }
 
-    async def get_resource[
-        ExporterOptionsT: SingleRepositoryOptions
-    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
+    async def get_resource[ExporterOptionsT: SingleRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> Optional[RAW_ITEM]:
         name = options["name"]
         organization = options["organization"]
         included_relations = options.get("included_relations")
@@ -51,9 +52,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             organization,
         )
 
-    async def get_paginated_resources[
-        ExporterOptionsT: ListRepositoryOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
         organization = options["organization"]
         options_dict = dict(options)
@@ -245,4 +246,21 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             return repository
 
         repository["__sbom"] = response.get("sbom", {})
+        return repository
+
+    async def _enrich_repository_with_pages(
+        self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
+    ) -> RAW_ITEM:
+        repo_name = repository["name"]
+
+        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/pages"
+        response = await self.client.send_api_request(url)
+        if not response:
+            logger.debug(
+                f"Skipping GitHub Pages enrichment for repository {repo_name} in organization {organization}: empty response"
+            )
+            repository["__pages"] = {}
+            return repository
+
+        repository["__pages"] = response
         return repository
