@@ -1,5 +1,5 @@
 from port_ocean.context.event import event
-from integration import GitlabPortAppConfig
+from integration import BranchSelector, GitlabPortAppConfig
 from typing import cast, Any, Optional
 
 
@@ -56,4 +56,28 @@ def build_project_params(
     params.update(visibility_params)
     if include_only_active_projects is not None:
         params["active"] = include_only_active_projects
+    return params
+
+
+def build_branch_params(branch_selector: BranchSelector) -> dict[str, Any]:
+    """Build params dictionary to filter branches for a GitLab project.
+
+    Supports filtering by regex or search string. regex and search are mutually
+    exclusive — if regex is set it takes precedence and search is ignored.
+
+    Args:
+        branch_selector: Branch selector containing optional regex and search filters.
+
+    Returns:
+        Dictionary of parameters to pass to GitLab API calls.
+    """
+    params: dict[str, Any] = {}
+    if branch_selector.regex is not None:
+        params["regex"] = branch_selector.regex
+        return params
+
+    if branch_selector.search is not None:
+        params["search"] = branch_selector.search
+        return params
+
     return params

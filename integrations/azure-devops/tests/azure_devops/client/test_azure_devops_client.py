@@ -874,6 +874,67 @@ async def test_generate_repositories(mock_event_context: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_repositories_multiple_projects(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify concurrent fetch across multiple projects, including a 404 project."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {"id": "proj1", "name": "Project One"},
+            {"id": "proj2", "name": "Project Two"},
+            {"id": "proj_404", "name": "Missing Project"},
+        ]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "proj_404" in url:
+            return None
+        if "proj1" in url:
+            return Response(
+                status_code=200,
+                json={
+                    "value": [
+                        {"id": "repo1", "name": "Repo One", "project": {"id": "proj1"}},
+                        {"id": "repo2", "name": "Repo Two", "project": {"id": "proj1"}},
+                    ]
+                },
+            )
+        if "proj2" in url:
+            return Response(
+                status_code=200,
+                json={
+                    "value": [
+                        {
+                            "id": "repo3",
+                            "name": "Repo Three",
+                            "project": {"id": "proj2"},
+                        },
+                    ]
+                },
+            )
+        return None
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            repositories: List[Dict[str, Any]] = []
+            async for batch in client.generate_repositories():
+                repositories.extend(batch)
+
+            repo_ids = {r["id"] for r in repositories}
+            assert repo_ids == {"repo1", "repo2", "repo3"}
+
+
+@pytest.mark.asyncio
 async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
@@ -4621,3 +4682,259 @@ async def test_get_repository_files_mixed_none_and_valid_downloads() -> None:
     assert results[0]["file"]["path"] == "/src/good.py"
     # Verify None was not included
     assert all(r is not None for r in results)
+
+
+@pytest.mark.asyncio
+async def test_generate_repository_policies_multiple_repos(
+    mock_event_context: MagicMock,
+) -> None:
+    """Verify generate_repository_policies fetches policies from all repos concurrently."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": "repo1",
+                "name": "Repo One",
+                "project": {"id": "proj1", "name": "Project One"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "id": "repo2",
+                "name": "Repo Two",
+                "project": {"id": "proj1", "name": "Project One"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "id": "repo3",
+                "name": "Repo Three",
+                "project": {"id": "proj2", "name": "Project Two"},
+                "defaultBranch": "refs/heads/main",
+            },
+        ]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        params = kwargs.get("params", {})
+        repo_id = params.get("repositoryId", "")
+        return Response(
+            status_code=200,
+            json={"value": [{"id": f"policy-{repo_id}", "name": f"Policy-{repo_id}"}]},
+        )
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client,
+                "generate_repositories",
+                side_effect=mock_generate_repositories,
+            ),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            policies: List[Dict[str, Any]] = []
+            async for batch in client.generate_repository_policies():
+                policies.extend(batch)
+
+            policy_ids = {p["id"] for p in policies}
+            assert policy_ids == {"policy-repo1", "policy-repo2", "policy-repo3"}
+            # Verify __repository enrichment
+            for policy in policies:
+                repo_id = policy["id"].replace("policy-", "")
+                assert policy["__repository"]["id"] == repo_id
+
+
+@pytest.mark.asyncio
+async def test_get_release() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+    expected_release = {"id": 42, "name": "Release-42", "status": "active"}
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json=expected_release
+        )
+
+        result = await client.get_release("project-123", 42)
+
+        assert result == expected_release
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "https://your_organization_url.com/project-123/_apis/release/releases/42",
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_release_not_found() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = None
+
+        result = await client.get_release("project-123", 42)
+
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_release_deployment() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+    expected_deployment = {"id": 99, "deploymentStatus": "succeeded"}
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json={"count": 1, "value": [expected_deployment]}
+        )
+
+        result = await client.get_release_deployment("project-123", 10, 5)
+
+        assert result == expected_deployment
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "https://your_organization_url.com/project-123/_apis/release/deployments",
+            params={
+                "deploymentStatus": "all",
+                "releaseId": 10,
+                "definitionEnvironmentId": 5,
+                "$top": 1,
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_release_deployment_not_found() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json={"count": 0, "value": []}
+        )
+
+        result = await client.get_release_deployment("project-123", 10, 5)
+
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_release_deployment_404() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = None
+
+        result = await client.get_release_deployment("project-123", 10, 5)
+
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_test_runs_by_build(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        assert "proj1/_apis/test/runs" in url
+        assert params is not None
+        assert params["buildUri"] == "vstfs:///Build/Build/456"
+        assert params["includeRunDetails"] is True
+        yield EXPECTED_TEST_RUNS
+
+    async with event_context("test_event"):
+        with patch.object(
+            client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_get_paginated_by_top_and_skip,
+        ):
+            result = await client.get_test_runs_by_build("proj1", "456")
+
+            assert len(result) == 2
+            assert result[0]["id"] == 1
+            assert result[1]["id"] == 2
+
+
+@pytest.mark.asyncio
+async def test_get_test_runs_by_build_with_enrichment(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        assert params is not None
+        assert params["buildUri"] == "vstfs:///Build/Build/789"
+        yield EXPECTED_TEST_RUNS
+
+    async def mock_enrich_test_runs(
+        test_runs: List[Dict[str, Any]],
+        project_id: str,
+        include_results: bool = False,
+        coverage_config: Any = None,
+    ) -> None:
+        for run in test_runs:
+            if include_results:
+                run["__testResults"] = [{"id": 100000}]
+
+    async with event_context("test_event"):
+        with patch.object(
+            client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_get_paginated_by_top_and_skip,
+        ):
+            with patch.object(
+                client,
+                "_enrich_test_runs",
+                side_effect=mock_enrich_test_runs,
+            ) as mock_enrich:
+                result = await client.get_test_runs_by_build(
+                    "proj1", "789", include_results=True
+                )
+
+                assert len(result) == 2
+                assert "__testResults" in result[0]
+                assert result[0]["__testResults"][0]["id"] == 100000
+                mock_enrich.assert_called_once_with(result, "proj1", True, None)
+
+
+@pytest.mark.asyncio
+async def test_get_test_runs_by_build_empty(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_get_paginated_by_top_and_skip,
+        ):
+            with patch.object(client, "_enrich_test_runs") as mock_enrich:
+                result = await client.get_test_runs_by_build("proj1", "999")
+
+                assert len(result) == 0
+                mock_enrich.assert_not_called()

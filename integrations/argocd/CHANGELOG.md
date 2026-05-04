@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.8 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 0.4.7 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.4.6 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.4.5 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.4.4 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.4.3 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.4.2 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.4.1 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.4.0 (2026-04-20)
+
+
+### Improvements
+
+- Added Literal kind definitions to `ArgocdPortAppConfig` for schema validation compliance
+
+
+## 0.3.11 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.3.10 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
 ## 0.3.9 (2026-04-12)
 
 

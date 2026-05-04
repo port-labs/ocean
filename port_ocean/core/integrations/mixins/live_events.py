@@ -6,7 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.integrations.mixins.utils import handle_items_to_parse, is_lakehouse_data_enabled
-from port_ocean.core.models import Entity, LakehouseOperation
+from port_ocean.core.models import Entity, LakehouseOperation, LakehouseEventType
 from port_ocean.core.ocean_types import RAW_ITEM
 from port_ocean.context.ocean import ocean
 
@@ -60,7 +60,7 @@ class LiveEventsMixin(HandlerMixin):
             for raw_item in webhook_event_raw_result.updated_raw_results:
                 async for batch in self._expand_raw_item(raw_item, resource):
                     calculation_results = await self.entity_processor.parse_items(
-                        resource, batch, parse_all=True, send_raw_data_examples_amount=0
+                        resource, batch, parse_all=True
                     )
                     entities.extend(calculation_results.entity_selector_diff.passed)
                     entities_not_passed.extend(calculation_results.entity_selector_diff.failed)
@@ -68,7 +68,7 @@ class LiveEventsMixin(HandlerMixin):
             for raw_item in webhook_event_raw_result.deleted_raw_results:
                 async for batch in self._expand_raw_item(raw_item, resource):
                     deletion_results = await self.entity_processor.parse_items(
-                        resource, batch, parse_all=True, send_raw_data_examples_amount=0
+                        resource, batch, parse_all=True
                     )
                     entities_to_delete.extend(deletion_results.entity_selector_diff.passed)
 
@@ -106,18 +106,6 @@ class LiveEventsMixin(HandlerMixin):
                     continue
                 kind = webhook_event_raw_result.resource.kind
 
-                kafka_metadata = {}
-                if webhook_event_raw_result.original_webhook:
-                    kafka_metadata["originalWebhook"] = webhook_event_raw_result.original_webhook
-
-                # Include specific allowed headers in kafka_metadata
-                allowed_headers = ["x-jira-webhook-event"]
-                if webhook_event_raw_result.original_headers:
-                    for header_key in allowed_headers:
-                        header_value = webhook_event_raw_result.original_headers.get(header_key)
-                        if header_value:
-                            kafka_metadata[header_key] = header_value
-
                 resource_index = (
                     webhook_event_raw_result.resource_index
                     if webhook_event_raw_result.resource_index is not None
@@ -137,8 +125,8 @@ class LiveEventsMixin(HandlerMixin):
                             kind,
                             index=resource_index,
                             operation=LakehouseOperation.UPSERT,
-                            data_type="live-event",
-                            kafka_metadata=kafka_metadata,
+                            resync_start_time=webhook_event_raw_result.created_at,
+                            event_type=LakehouseEventType.LIVE_EVENT,
                         )
                     except Exception as e:
                         logger.warning(
@@ -160,8 +148,8 @@ class LiveEventsMixin(HandlerMixin):
                             kind,
                             index=resource_index,
                             operation=LakehouseOperation.DELETE,
-                            data_type="live-event",
-                            kafka_metadata=kafka_metadata,
+                            resync_start_time=webhook_event_raw_result.created_at,
+                            event_type=LakehouseEventType.LIVE_EVENT,
                         )
                     except Exception as e:
                         logger.warning(

@@ -1,5 +1,5 @@
 from graphlib import CycleError
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Awaitable, Callable, cast
 
 from loguru import logger
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
@@ -1108,7 +1108,7 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
     - Raw data has users with 'name' and 'email' fields
     - Mapping tries to use '.nonexistent_field' as identifier (doesn't exist)
     - Transformation should fail (no valid entities created)
-    - BUT examples should still be sent to Port
+    - BUT examples should already be sent to Port by the extraction wrapper
     """
     # Create a resource config with a broken mapping (identifier field doesn't exist)
     broken_resource_config = ResourceConfig(
@@ -1147,6 +1147,9 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
     # Enable sending raw data examples
     mock_ocean.config.send_raw_data_examples = True
 
+    async def resync_handler(kind: str) -> list[dict[str, Any]]:
+        return raw_results
+
     async with event_context(
         EventType.RESYNC,
         trigger_type="machine",
@@ -1154,12 +1157,20 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
     ) as event:
         event.port_app_config = broken_app_config
 
-        # Call _register_resource_raw which will process the data
+        extracted_results, errors = (
+            await mock_sync_raw_mixin_with_jq_processor._execute_resync_tasks(
+                [resync_handler],
+                broken_resource_config,
+                send_raw_data_examples_amount=2,
+            )
+        )
+        assert errors == []
+
+        # Call _register_resource_raw which will process the data after examples were sent
         result = await mock_sync_raw_mixin_with_jq_processor._register_resource_raw(
             broken_resource_config,
-            raw_results,
+            cast(list[dict[Any, Any]], extracted_results),
             UserAgentType.exporter,
-            send_raw_data_examples_amount=2,  # Request 2 examples
         )
 
         # KEY ASSERTION: Examples should be sent even though transformation failed
@@ -1489,3 +1500,38 @@ async def test_parse_items_sets_both_kind_and_resource_kind_in_logger_context(
     assert any(
         r.get("resource_kind") == mock_resource_config.kind for r in records
     ), "Expected 'resource_kind' to be set in logger context"
+
+
+@pytest.mark.asyncio
+async def test_execute_resync_tasks_passes_examples_amount_to_each_async_generator(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+) -> None:
+    async def generator_one(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if False:
+            yield [{"kind": kind}]
+
+    async def generator_two(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if False:
+            yield [{"kind": kind}]
+
+    wrapped_generator_one = generator_one("test-kind")
+    wrapped_generator_two = generator_two("test-kind")
+
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.resync_generator_wrapper",
+        side_effect=[wrapped_generator_one, wrapped_generator_two],
+    ) as mock_wrapper:
+        resync_handlers = [
+            cast(Callable[[str], Awaitable[list[dict[Any, Any]]]], generator_one),
+            cast(Callable[[str], Awaitable[list[dict[Any, Any]]]], generator_two),
+        ]
+        await mock_sync_raw_mixin._execute_resync_tasks(
+            resync_handlers,
+            mock_resource_config,
+            send_raw_data_examples_amount=5,
+        )
+
+    assert mock_wrapper.call_count == 2
+    assert mock_wrapper.call_args_list[0].kwargs == {"send_raw_data_examples_amount": 5}
+    assert mock_wrapper.call_args_list[1].kwargs == {"send_raw_data_examples_amount": 5}
