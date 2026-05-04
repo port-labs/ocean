@@ -201,7 +201,7 @@ class TestAccountStrategyFactory:
 
             assert isinstance(strategy.provider, AssumeRoleProvider)
             mock_logger.warning.assert_any_call(
-                "[AccountStrategyFactory] Unknown provider 'UnknownProvider', skipping..."
+                "Unknown provider 'UnknownProvider', skipping..."
             )
 
     @pytest.mark.asyncio
