@@ -16,32 +16,53 @@ def _build_transport(rate_limiter: PagerDutyRateLimiter) -> PagerDutyRetryTransp
 
 class TestPagerDutyRetryTransport:
     @pytest.mark.asyncio
-    async def test_after_retry_async_feeds_rate_limiter(self) -> None:
+    async def test_after_retry_async_feeds_limiter_for_retryable_response(self) -> None:
+        """Intermediate retry responses (e.g. per-minute 429s) feed the limiter
+        early so concurrent in-flight calls can react before they exhaust their
+        own retry budgets."""
         limiter = PagerDutyRateLimiter(max_concurrent=5)
         transport = _build_transport(limiter)
 
         request = httpx.Request(
-            "POST",
-            "https://api.pagerduty.com/analytics/metrics/incidents/services",
+            "GET", "https://api.pagerduty.com/analytics/raw/incidents/X"
         )
         response = MagicMock(spec=httpx.Response)
+        response.status_code = 429
         response.headers = httpx.Headers(
             {
                 "ratelimit-limit": "960",
-                "ratelimit-remaining": "959",
+                "ratelimit-remaining": "0",
                 "ratelimit-reset": "56",
-                "daily-ratelimit-limit": "10",
-                "daily-ratelimit-remaining": "-273",
-                "daily-ratelimit-reset": "49015",
             }
         )
 
         await transport.after_retry_async(request, response, attempt=1)
 
-        assert limiter.daily_rate_limit_info is not None
-        assert limiter.daily_rate_limit_info.remaining == -273
         assert limiter.rate_limit_info is not None
-        assert limiter.rate_limit_info.remaining == 959
+        assert limiter.rate_limit_info.remaining == 0
+
+    @pytest.mark.asyncio
+    async def test_after_retry_async_skips_final_response(self) -> None:
+        """Final responses (2xx, daily-exhausted 429) are not retried, so the
+        transport leaves the limiter update to `send_api_request`'s finally."""
+        limiter = PagerDutyRateLimiter(max_concurrent=5)
+        transport = _build_transport(limiter)
+
+        request = httpx.Request("GET", "https://api.pagerduty.com/services")
+        ok_response = MagicMock(spec=httpx.Response)
+        ok_response.status_code = 200
+        ok_response.headers = httpx.Headers(
+            {
+                "ratelimit-limit": "960",
+                "ratelimit-remaining": "959",
+                "ratelimit-reset": "56",
+            }
+        )
+
+        await transport.after_retry_async(request, ok_response, attempt=1)
+
+        assert limiter.rate_limit_info is None
+        assert limiter.daily_rate_limit_info is None
 
     @pytest.mark.asyncio
     async def test_should_retry_async_false_for_429_with_daily_exhausted(self) -> None:
@@ -107,9 +128,9 @@ class TestPagerDutyRetryTransport:
         assert await transport._should_retry_async(response) is False
 
     @pytest.mark.asyncio
-    async def test_after_retry_async_is_called_during_retry_loop(self) -> None:
-        """End-to-end-ish: drive `_retry_operation_async` and confirm the limiter
-        is fed from the very first 429 response — not just the final one."""
+    async def test_daily_exhausted_429_does_not_loop(self) -> None:
+        """End-to-end-ish: a 429 with daily quota gone must return on the first
+        attempt rather than burning ~10 retries × ~60s."""
         limiter = PagerDutyRateLimiter(max_concurrent=5)
         transport = _build_transport(limiter)
 
@@ -121,10 +142,7 @@ class TestPagerDutyRetryTransport:
         first_429.status_code = 429
         first_429.headers = httpx.Headers(
             {
-                "ratelimit-limit": "960",
                 "ratelimit-remaining": "959",
-                "ratelimit-reset": "56",
-                "daily-ratelimit-limit": "10",
                 "daily-ratelimit-remaining": "-1",
                 "daily-ratelimit-reset": "49015",
             }
@@ -136,9 +154,5 @@ class TestPagerDutyRetryTransport:
 
         result = await transport._retry_operation_async(request, send_method)
 
-        # Single attempt — `_should_retry_async` returned False on first 429,
-        # so retries did not loop, and the rate limiter was fed once.
         assert send_method.await_count == 1
         assert result is first_429
-        assert limiter.daily_rate_limit_info is not None
-        assert limiter.daily_rate_limit_info.remaining == -1

@@ -8,9 +8,9 @@ from clients.rate_limiter import PagerDutyRateLimiter, daily_quota_exhausted
 
 
 class PagerDutyRetryTransport(RetryTransport):
-    """Feeds the rate limiter from every response and stops retrying 429s once
-    the analytics daily quota is exhausted (since `ratelimit-reset` is irrelevant
-    when `daily-ratelimit-reset` is hours away)."""
+    """Feeds the rate limiter from intermediate retry responses and stops
+    retrying 429s once the analytics daily quota is exhausted.
+    """
 
     def __init__(self, *, rate_limiter: PagerDutyRateLimiter, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -19,7 +19,8 @@ class PagerDutyRetryTransport(RetryTransport):
     async def after_retry_async(
         self, request: httpx.Request, response: httpx.Response, attempt: int
     ) -> None:
-        self._rate_limiter.update_rate_limits(response.headers, str(request.url))
+        if await self._should_retry_async(response):
+            self._rate_limiter.update_rate_limits(response.headers, str(request.url))
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         if (

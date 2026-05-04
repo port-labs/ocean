@@ -269,19 +269,17 @@ class TestPagerDutyClient:
             assert result == {}
 
     @pytest.mark.asyncio
-    async def test_send_api_request_short_circuits_after_daily_quota_429(
+    async def test_send_api_request_converts_daily_exhausted_429(
         self, client: PagerDutyClient
     ) -> None:
-        """First analytics 429 with daily quota exhausted should arm the limiter
-        so that subsequent analytics calls short-circuit without hitting HTTP."""
+        """A 429 carrying daily-quota-exhausted headers must surface as
+        PagerDutyDailyRateLimitExceededError so callers can distinguish it from
+        transient 429s and other errors."""
         rate_limit_429 = MagicMock()
         rate_limit_429.status_code = 429
         rate_limit_429.headers = httpx.Headers(
             {
-                "ratelimit-limit": "960",
                 "ratelimit-remaining": "959",
-                "ratelimit-reset": "56",
-                "daily-ratelimit-limit": "10",
                 "daily-ratelimit-remaining": "-273",
                 "daily-ratelimit-reset": "49015",
             }
@@ -290,20 +288,34 @@ class TestPagerDutyClient:
             "Too Many Requests", request=MagicMock(), response=rate_limit_429
         )
 
-        request_mock = AsyncMock(return_value=rate_limit_429)
+        with patch.object(
+            client.http_client, "request", AsyncMock(return_value=rate_limit_429)
+        ):
+            with pytest.raises(PagerDutyDailyRateLimitExceededError):
+                await client.send_api_request(
+                    "analytics/metrics/incidents/services", method="POST"
+                )
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_short_circuits_when_daily_budget_known_exhausted(
+        self, client: PagerDutyClient
+    ) -> None:
+        """Once the rate limiter knows daily quota is gone, analytics calls must
+        not even reach the HTTP layer."""
+        from clients.rate_limiter import RateLimitInfo
+
+        client._rate_limiter.daily_rate_limit_info = RateLimitInfo(
+            limit=10, remaining=-1, seconds_until_reset=49015
+        )
+
+        request_mock = AsyncMock()
         with patch.object(client.http_client, "request", request_mock):
             with pytest.raises(PagerDutyDailyRateLimitExceededError):
                 await client.send_api_request(
                     "analytics/metrics/incidents/services", method="POST"
                 )
 
-            with pytest.raises(PagerDutyDailyRateLimitExceededError):
-                await client.send_api_request(
-                    "analytics/metrics/incidents/services", method="POST"
-                )
-
-        # Only the first call hits the network; the second short-circuits via check_daily_budget
-        assert request_mock.await_count == 1
+        assert request_mock.await_count == 0
 
     @pytest.mark.asyncio
     async def test_send_api_request_daily_quota_does_not_block_rest_endpoints(
