@@ -239,11 +239,36 @@ EXPECTED_RELEASES = [
         "status": "abandoned",
         "createdOn": "2017-06-16T01:36:20.397Z",
         "modifiedOn": "2017-06-16T01:36:21.07Z",
+        "createdBy": {
+            "displayName": "Chuck Reinhart",
+            "uniqueName": "fabfiber@outlook.com",
+            "id": "aeb95c63-4fac-4948-84ce-711b0a9dda97",
+        },
+        "modifiedBy": {
+            "displayName": "Chuck Reinhart",
+            "uniqueName": "fabfiber@outlook.com",
+            "id": "aeb95c63-4fac-4948-84ce-711b0a9dda97",
+        },
         "description": "Creating Sample release",
         "reason": "manual",
         "releaseNameFormat": "Release-$(rev:r)",
         "keepForever": False,
+        "releaseDefinition": {
+            "id": 1,
+            "name": "MyShuttle.CD",
+            "url": "https://vsrm.dev.azure.com/fabrikam/proj1/_apis/Release/definitions/1",
+            "_links": {},
+        },
         "projectReference": {"id": "proj1", "name": "Project One"},
+        "tags": [],
+        "properties": {},
+        "variables": {},
+        "variableGroups": [],
+        "_links": {
+            "web": {
+                "href": "https://dev.azure.com/fabrikam/proj1/_release?releaseId=18"
+            }
+        },
     }
 ]
 
@@ -4746,6 +4771,135 @@ async def test_generate_repository_policies_multiple_repos(
             for policy in policies:
                 repo_id = policy["id"].replace("policy-", "")
                 assert policy["__repository"]["id"] == repo_id
+
+
+EXPECTED_RELEASE_DEFINITIONS = [
+    {
+        "id": 1,
+        "name": "MyShuttle.CD",
+        "source": "userInterface",
+        "revision": 3,
+        "description": "Sample release definition",
+        "createdOn": "2017-05-31T00:00:00Z",
+        "modifiedOn": "2017-06-01T00:00:00Z",
+        "createdBy": {"uniqueName": "user@example.com"},
+        "modifiedBy": {"uniqueName": "user@example.com"},
+        "path": "\\",
+        "projectReference": None,
+        "isDeleted": False,
+        "isDisabled": False,
+        "releaseNameFormat": "Release-$(rev:r)",
+        "variableGroups": [],
+        "environments": [
+            {
+                "id": 1,
+                "name": "Dev",
+                "rank": 1,
+                "owner": {"uniqueName": "user@example.com"},
+                "variableGroups": [],
+                "schedules": [],
+                "retentionPolicy": {
+                    "daysToKeep": 30,
+                    "releasesToKeep": 3,
+                    "retainBuild": True,
+                },
+                "properties": {},
+                "preDeploymentGates": {"id": 0, "gatesOptions": None, "gates": []},
+                "postDeploymentGates": {"id": 0, "gatesOptions": None, "gates": []},
+                "environmentTriggers": [],
+            },
+            {
+                "id": 2,
+                "name": "QA",
+                "rank": 2,
+                "owner": {"uniqueName": "user@example.com"},
+                "variableGroups": [],
+                "schedules": [],
+                "retentionPolicy": {
+                    "daysToKeep": 30,
+                    "releasesToKeep": 3,
+                    "retainBuild": True,
+                },
+                "properties": {},
+                "preDeploymentGates": {"id": 0, "gatesOptions": None, "gates": []},
+                "postDeploymentGates": {"id": 0, "gatesOptions": None, "gates": []},
+                "environmentTriggers": [],
+            },
+        ],
+        "_links": {
+            "web": {
+                "href": "https://vsrm.dev.azure.com/org/proj/_release?definitionId=1"
+            }
+        },
+    }
+]
+
+
+@pytest.mark.asyncio
+async def test_generate_release_definitions(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    mock_project = {"id": "proj1", "name": "Project One"}
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [mock_project]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "definitions" in url:
+            yield EXPECTED_RELEASE_DEFINITIONS
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated_by_top_and_continuation_token,
+            ):
+                definitions: List[Dict[str, Any]] = []
+                async for batch in client.generate_release_definitions():
+                    definitions.extend(batch)
+
+                assert len(definitions) == 1
+                assert definitions[0]["id"] == 1
+                assert definitions[0]["name"] == "MyShuttle.CD"
+                assert definitions[0]["__project"] == mock_project
+                assert len(definitions[0]["environments"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_generate_release_definitions_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            definitions: List[Dict[str, Any]] = []
+            async for batch in client.generate_release_definitions():
+                definitions.extend(batch)
+
+            assert not definitions
 
 
 @pytest.mark.asyncio
