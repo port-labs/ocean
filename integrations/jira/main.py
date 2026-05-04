@@ -148,7 +148,7 @@ async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
 
         async for sprint_batch in stream_async_iterators_tasks(*sprint_streams):
-            logger.info(f"Received sprint batch with {len(sprint_batch)} sprints")
+            logger.debug(f"Received sprint batch with {len(sprint_batch)} sprints")
             yield sprint_batch
 
 

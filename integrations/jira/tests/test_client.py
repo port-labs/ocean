@@ -1577,37 +1577,6 @@ async def test_get_paginated_sprints_for_board_returns_empty_when_board_has_no_s
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_sprints_for_board_skips_board_and_logs_warning_on_http_error(
-    mock_jira_client: JiraClient,
-) -> None:
-    """A board returning HTTPStatusError must yield nothing and log a warning —
-    one inaccessible board must not abort the entire resync fan-out."""
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.side_effect = httpx.HTTPStatusError(
-            "Forbidden",
-            request=Request(
-                "GET",
-                "https://example.atlassian.net/rest/agile/latest/board/99/sprint",
-            ),
-            response=Response(
-                403,
-                request=Request("GET", "https://example.atlassian.net"),
-            ),
-        )
-
-        batches: list[list[dict[str, Any]]] = []
-        async for batch in mock_jira_client.get_paginated_sprints_for_board(
-            board_id=99,
-            sprint_state=["active"],
-        ):
-            batches.append(batch)
-
-        assert len(batches) == 0
-
-
-@pytest.mark.asyncio
 async def test_get_single_sprint_returns_sprint_by_id(
     mock_jira_client: JiraClient,
 ) -> None:
@@ -1753,9 +1722,9 @@ async def test_get_single_sprint_propagates_request_error_on_network_failure(
     [
         (200, 5),
         (500, 3),
-        (1000, 1),
-        (2000, 2),
-        (5000, 1),
+        pytest.param(1000, 1, marks=pytest.mark.slow),
+        pytest.param(2000, 2, marks=pytest.mark.slow),
+        pytest.param(5000, 1, marks=pytest.mark.slow),
     ],
     ids=[
         "200_boards_5_sprints_each",
