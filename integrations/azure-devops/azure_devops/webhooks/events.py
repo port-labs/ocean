@@ -43,6 +43,15 @@ class AdvancedSecurityAlertEvents(StrEnum):
     SECURITY_ALERT_UPDATED = "ms.vss-alerts.alert-updated-event"
 
 
+class BuildEvents(StrEnum):
+    """
+    Events for Azure DevOps build webhooks.
+    https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops#build-completed
+    """
+
+    BUILD_COMPLETE = "build.complete"
+
+
 class PipelineEvents(StrEnum):
     """
     Events for Azure DevOps pipeline webhooks.
