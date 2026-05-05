@@ -19,7 +19,7 @@ class SingleOrganizationOptions(TypedDict):
 
 class SingleRepositoryOptions(SingleOrganizationOptions):
     name: str
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class ListRepositoryOptions(SingleOrganizationOptions):
@@ -28,7 +28,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     type: str
     organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -71,21 +71,23 @@ class ListIssueOptions(RepositoryIdentifier):
     labels: NotRequired[Optional[str]]
 
 
-class SingleUserOptions(SingleOrganizationOptions):
+class BaseUserOptions(SingleOrganizationOptions):
+    include_saml_email: NotRequired[bool]
+
+
+class SingleUserOptions(BaseUserOptions):
     login: Required[str]
 
 
-class ListUserOptions(SingleOrganizationOptions):
+class ListUserOptions(BaseUserOptions):
     """Options for listing users."""
 
-    pass
 
-
-class SingleTeamOptions(SingleOrganizationOptions):
+class SingleTeamOptions(BaseUserOptions):
     slug: Required[str]
 
 
-class ListTeamOptions(SingleOrganizationOptions):
+class ListTeamOptions(BaseUserOptions):
     """Options for listing teams."""
 
 

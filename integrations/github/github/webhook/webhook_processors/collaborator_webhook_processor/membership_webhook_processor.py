@@ -13,11 +13,11 @@ from github.helpers.utils import (
     enrich_with_organization,
 )
 from github.webhook.events import (
-    COLLABORATOR_EVENTS,
     COLLABORATOR_UPSERT_EVENTS,
 )
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
+    CollaboratorEventValidator,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -30,30 +30,18 @@ from github.webhook.webhook_processors.collaborator_webhook_processor.utils impo
 )
 
 
-class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
+class CollaboratorMembershipWebhookProcessor(
+    BaseRepositoryWebhookProcessor, CollaboratorEventValidator
+):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         return await self._validate_payload(payload)
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
-
-        has_required_fields = not (
-            {"action", "organization", "team", "member"} - payload.keys()
-        )
-
-        has_org_login = "login" in payload.get("organization", {})
-        has_team_name = "name" in payload.get("team", {})
-        has_member_login = "login" in payload.get("member", {})
-
-        return (
-            has_required_fields and has_org_login and has_team_name and has_member_login
-        )
+        return await self.validate_membership_collaborator_payload(payload)
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return (
-            event.headers.get("x-github-event") == "membership"
-            and event.payload.get("action") in COLLABORATOR_EVENTS
-        )
+        return await self.should_process_membership_collaborator_event(event)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.COLLABORATOR]

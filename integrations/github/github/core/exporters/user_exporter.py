@@ -17,6 +17,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
         organization = options["organization"]
         login_option = options["login"]
+        include_saml_email = bool(options["include_saml_email"])
         variables = {"login": login_option}
         payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
         response = await self.client.send_api_request(
@@ -28,14 +29,17 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         user = response["data"]["user"]
 
-        if not user.get("email"):
-            await enrich_members_with_saml_email(self.client, organization, [user])
+        await enrich_members_with_saml_email(
+            self.client, organization, [user], include_saml_email
+        )
+
         return user
 
     async def get_paginated_resources[
         ExporterOptionT: ListUserOptions
     ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         organization = options["organization"]
+        include_saml_email = bool(options["include_saml_email"])
         variables = {
             "organization": organization,
             "__path": "organization.membersWithRole",
@@ -43,5 +47,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         async for users in self.client.send_paginated_request(
             LIST_ORG_MEMBER_GQL, variables
         ):
-            await enrich_members_with_saml_email(self.client, organization, users)
+            await enrich_members_with_saml_email(
+                self.client, organization, users, include_saml_email
+            )
             yield users

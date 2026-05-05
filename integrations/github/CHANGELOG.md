@@ -7,6 +7,120 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.3.18 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 5.3.17 (2026-04-29)
+
+
+### Bug Fixes
+
+- Removed unused `PageInfoFields` GraphQL fragment from the single pull request detail query, which caused all webhook-triggered PR updates to fail when using `api: graphql`
+
+
+## 5.3.16 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 5.3.15 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 5.3.14 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 5.3.13 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 5.3.12 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 5.3.11 (2026-04-21)
+
+
+### Bug Fixes
+
+- Removed `extra = "forbid"` from the GitHub user and team selector blocks
+
+
+## 5.3.10 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 5.3.9 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 5.3.8 (2026-04-20)
+
+
+### Improvements
+
+- Added `includeSAMLEmail` selector to enrich exported users and team members with `__SAMLEmail` from the org SAML identity provider, and propagated the option through resync and webhook flows.
+
+
+## 5.3.7 (2026-04-20)
+
+
+### Improvements
+
+- Added further context to dispatch event evaluation logs
+- Revised include_relations selector's title and description
+
+
+## 5.3.6 (2026-04-16)
+
+
+### Improvements
+
+- Added structured repository relations enrichment configuration (teams/sbom/collaborators), including collaborator `affiliation` support.
+- Expanded repository webhook handling to also react to collaborator/team collaborator events so repository entities can be re-enriched when relationships change.
+
+
+## 5.3.5 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
 ## 5.3.4 (2026-04-15)
 
 
