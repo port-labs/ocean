@@ -15,10 +15,6 @@ def _services_without_analytics(
 async def enrich_service_with_analytics_data(
     client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
 ) -> list[dict[str, Any]]:
-    """Attach `__analytics` to each service. Returns services with `__analytics: None`
-    when the daily quota is exhausted (logged at WARNING) or any other error occurs
-    (logged at ERROR), so resyncs degrade gracefully instead of failing.
-    """
     service_ids = [service["id"] for service in services]
     try:
         services_analytics = await client.get_service_analytics(

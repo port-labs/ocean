@@ -130,12 +130,12 @@ class PagerDutyRateLimiter:
                 f"(resets in {info.seconds_until_reset}s)"
             )
 
-        daily_info = self._parse_daily_headers(parsed)
-        if daily_info:
-            self.daily_rate_limit_info = daily_info
+        daily_rate_limit_info = self._parse_daily_headers(parsed)
+        if daily_rate_limit_info:
+            self.daily_rate_limit_info = daily_rate_limit_info
             logger.debug(
-                f"Daily rate limit on {resource}: {daily_info.remaining}/{daily_info.limit} "
-                f"remaining (resets in {daily_info.seconds_until_reset}s)"
+                f"Daily rate limit on {resource}: {daily_rate_limit_info.remaining}/{daily_rate_limit_info.limit} "
+                f"remaining (resets in {daily_rate_limit_info.seconds_until_reset}s)"
             )
 
         return info

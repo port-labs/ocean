@@ -337,6 +337,7 @@ class PagerDutyClient(OAuthClient):
 
                 if (
                     status_code == HTTPStatus.TOO_MANY_REQUESTS
+                    and endpoint.startswith("analytics/")
                     and daily_quota_exhausted(e.response.headers)
                 ):
                     raise PagerDutyDailyRateLimitExceededError(
