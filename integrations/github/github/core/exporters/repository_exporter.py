@@ -25,9 +25,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "pages": "_enrich_repository_with_pages",
     }
 
-    async def get_resource[ExporterOptionsT: SingleRepositoryOptions](
-        self, options: ExporterOptionsT
-    ) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionsT: SingleRepositoryOptions
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         name = options["name"]
         organization = options["organization"]
         included_relations = options.get("included_relations")
@@ -52,9 +52,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             organization,
         )
 
-    async def get_paginated_resources[ExporterOptionsT: ListRepositoryOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListRepositoryOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
         organization = options["organization"]
         options_dict = dict(options)

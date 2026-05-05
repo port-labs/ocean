@@ -11,6 +11,7 @@ from port_ocean.context.event import event_context
 from github.helpers.models import RepoSearchParams
 from github.clients.http.rest_client import GithubRestClient
 
+
 TEST_REPOS = [
     {
         "id": 1,
