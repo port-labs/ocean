@@ -1,5 +1,7 @@
+title: GitHub Copilot
 description: github-copilot integration for Port Ocean
 icon: GithubCopilot
+formMappingEnabled: true
 recommendedInstallationMethod: Saas
 features:
   - type: exporter
@@ -7,6 +9,9 @@ features:
     resources:
       - kind: organization-usage-metrics
       - kind: user-usage-metrics
+      - kind: organization-user-usage-metrics
+      - kind: enterprise-usage-metrics
+      - kind: enterprise-user-usage-metrics
 saas:
   enabled: true
 configurations:
@@ -20,3 +25,7 @@ configurations:
     type: url
     default: https://api.github.com
     description: The host of the Github api instance. If not specified, the default will be https://api.github.com.
+  - name: githubEnterpriseName
+    required: false
+    type: string
+    description: Optional GitHub Enterprise account slug (enterprise name) used for enterprise-level Copilot usage metrics endpoints.

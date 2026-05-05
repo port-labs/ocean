@@ -1,5 +1,5 @@
 from io import StringIO
-from typing import Any, cast
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -368,23 +368,15 @@ class TestJQEntityProcessor:
             },
             {"foo": "bar", "baz": "bazbar", "bar": {"foobar": "foobar"}},
         ]
-        with patch(
-            "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor._send_examples"
-        ) as mock_send_examples:
-            result = await mocked_processor._parse_items(
-                mapping, raw_results, send_raw_data_examples_amount=1
-            )
-            assert len(result.misconfigured_entity_keys) > 0
-            assert len(result.misconfigured_entity_keys) == 4
-            assert result.misconfigured_entity_keys == {
-                "identifier": ".ark",
-                "properties.description": ".bazbar",
-                "properties.url": ".foobar",
-                "properties.defaultBranch": ".bar.baz",
-            }
-            assert mock_send_examples.await_args is not None, "mock was not awaited"
-            args, _ = mock_send_examples.await_args
-            assert len(cast(list[Any], args[0])) > 0
+        result = await mocked_processor._parse_items(mapping, raw_results)
+        assert len(result.misconfigured_entity_keys) > 0
+        assert len(result.misconfigured_entity_keys) == 4
+        assert result.misconfigured_entity_keys == {
+            "identifier": ".ark",
+            "properties.description": ".bazbar",
+            "properties.url": ".foobar",
+            "properties.defaultBranch": ".bar.baz",
+        }
 
     async def test_parse_items_empty_required(
         self, mocked_processor: JQEntityProcessor
@@ -545,16 +537,13 @@ class TestJQEntityProcessor:
             assert "WARNING" in line
             assert "ERROR" not in line
 
-    async def test_examples_sent_even_when_transformation_fails(
+    async def test_parse_items_reports_misconfiguration_when_transformation_fails(
         self, mocked_processor: JQEntityProcessor
     ) -> None:
         """
-        Test that kind examples are sent BEFORE transformation, so users can see
-        raw data even when the mapping fails completely.
-
         Scenario: Raw data has user objects with 'name' and 'email', but the mapping
         tries to use '.test' as identifier (which doesn't exist). Transformation
-        should fail, but examples should still be sent.
+        should fail and report the misconfiguration.
         """
         mapping = Mock()
         mapping.kind = "users"
@@ -577,43 +566,17 @@ class TestJQEntityProcessor:
             {"name": "Bob Wilson", "email": "bob@example.com"},
         ]
 
-        with patch(
-            "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor._send_examples"
-        ) as mock_send_examples:
-            result = await mocked_processor._parse_items(
-                mapping, raw_results, send_raw_data_examples_amount=2
-            )
+        result = await mocked_processor._parse_items(mapping, raw_results)
 
-            # Verify examples were sent (this is the key assertion)
-            assert (
-                mock_send_examples.await_args is not None
-            ), "Examples should be sent even when transformation fails"
+        # Verify transformation failed (no entities created because .color doesn't exist)
+        assert (
+            len(result.entity_selector_diff.passed) == 0
+        ), "No entities should pass because identifier mapping failed"
 
-            # Verify the raw data was sent as examples
-            args, _ = mock_send_examples.await_args
-            examples_sent = cast(list[Any], args[0])
-            assert len(examples_sent) == 2, "Should send requested number of examples"
-
-            # Verify examples contain the raw data
-            assert examples_sent[0] == {"name": "John Doe", "email": "john@example.com"}
-            assert examples_sent[1] == {
-                "name": "Jane Smith",
-                "email": "jane@example.com",
-            }
-
-            # Verify the kind was passed correctly
-            kind_arg = args[1]
-            assert kind_arg == "users"
-
-            # Verify transformation failed (no entities created because .color doesn't exist)
-            assert (
-                len(result.entity_selector_diff.passed) == 0
-            ), "No entities should pass because identifier mapping failed"
-
-            # Verify misconfigurations were detected
-            assert (
-                "identifier" in result.misconfigured_entity_keys
-            ), "Should report identifier as misconfigured"
+        # Verify misconfigurations were detected
+        assert (
+            "identifier" in result.misconfigured_entity_keys
+        ), "Should report identifier as misconfigured"
 
     async def test_separate_compileable_and_uncompileable_patterns_simple(
         self, mocked_processor: JQEntityProcessor
@@ -1181,7 +1144,7 @@ class TestJQEntityProcessor:
 
         This test directly exercises the buggy code path:
         - Creates data with nested objects containing sensitive patterns
-        - Makes a shallow copy (as _parse_items does)
+        - Makes a shallow copy (as send_raw_data_examples_before_transform does)
         - Calls mask_object on the copy
         - Verifies the original is NOT mutated
         """
@@ -1218,7 +1181,7 @@ class TestJQEntityProcessor:
             # Store original values for comparison
             raw_results_before: list[dict[str, Any]] = deepcopy(raw_results)
 
-            # Simulate what JQEntityProcessor._parse_items does: shallow copy for examples
+            # Simulate what send_raw_data_examples_before_transform does: shallow copy for examples
             examples_to_send = [item.copy() for item in raw_results[:1]]
 
             # Call mask_object on the examples (as ingest_integration_kind_examples does)
