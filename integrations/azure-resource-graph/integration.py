@@ -45,6 +45,13 @@ class AzureResourceGraphSelector(Selector):
         alias="subscription",
     )
 
+    class Config:
+        @staticmethod
+        def schema_extra(schema: dict, model: type) -> None:
+            props = schema.get("properties", {})
+            if "subscription" in props:
+                props["subscription"]["default"] = {"apiParams": {"version": "2022-12-01"}}
+
 
 class AzureResourceGraphConfig(ResourceConfig):
     selector: AzureResourceGraphSelector = Field(
@@ -87,9 +94,7 @@ class AzurePortAppConfig(PortAppConfig):
         AzureResourceGraphConfig
         | AzureResourceContainerConfig
         | AzureSubscriptionResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class AzureResourceGraphIntegration(BaseIntegration):
