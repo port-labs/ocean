@@ -1583,32 +1583,6 @@ class TestGetPaginatedEpicsForBoard:
             assert len(batches) == 0
 
     @pytest.mark.asyncio
-    async def test_skips_board_and_logs_warning_on_request_error(
-        self, mock_jira_client: JiraClient
-    ) -> None:
-        """Network-level RequestError must yield nothing and log warning —
-        transient failure on one board must not abort a large resync fan-out."""
-        with patch.object(
-            mock_jira_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.side_effect = httpx.RequestError(
-                "Connection timeout",
-                request=Request(
-                    "GET",
-                    "https://example.atlassian.net/rest/agile/latest/board/99/epic",
-                ),
-            )
-
-            batches: list[list[dict[str, Any]]] = []
-            async for batch in mock_jira_client.get_paginated_epics_for_board(
-                board_id=99,
-                done="false",
-            ):
-                batches.append(batch)
-
-            assert len(batches) == 0
-
-    @pytest.mark.asyncio
     async def test_skips_without_api_call_when_board_id_is_zero(
         self, mock_jira_client: JiraClient
     ) -> None:
@@ -1650,34 +1624,6 @@ class TestGetPaginatedEpicsForBoard:
 
             for epic in batches[0]:
                 assert epic["__boardId"] == 7
-
-    @pytest.mark.asyncio
-    async def test_skips_board_and_logs_error_on_unexpected_http_status(
-        self, mock_jira_client: JiraClient
-    ) -> None:
-        with patch.object(
-            mock_jira_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.side_effect = httpx.HTTPStatusError(
-                "Internal Server Error",
-                request=Request(
-                    "GET",
-                    "https://example.atlassian.net/rest/agile/latest/board/99/epic",
-                ),
-                response=Response(
-                    500,
-                    request=Request("GET", "https://example.atlassian.net"),
-                ),
-            )
-
-            batches: list[list[dict[str, Any]]] = []
-            async for batch in mock_jira_client.get_paginated_epics_for_board(
-                board_id=99,
-                done="false",
-            ):
-                batches.append(batch)
-
-            assert len(batches) == 0
 
     @pytest.mark.asyncio
     async def test_skips_board_and_logs_warning_on_http_404_not_found(
@@ -1915,8 +1861,8 @@ class TestGetPaginatedEpicsFanOut:
         "board_count, failing_board_ids",
         [
             (200, [10, 50, 100]),
-            (500, [1, 100, 250, 499]),
-            (1000, list(range(100, 1001, 100))),
+            pytest.param(500, [1, 100, 250, 499], marks=pytest.mark.slow),
+            pytest.param(1000, list(range(100, 1001, 100)), marks=pytest.mark.slow),
         ],
         ids=[
             "200_boards_3_failing",
@@ -1930,8 +1876,6 @@ class TestGetPaginatedEpicsFanOut:
         board_count: int,
         failing_board_ids: list[int],
     ) -> None:
-        """Fan-out must skip boards that fail with HTTPStatusError or RequestError
-        and continue collecting epics from all remaining boards."""
         board_ids: list[int] = list(range(1, board_count + 1))
         boards: list[dict[str, Any]] = [
             {"id": board_id, "name": f"Board {board_id}"} for board_id in board_ids

@@ -10,6 +10,7 @@ from webhook_processors.board_webhook_processor import BoardWebhookProcessor
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from jira.client import MAX_CONCURRENT_REQUESTS
 
 from jira.overrides import (
     JiraIssueConfig,
@@ -136,18 +137,20 @@ async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     async for board_batch in client.get_paginated_boards():
-        epic_streams = [
-            client.get_paginated_epics_for_board(
-                board_id=board["id"],
-                done=selector.done,
-            )
-            for board in board_batch
-            if board.get("id")
-        ]
+        boards = [board for board in board_batch if board.get("id")]
+        for idx in range(0, len(boards), MAX_CONCURRENT_REQUESTS):
+            chunk = boards[idx : idx + MAX_CONCURRENT_REQUESTS]
+            epic_streams = [
+                client.get_paginated_epics_for_board(
+                    board_id=board["id"],
+                    done=selector.done,
+                )
+                for board in chunk
+            ]
 
-        async for epic_batch in stream_async_iterators_tasks(*epic_streams):
-            logger.info(f"Received epic batch with {len(epic_batch)} epics")
-            yield epic_batch
+            async for epic_batch in stream_async_iterators_tasks(*epic_streams):
+                logger.info(f"Received epic batch with {len(epic_batch)} epics")
+                yield epic_batch
 
 
 # Called once when the integration starts.

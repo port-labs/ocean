@@ -715,37 +715,16 @@ class JiraClient(OAuthClient):
                     epic["__boardId"] = board_id
                 yield epic_batch
         except httpx.HTTPStatusError as err:
-            status_code = err.response.status_code
-            match status_code:
+            match err.response.status_code:
                 case 401:
-                    logger.error(
-                        f"Authentication failed fetching epics for board {board_id} — "
-                        f"token is invalid or expired, propagating to fail resync fast"
-                    )
                     raise
-                case 404:
+                case 403 | 404:
                     logger.warning(
-                        f"Board {board_id} not found or user has no permission to view it "
-                        f"(HTTP 404) — skipping board and continuing resync. "
-                        f"This is expected when boards are deleted between resync cycles "
-                        f"or when the token lacks board-level view permissions."
-                    )
-                case 403:
-                    logger.warning(
-                        f"User does not have a valid license to access board {board_id} "
-                        f"(HTTP 403) — skipping board and continuing resync."
+                        f"Board {board_id} returned HTTP {err.response.status_code} — "
+                        f"skipping board and continuing resync"
                     )
                 case _:
-                    logger.error(
-                        f"Unexpected HTTP {status_code} fetching epics for board {board_id} — "
-                        f"skipping board and continuing resync. "
-                        f"URL: {url}, response: {err.response.text[:500]}"
-                    )
-        except httpx.RequestError as err:
-            logger.warning(
-                f"Network error fetching epics for board {board_id}: {err} — "
-                f"skipping board and continuing resync"
-            )
+                    raise
 
     async def get_single_epic(
         self,
