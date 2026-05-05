@@ -1791,10 +1791,10 @@ class TestGetPaginatedEpicsFanOut:
         "board_count, epics_per_board",
         [
             (200, 5),
-            (500, 3),
-            (1000, 1),
-            (2000, 2),
-            (5000, 1),
+            pytest.param(500, 3, marks=pytest.mark.slow),
+            pytest.param(1000, 1, marks=pytest.mark.slow),
+            pytest.param(2000, 2, marks=pytest.mark.slow),
+            pytest.param(5000, 1, marks=pytest.mark.slow),
         ],
         ids=[
             "200_boards_5_epics_each",

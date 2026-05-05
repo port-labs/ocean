@@ -1,4 +1,5 @@
 import asyncio
+from itertools import batched
 from typing import cast, Any
 
 from loguru import logger
@@ -138,8 +139,7 @@ async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for board_batch in client.get_paginated_boards():
         boards = [board for board in board_batch if board.get("id")]
-        for idx in range(0, len(boards), MAX_CONCURRENT_REQUESTS):
-            chunk = boards[idx : idx + MAX_CONCURRENT_REQUESTS]
+        for chunk in batched(boards, MAX_CONCURRENT_REQUESTS):
             epic_streams = [
                 client.get_paginated_epics_for_board(
                     board_id=board["id"],

@@ -39,7 +39,7 @@ EPIC_MAPPING = {
         "name": ".name // .key",
     },
     "relations": {
-        "board": ".__boardIds",
+        "board": ".__boardId",
     },
 }
 
