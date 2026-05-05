@@ -73,7 +73,9 @@ class PollingEventListener(BaseEventListener):
             logger.info(
                 f"Polling event listener iteration after {self.event_listener_config.interval}. Checking for changes"
             )
-            integration = await ocean.app.port_client.get_current_integration()
+            integration = await ocean.app.port_client.get_current_integration(
+                is_polling=True
+            )
             last_updated_at = integration["updatedAt"]
 
             if self.should_resync(last_updated_at):

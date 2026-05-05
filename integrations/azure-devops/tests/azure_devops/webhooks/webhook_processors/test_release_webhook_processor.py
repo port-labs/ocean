@@ -160,7 +160,9 @@ async def test_release_handle_event_success(
         "resource": {"release": {"id": 42}},
     }
 
-    result = await release_processor.handle_event(payload, MagicMock())
+    resource_config = MagicMock()
+    resource_config.kind = "release"
+    result = await release_processor.handle_event(payload, resource_config)
 
     assert isinstance(result, WebhookEventRawResults)
     assert len(result.updated_raw_results) == 1
@@ -187,7 +189,9 @@ async def test_release_handle_event_not_found(
         "resource": {"release": {"id": 42}},
     }
 
-    result = await release_processor.handle_event(payload, MagicMock())
+    resource_config = MagicMock()
+    resource_config.kind = "release"
+    result = await release_processor.handle_event(payload, resource_config)
 
     assert len(result.updated_raw_results) == 0
     assert len(result.deleted_raw_results) == 0
