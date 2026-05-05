@@ -48,10 +48,11 @@ class RateLimiterRequiredHeaders(BaseModel):
 
 
 class PagerDutyRateLimiter:
-    """Concurrency + per-minute sleep + analytics daily-quota short-circuit.
-
-    REST endpoints only emit `ratelimit-*`; analytics endpoints additionally emit
-    `daily-ratelimit-*` for a separate, much smaller daily budget.
+    """
+    Async rate limiter for PagerDuty APIs (REST and Analytics).
+    - Controls concurrency via semaphore.
+    - Tracks rate-limit headers and proactively sleeps when budget is depleted.
+    - Computes retry delays on 429 using ratelimit-reset headers.
     """
 
     def __init__(self, max_concurrent: int = 10) -> None:
