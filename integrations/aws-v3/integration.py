@@ -4,7 +4,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from pydantic import Field, BaseModel
-from typing import ClassVar, List
+from typing import List
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -95,8 +95,6 @@ class AWSResourceConfig(ResourceConfig):
 
 
 class AWSPortAppConfig(PortAppConfig):
-    allow_custom_kinds: ClassVar[bool] = True
-
     resources: List[AWSResourceConfig] = Field(
         default_factory=list,
         title="Resources",
