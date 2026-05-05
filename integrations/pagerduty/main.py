@@ -1,5 +1,4 @@
 import typing
-from typing import Any
 
 from loguru import logger
 from webhook_processors.incidents import IncidentWebhookProcessor
@@ -19,41 +18,7 @@ from integration import (
     PagerdutyServiceResourceConfig,
 )
 from kinds import Kinds
-
-
-async def enrich_service_with_analytics_data(
-    client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
-) -> list[dict[str, Any]]:
-    async def fetch_service_analytics(
-        services: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        service_ids = [service["id"] for service in services]
-        try:
-            services_analytics = await client.get_service_analytics(
-                service_ids, months_period
-            )
-            # Map analytics to corresponding services
-            service_analytics_map = {
-                analytics["service_id"]: analytics for analytics in services_analytics
-            }
-            enriched_services = [
-                {
-                    **service,
-                    "__analytics": service_analytics_map.get(service["id"], None),
-                }
-                for service in services
-            ]
-            return enriched_services
-        except PagerDutyDailyRateLimitExceededError as e:
-            logger.warning(
-                f"Skipping service analytics enrichment for {len(service_ids)} services: {e}"
-            )
-            return [{**service, "__analytics": None} for service in services]
-        except Exception as e:
-            logger.error(f"Failed to fetch analytics for service {service_ids}: {e}")
-            return [{**service, "__analytics": None} for service in services]
-
-    return await fetch_service_analytics(services)
+from utils import enrich_service_with_analytics_data
 
 
 @ocean.on_resync(Kinds.INCIDENTS)
