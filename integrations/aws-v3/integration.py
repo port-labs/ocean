@@ -10,8 +10,16 @@ from port_ocean.core.integrations.base import BaseIntegration
 
 
 class RegionPolicy(BaseModel):
-    allow: List[str] = Field(default_factory=list)
-    deny: List[str] = Field(default_factory=list)
+    allow: List[str] = Field(
+        default_factory=list,
+        title="Allow Regions",
+        description="Regions to exclusively allow e.g. ['us-east-1', 'eu-west-1']. If set, only these regions are synced.",
+    )
+    deny: List[str] = Field(
+        default_factory=list,
+        title="Deny Regions",
+        description="Regions to exclude e.g. ['us-east-1', 'eu-west-1']. If set, all regions except these are synced.",
+    )
 
 
 class AWSResourceSelector(Selector):
@@ -19,20 +27,26 @@ class AWSResourceSelector(Selector):
         alias="regionPolicy",
         default_factory=RegionPolicy,
         title="Region Policy",
-        description="Policy to allow or deny specific AWS regions during resync.",
+        description="Controls which AWS regions to include or exclude during resync. "
+        "Set 'allow' to sync only specific regions, or 'deny' to exclude specific regions. "
+        "If both are empty, all regions are synced. "
+        'Example: {"allow": ["us-east-1", "eu-west-1"]} or {"deny": ["cn-north-1"]}.',
     )
     include_actions: List[str] = Field(
         alias="includeActions",
         default_factory=list,
         max_items=3,
         title="Include Actions",
-        description="List of additional actions to include when fetching resources (max 3).",
+        description="Additional AWS resource types to include when fetching resources (max 3). "
+        'Example: ["AWS::Organizations::Policy", "AWS::Organizations::DelegatedAdministrator"].',
     )
     max_concurrent_accounts: int = Field(
         alias="maxConcurrentAccounts",
         default=5,
         title="Max Concurrent Accounts",
-        description="Maximum number of AWS accounts to process concurrently.",
+        description="Maximum number of AWS accounts to process concurrently. "
+        "Higher values speed up resync but increase API rate limit pressure and memory usage. "
+        "Recommended range: 2-10. Reduce if you encounter throttling errors.",
     )
 
     def is_region_allowed(self, region: str) -> bool:
