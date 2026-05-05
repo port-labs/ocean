@@ -168,13 +168,11 @@ class GitHubClient:
         async for organizations_batch in self.get_organizations():
             for organization in organizations_batch:
                 async for reports in self._get_users_usage_metrics(organization):
-                    enriched_reports = [
-                        {**record, "__organization": organization} for record in reports
-                    ]
-                    for batch in batched(
-                        enriched_reports, self.pagination_page_size_limit
-                    ):
-                        yield list(batch)
+                    for batch in batched(reports, self.pagination_page_size_limit):
+                        yield [
+                            {**record, "__organization": organization}
+                            for record in batch
+                        ]
 
     async def _get_enterprise_usage_metrics(
         self,
@@ -289,11 +287,10 @@ class GitHubClient:
         enterprise_context = {"slug": enterprise}
 
         async for reports in self._get_enterprise_users_usage_metrics():
-            enriched_reports = [
-                {**record, "__enterprise": enterprise_context} for record in reports
-            ]
-            for batch in batched(enriched_reports, self.pagination_page_size_limit):
-                yield list(batch)
+            for batch in batched(reports, self.pagination_page_size_limit):
+                yield [
+                    {**record, "__enterprise": enterprise_context} for record in batch
+                ]
 
     async def _download_and_yield_reports(
         self, download_links: list[str]

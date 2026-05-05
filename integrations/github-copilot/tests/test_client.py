@@ -68,9 +68,18 @@ def mock_organization() -> dict[str, Any]:
     return {"login": "test-org", "id": 1}
 
 
-@pytest.fixture
-def mock_enterprise_context() -> dict[str, str]:
-    return {"slug": "test-enterprise"}
+def _assert_chunked_correctly(
+    batches: list[list[dict[str, Any]]],
+    total_records: int,
+    page_size: int,
+) -> None:
+    """Helper function to assert that batches are correctly chunked."""
+    full_batch_count, remainder = divmod(total_records, page_size)
+    expected_sizes = [page_size] * full_batch_count
+    if remainder:
+        expected_sizes.append(remainder)
+    assert len(batches) == len(expected_sizes)
+    assert [len(batch) for batch in batches] == expected_sizes
 
 
 @pytest.mark.asyncio
@@ -615,11 +624,12 @@ async def test_large_report_is_split_into_fixed_size_batches(
         async for batch in github_client.fetch_users_usage_metrics():
             batches.append(batch)
 
-    assert len(batches) == 4  # 350 records / 100 per batch = 4 batches
-    assert len(batches[0]) == 100
-    assert len(batches[1]) == 100
-    assert len(batches[2]) == 100
-    assert len(batches[3]) == 50
+    # 350 records / 100 per batch = 4 batches
+    _assert_chunked_correctly(
+        batches,
+        total_records=350,
+        page_size=github_client.pagination_page_size_limit,
+    )
 
 
 @pytest.mark.asyncio
@@ -702,8 +712,11 @@ async def test_small_report_below_chunk_size_yields_single_batch(
         async for batch in github_client.fetch_users_usage_metrics():
             batches.append(batch)
 
-    assert len(batches) == 1
-    assert len(batches[0]) == 50
+    _assert_chunked_correctly(
+        batches,
+        total_records=50,
+        page_size=github_client.pagination_page_size_limit,
+    )
 
 
 @pytest.mark.asyncio
@@ -789,11 +802,11 @@ async def test_large_enterprise_report_is_split_into_fixed_size_batches(
         ) in enterprise_github_client.fetch_enterprise_users_usage_metrics():
             batches.append(batch)
 
-    assert len(batches) == 4
-    assert len(batches[0]) == 100
-    assert len(batches[1]) == 100
-    assert len(batches[2]) == 100
-    assert len(batches[3]) == 50
+    _assert_chunked_correctly(
+        batches,
+        total_records=350,
+        page_size=enterprise_github_client.pagination_page_size_limit,
+    )
 
 
 @pytest.mark.asyncio
@@ -886,11 +899,11 @@ async def test_large_day_totals_report_is_split_into_fixed_size_batches(
         async for batch in github_client.fetch_organization_usage_metrics():
             batches.append(batch)
 
-    assert len(batches) == 4
-    assert len(batches[0]) == 100
-    assert len(batches[1]) == 100
-    assert len(batches[2]) == 100
-    assert len(batches[3]) == 50
+    _assert_chunked_correctly(
+        batches,
+        total_records=350,
+        page_size=github_client.pagination_page_size_limit,
+    )
 
 
 @pytest.mark.asyncio
@@ -967,11 +980,11 @@ async def test_large_enterprise_day_totals_split_into_fixed_size_batches(
         async for batch in enterprise_github_client.fetch_enterprise_usage_metrics():
             batches.append(batch)
 
-    assert len(batches) == 4
-    assert len(batches[0]) == 100
-    assert len(batches[1]) == 100
-    assert len(batches[2]) == 100
-    assert len(batches[3]) == 50
+    _assert_chunked_correctly(
+        batches,
+        total_records=350,
+        page_size=enterprise_github_client.pagination_page_size_limit,
+    )
 
 
 @pytest.mark.asyncio
@@ -1055,11 +1068,11 @@ async def test_large_single_file_is_split_into_fixed_size_batches(
         ):
             batches.append(batch)
 
-    assert len(batches) == 4
-    assert len(batches[0]) == 100
-    assert len(batches[1]) == 100
-    assert len(batches[2]) == 100
-    assert len(batches[3]) == 50
+    _assert_chunked_correctly(
+        batches,
+        total_records=350,
+        page_size=github_client.pagination_page_size_limit,
+    )
 
 
 @pytest.mark.asyncio
