@@ -313,7 +313,8 @@ class GitHubClient:
             )
             for records in results:
                 if records:
-                    yield records
+                    for batch in batched(records, self.pagination_page_size_limit):
+                        yield list(batch)
 
     async def _download_and_yield_reports_safe(
         self, download_links: list[str], context: str
@@ -347,7 +348,8 @@ class GitHubClient:
                 if not result:
                     continue
 
-                yield result
+                for batch in batched(result, self.pagination_page_size_limit):
+                    yield list(batch)
 
     async def _get_paginated_data(
         self,

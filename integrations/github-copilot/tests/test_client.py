@@ -1,5 +1,6 @@
 import pytest
 import httpx
+import asyncio
 from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, patch, MagicMock
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -1032,3 +1033,123 @@ async def test_all_enterprise_day_totals_present_across_batches_without_data_los
             all_records.extend(batch)
 
     assert len(all_records) == 250
+
+
+@pytest.mark.asyncio
+async def test_large_single_file_is_split_into_fixed_size_batches(
+    github_client: GitHubClient,
+) -> None:
+    records = _make_user_usage_records(350)
+
+    async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
+        return records
+
+    with patch.object(
+        github_client,
+        "_fetch_report_from_signed_url",
+        side_effect=mock_fetch_report,
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in github_client._download_and_yield_reports(
+            ["https://signed-url-1"]
+        ):
+            batches.append(batch)
+
+    assert len(batches) == 4
+    assert len(batches[0]) == 100
+    assert len(batches[1]) == 100
+    assert len(batches[2]) == 100
+    assert len(batches[3]) == 50
+
+
+@pytest.mark.asyncio
+async def test_all_records_present_across_batches_without_data_loss(
+    github_client: GitHubClient,
+) -> None:
+    records = _make_user_usage_records(250)
+
+    async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
+        return records
+
+    with patch.object(
+        github_client,
+        "_fetch_report_from_signed_url",
+        side_effect=mock_fetch_report,
+    ):
+        all_records: list[dict[str, Any]] = []
+        async for batch in github_client._download_and_yield_reports(
+            ["https://signed-url-1"]
+        ):
+            all_records.extend(batch)
+
+    assert len(all_records) == 250
+
+
+@pytest.mark.asyncio
+async def test_empty_file_yields_nothing(
+    github_client: GitHubClient,
+) -> None:
+    async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
+        return []
+
+    with patch.object(
+        github_client,
+        "_fetch_report_from_signed_url",
+        side_effect=mock_fetch_report,
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in github_client._download_and_yield_reports(
+            ["https://signed-url-1"]
+        ):
+            batches.append(batch)
+
+    assert len(batches) == 0
+
+
+@pytest.mark.asyncio
+async def test_failed_url_is_skipped_and_remaining_urls_continue(
+    github_client: GitHubClient,
+) -> None:
+    records = _make_user_usage_records(50)
+
+    async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
+        if "failing" in signed_url:
+            raise httpx.HTTPError("connection error")
+        return records
+
+    with patch.object(
+        github_client,
+        "_fetch_report_from_signed_url",
+        side_effect=mock_fetch_report,
+    ):
+        all_records: list[dict[str, Any]] = []
+        async for batch in github_client._download_and_yield_reports_safe(
+            [
+                "https://signed-url-1",
+                "https://failing-url",
+                "https://signed-url-3",
+            ],
+            context="test-org",
+        ):
+            all_records.extend(batch)
+
+    assert len(all_records) == 100  # two successful URLs x 50 records each
+
+
+@pytest.mark.asyncio
+async def test_cancelled_error_propagates_and_is_not_swallowed(
+    github_client: GitHubClient,
+) -> None:
+    async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
+        raise asyncio.CancelledError()
+
+    with patch.object(
+        github_client,
+        "_fetch_report_from_signed_url",
+        side_effect=mock_fetch_report,
+    ):
+        with pytest.raises(asyncio.CancelledError):
+            async for _ in github_client._download_and_yield_reports_safe(
+                ["https://signed-url-1"], context="test-org"
+            ):
+                pass
