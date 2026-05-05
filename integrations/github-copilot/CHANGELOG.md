@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.14 (2026-04-30)
+
+
+### Improvements
+
+- Fixed HTTP 413 Payload Too Large errors for large organizations by batching NDJSON report records into fixed-size batches before yielding to Ocean
+
+
 ## 0.3.13 (2026-04-30)
 
 

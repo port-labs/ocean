@@ -38,6 +38,40 @@ def github_client() -> GitHubClient:
     return GitHubClient(base_url=BASE_URL, token=TOKEN)
 
 
+@pytest.fixture
+def enterprise_github_client() -> GitHubClient:
+    return GitHubClient(
+        base_url="https://api.example-github.com",
+        token="test-token",
+        enterprise_name="test-enterprise",
+    )
+
+
+def _make_user_usage_records(count: int) -> list[dict[str, Any]]:
+    return [{"user_id": f"user_{i}", "completions": i} for i in range(count)]
+
+
+def _make_day_totals_report(count: int) -> list[dict[str, Any]]:
+    return [
+        {
+            "day_totals": [
+                {"day": f"2025-01-{str(i).zfill(2)}", "total": i}
+                for i in range(1, count + 1)
+            ]
+        }
+    ]
+
+
+@pytest.fixture
+def mock_organization() -> dict[str, Any]:
+    return {"login": "test-org", "id": 1}
+
+
+@pytest.fixture
+def mock_enterprise_context() -> dict[str, str]:
+    return {"slug": "test-enterprise"}
+
+
 @pytest.mark.asyncio
 async def test_get_organizations_single_page(github_client: GitHubClient) -> None:
     expected_response = organizations_response
@@ -553,3 +587,448 @@ async def test_fetch_enterprise_users_usage_metrics_enriches_records() -> None:
             }
         ],
     ]
+
+
+@pytest.mark.asyncio
+async def test_large_report_is_split_into_fixed_size_batches(
+    github_client: GitHubClient,
+    mock_organization: dict[str, Any],
+) -> None:
+    records = _make_user_usage_records(350)
+
+    async def mock_get_organizations():
+        yield [mock_organization]
+
+    async def mock_get_users_usage_metrics(org):
+        yield records
+
+    with (
+        patch.object(github_client, "get_organizations", mock_get_organizations),
+        patch.object(
+            github_client,
+            "_get_users_usage_metrics",
+            mock_get_users_usage_metrics,
+        ),
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in github_client.fetch_users_usage_metrics():
+            batches.append(batch)
+
+    assert len(batches) == 4  # 350 records / 100 per batch = 4 batches
+    assert len(batches[0]) == 100
+    assert len(batches[1]) == 100
+    assert len(batches[2]) == 100
+    assert len(batches[3]) == 50
+
+
+@pytest.mark.asyncio
+async def test_all_records_are_present_across_batches_without_data_loss(
+    github_client: GitHubClient,
+    mock_organization: dict[str, Any],
+) -> None:
+    records = _make_user_usage_records(250)
+
+    async def mock_get_organizations():
+        yield [mock_organization]
+
+    async def mock_get_users_usage_metrics(org):
+        yield records
+
+    with (
+        patch.object(github_client, "get_organizations", mock_get_organizations),
+        patch.object(
+            github_client,
+            "_get_users_usage_metrics",
+            mock_get_users_usage_metrics,
+        ),
+    ):
+        all_records: list[dict[str, Any]] = []
+        async for batch in github_client.fetch_users_usage_metrics():
+            all_records.extend(batch)
+
+    assert len(all_records) == 250
+    assert all(r["user_id"] == f"user_{i}" for i, r in enumerate(all_records))
+
+
+@pytest.mark.asyncio
+async def test_every_record_in_every_batch_is_enriched_with_organization(
+    github_client: GitHubClient,
+    mock_organization: dict[str, Any],
+) -> None:
+    records = _make_user_usage_records(150)
+
+    async def mock_get_organizations():
+        yield [mock_organization]
+
+    async def mock_get_users_usage_metrics(org):
+        yield records
+
+    with (
+        patch.object(github_client, "get_organizations", mock_get_organizations),
+        patch.object(
+            github_client,
+            "_get_users_usage_metrics",
+            mock_get_users_usage_metrics,
+        ),
+    ):
+        async for batch in github_client.fetch_users_usage_metrics():
+            for record in batch:
+                assert record["__organization"] == mock_organization
+
+
+@pytest.mark.asyncio
+async def test_small_report_below_chunk_size_yields_single_batch(
+    github_client: GitHubClient,
+    mock_organization: dict[str, Any],
+) -> None:
+    records = _make_user_usage_records(50)
+
+    async def mock_get_organizations():
+        yield [mock_organization]
+
+    async def mock_get_users_usage_metrics(org):
+        yield records
+
+    with (
+        patch.object(github_client, "get_organizations", mock_get_organizations),
+        patch.object(
+            github_client,
+            "_get_users_usage_metrics",
+            mock_get_users_usage_metrics,
+        ),
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in github_client.fetch_users_usage_metrics():
+            batches.append(batch)
+
+    assert len(batches) == 1
+    assert len(batches[0]) == 50
+
+
+@pytest.mark.asyncio
+async def test_empty_report_yields_nothing(
+    github_client: GitHubClient,
+    mock_organization: dict[str, Any],
+) -> None:
+    async def mock_get_organizations():
+        yield [mock_organization]
+
+    async def mock_get_users_usage_metrics(org):
+        yield []
+
+    with (
+        patch.object(github_client, "get_organizations", mock_get_organizations),
+        patch.object(
+            github_client,
+            "_get_users_usage_metrics",
+            mock_get_users_usage_metrics,
+        ),
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in github_client.fetch_users_usage_metrics():
+            batches.append(batch)
+
+    assert len(batches) == 0
+
+
+@pytest.mark.asyncio
+async def test_multiple_organizations_each_yield_separate_chunked_batches(
+    github_client: GitHubClient,
+) -> None:
+    org_a = {"login": "org-a", "id": 1}
+    org_b = {"login": "org-b", "id": 2}
+    records_a = _make_user_usage_records(150)
+    records_b = _make_user_usage_records(75)
+
+    async def mock_get_organizations():
+        yield [org_a, org_b]
+
+    async def mock_get_users_usage_metrics(org):
+        if org["login"] == "org-a":
+            yield records_a
+        else:
+            yield records_b
+
+    with (
+        patch.object(github_client, "get_organizations", mock_get_organizations),
+        patch.object(
+            github_client,
+            "_get_users_usage_metrics",
+            mock_get_users_usage_metrics,
+        ),
+    ):
+        all_records: list[dict[str, Any]] = []
+        async for batch in github_client.fetch_users_usage_metrics():
+            all_records.extend(batch)
+
+    assert len(all_records) == 225
+    org_a_records = [r for r in all_records if r["__organization"]["login"] == "org-a"]
+    org_b_records = [r for r in all_records if r["__organization"]["login"] == "org-b"]
+    assert len(org_a_records) == 150
+    assert len(org_b_records) == 75
+
+
+@pytest.mark.asyncio
+async def test_large_enterprise_report_is_split_into_fixed_size_batches(
+    enterprise_github_client: GitHubClient,
+) -> None:
+    records = _make_user_usage_records(350)
+
+    async def mock_get_enterprise_users_usage_metrics():
+        yield records
+
+    with patch.object(
+        enterprise_github_client,
+        "_get_enterprise_users_usage_metrics",
+        mock_get_enterprise_users_usage_metrics,
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for (
+            batch
+        ) in enterprise_github_client.fetch_enterprise_users_usage_metrics():
+            batches.append(batch)
+
+    assert len(batches) == 4
+    assert len(batches[0]) == 100
+    assert len(batches[1]) == 100
+    assert len(batches[2]) == 100
+    assert len(batches[3]) == 50
+
+
+@pytest.mark.asyncio
+async def test_every_record_in_every_batch_is_enriched_with_enterprise_context(
+    enterprise_github_client: GitHubClient,
+) -> None:
+    records = _make_user_usage_records(150)
+
+    async def mock_get_enterprise_users_usage_metrics():
+        yield records
+
+    with patch.object(
+        enterprise_github_client,
+        "_get_enterprise_users_usage_metrics",
+        mock_get_enterprise_users_usage_metrics,
+    ):
+        async for (
+            batch
+        ) in enterprise_github_client.fetch_enterprise_users_usage_metrics():
+            for record in batch:
+                assert record["__enterprise"] == {"slug": "test-enterprise"}
+
+
+@pytest.mark.asyncio
+async def test_all_enterprise_records_present_across_batches_without_data_loss(
+    enterprise_github_client: GitHubClient,
+) -> None:
+    records = _make_user_usage_records(250)
+
+    async def mock_get_enterprise_users_usage_metrics():
+        yield records
+
+    with patch.object(
+        enterprise_github_client,
+        "_get_enterprise_users_usage_metrics",
+        mock_get_enterprise_users_usage_metrics,
+    ):
+        all_records: list[dict[str, Any]] = []
+        async for (
+            batch
+        ) in enterprise_github_client.fetch_enterprise_users_usage_metrics():
+            all_records.extend(batch)
+
+    assert len(all_records) == 250
+
+
+@pytest.mark.asyncio
+async def test_empty_enterprise_report_yields_nothing(
+    enterprise_github_client: GitHubClient,
+) -> None:
+    async def mock_get_enterprise_users_usage_metrics():
+        yield []
+
+    with patch.object(
+        enterprise_github_client,
+        "_get_enterprise_users_usage_metrics",
+        mock_get_enterprise_users_usage_metrics,
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for (
+            batch
+        ) in enterprise_github_client.fetch_enterprise_users_usage_metrics():
+            batches.append(batch)
+
+    assert len(batches) == 0
+
+
+@pytest.mark.asyncio
+async def test_large_day_totals_report_is_split_into_fixed_size_batches(
+    github_client: GitHubClient,
+    mock_organization: dict[str, Any],
+) -> None:
+    reports = _make_day_totals_report(350)
+
+    async def mock_get_organizations():
+        yield [mock_organization]
+
+    async def mock_get_organization_usage_metrics(org):
+        yield reports
+
+    with (
+        patch.object(github_client, "get_organizations", mock_get_organizations),
+        patch.object(
+            github_client,
+            "get_organization_usage_metrics",
+            mock_get_organization_usage_metrics,
+        ),
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in github_client.fetch_organization_usage_metrics():
+            batches.append(batch)
+
+    assert len(batches) == 4
+    assert len(batches[0]) == 100
+    assert len(batches[1]) == 100
+    assert len(batches[2]) == 100
+    assert len(batches[3]) == 50
+
+
+@pytest.mark.asyncio
+async def test_all_day_totals_records_present_across_batches_without_data_loss(
+    github_client: GitHubClient,
+    mock_organization: dict[str, Any],
+) -> None:
+    reports = _make_day_totals_report(200)
+
+    async def mock_get_organizations():
+        yield [mock_organization]
+
+    async def mock_get_organization_usage_metrics(org):
+        yield reports
+
+    with (
+        patch.object(github_client, "get_organizations", mock_get_organizations),
+        patch.object(
+            github_client,
+            "get_organization_usage_metrics",
+            mock_get_organization_usage_metrics,
+        ),
+    ):
+        all_records: list[dict[str, Any]] = []
+        async for batch in github_client.fetch_organization_usage_metrics():
+            all_records.extend(batch)
+
+    assert len(all_records) == 200
+
+
+@pytest.mark.asyncio
+async def test_report_with_no_day_totals_yields_nothing(
+    github_client: GitHubClient,
+    mock_organization: dict[str, Any],
+) -> None:
+    reports = [{"other_field": "value"}]  # no day_totals key
+
+    async def mock_get_organizations():
+        yield [mock_organization]
+
+    async def mock_get_organization_usage_metrics(org):
+        yield reports
+
+    with (
+        patch.object(github_client, "get_organizations", mock_get_organizations),
+        patch.object(
+            github_client,
+            "get_organization_usage_metrics",
+            mock_get_organization_usage_metrics,
+        ),
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in github_client.fetch_organization_usage_metrics():
+            batches.append(batch)
+
+    assert len(batches) == 0
+
+
+@pytest.mark.asyncio
+async def test_large_enterprise_day_totals_split_into_fixed_size_batches(
+    enterprise_github_client: GitHubClient,
+) -> None:
+    reports = _make_day_totals_report(350)
+
+    async def mock_get_enterprise_usage_metrics():
+        yield reports
+
+    with patch.object(
+        enterprise_github_client,
+        "_get_enterprise_usage_metrics",
+        mock_get_enterprise_usage_metrics,
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in enterprise_github_client.fetch_enterprise_usage_metrics():
+            batches.append(batch)
+
+    assert len(batches) == 4
+    assert len(batches[0]) == 100
+    assert len(batches[1]) == 100
+    assert len(batches[2]) == 100
+    assert len(batches[3]) == 50
+
+
+@pytest.mark.asyncio
+async def test_every_enterprise_day_total_enriched_with_enterprise_context(
+    enterprise_github_client: GitHubClient,
+) -> None:
+    reports = _make_day_totals_report(150)
+
+    async def mock_get_enterprise_usage_metrics():
+        yield reports
+
+    with patch.object(
+        enterprise_github_client,
+        "_get_enterprise_usage_metrics",
+        mock_get_enterprise_usage_metrics,
+    ):
+        async for batch in enterprise_github_client.fetch_enterprise_usage_metrics():
+            for record in batch:
+                assert record["__enterprise"] == {"slug": "test-enterprise"}
+
+
+@pytest.mark.asyncio
+async def test_enterprise_report_with_no_day_totals_yields_nothing(
+    enterprise_github_client: GitHubClient,
+) -> None:
+    reports = [{"other_field": "value"}]
+
+    async def mock_get_enterprise_usage_metrics():
+        yield reports
+
+    with patch.object(
+        enterprise_github_client,
+        "_get_enterprise_usage_metrics",
+        mock_get_enterprise_usage_metrics,
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in enterprise_github_client.fetch_enterprise_usage_metrics():
+            batches.append(batch)
+
+    assert len(batches) == 0
+
+
+@pytest.mark.asyncio
+async def test_all_enterprise_day_totals_present_across_batches_without_data_loss(
+    enterprise_github_client: GitHubClient,
+) -> None:
+    reports = _make_day_totals_report(250)
+
+    async def mock_get_enterprise_usage_metrics():
+        yield reports
+
+    with patch.object(
+        enterprise_github_client,
+        "_get_enterprise_usage_metrics",
+        mock_get_enterprise_usage_metrics,
+    ):
+        all_records: list[dict[str, Any]] = []
+        async for batch in enterprise_github_client.fetch_enterprise_usage_metrics():
+            all_records.extend(batch)
+
+    assert len(all_records) == 250

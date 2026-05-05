@@ -94,7 +94,8 @@ class GitHubClient:
                     self._enrich_metrics_with_organization(
                         day_totals, organization, record_date_key="day"
                     )
-                    yield day_totals
+                    for batch in batched(day_totals, self.pagination_page_size_limit):
+                        yield list(batch)
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
@@ -170,7 +171,10 @@ class GitHubClient:
                     enriched_reports = [
                         {**record, "__organization": organization} for record in reports
                     ]
-                    yield enriched_reports
+                    for batch in batched(
+                        enriched_reports, self.pagination_page_size_limit
+                    ):
+                        yield list(batch)
 
     async def _get_enterprise_usage_metrics(
         self,
@@ -232,7 +236,8 @@ class GitHubClient:
             for metric in day_totals:
                 metric["__enterprise"] = enterprise_context
 
-            yield day_totals
+            for batch in batched(day_totals, self.pagination_page_size_limit):
+                yield list(batch)
 
     async def _get_enterprise_users_usage_metrics(
         self,
@@ -287,7 +292,8 @@ class GitHubClient:
             enriched_reports = [
                 {**record, "__enterprise": enterprise_context} for record in reports
             ]
-            yield enriched_reports
+            for batch in batched(enriched_reports, self.pagination_page_size_limit):
+                yield list(batch)
 
     async def _download_and_yield_reports(
         self, download_links: list[str]
