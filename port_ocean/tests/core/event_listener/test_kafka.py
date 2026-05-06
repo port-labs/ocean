@@ -102,7 +102,7 @@ async def test_should_use_new_topic_consumer_when_feature_flag_enabled(
     mock_ocean = MagicMock()
     mock_ocean.port_client.get_organization_feature_flags = AsyncMock(
         return_value=[
-            IntegrationFeatureFlag.OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_ENABLED
+            IntegrationFeatureFlag.OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED
         ]
     )
     monkeypatch.setattr("port_ocean.core.event_listener.kafka.ocean", mock_ocean)
