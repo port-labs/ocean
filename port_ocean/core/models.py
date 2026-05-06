@@ -139,6 +139,11 @@ class IntegrationFeatureFlag(StrEnum):
     DATA_SOURCE_PROCESSOR_ENABLED = "DATA_SOURCE_PROCESSOR_ENABLED"
 
 
+class ProcessingMode(StrEnum):
+    ocean_core = "ocean-core"
+    dsp = "dsp"
+
+
 class LakehouseOperation(StrEnum):
     UPSERT = "upsert"
     DELETE = "delete"

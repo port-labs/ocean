@@ -17,6 +17,7 @@ from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     EventListenerType,
     ProcessExecutionMode,
+    ProcessingMode,
     Runtime,
 )
 from port_ocean.utils.misc import (
@@ -146,6 +147,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
+    lakehouse_buffer_interval_seconds: float = 10.0
+    processing_mode: ProcessingMode = ProcessingMode.ocean_core
     transform: TransformSettings = Field(default_factory=lambda: TransformSettings())
     yield_items_to_parse_batch_size: int = 200
     process_in_queue_timeout: int = 120
