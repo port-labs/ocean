@@ -57,6 +57,9 @@ class KafkaConsumer:
 
         self.consumer = Consumer(kafka_config)
 
+    def _get_topics(self) -> list[str]:
+        return [f"{self.org_id}.change.log"]
+
     def _handle_partitions_assignment(
         self, _: Consumer, partitions: list[TopicPartition]
     ) -> None:
@@ -75,7 +78,7 @@ class KafkaConsumer:
     async def start(self) -> None:
         self.running = True
         logger.info("Starting kafka consumer...")
-        topics = [f"{self.org_id}.change.log"]
+        topics = self._get_topics()
         self.consumer.subscribe(
             topics,
             on_assign=self._handle_partitions_assignment,
@@ -119,3 +122,8 @@ class KafkaConsumer:
         logger.info("Closing the kafka consumer gracefully...")
         self.running = False
         self.consumer.close()
+
+
+class IntegrationResyncRequestsKafkaConsumer(KafkaConsumer):
+    def _get_topics(self) -> list[str]:
+        return [f"{self.org_id}.integration.resync.requests"]
