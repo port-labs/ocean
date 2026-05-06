@@ -2182,7 +2182,7 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Starting to fetch code coverage for project {project_id}, run id={build_id}, flags={coverage_config.flags}"
         )
 
-        params = {"buildId": build_id}
+        params: dict[str, Any] = {"buildId": build_id, **WEBHOOK_API_PARAMS}
         if coverage_config.flags is not None:
             params["flags"] = coverage_config.flags
 
