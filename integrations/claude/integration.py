@@ -83,11 +83,7 @@ class ClaudeUsageRecordResourceConfig(ResourceConfig):
         description="Claude usage record resource kind",
         title="Claude Usage Record",
     )
-    selector: ClaudeUsageSelector = Field(
-        title="Usage Selector",
-        description="Selector for Claude usage report query parameters.",
-        default_factory=lambda: ClaudeUsageSelector(),
-    )
+    selector: ClaudeUsageSelector
 
 
 class ClaudeCostRecordResourceConfig(ResourceConfig):
@@ -95,11 +91,7 @@ class ClaudeCostRecordResourceConfig(ResourceConfig):
         description="Claude cost record resource kind",
         title="Claude Cost Record",
     )
-    selector: ClaudeCostSelector = Field(
-        title="Cost Selector",
-        description="Selector for Claude cost report query parameters.",
-        default_factory=lambda: ClaudeCostSelector(),
-    )
+    selector: ClaudeCostSelector
 
 
 class ClaudeCodeAnalyticsResourceConfig(ResourceConfig):
@@ -107,11 +99,7 @@ class ClaudeCodeAnalyticsResourceConfig(ResourceConfig):
         description="Claude code analytics resource kind",
         title="Claude Code Analytics",
     )
-    selector: ClaudeCodeAnalyticsSelector = Field(
-        title="Code Analytics Selector",
-        description="Selector for Claude Code usage analytics query parameters.",
-        default_factory=lambda: ClaudeCodeAnalyticsSelector(),
-    )
+    selector: ClaudeCodeAnalyticsSelector
 
 
 class ClaudePortAppConfig(PortAppConfig):
