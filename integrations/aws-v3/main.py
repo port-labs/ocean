@@ -204,6 +204,9 @@ async def resync_ecr_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_elasticache_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, ElastiCacheClusterExporter, PaginatedCacheClusterRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
 
 
 @ocean.on_resync(ObjectKind.EC2_VOLUME)
