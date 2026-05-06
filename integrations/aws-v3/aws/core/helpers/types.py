@@ -16,6 +16,7 @@ class ObjectKind(StrEnum):
     SQS_QUEUE = "AWS::SQS::Queue"
     ECR_REPOSITORY = "AWS::ECR::Repository"
     MSK_CLUSTER = "AWS::MSK::Cluster"
+    EC2_VOLUME = "AWS::EC2::Volume"
 
 
 SupportedServices = Literal[
