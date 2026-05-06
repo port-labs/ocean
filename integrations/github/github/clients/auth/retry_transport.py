@@ -66,7 +66,7 @@ class GitHubRetryTransport(RetryTransport):
             method=request.method,
             url=request.url,
             headers={**dict(request.headers), **fresh_lower},
-            content=request.content,
+            content=request.read(),
             extensions=request.extensions,
         )
 
