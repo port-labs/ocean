@@ -18,11 +18,7 @@ class ObjectKind(StrEnum):
     CLAUDE_CODE_ANALYTICS = "claude-code-analytics"
 
 
-class ClaudeSelector(Selector):
-    query: str = Field(default="true")
-
-
-class ClaudeUsageSelector(ClaudeSelector):
+class ClaudeUsageSelector(Selector):
     starting_date: str = Field(
         alias="startingDate",
         default="2025-01-01T00:00:00Z",
@@ -56,7 +52,7 @@ class ClaudeUsageSelector(ClaudeSelector):
     )
 
 
-class ClaudeCostSelector(ClaudeSelector):
+class ClaudeCostSelector(Selector):
     starting_date: str = Field(
         alias="startingDate",
         default="2025-01-01T00:00:00Z",
@@ -72,7 +68,7 @@ class ClaudeCostSelector(ClaudeSelector):
     )
 
 
-class ClaudeCodeAnalyticsSelector(ClaudeSelector):
+class ClaudeCodeAnalyticsSelector(Selector):
     starting_date: str = Field(
         alias="startingDate",
         default="2025-01-01",
