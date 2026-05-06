@@ -128,5 +128,23 @@ def test_should_process_integration_resync_requests_topic() -> None:
     listener = _build_listener()
 
     assert (
-        listener._should_be_processed({}, "org-1.integration.resync.requests") is True
+        listener._should_be_processed(
+            {"context": {"integrationId": "integration-1"}},
+            "org-1.integration.resync.requests",
+        )
+        is True
+    )
+
+
+def test_should_not_process_integration_resync_requests_topic_for_other_integration() -> (
+    None
+):
+    listener = _build_listener()
+
+    assert (
+        listener._should_be_processed(
+            {"context": {"integrationId": "integration-2"}},
+            "org-1.integration.resync.requests",
+        )
+        is False
     )
