@@ -606,10 +606,12 @@ async def test_large_report_is_split_into_fixed_size_batches(
 ) -> None:
     records = _make_user_usage_records(350)
 
-    async def mock_get_organizations():
+    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [mock_organization]
 
-    async def mock_get_users_usage_metrics(org):
+    async def mock_get_users_usage_metrics(
+        org: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield records
 
     with (
@@ -639,10 +641,12 @@ async def test_all_records_are_present_across_batches_without_data_loss(
 ) -> None:
     records = _make_user_usage_records(250)
 
-    async def mock_get_organizations():
+    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [mock_organization]
 
-    async def mock_get_users_usage_metrics(org):
+    async def mock_get_users_usage_metrics(
+        org: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield records
 
     with (
@@ -668,10 +672,12 @@ async def test_every_record_in_every_batch_is_enriched_with_organization(
 ) -> None:
     records = _make_user_usage_records(150)
 
-    async def mock_get_organizations():
+    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [mock_organization]
 
-    async def mock_get_users_usage_metrics(org):
+    async def mock_get_users_usage_metrics(
+        org: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield records
 
     with (
@@ -694,10 +700,12 @@ async def test_small_report_below_chunk_size_yields_single_batch(
 ) -> None:
     records = _make_user_usage_records(50)
 
-    async def mock_get_organizations():
+    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [mock_organization]
 
-    async def mock_get_users_usage_metrics(org):
+    async def mock_get_users_usage_metrics(
+        org: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield records
 
     with (
@@ -724,10 +732,12 @@ async def test_empty_report_yields_nothing(
     github_client: GitHubClient,
     mock_organization: dict[str, Any],
 ) -> None:
-    async def mock_get_organizations():
+    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [mock_organization]
 
-    async def mock_get_users_usage_metrics(org):
+    async def mock_get_users_usage_metrics(
+        org: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield []
 
     with (
@@ -754,10 +764,12 @@ async def test_multiple_organizations_each_yield_separate_chunked_batches(
     records_a = _make_user_usage_records(150)
     records_b = _make_user_usage_records(75)
 
-    async def mock_get_organizations():
+    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [org_a, org_b]
 
-    async def mock_get_users_usage_metrics(org):
+    async def mock_get_users_usage_metrics(
+        org: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if org["login"] == "org-a":
             yield records_a
         else:
@@ -788,7 +800,9 @@ async def test_large_enterprise_report_is_split_into_fixed_size_batches(
 ) -> None:
     records = _make_user_usage_records(350)
 
-    async def mock_get_enterprise_users_usage_metrics():
+    async def mock_get_enterprise_users_usage_metrics() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
         yield records
 
     with patch.object(
@@ -815,7 +829,9 @@ async def test_every_record_in_every_batch_is_enriched_with_enterprise_context(
 ) -> None:
     records = _make_user_usage_records(150)
 
-    async def mock_get_enterprise_users_usage_metrics():
+    async def mock_get_enterprise_users_usage_metrics() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
         yield records
 
     with patch.object(
@@ -836,7 +852,9 @@ async def test_all_enterprise_records_present_across_batches_without_data_loss(
 ) -> None:
     records = _make_user_usage_records(250)
 
-    async def mock_get_enterprise_users_usage_metrics():
+    async def mock_get_enterprise_users_usage_metrics() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
         yield records
 
     with patch.object(
@@ -857,7 +875,9 @@ async def test_all_enterprise_records_present_across_batches_without_data_loss(
 async def test_empty_enterprise_report_yields_nothing(
     enterprise_github_client: GitHubClient,
 ) -> None:
-    async def mock_get_enterprise_users_usage_metrics():
+    async def mock_get_enterprise_users_usage_metrics() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
         yield []
 
     with patch.object(
@@ -881,10 +901,12 @@ async def test_large_day_totals_report_is_split_into_fixed_size_batches(
 ) -> None:
     reports = _make_day_totals_report(350)
 
-    async def mock_get_organizations():
+    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [mock_organization]
 
-    async def mock_get_organization_usage_metrics(org):
+    async def mock_get_organization_usage_metrics(
+        org: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield reports
 
     with (
@@ -913,10 +935,12 @@ async def test_all_day_totals_records_present_across_batches_without_data_loss(
 ) -> None:
     reports = _make_day_totals_report(200)
 
-    async def mock_get_organizations():
+    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [mock_organization]
 
-    async def mock_get_organization_usage_metrics(org):
+    async def mock_get_organization_usage_metrics(
+        org: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield reports
 
     with (
@@ -941,10 +965,12 @@ async def test_report_with_no_day_totals_yields_nothing(
 ) -> None:
     reports = [{"other_field": "value"}]  # no day_totals key
 
-    async def mock_get_organizations():
+    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield [mock_organization]
 
-    async def mock_get_organization_usage_metrics(org):
+    async def mock_get_organization_usage_metrics(
+        org: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield reports
 
     with (
@@ -968,7 +994,9 @@ async def test_large_enterprise_day_totals_split_into_fixed_size_batches(
 ) -> None:
     reports = _make_day_totals_report(350)
 
-    async def mock_get_enterprise_usage_metrics():
+    async def mock_get_enterprise_usage_metrics() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
         yield reports
 
     with patch.object(
@@ -993,7 +1021,9 @@ async def test_every_enterprise_day_total_enriched_with_enterprise_context(
 ) -> None:
     reports = _make_day_totals_report(150)
 
-    async def mock_get_enterprise_usage_metrics():
+    async def mock_get_enterprise_usage_metrics() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
         yield reports
 
     with patch.object(
@@ -1012,7 +1042,9 @@ async def test_enterprise_report_with_no_day_totals_yields_nothing(
 ) -> None:
     reports = [{"other_field": "value"}]
 
-    async def mock_get_enterprise_usage_metrics():
+    async def mock_get_enterprise_usage_metrics() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
         yield reports
 
     with patch.object(
@@ -1033,7 +1065,9 @@ async def test_all_enterprise_day_totals_present_across_batches_without_data_los
 ) -> None:
     reports = _make_day_totals_report(250)
 
-    async def mock_get_enterprise_usage_metrics():
+    async def mock_get_enterprise_usage_metrics() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
         yield reports
 
     with patch.object(

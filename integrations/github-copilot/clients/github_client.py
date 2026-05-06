@@ -1,5 +1,6 @@
 import asyncio
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, cast
+from port_ocean.helpers.async_client import OceanAsyncClient
 
 import httpx
 import json
@@ -14,7 +15,11 @@ from .github_endpoints import GithubEndpoints
 
 class GitHubClient:
     def __init__(
-        self, base_url: str, token: str, enterprise_name: Optional[str] = None
+        self,
+        base_url: str,
+        token: str,
+        enterprise_name: Optional[str] = None,
+        use_streaming: bool = False,
     ):
         self._token = token
         self._client = http_async_client
@@ -26,6 +31,7 @@ class GitHubClient:
         self.pagination_header_name = "Link"
         self.copilot_disabled_status_code = 422
         self.forbidden_status_code = 403
+        self.use_streaming = use_streaming
 
     def _get_required_enterprise_slug(self) -> str:
         if not self.enterprise_name:
@@ -110,6 +116,46 @@ class GitHubClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching report from signed URL: {e}")
             return []
+
+    async def _stream_ndjson_report_in_batches(
+        self, signed_url: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Streams an NDJSON report line by line and yields records in batches.
+
+        Each line is parsed as it arrives from the HTTP stream and accumulated into a batch of size pagination_page_size_limit before being yielded.
+        """
+        logger.debug(
+            f"Streaming NDJSON report in batches from signed URL: {signed_url}"
+        )
+        current_batch: list[dict[str, Any]] = []
+        ocean_client = cast(OceanAsyncClient, self._client)
+        async with ocean_client.stream(
+            "GET", signed_url, headers=self._headers
+        ) as response:
+            response.raise_for_status()
+
+            async for raw_line in response.aiter_lines():
+                stripped_line = raw_line.strip()
+                if not stripped_line:
+                    continue
+
+                try:
+                    record = json.loads(stripped_line)
+                    current_batch.append(record)
+
+                    if len(current_batch) >= self.pagination_page_size_limit:
+                        yield current_batch
+                        current_batch = []
+
+                except json.JSONDecodeError as parse_error:
+                    logger.warning(
+                        f"Skipping malformed NDJSON line from {signed_url}: {parse_error}"
+                    )
+
+        # Yield the final remaining batch after the stream loop finishes
+        if current_batch:
+            yield current_batch
 
     async def _get_users_usage_metrics(
         self, organization: dict[str, Any]
@@ -296,57 +342,92 @@ class GitHubClient:
         self, download_links: list[str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
-        Download signed-URL report batches concurrently and yield each
-        non-empty result list. Does not swallow exceptions.
+        Download signed-URL reports and yield fixed-size batches.
+
+        When streaming is enabled, each signed URL is streamed line by line —
+        peak memory is bounded to one batch of pagination_page_size_limit records
+        regardless of NDJSON file size. Signed URLs are processed sequentially
+        since streaming response bodies cannot be gathered concurrently.
+
+        When streaming is disabled, signed URLs are fetched concurrently in
+        batches of pagination_page_size_limit for throughput - best used for
+        small reports or local development where memory is not a concern.
         """
-        for signed_urls_batch in batched(
-            download_links, self.pagination_page_size_limit
-        ):
-            results = await asyncio.gather(
-                *[
-                    self._fetch_report_from_signed_url(signed_url)
-                    for signed_url in signed_urls_batch
-                ]
-            )
-            for records in results:
-                if records:
-                    for batch in batched(records, self.pagination_page_size_limit):
-                        yield list(batch)
+        if self.use_streaming:
+            for signed_url in download_links:
+                async for batch in self._stream_ndjson_report_in_batches(signed_url):
+                    yield batch
+        else:
+            for signed_urls_batch in batched(
+                download_links, self.pagination_page_size_limit
+            ):
+                results = await asyncio.gather(
+                    *[
+                        self._fetch_report_from_signed_url(signed_url)
+                        for signed_url in signed_urls_batch
+                    ]
+                )
+                for records in results:
+                    if records:
+                        for batch in batched(records, self.pagination_page_size_limit):  # type: ignore[assignment]
+                            yield list(batch)
 
     async def _download_and_yield_reports_safe(
         self, download_links: list[str], context: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
-        Download signed-URL report batches concurrently, logging warnings for
-        individual failures without aborting the whole batch.
+        Download signed-URL reports with per-URL failure isolation.
+
+        When streaming is enabled, each signed URL is streamed line by line.
+        Failed URLs are logged as warnings and skipped — one inaccessible
+        signed URL does not abort the remaining report downloads.
+
+        When streaming is disabled, signed URLs are fetched concurrently in
+        batches with the same per-URL failure isolation.
         """
-        for signed_urls_batch in batched(
-            download_links, self.pagination_page_size_limit
-        ):
-            tasks = [
-                self._fetch_report_from_signed_url(signed_url)
-                for signed_url in signed_urls_batch
-            ]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            for signed_url, result in zip(signed_urls_batch, results):
-                if isinstance(result, BaseException):
-                    if isinstance(
-                        result, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)
+        if self.use_streaming:
+            for signed_url in download_links:
+                try:
+                    async for batch in self._stream_ndjson_report_in_batches(
+                        signed_url
                     ):
-                        raise result
-
+                        yield batch
+                except (asyncio.CancelledError, KeyboardInterrupt, SystemExit):
+                    raise
+                except Exception as stream_error:
                     logger.warning(
-                        f"Failed to fetch Copilot usage report for {context} "
-                        f"from signed URL {signed_url}: {result}"
+                        f"Failed to stream Copilot usage report for {context} "
+                        f"from signed URL {signed_url}: {stream_error}"
                     )
-                    continue
+        else:
+            for signed_urls_batch in batched(
+                download_links, self.pagination_page_size_limit
+            ):
+                tasks = [
+                    self._fetch_report_from_signed_url(signed_url)
+                    for signed_url in signed_urls_batch
+                ]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
 
-                if not result:
-                    continue
+                for signed_url, result in zip(signed_urls_batch, results):
+                    if isinstance(result, BaseException):
+                        if isinstance(
+                            result,
+                            (asyncio.CancelledError, KeyboardInterrupt, SystemExit),
+                        ):
+                            raise result
 
-                for batch in batched(result, self.pagination_page_size_limit):
-                    yield list(batch)
+                        logger.warning(
+                            f"Failed to fetch Copilot usage report for {context} "
+                            f"from signed URL {signed_url}: {result}"
+                        )
+                        continue
+
+                    if not result:
+                        continue
+
+                    for batch in batched(result, self.pagination_page_size_limit):  # type: ignore[assignment]
+                        yield list(batch)
 
     async def _get_paginated_data(
         self,
