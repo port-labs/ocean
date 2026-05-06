@@ -1,4 +1,5 @@
 from typing import Any, Callable, Coroutine, Dict, Iterable, Optional, Union
+import typing
 
 import httpx
 from loguru import logger
@@ -62,11 +63,20 @@ class GitHubRetryTransport(RetryTransport):
             return None
         fresh_headers = await self._token_refresher()
         fresh_lower = {k.lower(): v for k, v in fresh_headers.items()}
+
+        try:
+            content = request.content
+        except httpx.RequestNotRead:
+            if isinstance(request.stream, typing.AsyncIterable):
+                await request.aread()
+            else:
+                request.read()
+            content = request.content
         return httpx.Request(
             method=request.method,
             url=request.url,
             headers={**dict(request.headers), **fresh_lower},
-            content=request.read(),
+            content=content,
             extensions=request.extensions,
         )
 
