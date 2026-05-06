@@ -45,6 +45,12 @@ from azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor imp
 from azure_devops.webhooks.webhook_processors.release_webhook_processor import (
     ReleaseWebhookProcessor,
 )
+from azure_devops.webhooks.webhook_processors.release_definition_webhook_processor import (
+    ReleaseDefinitionWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.test_run_webhook_processor import (
+    TestRunWebhookProcessor,
+)
 from azure_devops.webhooks.webhook_processors.release_deployment_webhook_processor import (
     ReleaseDeploymentWebhookProcessor,
 )
@@ -52,6 +58,8 @@ from integration import (
     AzureDevopsPipelineResourceConfig,
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
+    AzureDevopsReleaseConfig,
+    AzureDevopsReleaseDefinitionConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     AzureDevopsTestRunResourceConfig,
@@ -248,10 +256,24 @@ async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kind.RELEASE)
 async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = cast(AzureDevopsReleaseConfig, event.resource_config)
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for releases in azure_devops_client.generate_releases():
+    async for releases in azure_devops_client.generate_releases(
+        additional_params=config.selector.to_params(),
+    ):
         logger.info(f"Resyncing {len(releases)} releases")
         yield releases
+
+
+@ocean.on_resync(Kind.RELEASE_DEFINITION)
+async def resync_release_definitions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = cast(AzureDevopsReleaseDefinitionConfig, event.resource_config)
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for definitions in azure_devops_client.generate_release_definitions(
+        additional_params=config.selector.to_params(),
+    ):
+        logger.info(f"Resyncing {len(definitions)} release definitions")
+        yield definitions
 
 
 @ocean.on_resync(Kind.BUILD)
@@ -444,4 +466,6 @@ ocean.add_webhook_processor("/webhook", PipelineWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PipelineStageWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PipelineRunWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ReleaseWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ReleaseDefinitionWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ReleaseDeploymentWebhookProcessor)
+ocean.add_webhook_processor("/webhook", TestRunWebhookProcessor)
