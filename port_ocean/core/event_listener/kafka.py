@@ -140,6 +140,9 @@ class KafkaEventListener(BaseEventListener):
 
     def _should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
         if "integration.resync.requests" in topic:
+            integration_identifier = msg_value.get("context", {}).get("integrationId")
+            if integration_identifier != self.integration_identifier:
+                return False
             return True
 
         after = msg_value.get("diff", {}).get("after", {})
