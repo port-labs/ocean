@@ -16,6 +16,7 @@ class ObjectKind(StrEnum):
     SQS_QUEUE = "AWS::SQS::Queue"
     ECR_REPOSITORY = "AWS::ECR::Repository"
     ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
+    EC2_VOLUME = "AWS::EC2::Volume"
 
 
 SupportedServices = Literal[
