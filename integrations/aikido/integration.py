@@ -14,6 +14,7 @@ class ObjectKind:
     REPOSITORY = "repositories"
     ISSUES = "issues"
     ISSUE_GROUPS = "issue_groups"
+    TEAM_ISSUE_GROUP = "team_issue_group"
     TEAM = "team"
     CONTAINER = "containers"
 
@@ -71,6 +72,11 @@ class IssueGroupResourceConfig(ResourceConfig):
         description="Aikido issue group resource kind.",
     )
 
+class TeamIssueGroupResourceConfig(ResourceConfig):
+    kind: Literal["team_issue_group"] = Field(
+        title="Aikido Team Issue Group",
+        description="Aikido team issue group resource kind.",
+    )
 
 class TeamResourceConfig(ResourceConfig):
     kind: Literal["team"] = Field(
@@ -86,6 +92,7 @@ class AikidoPortAppConfig(PortAppConfig):
         | IssueResourceConfig
         | IssueGroupResourceConfig
         | TeamResourceConfig
+        | TeamIssueGroupResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
