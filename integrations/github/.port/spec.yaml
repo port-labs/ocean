@@ -61,6 +61,11 @@ configurations:
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.
     sensitive: true
     required: false
+  - name: skipWebhookPatching
+    type: boolean
+    required: false
+    default: false
+    description: When enabled, the integration will not update existing webhook configurations on GitHub.
 saas:
   enabled: true
   liveEvents:
