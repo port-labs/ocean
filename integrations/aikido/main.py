@@ -70,14 +70,23 @@ async def on_team_issue_groups_resync(
     async for team_batch in client.get_teams():
         logger.info("Fetching team issue groups from Aikido API")
         for team in team_batch:
+
+            if not team.get("active", False):
+                continue
+            
             team_id = team["id"]
-            logger.info(f"Fetching issue groups for team {team_id} from Aikido API")
+            team_name = team.get("name")
+            logger.info(f"Fetching issue groups for team {team_id}, {team_name} from Aikido API")
 
             async for team_issue_group_batch in client.get_open_issue_groups_for_team(team_id):
+                enriched_batch = [
+                    {**issue_group, "team_id": team_id, "team_name": team_name}
+                    for issue_group in team_issue_group_batch
+                ]
                 logger.info(
-                    f"Yielding team issue groups batch of size: {len(team_issue_group_batch)}"
+                    f"Yielding team issue groups batch of size: {len(enriched_batch)}"
                 )
-                yield team_issue_group_batch
+                yield enriched_batch
 
 
 @ocean.on_resync(ObjectKind.TEAM)
