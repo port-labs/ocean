@@ -76,7 +76,7 @@ async def on_team_issue_groups_resync(
             
             team_id = team["id"]
             team_name = team.get("name")
-            logger.info(f"Fetching issue groups for team {team_id}, {team_name} from Aikido API")
+            logger.info(f"Fetching issue groups for team {team_id},  from Aikido API")
 
             async for team_issue_group_batch in client.get_open_issue_groups_for_team(team_id):
                 enriched_batch = [
