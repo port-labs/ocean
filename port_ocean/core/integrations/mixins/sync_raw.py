@@ -8,6 +8,7 @@ import typing
 from typing import AsyncGenerator, Callable, Awaitable, Any
 import multiprocessing
 import httpx
+import json
 from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
@@ -1131,7 +1132,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
-            logger.info(f"Resync will use the following mappings: {app_config.dict()}")
+            logger.info(f"Resync will use the following mappings: {json.loads(app_config.json())}")
 
             kinds = [
                 f"{resource.kind}-{index}"

@@ -270,3 +270,43 @@ class TestGitHubRetryTransportBeforeRetryAsync:
         assert result_2 is not None
         assert result_1.headers["Authorization"] == "Bearer token-1"
         assert result_2.headers["Authorization"] == "Bearer token-2"
+
+    @pytest.mark.asyncio
+    async def test_raises_for_unread_streaming_post_body_without_fix(self) -> None:
+        """Demonstrate that request.content raises RequestNotRead for non-buffered streaming bodies.
+
+        This test documents the original bug: before_retry_async used request.content which
+        raises httpx.RequestNotRead when the request body has not been materialized into
+        memory (e.g. GET requests in Python 3.13 or POST requests with iterable bodies).
+        The fix replaces request.content with request.read().
+        """
+        # Directly accessing .content on a streaming body reproduces the error
+        streaming_body = iter([b'{"query": "{ viewer { login } }"}'])
+        request = httpx.Request(
+            "POST",
+            "https://api.github.com/graphql",
+            content=streaming_body,
+        )
+        assert not hasattr(request, "_content")
+        with pytest.raises(httpx.RequestNotRead):
+            _ = request.content
+
+    @pytest.mark.asyncio
+    async def test_handles_unread_streaming_body(self) -> None:
+        """before_retry_async preserves the body when request.content is not pre-buffered."""
+        body = b'{"query": "{ viewer { login } }"}'
+        refresher = AsyncMock(return_value={"Authorization": "Bearer fresh-token"})
+        transport = _make_transport(token_refresher=refresher)
+
+        request = httpx.Request(
+            "POST",
+            "https://api.github.com/graphql",
+            content=iter([body]),
+        )
+        assert not hasattr(request, "_content")
+
+        result = await transport.before_retry_async(request, None, 5.0, 1)
+
+        assert result is not None
+        assert result.content == body
+        assert result.headers["authorization"] == "Bearer fresh-token"
