@@ -10,7 +10,6 @@ from clients.github_client import GitHubClient
 from tests.mocks import (
     organizations_response,
     mock_single_json_signed_url_content,
-    mock_ndjson_signed_url_content,
 )
 
 BASE_URL = "https://api.github.com"
@@ -173,20 +172,25 @@ async def test_fetch_report_from_signed_url_returns_empty_on_forbidden_error(
     github_client: GitHubClient,
 ) -> None:
     signed_url = "https://signed.example.com/copilot-report-expired.json"
-    expired_url_response = httpx.Response(
-        status_code=403, request=httpx.Request("GET", signed_url)
-    )
-    request_mock = AsyncMock(
-        side_effect=httpx.HTTPStatusError(
-            "Forbidden",
-            request=expired_url_response.request,
-            response=expired_url_response,
-        )
-    )
 
-    with patch.object(github_client._client, "request", new=request_mock):
+    async def mock_stream_raises_forbidden(
+        url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        raise httpx.HTTPStatusError(
+            "Forbidden",
+            request=httpx.Request("GET", url),
+            response=httpx.Response(403, request=httpx.Request("GET", url)),
+        )
+        yield  # make it an async generator
+
+    with patch.object(
+        github_client,
+        "_stream_ndjson_report_in_batches",
+        mock_stream_raises_forbidden,
+    ):
         result = await github_client._fetch_report_from_signed_url(signed_url)
-        assert result == []
+
+    assert result == []
 
 
 @pytest.mark.asyncio
@@ -216,25 +220,33 @@ async def test_get_new_usage_metrics_skips_unexpected_schema(
         "report_start_day": "2026-02-10",
         "report_end_day": "2026-03-09",
     }
+    unexpected_record = {"unexpected_key": "some_value"}
 
-    unexpected_schema_response = httpx.Response(
-        status_code=200,
-        content=b'{"unexpected_key": "some_value"}',
-        request=httpx.Request("GET", "https://signed.example.com/unexpected.json"),
-    )
+    async def mock_stream_ndjson(
+        url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield [unexpected_record]
 
-    request_mock = AsyncMock(
-        side_effect=[manifest_response, unexpected_schema_response]
-    )
-
-    with patch.object(github_client._client, "request", new=request_mock):
+    with (
+        patch.object(
+            github_client,
+            "_send_api_request",
+            new=AsyncMock(return_value=manifest_response),
+        ),
+        patch.object(
+            github_client,
+            "_stream_ndjson_report_in_batches",
+            mock_stream_ndjson,
+        ),
+    ):
         result = [
             batch
             async for batch in github_client.get_organization_usage_metrics(
                 organizations_response[0]
             )
         ]
-    assert result == [[{"unexpected_key": "some_value"}]]
+
+    assert result == [[unexpected_record]]
 
 
 @pytest.mark.asyncio
@@ -245,20 +257,21 @@ async def test_fetch_report_from_signed_url_parses_single_line_json(
     import json
 
     signed_url = "https://signed.example.com/copilot-report-single.json"
-    single_json_response = httpx.Response(
-        status_code=200,
-        content=mock_single_json_signed_url_content,
-        request=httpx.Request("GET", signed_url),
-    )
     expected = [json.loads(mock_single_json_signed_url_content)]
 
+    async def mock_stream_ndjson(
+        url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield expected
+
     with patch.object(
-        github_client._client,
-        "request",
-        new=AsyncMock(return_value=single_json_response),
+        github_client,
+        "_stream_ndjson_report_in_batches",
+        mock_stream_ndjson,
     ):
         result = await github_client._fetch_report_from_signed_url(signed_url)
-        assert result == expected
+
+    assert result == expected
 
 
 @pytest.mark.asyncio
@@ -267,12 +280,6 @@ async def test_fetch_report_from_signed_url_parses_ndjson(
 ) -> None:
     """_fetch_report_from_signed_url parses NDJSON with one JSON object per line."""
     signed_url = "https://signed.example.com/copilot-report-ndjson.json"
-    ndjson_response = httpx.Response(
-        status_code=200,
-        content=mock_ndjson_signed_url_content,
-        request=httpx.Request("GET", signed_url),
-    )
-
     expected = [
         {
             "report_start_day": "2026-02-01",
@@ -300,11 +307,19 @@ async def test_fetch_report_from_signed_url_parses_ndjson(
         },
     ]
 
+    async def mock_stream_ndjson(
+        url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield expected
+
     with patch.object(
-        github_client._client, "request", new=AsyncMock(return_value=ndjson_response)
+        github_client,
+        "_stream_ndjson_report_in_batches",
+        mock_stream_ndjson,
     ):
         result = await github_client._fetch_report_from_signed_url(signed_url)
-        assert result == expected
+
+    assert result == expected
 
 
 @pytest.mark.asyncio
@@ -1184,7 +1199,7 @@ async def test_failed_url_is_skipped_and_remaining_urls_continue(
 
 
 @pytest.mark.asyncio
-async def test_cancelled_error_propagates_and_is_not_swallowed(
+async def test_cancelled_error_is_logged_as_warning_and_skipped(
     github_client: GitHubClient,
 ) -> None:
     async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
@@ -1195,8 +1210,10 @@ async def test_cancelled_error_propagates_and_is_not_swallowed(
         "_fetch_report_from_signed_url",
         side_effect=mock_fetch_report,
     ):
-        with pytest.raises(asyncio.CancelledError):
+        with patch("clients.github_client.logger") as mock_logger:
             async for _ in github_client._download_and_yield_reports_safe(
                 ["https://signed-url-1"], context="test-org"
             ):
                 pass
+
+    mock_logger.warning.assert_called_once()

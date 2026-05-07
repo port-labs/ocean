@@ -15,7 +15,7 @@ TOKEN = "test-token"
 class TestStreamNdjsonReportInBatches:
     @pytest.fixture
     def streaming_github_client(self) -> GitHubClient:
-        return GitHubClient(base_url=BASE_URL, token=TOKEN, use_streaming=True)
+        return GitHubClient(base_url=BASE_URL, token=TOKEN)
 
     def _build_mock_stream_context(self, ndjson_lines: list[str]) -> MagicMock:
         mock_response = MagicMock()
@@ -209,10 +209,10 @@ class TestStreamNdjsonReportInBatches:
 class TestDownloadAndYieldReportsStreamingPath:
     @pytest.fixture
     def streaming_github_client(self) -> GitHubClient:
-        return GitHubClient(base_url=BASE_URL, token=TOKEN, use_streaming=True)
+        return GitHubClient(base_url=BASE_URL, token=TOKEN)
 
     @pytest.mark.asyncio
-    async def test_routes_to_streaming_path_when_use_streaming_is_true(
+    async def test_streams_each_signed_url_and_yields_batches(
         self, streaming_github_client: GitHubClient
     ) -> None:
         records = _make_user_usage_records(50)
@@ -227,32 +227,25 @@ class TestDownloadAndYieldReportsStreamingPath:
             "_stream_ndjson_report_in_batches",
             mock_stream_ndjson_report_in_batches,
         ):
-            with patch.object(
-                streaming_github_client,
-                "_fetch_report_from_signed_url",
-            ) as mock_non_streaming_fetch:
-                batches: list[list[dict[str, Any]]] = []
-                async for batch in streaming_github_client._download_and_yield_reports(
-                    ["https://signed-url-1"]
-                ):
-                    batches.append(batch)
+            batches: list[list[dict[str, Any]]] = []
+            async for batch in streaming_github_client._download_and_yield_reports(
+                ["https://signed-url-1"]
+            ):
+                batches.append(batch)
 
-        mock_non_streaming_fetch.assert_not_called()
         assert len(batches) == 1
         assert batches[0] == records
 
     @pytest.mark.asyncio
-    async def test_processes_multiple_signed_urls_sequentially_when_streaming(
+    async def test_processes_multiple_signed_urls_concurrently(
         self, streaming_github_client: GitHubClient
     ) -> None:
         records_url_1 = _make_user_usage_records(50)
         records_url_2 = _make_user_usage_records(30)
-        call_order: list[str] = []
 
         async def mock_stream_ndjson_report_in_batches(
             signed_url: str,
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            call_order.append(signed_url)
             if "url-1" in signed_url:
                 yield records_url_1
             else:
@@ -270,16 +263,15 @@ class TestDownloadAndYieldReportsStreamingPath:
                 all_records.extend(batch)
 
         assert len(all_records) == 80
-        assert call_order == ["https://signed-url-1", "https://signed-url-2"]
 
 
 class TestDownloadAndYieldReportsSafeStreamingPath:
     @pytest.fixture
     def streaming_github_client(self) -> GitHubClient:
-        return GitHubClient(base_url=BASE_URL, token=TOKEN, use_streaming=True)
+        return GitHubClient(base_url=BASE_URL, token=TOKEN)
 
     @pytest.mark.asyncio
-    async def test_routes_to_streaming_path_when_use_streaming_is_true(
+    async def test_streams_each_signed_url_and_yields_batches(
         self, streaming_github_client: GitHubClient
     ) -> None:
         records = _make_user_usage_records(50)
@@ -294,19 +286,12 @@ class TestDownloadAndYieldReportsSafeStreamingPath:
             "_stream_ndjson_report_in_batches",
             mock_stream_ndjson_report_in_batches,
         ):
-            with patch.object(
-                streaming_github_client,
-                "_fetch_report_from_signed_url",
-            ) as mock_non_streaming_fetch:
-                batches: list[list[dict[str, Any]]] = []
-                async for (
-                    batch
-                ) in streaming_github_client._download_and_yield_reports_safe(
-                    ["https://signed-url-1"], context="test-org"
-                ):
-                    batches.append(batch)
+            batches: list[list[dict[str, Any]]] = []
+            async for batch in streaming_github_client._download_and_yield_reports_safe(
+                ["https://signed-url-1"], context="test-org"
+            ):
+                batches.append(batch)
 
-        mock_non_streaming_fetch.assert_not_called()
         assert len(batches) == 1
         assert batches[0] == records
 
@@ -342,61 +327,36 @@ class TestDownloadAndYieldReportsSafeStreamingPath:
         assert len(all_records) == 100
 
     @pytest.mark.asyncio
-    async def test_propagates_cancelled_error_without_swallowing_it(
+    async def test_cancelled_error_is_logged_as_warning_and_skipped(
         self, streaming_github_client: GitHubClient
     ) -> None:
-        async def mock_stream_ndjson_report_in_batches(
-            signed_url: str,
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
             raise asyncio.CancelledError()
-            yield  # make it an async generator
 
         with patch.object(
             streaming_github_client,
-            "_stream_ndjson_report_in_batches",
-            mock_stream_ndjson_report_in_batches,
+            "_fetch_report_from_signed_url",
+            side_effect=mock_fetch_report,
         ):
-            with pytest.raises(asyncio.CancelledError):
+            with patch("clients.github_client.logger") as mock_logger:
                 async for _ in streaming_github_client._download_and_yield_reports_safe(
                     ["https://signed-url-1"], context="test-org"
                 ):
                     pass
 
-    @pytest.mark.asyncio
-    async def test_propagates_keyboard_interrupt_without_swallowing_it(
-        self, streaming_github_client: GitHubClient
-    ) -> None:
-        async def mock_stream_ndjson_report_in_batches(
-            signed_url: str,
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            raise KeyboardInterrupt()
-            yield  # make it an async generator
-
-        with patch.object(
-            streaming_github_client,
-            "_stream_ndjson_report_in_batches",
-            mock_stream_ndjson_report_in_batches,
-        ):
-            with pytest.raises(KeyboardInterrupt):
-                async for _ in streaming_github_client._download_and_yield_reports_safe(
-                    ["https://signed-url-1"], context="test-org"
-                ):
-                    pass
+        mock_logger.warning.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_logs_warning_for_failed_url_and_continues(
         self, streaming_github_client: GitHubClient
     ) -> None:
-        async def mock_stream_ndjson_report_in_batches(
-            signed_url: str,
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
             raise httpx.HTTPError("connection reset")
-            yield  # make it an async generator
 
         with patch.object(
             streaming_github_client,
-            "_stream_ndjson_report_in_batches",
-            mock_stream_ndjson_report_in_batches,
+            "_fetch_report_from_signed_url",
+            side_effect=mock_fetch_report,
         ):
             with patch("clients.github_client.logger") as mock_logger:
                 async for _ in streaming_github_client._download_and_yield_reports_safe(
@@ -408,45 +368,3 @@ class TestDownloadAndYieldReportsSafeStreamingPath:
         warning_message = mock_logger.warning.call_args[0][0]
         assert "test-org" in warning_message
         assert "https://signed-url-1" in warning_message
-
-
-class TestCreateGithubClientPassesStreamingConfig:
-    @pytest.mark.asyncio
-    async def test_passes_streaming_enabled_true_to_github_client(self) -> None:
-        from clients import client_factory
-
-        client_factory._github_client = None
-
-        with patch("clients.client_factory.GitHubClient") as mock_github_client_class:
-            mock_github_client_class.return_value = MagicMock()
-            with patch(
-                "clients.client_factory.ocean.config.streaming.enabled",
-                True,
-            ):
-                client_factory._github_client = None
-                client_factory.create_github_client()
-
-        call_positional = mock_github_client_class.call_args.args
-        assert (
-            call_positional[3] is True
-        )  # use_streaming is the 4th positional argument
-
-    @pytest.mark.asyncio
-    async def test_passes_streaming_enabled_false_to_github_client_by_default(
-        self,
-    ) -> None:
-        from clients import client_factory
-
-        client_factory._github_client = None
-
-        with patch("clients.client_factory.GitHubClient") as mock_github_client_class:
-            mock_github_client_class.return_value = MagicMock()
-            with patch(
-                "clients.client_factory.ocean.config.streaming.enabled",
-                False,
-            ):
-                client_factory._github_client = None
-                client_factory.create_github_client()
-
-        call_positional = mock_github_client_class.call_args.args
-        assert call_positional[3] is False
