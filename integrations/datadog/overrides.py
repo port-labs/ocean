@@ -1,6 +1,5 @@
 from typing import Optional, Literal
 
-from loguru import logger
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
@@ -8,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic import Field, validator, BaseModel
+from pydantic import Field, BaseModel
 
 
 class SLOHistorySelector(Selector):
@@ -17,71 +16,31 @@ class SLOHistorySelector(Selector):
         default=7,
         title="Timeframe",
         description="Time window in days for each SLO history data point.",
+        ge=1,
     )
     period_of_time_in_months: int = Field(
         alias="periodOfTimeInMonths",
         default=6,
         title="Period of Time in Months",
         description="How far back in time to fetch SLO history (1-12 months).",
+        ge=1,
+        le=12,
     )
     period_of_time_in_days: Optional[int] = Field(
         alias="periodOfTimeInDays",
         default=None,
         title="Period of Time in Days",
         description="How far back in time to fetch SLO history in days (1-365).",
+        ge=1,
+        le=365,
     )
     concurrency: int = Field(
         alias="concurrency",
         default=2,
         title="Concurrency",
         description="Number of concurrent requests to make to Datadog.",
+        ge=1,
     )
-
-    @validator("timeframe")
-    def validate_timeframe_field(cls, v: int) -> int:
-        if v < 1:
-            logger.warning(
-                f"The selector value 'timeframe' ({v}) must be greater than 0. "
-                f"This value determines the time window in days for each SLO history data point. "
-                f"Using default value of 7 days."
-            )
-            return 7
-        return v
-
-    @validator("period_of_time_in_months")
-    def validate_period_of_time_in_months(cls, v: int) -> int:
-        if v < 1 or v > 12:
-            logger.warning(
-                f"The selector value 'periodOfTimeInMonths' ({v}) must be between 1 and 12. "
-                f"This value determines how far back in time to fetch SLO history. "
-                f"Using default value of 6 months."
-            )
-            return 6
-        return v
-
-    @validator("period_of_time_in_days")
-    def validate_period_of_time_in_days(cls, v: Optional[int]) -> Optional[int]:
-        if v is None:
-            return v
-        if v < 1 or v > 365:
-            logger.warning(
-                f"The selector value 'periodOfTimeInDays' ({v}) must be between 1 and 365. "
-                f"This value determines how far back in time to fetch SLO history. "
-                f"Using default value of 7 days."
-            )
-            return 7
-        return v
-
-    @validator("concurrency")
-    def validate_concurrency(cls, v: int) -> int:
-        if v < 1:
-            logger.warning(
-                f"The selector value 'concurrency' ({v}) must be larger than 0. "
-                f"This value determines how many concurrent requests to make to Datadog. "
-                f"Using default value of 2."
-            )
-            return 2
-        return v
 
 
 class SLOHistoryResourceConfig(ResourceConfig):
