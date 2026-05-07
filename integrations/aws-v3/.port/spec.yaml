@@ -55,6 +55,15 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: >
+      Secret token used to validate inbound SNS notifications on the live events
+      webhook endpoint. Set the same value in your CloudFormation stack parameter
+      (WebhookSecret). When omitted, SNS signature validation still applies but
+      the additional HMAC layer is skipped.
 disableDefaultInstallationMethods: true
 installationDocs:
   saas:
@@ -64,4 +73,4 @@ installationDocs:
 saas:
   enabled: true
   liveEvents:
-    enabled: false
+    enabled: true

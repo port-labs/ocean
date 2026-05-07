@@ -2,6 +2,9 @@ from typing import cast
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+from starlette.requests import Request
+from starlette.responses import Response
 
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
@@ -40,6 +43,7 @@ from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
 )
+from aws.live_events.webhook.processor import LiveEventsWebhookProcessor
 
 
 @ocean.on_resync_start()
@@ -205,3 +209,37 @@ async def resync_ec2_volume(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     async for batch in service:
         yield batch
+
+
+
+@ocean.router.post("/live-events/webhook")
+async def live_events_webhook(request: Request) -> Response:
+    """
+    Receives SNS notifications carrying EventBridge live events.
+
+    SNS delivers one POST per event. The processor validates the SNS
+    signature, confirms subscriptions, and routes events to per-kind handlers.
+    """
+    import json
+
+    raw_body: bytes = await request.body()
+    headers = dict(request.headers)
+
+    processor = LiveEventsWebhookProcessor()
+    webhook_event = WebhookEvent(
+        body=raw_body,
+        headers=headers,
+        trace_id=headers.get("x-amz-sns-message-id", ""),
+    )
+
+    should_process = await processor.should_process_event(webhook_event)
+    if not should_process:
+        return Response(content="Unauthorized", status_code=401)
+
+    try:
+        payload = json.loads(raw_body)
+    except json.JSONDecodeError:
+        return Response(content="Bad Request", status_code=400)
+
+    await processor.handle_event(payload, resource_config=None)
+    return Response(content="OK", status_code=200)
