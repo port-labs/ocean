@@ -91,7 +91,7 @@ resources:
       entity:
         mappings:
           blueprint: '"aikidoTeamIssueGroup"'
-          identifier: .id | tostring
+          identifier: (.team_id | tostring) + "_" + (.id | tostring)
           title: .title
           properties:
             description: .description
