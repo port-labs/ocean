@@ -15,6 +15,7 @@ class ObjectKind(StrEnum):
     ECS_TASK_DEFINITION = "AWS::ECS::TaskDefinition"
     SQS_QUEUE = "AWS::SQS::Queue"
     ECR_REPOSITORY = "AWS::ECR::Repository"
+    ECR_IMAGE = "AWS::ECR::Image"
     EC2_VOLUME = "AWS::EC2::Volume"
 
 

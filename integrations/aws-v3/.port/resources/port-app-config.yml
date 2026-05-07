@@ -63,3 +63,47 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::ECR::Repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.repositoryArn
+          title: .Properties.repositoryName
+          blueprint: '"ecrRepository"'
+          properties:
+            repositoryName: .Properties.repositoryName
+            repositoryUri: .Properties.repositoryUri
+            repositoryArn: .Properties.repositoryArn
+            registryId: .Properties.registryId
+            createdAt: .Properties.createdAt
+            imageTagMutability: .Properties.imageTagMutability
+            tags: .Properties.tags
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::ECR::Image
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '"arn:aws:ecr:" + .__Region + ":" + .__AccountId + ":repository/" + .Properties.repositoryName + "@" + (.Properties.imageId.imageDigest // .Properties.imageId.imageTag // "unknown")'
+          title: (.Properties.repositoryName + ":" + (.Properties.imageId.imageTag // (.Properties.imageId.imageDigest | split("@")[1][:12]) // "unknown"))
+          blueprint: '"ecrImage"'
+          properties:
+            repositoryName: .Properties.repositoryName
+            imageTag: .Properties.imageId.imageTag
+            imageDigest: .Properties.imageId.imageDigest
+            imageSizeInBytes: .Properties.imageSizeInBytes
+            imagePushedAt: .Properties.imagePushedAt
+            artifactMediaType: .Properties.artifactMediaType
+            vulnerabilityCount: (.Properties.imageScanFindingsSummary.findingCounts.CRITICAL // 0) + (.Properties.imageScanFindingsSummary.findingCounts.HIGH // 0) + (.Properties.imageScanFindingsSummary.findingCounts.MEDIUM // 0) + (.Properties.imageScanFindingsSummary.findingCounts.LOW // 0)
+            criticalVulnerabilities: .Properties.imageScanFindingsSummary.findingCounts.CRITICAL // 0
+            highVulnerabilities: .Properties.imageScanFindingsSummary.findingCounts.HIGH // 0
+            mediumVulnerabilities: .Properties.imageScanFindingsSummary.findingCounts.MEDIUM // 0
+            lowVulnerabilities: .Properties.imageScanFindingsSummary.findingCounts.LOW // 0
+            tags: .Properties.tags
+          relations:
+            account: .__ExtraContext.AccountId
+            repository: '"arn:aws:ecr:" + .__Region + ":" + .__AccountId + ":repository/" + .Properties.repositoryName'
