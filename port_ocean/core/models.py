@@ -27,7 +27,7 @@ class ProcessExecutionMode(StrEnum):
 
 
 class CachingStorageMode(StrEnum):
-    disk = "disk"
+disk = "disk"
     memory = "memory"
 
 

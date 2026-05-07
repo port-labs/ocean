@@ -84,6 +84,29 @@ resources:
               [.locations[]? | select(.type == "code_repository") | (.id | tostring)]
             aikidoContainers: >-
               [.locations[]? | select(.type == "container_repository") | (.id | tostring)]
+  - kind: team_issue_group
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"aikidoTeamIssueGroup"'
+          identifier: .id | tostring
+          title: .title
+          properties:
+            description: .description
+            type: .type
+            severityScore: .severity_score
+            severity: .severity
+            groupStatus: .group_status
+            timeToFixMinutes: .time_to_fix_minutes
+            locations: .locations
+            howToFix: .how_to_fix
+          relations:
+            aikidoRepositories: >-
+              [.locations[]? | select(.type == "code_repository") | (.id | tostring)]
+            aikidoContainers: >-
+              [.locations[]? | select(.type == "container_repository") | (.id | tostring)]
   - kind: issues
     selector:
       query: 'true'
