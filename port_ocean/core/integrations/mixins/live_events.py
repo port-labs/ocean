@@ -5,7 +5,7 @@ from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from port_ocean.core.integrations.mixins.utils import handle_items_to_parse, is_lakehouse_data_enabled
+from port_ocean.core.integrations.mixins.utils import handle_items_to_parse, is_dsp_mode_enabled, is_lakehouse_data_enabled
 from port_ocean.core.models import Entity, LakehouseOperation, LakehouseEventType
 from port_ocean.core.ocean_types import RAW_ITEM
 from port_ocean.context.ocean import ocean
@@ -22,6 +22,10 @@ class LiveEventsMixin(HandlerMixin):
         """
         if await is_lakehouse_data_enabled():
             await self._send_webhook_raw_data_to_lakehouse(webhook_events_raw_result)
+
+        if await is_dsp_mode_enabled():
+            logger.info("DSP mode active: skipping transform and load for live events")
+            return
 
         entities_to_create, entities_to_delete = await self._parse_raw_event_results_to_entities(webhook_events_raw_result)
 
