@@ -15,5 +15,6 @@ def create_github_client() -> GitHubClient:
         integration_config["github_host"],
         integration_config["github_token"],
         integration_config.get("github_enterprise_name"),
+        ocean.config.streaming.enabled,
     )
     return _github_client

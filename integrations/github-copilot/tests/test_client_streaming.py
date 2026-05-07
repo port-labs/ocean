@@ -423,14 +423,13 @@ class TestCreateGithubClientPassesStreamingConfig:
                 "clients.client_factory.ocean.config.streaming.enabled",
                 True,
             ):
+                client_factory._github_client = None
                 client_factory.create_github_client()
 
-        call_kwargs = mock_github_client_class.call_args.kwargs
         call_positional = mock_github_client_class.call_args.args
-        use_streaming = call_kwargs.get(
-            "use_streaming", call_positional[3] if len(call_positional) > 3 else None
-        )
-        assert use_streaming is True
+        assert (
+            call_positional[3] is True
+        )  # use_streaming is the 4th positional argument
 
     @pytest.mark.asyncio
     async def test_passes_streaming_enabled_false_to_github_client_by_default(
@@ -446,11 +445,8 @@ class TestCreateGithubClientPassesStreamingConfig:
                 "clients.client_factory.ocean.config.streaming.enabled",
                 False,
             ):
+                client_factory._github_client = None
                 client_factory.create_github_client()
 
-        call_kwargs = mock_github_client_class.call_args.kwargs
         call_positional = mock_github_client_class.call_args.args
-        use_streaming = call_kwargs.get(
-            "use_streaming", call_positional[3] if len(call_positional) > 3 else None
-        )
-        assert use_streaming is False
+        assert call_positional[3] is False
