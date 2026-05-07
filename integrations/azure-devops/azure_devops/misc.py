@@ -22,6 +22,7 @@ class Kind(StrEnum):
     BOARD = "board"
     COLUMN = "column"
     RELEASE = "release"
+    RELEASE_DEFINITION = "release-definition"
     ENVIRONMENT = "environment"
     RELEASE_DEPLOYMENT = "release-deployment"
     PIPELINE_DEPLOYMENT = "pipeline-deployment"

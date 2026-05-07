@@ -18,6 +18,8 @@ from aws.core.exporters.rds.db_instance.exporter import RdsDbInstanceExporter
 from aws.core.exporters.rds.db_instance.models import PaginatedDbInstanceRequest
 from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
 from aws.core.exporters.ecs.service.models import PaginatedServiceRequest
+from aws.core.exporters.ecs.task_definition.exporter import EcsTaskDefinitionExporter
+from aws.core.exporters.ecs.task_definition.models import PaginatedTaskDefinitionRequest
 from aws.core.exporters.organizations.account.exporter import (
     OrganizationsAccountExporter,
 )
@@ -28,6 +30,8 @@ from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.exporters.ecr import EcrRepositoryExporter
 from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
+from aws.core.exporters.ec2.volume import EbsVolumeExporter
+from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -113,6 +117,15 @@ async def resync_ecs_service(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
+@ocean.on_resync(ObjectKind.ECS_TASK_DEFINITION)
+async def resync_ecs_task_definition(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, EcsTaskDefinitionExporter, PaginatedTaskDefinitionRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
 @ocean.on_resync(ObjectKind.AccountInfo)
 async def resync_single_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     batch = []
@@ -180,6 +193,15 @@ async def resync_sqs_queue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ecr_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EcrRepositoryExporter, PaginatedRepositoryRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.EC2_VOLUME)
+async def resync_ec2_volume(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, EbsVolumeExporter, PaginatedEbsVolumeRequest, regional=True
     )
     async for batch in service:
         yield batch

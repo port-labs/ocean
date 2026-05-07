@@ -18,6 +18,7 @@ class HTTPBaseClient:
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 max_backoff_wait=MAX_BACKOFF_WAIT_IN_SECONDS,
+                additional_retry_status_codes=[500],
             ),
             timeout=ocean.config.client_timeout,
         )

@@ -126,8 +126,7 @@ class OnceEventListener(BaseEventListener):
 
     async def _on_resync_failure(self, e: Exception) -> None:
         if not ocean.app.is_saas():
-            # in case of non-saas, we still want to update the state before and after the resync
-            await super()._after_resync()
+            await super()._on_resync_failure(e)
             return
 
         (interval, start_time) = (

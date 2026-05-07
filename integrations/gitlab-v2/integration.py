@@ -80,6 +80,31 @@ class ProjectSelector(Selector):
     )
 
 
+class BranchSelector(Selector):
+    include_only_active_projects: Optional[bool] = Field(
+        default=None,
+        alias="includeOnlyActiveProjects",
+        title="Include Only Active Projects",
+        description="Only fetch branches from projects with the specified status",
+    )
+    regex: Optional[str] = Field(
+        default=None,
+        title="Regex",
+        description="Return list of branches with names matching a <a href='https://github.com/google/re2/wiki/Syntax' target='_blank'>re2</a> regular expression. Cannot be used together with search.",
+    )
+    search: Optional[str] = Field(
+        default=None,
+        title="Search",
+        description="Return list of branches containing the search string. You can use ^term to find branches that begin with term, and term$ to find branches that end with term. If regex is also set, regex takes precedence and this field is ignored.",
+    )
+    default_branch_only: bool = Field(
+        default=True,
+        alias="defaultBranchOnly",
+        title="Default Branches Only",
+        description="Only fetch default branches for each project",
+    )
+
+
 class ProjectResourceConfig(ResourceConfig):
     kind: Literal["project"] = Field(
         title="GitLab Project",
@@ -405,6 +430,17 @@ class JobResourceConfig(ResourceConfig):
     )
 
 
+class BranchResourceConfig(ResourceConfig):
+    kind: Literal["branch"] = Field(
+        title="GitLab Branch",
+        description="A GitLab branch belonging to a project repository.",
+    )
+    selector: BranchSelector = Field(
+        title="Branch Selector",
+        description="Selector for the GitLab branch resource.",
+    )
+
+
 class GitlabPortAppConfig(PortAppConfig):
     visibility: GitlabVisibilityConfig = Field(
         default_factory=GitlabVisibilityConfig,
@@ -426,6 +462,7 @@ class GitlabPortAppConfig(PortAppConfig):
         | ReleaseResourceConfig
         | PipelineResourceConfig
         | JobResourceConfig
+        | BranchResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
