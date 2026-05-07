@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.4.0 (2026-05-07)
+
+
+### Improvements
+
+- Added `skipWebhookPatching` configuration option to prevent the integration from patching existing webhook configurations
+
+
+## 5.3.20 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 5.3.19 (2026-05-06)
+
+
+### Bug Fixes
+
+- Fixed `RequestNotRead` error during branch resync retries caused by `before_retry_async` accessing `request.content` on an unread streaming body. httpx does not pre-buffer the body for bodyless GET requests, so `request.content` raised `httpx.RequestNotRead` on retry. Replaced with `request.read()` which materialises the stream safely regardless of body type.
+
+
 ## 5.3.18 (2026-04-30)
 
 

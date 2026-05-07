@@ -1,5 +1,6 @@
-import asyncio
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, cast
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 import httpx
 import json
@@ -14,7 +15,10 @@ from .github_endpoints import GithubEndpoints
 
 class GitHubClient:
     def __init__(
-        self, base_url: str, token: str, enterprise_name: Optional[str] = None
+        self,
+        base_url: str,
+        token: str,
+        enterprise_name: Optional[str] = None,
     ):
         self._token = token
         self._client = http_async_client
@@ -98,17 +102,51 @@ class GitHubClient:
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
-    ) -> list[dict[str, Any]]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.debug("Fetching report from signed URL")
         try:
-            response = await self._client.request(method="get", url=signed_url)
-            response.raise_for_status()
-            return [
-                json.loads(line) for line in response.text.splitlines() if line.strip()
-            ]
+            async for batch in self._stream_ndjson_report_in_batches(signed_url):
+                yield batch
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching report from signed URL: {e}")
-            return []
+            raise
+
+    async def _stream_ndjson_report_in_batches(
+        self, signed_url: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Streams an NDJSON report line by line and yields records in batches.
+
+        Each line is parsed as it arrives from the HTTP stream and accumulated into a batch of size pagination_page_size_limit before being yielded.
+        """
+        logger.debug(
+            f"Streaming NDJSON report in batches from signed URL: {signed_url}"
+        )
+        current_batch: list[dict[str, Any]] = []
+        ocean_client = cast(OceanAsyncClient, self._client)
+        async with ocean_client.stream("GET", signed_url) as response:
+            response.raise_for_status()
+
+            async for raw_line in response.aiter_lines():
+                stripped_line = raw_line.strip()
+                if not stripped_line:
+                    continue
+
+                try:
+                    record = json.loads(stripped_line)
+                    current_batch.append(record)
+
+                    if len(current_batch) >= self.pagination_page_size_limit:
+                        yield current_batch
+                        current_batch = []
+
+                except json.JSONDecodeError as parse_error:
+                    logger.warning(
+                        f"Skipping malformed NDJSON line from {signed_url}: {parse_error}"
+                    )
+
+        if current_batch:
+            yield current_batch
 
     async def _get_users_usage_metrics(
         self, organization: dict[str, Any]
@@ -167,10 +205,15 @@ class GitHubClient:
         async for organizations_batch in self.get_organizations():
             for organization in organizations_batch:
                 async for reports in self._get_users_usage_metrics(organization):
-                    enriched_reports = [
+                    if not reports:
+                        logger.info(
+                            f"No user activity metrics found for organization {organization['login']}"
+                        )
+                        continue
+
+                    yield [
                         {**record, "__organization": organization} for record in reports
                     ]
-                    yield enriched_reports
 
     async def _get_enterprise_usage_metrics(
         self,
@@ -284,38 +327,18 @@ class GitHubClient:
         enterprise_context = {"slug": enterprise}
 
         async for reports in self._get_enterprise_users_usage_metrics():
-            enriched_reports = [
-                {**record, "__enterprise": enterprise_context} for record in reports
-            ]
-            yield enriched_reports
+            if not reports:
+                logger.info(
+                    f"No user activity metrics found for enterprise {enterprise}"
+                )
+                continue
+
+            yield [{**record, "__enterprise": enterprise_context} for record in reports]
 
     async def _download_and_yield_reports(
         self, download_links: list[str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """
-        Download signed-URL report batches concurrently and yield each
-        non-empty result list. Does not swallow exceptions.
-        """
-        for signed_urls_batch in batched(
-            download_links, self.pagination_page_size_limit
-        ):
-            results = await asyncio.gather(
-                *[
-                    self._fetch_report_from_signed_url(signed_url)
-                    for signed_url in signed_urls_batch
-                ]
-            )
-            for records in results:
-                if records:
-                    yield records
-
-    async def _download_and_yield_reports_safe(
-        self, download_links: list[str], context: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """
-        Download signed-URL report batches concurrently, logging warnings for
-        individual failures without aborting the whole batch.
-        """
+        """Download signed-URL reports and yield fixed-size batches."""
         for signed_urls_batch in batched(
             download_links, self.pagination_page_size_limit
         ):
@@ -323,25 +346,30 @@ class GitHubClient:
                 self._fetch_report_from_signed_url(signed_url)
                 for signed_url in signed_urls_batch
             ]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            async for report_stream in stream_async_iterators_tasks(*tasks):
+                yield report_stream
 
-            for signed_url, result in zip(signed_urls_batch, results):
-                if isinstance(result, BaseException):
-                    if isinstance(
-                        result, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)
-                    ):
-                        raise result
+    async def _download_and_yield_reports_safe(
+        self, download_links: list[str], context: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Download signed-URL reports with per-URL failure isolation.
 
+        Failed URLs are logged as warnings and skipped — one inaccessible
+        signed URL does not abort the remaining report downloads.
+        """
+        for signed_urls_batch in batched(
+            download_links, self.pagination_page_size_limit
+        ):
+            for signed_url in signed_urls_batch:
+                try:
+                    async for batch in self._fetch_report_from_signed_url(signed_url):
+                        yield batch
+                except Exception as e:
                     logger.warning(
                         f"Failed to fetch Copilot usage report for {context} "
-                        f"from signed URL {signed_url}: {result}"
+                        f"from signed URL {signed_url}: {e}"
                     )
-                    continue
-
-                if not result:
-                    continue
-
-                yield result
 
     async def _get_paginated_data(
         self,
