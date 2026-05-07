@@ -302,6 +302,230 @@ class TestScanWebhookProcessor:
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
 
+    async def test_handle_event_latest_scans_only_deletes_previous_scan(
+        self,
+        scan_webhook_processor: ScanWebhookProcessor,
+    ) -> None:
+        """When latestScansOnly=True and event is SCAN_COMPLETED, previous scan is queued for deletion."""
+        resource_config = CheckmarxOneScanResourcesConfig(
+            kind="scan",
+            selector=CheckmarxOneScanSelector(
+                query="true",
+                projectIds=["project-456"],
+                branches=["main"],
+                statuses=["Completed"],
+                latestScansOnly=True,
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".id",
+                        blueprint='"checkmarxScan"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+
+        new_scan: dict[str, Any] = {
+            "id": "scan-new",
+            "projectId": "project-456",
+            "branch": "main",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
+        }
+        prev_scan: dict[str, Any] = {
+            "id": "scan-prev",
+            "projectId": "project-456",
+            "branch": "main",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
+        }
+
+        payload: EventPayload = {
+            "scanId": "scan-new",
+            "projectId": "project-456",
+            "branch": "main",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = new_scan
+        mock_exporter.get_previous_completed_scan = AsyncMock(return_value=prev_scan)
+
+        with patch(
+            "checkmarx_one.webhook.webhook_processors.scan_webhook_processor.create_scan_exporter"
+        ) as mock_create_exporter:
+            mock_create_exporter.return_value = mock_exporter
+
+            result = await scan_webhook_processor.handle_event(payload, resource_config)
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == [new_scan]
+        assert result.deleted_raw_results == [prev_scan]
+        mock_exporter.get_previous_completed_scan.assert_called_once_with(
+            "project-456", "main", "scan-new"
+        )
+
+    async def test_handle_event_latest_scans_only_no_previous_scan(
+        self,
+        scan_webhook_processor: ScanWebhookProcessor,
+    ) -> None:
+        """When latestScansOnly=True but no previous scan exists, deleted_raw_results stays empty."""
+        resource_config = CheckmarxOneScanResourcesConfig(
+            kind="scan",
+            selector=CheckmarxOneScanSelector(
+                query="true",
+                projectIds=["project-456"],
+                branches=["main"],
+                statuses=["Completed"],
+                latestScansOnly=True,
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".id",
+                        blueprint='"checkmarxScan"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+
+        new_scan: dict[str, Any] = {
+            "id": "scan-new",
+            "projectId": "project-456",
+            "branch": "main",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
+        }
+
+        payload: EventPayload = {
+            "scanId": "scan-new",
+            "projectId": "project-456",
+            "branch": "main",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = new_scan
+        mock_exporter.get_previous_completed_scan = AsyncMock(return_value=None)
+
+        with patch(
+            "checkmarx_one.webhook.webhook_processors.scan_webhook_processor.create_scan_exporter"
+        ) as mock_create_exporter:
+            mock_create_exporter.return_value = mock_exporter
+
+            result = await scan_webhook_processor.handle_event(payload, resource_config)
+
+        assert result.updated_raw_results == [new_scan]
+        assert result.deleted_raw_results == []
+        mock_exporter.get_previous_completed_scan.assert_called_once_with(
+            "project-456", "main", "scan-new"
+        )
+
+    @pytest.mark.parametrize(
+        "checkmarx_event",
+        [CheckmarxEventType.SCAN_FAILED, CheckmarxEventType.SCAN_PARTIAL],
+    )
+    async def test_handle_event_latest_scans_only_skipped_when_not_completed(
+        self,
+        checkmarx_event: str,
+    ) -> None:
+        """latestScansOnly should not prune previous scans on failed/partial events."""
+        event = WebhookEvent(
+            trace_id="test-trace-id",
+            payload={},
+            headers={"x-cx-webhook-event": checkmarx_event},
+        )
+        processor = ScanWebhookProcessor(event=event)
+
+        resource_config = CheckmarxOneScanResourcesConfig(
+            kind="scan",
+            selector=CheckmarxOneScanSelector(
+                query="true",
+                projectIds=["project-456"],
+                branches=["main"],
+                statuses=["Failed", "Partial"],
+                latestScansOnly=True,
+            ),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".id",
+                        blueprint='"checkmarxScan"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+
+        new_scan: dict[str, Any] = {
+            "id": "scan-new",
+            "projectId": "project-456",
+            "branch": "main",
+            "statusInfo": [{"name": "general", "status": "Failed", "details": ""}],
+        }
+
+        payload: EventPayload = {
+            "scanId": "scan-new",
+            "projectId": "project-456",
+            "branch": "main",
+            "statusInfo": [{"name": "general", "status": "Failed", "details": ""}],
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = new_scan
+        mock_exporter.get_previous_completed_scan = AsyncMock()
+
+        with patch(
+            "checkmarx_one.webhook.webhook_processors.scan_webhook_processor.create_scan_exporter"
+        ) as mock_create_exporter:
+            mock_create_exporter.return_value = mock_exporter
+
+            result = await processor.handle_event(payload, resource_config)
+
+        assert result.updated_raw_results == [new_scan]
+        assert result.deleted_raw_results == []
+        mock_exporter.get_previous_completed_scan.assert_not_called()
+
+    async def test_handle_event_skips_previous_scan_lookup_when_disabled(
+        self,
+        scan_webhook_processor: ScanWebhookProcessor,
+        scan_resource_config: CheckmarxOneScanResourcesConfig,
+    ) -> None:
+        """With latestScansOnly=False, the processor must not look up the previous scan."""
+        new_scan: dict[str, Any] = {
+            "id": "scan-new",
+            "projectId": "project-456",
+            "branch": "main",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
+        }
+
+        payload: EventPayload = {
+            "scanId": "scan-new",
+            "projectId": "project-456",
+            "branch": "main",
+            "statusInfo": [{"name": "general", "status": "Completed", "details": ""}],
+        }
+
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = new_scan
+        mock_exporter.get_previous_completed_scan = AsyncMock()
+
+        with patch(
+            "checkmarx_one.webhook.webhook_processors.scan_webhook_processor.create_scan_exporter"
+        ) as mock_create_exporter:
+            mock_create_exporter.return_value = mock_exporter
+
+            result = await scan_webhook_processor.handle_event(
+                payload, scan_resource_config
+            )
+
+        assert result.updated_raw_results == [new_scan]
+        assert result.deleted_raw_results == []
+        mock_exporter.get_previous_completed_scan.assert_not_called()
+
     async def test_handle_event_exporter_error(
         self,
         scan_webhook_processor: ScanWebhookProcessor,
