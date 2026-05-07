@@ -327,36 +327,40 @@ class TestDownloadAndYieldReportsSafeStreamingPath:
         assert len(all_records) == 100
 
     @pytest.mark.asyncio
-    async def test_cancelled_error_is_logged_as_warning_and_skipped(
+    async def test_cancelled_error_propagates_from_download_and_yield_reports_safe(
         self, streaming_github_client: GitHubClient
     ) -> None:
-        async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
+        async def mock_fetch_report(
+            signed_url: str,
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
             raise asyncio.CancelledError()
+            yield
 
         with patch.object(
             streaming_github_client,
             "_fetch_report_from_signed_url",
-            side_effect=mock_fetch_report,
+            mock_fetch_report,
         ):
-            with patch("clients.github_client.logger") as mock_logger:
+            with pytest.raises(asyncio.CancelledError):
                 async for _ in streaming_github_client._download_and_yield_reports_safe(
                     ["https://signed-url-1"], context="test-org"
                 ):
                     pass
 
-        mock_logger.warning.assert_called_once()
-
     @pytest.mark.asyncio
     async def test_logs_warning_for_failed_url_and_continues(
         self, streaming_github_client: GitHubClient
     ) -> None:
-        async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
+        async def mock_fetch_report(
+            signed_url: str,
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
             raise httpx.HTTPError("connection reset")
+            yield
 
         with patch.object(
             streaming_github_client,
             "_fetch_report_from_signed_url",
-            side_effect=mock_fetch_report,
+            mock_fetch_report,
         ):
             with patch("clients.github_client.logger") as mock_logger:
                 async for _ in streaming_github_client._download_and_yield_reports_safe(

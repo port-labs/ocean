@@ -1,6 +1,6 @@
-import asyncio
 from typing import Any, AsyncGenerator, Optional, cast
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 import httpx
 import json
@@ -98,21 +98,18 @@ class GitHubClient:
                     self._enrich_metrics_with_organization(
                         day_totals, organization, record_date_key="day"
                     )
-                    for batch in batched(day_totals, self.pagination_page_size_limit):
-                        yield list(batch)
+                    yield day_totals
 
     async def _fetch_report_from_signed_url(
         self, signed_url: str
-    ) -> list[dict[str, Any]]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.debug("Fetching report from signed URL")
         try:
-            records: list[dict[str, Any]] = []
             async for batch in self._stream_ndjson_report_in_batches(signed_url):
-                records.extend(batch)
-            return records
+                yield batch
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching report from signed URL: {e}")
-            return []
+            raise
 
     async def _stream_ndjson_report_in_batches(
         self, signed_url: str
@@ -208,11 +205,15 @@ class GitHubClient:
         async for organizations_batch in self.get_organizations():
             for organization in organizations_batch:
                 async for reports in self._get_users_usage_metrics(organization):
-                    for batch in batched(reports, self.pagination_page_size_limit):
-                        yield [
-                            {**record, "__organization": organization}
-                            for record in batch
-                        ]
+                    if not reports:
+                        logger.info(
+                            f"No user activity metrics found for organization {organization['login']}"
+                        )
+                        continue
+
+                    yield [
+                        {**record, "__organization": organization} for record in reports
+                    ]
 
     async def _get_enterprise_usage_metrics(
         self,
@@ -274,8 +275,7 @@ class GitHubClient:
             for metric in day_totals:
                 metric["__enterprise"] = enterprise_context
 
-            for batch in batched(day_totals, self.pagination_page_size_limit):
-                yield list(batch)
+            yield day_totals
 
     async def _get_enterprise_users_usage_metrics(
         self,
@@ -327,10 +327,13 @@ class GitHubClient:
         enterprise_context = {"slug": enterprise}
 
         async for reports in self._get_enterprise_users_usage_metrics():
-            for batch in batched(reports, self.pagination_page_size_limit):
-                yield [
-                    {**record, "__enterprise": enterprise_context} for record in batch
-                ]
+            if not reports:
+                logger.info(
+                    f"No user activity metrics found for enterprise {enterprise}"
+                )
+                continue
+
+            yield [{**record, "__enterprise": enterprise_context} for record in reports]
 
     async def _download_and_yield_reports(
         self, download_links: list[str]
@@ -339,16 +342,12 @@ class GitHubClient:
         for signed_urls_batch in batched(
             download_links, self.pagination_page_size_limit
         ):
-            results = await asyncio.gather(
-                *[
-                    self._fetch_report_from_signed_url(signed_url)
-                    for signed_url in signed_urls_batch
-                ]
-            )
-            for records in results:
-                if records:
-                    for batch in batched(records, self.pagination_page_size_limit):
-                        yield list(batch)
+            tasks = [
+                self._fetch_report_from_signed_url(signed_url)
+                for signed_url in signed_urls_batch
+            ]
+            async for report_stream in stream_async_iterators_tasks(*tasks):
+                yield report_stream
 
     async def _download_and_yield_reports_safe(
         self, download_links: list[str], context: str
@@ -362,25 +361,15 @@ class GitHubClient:
         for signed_urls_batch in batched(
             download_links, self.pagination_page_size_limit
         ):
-            tasks = [
-                self._fetch_report_from_signed_url(signed_url)
-                for signed_url in signed_urls_batch
-            ]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            for signed_url, result in zip(signed_urls_batch, results):
-                if isinstance(result, BaseException):
+            for signed_url in signed_urls_batch:
+                try:
+                    async for batch in self._fetch_report_from_signed_url(signed_url):
+                        yield batch
+                except Exception as e:
                     logger.warning(
                         f"Failed to fetch Copilot usage report for {context} "
-                        f"from signed URL {signed_url}: {result}"
+                        f"from signed URL {signed_url}: {e}"
                     )
-                    continue
-
-                if not result:
-                    continue
-
-                for batch in batched(result, self.pagination_page_size_limit):
-                    yield list(batch)
 
     async def _get_paginated_data(
         self,

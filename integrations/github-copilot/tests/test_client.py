@@ -1,6 +1,5 @@
 import pytest
 import httpx
-import asyncio
 from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, patch, MagicMock
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -168,7 +167,7 @@ async def test_get_new_usage_metrics_returns_empty_when_manifest_has_empty_links
 
 
 @pytest.mark.asyncio
-async def test_fetch_report_from_signed_url_returns_empty_on_forbidden_error(
+async def test_fetch_report_from_signed_url_raises_on_http_error(
     github_client: GitHubClient,
 ) -> None:
     signed_url = "https://signed.example.com/copilot-report-expired.json"
@@ -181,16 +180,16 @@ async def test_fetch_report_from_signed_url_returns_empty_on_forbidden_error(
             request=httpx.Request("GET", url),
             response=httpx.Response(403, request=httpx.Request("GET", url)),
         )
-        yield  # make it an async generator
+        yield
 
     with patch.object(
         github_client,
         "_stream_ndjson_report_in_batches",
         mock_stream_raises_forbidden,
     ):
-        result = await github_client._fetch_report_from_signed_url(signed_url)
-
-    assert result == []
+        with pytest.raises(httpx.HTTPStatusError):
+            async for _ in github_client._fetch_report_from_signed_url(signed_url):
+                pass
 
 
 @pytest.mark.asyncio
@@ -269,7 +268,11 @@ async def test_fetch_report_from_signed_url_parses_single_line_json(
         "_stream_ndjson_report_in_batches",
         mock_stream_ndjson,
     ):
-        result = await github_client._fetch_report_from_signed_url(signed_url)
+        result = [
+            record
+            async for batch in github_client._fetch_report_from_signed_url(signed_url)
+            for record in batch
+        ]
 
     assert result == expected
 
@@ -317,7 +320,11 @@ async def test_fetch_report_from_signed_url_parses_ndjson(
         "_stream_ndjson_report_in_batches",
         mock_stream_ndjson,
     ):
-        result = await github_client._fetch_report_from_signed_url(signed_url)
+        result = [
+            record
+            async for batch in github_client._fetch_report_from_signed_url(signed_url)
+            for record in batch
+        ]
 
     assert result == expected
 
@@ -338,28 +345,32 @@ async def test_get_users_usage_metrics_returns_batches_from_signed_urls(
         "report_end_day": "2026-03-28",
     }
 
-    fetch_report_mock = AsyncMock(
-        side_effect=[
-            [
-                {
-                    "day": "2026-03-12",
-                    "organization_id": "1234567890",
-                    "user_login": "bob",
-                    "code_generation_activity_count": 19,
-                    "code_acceptance_activity_count": 8,
-                }
-            ],
-            [
-                {
-                    "day": "2026-03-12",
-                    "organization_id": "1234567890",
-                    "user_login": "alice",
-                    "code_generation_activity_count": 11,
-                    "code_acceptance_activity_count": 5,
-                }
-            ],
-        ]
-    )
+    bob_record = {
+        "day": "2026-03-12",
+        "organization_id": "1234567890",
+        "user_login": "bob",
+        "code_generation_activity_count": 19,
+        "code_acceptance_activity_count": 8,
+    }
+    alice_record = {
+        "day": "2026-03-12",
+        "organization_id": "1234567890",
+        "user_login": "alice",
+        "code_generation_activity_count": 11,
+        "code_acceptance_activity_count": 5,
+    }
+
+    call_count = 0
+
+    async def mock_fetch_report(
+        signed_url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            yield [bob_record]
+        else:
+            yield [alice_record]
 
     with (
         patch.object(
@@ -368,7 +379,9 @@ async def test_get_users_usage_metrics_returns_batches_from_signed_urls(
             new=AsyncMock(return_value=manifest_response),
         ),
         patch.object(
-            github_client, "_fetch_report_from_signed_url", new=fetch_report_mock
+            github_client,
+            "_fetch_report_from_signed_url",
+            mock_fetch_report,
         ),
     ):
         result = [
@@ -376,26 +389,7 @@ async def test_get_users_usage_metrics_returns_batches_from_signed_urls(
             async for batch in github_client._get_users_usage_metrics(organization)
         ]
 
-    assert result == [
-        [
-            {
-                "day": "2026-03-12",
-                "organization_id": "1234567890",
-                "user_login": "bob",
-                "code_generation_activity_count": 19,
-                "code_acceptance_activity_count": 8,
-            }
-        ],
-        [
-            {
-                "day": "2026-03-12",
-                "organization_id": "1234567890",
-                "user_login": "alice",
-                "code_generation_activity_count": 11,
-                "code_acceptance_activity_count": 5,
-            }
-        ],
-    ]
+    assert result == [[bob_record], [alice_record]]
 
 
 @pytest.mark.asyncio
@@ -454,12 +448,18 @@ async def test_get_enterprise_usage_metrics_returns_batches_from_signed_urls() -
         "report_start_day": "2026-03-01",
         "report_end_day": "2026-03-28",
     }
-    fetch_report_mock = AsyncMock(
-        side_effect=[
-            [{"day_totals": [{"day": "2026-03-12", "daily_active_users": 11}]}],
-            [{"day_totals": [{"day": "2026-03-13", "daily_active_users": 9}]}],
-        ]
-    )
+
+    call_count = 0
+
+    async def mock_fetch_report(
+        signed_url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            yield [{"day_totals": [{"day": "2026-03-12", "daily_active_users": 11}]}]
+        else:
+            yield [{"day_totals": [{"day": "2026-03-13", "daily_active_users": 9}]}]
 
     with (
         patch.object(
@@ -468,7 +468,9 @@ async def test_get_enterprise_usage_metrics_returns_batches_from_signed_urls() -
             new=AsyncMock(return_value=manifest_response),
         ),
         patch.object(
-            enterprise_client, "_fetch_report_from_signed_url", new=fetch_report_mock
+            enterprise_client,
+            "_fetch_report_from_signed_url",
+            mock_fetch_report,
         ),
     ):
         result = [
@@ -543,12 +545,18 @@ async def test_get_enterprise_users_usage_metrics_returns_batches_from_signed_ur
         "report_start_day": "2026-03-01",
         "report_end_day": "2026-03-28",
     }
-    fetch_report_mock = AsyncMock(
-        side_effect=[
-            [{"day": "2026-03-12", "user_login": "alice"}],
-            [{"day": "2026-03-12", "user_login": "bob"}],
-        ]
-    )
+
+    call_count = 0
+
+    async def mock_fetch_report(
+        signed_url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            yield [{"day": "2026-03-12", "user_login": "alice"}]
+        else:
+            yield [{"day": "2026-03-12", "user_login": "bob"}]
 
     with (
         patch.object(
@@ -557,7 +565,9 @@ async def test_get_enterprise_users_usage_metrics_returns_batches_from_signed_ur
             new=AsyncMock(return_value=manifest_response),
         ),
         patch.object(
-            enterprise_client, "_fetch_report_from_signed_url", new=fetch_report_mock
+            enterprise_client,
+            "_fetch_report_from_signed_url",
+            mock_fetch_report,
         ),
     ):
         result = [
@@ -612,41 +622,6 @@ async def test_fetch_enterprise_users_usage_metrics_enriches_records() -> None:
             }
         ],
     ]
-
-
-@pytest.mark.asyncio
-async def test_large_report_is_split_into_fixed_size_batches(
-    github_client: GitHubClient,
-    mock_organization: dict[str, Any],
-) -> None:
-    records = _make_user_usage_records(350)
-
-    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
-        yield [mock_organization]
-
-    async def mock_get_users_usage_metrics(
-        org: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        yield records
-
-    with (
-        patch.object(github_client, "get_organizations", mock_get_organizations),
-        patch.object(
-            github_client,
-            "_get_users_usage_metrics",
-            mock_get_users_usage_metrics,
-        ),
-    ):
-        batches: list[list[dict[str, Any]]] = []
-        async for batch in github_client.fetch_users_usage_metrics():
-            batches.append(batch)
-
-    # 350 records / 100 per batch = 4 batches
-    _assert_chunked_correctly(
-        batches,
-        total_records=350,
-        page_size=github_client.pagination_page_size_limit,
-    )
 
 
 @pytest.mark.asyncio
@@ -810,35 +785,6 @@ async def test_multiple_organizations_each_yield_separate_chunked_batches(
 
 
 @pytest.mark.asyncio
-async def test_large_enterprise_report_is_split_into_fixed_size_batches(
-    enterprise_github_client: GitHubClient,
-) -> None:
-    records = _make_user_usage_records(350)
-
-    async def mock_get_enterprise_users_usage_metrics() -> (
-        AsyncGenerator[list[dict[str, Any]], None]
-    ):
-        yield records
-
-    with patch.object(
-        enterprise_github_client,
-        "_get_enterprise_users_usage_metrics",
-        mock_get_enterprise_users_usage_metrics,
-    ):
-        batches: list[list[dict[str, Any]]] = []
-        async for (
-            batch
-        ) in enterprise_github_client.fetch_enterprise_users_usage_metrics():
-            batches.append(batch)
-
-    _assert_chunked_correctly(
-        batches,
-        total_records=350,
-        page_size=enterprise_github_client.pagination_page_size_limit,
-    )
-
-
-@pytest.mark.asyncio
 async def test_every_record_in_every_batch_is_enriched_with_enterprise_context(
     enterprise_github_client: GitHubClient,
 ) -> None:
@@ -910,6 +856,61 @@ async def test_empty_enterprise_report_yields_nothing(
 
 
 @pytest.mark.asyncio
+async def test_large_report_is_split_into_fixed_size_batches(
+    github_client: GitHubClient,
+    mock_organization: dict[str, Any],
+) -> None:
+    records = _make_user_usage_records(350)
+
+    async def mock_get_organizations() -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield [mock_organization]
+
+    async def mock_get_users_usage_metrics(
+        org: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield records
+
+    with (
+        patch.object(github_client, "get_organizations", mock_get_organizations),
+        patch.object(
+            github_client,
+            "_get_users_usage_metrics",
+            mock_get_users_usage_metrics,
+        ),
+    ):
+        all_records: list[dict[str, Any]] = []
+        async for batch in github_client.fetch_users_usage_metrics():
+            all_records.extend(batch)
+
+    assert len(all_records) == 350
+
+
+@pytest.mark.asyncio
+async def test_large_enterprise_report_is_split_into_fixed_size_batches(
+    enterprise_github_client: GitHubClient,
+) -> None:
+    records = _make_user_usage_records(350)
+
+    async def mock_get_enterprise_users_usage_metrics() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
+        yield records
+
+    with patch.object(
+        enterprise_github_client,
+        "_get_enterprise_users_usage_metrics",
+        mock_get_enterprise_users_usage_metrics,
+    ):
+        all_records: list[dict[str, Any]] = []
+        async for (
+            batch
+        ) in enterprise_github_client.fetch_enterprise_users_usage_metrics():
+            all_records.extend(batch)
+
+    assert len(all_records) == 350
+
+
+@pytest.mark.asyncio
 async def test_large_day_totals_report_is_split_into_fixed_size_batches(
     github_client: GitHubClient,
     mock_organization: dict[str, Any],
@@ -920,7 +921,7 @@ async def test_large_day_totals_report_is_split_into_fixed_size_batches(
         yield [mock_organization]
 
     async def mock_get_organization_usage_metrics(
-        org: dict[str, Any]
+        org: dict[str, Any],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         yield reports
 
@@ -932,15 +933,11 @@ async def test_large_day_totals_report_is_split_into_fixed_size_batches(
             mock_get_organization_usage_metrics,
         ),
     ):
-        batches: list[list[dict[str, Any]]] = []
+        all_records: list[dict[str, Any]] = []
         async for batch in github_client.fetch_organization_usage_metrics():
-            batches.append(batch)
+            all_records.extend(batch)
 
-    _assert_chunked_correctly(
-        batches,
-        total_records=350,
-        page_size=github_client.pagination_page_size_limit,
-    )
+    assert len(all_records) == 350
 
 
 @pytest.mark.asyncio
@@ -1019,15 +1016,11 @@ async def test_large_enterprise_day_totals_split_into_fixed_size_batches(
         "_get_enterprise_usage_metrics",
         mock_get_enterprise_usage_metrics,
     ):
-        batches: list[list[dict[str, Any]]] = []
+        all_records: list[dict[str, Any]] = []
         async for batch in enterprise_github_client.fetch_enterprise_usage_metrics():
-            batches.append(batch)
+            all_records.extend(batch)
 
-    _assert_chunked_correctly(
-        batches,
-        total_records=350,
-        page_size=enterprise_github_client.pagination_page_size_limit,
-    )
+    assert len(all_records) == 350
 
 
 @pytest.mark.asyncio
@@ -1103,25 +1096,23 @@ async def test_large_single_file_is_split_into_fixed_size_batches(
 ) -> None:
     records = _make_user_usage_records(350)
 
-    async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
-        return records
+    async def mock_fetch_report(
+        signed_url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield records
 
     with patch.object(
         github_client,
         "_fetch_report_from_signed_url",
-        side_effect=mock_fetch_report,
+        mock_fetch_report,
     ):
-        batches: list[list[dict[str, Any]]] = []
+        all_records: list[dict[str, Any]] = []
         async for batch in github_client._download_and_yield_reports(
             ["https://signed-url-1"]
         ):
-            batches.append(batch)
+            all_records.extend(batch)
 
-    _assert_chunked_correctly(
-        batches,
-        total_records=350,
-        page_size=github_client.pagination_page_size_limit,
-    )
+    assert len(all_records) == 350
 
 
 @pytest.mark.asyncio
@@ -1130,13 +1121,15 @@ async def test_all_records_present_across_batches_without_data_loss(
 ) -> None:
     records = _make_user_usage_records(250)
 
-    async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
-        return records
+    async def mock_fetch_report(
+        signed_url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield records
 
     with patch.object(
         github_client,
         "_fetch_report_from_signed_url",
-        side_effect=mock_fetch_report,
+        mock_fetch_report,
     ):
         all_records: list[dict[str, Any]] = []
         async for batch in github_client._download_and_yield_reports(
@@ -1151,13 +1144,16 @@ async def test_all_records_present_across_batches_without_data_loss(
 async def test_empty_file_yields_nothing(
     github_client: GitHubClient,
 ) -> None:
-    async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
-        return []
+    async def mock_fetch_report(
+        signed_url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        return
+        yield
 
     with patch.object(
         github_client,
         "_fetch_report_from_signed_url",
-        side_effect=mock_fetch_report,
+        mock_fetch_report,
     ):
         batches: list[list[dict[str, Any]]] = []
         async for batch in github_client._download_and_yield_reports(
@@ -1174,15 +1170,17 @@ async def test_failed_url_is_skipped_and_remaining_urls_continue(
 ) -> None:
     records = _make_user_usage_records(50)
 
-    async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
+    async def mock_fetch_report(
+        signed_url: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if "failing" in signed_url:
             raise httpx.HTTPError("connection error")
-        return records
+        yield records
 
     with patch.object(
         github_client,
         "_fetch_report_from_signed_url",
-        side_effect=mock_fetch_report,
+        mock_fetch_report,
     ):
         all_records: list[dict[str, Any]] = []
         async for batch in github_client._download_and_yield_reports_safe(
@@ -1195,25 +1193,4 @@ async def test_failed_url_is_skipped_and_remaining_urls_continue(
         ):
             all_records.extend(batch)
 
-    assert len(all_records) == 100  # two successful URLs x 50 records each
-
-
-@pytest.mark.asyncio
-async def test_cancelled_error_is_logged_as_warning_and_skipped(
-    github_client: GitHubClient,
-) -> None:
-    async def mock_fetch_report(signed_url: str) -> list[dict[str, Any]]:
-        raise asyncio.CancelledError()
-
-    with patch.object(
-        github_client,
-        "_fetch_report_from_signed_url",
-        side_effect=mock_fetch_report,
-    ):
-        with patch("clients.github_client.logger") as mock_logger:
-            async for _ in github_client._download_and_yield_reports_safe(
-                ["https://signed-url-1"], context="test-org"
-            ):
-                pass
-
-    mock_logger.warning.assert_called_once()
+    assert len(all_records) == 100
