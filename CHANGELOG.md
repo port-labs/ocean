@@ -6,6 +6,119 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.41.7 (2026-05-07)
+
+### Improvements
+
+- Serialize Port app config mappings to JSON-safe types in resync logs.
+
+## 0.41.6 (2026-04-30)
+
+### Improvements
+
+- When using the polling event listener, requests to Port to fetch the current integration now include `oceanCoreVersion` and `isPolling=true` query parameters. Other callers of the same API are unchanged.
+
+## 0.41.5 (2026-04-27)
+
+### Bug fixes
+
+- Fixed raw examples ingestion for resources using `itemsToParse`: examples are now sent from the original extracted payload before `itemsToParse` expansion/top-level transform, so arrays and parent fields are preserved in Port examples.
+
+## 0.41.4 (2026-04-23)
+
+### Bug fixes
+
+- Fixed the `once` event listener on non-SaaS runtimes so that when a resync fails, integration resync state and sync metrics are reported as failed instead of incorrectly completed.
+
+## 0.41.3 (2026-04-22)
+
+### Bug fixes
+
+- Add support for path prefix in health routes
+
+
+## 0.41.2 (2026-04-21)
+
+### Bug Fixes
+
+- Ocean CLI would now be able to create private integrations with working docker file (all the required scripts are now added to the scaffold)
+
+## 0.41.1 (2026-04-20)
+
+### Fixes
+
+- Fixed integration tests to run single process as default to avoid issues with multiprocessing.
+
+## 0.41.0 (2026-04-20)
+
+### Improvements
+
+- Implemented health routes for liveness and readiness to deprecate the current /docs usage
+
+## 0.40.7 (2026-04-15)
+
+### Improvements
+
+- Port app config JSON Schema export (`port-app-config` CLI JSON output) now sets `additionalProperties: false` on selector definitions by patching the exported schema in the CLI, so exported schemas reject unknown selector fields without changing runtime integration models.
+
+## 0.40.6 (2026-04-15)
+
+### Improvements
+
+- Send event_type and resync_start_time to Lakehouse API for better event tracking and audit trail.
+
+## 0.40.5 (2026-04-09)
+
+### Features
+
+- Integration lakehouse raw-data POST now includes `resourceIndex`; resync and live events passes the resource list index.
+
+## 0.40.4 (2026-04-09)
+
+### Improvements
+
+- When loading an external OAuth access token from a file fails, the debug log now includes the underlying exception for easier troubleshooting.
+
+## 0.40.3 (2026-04-07)
+
+
+### Improvements
+
+- Enhanced logging to provide clearer and more detailed insights into OAUTH processes
+
+
+## 0.40.2 (2026-03-31)
+
+### Features
+
+- Metrics heartbeat: while a sync has an active metrics `eventId`, Ocean periodically `PUT`s to the ingest URL `/heartbeat` so Port can track live sync progress. Configurable via `status_heartbeat_interval_seconds` (default 10).
+
+## 0.40.1 (2026-04-06)
+
+### Bug Fixes
+
+- Added `User-Agent` configuration for the Port's `/auth/access_token` route
+
+## 0.40.0 (2026-04-06)
+
+### Bug Fixes
+
+- Fixed retry behavior for chunked/unknown-length HTTP responses where a transient `httpx.RemoteProtocolError` could occur during body reads (e.g. “incomplete chunked read”) outside the retry loop, aborting resync instead of retrying. Added unit test coverage for this scenario.
+
+## 0.39.1 (2026-04-05)
+
+### Bug Fixes
+
+- Fixed `UnboundLocalError` in `event_context` when `EmptyPortAppConfigError` is raised: `success` is now set in that handler so the `finally` block can log “Event finished” without masking the original error.
+
+
+## 0.39.0 (2026-04-05)
+
+### Improvements
+
+- Normalize JQ input data to JSON-compatible types only when needed (fallback on “not JSON serializable” errors), preventing transform failures from `date`/`datetime` values.
+
+
 ## 0.38.27 (2026-03-30)
 
 ### Improvements
@@ -24,7 +137,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Added `x-ratelimit-reset` to the list of retry-after headers checked by the Port HTTP transport, so that when Ocean receives a 429 from the Port API it waits until the rate-limit window resets instead of falling back to exponential backoff
-
 
 ## 0.38.24 (2026-03-25)
 

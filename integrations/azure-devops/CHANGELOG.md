@@ -7,6 +7,207 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.28 (2026-05-03)
+
+
+### Features
+
+- Added `release-definition` kind for classic release pipeline definitions
+- Added configurable selector on the `release` kind with expand, status, tag, source branch, and date filters
+
+
+## 0.8.27 (2026-05-03)
+
+
+### Features
+
+- Added live event support for the `test-run` kind by piggybacking on pipeline run state change events
+
+
+## 0.8.26 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 0.8.25 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.8.24 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.8.23 (2026-04-24)
+
+
+### Improvements
+
+- Added concurrency support for repository fetching across projects
+
+
+## 0.8.22 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.8.21 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.8.20 (2026-04-21)
+
+
+### Improvements
+
+- Added default WIQL filter to work-item port-app-config to exclude closed/done/removed items
+
+
+## 0.8.19 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.8.18 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.8.17 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.8.16 (2026-04-16)
+
+
+### Features
+
+- Added live event support for releases and release deployments via ADO service hooks (release created, abandoned, deployment started, deployment completed)
+
+
+## 0.8.15 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.8.14 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.8.13 (2026-04-15)
+
+
+### Improvements
+
+- Enhanced repository-policy and test-run fetching with concurrency support
+
+
+## 0.8.12 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.8.11 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.8.10 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.8.9 (2026-04-06)
+
+
+### Improvements
+
+- Added title/description metadata to AzureDevopsFolderSelector, AzureDevopsFolderResourceConfig, and AzureDevopsReleaseDeploymentConfig for schema validation compliance
+
+
+## 0.8.8 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.8.7 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.8.6 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.8.5 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.8.4 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
 ## 0.8.3 (2026-03-30)
 
 

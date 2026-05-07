@@ -29,3 +29,8 @@ configurations:
     required: true
     type: string
     description: "Sentry organization"
+  - name: sentryWebhookSecret
+    required: false
+    sensitive: true
+    type: string
+    description: A webhook secret returned by Sentry to verify incoming webhook events. Ensures that only legitimate events from Sentry are accepted. This is optional by default

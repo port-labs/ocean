@@ -8,8 +8,6 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 from clients.github_client import GitHubClient
 from tests.mocks import (
     organizations_response,
-    teams_response,
-    copilot_metrics_response,
     mock_single_json_signed_url_content,
     mock_ndjson_signed_url_content,
 )
@@ -59,64 +57,6 @@ async def test_get_organizations_single_page(github_client: GitHubClient) -> Non
 
 
 @pytest.mark.asyncio
-async def test_get_teams_of_organization_403_ignored(
-    github_client: GitHubClient,
-) -> None:
-    error_response = httpx.Response(
-        status_code=403, request=httpx.Request("GET", "https://fake")
-    )
-    async_mock = AsyncMock(
-        side_effect=httpx.HTTPStatusError(
-            "Forbidden", request=error_response.request, response=error_response
-        )
-    )
-
-    with patch.object(github_client._client, "request", new=async_mock):
-        results = []
-        async for teams in github_client.get_teams_of_organization(
-            organizations_response[0]
-        ):
-            results.extend(teams)
-
-        assert results == []
-
-
-@pytest.mark.asyncio
-async def test_get_legacy_metrics_for_organization(github_client: GitHubClient) -> None:
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = copilot_metrics_response
-
-    with patch.object(
-        github_client._client, "request", new=AsyncMock(return_value=mock_response)
-    ):
-        result = await github_client.get_legacy_metrics_for_organization(
-            organizations_response[0]
-        )
-        assert result == copilot_metrics_response
-
-
-@pytest.mark.asyncio
-async def test_get_metrics_for_team_422_ignored(github_client: GitHubClient) -> None:
-    error_response = httpx.Response(
-        status_code=422, request=httpx.Request("get", "https://fake")
-    )
-    async_mock = AsyncMock(
-        side_effect=httpx.HTTPStatusError(
-            "Unprocessable Entity",
-            request=error_response.request,
-            response=error_response,
-        )
-    )
-
-    with patch.object(github_client._client, "request", new=async_mock):
-        result = await github_client.get_metrics_for_team(
-            organizations_response[0], teams_response[0]
-        )
-        assert result == []
-
-
-@pytest.mark.asyncio
 async def test_paginated_response(github_client: GitHubClient) -> None:
     first_response = MagicMock()
     first_response.status_code = 200
@@ -155,10 +95,10 @@ async def test_send_api_request_404_returns_empty(github_client: GitHubClient) -
 
 
 def test_resolve_route_params() -> None:
-    endpoint = "/orgs/{org}/teams/{team}/metrics"
-    params = {"org": "acme", "team": "devs"}
+    endpoint = "/orgs/{org}/copilot/metrics/users"
+    params = {"org": "acme"}
     result = GitHubClient._resolve_route_params(endpoint, params)
-    assert result == "/orgs/acme/teams/devs/metrics"
+    assert result == "/orgs/acme/copilot/metrics/users"
 
 
 @pytest.mark.asyncio
@@ -434,4 +374,182 @@ async def test_fetch_users_usage_metrics_enriches_records_across_org_batches(
         [{"user_login": "alice", "day": "2026-03-12", "__organization": org_a}],
         [{"user_login": "bob", "day": "2026-03-12", "__organization": org_b}],
         [{"user_login": "charlie", "day": "2026-03-12", "__organization": org_c}],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_enterprise_usage_metrics_returns_batches_from_signed_urls() -> None:
+    enterprise_name = "acme-enterprise"
+    enterprise_client = GitHubClient(
+        base_url=BASE_URL,
+        token=TOKEN,
+        enterprise_name=enterprise_name,
+    )
+    manifest_response = MagicMock()
+    manifest_response.status_code = 200
+    manifest_response.json.return_value = {
+        "download_links": [
+            "https://signed.example.com/enterprise-report-1.ndjson",
+            "https://signed.example.com/enterprise-report-2.ndjson",
+        ],
+        "report_start_day": "2026-03-01",
+        "report_end_day": "2026-03-28",
+    }
+    fetch_report_mock = AsyncMock(
+        side_effect=[
+            [{"day_totals": [{"day": "2026-03-12", "daily_active_users": 11}]}],
+            [{"day_totals": [{"day": "2026-03-13", "daily_active_users": 9}]}],
+        ]
+    )
+
+    with (
+        patch.object(
+            enterprise_client,
+            "_send_api_request",
+            new=AsyncMock(return_value=manifest_response),
+        ),
+        patch.object(
+            enterprise_client, "_fetch_report_from_signed_url", new=fetch_report_mock
+        ),
+    ):
+        result = [
+            batch async for batch in enterprise_client._get_enterprise_usage_metrics()
+        ]
+
+    assert result == [
+        [{"day_totals": [{"day": "2026-03-12", "daily_active_users": 11}]}],
+        [{"day_totals": [{"day": "2026-03-13", "daily_active_users": 9}]}],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_enterprise_usage_metrics_enriches_day_totals() -> None:
+    enterprise_name = "acme-enterprise"
+    enterprise_client = GitHubClient(
+        base_url=BASE_URL,
+        token=TOKEN,
+        enterprise_name=enterprise_name,
+    )
+
+    async def enterprise_usage_generator() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
+        yield [{"day_totals": [{"day": "2026-03-12", "daily_active_users": 7}]}]
+        yield [{"day_totals": [{"day": "2026-03-13", "daily_active_users": 5}]}]
+
+    with patch.object(
+        enterprise_client,
+        "_get_enterprise_usage_metrics",
+        new=enterprise_usage_generator,
+    ):
+        result = [
+            batch async for batch in enterprise_client.fetch_enterprise_usage_metrics()
+        ]
+
+    assert result == [
+        [
+            {
+                "day": "2026-03-12",
+                "daily_active_users": 7,
+                "__enterprise": {"slug": enterprise_name},
+            }
+        ],
+        [
+            {
+                "day": "2026-03-13",
+                "daily_active_users": 5,
+                "__enterprise": {"slug": enterprise_name},
+            }
+        ],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_enterprise_users_usage_metrics_returns_batches_from_signed_urls() -> (
+    None
+):
+    enterprise_name = "acme-enterprise"
+    enterprise_client = GitHubClient(
+        base_url=BASE_URL,
+        token=TOKEN,
+        enterprise_name=enterprise_name,
+    )
+    manifest_response = MagicMock()
+    manifest_response.status_code = 200
+    manifest_response.json.return_value = {
+        "download_links": [
+            "https://signed.example.com/enterprise-users-report-1.ndjson",
+            "https://signed.example.com/enterprise-users-report-2.ndjson",
+        ],
+        "report_start_day": "2026-03-01",
+        "report_end_day": "2026-03-28",
+    }
+    fetch_report_mock = AsyncMock(
+        side_effect=[
+            [{"day": "2026-03-12", "user_login": "alice"}],
+            [{"day": "2026-03-12", "user_login": "bob"}],
+        ]
+    )
+
+    with (
+        patch.object(
+            enterprise_client,
+            "_send_api_request",
+            new=AsyncMock(return_value=manifest_response),
+        ),
+        patch.object(
+            enterprise_client, "_fetch_report_from_signed_url", new=fetch_report_mock
+        ),
+    ):
+        result = [
+            batch
+            async for batch in enterprise_client._get_enterprise_users_usage_metrics()
+        ]
+
+    assert result == [
+        [{"day": "2026-03-12", "user_login": "alice"}],
+        [{"day": "2026-03-12", "user_login": "bob"}],
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_enterprise_users_usage_metrics_enriches_records() -> None:
+    enterprise_name = "acme-enterprise"
+    enterprise_client = GitHubClient(
+        base_url=BASE_URL,
+        token=TOKEN,
+        enterprise_name=enterprise_name,
+    )
+
+    async def enterprise_users_usage_generator() -> (
+        AsyncGenerator[list[dict[str, Any]], None]
+    ):
+        yield [{"day": "2026-03-12", "user_login": "alice"}]
+        yield [{"day": "2026-03-12", "user_login": "bob"}]
+
+    with patch.object(
+        enterprise_client,
+        "_get_enterprise_users_usage_metrics",
+        new=enterprise_users_usage_generator,
+    ):
+        result = [
+            batch
+            async for batch in enterprise_client.fetch_enterprise_users_usage_metrics()
+        ]
+
+    assert result == [
+        [
+            {
+                "day": "2026-03-12",
+                "user_login": "alice",
+                "__enterprise": {"slug": enterprise_name},
+            }
+        ],
+        [
+            {
+                "day": "2026-03-12",
+                "user_login": "bob",
+                "__enterprise": {"slug": enterprise_name},
+            }
+        ],
     ]

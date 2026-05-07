@@ -14,21 +14,20 @@ from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.disk import DiskCacheProvider
 from port_ocean.cache.memory import InMemoryCacheProvider
 from port_ocean.clients.port.client import PortClient
-from port_ocean.config.settings import (
-    IntegrationConfiguration,
-)
+from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import (
     PortOceanContext,
     initialize_port_ocean_context,
     ocean,
 )
+from port_ocean.core.handlers.actions.execution_manager import ExecutionManager
 from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
-from port_ocean.core.handlers.actions.execution_manager import ExecutionManager
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.models import ProcessExecutionMode
+from port_ocean.health import create_health_router
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.misc import IntegrationStateStatus
@@ -108,8 +107,10 @@ class Ocean:
             self.port_client, self.config.scheduled_resync_interval
         )
         self.app_initialized = False
+        self._status_heartbeat_task: asyncio.Task[None] | None = None
 
         signal_handler.register(self._report_resync_aborted, priority=100)
+        signal_handler.register(self._stop_status_heartbeat, priority=90)
 
     async def _report_resync_aborted(self) -> None:
         """
@@ -137,6 +138,15 @@ class Ocean:
                     )
         except Exception as e:
             logger.warning(f"Error during graceful shutdown: {e}")
+
+    async def _stop_status_heartbeat(self) -> None:
+        if self._status_heartbeat_task is not None:
+            self._status_heartbeat_task.cancel()
+            try:
+                await self._status_heartbeat_task
+            except asyncio.CancelledError:
+                pass
+            self._status_heartbeat_task = None
 
     def _get_process_execution_mode(self) -> ProcessExecutionMode:
         if self.config.process_execution_mode:
@@ -205,6 +215,28 @@ class Ocean:
             )
             await repeated_function()
 
+    async def _setup_status_heartbeat(self) -> None:
+        interval = self.config.status_heartbeat_interval_seconds
+        logger.info(
+            "Starting metrics heartbeat",
+            interval_seconds=interval,
+        )
+
+        async def heartbeat_loop() -> None:
+            while True:
+                try:
+                    if not self.metrics.event_id.strip():
+                        await asyncio.sleep(interval)
+                        continue
+                    await self.metrics.report_metrics_heartbeat()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    logger.error(f"Metrics heartbeat failed: {e}")
+                await asyncio.sleep(interval)
+
+        self._status_heartbeat_task = asyncio.create_task(heartbeat_loop())
+
     @property
     def route_prefix(self) -> str:
         return (
@@ -230,9 +262,10 @@ class Ocean:
             try:
                 with open(self.config.oauth_access_token_file_path, "r") as f:
                     return f.read()
-            except Exception:
+            except Exception as e:
                 logger.debug(
                     "Failed to load external oauth access token from file",
+                    error=str(e),
                     file_path=self.config.oauth_access_token_file_path,
                 )
         return None
@@ -262,20 +295,16 @@ class Ocean:
         self.fast_api_app.include_router(
             self.metrics.create_mertic_router(), prefix=f"{self.route_prefix}/metrics"
         )
-
-        health_router = APIRouter()
-
-        @health_router.get("/isHealthy")
-        def is_healthy() -> dict[str, str]:
-            return {"status": "healthy"}
-
-        self.fast_api_app.include_router(health_router, prefix=self.route_prefix or "")
+        self.fast_api_app.include_router(
+            create_health_router(), prefix=f"{self.route_prefix}/health"
+        )
 
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
                 await self._register_addons()
+                await self._setup_status_heartbeat()
                 await self._setup_scheduled_resync()
                 yield None
             except Exception:

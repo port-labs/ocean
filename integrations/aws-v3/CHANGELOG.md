@@ -7,6 +7,186 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.2.2-beta (2026-05-04)
+
+
+### Improvements
+
+- Introduce `CREDENTIAL_PROVIDER_PRIORITY` environment variable, allowing users to customize and control the priority order in which AWS credential providers are selected for authentication.
+
+
+## 2.2.1-beta (2026-04-26)
+
+
+### Features
+
+- Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind. 
+
+
+## 2.2.0-beta (2026-04-23)
+
+
+### Features
+
+- Added support to fetch resources exclusively from a user-specified AWS Organization Unit (OU), allowing targeted account discovery.
+
+### Improvements
+
+- Updated account activity checks to use the `State` property instead of `Status`, in preparation for AWS deprecating the `Status` field on September 9, 2026.
+
+
+## 2.1.86-beta (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 2.1.85-beta (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 2.1.84-beta (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 2.1.83-beta (2026-04-24)
+
+
+### Features
+
+- Added support for AWS::ECS::TaskDefinition resource kind, enabling ingestion of ECS task definitions into the Port catalog with attributes such as container definitions, CPU, memory, network mode, and IAM roles.
+
+
+## 2.1.82-beta (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 2.1.81-beta (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 2.1.80-beta (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 2.1.79-beta (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 2.1.78-beta (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 2.1.77-beta (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 2.1.76-beta (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 2.1.75-beta (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 2.1.74-beta (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 2.1.73-beta (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 2.1.72-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 2.1.71-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 2.1.70-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 2.1.69-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 2.1.68-beta (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
 ## 2.1.67-beta (2026-03-31)
 
 
@@ -630,6 +810,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
+
 - Bumped ocean version to ^0.29.8
 
 
@@ -678,6 +859,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 2.0.2-beta (2025-11-09)
 
