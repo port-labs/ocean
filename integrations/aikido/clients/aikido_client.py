@@ -166,6 +166,21 @@ class AikidoClient:
         ):
             yield issue_groups
 
+    async def get_open_issue_groups_for_team(
+        self, team_id: str
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch paginated open issue groups for a specific team from the Aikido API."""
+
+        base_params = {"filter_team_id": team_id}
+        async for issue_groups in self.get_paginated_resource(
+            endpoint=OPEN_ISSUE_GROUPS_ENDPOINT,
+            resource_name=f"open issue groups for team {team_id}",
+            first_page=FIRST_PAGE,
+            page_size=PAGE_SIZE,
+            base_params=base_params,
+        ):
+            yield issue_groups
+
     async def get_teams(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch paginated teams from the Aikido API."""
 

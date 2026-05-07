@@ -66,18 +66,18 @@ async def on_team_issue_groups_resync(
     kind: str,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     client = init_aikido_client()
-    logger.info("Fetching team issue groups from Aikido API")
-    return None
-    # async for team_batch in client.get_teams():
-    #     for team in team_batch:
-    #         team_id = team["id"]
-    #         logger.info(f"Fetching issue groups for team {team_id} from Aikido API")
+    
+    async for team_batch in client.get_teams():
+        logger.info("Fetching team issue groups from Aikido API")
+        for team in team_batch:
+            team_id = team["id"]
+            logger.info(f"Fetching issue groups for team {team_id} from Aikido API")
 
-    #         async for team_issue_group_batch in client.get_team_issue_groups(team_id):
-    #             logger.info(
-    #                 f"Yielding team issue groups batch of size: {len(team_issue_group_batch)}"
-    #             )
-    #             yield team_issue_group_batch
+            async for team_issue_group_batch in client.get_open_issue_groups_for_team(team_id):
+                logger.info(
+                    f"Yielding team issue groups batch of size: {len(team_issue_group_batch)}"
+                )
+                yield team_issue_group_batch
 
 
 @ocean.on_resync(ObjectKind.TEAM)
