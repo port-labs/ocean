@@ -18,12 +18,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - When using the polling event listener, requests to Port to fetch the current integration now include `oceanCoreVersion` and `isPolling=true` query parameters. Other callers of the same API are unchanged.
 
-## 0.41.6 (2026-04-30)
-
-### Improvements
-
-- When using the polling event listener, requests to Port to fetch the current integration now include `oceanCoreVersion` and `isPolling=true` query parameters. Other callers of the same API are unchanged.
-
 ## 0.41.5 (2026-04-27)
 
 ### Bug fixes
