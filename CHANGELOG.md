@@ -8,7 +8,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 <!-- towncrier release notes start -->
 ## 0.41.7 (2026-05-07)
 
-## Improvements
+### Improvements
 
 - Serialize Port app config mappings to JSON-safe types in resync logs.
 
