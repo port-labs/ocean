@@ -7,19 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-<<<<<<< task_tboe6s/datadog_selector_propagation
-## 0.3.124 (2026-04-12)
-=======
-## 0.3.133 (2026-04-30)
->>>>>>> main
+## 0.3.135 (2026-05-07)
 
 
 ### Improvements
 
-<<<<<<< task_tboe6s/datadog_selector_propagation
 - Add missing field metadata for schema validation compliance
 - Reduced SLOHistorySelector `period_of_time_in_months` default from 12 to 6 for improved performance, and fixed `period_of_time_in_days` validator to safely handle None values
-=======
+
+
+## 0.3.134 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 0.3.133 (2026-04-30)
+
+
+### Improvements
+
 - Bumped ocean version to ^0.41.6
 
 
@@ -93,7 +102,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.40.6
->>>>>>> main
 
 
 ## 0.3.123 (2026-04-12)
