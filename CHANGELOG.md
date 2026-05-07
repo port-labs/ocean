@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.41.7 (2026-05-07)
+
+## Improvements
+
+- Serialize Port app config mappings to JSON-safe types in resync logs.
+
+## 0.41.6 (2026-04-30)
+
+### Improvements
+
+- When using the polling event listener, requests to Port to fetch the current integration now include `oceanCoreVersion` and `isPolling=true` query parameters. Other callers of the same API are unchanged.
+
 ## 0.41.6 (2026-04-30)
 
 ### Improvements
