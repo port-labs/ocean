@@ -40,6 +40,7 @@ This integration provides the following resources:
 - **repositories**: Aikido repositories with code scanning capabilities
 - **issues**: Security issues and vulnerabilities found in repositories
 - **issue_groups**: Open issue groups aggregated by Aikido
+- **team_issue_group**: Open issue groups scoped to a specific Aikido team, enriched with team metadata
 - **team**: Aikido teams and their scoped responsibilities
 - **containers**: Aikido container repositories and scan metadata
 
