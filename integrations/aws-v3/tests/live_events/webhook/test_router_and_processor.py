@@ -73,15 +73,10 @@ class TestEventRouter:
         await route_event(event, mock_session)
 
     @pytest.mark.asyncio
-    @patch("aws.live_events.webhook.router.EC2InstanceLiveEventHandler")
     async def test_handler_exception_does_not_propagate(
-        self, mock_handler_cls: MagicMock, mock_session: AsyncMock
+        self, mock_session: AsyncMock
     ) -> None:
         """If a handler raises, the router should catch and log, not crash."""
-        mock_handler = AsyncMock()
-        mock_handler_cls.return_value = mock_handler
-        mock_handler.handle.side_effect = Exception("handler blew up")
-
         event = {
             "source": "aws.ec2",
             "detail-type": "EC2 Instance State-change Notification",
@@ -90,7 +85,12 @@ class TestEventRouter:
             "detail": {"instance-id": "i-err", "state": "running"},
         }
 
-        await route_event(event, mock_session)  # must not raise
+        with patch(
+            "aws.live_events.handlers.ec2.EC2InstanceLiveEventHandler.handle",
+            new_callable=AsyncMock,
+            side_effect=Exception("handler blew up"),
+        ):
+            await route_event(event, mock_session)  # must not raise
 
     @pytest.mark.asyncio
     async def test_sns_notification_unwrapped_and_routed(
