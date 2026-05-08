@@ -55,7 +55,7 @@ class LambdaFunctionLiveEventHandler(BaseLiveEventHandler):
 
         if event_name in _DELETE_EVENT_NAMES:
             logger.info(f"[Lambda] function {function_name} deleted, removing from Port")
-            await self._delete(function_name)
+            await self._delete(self._build_delete_raw(function_name))
             return
 
         if event_name not in _UPSERT_EVENT_NAMES:

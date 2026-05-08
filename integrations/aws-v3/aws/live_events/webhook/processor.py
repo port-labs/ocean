@@ -101,9 +101,9 @@ class LiveEventsWebhookProcessor(AbstractWebhookProcessor):
                 f"[webhook] no session found for account {target_account!r}, "
                 "using default session from first available account"
             )
-            async for _, acct_session in get_all_account_sessions():
-                session = acct_session
-                break
+            # Do not fallback – drop the event
+            self._ack_event(message_id)
+            return
 
         if session is None:
             logger.error("[webhook] no AWS sessions available, cannot process event")

@@ -47,7 +47,7 @@ class S3BucketLiveEventHandler(BaseLiveEventHandler):
 
         if event_name in _DELETE_EVENT_NAMES:
             logger.info(f"[S3] bucket {bucket_name} deleted, removing from Port")
-            await self._delete(bucket_name)
+            await self._delete(self._build_delete_raw(bucket_name))
             return
 
         if event_name not in _UPSERT_EVENT_NAMES:

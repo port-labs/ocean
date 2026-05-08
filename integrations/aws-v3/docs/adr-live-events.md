@@ -80,7 +80,7 @@ AWS Resource Change (EC2, ECS, Lambda, S3, ...)
 EventBridge Default Event Bus (per region, per account)
     │  EventBridge rule with event pattern filter
     ▼
-SNS Topic  (docsboxx-port-live-events)
+SNS Topic  (port-live-events)
     │  HTTPS subscription
     ▼
 Ocean Webhook Endpoint  POST /integration/live-events/webhook

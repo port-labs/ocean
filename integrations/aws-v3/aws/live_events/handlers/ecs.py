@@ -67,7 +67,7 @@ class ECSServiceLiveEventHandler(BaseLiveEventHandler):
             event_reason: str = detail.get("reason", "").lower()
             if "delete" in event_reason or "inactive" in event_reason:
                 logger.info(f"[ECS] service {service_name} deleted, removing from Port")
-                await self._delete(service_arn)
+                await self._delete(self._build_delete_raw(service_arn))
                 return
             logger.warning(f"[ECS] fetched empty resource for {service_name}, skipping")
             return
