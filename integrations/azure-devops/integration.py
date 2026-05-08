@@ -301,7 +301,7 @@ class AzureDevopsUserSelector(Selector):
     ] = Field(
         default=None,
         title="Select",
-        description="List of additional properties to include in user entitlements. ",
+        description="List of additional properties to include in user entitlements.",
     )
 
     def to_params(self) -> dict[str, str]:
