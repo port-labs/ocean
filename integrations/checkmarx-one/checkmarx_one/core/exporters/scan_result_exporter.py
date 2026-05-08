@@ -51,7 +51,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
             Batches of scan results
         """
 
-        async for results in self.client.send_paginated_request(
+        async for results in self.client.send_paginated_request_page_index(
             "/results", "results", params
         ):
             logger.info(

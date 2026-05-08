@@ -343,6 +343,124 @@ class TestCheckmarxOneClient:
                 async for batch in client.send_paginated_request("/test", "data"):
                     results.append(batch)
 
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_page_index_single_page(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Single page: offset=0, fewer than PAGE_SIZE items returned."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"results": [{"id": 1}, {"id": 2}]}
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_page_index(
+                "/results", "results"
+            ):
+                results.append(batch)
+
+            assert len(results) == 1
+            assert results[0] == [{"id": 1}, {"id": 2}]
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_page_index_multiple_pages(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Two full pages followed by a partial page: all 250 items returned."""
+        mock_response1 = MagicMock()
+        mock_response1.json.return_value = {"results": [{"id": i} for i in range(100)]}
+        mock_response1.raise_for_status.return_value = None
+
+        mock_response2 = MagicMock()
+        mock_response2.json.return_value = {
+            "results": [{"id": i} for i in range(100, 200)]
+        }
+        mock_response2.raise_for_status.return_value = None
+
+        mock_response3 = MagicMock()
+        mock_response3.json.return_value = {
+            "results": [{"id": i} for i in range(200, 250)]
+        }
+        mock_response3.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(
+                side_effect=[mock_response1, mock_response2, mock_response3]
+            )
+            results = []
+            async for batch in client.send_paginated_request_page_index(
+                "/results", "results"
+            ):
+                results.append(batch)
+
+            assert len(results) == 3
+            assert len(results[0]) == 100
+            assert len(results[1]) == 100
+            assert len(results[2]) == 50
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_page_index_uses_page_number_not_item_count(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Critical: offset must increment by 1 per page, not by PAGE_SIZE.
+
+        The /api/results/ endpoint treats offset as 'number of pages to skip'.
+        Sending offset=100 for the second page would jump to item 10 000 and
+        return empty results, capping every scan at 100 vulnerabilities.
+        """
+        mock_response1 = MagicMock()
+        mock_response1.json.return_value = {"results": [{"id": i} for i in range(100)]}
+        mock_response1.raise_for_status.return_value = None
+
+        mock_response2 = MagicMock()
+        mock_response2.json.return_value = {
+            "results": [{"id": i} for i in range(100, 150)]
+        }
+        mock_response2.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(
+                side_effect=[mock_response1, mock_response2]
+            )
+            results = []
+            async for batch in client.send_paginated_request_page_index(
+                "/results", "results"
+            ):
+                results.append(batch)
+
+            calls = mock_client.request.call_args_list
+            assert len(calls) == 2
+
+            first_params = calls[0].kwargs.get("params", {})
+            assert first_params.get("offset") == 0
+            assert first_params.get("limit") == 100
+
+            second_params = calls[1].kwargs.get("params", {})
+            assert (
+                second_params.get("offset") == 1
+            ), "offset for the second page must be 1 (page index), not 100 (item count)"
+            assert second_params.get("limit") == 100
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_page_index_empty_response(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Empty first response stops immediately."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"results": []}
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_page_index(
+                "/results", "results"
+            ):
+                results.append(batch)
+
+            assert len(results) == 0
+
     def test_constants(self) -> None:
         """Test that constants are properly defined."""
         from checkmarx_one.clients.client import PAGE_SIZE
