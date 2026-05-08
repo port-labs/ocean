@@ -1,6 +1,6 @@
 import json
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from typing import Any
 
 from aws.live_events.webhook.router import route_event, route_sns_notification
@@ -15,14 +15,10 @@ class TestEventRouter:
         return AsyncMock()
 
     @pytest.mark.asyncio
-    @patch("aws.live_events.webhook.router.EC2InstanceLiveEventHandler")
     async def test_ec2_event_routed_to_ec2_handler(
-        self, mock_handler_cls: MagicMock, mock_session: AsyncMock
+        self, mock_session: AsyncMock
     ) -> None:
         """EC2 state-change events must route to EC2InstanceLiveEventHandler."""
-        mock_handler = AsyncMock()
-        mock_handler_cls.return_value = mock_handler
-
         event: dict[str, Any] = {
             "source": "aws.ec2",
             "detail-type": "EC2 Instance State-change Notification",
@@ -31,18 +27,18 @@ class TestEventRouter:
             "detail": {"instance-id": "i-abc", "state": "running"},
         }
 
-        await route_event(event, mock_session)
-        mock_handler.handle.assert_called_once_with(event, "123456789012", "us-east-1")
+        with patch(
+            "aws.live_events.handlers.ec2.EC2InstanceLiveEventHandler.handle",
+            new_callable=AsyncMock,
+        ) as mock_handle:
+            await route_event(event, mock_session)
+            mock_handle.assert_called_once_with(event, "123456789012", "us-east-1")
 
     @pytest.mark.asyncio
-    @patch("aws.live_events.webhook.router.LambdaFunctionLiveEventHandler")
     async def test_lambda_event_routed_correctly(
-        self, mock_handler_cls: MagicMock, mock_session: AsyncMock
+        self, mock_session: AsyncMock
     ) -> None:
         """Lambda CloudTrail events must route to LambdaFunctionLiveEventHandler."""
-        mock_handler = AsyncMock()
-        mock_handler_cls.return_value = mock_handler
-
         event = {
             "source": "aws.lambda",
             "detail-type": "AWS API Call via CloudTrail",
@@ -54,8 +50,12 @@ class TestEventRouter:
             },
         }
 
-        await route_event(event, mock_session)
-        mock_handler.handle.assert_called_once_with(event, "123456789012", "us-east-1")
+        with patch(
+            "aws.live_events.handlers.lambda_function.LambdaFunctionLiveEventHandler.handle",
+            new_callable=AsyncMock,
+        ) as mock_handle:
+            await route_event(event, mock_session)
+            mock_handle.assert_called_once_with(event, "123456789012", "us-east-1")
 
     @pytest.mark.asyncio
     async def test_unknown_event_discarded_without_error(
@@ -93,14 +93,10 @@ class TestEventRouter:
         await route_event(event, mock_session)  # must not raise
 
     @pytest.mark.asyncio
-    @patch("aws.live_events.webhook.router.EC2InstanceLiveEventHandler")
     async def test_sns_notification_unwrapped_and_routed(
-        self, mock_handler_cls: MagicMock, mock_session: AsyncMock
+        self, mock_session: AsyncMock
     ) -> None:
         """route_sns_notification should unwrap the SNS Message and route the inner event."""
-        mock_handler = AsyncMock()
-        mock_handler_cls.return_value = mock_handler
-
         inner_event: dict[str, Any] = {
             "source": "aws.ec2",
             "detail-type": "EC2 Instance State-change Notification",
@@ -115,8 +111,12 @@ class TestEventRouter:
             "Message": json.dumps(inner_event),
         }
 
-        await route_sns_notification(sns_message, mock_session)
-        mock_handler.handle.assert_called_once_with(inner_event, "123456789012", "us-east-1")
+        with patch(
+            "aws.live_events.handlers.ec2.EC2InstanceLiveEventHandler.handle",
+            new_callable=AsyncMock,
+        ) as mock_handle:
+            await route_sns_notification(sns_message, mock_session)
+            mock_handle.assert_called_once_with(inner_event, "123456789012", "us-east-1")
 
     @pytest.mark.asyncio
     async def test_sns_notification_empty_message_skipped(
