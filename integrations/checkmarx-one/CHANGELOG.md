@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed pagination for `/api/results/` endpoint to use the correct pagination parameters.
 
 
+## 0.2.58 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
 ## 0.2.57 (2026-04-30)
 
 
