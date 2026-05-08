@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.5 (2026-04-30)
+## 0.7.6 (2026-05-07)
 
 
 ### Improvements
 
 - Added support for syncing Jira Epics as a new `epic` kind in Port.
+
+
+## 0.7.5 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
 
 
 ## 0.7.4 (2026-04-30)
