@@ -15,12 +15,27 @@ configurations:
     type: url
     sensitive: true
   - name: personalAccessToken
-    description: A personal access token (PAT) with read permissions for the resources you want to sync. To create a PAT, see the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops">Azure DevOps documentation</a>.
-    required: true
+    description: A personal access token (PAT) with read permissions for the resources you want to sync. Required unless using Service Principal authentication. To create a PAT, see the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops">Azure DevOps documentation</a>.
+    required: false
+    type: string
+    sensitive: true
+  - name: clientId
+    description: The application (client) ID of your Azure AD app registration for Service Principal authentication.
+    required: false
+    type: string
+    sensitive: true
+  - name: clientSecret
+    description: The client secret of your Azure service principal.
+    required: false
+    type: string
+    sensitive: true
+  - name: tenantId
+    description: The tenant ID of your Azure AD directory.
+    required: false
     type: string
     sensitive: true
   - name: isProjectsLimited
-    description: Set to true if the personal access token's scope is limited to specific projects within your organization.
+    description: Set to true if access is limited to specific projects within your organization.
     required: false
     type: boolean
     default: true
