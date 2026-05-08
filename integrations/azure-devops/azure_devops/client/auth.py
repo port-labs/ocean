@@ -29,13 +29,9 @@ class PatAuthProvider:
 
 class ServicePrincipalTokenManager:
     REFRESH_MARGIN = timedelta(minutes=5)
-    AZURE_AD_TOKEN_URL = (
-        "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
-    )
+    AZURE_AD_TOKEN_URL = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
 
-    def __init__(
-        self, client_id: str, client_secret: str, tenant_id: str
-    ) -> None:
+    def __init__(self, client_id: str, client_secret: str, tenant_id: str) -> None:
         self._client_id = client_id
         self._client_secret = client_secret
         self._tenant_id = tenant_id
