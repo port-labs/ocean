@@ -3,10 +3,13 @@ from unittest.mock import MagicMock, patch
 from unittest.mock import AsyncMock
 from typing import Generator
 
+from aiobotocore.session import AioSession
+
 from aws.auth.session_factory import (
     AccountStrategyFactory,
     get_all_account_sessions,
     clear_aws_account_sessions,
+    get_session_for_account,
 )
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
@@ -546,6 +549,50 @@ class TestGetAllAccountSessions:
                         }
                         assert sessions_by_id["123456789012"] == mock_session_1
                         assert sessions_by_id["987654321098"] == mock_session_2
+
+
+class TestGetSessionForAccount:
+    """Tests for ``get_session_for_account`` (webhook path session lookup)."""
+
+    @pytest.fixture(autouse=True)
+    def reset_cached_strategy(self) -> Generator[None, None, None]:
+        AccountStrategyFactory._cached_strategy = None
+        yield
+        AccountStrategyFactory._cached_strategy = None
+
+    @pytest.mark.asyncio
+    async def test_multi_account_invokes_healthcheck_when_sessions_empty(
+        self, mock_multi_account_config: dict[str, object]
+    ) -> None:
+        """Before any resync, ``_valid_sessions`` may be empty; webhooks trigger
+        ``healthcheck()`` once (same guard as ``get_account_sessions()``)."""
+
+        real_session = AioSession()
+
+        strategy = MultiAccountStrategy(AssumeRoleProvider(), mock_multi_account_config)
+        hc_calls = 0
+
+        async def fake_healthcheck() -> bool:
+            nonlocal hc_calls
+            hc_calls += 1
+            strategy._valid_arns.add("arn:aws:iam::123456789012:role/test-role-1")
+            strategy._valid_sessions["arn:aws:iam::123456789012:role/test-role-1"] = (
+                real_session
+            )
+            return True
+
+        strategy.healthcheck = fake_healthcheck  # type: ignore[method-assign]
+
+        with patch(
+            "aws.auth.session_factory.AccountStrategyFactory.create",
+            new=AsyncMock(return_value=strategy),
+        ):
+            s1 = await get_session_for_account("123456789012")
+            s2 = await get_session_for_account("123456789012")
+
+        assert hc_calls == 1
+        assert s1 is real_session
+        assert s2 is real_session
 
 
 @pytest.fixture

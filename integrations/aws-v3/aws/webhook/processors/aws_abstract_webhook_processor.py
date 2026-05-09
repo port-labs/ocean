@@ -47,6 +47,9 @@ the exact implementation.
 
 from __future__ import annotations
 
+import copy
+import hashlib
+import json
 import time
 from typing import Any, ClassVar, Type
 
@@ -71,8 +74,92 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from port_ocean.context.ocean import ocean
 
 
-_IDEMPOTENCY_CACHE_MAXSIZE: int = 10_000
-_IDEMPOTENCY_CACHE_TTL_SECONDS: int = 600  # 10 minutes
+_PROCESS_CACHE_MAXSIZE: int = 10_000
+_PROCESS_CACHE_TTL_SECONDS: int = 600  # 10 minutes
+
+
+def _coerce_plain_selector(selector: Any) -> dict[str, Any]:
+    if selector is None:
+        return {}
+
+    md = getattr(selector, "model_dump", None)
+    if callable(md):
+        try:
+            return md(mode="json", by_alias=True)
+        except TypeError:
+            return md(by_alias=True)
+    dg = getattr(selector, "dict", None)
+    if callable(dg):
+        return dg(by_alias=True)
+
+    region_policy = getattr(selector, "region_policy", None)
+    if region_policy is None:
+        rp: dict[str, Any] | str = ""
+    else:
+        rp_md = getattr(region_policy, "model_dump", None)
+        if callable(rp_md):
+            try:
+                rp = rp_md(mode="json", by_alias=True)
+            except TypeError:
+                rp = rp_md(by_alias=True)
+        elif callable(getattr(region_policy, "dict", None)):
+            rp = getattr(region_policy, "dict")(by_alias=True)
+        else:
+            rp = {
+                "allow": list(getattr(region_policy, "allow", []) or []),
+                "deny": list(getattr(region_policy, "deny", []) or []),
+            }
+
+    return {
+        "query": getattr(selector, "query", ""),
+        "region_policy": rp,
+        "include_actions": list(getattr(selector, "include_actions", []) or []),
+    }
+
+
+def _coerce_plain_port(port_section: Any) -> dict[str, Any]:
+    if port_section is None:
+        return {}
+    md = getattr(port_section, "model_dump", None)
+    if callable(md):
+        try:
+            return md(mode="json", by_alias=True)
+        except TypeError:
+            return md(by_alias=True)
+    dg = getattr(port_section, "dict", None)
+    if callable(dg):
+        return dg(by_alias=True)
+    return {}
+
+
+def _resource_config_identity_payload(
+    resource_config: ResourceConfig | Any,
+) -> dict[str, Any]:
+    """Snapshot of mapping-relevant ``ResourceConfig`` fields for fingerprints."""
+
+    dump = getattr(resource_config, "model_dump", None)
+    if callable(dump):
+        try:
+            return dump(mode="json", by_alias=True)
+        except TypeError:
+            pass
+        return dump(by_alias=True)
+    dg = getattr(resource_config, "dict", None)
+    if callable(dg):
+        return dg(by_alias=True)
+    return {
+        "kind": getattr(resource_config, "kind", ""),
+        "selector": _coerce_plain_selector(getattr(resource_config, "selector", None)),
+        "port": _coerce_plain_port(getattr(resource_config, "port", None)),
+    }
+
+
+def _resource_config_fingerprint_hash(resource_config: ResourceConfig | Any) -> str:
+    """Stable fingerprint so distinct Port mappings aren't suppressed per event id."""
+
+    data = _resource_config_identity_payload(resource_config)
+    canonical = json.dumps(data, sort_keys=True, default=str).encode()
+    return hashlib.sha256(canonical).hexdigest()
 
 
 class AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
@@ -97,50 +184,76 @@ class AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
     _kind: ClassVar[ObjectKind]
     _exporter_cls: ClassVar[Type[IResourceExporter]]
 
-    # event_id -> insertion time (epoch seconds). In-process only; bounded by
-    # TTL prune and a size cap. Optional future: ``cachetools.TTLCache``.
-    _seen_event_ids: ClassVar[dict[str, float]] = {}
-    """Process-local idempotency cache, shared across all subclasses.
+    # (event_id + resource fingerprint) -> completion time (epoch seconds).
+    # Only populated after ``handle_event`` finishes without raising, so retries
+    # after transient ``get_resource`` failures are not misclassified as dupes.
+    _successful_handle_keys: ClassVar[dict[str, float]] = {}
+    """Per-(webhook,mapping) idempotency, shared across all subclasses.
 
-    Keyed on the EventBridge ``event["id"]``. A cache hit short-circuits
-    `handle_event` to an empty `WebhookEventRawResults` and logs
-    ``outcome=skipped:duplicate``. Cross-process de-duplication is not
-    attempted; the Port-side ``(blueprint, identifier)`` upsert is the
-    ultimate backstop.
+    A hit short-circuits to empty ``WebhookEventRawResults``
+    (``outcome=skipped:duplicate``). Cross-process de-duplication is not
+    attempted; Port-side upsert remains the ultimate backstop.
     """
+
+    # Dedupes exporter work when Ocean invokes ``handle_event`` once per matching
+    # ``ResourceConfig`` with identical refetch semantics (same kind + includes).
+    _refetched_raw_cache: ClassVar[
+        dict[str, tuple[float, list[dict[str, Any]], list[dict[str, Any]]]]
+    ] = {}
 
     _router: ClassVar[EventRouter] = EventRouter()
     """Stateless classifier shared across instances."""
 
     @classmethod
-    def _prune_seen_event_ids(cls, now: float) -> None:
-        if not cls._seen_event_ids:
-            return
-        cutoff = now - _IDEMPOTENCY_CACHE_TTL_SECONDS
-        expired = [
-            event_id for event_id, ts in cls._seen_event_ids.items() if ts < cutoff
-        ]
-        for event_id in expired:
-            cls._seen_event_ids.pop(event_id, None)
+    def _prune_process_caches(cls, now: float) -> None:
+        cutoff = now - _PROCESS_CACHE_TTL_SECONDS
 
-        # Bounded size safety net (best-effort, not strict LRU).
-        if len(cls._seen_event_ids) > _IDEMPOTENCY_CACHE_MAXSIZE:
-            sorted_items = sorted(cls._seen_event_ids.items(), key=lambda kv: kv[1])
-            for event_id, _ in sorted_items[
-                : len(cls._seen_event_ids) - _IDEMPOTENCY_CACHE_MAXSIZE
-            ]:
-                cls._seen_event_ids.pop(event_id, None)
+        def _expire_dict(ts_map: dict[str, float]) -> None:
+            if not ts_map:
+                return
+            for key, ts in list(ts_map.items()):
+                if ts < cutoff:
+                    ts_map.pop(key, None)
+
+        _expire_dict(cls._successful_handle_keys)
+
+        if cls._refetched_raw_cache:
+            for key, tup in list(cls._refetched_raw_cache.items()):
+                inserted, _, _ = tup
+                if inserted < cutoff:
+                    cls._refetched_raw_cache.pop(key, None)
+
+        # Bounded size (best-effort, not strict LRU).
+        while len(cls._successful_handle_keys) > _PROCESS_CACHE_MAXSIZE:
+            oldest = min(cls._successful_handle_keys.items(), key=lambda kv: kv[1])[0]
+            cls._successful_handle_keys.pop(oldest, None)
+        while len(cls._refetched_raw_cache) > _PROCESS_CACHE_MAXSIZE:
+            oldest = min(cls._refetched_raw_cache.items(), key=lambda kv: kv[1][0])[0]
+            cls._refetched_raw_cache.pop(oldest, None)
 
     @classmethod
-    def _mark_event_id_seen(cls, event_id: str) -> bool:
-        """Return True if event_id was newly recorded, False if it is a duplicate."""
-        now = time.time()
-        cls._prune_seen_event_ids(now)
+    def _successful_handle_cache_key(cls, event_id: str, resource_fp: str) -> str:
+        return f"{event_id}\x1f{resource_fp}"
 
-        if event_id in cls._seen_event_ids:
-            return False
-        cls._seen_event_ids[event_id] = now
-        return True
+    def _refetch_cache_key(self, event_id: str, include: list[str]) -> str:
+        payload = {
+            "event_id": event_id,
+            "kind": self._kind,
+            "include": sorted(include),
+        }
+        canonical = json.dumps(payload, sort_keys=True, default=str).encode()
+        return hashlib.sha256(canonical).hexdigest()
+
+    @classmethod
+    def _consume_successful_duplicate(cls, composite_key: str) -> bool:
+        """Return True if this composite key was already fully processed."""
+
+        cls._prune_process_caches(time.time())
+        return composite_key in cls._successful_handle_keys
+
+    @classmethod
+    def _remember_successful_handle(cls, composite_key: str, now: float) -> None:
+        cls._successful_handle_keys[composite_key] = now
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         """Verify the inbound HMAC signature on the original request body.
@@ -220,13 +333,17 @@ class AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        if not self._mark_event_id_seen(event_id):
+        resource_fp = _resource_config_fingerprint_hash(resource_config)
+        handle_key = self._successful_handle_cache_key(event_id, resource_fp)
+
+        if self._consume_successful_duplicate(handle_key):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
         decision = self._router.classify(payload)
         if decision is None:
+            self._remember_successful_handle(handle_key, time.time())
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -234,6 +351,7 @@ class AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
         account_id = payload.get("account")
         region = payload.get("region")
         if not isinstance(account_id, str) or not isinstance(region, str):
+            self._remember_successful_handle(handle_key, time.time())
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -241,47 +359,71 @@ class AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
         selector = getattr(resource_config, "selector", None)
         is_region_allowed = getattr(selector, "is_region_allowed", None)
         if callable(is_region_allowed) and not is_region_allowed(region):
+            self._remember_successful_handle(handle_key, time.time())
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
         session = await get_session_for_account(account_id)
         if session is None:
+            self._remember_successful_handle(handle_key, time.time())
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        decisions: list[RoutingDecision] = (
-            decision if isinstance(decision, list) else [decision]
-        )
+        include: list[str] = []
+        if hasattr(resource_config, "selector") and getattr(
+            resource_config.selector, "include_actions", None
+        ):
+            include = list(getattr(resource_config.selector, "include_actions"))
 
-        updated: list[dict[str, Any]] = []
-        deleted: list[dict[str, Any]] = []
+        refetch_key = self._refetch_cache_key(event_id, include)
+        now_before_fetch = time.time()
+        cls = type(self)
+        cls._prune_process_caches(now_before_fetch)
 
-        for d in decisions:
-            if d.action.value == "delete":
-                deleted.append(self._delete_stub(d.identifier, account_id, region))
-                continue
-
-            exporter = self._exporter_cls(session)
-            include = []
-            if hasattr(resource_config, "selector") and getattr(
-                resource_config.selector, "include_actions", None
-            ):
-                include = list(getattr(resource_config.selector, "include_actions"))
-            request_model = self._build_single_request(
-                identifier=d.identifier,
-                region=region,
-                account_id=account_id,
-                include=include,
+        cached = cls._refetched_raw_cache.get(refetch_key)
+        if cached is not None:
+            inserted, cached_updated, cached_deleted = cached
+            updated = copy.deepcopy(cached_updated)
+            deleted = copy.deepcopy(cached_deleted)
+        else:
+            decisions_list: list[RoutingDecision] = (
+                decision if isinstance(decision, list) else [decision]
             )
-            try:
-                updated.append(await exporter.get_resource(request_model))
-            except Exception as e:
-                if is_resource_not_found_exception(e):
+
+            updated = []
+            deleted = []
+
+            for d in decisions_list:
+                if d.action.value == "delete":
                     deleted.append(self._delete_stub(d.identifier, account_id, region))
                     continue
-                raise
+
+                exporter = self._exporter_cls(session)
+                request_model = self._build_single_request(
+                    identifier=d.identifier,
+                    region=region,
+                    account_id=account_id,
+                    include=include,
+                )
+                try:
+                    updated.append(await exporter.get_resource(request_model))
+                except Exception as e:
+                    if is_resource_not_found_exception(e):
+                        deleted.append(
+                            self._delete_stub(d.identifier, account_id, region)
+                        )
+                        continue
+                    raise
+
+            now_cached = time.time()
+            cls._refetched_raw_cache[refetch_key] = (
+                now_cached,
+                copy.deepcopy(updated),
+                copy.deepcopy(deleted),
+            )
+            cls._prune_process_caches(now_cached)
 
         results = WebhookEventRawResults(
             updated_raw_results=updated,
@@ -291,6 +433,7 @@ class AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
         )
         results.original_webhook = payload
         results.original_headers = self.event.headers
+        self._remember_successful_handle(handle_key, time.time())
         return results
 
     # ----- Subclass extension points -----------------------------------

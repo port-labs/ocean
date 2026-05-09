@@ -150,6 +150,10 @@ async def get_session_for_account(account_id: str) -> AioSession | None:
     ``clear_aws_account_sessions``). Builds a lazy ``account_id -> session``
     map on the strategy instance; multi/org strategies key sessions by role
     ARN, so ARN is reversed via ``extract_account_from_arn``.
+
+    For multi-account and organizations strategies, if role sessions are not
+    populated yet (e.g. no resync has run), this runs ``healthcheck()`` once—
+    matching the guard in ``get_account_sessions()``—then builds the map.
     """
 
     strategy = await AccountStrategyFactory.create()
@@ -182,6 +186,19 @@ async def get_session_for_account(account_id: str) -> AioSession | None:
     if not isinstance(role_arn_to_session, dict):
         setattr(strategy, "_account_id_to_session", account_id_to_session)
         return None
+
+    # Webhooks may run before any resync. `get_account_sessions()` runs
+    # `healthcheck()` when caches are empty; mirror that here so
+    # `valid_sessions` is populated before we build the account_id map.
+    if not role_arn_to_session:
+        await strategy.healthcheck()
+        strategy.__dict__.pop("_account_id_to_session", None)
+        role_arn_to_session = getattr(strategy, "valid_sessions", None)
+        if role_arn_to_session is None:
+            role_arn_to_session = getattr(strategy, "_valid_sessions", None)
+        if not isinstance(role_arn_to_session, dict):
+            setattr(strategy, "_account_id_to_session", account_id_to_session)
+            return None
 
     for role_arn, session in role_arn_to_session.items():
         if not isinstance(role_arn, str) or not isinstance(session, AioSession):

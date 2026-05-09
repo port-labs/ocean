@@ -274,8 +274,8 @@ def test_handle_event_skips_when_account_not_onboarded(
 
 
 def test_duplicate_event_id_short_circuits(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Two events sharing the same `event["id"]` produce only one upsert;
-    the second hits the idempotency cache and returns empty results."""
+    """Replay of the same EventBridge ``id`` for the **same** resource mapping
+    short-circuits; the second call hits ``_successful_handle_keys``."""
 
     def fake_classify(self: Any, payload: dict[str, Any]) -> RoutingDecision:
         return RoutingDecision(
@@ -317,6 +317,166 @@ def test_duplicate_event_id_short_circuits(monkeypatch: pytest.MonkeyPatch) -> N
         assert first.deleted_raw_results
         assert second.updated_raw_results == []
         assert second.deleted_raw_results == []
+
+    import asyncio
+
+    asyncio.run(_run())
+
+
+def test_duplicate_event_two_distinct_resource_configs_both_execute(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Same ``event[\"id\"]`` with different fingerprints must both run (Port may
+    call ``handle_event`` once per mapping). Cached refetches share one AWS ``get_resource``.
+    """
+
+    def fake_classify(self: Any, payload: dict[str, Any]) -> RoutingDecision:
+        return RoutingDecision(
+            kind=ObjectKind.EC2_INSTANCE, action=EventAction.UPSERT, identifier="i"
+        )
+
+    monkeypatch.setattr(EventRouter, "classify", fake_classify)
+
+    exporter_calls = 0
+
+    class _CountingExporter:
+        def __init__(self, session: Any) -> None:
+            self.session = session
+
+        async def get_resource(self, options: Any) -> dict[str, Any]:
+            nonlocal exporter_calls
+            exporter_calls += 1
+            return {
+                "call": exporter_calls,
+                "identifier": getattr(options, "identifier", ""),
+            }
+
+        async def get_paginated_resources(self, options: Any) -> Any:
+            raise NotImplementedError
+
+    async def _run() -> None:
+        payload = {
+            "id": "evt-shared",
+            "account": "123",
+            "region": "us-east-1",
+            "detail-type": "x",
+            "source": "aws.ec2",
+            "detail": {},
+        }
+        event = WebhookEvent(trace_id="t", payload=payload, headers={})
+
+        monkeypatch.setattr(_TestProcessor, "_exporter_cls", _CountingExporter)
+
+        from aws.webhook.processors import aws_abstract_webhook_processor as mod
+
+        async def fake_get_session_for_account(account_id: str) -> Any:
+            return object()
+
+        monkeypatch.setattr(
+            mod, "get_session_for_account", fake_get_session_for_account
+        )
+
+        class Selector:
+            include_actions: list[str] = []
+            query: str = "q"
+
+            def is_region_allowed(self, region: str) -> bool:
+                return True
+
+        class RC1:
+            kind = "mapping-a"
+            selector = Selector()
+
+        class RC2:
+            kind = "mapping-b"
+            selector = Selector()
+
+        proc = _TestProcessor(event)
+        r1 = await proc.handle_event(payload, RC1())  # type: ignore[arg-type]
+        r2 = await proc.handle_event(payload, RC2())  # type: ignore[arg-type]
+
+        assert r1.updated_raw_results and r1.updated_raw_results[0]["call"] == 1
+        assert r2.updated_raw_results and r2.updated_raw_results[0]["call"] == 1
+        assert exporter_calls == 1
+
+    import asyncio
+
+    asyncio.run(_run())
+
+
+def test_transient_exporter_error_retries_do_not_duplicate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``get_resource`` may raise once; retries must not hit the success idempotency
+    cache until a full completion."""
+
+    exporter_calls = 0
+
+    class _FlakyExporter:
+        def __init__(self, session: Any) -> None:
+            self.session = session
+
+        async def get_resource(self, options: Any) -> dict[str, Any]:
+            nonlocal exporter_calls
+            exporter_calls += 1
+            if exporter_calls == 1:
+                raise TimeoutError("transient downstream")
+            return {"recovered": True}
+
+        async def get_paginated_resources(self, options: Any) -> Any:
+            raise NotImplementedError
+
+    def fake_classify(self: Any, payload: dict[str, Any]) -> RoutingDecision:
+        return RoutingDecision(
+            kind=ObjectKind.EC2_INSTANCE, action=EventAction.UPSERT, identifier="i"
+        )
+
+    monkeypatch.setattr(EventRouter, "classify", fake_classify)
+
+    async def _run() -> None:
+        payload = {
+            "id": "retry-evt",
+            "account": "123",
+            "region": "us-east-1",
+            "detail-type": "x",
+            "source": "aws.ec2",
+            "detail": {},
+        }
+        event = WebhookEvent(trace_id="t", payload=payload, headers={})
+
+        monkeypatch.setattr(_TestProcessor, "_exporter_cls", _FlakyExporter)
+
+        from aws.webhook.processors import aws_abstract_webhook_processor as mod
+
+        async def fake_get_session_for_account(account_id: str) -> Any:
+            return object()
+
+        monkeypatch.setattr(
+            mod, "get_session_for_account", fake_get_session_for_account
+        )
+
+        class Selector:
+            include_actions: list[str] = []
+
+            def is_region_allowed(self, region: str) -> bool:
+                return True
+
+        class RC:
+            selector = Selector()
+
+        proc = _TestProcessor(event)
+        rc = RC()
+
+        caught: list[Any] = []
+        try:
+            await proc.handle_event(payload, rc)  # type: ignore[arg-type]
+        except TimeoutError:
+            caught.append(True)
+
+        assert caught == [True]
+        res = await proc.handle_event(payload, rc)  # type: ignore[arg-type]
+        assert res.updated_raw_results == [{"recovered": True}]
+        assert exporter_calls == 2
 
     import asyncio
 

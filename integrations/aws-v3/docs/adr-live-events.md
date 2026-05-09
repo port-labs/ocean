@@ -182,11 +182,15 @@ flowchart LR
 
 Three layers, in order of cost:
 
-1. **Per-event short-circuit** in `AwsAbstractWebhookProcessor`: a process-local dict keyed on
-   EventBridge `event["id"]` with a **10-minute TTL** (pruned on insert) and a **max size**
-   cap. Duplicates in the same worker return empty `WebhookEventRawResults` and log
-   `outcome=skipped:duplicate`. The cache is not shared across Ocean replicas; layers 2–3
-   still correct mistakes.
+1. **Per-mapping short-circuit** in `AwsAbstractWebhookProcessor`: a process-local dict keyed on
+   **EventBridge ``event[\"id\"]`` plus a fingerprint of the Port ``ResourceConfig``** (mapping,
+   selector, etc.), with **10-minute TTL** (pruned on insert), **max size** cap, and entries
+   recorded **only after** `handle_event` completes without throwing (retries therefore are not
+   misclassified). A duplicate delivery for the same mapping returns empty
+   `WebhookEventRawResults` and logs `outcome=skipped:duplicate`. Separate mappings for the
+   same webhook each run once; identical refetch inputs optionally share cached raw exporter
+   output to avoid redundant AWS calls. Not shared across Ocean replicas; layers 2–3 still
+   correct mistakes.
 2. **Refetch-then-upsert** as authoritative: on UPSERT, the processor calls
    `{Kind}Exporter.get_resource(SingleXRequest(...))` and emits whatever AWS reports as
    current. If two events arrive out of order, the latest refetch wins.

@@ -13,7 +13,7 @@ MOCK_PERSONAL_ACCESS_TOKEN: str = "mock-personal_access_token"
 
 @pytest.fixture(autouse=True)
 def _reset_aws_live_event_idempotency_cache() -> Generator[None, None, None]:
-    """Webhook tests share ``AwsAbstractWebhookProcessor._seen_event_ids``; clear between tests."""
+    """Webhook caches on ``AwsAbstractWebhookProcessor`` are class-level; clear between tests."""
 
     try:
         from aws.webhook.processors.aws_abstract_webhook_processor import (
@@ -23,9 +23,11 @@ def _reset_aws_live_event_idempotency_cache() -> Generator[None, None, None]:
         yield
         return
 
-    AwsAbstractWebhookProcessor._seen_event_ids.clear()
+    AwsAbstractWebhookProcessor._successful_handle_keys.clear()
+    AwsAbstractWebhookProcessor._refetched_raw_cache.clear()
     yield
-    AwsAbstractWebhookProcessor._seen_event_ids.clear()
+    AwsAbstractWebhookProcessor._successful_handle_keys.clear()
+    AwsAbstractWebhookProcessor._refetched_raw_cache.clear()
 
 
 @pytest.fixture(autouse=True)
