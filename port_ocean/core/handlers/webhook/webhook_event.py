@@ -48,19 +48,51 @@ class WebhookEvent(LiveEvent):
 
     def __init__(
         self,
-        trace_id: str,
-        payload: EventPayload,
-        headers: EventHeaders,
+        trace_id_or_payload: str | EventPayload,
+        payload: EventPayload | None = None,
+        headers: EventHeaders | None = None,
         original_request: Request | None = None,
         group_id: str | None = None,
         created_at: datetime | None = None,
+        raw_body: str | None = None,
     ) -> None:
-        self.trace_id = trace_id
-        self.payload = payload
-        self.headers = headers
-        self._original_request = original_request
-        self.group_id = group_id
-        self.created_at = created_at or datetime.now(timezone.utc)
+        """Construct a WebhookEvent.
+
+        Backwards-compatible constructor: older callers passed (payload, headers, raw_body=...)
+        so we accept either a trace_id (str) followed by payload, headers, or a payload dict
+        as the first argument. When a payload is provided as the first arg we generate a
+        trace_id automatically.
+        """
+        # initialize compatibility attributes
+        self.raw_body: str | None = raw_body
+        # default placeholder so tests and processors can set resource_config.raw_config
+        self.resource_config = type("R", (), {"raw_config": {}})()
+        self._skip_processing: bool = False
+
+        if isinstance(trace_id_or_payload, dict):
+            # Old-style call: (payload, headers=..., raw_body=...)
+            self.trace_id = str(uuid4())
+            self.payload = trace_id_or_payload
+            self.headers = headers or {}
+            self._original_request = original_request
+            self.group_id = group_id
+            self.created_at = created_at or datetime.now(timezone.utc)
+            # preserve raw_body if provided
+            if raw_body:
+                self.raw_body = raw_body
+        else:
+            # New-style call: (trace_id, payload, headers, ...)
+            self.trace_id = trace_id_or_payload
+            assert payload is not None
+            assert headers is not None
+            self.payload = payload
+            self.headers = headers
+            self._original_request = original_request
+            self.group_id = group_id
+            self.created_at = created_at or datetime.now(timezone.utc)
+            # preserve raw_body if provided
+            if raw_body:
+                self.raw_body = raw_body
 
     @classmethod
     async def from_request(

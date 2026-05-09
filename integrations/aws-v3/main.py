@@ -40,6 +40,7 @@ from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
 )
+from aws.events.webhook_processor import AWSEventWebhookProcessor
 
 
 @ocean.on_resync_start()
@@ -61,6 +62,10 @@ async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     async for batch in service:
         yield batch
+
+
+    # Register live event (webhook) endpoint for AWS events
+    ocean.add_webhook_processor("/integration/webhook", AWSEventWebhookProcessor)
 
 
 @ocean.on_resync(ObjectKind.EC2_INSTANCE)
