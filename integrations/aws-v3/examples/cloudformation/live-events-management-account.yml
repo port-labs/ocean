@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "AWS-V3 live events (management account): EventBridge bus -> SQS(+DLQ) -> Lambda forwarder -> Ocean webhook"
+
+Parameters:
+  OceanWebhookUrl:
+    Type: String
+    Description: "Full Ocean webhook URL (e.g. https://<host>/integration/webhook)"
+  WebhookSecretValue:
+    Type: String
+    NoEcho: true
+    Description: "Shared secret used to compute X-Port-Signature (HMAC-SHA256 over raw request body)"
+  ForwarderTimeoutSeconds:
+    Type: Number
+    Default: 30
+    MinValue: 5
+    MaxValue: 60
+  QueueVisibilityTimeoutSeconds:
+    Type: Number
+    Default: 120
+    MinValue: 30
+    MaxValue: 600
+
+Resources:
+  LiveEventsBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: "port-aws-v3-live-events"
+
+  LiveEventsDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "port-aws-v3-live-events-dlq"
+
+  LiveEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "port-aws-v3-live-events-queue"
+      VisibilityTimeout: !Ref QueueVisibilityTimeoutSeconds
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt LiveEventsDLQ.Arn
+        maxReceiveCount: 3
+
+  LiveEventsRuleToSqs:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref LiveEventsBus
+      Name: "port-aws-v3-live-events-to-sqs"
+      State: ENABLED
+      EventPattern:
+        account:
+          - prefix: ""
+      Targets:
+        - Id: "SqsTarget"
+          Arn: !GetAtt LiveEventsQueue.Arn
+
+  AllowEventBridgeToSendToSqs:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref LiveEventsQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEventBridgeSendMessage
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt LiveEventsQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt LiveEventsRuleToSqs.Arn
+
+  WebhookSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "port-aws-v3-live-events-webhook-secret"
+      SecretString: !Ref WebhookSecretValue
+
+  ForwarderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "port-aws-v3-live-events-forwarder-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "ForwarderSqsAndLogs"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt LiveEventsQueue.Arn
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  LiveEventsForwarder:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "port-aws-v3-live-events-forwarder"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt ForwarderRole.Arn
+      Timeout: !Ref ForwarderTimeoutSeconds
+      Environment:
+        Variables:
+          OCEAN_WEBHOOK_URL: !Ref OceanWebhookUrl
+          WEBHOOK_SECRET: !Sub "{{resolve:secretsmanager:${WebhookSecret}:SecretString}}"
+      Code:
+        ZipFile: |
+          import hashlib
+          import hmac
+          import json
+          import os
+          import urllib.request
+          import urllib.error
+
+          SIGNATURE_HEADER = "X-Port-Signature"
+          SIGNATURE_PREFIX = "sha256="
+
+          def _compute_signature(secret: str, body: bytes) -> str:
+              digest = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+              return SIGNATURE_PREFIX + digest
+
+          def _post(url: str, body: bytes, signature: str) -> None:
+              req = urllib.request.Request(
+                  url=url,
+                  data=body,
+                  method="POST",
+                  headers={
+                      "Content-Type": "application/json",
+                      SIGNATURE_HEADER: signature,
+                  },
+              )
+              with urllib.request.urlopen(req, timeout=10) as resp:
+                  code = getattr(resp, "status", 0) or 0
+                  if code < 200 or code >= 300:
+                      raise RuntimeError(f"Webhook POST failed with status {code}")
+
+          def handler(event, context):
+              url = os.environ.get("OCEAN_WEBHOOK_URL", "")
+              secret = os.environ.get("WEBHOOK_SECRET", "")
+              if not url or not secret:
+                  raise RuntimeError("Missing OCEAN_WEBHOOK_URL or WEBHOOK_SECRET")
+
+              records = event.get("Records") or []
+              for record in records:
+                  body_str = record.get("body")
+                  if not isinstance(body_str, str) or not body_str:
+                      continue
+                  # HMAC input must match POST body bytes exactly.
+                  body_bytes = body_str.encode("utf-8")
+                  signature = _compute_signature(secret, body_bytes)
+                  _post(url, body_bytes, signature)
+
+              return {"status": "ok", "forwarded": len(records)}
+
+  ForwarderEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt LiveEventsQueue.Arn
+      FunctionName: !GetAtt LiveEventsForwarder.Arn
+      BatchSize: 10
+      Enabled: true
+
+Outputs:
+  ManagementEventBusArn:
+    Description: "ARN of the central EventBridge bus to target from member accounts"
+    Value: !GetAtt LiveEventsBus.Arn
+  LiveEventsQueueUrl:
+    Value: !Ref LiveEventsQueue
+  LiveEventsDLQUrl:
+    Value: !Ref LiveEventsDLQ

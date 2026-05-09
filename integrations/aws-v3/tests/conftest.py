@@ -12,6 +12,23 @@ MOCK_PERSONAL_ACCESS_TOKEN: str = "mock-personal_access_token"
 
 
 @pytest.fixture(autouse=True)
+def _reset_aws_live_event_idempotency_cache() -> Generator[None, None, None]:
+    """Webhook tests share ``AwsAbstractWebhookProcessor._seen_event_ids``; clear between tests."""
+
+    try:
+        from aws.webhook.processors.aws_abstract_webhook_processor import (
+            AwsAbstractWebhookProcessor,
+        )
+    except ImportError:
+        yield
+        return
+
+    AwsAbstractWebhookProcessor._seen_event_ids.clear()
+    yield
+    AwsAbstractWebhookProcessor._seen_event_ids.clear()
+
+
+@pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
     """Mock the PortOcean context to prevent initialization errors."""
     try:

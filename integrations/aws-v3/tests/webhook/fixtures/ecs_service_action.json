@@ -1,0 +1,18 @@
+{
+  "version": "0",
+  "id": "33333333-3333-3333-3333-333333333333",
+  "detail-type": "ECS Service Action",
+  "source": "aws.ecs",
+  "account": "123456789012",
+  "time": "2026-05-08T12:01:00Z",
+  "region": "us-east-1",
+  "resources": [
+    "arn:aws:ecs:us-east-1:123456789012:service/my-cluster/my-service"
+  ],
+  "detail": {
+    "clusterArn": "arn:aws:ecs:us-east-1:123456789012:cluster/my-cluster",
+    "serviceArn": "arn:aws:ecs:us-east-1:123456789012:service/my-cluster/my-service",
+    "eventType": "INFO",
+    "eventName": "SERVICE_STEADY_STATE"
+  }
+}

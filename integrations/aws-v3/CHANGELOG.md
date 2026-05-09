@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## Unreleased
+
+### Features
+
+- Added AWS-V3 live events support for EC2 instances, ECS services, Lambda functions, and S3 buckets, including event routing, signed webhook validation, and EventBridge/SQS-based delivery.
+
 ## 2.2.3-beta (2026-05-07)
 
 

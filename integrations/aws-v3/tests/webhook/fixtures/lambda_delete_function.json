@@ -1,0 +1,21 @@
+{
+  "version": "0",
+  "id": "55555555-5555-5555-5555-555555555555",
+  "detail-type": "AWS API Call via CloudTrail",
+  "source": "aws.lambda",
+  "account": "123456789012",
+  "time": "2026-05-08T12:03:00Z",
+  "region": "us-east-1",
+  "resources": [],
+  "detail": {
+    "eventVersion": "1.08",
+    "eventTime": "2026-05-08T12:03:00Z",
+    "eventSource": "lambda.amazonaws.com",
+    "eventName": "DeleteFunction20150331",
+    "awsRegion": "us-east-1",
+    "requestParameters": {
+      "functionName": "my-function"
+    },
+    "responseElements": null
+  }
+}

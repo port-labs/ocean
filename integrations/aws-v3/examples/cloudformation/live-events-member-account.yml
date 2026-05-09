@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "AWS-V3 live events (member account): EventBridge rules -> PutEvents to management EventBridge bus"
+
+Parameters:
+  ManagementEventBusArn:
+    Type: String
+    Description: "ARN of the management account EventBridge bus (output of the management-account template)"
+
+Resources:
+  PutEventsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "port-aws-v3-live-events-put-events-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "AllowPutEventsToManagementBus"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: events:PutEvents
+                Resource: !Ref ManagementEventBusArn
+
+  LiveEventsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: "port-aws-v3-live-events"
+      State: ENABLED
+      EventPattern:
+        # Service-native events for EC2/ECS, and CloudTrail-via-EventBridge
+        # for Lambda/S3 + delete-style ECS + RunInstances.
+        source:
+          - aws.ec2
+          - aws.ecs
+          - aws.lambda
+          - aws.s3
+        detail-type:
+          - EC2 Instance State-change Notification
+          - ECS Service Action
+          - ECS Deployment State Change
+          - AWS API Call via CloudTrail
+        detail:
+          eventName:
+            - RunInstances
+            - DeleteService
+            - CreateFunction20150331
+            - UpdateFunctionCode20150331
+            - UpdateFunctionConfiguration20150331
+            - DeleteFunction20150331
+            - CreateBucket
+            - DeleteBucket
+      Targets:
+        - Id: "ToManagementBus"
+          Arn: !Ref ManagementEventBusArn
+          RoleArn: !GetAtt PutEventsRole.Arn
+
+Outputs:
+  MemberAccountRuleArn:
+    Value: !GetAtt LiveEventsRule.Arn
