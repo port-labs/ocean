@@ -1,7 +1,7 @@
 from typing import Literal
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from port_ocean.core.handlers.port_app_config.models import Selector
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -19,11 +19,11 @@ class ObjectKind(StrEnum):
 
 
 class ClaudeUsageSelector(Selector):
-    starting_date: str | None = Field(
+    starting_date: str = Field(
         alias="startingDate",
-        default=None,
+        default="2025-01-01T00:00:00Z",
         title="Starting Date",
-        description="ISO-8601 UTC start date used as the starting_at query parameter. Defaults to today if not set.",
+        description="ISO-8601 UTC start date used as the starting_at query parameter.",
         pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
     )
     bucket_width: Literal["1m", "1h", "1d"] = Field(
@@ -53,11 +53,11 @@ class ClaudeUsageSelector(Selector):
 
 
 class ClaudeCostSelector(Selector):
-    starting_date: str | None = Field(
+    starting_date: str = Field(
         alias="startingDate",
-        default=None,
+        default="2025-01-01T00:00:00Z",
         title="Starting Date",
-        description="ISO-8601 UTC start date used as the starting_at query parameter. Defaults to today if not set.",
+        description="ISO-8601 UTC start date used as the starting_at query parameter.",
         pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
     )
     bucket_width: Literal["1d"] = Field(
@@ -73,9 +73,32 @@ class ClaudeCodeAnalyticsSelector(Selector):
         alias="startingDate",
         default=None,
         title="Starting Date",
-        description="Start date for Claude Code analytics in YYYY-MM-DD format. Defaults to today if not set.",
+        description=(
+            "Start date in YYYY-MM-DD format. The integration calls the API once for "
+            "each day from this date to today. Mutually exclusive with timeFrame."
+        ),
         pattern=r"^\d{4}-\d{2}-\d{2}$",
     )
+    time_frame: int | None = Field(
+        alias="timeFrame",
+        default=None,
+        title="Time Frame (days)",
+        description=(
+            "Number of days to look back from today. The integration calls the API "
+            "once per day for each of the last N days. Mutually exclusive with startingDate."
+        ),
+        gt=0,
+    )
+
+    @model_validator(mode="after")
+    def validate_date_config(self) -> "ClaudeCodeAnalyticsSelector":
+        has_starting_date = self.starting_date is not None
+        has_time_frame = self.time_frame is not None
+        if not has_starting_date and not has_time_frame:
+            raise ValueError("Either 'startingDate' or 'timeFrame' must be provided")
+        if has_starting_date and has_time_frame:
+            raise ValueError("'startingDate' and 'timeFrame' are mutually exclusive")
+        return self
 
 
 class ClaudeUsageRecordResourceConfig(ResourceConfig):

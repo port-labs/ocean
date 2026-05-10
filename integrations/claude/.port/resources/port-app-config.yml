@@ -2,6 +2,7 @@ resources:
   - kind: claude-usage-record
     selector:
       query: .results | length > 0
+      startingDate: '2025-01-01T00:00:00Z'
       bucketWidth: 1d
       groupBy: []
     port:
@@ -21,6 +22,7 @@ resources:
   - kind: claude-cost-record
     selector:
       query: .results | length > 0
+      startingDate: '2025-01-01T00:00:00Z'
       bucketWidth: 1d
     port:
       entity:
@@ -35,6 +37,7 @@ resources:
   - kind: claude-usage-record
     selector:
       query: .results | length > 0
+      startingDate: '2025-01-01T00:00:00Z'
       bucketWidth: 1d
       groupBy:
         - workspace_id
@@ -81,6 +84,7 @@ resources:
   - kind: claude-code-analytics
     selector:
       query: 'true'
+      timeFrame: 30
     port:
       entity:
         mappings:
