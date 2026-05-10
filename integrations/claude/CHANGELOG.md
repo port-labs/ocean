@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.2 (2026-05-10)
+
+
+### Improvements
+
+- Added `timeFrame` selector field to `claude-code-analytics` kind — accepts a number of days to look back and calls the API once per day for each day in the window. `timeFrame` and `startingDate` are mutually exclusive (one is required); `startingDate` iterates from the given date to today
+
+
+## 0.1.1 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
 ## 0.1.0 (2025-04-02)
 
 ### Features
