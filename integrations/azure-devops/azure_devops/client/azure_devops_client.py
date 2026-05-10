@@ -26,6 +26,7 @@ from azure_devops.webhooks.events import (
     ReleaseDeploymentEvents,
 )
 
+from azure_devops.client.auth import PersonalAccessTokenAuthenticator
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
@@ -50,6 +51,7 @@ from typing import TYPE_CHECKING
 import fnmatch
 
 if TYPE_CHECKING:
+    from azure_devops.client.auth import Authenticator
     from integration import CodeCoverageConfig
 
 API_URL_PREFIX = "_apis"
@@ -148,10 +150,10 @@ class AzureDevopsClient(HTTPBaseClient):
     def __init__(
         self,
         organization_url: str,
-        personal_access_token: str,
+        authenticator: "Authenticator",
         webhook_auth_username: Optional[str] = None,
     ) -> None:
-        super().__init__(personal_access_token)
+        super().__init__(authenticator)
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username
@@ -162,7 +164,9 @@ class AzureDevopsClient(HTTPBaseClient):
             return cache
         azure_devops_client = cls(
             ocean.integration_config["organization_url"].strip("/"),
-            ocean.integration_config["personal_access_token"],
+            PersonalAccessTokenAuthenticator(
+                ocean.integration_config["personal_access_token"]
+            ),
             ocean.integration_config["webhook_auth_username"],
         )
         event.attributes["azure_devops_client"] = azure_devops_client
@@ -172,7 +176,9 @@ class AzureDevopsClient(HTTPBaseClient):
     def create_from_ocean_config_no_cache(cls) -> "AzureDevopsClient":
         azure_devops_client = cls(
             ocean.integration_config["organization_url"].strip("/"),
-            ocean.integration_config["personal_access_token"],
+            PersonalAccessTokenAuthenticator(
+                ocean.integration_config["personal_access_token"]
+            ),
             ocean.integration_config["webhook_auth_username"],
         )
         return azure_devops_client

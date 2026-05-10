@@ -4,6 +4,7 @@ from typing import Any, AsyncGenerator
 
 import pytest
 
+from azure_devops.client.auth import PersonalAccessTokenAuthenticator
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 
 
@@ -14,7 +15,9 @@ async def test_generate_files_does_not_stop_after_empty_project() -> None:
     When generate_repositories yields an empty batch (a project with no repos),
     generate_files must skip it and continue processing subsequent batches.
     """
-    client = AzureDevopsClient("https://dev.azure.com/test", "token")
+    client = AzureDevopsClient(
+        "https://dev.azure.com/test", PersonalAccessTokenAuthenticator("token")
+    )
 
     mock_repo = {
         "name": "repo1",

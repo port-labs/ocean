@@ -1,11 +1,13 @@
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
-from httpx import BasicAuth, ReadTimeout, Response
+from httpx import ReadTimeout, Response
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
+
+from azure_devops.client.auth import Authenticator
 from azure_devops.client.rate_limiter import (
     AzureDevOpsRateLimiter,
     LIMIT_RESET_HEADER,
@@ -19,7 +21,7 @@ MAX_TIMEMOUT_RETRIES = 3
 
 
 class HTTPBaseClient:
-    def __init__(self, personal_access_token: str) -> None:
+    def __init__(self, authenticator: Authenticator) -> None:
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 retry_after_headers=[
@@ -29,7 +31,7 @@ class HTTPBaseClient:
             ),
             timeout=ocean.config.client_timeout,
         )
-        self._personal_access_token = personal_access_token
+        self._authenticator = authenticator
         self._rate_limiter = AzureDevOpsRateLimiter()
 
     async def send_request(
@@ -40,7 +42,7 @@ class HTTPBaseClient:
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
     ) -> Response | None:
-        self._client.auth = BasicAuth("", self._personal_access_token)
+        await self._authenticator.apply(self._client)
         self._client.follow_redirects = True
 
         try:
@@ -60,7 +62,8 @@ class HTTPBaseClient:
             else:
                 if response.status_code == 401:
                     logger.error(
-                        f"Couldn't access url {url} . Make sure the PAT (Personal Access Token) is valid!"
+                        f"Couldn't access url {url}. Authentication failed — "
+                        f"check the configured credentials."
                     )
                 logger.error(
                     f"Request with bad status code {response.status_code}: {method} to url {url}"

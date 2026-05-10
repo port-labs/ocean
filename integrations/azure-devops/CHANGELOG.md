@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.31 (2026-05-10)
+
+
+### Improvements
+
+- Refactored client authentication into a strategy pattern. `HTTPBaseClient` and `AzureDevopsClient` now accept an `Authenticator` instance (`PersonalAccessTokenAuthenticator` for PAT mode, `ServicePrincipalAuthenticator` for upcoming Microsoft Entra ID Service Principal mode). Existing PAT factories preserve current behavior.
+
+
 ## 0.8.30 (2026-05-10)
 
 
