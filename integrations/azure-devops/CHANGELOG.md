@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.32 (2026-05-10)
+
+
+### Features
+
+- Added optional `organizationUrls`, `clientId`, `clientSecret`, and `tenantId` configuration fields for upcoming multi-organization support via Microsoft Entra ID Service Principal authentication. Existing single-organization deployments continue to use `organizationUrl` + `personalAccessToken` and are unaffected.
+
+### Improvements
+
+- Introduced `AzureDevopsClientManager` to hold one `AzureDevopsClient` per configured organization. In Service Principal mode all clients share a single `ServicePrincipalAuthenticator` so the Entra ID token is fetched once per manager (the token is tenant-scoped, not org-scoped).
+- Refactored `@cache_iterator_result()` decorators on `generate_projects`, `generate_teams`, `generate_groups`, `generate_repositories`, `generate_environments`, and `get_boards_in_organization` into inner `_*_cached(org_identifier, ...)` methods so that cache keys are scoped per-organization. This isolates cached results between orgs in upcoming multi-org deployments while remaining transparent for single-org users.
+
+
 ## 0.8.31 (2026-05-10)
 
 
