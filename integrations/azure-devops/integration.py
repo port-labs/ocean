@@ -296,11 +296,12 @@ class AzureDevopsRepositoryResourceConfig(ResourceConfig):
 
 
 class AzureDevopsUserSelector(Selector):
-    select: Optional[
+    include_fields: Optional[
         list[Literal["license", "extensions", "projects", "groupRules"]]
     ] = Field(
         default=None,
-        title="Select",
+        alias="includeFields",
+        title="Include Fields",
         description="List of additional properties to include in user entitlements.",
     )
 
@@ -310,8 +311,9 @@ class AzureDevopsUserSelector(Selector):
             exclude_none=True,
             exclude={"query"},
         )
-        if "select" in data:
-            data["select"] = ",".join(data["select"])
+        if "includeFields" in data:
+            data["select"] = ",".join(data["includeFields"])
+            del data["includeFields"]
         return data
 
 
