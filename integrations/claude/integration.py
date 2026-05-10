@@ -92,7 +92,7 @@ class ClaudeCodeAnalyticsSelector(Selector):
 
     @root_validator
     @classmethod
-    def validate_date_config(cls, values: dict) -> dict:
+    def validate_date_config(cls, values: dict[str, object]) -> dict[str, object]:
         has_starting_date = values.get("starting_date") is not None
         has_time_frame = values.get("time_frame") is not None
         if not has_starting_date and not has_time_frame:

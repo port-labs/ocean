@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from integration import ClaudeCodeAnalyticsSelector
 
 
-def _make_selector(**kwargs: object) -> ClaudeCodeAnalyticsSelector:
+def _make_selector(**kwargs: str | int | None) -> ClaudeCodeAnalyticsSelector:
     return ClaudeCodeAnalyticsSelector(**{"query": "true", **kwargs})
 
 
