@@ -3,9 +3,8 @@ from typing import Any, cast
 from loguru import logger
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.helpers import resync
 from azure_devops.misc import (
-    create_closed_pull_request_search_criteria,
-    ACTIVE_PULL_REQUEST_SEARCH_CRITERIA,
     Kind,
     AzureDevopsFolderResourceConfig,
 )
@@ -70,298 +69,208 @@ from integration import (
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
 @ocean.on_resync(Kind.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-
     selector = cast(AzureDevopsProjectResourceConfig, event.resource_config).selector
-    sync_default_team = selector.default_team
-
-    async for projects in azure_devops_client.generate_projects(sync_default_team):
-        logger.info(f"Resyncing {len(projects)} projects")
-        yield projects
+    async for batch in resync.iter_projects(selector.default_team):
+        yield batch
 
 
 @ocean.on_resync(Kind.USER)
 async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for users in azure_devops_client.generate_users():
-        logger.info(f"Resyncing {len(users)} members")
-        yield users
+    async for batch in resync.iter_users():
+        yield batch
 
 
 @ocean.on_resync(Kind.TEAM)
 async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     selector = cast(AzureDevopsTeamResourceConfig, event.resource_config).selector
-
-    async for teams in azure_devops_client.generate_teams():
-        logger.info(f"Resyncing {len(teams)} teams")
-        if selector.include_members:
-            logger.info(f"Enriching {len(teams)} teams with members")
-            team_with_members = await azure_devops_client.enrich_teams_with_members(
-                teams
-            )
-            yield team_with_members
-        else:
-            yield teams
+    async for batch in resync.iter_teams(selector.include_members):
+        yield batch
 
 
 @ocean.on_resync(Kind.MEMBER)
 async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for members in azure_devops_client.generate_members():
-        logger.info(f"Resyncing {len(members)} members")
-        yield members
+    async for batch in resync.iter_members():
+        yield batch
 
 
 @ocean.on_resync(Kind.GROUP)
 async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for groups in azure_devops_client.generate_groups():
-        logger.info(f"Resyncing {len(groups)} groups")
-        yield groups
+    async for batch in resync.iter_groups():
+        yield batch
 
 
 @ocean.on_resync(Kind.GROUP_MEMBER)
 async def resync_group_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for members in azure_devops_client.generate_group_members():
-        logger.info(f"Resyncing {len(members)} group members")
-        yield members
+    async for batch in resync.iter_group_members():
+        yield batch
 
 
 @ocean.on_resync(Kind.PIPELINE)
 async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     config = cast(AzureDevopsPipelineResourceConfig, event.resource_config)
-    include_repo = config.selector.include_repo
-
-    async for pipelines in azure_devops_client.generate_pipelines():
-        logger.info(f"Resyncing {len(pipelines)} pipelines")
-        if include_repo:
-            logger.info(f"Enriching {len(pipelines)} pipelines with repository")
-            pipelines = await azure_devops_client.enrich_pipelines_with_repository(
-                pipelines
-            )
-        yield pipelines
+    async for batch in resync.iter_pipelines(config.selector.include_repo):
+        yield batch
 
 
 @ocean.on_resync(Kind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     selector = cast(
         AzureDevopsPullRequestResourceConfig, event.resource_config
     ).selector
-
-    async for pull_requests in azure_devops_client.generate_pull_requests(
-        ACTIVE_PULL_REQUEST_SEARCH_CRITERIA
+    async for batch in resync.iter_pull_requests(
+        selector.min_time_datetime, selector.max_results
     ):
-        logger.info(f"Resyncing {len(pull_requests)} active pull_requests")
-        yield pull_requests
-
-    for search_filter in create_closed_pull_request_search_criteria(
-        selector.min_time_datetime
-    ):
-        async for pull_requests in azure_devops_client.generate_pull_requests(
-            search_filter, selector.max_results
-        ):
-            logger.info(
-                f"Resyncing {len(pull_requests)} abandoned/completed pull_requests"
-            )
-            yield pull_requests
-
-
-async def _enrich_repos_batch_with_included_files(
-    client: AzureDevopsClient,
-    repositories: list[dict[str, Any]],
-    file_paths: list[str],
-) -> list[dict[str, Any]]:
-    """Enrich a batch of repositories with included files."""
-    if not file_paths or not repositories:
-        return repositories
-    from azure_devops.enrichments.included_files import (
-        IncludedFilesEnricher,
-        RepositoryIncludedFilesStrategy,
-    )
-
-    enricher = IncludedFilesEnricher(
-        client=client,
-        strategy=RepositoryIncludedFilesStrategy(included_files=file_paths),
-    )
-    return await enricher.enrich_batch(repositories)
+        yield batch
 
 
 @ocean.on_resync(Kind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     selector = cast(AzureDevopsRepositoryResourceConfig, event.resource_config).selector
-    included_files = selector.included_files or []
-
-    async for repositories in azure_devops_client.generate_repositories():
-        logger.info(f"Resyncing {len(repositories)} repositories")
-        if included_files:
-            repositories = await _enrich_repos_batch_with_included_files(
-                azure_devops_client, repositories, included_files
-            )
-        yield repositories
+    async for batch in resync.iter_repositories(selector.included_files or []):
+        yield batch
 
 
 @ocean.on_resync(Kind.BRANCH)
 async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-
-    async for branches in azure_devops_client.generate_branches():
-        logger.info(f"Resyncing {len(branches)} branches")
-        yield branches
+    async for batch in resync.iter_branches():
+        yield batch
 
 
 @ocean.on_resync(Kind.REPOSITORY_POLICY)
 async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for policies in azure_devops_client.generate_repository_policies():
-        logger.info(f"Resyncing {len(policies)} repository policies")
-        yield policies
+    async for batch in resync.iter_repository_policies():
+        yield batch
 
 
 @ocean.on_resync(Kind.WORK_ITEM)
 async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     config = cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
-    async for work_items in azure_devops_client.generate_work_items(
+    async for batch in resync.iter_work_items(
         wiql=config.selector.wiql, expand=config.selector.expand
     ):
-        logger.info(f"Resyncing {len(work_items)} work items")
-        yield work_items
+        yield batch
 
 
 @ocean.on_resync(Kind.COLUMN)
 async def resync_columns(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for columns in azure_devops_client.get_columns():
-        logger.info(f"Resyncing {len(columns)} columns")
-        yield columns
+    async for batch in resync.iter_columns():
+        yield batch
 
 
 @ocean.on_resync(Kind.BOARD)
 async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for boards in azure_devops_client.get_boards_in_organization():
-        logger.info(f"Resyncing {len(boards)} boards")
-        yield boards
+    async for batch in resync.iter_boards():
+        yield batch
 
 
 @ocean.on_resync(Kind.RELEASE)
 async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsReleaseConfig, event.resource_config)
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for releases in azure_devops_client.generate_releases(
+    async for batch in resync.iter_releases(
         additional_params=config.selector.to_params(),
     ):
-        logger.info(f"Resyncing {len(releases)} releases")
-        yield releases
+        yield batch
 
 
 @ocean.on_resync(Kind.RELEASE_DEFINITION)
 async def resync_release_definitions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsReleaseDefinitionConfig, event.resource_config)
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for definitions in azure_devops_client.generate_release_definitions(
+    async for batch in resync.iter_release_definitions(
         additional_params=config.selector.to_params(),
     ):
-        logger.info(f"Resyncing {len(definitions)} release definitions")
-        yield definitions
+        yield batch
 
 
 @ocean.on_resync(Kind.BUILD)
 async def resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for builds in azure_devops_client.generate_builds():
-        logger.info(f"Resyncing {len(builds)} builds")
-        yield builds
+    async for batch in resync.iter_builds():
+        yield batch
 
 
 @ocean.on_resync(Kind.PIPELINE_STAGE)
 async def resync_pipeline_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for stages in azure_devops_client.generate_pipeline_stages():
-        logger.info(f"Resyncing {len(stages)} pipeline stages")
-        yield stages
+    async for batch in resync.iter_pipeline_stages():
+        yield batch
 
 
 @ocean.on_resync(Kind.ENVIRONMENT)
 async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for environments in azure_devops_client.generate_environments():
-        logger.info(f"Fetched {len(environments)} environments")
-        yield environments
+    async for batch in resync.iter_environments():
+        yield batch
 
 
 @ocean.on_resync(Kind.RELEASE_DEPLOYMENT)
 async def resync_release_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-
-    async for deployments in azure_devops_client.generate_release_deployments():
-        logger.info(f"Fetched {len(deployments)} release deployments")
-        yield deployments
+    async for batch in resync.iter_release_deployments():
+        yield batch
 
 
 @ocean.on_resync(Kind.PIPELINE_DEPLOYMENT)
 async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-
-    async for environments in azure_devops_client.generate_environments():
-        tasks = [
-            azure_devops_client.generate_pipeline_deployments(
-                environment_id=environment["id"],
-                project=environment["project"],
-            )
-            for environment in environments
-        ]
-        async for deployments in stream_async_iterators_tasks(*tasks):
-            logger.info(f"Fetched {len(deployments)} pipeline deployments")
-            yield deployments
-
-
-from azure_devops.enrichments.included_files import (  # noqa: E402
-    IncludedFilesEnricher,
-    FileIncludedFilesStrategy,
-    FolderIncludedFilesStrategy,
-)
+    async for batch in resync.iter_pipeline_deployments():
+        yield batch
 
 
 @ocean.on_resync(Kind.FILE)
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     config = cast(AzureDevopsFileResourceConfig, event.resource_config)
-    included_files = config.selector.included_files or []
-
-    logger.info(f"Starting file resync for paths: {config.selector.files.path}")
-
-    async for files_batch in azure_devops_client.generate_files(
-        path=config.selector.files.path,
+    async for batch in resync.iter_files(
+        paths=config.selector.files.path,
         repos=config.selector.files.repos,
+        included_files=config.selector.included_files or [],
     ):
-        if files_batch:
-            logger.info(f"Resyncing batch of {len(files_batch)} files")
-            if included_files:
-                enricher = IncludedFilesEnricher(
-                    client=azure_devops_client,
-                    strategy=FileIncludedFilesStrategy(included_files=included_files),
-                )
-                files_batch = await enricher.enrich_batch(files_batch)
-            yield files_batch
+        yield batch
 
 
 @ocean.on_resync(Kind.PIPELINE_RUN)
 async def resync_pipeline_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for runs in azure_devops_client.generate_pipeline_runs():
-        logger.info(f"Resyncing {len(runs)} pipeline runs")
-        yield runs
+    async for batch in resync.iter_pipeline_runs():
+        yield batch
+
+
+@ocean.on_resync(Kind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync folders based on configuration."""
+    selector = cast(AzureDevopsFolderResourceConfig, event.resource_config).selector
+    async for batch in resync.iter_folders(
+        folders=selector.folders,
+        project_name=selector.project_name,
+        included_files=selector.included_files or [],
+    ):
+        yield batch
+
+
+@ocean.on_resync(Kind.TEST_RUN)
+async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(AzureDevopsTestRunResourceConfig, event.resource_config).selector
+    async for batch in resync.iter_test_runs(
+        include_results=selector.include_results,
+        coverage_config=selector.code_coverage,
+    ):
+        yield batch
+
+
+@ocean.on_resync(Kind.ITERATION)
+async def resync_iterations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for batch in resync.iter_iterations():
+        yield batch
+
+
+@ocean.on_resync(Kind.ADVANCED_SECURITY_ALERT)
+async def resync_advanced_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(
+        AzureDevopsAdvancedSecurityResourceConfig, event.resource_config
+    ).selector
+    params: dict[str, Any] = {}
+    if selector.criteria:
+        params = selector.criteria.as_params
+
+    async for batch in resync.iter_advanced_security_alerts(params):
+        yield batch
 
 
 @ocean.on_start()
@@ -388,70 +297,6 @@ async def setup_webhooks() -> None:
         await client.create_webhook_subscriptions(
             base_url, webhook_secret=webhook_secret
         )
-
-
-@ocean.on_resync(Kind.FOLDER)
-async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync folders based on configuration."""
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    selector = cast(AzureDevopsFolderResourceConfig, event.resource_config).selector
-    included_files = selector.included_files or []
-    async for matching_folders in azure_devops_client.process_folder_patterns(
-        selector.folders, selector.project_name
-    ):
-        if included_files:
-            enricher = IncludedFilesEnricher(
-                client=azure_devops_client,
-                strategy=FolderIncludedFilesStrategy(
-                    folder_selectors=selector.folders,
-                    global_included_files=included_files,
-                ),
-            )
-            matching_folders = await enricher.enrich_batch(matching_folders)
-        yield matching_folders
-
-
-@ocean.on_resync(Kind.TEST_RUN)
-async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    selector = cast(AzureDevopsTestRunResourceConfig, event.resource_config).selector
-    include_results = selector.include_results
-    coverage_config = selector.code_coverage
-
-    async for test_runs in azure_devops_client.fetch_test_runs(
-        include_results, coverage_config
-    ):
-        logger.info(f"Fetched {len(test_runs)} test runs")
-        yield test_runs
-
-
-@ocean.on_resync(Kind.ITERATION)
-async def resync_iterations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for iterations in azure_devops_client.generate_iterations():
-        logger.info(f"Resyncing {len(iterations)} iterations")
-        yield iterations
-
-
-@ocean.on_resync(Kind.ADVANCED_SECURITY_ALERT)
-async def resync_advanced_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    selector = cast(
-        AzureDevopsAdvancedSecurityResourceConfig, event.resource_config
-    ).selector
-    params: dict[str, Any] = {}
-    if selector.criteria:
-        params = selector.criteria.as_params
-
-    async for repositories in azure_devops_client.generate_repositories():
-        for repository in repositories:
-            async for (
-                security_alerts
-            ) in azure_devops_client.generate_advanced_security_alerts(
-                repository, params
-            ):
-                logger.info(f"Resyncing {len(security_alerts)} security alerts")
-                yield security_alerts
 
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)

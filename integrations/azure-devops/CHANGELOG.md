@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.33 (2026-05-10)
+
+
+### Features
+
+- Resync now fans out across every configured Azure DevOps organization with bounded concurrency (`CONCURRENT_ORG_RESYNCS = 3`). Each yielded entity is enriched with `__organizationUrl` and `__organizationName` so JQ mappings can scope identifiers per organization. Single-organization deployments remain a transparent pass-through.
+- A failure in one organization is logged and isolated so the remaining organizations still complete their resync.
+
+### Improvements
+
+- Extracted per-kind resync handlers into `azure_devops/helpers/resync.py` (one `iter_<kind>` per resource). `main.py` resync handlers now delegate to these wrappers, which in turn route through `azure_devops/helpers/multi_org.py::iterate_per_organization`.
+
+
 ## 0.8.32 (2026-05-10)
 
 
