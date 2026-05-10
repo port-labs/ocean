@@ -1,7 +1,7 @@
 from typing import Literal
 from enum import StrEnum
 
-from pydantic import Field, model_validator
+from pydantic import Field, root_validator
 from port_ocean.core.handlers.port_app_config.models import Selector
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -90,15 +90,16 @@ class ClaudeCodeAnalyticsSelector(Selector):
         gt=0,
     )
 
-    @model_validator(mode="after")
-    def validate_date_config(self) -> "ClaudeCodeAnalyticsSelector":
-        has_starting_date = self.starting_date is not None
-        has_time_frame = self.time_frame is not None
+    @root_validator
+    @classmethod
+    def validate_date_config(cls, values: dict) -> dict:
+        has_starting_date = values.get("starting_date") is not None
+        has_time_frame = values.get("time_frame") is not None
         if not has_starting_date and not has_time_frame:
             raise ValueError("Either 'startingDate' or 'timeFrame' must be provided")
         if has_starting_date and has_time_frame:
             raise ValueError("'startingDate' and 'timeFrame' are mutually exclusive")
-        return self
+        return values
 
 
 class ClaudeUsageRecordResourceConfig(ResourceConfig):

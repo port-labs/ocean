@@ -86,12 +86,16 @@ def test_get_code_analytics_dates_time_frame_1_returns_today(frozen_utc: None) -
 # ---------------------------------------------------------------------------
 
 
-def test_get_code_analytics_dates_starting_date_includes_today(frozen_utc: None) -> None:
+def test_get_code_analytics_dates_starting_date_includes_today(
+    frozen_utc: None,
+) -> None:
     dates = get_code_analytics_dates(starting_date="2025-12-30", time_frame=None)
     assert dates[-1] == FIXED_DATE
 
 
-def test_get_code_analytics_dates_starting_date_includes_start(frozen_utc: None) -> None:
+def test_get_code_analytics_dates_starting_date_includes_start(
+    frozen_utc: None,
+) -> None:
     dates = get_code_analytics_dates(starting_date="2025-12-30", time_frame=None)
     assert dates[0] == "2025-12-30"
 
