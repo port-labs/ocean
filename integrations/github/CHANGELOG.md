@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.4.1 (2026-05-10)
+## 5.4.2 (2026-05-11)
 
 
 ### Bug Fixes
 
 - Prevented resync failures when `includedFiles` targets a path that is not a regular file (e.g. symlink/submodule) or when the GitHub Contents API response is missing `content`/`encoding`.
+
+
+## 5.4.1 (2026-05-10)
+
+
+### Improvements
+
+- Enriched GitHub team export and team webhook upsert payloads with organization context, and consolidated GraphQL team-member enrichment.
 
 
 ## 5.4.0 (2026-05-07)
