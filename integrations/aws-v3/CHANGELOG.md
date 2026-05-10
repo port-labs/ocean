@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## Unreleased
+
+### Features
+
+- Added real-time live events support via EventBridge → SNS → Ocean HTTPS webhook.
+  AWS resource changes are now reflected in the Port catalog within seconds rather than
+  waiting for the next scheduled resync. Supported resource kinds: `AWS::EC2::Instance`,
+  `AWS::ECS::Service`, `AWS::Lambda::Function`, `AWS::S3::Bucket`.
+- Added `AWSWebhookProcessor` that validates HMAC-SHA256 signatures (configurable via
+  the new `webhook_secret` integration config field), validates native SNS signatures for
+  direct HTTPS subscriptions, unwraps SNS notification envelopes, and dispatches events to
+  per-kind processors.
+- Added per-kind live event processors (`EC2LiveEventProcessor`, `EcsServiceLiveEventProcessor`,
+  `LambdaLiveEventProcessor`, `S3LiveEventProcessor`) that reuse existing exporters for
+  full resource state fetches on upsert events.
+- Added CloudFormation template (`cloudformation/live-events-setup.yaml`) that provisions
+  EventBridge rules, SNS topic, IAM roles, and an optional HMAC-signing Lambda forwarder.
+  Supports both single-account and AWS Organizations StackSet deployments.
+- Added Architecture Decision Record (`docs/adr-live-events.md`) evaluating EventBridge →
+  SNS, EventBridge → SQS, and EventBridge API Destinations architectures.
+
 ## 2.2.3-beta (2026-05-07)
 
 

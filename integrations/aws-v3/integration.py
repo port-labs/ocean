@@ -4,7 +4,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from pydantic import Field, BaseModel
-from typing import List
+from typing import List, Optional
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -63,6 +63,23 @@ class AWSResourceConfig(ResourceConfig):
 
 class AWSPortAppConfig(PortAppConfig):
     resources: List[AWSResourceConfig] = Field(default_factory=list)  # type: ignore
+
+
+class AWSIntegrationConfig(BaseModel):
+    webhook_secret: Optional[str] = Field(
+        default=None,
+        alias="webhookSecret",
+        description=(
+            "Optional shared HMAC-SHA256 secret for forwarded live event webhook "
+            "requests. When set, every POST to /webhook must include an "
+            "'x-hub-signature-256' header computed over the raw request body using "
+            "this secret. When not set, the integration expects direct SNS HTTPS "
+            "delivery and validates the native SNS signature embedded in the payload."
+        ),
+    )
+
+    class Config:
+        populate_by_name = True
 
 
 class AWSIntegration(BaseIntegration):

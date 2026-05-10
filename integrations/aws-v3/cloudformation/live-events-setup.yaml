@@ -1,0 +1,385 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Port Ocean AWS-V3 Integration — Live Events Infrastructure.
+  Provisions EventBridge rules, an SNS topic, and optional HMAC forwarding Lambda
+  so that EC2, ECS, Lambda, and S3 resource changes are delivered to the Ocean
+  /webhook endpoint within seconds.
+
+  Deploy this template in EVERY account and region you want live events from.
+  For AWS Organizations, use CloudFormation StackSets to deploy across all accounts.
+
+# ---------------------------------------------------------------------------
+# Parameters
+# ---------------------------------------------------------------------------
+Parameters:
+  OceanEndpointURL:
+    Type: String
+    Description: >
+      Full HTTPS URL of the Port Ocean integration endpoint, including the /webhook path.
+      Example: https://my-ocean-host.example.com/webhook
+    AllowedPattern: "^https://.+"
+
+  WebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >
+      Shared HMAC-SHA256 secret. Must match the 'webhook_secret' value in the Ocean
+      integration config. Leave empty to use native SNS signature validation for direct
+      HTTPS delivery. When non-empty, the optional HMAC forwarding Lambda is deployed.
+
+  EnableHMACLambda:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >
+      Set to 'true' to deploy a lightweight Lambda that computes the HMAC-SHA256
+      signature and forwards SNS messages to Ocean with the x-hub-signature-256 header.
+      Required if WebhookSecret is set, since SNS cannot add custom headers natively.
+
+  CloudTrailEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >
+      Set to 'true' to create EventBridge rules that capture Lambda and S3 lifecycle
+      events via CloudTrail. Requires CloudTrail to be enabled in this account/region.
+
+  OrganizationId:
+    Type: String
+    Default: ""
+    Description: >
+      (Optional) AWS Organizations ID (e.g. o-xxxxxxxxxx). Use this when deploying the
+      same per-account stack through StackSets across an organization.
+
+# ---------------------------------------------------------------------------
+# Conditions
+# ---------------------------------------------------------------------------
+Conditions:
+  DeployHMACLambda: !Equals [!Ref EnableHMACLambda, "true"]
+  DirectSNSSubscription: !Equals [!Ref EnableHMACLambda, "false"]
+  EnableCloudTrailRules: !Equals [!Ref CloudTrailEnabled, "true"]
+  IsOrgDeployment: !Not [!Equals [!Ref OrganizationId, ""]]
+
+# ---------------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------------
+Resources:
+
+  # -------------------------------------------------------------------------
+  # SNS Topic — receives all live events
+  # -------------------------------------------------------------------------
+  OceanLiveEventsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: port-ocean-live-events
+      DisplayName: Port Ocean Live Events
+      Tags:
+        - Key: managed-by
+          Value: port-ocean
+
+  # -------------------------------------------------------------------------
+  # SNS Topic Policy — restricts publishing to EventBridge only
+  # -------------------------------------------------------------------------
+  OceanTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref OceanLiveEventsTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref OceanLiveEventsTopic
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/*"
+          # Optional Organizations condition for consistent StackSet rollout across many accounts
+          - !If
+            - IsOrgDeployment
+            - Sid: AllowOrgAccountsPublish
+              Effect: Allow
+              Principal: "*"
+              Action: sns:Publish
+              Resource: !Ref OceanLiveEventsTopic
+              Condition:
+                StringEquals:
+                  aws:PrincipalOrgID: !Ref OrganizationId
+            - !Ref AWS::NoValue
+
+  # -------------------------------------------------------------------------
+  # Direct HTTPS subscription (when HMAC Lambda is disabled)
+  # -------------------------------------------------------------------------
+  OceanDirectSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: DirectSNSSubscription
+    Properties:
+      TopicArn: !Ref OceanLiveEventsTopic
+      Protocol: https
+      Endpoint: !Ref OceanEndpointURL
+
+  # -------------------------------------------------------------------------
+  # IAM Role for EventBridge → SNS
+  # -------------------------------------------------------------------------
+  EventBridgeToSNSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "port-ocean-eventbridge-sns-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowSNSPublish
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref OceanLiveEventsTopic
+
+  # -------------------------------------------------------------------------
+  # EventBridge Rule — EC2 Instance state changes
+  # -------------------------------------------------------------------------
+  EC2StateChangeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: port-ocean-ec2-state-change
+      Description: Sends EC2 instance state-change notifications to Port Ocean
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - EC2 Instance State-change Notification
+      Targets:
+        - Id: OceanSNSTopic
+          Arn: !Ref OceanLiveEventsTopic
+          RoleArn: !GetAtt EventBridgeToSNSRole.Arn
+
+  # -------------------------------------------------------------------------
+  # EventBridge Rule — ECS service events
+  # -------------------------------------------------------------------------
+  ECSServiceEventsRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: port-ocean-ecs-service-events
+      Description: Sends ECS deployment and service action events to Port Ocean
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.ecs
+        detail-type:
+          - ECS Deployment State Change
+          - ECS Service Action
+      Targets:
+        - Id: OceanSNSTopic
+          Arn: !Ref OceanLiveEventsTopic
+          RoleArn: !GetAtt EventBridgeToSNSRole.Arn
+
+  # -------------------------------------------------------------------------
+  # EventBridge Rule — Lambda lifecycle via CloudTrail
+  # -------------------------------------------------------------------------
+  LambdaCloudTrailRule:
+    Type: AWS::Events::Rule
+    Condition: EnableCloudTrailRules
+    Properties:
+      Name: port-ocean-lambda-cloudtrail
+      Description: Sends Lambda create/update/delete CloudTrail events to Port Ocean
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.cloudtrail
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - lambda.amazonaws.com
+          eventName:
+            - CreateFunction20150331
+            - UpdateFunctionCode20150331v2
+            - UpdateFunctionConfiguration20150331v2
+            - PublishVersion
+            - UpdateAlias
+            - DeleteFunction20150331
+      Targets:
+        - Id: OceanSNSTopic
+          Arn: !Ref OceanLiveEventsTopic
+          RoleArn: !GetAtt EventBridgeToSNSRole.Arn
+
+  # -------------------------------------------------------------------------
+  # EventBridge Rule — S3 bucket lifecycle via CloudTrail
+  # -------------------------------------------------------------------------
+  S3CloudTrailRule:
+    Type: AWS::Events::Rule
+    Condition: EnableCloudTrailRules
+    Properties:
+      Name: port-ocean-s3-cloudtrail
+      Description: Sends S3 CreateBucket and DeleteBucket CloudTrail events to Port Ocean
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.cloudtrail
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - s3.amazonaws.com
+          eventName:
+            - CreateBucket
+            - DeleteBucket
+      Targets:
+        - Id: OceanSNSTopic
+          Arn: !Ref OceanLiveEventsTopic
+          RoleArn: !GetAtt EventBridgeToSNSRole.Arn
+
+  # -------------------------------------------------------------------------
+  # Optional HMAC forwarding Lambda
+  # Computes HMAC-SHA256 of the SNS notification body and forwards to Ocean
+  # with the x-hub-signature-256 header.
+  # -------------------------------------------------------------------------
+  OceanForwardingLambdaRole:
+    Type: AWS::IAM::Role
+    Condition: DeployHMACLambda
+    Properties:
+      RoleName: !Sub "port-ocean-forwarding-lambda-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ReadWebhookSecret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/port-ocean/webhook-secret"
+
+  OceanWebhookSecretParameter:
+    Type: AWS::SSM::Parameter
+    Condition: DeployHMACLambda
+    Properties:
+      Name: /port-ocean/webhook-secret
+      Type: SecureString
+      Value: !Ref WebhookSecret
+      Description: HMAC secret for Port Ocean live events webhook validation
+
+  OceanForwardingLambda:
+    Type: AWS::Lambda::Function
+    Condition: DeployHMACLambda
+    Properties:
+      FunctionName: port-ocean-sns-forwarder
+      Description: >
+        Receives SNS notifications, computes HMAC-SHA256 signature, and forwards
+        the payload to the Port Ocean /webhook endpoint.
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt OceanForwardingLambdaRole.Arn
+      Timeout: 30
+      Environment:
+        Variables:
+          OCEAN_WEBHOOK_URL: !Ref OceanEndpointURL
+          SECRET_PARAM: /port-ocean/webhook-secret
+      Code:
+        ZipFile: |
+          import hashlib
+          import hmac
+          import json
+          import os
+          import urllib.request
+          import boto3
+
+          ssm = boto3.client("ssm")
+
+          def _get_secret() -> str:
+              resp = ssm.get_parameter(Name=os.environ["SECRET_PARAM"], WithDecryption=True)
+              return resp["Parameter"]["Value"]
+
+          def handler(event, context):
+              secret = _get_secret()
+              for record in event.get("Records", []):
+                  body = record["Sns"]["Message"]
+                  # Re-serialize the full SNS record as the POST body so Ocean
+                  # receives the standard SNS notification envelope.
+                  sns_envelope = json.dumps({
+                      "Type": "Notification",
+                      "MessageId": record["Sns"]["MessageId"],
+                      "TopicArn": record["Sns"]["TopicArn"],
+                      "Message": body,
+                      "Timestamp": record["Sns"]["Timestamp"],
+                  }).encode("utf-8")
+
+                  signature = "sha256=" + hmac.new(
+                      secret.encode("utf-8"), sns_envelope, hashlib.sha256
+                  ).hexdigest()
+
+                  req = urllib.request.Request(
+                      os.environ["OCEAN_WEBHOOK_URL"],
+                      data=sns_envelope,
+                      headers={
+                          "Content-Type": "application/json",
+                          "x-hub-signature-256": signature,
+                      },
+                      method="POST",
+                  )
+                  with urllib.request.urlopen(req, timeout=10) as resp:
+                      pass  # 200 OK expected
+              return {"statusCode": 200}
+
+  OceanForwardingLambdaSNSPermission:
+    Type: AWS::Lambda::Permission
+    Condition: DeployHMACLambda
+    Properties:
+      FunctionName: !GetAtt OceanForwardingLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref OceanLiveEventsTopic
+
+  OceanLambdaSNSSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: DeployHMACLambda
+    Properties:
+      TopicArn: !Ref OceanLiveEventsTopic
+      Protocol: lambda
+      Endpoint: !GetAtt OceanForwardingLambda.Arn
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+Outputs:
+  SNSTopicArn:
+    Description: ARN of the Port Ocean live events SNS topic
+    Value: !Ref OceanLiveEventsTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-SNSTopicArn"
+
+  EC2RuleArn:
+    Description: ARN of the EC2 state-change EventBridge rule
+    Value: !GetAtt EC2StateChangeRule.Arn
+
+  ECSRuleArn:
+    Description: ARN of the ECS service events EventBridge rule
+    Value: !GetAtt ECSServiceEventsRule.Arn
+
+  ForwardingLambdaArn:
+    Condition: DeployHMACLambda
+    Description: ARN of the HMAC forwarding Lambda function
+    Value: !GetAtt OceanForwardingLambda.Arn
