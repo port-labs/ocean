@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Made `startingDate` selector field optional for all resource kinds (`claude-usage-record`, `claude-cost-record`, `claude-code-analytics`); defaults to today's date when not set
+- Added `timeFrame` selector field to `claude-code-analytics` kind — accepts a number of days to look back and calls the API once per day for each day in the window. `timeFrame` and `startingDate` are mutually exclusive (one is required); `startingDate` iterates from the given date to today
 
 
 ## 0.1.1 (2026-05-07)
