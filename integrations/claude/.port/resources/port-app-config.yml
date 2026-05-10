@@ -89,17 +89,17 @@ resources:
       entity:
         mappings:
           identifier: >-
-            .organization_id + "-" + (.actor.api_key_name // .actor.email //
+            .organization_id + "-" + (.actor.api_key_name // .actor.email_address //
             "unknown") + "-" + .date[:10]
           title: >-
-            (.actor.api_key_name // .actor.email // "unknown") + " - " +
+            (.actor.api_key_name // .actor.email_address // "unknown") + " - " +
             .date[:10]
           blueprint: '"claude_code_analytics"'
           properties:
             record_date: .date
             organization_id: .organization_id
             actor_type: .actor.type
-            actor_name: (.actor.api_key_name // .actor.email // "unknown")
+            actor_name: (.actor.api_key_name // .actor.email_address // "unknown")
             terminal_type: .terminal_type
             num_sessions: (.core_metrics.num_sessions // 0)
             lines_added: (.core_metrics.lines_of_code.added // 0)
