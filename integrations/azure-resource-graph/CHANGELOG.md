@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.105-beta (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 0.2.104-beta (2026-05-03)
+
+
+### Features
+
+- Expanded Azure authentication support by adopting default credential flows, enabling compatibility with a wider range of auth strategies (e.g., OIDC, workload identity)
+
+
+## 0.2.103-beta (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
 ## 0.2.102-beta (2026-04-29)
 
 
