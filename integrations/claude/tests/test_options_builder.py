@@ -125,7 +125,10 @@ def test_get_code_analytics_dates_starting_today_returns_single_day(
 def test_get_code_analytics_dates_future_starting_date_returns_empty(
     frozen_utc: None,
 ) -> None:
-    dates = get_code_analytics_dates(starting_date="2026-12-31", time_frame=None)
+    from datetime import timedelta
+
+    future = (FIXED_UTC + timedelta(days=30)).date().isoformat()
+    dates = get_code_analytics_dates(starting_date=future, time_frame=None)
     assert dates == []
 
 
