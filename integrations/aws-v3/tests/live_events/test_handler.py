@@ -23,7 +23,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 import aws.live_events.handler as handler_module
-from aws.live_events.handler import AWSWebhookProcessor
+from aws.live_events.handler import (
+    AWSSubscriptionConfirmationProcessor,
+    AWSWebhookProcessor,
+)
 from tests.live_events.conftest import (
     make_eventbridge_event,
     make_sns_envelope,
@@ -212,7 +215,6 @@ class TestInvalidSignature:
         assert result is False
 
 
-
 class TestValidEventRouting:
     """Valid event routing: should_process_event returns True for known kinds."""
 
@@ -282,6 +284,7 @@ class TestValidEventRouting:
         assert "AWS::S3::Bucket" in kinds
 
 
+
 class TestUnknownEvent:
     """Resilience: unknown event types must be logged and safely skipped."""
 
@@ -326,6 +329,46 @@ class TestUnknownEvent:
                 result = await proc.should_process_event(event)
         assert result is False
 
+
+class TestSubscriptionConfirmationProcessor:
+    @pytest.mark.asyncio
+    async def test_subscription_confirmation_matches_action_processor(self) -> None:
+        with _mock_ocean_secret(None):
+            payload = {
+                "Type": "SubscriptionConfirmation",
+                "TopicArn": "arn:aws:sns:us-east-1:123456789012:port-ocean-live-events",
+                "SubscribeURL": "https://sns.amazonaws.com/confirm",
+            }
+            event = make_webhook_event(payload)
+            proc = AWSSubscriptionConfirmationProcessor(event)
+            with patch.object(
+                AWSWebhookProcessor,
+                "_verify_sns_signature",
+                return_value=True,
+            ):
+                result = await proc.should_process_event(event)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_subscription_confirmation_calls_subscribe_url(self) -> None:
+        payload = {
+            "Type": "SubscriptionConfirmation",
+            "TopicArn": "arn:aws:sns:us-east-1:123456789012:port-ocean-live-events",
+            "SubscribeURL": "https://sns.amazonaws.com/confirm",
+        }
+        event = make_webhook_event(payload)
+        proc = AWSSubscriptionConfirmationProcessor(event)
+
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+
+        with patch.object(handler_module, "urlopen", return_value=response) as mock_urlopen:
+            result = await proc.handle_event(payload, _resource_config())
+
+        mock_urlopen.assert_called_once_with(payload["SubscribeURL"], timeout=5)
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
 
 
 class TestDuplicateEvent:

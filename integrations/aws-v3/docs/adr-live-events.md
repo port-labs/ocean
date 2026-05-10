@@ -1,6 +1,6 @@
 # ADR: AWS Live Events Support for Port Ocean AWS-V3 Integration
- 
-**Date:** 2026-05-09  
+
+**Date:** 2026-05-09
 **Authors:** Sikiru Ayinlade
 
 ---
@@ -17,7 +17,7 @@ The goal is to add an event-driven update path that reflects changes within seco
 
 ---
 
-## 1. Candidate Architectures
+## 1. Architectures
 
 ### Option A: EventBridge → SNS → Ocean HTTPS Endpoint *(Chosen)*
 

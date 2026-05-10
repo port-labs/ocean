@@ -16,6 +16,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
+    WebhookProcessorType,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
@@ -67,6 +68,15 @@ def _parse_sns_message(payload: EventPayload) -> dict[str, Any] | None:
         return json.loads(raw_message)
     except (json.JSONDecodeError, TypeError):
         return None
+
+
+def _confirm_subscription(payload: EventPayload) -> None:
+    subscribe_url = payload.get("SubscribeURL")
+    if not subscribe_url:
+        raise ValueError("SNS SubscriptionConfirmation missing SubscribeURL")
+
+    with urlopen(str(subscribe_url), timeout=5):
+        pass
 
 
 def _build_sns_string_to_sign(payload: EventPayload) -> str:
@@ -412,3 +422,40 @@ class AWSWebhookProcessor(AbstractWebhookProcessor):
             extra={"outcome": "accepted", "verification": "sns"},
         )
         return True
+
+
+class AWSSubscriptionConfirmationProcessor(AbstractWebhookProcessor):
+    """Action processor for SNS SubscriptionConfirmation handshakes."""
+
+    @classmethod
+    def get_processor_type(cls) -> WebhookProcessorType:
+        return WebhookProcessorType.ACTION
+
+    async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
+        return True
+
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        return (
+            payload.get("Type") == "SubscriptionConfirmation"
+            and "SubscribeURL" in payload
+        )
+
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        if event.payload.get("Type") != "SubscriptionConfirmation":
+            return False
+
+        live_events_processor = AWSWebhookProcessor(event)
+        return await live_events_processor._verify_signature(event)
+
+    async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+        return []
+
+    async def handle_event(
+        self, payload: EventPayload, resource: ResourceConfig
+    ) -> WebhookEventRawResults:
+        _confirm_subscription(payload)
+        logger.info(
+            "Confirmed SNS subscription",
+            extra={"TopicArn": payload.get("TopicArn")},
+        )
+        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
