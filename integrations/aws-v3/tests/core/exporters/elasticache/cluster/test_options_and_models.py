@@ -101,13 +101,13 @@ class TestCacheClusterProperties:
     def test_initialization_empty(self) -> None:
         properties = CacheClusterProperties()
         assert properties.CacheClusterId == ""
-        assert properties.ARN == ""
-        assert properties.Engine == ""
-        assert properties.CacheNodeType == ""
-        assert properties.CacheClusterStatus == ""
-        assert properties.NumCacheNodes == 0
-        assert properties.TransitEncryptionEnabled is False
-        assert properties.AtRestEncryptionEnabled is False
+        assert properties.ARN is None
+        assert properties.Engine is None
+        assert properties.CacheNodeType is None
+        assert properties.CacheClusterStatus is None
+        assert properties.NumCacheNodes is None
+        assert properties.TransitEncryptionEnabled is None
+        assert properties.AtRestEncryptionEnabled is None
 
     def test_initialization_with_properties(self) -> None:
         properties = CacheClusterProperties(
@@ -139,8 +139,7 @@ class TestCacheClusterProperties:
         assert result["CacheClusterId"] == "cluster-123"
         assert result["Engine"] == "memcached"
         assert result["TagList"] == [{"Key": "Project", "Value": "demo"}]
-        assert "CacheNodeType" in result
-        assert result["CacheNodeType"] == ""
+        assert "CacheNodeType" not in result
 
     def test_all_properties_assignment(self) -> None:
         properties = CacheClusterProperties(
