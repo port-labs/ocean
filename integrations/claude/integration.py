@@ -19,11 +19,11 @@ class ObjectKind(StrEnum):
 
 
 class ClaudeUsageSelector(Selector):
-    starting_date: str = Field(
+    starting_date: str | None = Field(
         alias="startingDate",
-        default="2025-01-01T00:00:00Z",
+        default=None,
         title="Starting Date",
-        description="ISO-8601 UTC start date used as the starting_at query parameter.",
+        description="ISO-8601 UTC start date used as the starting_at query parameter. Defaults to today if not set.",
         pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
     )
     bucket_width: Literal["1m", "1h", "1d"] = Field(
@@ -53,11 +53,11 @@ class ClaudeUsageSelector(Selector):
 
 
 class ClaudeCostSelector(Selector):
-    starting_date: str = Field(
+    starting_date: str | None = Field(
         alias="startingDate",
-        default="2025-01-01T00:00:00Z",
+        default=None,
         title="Starting Date",
-        description="ISO-8601 UTC start date used as the starting_at query parameter.",
+        description="ISO-8601 UTC start date used as the starting_at query parameter. Defaults to today if not set.",
         pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
     )
     bucket_width: Literal["1d"] = Field(
@@ -69,11 +69,11 @@ class ClaudeCostSelector(Selector):
 
 
 class ClaudeCodeAnalyticsSelector(Selector):
-    starting_date: str = Field(
+    starting_date: str | None = Field(
         alias="startingDate",
-        default="2025-01-01",
+        default=None,
         title="Starting Date",
-        description="Start date for Claude Code analytics in YYYY-MM-DD format.",
+        description="Start date for Claude Code analytics in YYYY-MM-DD format. Defaults to today if not set.",
         pattern=r"^\d{4}-\d{2}-\d{2}$",
     )
 
