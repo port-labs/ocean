@@ -2,6 +2,8 @@ from collections.abc import Sequence
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
+from loguru import logger
+
 from core.options import (
     ClaudeUsageGroupBy,
     ListClaudeCodeAnalyticsOptions,
@@ -71,4 +73,9 @@ def get_code_analytics_dates(
         ]
     start = date.fromisoformat(starting_date)  # type: ignore[arg-type]
     num_days = (today - start).days + 1
+    if num_days <= 0:
+        logger.warning(
+            f"startingDate '{starting_date}' is in the future — no dates to fetch"
+        )
+        return []
     return [(start + timedelta(days=i)).isoformat() for i in range(num_days)]
