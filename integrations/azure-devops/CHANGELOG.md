@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.8.29 (2026-05-06)
+## 0.8.29 (2026-05-07)
 
 
-### Features
+### Improvements
 
-- Added `select` selector field to the user kind, allowing enrichment of user entitlements
+- Bumped ocean version to ^0.41.7
 
 
 ## 0.8.28 (2026-05-03)
