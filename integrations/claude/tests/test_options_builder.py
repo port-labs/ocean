@@ -9,9 +9,9 @@ from core.options_builder import (
     build_usage_options,
 )
 
-FIXED_UTC = datetime(2026, 5, 10, 23, 30, 0, tzinfo=timezone.utc)
-FIXED_DATE = "2026-05-10"
-FIXED_DATETIME = "2026-05-10T00:00:00Z"
+FIXED_UTC = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+FIXED_DATE = "2026-01-01"
+FIXED_DATETIME = "2026-01-01T00:00:00Z"
 
 
 @pytest.fixture()
@@ -57,8 +57,8 @@ def test_default_date_derived_from_utc_not_local():
     """Date must come from UTC clock — host timezone must not influence the value."""
     with patch("core.options_builder.datetime") as mock_dt:
         # Simulate a host one day behind UTC (e.g. UTC-1 at 00:30 local = 01:30 UTC next day)
-        mock_dt.now.return_value = datetime(2026, 5, 11, 1, 30, 0, tzinfo=timezone.utc)
+        mock_dt.now.return_value = datetime(2026, 1, 1, 1, 30, 0, tzinfo=timezone.utc)
         options = build_code_analytics_options(starting_date=None)
 
-    assert options["starting_at"] == "2026-05-11"
+    assert options["starting_at"] == "2026-01-01"
     mock_dt.now.assert_called_once_with(timezone.utc)
