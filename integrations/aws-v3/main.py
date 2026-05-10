@@ -204,7 +204,7 @@ async def resync_ecr_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_msk_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, MskClusterExporter, PaginatedMskClusterRequest, regional=True
-      )
+    )
     async for batch in service:
         yield batch
 
