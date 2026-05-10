@@ -74,7 +74,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         content = decode_content(response["content"], response["encoding"])
         logger.debug(
-            f"Successfully decoded file {file_path} ({response["size"]} bytes) from {organization}/{repo_name} and branch {branch}"
+            f"Successfully decoded file {file_path} ({response['size']} bytes) from {organization}/{repo_name} and branch {branch}"
         )
 
         return {**response, "content": content}
