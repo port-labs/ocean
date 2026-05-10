@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
@@ -61,6 +62,33 @@ def create_closed_pull_request_search_criteria(
 
 def extract_branch_name_from_ref(ref: str) -> str:
     return "/".join(ref.split("/")[2:])
+
+
+def extract_org_name_from_url(org_url: str) -> str:
+    """Extract the organization name from an Azure DevOps organization URL.
+
+    Branches on the hostname so that legacy URLs with trailing path segments
+    (e.g. a project or collection) still resolve to the subdomain:
+    - https://dev.azure.com/myorg[/...]           -> "myorg"  (org in first path segment)
+    - https://myorg.visualstudio.com[/...]        -> "myorg"  (org in subdomain)
+    """
+    parsed = urlparse(org_url.rstrip("/"))
+    netloc = parsed.netloc
+    host = netloc.lower()
+
+    if host.endswith(".visualstudio.com"):
+        return netloc.split(".")[0]
+
+    path_segments = [segment for segment in parsed.path.split("/") if segment]
+    if host == "dev.azure.com":
+        if path_segments:
+            return path_segments[0]
+
+    if path_segments:
+        return path_segments[0]
+    if netloc:
+        return netloc.split(".")[0]
+    return org_url
 
 
 class RepositoryBranchMapping(BaseModel):

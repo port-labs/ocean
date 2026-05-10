@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.30 (2026-05-10)
+
+
+### Improvements
+
+- Added `extract_org_name_from_url` helper in `azure_devops/misc.py` to derive an organization name from any Azure DevOps URL form (`dev.azure.com/{org}` or `{org}.visualstudio.com`)
+
+
 ## 0.8.29 (2026-05-07)
 
 
