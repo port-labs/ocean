@@ -9,6 +9,7 @@ from core.options_builder import (
     build_code_analytics_options,
     build_cost_options,
     build_usage_options,
+    get_code_analytics_dates,
 )
 from exporter_factory import (
     create_code_analytics_exporter,
@@ -63,11 +64,18 @@ async def on_resync_code_analytics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector
     exporter = create_code_analytics_exporter()
 
-    async for page in exporter.get_paginated_resources(
-        build_code_analytics_options(starting_date=code_selector.starting_date)
-    ):
-        if page:
-            yield page
+    dates = get_code_analytics_dates(
+        starting_date=code_selector.starting_date,
+        time_frame=code_selector.time_frame,
+    )
+    logger.info(f"Fetching Claude Code analytics for {len(dates)} day(s)")
+
+    for day in dates:
+        async for page in exporter.get_paginated_resources(
+            build_code_analytics_options(starting_date=day)
+        ):
+            if page:
+                yield page
 
 
 @ocean.on_start()
