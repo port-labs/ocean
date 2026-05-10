@@ -2066,7 +2066,7 @@ class AzureDevopsClient(HTTPBaseClient):
         coverage_config: Optional["CodeCoverageConfig"],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-        params = {"includeRunDetails": True}
+        params = {"includeRunDetails": True, **API_PARAMS}
         async for runs in self._get_paginated_by_top_and_skip(url, params=params):
             yield await self._enrich_test_runs(
                 runs, project_id, include_results, coverage_config
