@@ -1304,6 +1304,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         await ocean.metrics.report_kind_sync_metrics(
                             kind=MetricResourceKind.RECONCILIATION
                         )
+
+                    if await is_transform_enabled():
+                        await ocean.app.lifecycle_client.notify_finished(
+                            resync_id=event.id,
+                            integration_id=ocean.config.integration.identifier,
+                            integration_type=ocean.config.integration.type,
+                        )
                     return True
 
                 success = await self.resync_reconciliation(
