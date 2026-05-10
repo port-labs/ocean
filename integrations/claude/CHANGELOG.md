@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.2 (2026-05-10)
+
+
+### Improvements
+
+- Made `startingDate` selector field optional for all resource kinds (`claude-usage-record`, `claude-cost-record`, `claude-code-analytics`); defaults to today's date when not set
+
+
 ## 0.1.1 (2026-05-07)
 
 
