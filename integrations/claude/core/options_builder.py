@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from datetime import date
+from datetime import datetime, timezone
 from typing import Literal
 
 from core.options import (
@@ -13,7 +13,7 @@ DEFAULT_PAGE_SIZE = 30
 
 
 def _today_iso() -> str:
-    return date.today().isoformat()
+    return datetime.now(timezone.utc).date().isoformat()
 
 
 def _today_utc() -> str:
