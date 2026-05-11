@@ -111,7 +111,7 @@ class IntegrationClientMixin:
 
     async def get_integration_resync_requests(
         self, should_raise: bool = True, should_log: bool = True
-    ) -> list[dict[str, Any]]:
+    ) -> dict[str, Any]:
         response = await self._get_integration_resync_request()
         handle_port_status_code(response, should_raise, should_log)
         return response.json().get("request", {})
