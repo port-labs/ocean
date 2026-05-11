@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.8.31 (2026-05-11)
 
 
+### Improvements
+
+- Added `extract_org_name_from_url` helper that derives an organization name from any of the supported URL forms
+
+
+## 0.8.31 (2026-05-11)
+
+
 ### Bug Fixes
 
 - Fixed missing code coverage data on `test-run` entities by passing the required `api-version` parameter to the `test/codecoverage` endpoint
