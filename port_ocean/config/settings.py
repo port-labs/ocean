@@ -55,6 +55,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
+    feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
     ingest_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://ingest.getport.io")
 
 
