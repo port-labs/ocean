@@ -45,9 +45,11 @@ async def iter_projects(sync_default_team: bool) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
-async def iter_users() -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def iter_users(
+    additional_params: dict[str, str] | None = None
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async def _handler(client: AzureDevopsClient) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for users in client.generate_users():
+        async for users in client.generate_users(additional_params):
             logger.info(f"Resyncing {len(users)} users")
             yield users
 

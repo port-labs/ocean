@@ -79,7 +79,8 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kind.USER)
 async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync.iter_users():
+    config = cast(AzureDevopsUserConfig, event.resource_config)
+    async for batch in resync.iter_users(additional_params=config.selector.to_params()):
         yield batch
 
 
