@@ -25,7 +25,6 @@ from port_ocean.core.integrations.mixins.utils import (
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
     is_resource_supported,
-    is_transform_enabled,
     start_kind_tracking,
     stop_kind_tracking,
     unsupported_kind_response,
@@ -1209,7 +1208,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             for resync_start_fn in self.event_strategy["resync_start"]:
                 await resync_start_fn()
 
-            if await is_transform_enabled():
+            if await is_dsp_mode_enabled():
                 await ocean.app.lifecycle_client.notify_started(
                     resync_id=event.id,
                     integration_id=ocean.config.integration.identifier,
@@ -1250,7 +1249,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
                 await self._handle_resync_abortion(creation_results, app_config)
-                if await is_transform_enabled():
+                if await is_dsp_mode_enabled():
                     await ocean.app.lifecycle_client.notify_aborted(
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
@@ -1260,7 +1259,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except Exception as e:
                 logger.error(f"Error in resync: {e}")
                 await self._handle_resync_abortion(creation_results, app_config)
-                if await is_transform_enabled():
+                if await is_dsp_mode_enabled():
                     await ocean.app.lifecycle_client.notify_failed(
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
@@ -1305,7 +1304,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             kind=MetricResourceKind.RECONCILIATION
                         )
 
-                    if await is_transform_enabled():
+                    if await is_dsp_mode_enabled():
                         await ocean.app.lifecycle_client.notify_finished(
                             resync_id=event.id,
                             integration_id=ocean.config.integration.identifier,
@@ -1337,7 +1336,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         kind=MetricResourceKind.RECONCILIATION
                     )
 
-                if await is_transform_enabled():
+                if await is_dsp_mode_enabled():
                     if success:
                         await ocean.app.lifecycle_client.notify_finished(
                             resync_id=event.id,

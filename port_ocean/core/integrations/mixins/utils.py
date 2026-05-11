@@ -90,32 +90,6 @@ async def is_dsp_mode_enabled() -> bool:
         return False
 
 
-async def is_transform_enabled() -> bool:
-    """Check if the transform/lifecycle offload feature is enabled.
-
-    Requires both the DATA_SOURCE_PROCESSOR_ENABLED org feature flag and the local
-    OCEAN__TRANSFORM__ENABLED config toggle, plus a base_url to be set.
-    Errors are swallowed so this feature never blocks core processing.
-
-    Returns:
-        bool: True if transform is enabled, False otherwise (including on error)
-    """
-    try:
-        flags = await ocean.port_client.get_organization_feature_flags()
-        logger.info(f"Flags: {flags}")
-        logger.info(f"Transform enabled: {ocean.config.transform.enabled}")
-        if (
-            IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags
-            and ocean.config.transform.enabled
-        ):
-            return True
-        return False
-    except Exception as e:
-        logger.warning(
-            f"Failed to check transform feature flags, assuming disabled: {e}"
-        )
-        return False
-
 
 def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
     """

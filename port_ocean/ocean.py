@@ -27,7 +27,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.core.integrations.mixins.utils import is_transform_enabled
+from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
 from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.health import create_health_router
 from port_ocean.log.sensetive import sensitive_log_filter
@@ -138,7 +138,7 @@ class Ocean:
                     logger.info(
                         "Graceful shutdown completed - sync state set to aborted"
                     )
-                    if await is_transform_enabled():
+                    if await is_dsp_mode_enabled():
                         resync_id = self.metrics.event_id.strip()
                         if resync_id:
                             await self.lifecycle_client.notify_aborted(
