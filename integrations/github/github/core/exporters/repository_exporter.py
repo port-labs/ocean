@@ -252,7 +252,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             else {}
         )
         logger.info(
-            f"Fetched {len(repository['custom_properties'])} custom properties for repository {repo_name}"
+            f"Fetched {len(repository['custom_properties'])} custom properties for repository {repo_name} in organization {organization}"
         )
         return repository
 

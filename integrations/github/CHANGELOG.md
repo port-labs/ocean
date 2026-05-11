@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Enriched search-path repository results with `custom_properties` from the full repository endpoint.
+- Added opt-in `customProperties` selector under `includedRelations` to enrich repositories with organization custom property values via the properties/values API.
 
 
 ## 5.3.14 (2026-04-23)
