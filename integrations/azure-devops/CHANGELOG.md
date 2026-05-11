@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.8.30 (2026-05-08)
+## 0.8.30 (2026-05-10)
 
 
 ### Features
 
-- Added Service Principal (OAuth client_credentials) authentication as an alternative to PAT, enabling token-based auth for multi-org deployments
+- Added `includeFields` selector field to the user kind, allowing enrichment of user entitlements
 
 
 ## 0.8.29 (2026-05-07)

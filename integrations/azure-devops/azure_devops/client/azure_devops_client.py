@@ -347,12 +347,14 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return base_url
 
-    async def generate_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_users(
+        self, additional_params: dict[str, str] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         users_url = (
             self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
         )
         async for users in self._get_paginated_by_top_and_continuation_token(
-            users_url, data_key="items"
+            users_url, data_key="items", additional_params=additional_params or {}
         ):
             yield users
 
