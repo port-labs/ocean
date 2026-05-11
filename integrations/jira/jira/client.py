@@ -1,6 +1,8 @@
 import asyncio
 import uuid
+import functools
 from typing import Any, AsyncGenerator, Generator
+from typing_extensions import deprecated
 
 import httpx
 import re
@@ -93,6 +95,9 @@ class JiraClient(OAuthClient):
         self._agile_api_url: str | None = (
             None if self.is_oauth_enabled() else f"{self.jira_rest_url}/agile/1.0"
         )
+        self._software_api_url: str | None = (
+            None if self.is_oauth_enabled() else f"{self.jira_rest_url}/software/1.0"
+        )
 
         self._rate_limiter = JiraRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS)
         self.client = OceanAsyncClient(
@@ -117,6 +122,16 @@ class JiraClient(OAuthClient):
             )
             return BearerAuth(self.jira_token)
 
+    @functools.cached_property
+    def _basic_auth(self) -> BasicAuth:
+        """Basic Auth credentials for endpoints that do not support Bearer/OAuth tokens.
+
+        The ``software/1.0`` endpoint returns 401 when called with an OAuth
+        Bearer token. Basic Auth is the only auth model that
+        works against this endpoint at the time of writing.
+        """
+        return BasicAuth(self.jira_email, self.jira_token)
+
     async def _get_agile_api_url(self) -> str:
         """Return the Agile REST API base URL for the current auth scheme.
 
@@ -133,6 +148,23 @@ class JiraClient(OAuthClient):
         )
         logger.debug(f"Resolved agile API URL: {self._agile_api_url}")
         return self._agile_api_url
+
+    async def _get_software_api_url(self) -> str:
+        """Return the ``software`` REST API base URL for the current auth scheme.
+
+        Used for endpoints migrated away from ``agile``. The ``agile`` equivalents
+        are deprecated with removal scheduled for November 1, 2026.
+        Ref: https://developer.atlassian.com/cloud/jira/software/changelog/
+        """
+        if self._software_api_url is not None:
+            return self._software_api_url
+
+        cloud_id = await self._get_cloud_id()
+        self._software_api_url = (
+            f"https://api.atlassian.com/ex/jira/{cloud_id}/rest/software/1.0"
+        )
+        logger.debug(f"Resolved software API URL: {self._software_api_url}")
+        return self._software_api_url
 
     async def _get_cloud_id(self) -> str:
         """
@@ -187,6 +219,7 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         retryable: bool = False,
+        auth: Auth | None = None,
     ) -> Any:
         response: httpx.Response | None = None
         try:
@@ -198,6 +231,7 @@ class JiraClient(OAuthClient):
                     json=json,
                     headers=headers,
                     extensions={"retryable": retryable} if retryable else None,
+                    auth=auth,
                 )
                 response.raise_for_status()
                 await self._rate_limiter.on_response(response)
@@ -315,6 +349,38 @@ class JiraClient(OAuthClient):
                 if not cursor:
                     break
 
+    async def _get_token_paginated_data(
+        self,
+        url: str,
+        extract_key: str,
+        initial_params: dict[str, Any] | None = None,
+        auth: (
+            Auth | None
+        ) = None,  # per-request auth override; needed for endpoints that don't support Bearer
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Paginate Jira Software REST API endpoints using GET token-based pagination."""
+        query_params: dict[str, Any] = {**(initial_params or {})}
+        query_params.setdefault("maxResults", PAGE_SIZE)
+
+        while True:
+            response_data = await self._send_api_request(
+                "GET", url, params=query_params, auth=auth
+            )
+
+            items: list[dict[str, Any]] = response_data.get(extract_key, [])
+
+            if not items:
+                break
+
+            yield items
+
+            if response_data.get("isLast") or not (
+                next_page_token := response_data.get("nextPageToken")
+            ):
+                break
+
+            query_params = {**query_params, "nextPageToken": next_page_token}
+
     @staticmethod
     def _generate_base_req_params(
         maxResults: int = PAGE_SIZE, startAt: int = 0
@@ -323,6 +389,15 @@ class JiraClient(OAuthClient):
             "maxResults": maxResults,
             "startAt": startAt,
         }
+
+    @staticmethod
+    def _enrich_with_board_id(
+        entities: list[dict[str, Any]], board_id: int
+    ) -> list[dict[str, Any]]:
+        """Inject ``__boardId`` to each entity in the list for later relation mapping."""
+        return [
+            {**entity, "__boardId": board_id} for entity in entities if entity.get("id")
+        ]
 
     @staticmethod
     def _validate_existing_webhook(
@@ -416,6 +491,42 @@ class JiraClient(OAuthClient):
 
         await self._send_api_request("POST", self.webhooks_url, json=body)
         logger.info("Ocean real time reporting webhook created")
+
+    async def _fetch_backlog_from_software_api(
+        self,
+        board_id: int,
+        params: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch backlog via the ``software`` endpoint using Basic Auth."""
+        # NOTE: OAuth Bearer tokens return 401 on this endpoint.
+        # Basic Auth is used directly regardless of the integration's top-level auth scheme.
+        # hence, we handle that via request level: ``auth`` override rather than client-level auth.
+        software_url = await self._get_software_api_url()
+        url = f"{software_url}/board/{board_id}/backlog"
+        async for issue_batch in self._get_token_paginated_data(
+            url, "issues", params, auth=self._basic_auth
+        ):
+            yield self._enrich_with_board_id(issue_batch, board_id)
+
+    @deprecated(
+        "_fetch_backlog_from_agile_api is deprecated and will be removed in favor of _fetch_backlog_from_software_api by November 1, 2026. The software API endpoint provides more efficient pagination and is the current standard for backlog retrieval. Please migrate to the software API endpoint as soon as possible."
+    )
+    async def _fetch_backlog_from_agile_api(
+        self,
+        board_id: int,
+        params: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch backlog via the ``agile`` endpoint.
+
+        Deprecated: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/#api-rest-agile-1-0-board-boardid-backlog-get
+        Scheduled for removal: November 1, 2026.
+        """
+        agile_url = await self._get_agile_api_url()
+        url = f"{agile_url}/board/{board_id}/backlog"
+        async for issue_batch in self._get_agile_paginated_data(
+            url, "issues", {**params}
+        ):
+            yield self._enrich_with_board_id(issue_batch, board_id)
 
     async def create_webhooks(self, app_host: str) -> None:
         """Create webhooks if the user has permission."""
@@ -676,3 +787,62 @@ class JiraClient(OAuthClient):
 
         board["__projectKeys"] = project_keys
         return board
+
+    async def get_paginated_backlog_for_board(
+        self,
+        board_id: int,
+        jql: str | None = None,
+        fields: list[str] | None = None,
+        max_results: int = PAGE_SIZE,
+        *,
+        use_software_api: bool = False,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Fetch backlog issues for a board with optional JQL filter and field selection.
+
+        Defaults to the ``agile`` endpoint, which is scheduled for removal on
+        November 1, 2026. Set ``use_software_api=True`` to opt into the ``software``
+        endpoint ahead of the deprecation.
+
+        The ``software/1.0`` endpoint does not accept OAuth Bearer tokens (Jira returns
+        401 with a scope error) and requires Basic Auth — ``atlassianUserEmail`` and
+        ``atlassianUserToken`` must be configured. When the integration is running
+        under OAuth, this method falls back to the deprecated ``agile`` endpoint and
+        logs a warning, because the retry transport's auth-refresh callback would
+        otherwise re-sign per-request Basic Auth with a Bearer token on transient
+        401s - which the ``software/1.0`` endpoint rejects.
+        """
+        if use_software_api and self.is_oauth_enabled():
+            logger.bind(board_id=board_id).warning(
+                f"use_software_api=True is not supported under OAuth for board {board_id}: "
+                "the software/1.0 endpoint does not accept Bearer tokens, and the retry "
+                "transport's auth-refresh callback would re-sign per-request Basic Auth "
+                "with Bearer on transient 401s. Falling back to the deprecated agile endpoint."
+            )
+            use_software_api = False
+
+        logger.info(
+            f"Fetching backlog for board {board_id} "
+            f"(jql='{jql or 'none'}', max_results={max_results}, "
+            f"use_software_api={use_software_api})"
+        )
+
+        query_params: dict[str, Any] = {}
+        if jql:
+            query_params["jql"] = jql
+        if fields is not None:
+            query_params["fields"] = ",".join(fields)
+
+        query_params["maxResults"] = max_results
+
+        if not use_software_api:
+            async for backlogs in self._fetch_backlog_from_agile_api(
+                board_id, query_params
+            ):
+                yield backlogs
+            return
+
+        async for backlogs in self._fetch_backlog_from_software_api(
+            board_id, query_params
+        ):
+            yield backlogs

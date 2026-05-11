@@ -1381,3 +1381,252 @@ async def test_enrich_board_with_projects_returns_empty_list_when_board_has_no_i
 
     assert enriched["__projectKeys"] == []
     mock_request.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_passes_auth_to_httpx_client_when_provided(
+    mock_jira_client: JiraClient,
+) -> None:
+    """When auth= is passed to _send_api_request, httpx.client.request must receive it."""
+    basic_auth = BasicAuth("test@example.com", "test_token")
+
+    with patch.object(
+        mock_jira_client.client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = Response(
+            200, request=Request("GET", "http://example.com"), json={"ok": True}
+        )
+
+        await mock_jira_client._send_api_request(
+            "GET", "http://example.com", auth=basic_auth
+        )
+
+        mock_request.assert_called_once()
+        assert mock_request.call_args.kwargs["auth"] is basic_auth
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_passes_none_auth_by_default(
+    mock_jira_client: JiraClient,
+) -> None:
+    """When auth is not provided, httpx.client.request must receive auth=None
+    so the client-level auth applies — regression guard for pre-existing behavior."""
+    with patch.object(
+        mock_jira_client.client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = Response(
+            200, request=Request("GET", "http://example.com"), json={"ok": True}
+        )
+
+        await mock_jira_client._send_api_request("GET", "http://example.com")
+
+        mock_request.assert_called_once()
+        assert mock_request.call_args.kwargs["auth"] is None
+
+
+@pytest.mark.asyncio
+async def test_token_paginator_threads_auth_to_send_api_request(
+    mock_jira_client: JiraClient,
+) -> None:
+    """auth passed to _get_token_paginated_data must propagate to every page request."""
+    basic_auth = BasicAuth("test@example.com", "test_token")
+
+    page_1 = {"issues": [{"id": "1"}], "nextPageToken": "tok2", "isLast": False}
+    page_2 = {"issues": [{"id": "2"}], "isLast": True}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [page_1, page_2]
+
+        batches = []
+        async for batch in mock_jira_client._get_token_paginated_data(
+            "https://example.com/board/1/backlog",
+            extract_key="issues",
+            auth=basic_auth,
+        ):
+            batches.append(batch)
+
+        assert len(batches) == 2
+        assert mock_request.call_count == 2
+        for call in mock_request.call_args_list:
+            assert call.kwargs["auth"] is basic_auth
+
+
+@pytest.mark.asyncio
+async def test_token_paginator_passes_none_auth_when_not_provided(
+    mock_jira_client: JiraClient,
+) -> None:
+    """When auth is not passed, _send_api_request must be called with auth=None —
+    keeps pre-existing pagination paths (no auth override) working."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"issues": [], "isLast": True}
+
+        async for _ in mock_jira_client._get_token_paginated_data(
+            "https://example.com/some/endpoint", extract_key="issues"
+        ):
+            pass
+
+        mock_request.assert_called_once()
+        assert mock_request.call_args.kwargs["auth"] is None
+
+
+@pytest.mark.asyncio
+async def test_backlog_defaults_to_agile_endpoint_without_basic_auth_override(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Default call (use_software_api=False) must hit the agile endpoint and
+    must NOT pass auth=basic_auth to _send_api_request — preserves the integration's
+    top-level auth scheme (Bearer for OAuth, Basic for non-OAuth)."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "isLast": True,
+            "issues": [{"id": "10001", "key": "PORT-1"}],
+        }
+
+        batches = []
+        async for batch in mock_jira_client.get_paginated_backlog_for_board(board_id=1):
+            batches.append(batch)
+
+        assert mock_request.call_count == 1
+        call_url = mock_request.call_args.args[1]
+        assert "/agile/1.0/board/1/backlog" in call_url
+        assert "auth" not in mock_request.call_args.kwargs
+        assert batches[0][0]["__boardId"] == 1
+
+
+@pytest.mark.asyncio
+async def test_backlog_software_api_routes_through_basic_auth(
+    mock_jira_client: JiraClient,
+) -> None:
+    """use_software_api=True must hit the software endpoint AND pass Basic Auth at
+    request level — software/1.0 returns 401 for Bearer tokens."""
+    with (
+        patch.object(mock_jira_client, "is_oauth_enabled", return_value=False),
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+    ):
+        mock_request.return_value = {
+            "issues": [{"id": "10001", "key": "PORT-1"}],
+            "isLast": True,
+        }
+
+        batches = []
+        async for batch in mock_jira_client.get_paginated_backlog_for_board(
+            board_id=1, use_software_api=True
+        ):
+            batches.append(batch)
+
+        assert mock_request.call_count == 1
+        call_url = mock_request.call_args.args[1]
+        assert "/software/1.0/board/1/backlog" in call_url
+
+        sent_auth = mock_request.call_args.kwargs["auth"]
+        assert isinstance(sent_auth, BasicAuth)
+        assert sent_auth is mock_jira_client._basic_auth
+
+        assert batches[0][0]["__boardId"] == 1
+
+
+@pytest.mark.asyncio
+async def test_backlog_software_api_basic_auth_is_cached_across_pages(
+    mock_jira_client: JiraClient,
+) -> None:
+    """The same BasicAuth instance must be threaded through every page request —
+    no re-allocation per page."""
+    page_1 = {
+        "issues": [{"id": "1"}],
+        "nextPageToken": "tok2",
+        "isLast": False,
+    }
+    page_2 = {"issues": [{"id": "2"}], "isLast": True}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [page_1, page_2]
+
+        async for _ in mock_jira_client.get_paginated_backlog_for_board(
+            board_id=1, use_software_api=True
+        ):
+            pass
+
+        assert mock_request.call_count == 2
+        first_auth = mock_request.call_args_list[0].kwargs["auth"]
+        second_auth = mock_request.call_args_list[1].kwargs["auth"]
+        assert first_auth is second_auth
+        assert isinstance(first_auth, BasicAuth)
+
+
+@pytest.mark.asyncio
+async def test_backlog_passes_jql_and_fields_through_to_api(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Selector inputs (jql, fields, max_results) must reach the API params."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"isLast": True, "issues": []}
+
+        async for _ in mock_jira_client.get_paginated_backlog_for_board(
+            board_id=1,
+            jql="statusCategory != Done",
+            fields=["summary", "status", "assignee"],
+            max_results=25,
+        ):
+            pass
+
+        sent_params = mock_request.call_args.kwargs["params"]
+        assert sent_params["jql"] == "statusCategory != Done"
+        assert sent_params["fields"] == "summary,status,assignee"
+        assert sent_params["maxResults"] == 25
+
+
+@pytest.mark.asyncio
+async def test_backlog_software_api_falls_back_to_agile_under_oauth(
+    mock_jira_client: JiraClient,
+) -> None:
+    """When running under OAuth, use_software_api=True must fall back to the agile
+    endpoint with a warning."""
+    with (
+        patch.object(mock_jira_client, "is_oauth_enabled", return_value=True),
+        patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request,
+        patch("jira.client.logger") as mock_logger,
+    ):
+        mock_request.return_value = {
+            "isLast": True,
+            "issues": [{"id": "10001", "key": "PORT-1"}],
+        }
+
+        batches = []
+        async for batch in mock_jira_client.get_paginated_backlog_for_board(
+            board_id=1, use_software_api=True
+        ):
+            batches.append(batch)
+
+        call_url = mock_request.call_args.args[1]
+        assert "/agile/" in call_url
+        assert "/software/" not in call_url
+
+        # No per-request auth override — agile path uses client-level (Bearer) auth
+        assert "auth" not in mock_request.call_args.kwargs
+
+        assert batches[0][0]["__boardId"] == 1
+
+        fallback_warnings = [
+            call
+            for call in mock_logger.mock_calls
+            if call.args
+            and any(
+                isinstance(arg, str) and "software/1.0" in arg and "Falling back" in arg
+                for arg in call.args
+            )
+        ]
+        assert len(fallback_warnings) == 1
