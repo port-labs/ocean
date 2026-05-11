@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.6 (2026-05-11)
+
+
+### Improvements
+
+- Added `backlog` kind to sync Backlog issues into Port using the Jira Software Cloud REST API.
+
+
 ## 0.7.5 (2026-05-07)
 
 
