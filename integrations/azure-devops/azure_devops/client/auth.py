@@ -54,12 +54,9 @@ def build_auth_provider(config: dict[str, Any]) -> AuthProvider:
                     f"Service Principal auth requires '{field}'. "
                     "Provide clientId, clientSecret, and tenantId."
                 )
-        if config.get("tenant_id"):
-            os.environ["AZURE_TENANT_ID"] = config["tenant_id"]
-        if config.get("client_id"):
-            os.environ["AZURE_CLIENT_ID"] = config["client_id"]
-        if config.get("client_secret"):
-            os.environ["AZURE_CLIENT_SECRET"] = config["client_secret"]
+        os.environ["AZURE_TENANT_ID"] = config["tenant_id"]
+        os.environ["AZURE_CLIENT_ID"] = config["client_id"]
+        os.environ["AZURE_CLIENT_SECRET"] = config["client_secret"]
         return ServicePrincipalAuthProvider(DefaultAzureCredential())
 
     if has_pat:
