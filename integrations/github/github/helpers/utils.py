@@ -1,7 +1,9 @@
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from wcmatch import glob
 from enum import StrEnum
 from typing import (
     Any,
+    AsyncGenerator,
     Dict,
     List,
     NamedTuple,
@@ -309,3 +311,10 @@ async def enrich_members_with_saml_email(
             f"Enriched {enriched}/{len(members)} members with SAML email "
             f"for organization '{organization}'"
         )
+
+
+async def tag_batch_with_org(
+    organization: str, iterator: ASYNC_GENERATOR_RESYNC_TYPE
+) -> AsyncGenerator[Tuple[str, List[Dict[str, Any]]], None]:
+    async for batch in iterator:
+        yield (organization, batch)
