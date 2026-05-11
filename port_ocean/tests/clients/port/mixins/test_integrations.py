@@ -261,7 +261,7 @@ async def test_get_integration_resync_request(
     with patch(
         "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
     ) as mock_handle:
-        result = await integration_client.get_integration_resync_requests()
+        result = await integration_client.get_integration_resync_request()
 
     integration_client.auth.headers.assert_called_once()
     integration_client.client.get.assert_called_once_with(
@@ -279,6 +279,19 @@ async def test_get_integration_resync_requests_returns_empty_dict_when_missing_k
 ) -> None:
     integration_client.client.get.return_value.json.return_value = {}
     with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
-        result = await integration_client.get_integration_resync_requests()
+        result = await integration_client.get_integration_resync_request()
+
+    assert result == {}
+
+
+async def test_get_integration_resync_request_returns_empty_dict_when_request_is_null(
+    integration_client: IntegrationClientMixin,
+) -> None:
+    integration_client.client.get.return_value.json.return_value = {
+        "ok": True,
+        "request": None,
+    }
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        result = await integration_client.get_integration_resync_request()
 
     assert result == {}

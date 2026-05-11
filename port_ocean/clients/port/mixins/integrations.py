@@ -109,12 +109,12 @@ class IntegrationClientMixin:
             headers=await self.auth.headers(),
         )
 
-    async def get_integration_resync_requests(
+    async def get_integration_resync_request(
         self, should_raise: bool = True, should_log: bool = True
     ) -> dict[str, Any]:
         response = await self._get_integration_resync_request()
         handle_port_status_code(response, should_raise, should_log)
-        return response.json().get("request", {})
+        return response.json().get("request") or {}
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:
