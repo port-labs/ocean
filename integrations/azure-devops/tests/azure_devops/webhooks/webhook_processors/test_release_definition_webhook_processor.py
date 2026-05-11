@@ -19,8 +19,8 @@ def definition_processor(
     mock_client.get_release = AsyncMock()
     mock_client.get_release_definition = AsyncMock()
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_definition_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
     return ReleaseDefinitionWebhookProcessor(event)
 
@@ -144,8 +144,8 @@ async def test_handle_event_success(
         }
     )
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_definition_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {
@@ -177,8 +177,8 @@ async def test_handle_event_release_not_found(
     mock_client = MagicMock()
     mock_client.get_release = AsyncMock(return_value=None)
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_definition_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {
@@ -212,8 +212,8 @@ async def test_handle_event_definition_not_found(
     )
     mock_client.get_release_definition = AsyncMock(return_value=None)
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_definition_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {

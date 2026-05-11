@@ -18,8 +18,8 @@ def release_processor(
     mock_client = MagicMock()
     mock_client.get_release = AsyncMock()
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
     return ReleaseWebhookProcessor(event)
 
@@ -151,8 +151,8 @@ async def test_release_handle_event_success(
         return_value={"id": 42, "name": "Release-1", "status": "active"}
     )
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {
@@ -180,8 +180,8 @@ async def test_release_handle_event_not_found(
     mock_client = MagicMock()
     mock_client.get_release = AsyncMock(return_value=None)
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {

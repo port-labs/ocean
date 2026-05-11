@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.0 (2026-05-11)
+
+
+### Features
+
+- Completed multi-organization support across webhook routing and GitOps file lookups. Webhook events now resolve to the per-org `AzureDevopsClient` based on the `resourceContainers.{account,collection}.baseUrl` field in the payload; emitted entities are enriched with `__organizationUrl` and `__organizationName`. GitOps file resolution routes by the entity's `__organizationUrl`. Webhook subscriptions are registered against every configured organization at startup.
+- A failing org during webhook setup is logged and isolated so the remaining organizations still register their subscriptions. In single-org mode the original behavior is preserved — exceptions propagate unchanged.
+
+### Improvements
+
+- `AzureDevOpsBaseWebhookProcessor` now exposes a template-method `handle_event` that delegates to subclass `_handle_webhook_event` and enriches the results with organization context. Every concrete webhook processor was migrated to the new contract.
+- Webhook setup logic moved out of `main.py` into `azure_devops/webhooks/setup.py::setup_webhooks_for_all_orgs`.
+
+
 ## 0.8.33 (2026-05-10)
 
 

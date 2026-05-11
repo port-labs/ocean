@@ -4,10 +4,24 @@ from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.client.client_manager import AzureDevopsClientManager
 from azure_devops.misc import extract_branch_name_from_ref
 
 FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"
+
+
+def _get_client_for_entity(data: Dict[str, Any]) -> AzureDevopsClient:
+    """Resolve the per-org Azure DevOps client for a GitOps entity"""
+    manager = AzureDevopsClientManager.create_from_ocean_config_no_cache()
+    org_url = data.get("__organizationUrl")
+    if org_url and manager.get_client_for_org(org_url) is None:
+        logger.warning(
+            f"GitOps entity references unknown organization {org_url}; "
+            f"falling back to first configured client. "
+            f"Check organizationUrls / organizationUrl config."
+        )
+    return manager.get_client_for_org_or_first(org_url)
 
 
 class GitManipulationHandler(JQEntityProcessor):
@@ -27,7 +41,7 @@ class GitManipulationHandler(JQEntityProcessor):
         return await super()._search(data, pattern, field)
 
     async def _search_by_file(self, data: Dict[str, Any], pattern: str) -> Any:
-        client = AzureDevopsClient.create_from_ocean_config_no_cache()
+        client = _get_client_for_entity(data)
         repository_id, branch = parse_repository_payload(data)
         file_path = pattern.replace(FILE_PROPERTY_PREFIX, "")
         file_raw_content = await client.get_file_by_branch(

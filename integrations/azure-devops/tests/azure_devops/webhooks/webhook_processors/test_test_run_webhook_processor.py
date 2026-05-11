@@ -17,8 +17,8 @@ def test_run_processor(
     mock_client = MagicMock()
     mock_client.get_test_runs_by_build = AsyncMock(return_value=[])
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.test_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
     return TestRunWebhookProcessor(event)
 
@@ -116,8 +116,8 @@ async def test_handle_event_success(
     mock_client = MagicMock()
     mock_client.get_test_runs_by_build = AsyncMock(return_value=mock_test_runs)
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.test_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {
@@ -149,8 +149,8 @@ async def test_handle_event_no_test_runs(
     mock_client = MagicMock()
     mock_client.get_test_runs_by_build = AsyncMock(return_value=[])
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.test_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {

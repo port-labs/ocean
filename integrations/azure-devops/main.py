@@ -1,13 +1,11 @@
 from typing import Any, cast
 
-from loguru import logger
-
-from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.helpers import resync
 from azure_devops.misc import (
     Kind,
     AzureDevopsFolderResourceConfig,
 )
+from azure_devops.webhooks.setup import setup_webhooks_for_all_orgs
 from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
     BranchWebhookProcessor,
 )
@@ -275,28 +273,7 @@ async def resync_advanced_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_T
 
 @ocean.on_start()
 async def setup_webhooks() -> None:
-    base_url = ocean.app.base_url
-    webhook_secret = ocean.integration_config.get("webhook_secret")
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation for ONCE listener")
-        return
-
-    if not base_url:
-        logger.warning("No base url provided, skipping webhook creation")
-        return
-
-    client = AzureDevopsClient.create_from_ocean_config()
-    if ocean.integration_config.get("is_projects_limited"):
-        async for projects in client.generate_projects():
-            for project in projects:
-                logger.info(f"Setting up webhooks for project {project['name']}")
-                await client.create_webhook_subscriptions(
-                    base_url, project["id"], webhook_secret
-                )
-    else:
-        await client.create_webhook_subscriptions(
-            base_url, webhook_secret=webhook_secret
-        )
+    await setup_webhooks_for_all_orgs()
 
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)

@@ -38,11 +38,11 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         except ValueError:
             return False
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         repository_id = payload["resource"]["repository"]["id"]
-        client = AzureDevopsClient.create_from_ocean_config()
+        client = self._get_client_for_webhook(payload)
         repository = await self._get_repository_data(client, repository_id)
         if not repository:
             return WebhookEventRawResults(

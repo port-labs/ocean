@@ -40,7 +40,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         except ValueError:
             return False
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         matching_resource_config = cast(AzureDevopsFileResourceConfig, resource_config)
@@ -55,7 +55,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        client = AzureDevopsClient.create_from_ocean_config()
+        client = self._get_client_for_webhook(payload)
         updates = payload["resource"]["refUpdates"]
         created, modified, deleted = await self._process_push_updates(
             matching_resource_config, payload, updates, client

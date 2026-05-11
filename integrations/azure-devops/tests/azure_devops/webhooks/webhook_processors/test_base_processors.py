@@ -18,7 +18,7 @@ class AzureDevOpsWebhookProcessorImpl(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["test-kind"]
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: dict[str, Any], resource: ResourceConfig
     ) -> WebhookEventRawResults:
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])

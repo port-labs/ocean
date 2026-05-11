@@ -53,8 +53,8 @@ class TestAzureDevopsIncludedFilesEnrichment:
     ) -> None:
         """Test that handle_event enriches with included files when configured."""
         monkeypatch.setattr(
-            "azure_devops.webhooks.webhook_processors.repository_processor.AzureDevopsClient.create_from_ocean_config",
-            lambda: mock_client,
+            "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+            lambda self, payload: mock_client,
         )
 
         mock_client.get_repository = AsyncMock(return_value=sample_repo)
@@ -97,8 +97,8 @@ class TestAzureDevopsIncludedFilesEnrichment:
     ) -> None:
         """Test that handle_event does not enrich when includedFiles is empty."""
         monkeypatch.setattr(
-            "azure_devops.webhooks.webhook_processors.repository_processor.AzureDevopsClient.create_from_ocean_config",
-            lambda: mock_client,
+            "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+            lambda self, payload: mock_client,
         )
 
         mock_client.get_repository = AsyncMock(return_value=sample_repo)

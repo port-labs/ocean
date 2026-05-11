@@ -21,8 +21,8 @@ def pipeline_run_processor(
     mock_client.get_pipeline = AsyncMock()
     mock_client.annotate_runs = MagicMock()
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
     return PipelineRunWebhookProcessor(event)
 
@@ -157,8 +157,8 @@ async def test_pipeline_run_handle_event_success(
     mock_client.get_pipeline = AsyncMock(return_value={"id": "pipeline-789"})
     mock_client.annotate_runs = MagicMock()
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {
@@ -193,8 +193,8 @@ async def test_pipeline_run_handle_event_not_found(
     mock_client = MagicMock()
     mock_client.get_pipeline_run = AsyncMock(return_value=None)
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {
@@ -220,8 +220,8 @@ async def test_pipeline_run_handle_event_project_not_found(
     mock_client.get_pipeline_run = AsyncMock(return_value={"id": "run-456"})
     mock_client.get_single_project = AsyncMock(return_value=None)
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {
@@ -248,8 +248,8 @@ async def test_pipeline_run_handle_event_pipeline_not_found(
     mock_client.get_single_project = AsyncMock(return_value={"id": "project-123"})
     mock_client.get_pipeline = AsyncMock(return_value=None)
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {

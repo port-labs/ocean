@@ -19,8 +19,8 @@ def pipeline_processor(
     mock_client.get_pipeline = AsyncMock()
     mock_client.enrich_pipelines_with_repository = AsyncMock()
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
     return PipelineWebhookProcessor(event)
 
@@ -104,8 +104,8 @@ async def test_pipeline_handle_event_success_no_enrich(
     mock_client = MagicMock()
     mock_client.get_pipeline = AsyncMock(return_value={"id": "pipeline-123"})
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {
@@ -136,8 +136,8 @@ async def test_pipeline_handle_event_success_with_enrich(
         return_value=[{**pipeline_data, "__repository": {}}]
     )
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {
@@ -165,8 +165,8 @@ async def test_pipeline_handle_event_not_found(
     mock_client = MagicMock()
     mock_client.get_pipeline = AsyncMock(return_value=None)
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevOpsBaseWebhookProcessor._get_client_for_webhook",
+        lambda self, payload: mock_client,
     )
 
     payload = {

@@ -13,7 +13,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-
 ZERO_OBJECT_ID = "0000000000000000000000000000000000000000"
 
 
@@ -38,7 +37,7 @@ class BranchWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             and repository.get("id") is not None
         )
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         resource = payload["resource"]
