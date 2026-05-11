@@ -42,7 +42,9 @@ class OrganizationClientMixin:
 
         response = await self._get_organization_feature_flags()
         handle_port_status_code(response, should_raise, should_log)
-        flags: list[str] = response.json().get("organization", {}).get("featureFlags", [])
+        flags: list[str] = (
+            response.json().get("organization", {}).get("featureFlags", [])
+        )
         self._feature_flags_cache = flags
         self._feature_flags_cached_at = now
         return flags

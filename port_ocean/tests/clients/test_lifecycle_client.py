@@ -24,7 +24,9 @@ def mock_post() -> AsyncMock:
 
 
 @pytest.fixture
-def lifecycle_client(mock_auth: MagicMock, mock_post: AsyncMock, monkeypatch: pytest.MonkeyPatch) -> LifecycleClient:
+def lifecycle_client(
+    mock_auth: MagicMock, mock_post: AsyncMock, monkeypatch: pytest.MonkeyPatch
+) -> LifecycleClient:
     client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
     monkeypatch.setattr(client._client, "post", mock_post)
     return client
@@ -154,6 +156,7 @@ class TestLifecycleClientNotifyAborted:
         mock_post.return_value = error_response
 
         from unittest.mock import patch
+
         with patch("port_ocean.clients.lifecycle.logger") as mock_logger:
             await lifecycle_client.notify_aborted(
                 resync_id="r1", integration_id="i1", integration_type="github"
@@ -165,7 +168,10 @@ class TestLifecycleClientNotifyAborted:
 
     @pytest.mark.asyncio
     async def test_base_url_trailing_slash_is_stripped(
-        self, mock_auth: MagicMock, monkeypatch: pytest.MonkeyPatch, mock_post: AsyncMock
+        self,
+        mock_auth: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_post: AsyncMock,
     ) -> None:
         client = LifecycleClient(base_url="http://localhost:3017/", auth=mock_auth)
         monkeypatch.setattr(client._client, "post", mock_post)
@@ -189,6 +195,7 @@ class TestLifecycleClientNotifyAborted:
         mock_post.return_value = error_response
 
         from unittest.mock import patch
+
         with patch("port_ocean.clients.lifecycle.logger") as mock_logger:
             await lifecycle_client.notify_aborted(
                 resync_id="r1", integration_id="i1", integration_type="github"
