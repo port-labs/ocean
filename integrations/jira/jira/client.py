@@ -794,7 +794,6 @@ class JiraClient(OAuthClient):
             query_params["jql"] = jql
         if fields is not None:
             query_params["fields"] = ",".join(fields)
-
         query_params["maxResults"] = max_results
 
         if not use_software_api:
@@ -804,7 +803,16 @@ class JiraClient(OAuthClient):
                 yield backlogs
             return
 
-        async for backlogs in self._fetch_backlog_from_software_api(
-            board_id, query_params
-        ):
-            yield backlogs
+        try:
+            async for backlogs in self._fetch_backlog_from_software_api(
+                board_id, query_params
+            ):
+                yield backlogs
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 400:
+                logger.warning(
+                    f"Board {board_id} returned 400 — board type does not support backlog "
+                    f"(e.g. Kanban or backlog disabled), skipping"
+                )
+                return
+            raise
