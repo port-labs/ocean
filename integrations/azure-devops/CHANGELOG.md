@@ -7,60 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.9.0 (2026-05-11)
+## 0.8.31 (2026-05-11)
 
 
-### Features
+### Bug Fixes
 
-- Completed multi-organization support across webhook routing and GitOps file lookups. Webhook events now resolve to the per-org `AzureDevopsClient` based on the `resourceContainers.{account,collection}.baseUrl` field in the payload; emitted entities are enriched with `__organizationUrl` and `__organizationName`. GitOps file resolution routes by the entity's `__organizationUrl`. Webhook subscriptions are registered against every configured organization at startup.
-- A failing org during webhook setup is logged and isolated so the remaining organizations still register their subscriptions. In single-org mode the original behavior is preserved — exceptions propagate unchanged.
-
-### Improvements
-
-- `AzureDevOpsBaseWebhookProcessor` now exposes a template-method `handle_event` that delegates to subclass `_handle_webhook_event` and enriches the results with organization context. Every concrete webhook processor was migrated to the new contract.
-- Webhook setup logic moved out of `main.py` into `azure_devops/webhooks/setup.py::setup_webhooks_for_all_orgs`.
-
-
-## 0.8.33 (2026-05-10)
-
-
-### Features
-
-- Resync now fans out across every configured Azure DevOps organization with bounded concurrency (`CONCURRENT_ORG_RESYNCS = 3`). Each yielded entity is enriched with `__organizationUrl` and `__organizationName` so JQ mappings can scope identifiers per organization. Single-organization deployments remain a transparent pass-through.
-- A failure in one organization is logged and isolated so the remaining organizations still complete their resync.
-
-### Improvements
-
-- Extracted per-kind resync handlers into `azure_devops/helpers/resync.py` (one `iter_<kind>` per resource). `main.py` resync handlers now delegate to these wrappers, which in turn route through `azure_devops/helpers/multi_org.py::iterate_per_organization`.
-
-
-## 0.8.32 (2026-05-10)
-
-
-### Features
-
-- Added optional `organizationUrls`, `clientId`, `clientSecret`, and `tenantId` configuration fields for upcoming multi-organization support via Microsoft Entra ID Service Principal authentication. Existing single-organization deployments continue to use `organizationUrl` + `personalAccessToken` and are unaffected.
-
-### Improvements
-
-- Introduced `AzureDevopsClientManager` to hold one `AzureDevopsClient` per configured organization. In Service Principal mode all clients share a single `ServicePrincipalAuthenticator` so the Entra ID token is fetched once per manager (the token is tenant-scoped, not org-scoped).
-- Refactored `@cache_iterator_result()` decorators on `generate_projects`, `generate_teams`, `generate_groups`, `generate_repositories`, `generate_environments`, and `get_boards_in_organization` into inner `_*_cached(org_identifier, ...)` methods so that cache keys are scoped per-organization. This isolates cached results between orgs in upcoming multi-org deployments while remaining transparent for single-org users.
-
-
-## 0.8.31 (2026-05-10)
-
-
-### Improvements
-
-- Refactored client authentication into a strategy pattern. `HTTPBaseClient` and `AzureDevopsClient` now accept an `Authenticator` instance (`PersonalAccessTokenAuthenticator` for PAT mode, `ServicePrincipalAuthenticator` for upcoming Microsoft Entra ID Service Principal mode). Existing PAT factories preserve current behavior.
+- Fixed missing code coverage data on `test-run` entities by passing the required `api-version` parameter to the `test/codecoverage` endpoint
 
 
 ## 0.8.30 (2026-05-10)
 
 
-### Improvements
+### Features
 
-- Added `extract_org_name_from_url` helper in `azure_devops/misc.py` to derive an organization name from any Azure DevOps URL form (`dev.azure.com/{org}` or `{org}.visualstudio.com`)
+- Added `includeFields` selector field to the user kind, allowing enrichment of user entitlements
 
 
 ## 0.8.29 (2026-05-07)

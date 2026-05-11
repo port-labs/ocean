@@ -4119,7 +4119,7 @@ async def test_fetch_code_coverage() -> None:
         mock_send_request.assert_called_once_with(
             "GET",
             f"{MOCK_ORG_URL}/proj1/_apis/test/codecoverage",
-            params={"buildId": 123, "flags": 1},
+            params={"buildId": 123, "api-version": "7.1", "flags": 1},
         )
 
 

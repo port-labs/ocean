@@ -63,6 +63,7 @@ from integration import (
     AzureDevopsPullRequestResourceConfig,
     AzureDevopsAdvancedSecurityResourceConfig,
     AzureDevopsRepositoryResourceConfig,
+    AzureDevopsUserConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
