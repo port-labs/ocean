@@ -7,6 +7,8 @@ authors = ["Matan Geva <matang@getport.io>"]
 [tool.poetry.dependencies]
 python = "^3.12"
 port_ocean = {version = "^0.41.7", extras = ["cli"]}
+azure-identity = "^1.25.0"
+aiohttp = "^3.13.4"
 braceexpand = "^0.1.7"
 wcmatch = "^10.1"
 
