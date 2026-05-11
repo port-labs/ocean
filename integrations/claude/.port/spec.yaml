@@ -1,0 +1,33 @@
+title: Claude
+description: Claude integration for Port Ocean
+icon: Claude
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/ai-agents/claude
+recommendedInstallationMethod: Saas
+formMappingEnabled: true
+features:
+  - type: exporter
+    section: AI Agents
+    resources:
+      - kind: claude-usage-record
+      - kind: claude-cost-record
+      - kind: claude-code-analytics
+saas:
+  enabled: true
+configurations:
+  - name: anthropicApiKey
+    type: string
+    required: true
+    sensitive: true
+    description: The Anthropic API key to authenticate with the Anthropic API. Refer <a href="https://platform.claude.com/docs/en/api/overview#prerequisites" target="_blank">Anthropic documentation</a> on how to create one.
+  - name: anthropicVersion
+    type: string
+    required: false
+    sensitive: false
+    default: "2023-06-01"
+    description: The version of the Anthropic API to use. If not specified, the default will be "2023-06-01".
+  - name: anthropicApiHost
+    type: url
+    required: false
+    sensitive: false
+    default: https://api.anthropic.com
+    description: The host of the Anthropic api instance. If not specified, the default will be https://api.anthropic.com.

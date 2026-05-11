@@ -59,9 +59,9 @@ jobs:
       - name: Run fake integration for core test
         if: env.RUN_SMOKE_TESTS == 'true'
         env:
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
           SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
           OCEAN__PROCESS_EXECUTION_MODE: single_process
@@ -73,9 +73,9 @@ jobs:
         if: env.RUN_SMOKE_TESTS == 'true'
         env:
           PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
         run: |
           make smoke/test
@@ -84,9 +84,9 @@ jobs:
         if: always() && env.RUN_SMOKE_TESTS == 'true'
         env:
           PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
         run: |
           make smoke/clean
@@ -94,9 +94,9 @@ jobs:
       - name: Run fake integration for core test with multiprocessing enabled
         if: env.RUN_SMOKE_TESTS == 'true'
         env:
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
           SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
           OCEAN__PROCESS_EXECUTION_MODE: multi_process
@@ -108,9 +108,9 @@ jobs:
         if: env.RUN_SMOKE_TESTS == 'true'
         env:
           PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
         run: |
           make smoke/test
@@ -119,9 +119,9 @@ jobs:
         if: always() && env.RUN_SMOKE_TESTS == 'true'
         env:
           PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          PORT_CLIENT_ID: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.SMOKE_TESTS_PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.SMOKE_TESTS_PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
         run: |
           make smoke/clean
