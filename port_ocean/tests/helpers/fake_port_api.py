@@ -172,7 +172,7 @@ async def migration(migration_id: str, request: Request) -> Dict[str, Any]:
     }
 
 
-@app.router.get("/integration/{integration_id}/resync-request")
+@app.router.get("/v1/integration/{integration_id}/resync-request")
 async def get_integration_resync_request(integration_id: str) -> Dict[str, Any]:
     return {
         "request": {
