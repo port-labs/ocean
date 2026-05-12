@@ -1,0 +1,21 @@
+{
+  "version": "0",
+  "id": "66666666-6666-6666-6666-666666666666",
+  "detail-type": "AWS API Call via CloudTrail",
+  "source": "aws.s3",
+  "account": "123456789012",
+  "time": "2026-05-08T12:04:00Z",
+  "region": "us-east-1",
+  "resources": [],
+  "detail": {
+    "eventVersion": "1.08",
+    "eventTime": "2026-05-08T12:04:00Z",
+    "eventSource": "s3.amazonaws.com",
+    "eventName": "CreateBucket",
+    "awsRegion": "us-east-1",
+    "requestParameters": {
+      "bucketName": "my-test-bucket"
+    },
+    "responseElements": null
+  }
+}

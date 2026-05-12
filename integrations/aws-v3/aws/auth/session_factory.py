@@ -141,3 +141,73 @@ async def clear_aws_account_sessions() -> None:
     if AccountStrategyFactory._cached_strategy:
         AccountStrategyFactory._cached_strategy = None
         logger.debug("All cached AWS account sessions have been cleared.")
+
+
+async def get_session_for_account(account_id: str) -> AioSession | None:
+    """Return a cached session for ``account_id`` used by webhook handlers.
+
+    Reuses ``AccountStrategyFactory.create()`` (never calls
+    ``clear_aws_account_sessions``). Builds a lazy ``account_id -> session``
+    map on the strategy instance; multi/org strategies key sessions by role
+    ARN, so ARN is reversed via ``extract_account_from_arn``.
+
+    For multi-account and organizations strategies, if role sessions are not
+    populated yet (e.g. no resync has run), this runs ``healthcheck()`` once—
+    matching the guard in ``get_account_sessions()``—then builds the map.
+    """
+
+    strategy = await AccountStrategyFactory.create()
+
+    # Cache is attached to the cached strategy instance so it is invalidated
+    # automatically when `clear_aws_account_sessions()` resets the strategy.
+    cached = getattr(strategy, "_account_id_to_session", None)
+    if isinstance(cached, dict) and account_id in cached:
+        session = cached.get(account_id)
+        return session if isinstance(session, AioSession) else None
+
+    account_id_to_session: dict[str, AioSession] = {}
+
+    # Single account strategy exposes `account_id` + `_session` after healthcheck.
+    if isinstance(strategy, SingleAccountStrategy):
+        if strategy._session is None or strategy.account_id is None:
+            await strategy.healthcheck()
+        if strategy._session is not None and strategy.account_id is not None:
+            account_id_to_session[strategy.account_id] = strategy._session
+
+        setattr(strategy, "_account_id_to_session", account_id_to_session)
+        return account_id_to_session.get(account_id)
+
+    # Multi-account / organizations store sessions keyed by role ARN.
+    from aws.auth.utils import extract_account_from_arn
+
+    role_arn_to_session = getattr(strategy, "valid_sessions", None)
+    if role_arn_to_session is None:
+        role_arn_to_session = getattr(strategy, "_valid_sessions", None)
+    if not isinstance(role_arn_to_session, dict):
+        setattr(strategy, "_account_id_to_session", account_id_to_session)
+        return None
+
+    # Webhooks may run before any resync. `get_account_sessions()` runs
+    # `healthcheck()` when caches are empty; mirror that here so
+    # `valid_sessions` is populated before we build the account_id map.
+    if not role_arn_to_session:
+        await strategy.healthcheck()
+        strategy.__dict__.pop("_account_id_to_session", None)
+        role_arn_to_session = getattr(strategy, "valid_sessions", None)
+        if role_arn_to_session is None:
+            role_arn_to_session = getattr(strategy, "_valid_sessions", None)
+        if not isinstance(role_arn_to_session, dict):
+            setattr(strategy, "_account_id_to_session", account_id_to_session)
+            return None
+
+    for role_arn, session in role_arn_to_session.items():
+        if not isinstance(role_arn, str) or not isinstance(session, AioSession):
+            continue
+        try:
+            role_account_id = extract_account_from_arn(role_arn)
+        except Exception:
+            continue
+        account_id_to_session[role_account_id] = session
+
+    setattr(strategy, "_account_id_to_session", account_id_to_session)
+    return account_id_to_session.get(account_id)

@@ -1,0 +1,30 @@
+{
+  "version": "0",
+  "id": "88888888-8888-8888-8888-888888888888",
+  "detail-type": "AWS API Call via CloudTrail",
+  "source": "aws.ec2",
+  "account": "123456789012",
+  "time": "2026-05-08T12:06:00Z",
+  "region": "us-east-1",
+  "resources": [],
+  "detail": {
+    "eventVersion": "1.08",
+    "eventTime": "2026-05-08T12:06:00Z",
+    "eventSource": "ec2.amazonaws.com",
+    "eventName": "RunInstances",
+    "awsRegion": "us-east-1",
+    "requestParameters": {},
+    "responseElements": {
+      "instancesSet": {
+        "items": [
+          {
+            "instanceId": "i-00112233445566778"
+          },
+          {
+            "instanceId": "i-00998877665544332"
+          }
+        ]
+      }
+    }
+  }
+}

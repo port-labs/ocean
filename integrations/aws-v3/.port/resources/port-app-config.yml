@@ -63,3 +63,25 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::ECS::Service
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ServiceArn
+          title: .Properties.ServiceName
+          blueprint: '"ecsService"'
+        relations:
+          account: .__ExtraContext.AccountId
+  - kind: AWS::Lambda::Function
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.FunctionArn
+          title: .Properties.FunctionName
+          blueprint: '"lambdaFunction"'
+        relations:
+          account: .__ExtraContext.AccountId
