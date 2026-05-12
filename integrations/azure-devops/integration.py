@@ -295,12 +295,34 @@ class AzureDevopsRepositoryResourceConfig(ResourceConfig):
     )
 
 
+class AzureDevopsUserSelector(Selector):
+    include_fields: Optional[
+        list[Literal["license", "extensions", "projects", "groupRules"]]
+    ] = Field(
+        default=None,
+        alias="includeFields",
+        title="Include Fields",
+        description="List of additional properties to include in user entitlements.",
+    )
+
+    def to_params(self) -> dict[str, str]:
+        data = self.dict(
+            by_alias=True,
+            exclude_none=True,
+            exclude={"query"},
+        )
+        if "includeFields" in data:
+            data["select"] = ",".join(data["includeFields"])
+            del data["includeFields"]
+        return data
+
+
 class AzureDevopsUserConfig(ResourceConfig):
     kind: Literal[Kind.USER] = Field(
         title="Azure Devops User",
         description="Azure Devops user resource kind.",
     )
-    selector: AzureDevopsSelector = Field(
+    selector: AzureDevopsUserSelector = Field(
         title="User selector",
         description="Selector for the user resource.",
     )
