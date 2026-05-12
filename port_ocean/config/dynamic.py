@@ -41,6 +41,13 @@ class Configuration(BaseModel, extra=Extra.allow):
     sensitive: bool = False
 
 
+def normalize_string(value: Any) -> Any:
+    if isinstance(value, str):
+        value = value.strip()
+
+    return value
+
+
 def dynamic_parse(value: Any, field: ModelField) -> Any:
     should_json_load = issubclass(field.annotation, dict) or issubclass(
         field.annotation, list
@@ -89,7 +96,10 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
         __base__=BaseOceanModel,
         **fields,
         __validators__={
-            "dynamic_parse": validator("*", pre=True, allow_reuse=True)(dynamic_parse)
+            "normalize_string": validator("*", pre=True, allow_reuse=True)(
+                normalize_string
+            ),
+            "dynamic_parse": validator("*", pre=True, allow_reuse=True)(dynamic_parse),
         },
     )
     return dynamic_model
