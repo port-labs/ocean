@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.4.4 (2026-05-12)
+## 5.4.5 (2026-05-12)
 
 
 ### Bug Fixes
 
 - Prevented resync failures when `includedFiles` targets a path that is not a regular file (e.g. symlink/submodule) or when the GitHub Contents API response is missing `content`/`encoding`.
+
+
+## 5.4.4 (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
 
 
 ## 5.4.3 (2026-05-12)
