@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.31 (2026-05-11)
+
+
+### Bug Fixes
+
+- Fixed missing code coverage data on `test-run` entities by passing the required `api-version` parameter to the `test/codecoverage` endpoint
+
+
+## 0.8.30 (2026-05-10)
+
+
+### Features
+
+- Added `includeFields` selector field to the user kind, allowing enrichment of user entitlements
+
+
 ## 0.8.29 (2026-05-07)
 
 

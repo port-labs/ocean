@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.4.2 (2026-05-11)
+## 5.4.4 (2026-05-12)
 
 
 ### Bug Fixes
 
 - Prevented resync failures when `includedFiles` targets a path that is not a regular file (e.g. symlink/submodule) or when the GitHub Contents API response is missing `content`/`encoding`.
+
+
+## 5.4.3 (2026-05-12)
+
+
+### Bug Fixes
+
+- Added opt-in `customProperties` selector under `includedRelations` to enrich repositories with organization custom property values via the properties/values API.
+
+
+## 5.4.2 (2026-05-11)
+
+
+### Bug Fixes
+
+- Fix repo search query in live-events
 
 
 ## 5.4.1 (2026-05-10)
