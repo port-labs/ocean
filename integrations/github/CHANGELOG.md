@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.4.3 (2026-05-12)
+
+
+### Bug Fixes
+
+- Added opt-in `customProperties` selector under `includedRelations` to enrich repositories with organization custom property values via the properties/values API.
+
+
 ## 5.4.2 (2026-05-11)
 
 
