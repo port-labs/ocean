@@ -71,7 +71,7 @@ resources:
           identifier: .id | tostring
           title: .title
           properties:
-            description: .description
+            description: (.description // "")
             type: .type
             severityScore: .severity_score
             severity: .severity
@@ -94,7 +94,7 @@ resources:
           identifier: (.team_id | tostring) + "_" + (.id | tostring)
           title: .title
           properties:
-            description: .description
+            description: (.description // "")
             type: .type
             severityScore: .severity_score
             severity: .severity
