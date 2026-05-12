@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.8.31 (2026-05-11)
 
 
-### Features
+### Bug Fixes
 
-- Added Service Principal (OAuth client_credentials) authentication as an alternative to PAT, enabling token-based auth for multi-org deployments
+- Fixed missing code coverage data on `test-run` entities by passing the required `api-version` parameter to the `test/codecoverage` endpoint
 
 
 ## 0.8.30 (2026-05-10)
