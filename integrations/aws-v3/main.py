@@ -40,6 +40,10 @@ from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
 )
+from aws.live_events.registry import register_webhook_processors
+
+
+register_webhook_processors()
 
 
 @ocean.on_resync_start()

@@ -55,6 +55,11 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Shared secret for validating forwarded live event webhook payloads with HMAC-SHA256. Leave empty to use native SNS signature validation for direct HTTPS subscriptions.
 disableDefaultInstallationMethods: true
 installationDocs:
   saas:
@@ -64,4 +69,4 @@ installationDocs:
 saas:
   enabled: true
   liveEvents:
-    enabled: false
+    enabled: true
