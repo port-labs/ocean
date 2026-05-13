@@ -16,6 +16,7 @@ from github.core.options import (
 from github.clients.http.rest_client import GithubRestClient
 from collections import defaultdict
 
+from port_ocean.utils.cache import cache_coroutine_result
 from github.core.exporters.file_exporter.utils import (
     build_batch_file_query,
     decode_content,
@@ -384,6 +385,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return response
 
+    @cache_coroutine_result()
     async def get_tree_recursive(
         self, organization: str, repo: str, branch: str
     ) -> List[Dict[str, Any]]:
