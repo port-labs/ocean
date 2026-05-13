@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed file resyncs aborting on transient `5xx` responses from the `itemsbatch` endpoint by opting the request into the retry path.
+- Fixed file resyncs aborting on transient `503` responses from the `itemsbatch` endpoint by opting the request into the retry path.
 
 
 ## 0.8.33 (2026-05-13)
