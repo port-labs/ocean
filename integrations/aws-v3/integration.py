@@ -4,7 +4,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from pydantic import Field, BaseModel
-from typing import List
+from typing import List, Optional
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -68,3 +68,6 @@ class AWSPortAppConfig(PortAppConfig):
 class AWSIntegration(BaseIntegration):
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = AWSPortAppConfig
+
+    # Set via spec.yaml configuration — matched to the CloudFormation WebhookSecret parameter.
+    webhook_secret: Optional[str] = Field(default=None, alias="webhookSecret")

@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Port Ocean AWS-V3 Live Events Support.
+  Deploys EventBridge rules, SNS topic, and SQS dead-letter queue so that
+  AWS resource changes are forwarded to the Ocean webhook in near-real-time.
+
+Parameters:
+  OceanWebhookUrl:
+    Type: String
+    Description: >
+      The full HTTPS URL of your Ocean integration's live events webhook endpoint.
+      Example: https://your-ocean-host/integration/live-events/webhook
+    AllowedPattern: "^https://.*"
+    ConstraintDescription: Must be an HTTPS URL.
+
+  WebhookSecret:
+    Type: String
+    NoEcho: true
+    Description: >
+      Secret token that Ocean uses to validate incoming SNS messages.
+      Set the same value in Ocean's integration configuration (webhookSecret).
+
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [production, staging, development]
+    Description: Deployment environment tag.
+
+Resources:
+
+  # ── Dead-letter queue for failed SNS → Ocean deliveries ───────────────────
+  LiveEventsDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "port-live-events-dlq-${Environment}"
+      MessageRetentionPeriod: 1209600  # 14 days
+      Tags:
+        - Key: ManagedBy
+          Value: Port-Ocean
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ── SNS topic that receives all EventBridge rule matches ──────────────────
+  LiveEventsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "port-live-events-${Environment}"
+      Subscription:
+        - Protocol: https
+          Endpoint: !Ref OceanWebhookUrl
+      Tags:
+        - Key: ManagedBy
+          Value: Port-Ocean
+        - Key: Environment
+          Value: !Ref Environment
+
+  LiveEventsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref LiveEventsTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEventBridgePublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref LiveEventsTopic
+
+  # ── IAM role used by EventBridge to publish to SNS ────────────────────────
+  EventBridgeToSNSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "port-eventbridge-sns-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AllowSNSPublish
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref LiveEventsTopic
+
+  # ── EC2 Instance state changes ────────────────────────────────────────────
+  EC2StateChangeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "port-ec2-state-change-${Environment}"
+      Description: Forward EC2 instance state changes to Port Ocean
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - "EC2 Instance State-change Notification"
+      State: ENABLED
+      Targets:
+        - Id: LiveEventsSNS
+          Arn: !Ref LiveEventsTopic
+          RoleArn: !GetAtt EventBridgeToSNSRole.Arn
+
+  # ── ECS Service deployments and scaling ───────────────────────────────────
+  ECSServiceRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "port-ecs-service-${Environment}"
+      Description: Forward ECS service deployments and scaling to Port Ocean
+      EventPattern:
+        source:
+          - aws.ecs
+        detail-type:
+          - "ECS Service Action"
+          - "ECS Deployment State Change"
+      State: ENABLED
+      Targets:
+        - Id: LiveEventsSNS
+          Arn: !Ref LiveEventsTopic
+          RoleArn: !GetAtt EventBridgeToSNSRole.Arn
+
+  # ── Lambda function create / update / delete ──────────────────────────────
+  LambdaFunctionRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "port-lambda-function-${Environment}"
+      Description: Forward Lambda function changes to Port Ocean via CloudTrail
+      EventPattern:
+        source:
+          - aws.lambda
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventName:
+            - CreateFunction20150331
+            - UpdateFunctionCode20150331v2
+            - UpdateFunctionConfiguration20150331v2
+            - DeleteFunction20150331
+      State: ENABLED
+      Targets:
+        - Id: LiveEventsSNS
+          Arn: !Ref LiveEventsTopic
+          RoleArn: !GetAtt EventBridgeToSNSRole.Arn
+
+  # ── S3 Bucket create / delete ─────────────────────────────────────────────
+  S3BucketRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "port-s3-bucket-${Environment}"
+      Description: Forward S3 bucket create/delete events to Port Ocean
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventName:
+            - CreateBucket
+            - DeleteBucket
+      State: ENABLED
+      Targets:
+        - Id: LiveEventsSNS
+          Arn: !Ref LiveEventsTopic
+          RoleArn: !GetAtt EventBridgeToSNSRole.Arn
+
+Outputs:
+  SNSTopicArn:
+    Description: ARN of the SNS topic receiving live events
+    Value: !Ref LiveEventsTopic
+    Export:
+      Name: !Sub "port-live-events-topic-arn-${Environment}"
+
+  DLQUrl:
+    Description: URL of the dead-letter queue for failed deliveries
+    Value: !Ref LiveEventsDLQ
+
+  EventBridgeRoleArn:
+    Description: ARN of the IAM role used by EventBridge
+    Value: !GetAtt EventBridgeToSNSRole.Arn

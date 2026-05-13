@@ -1,18 +1,5 @@
-import os
-from typing import cast
-
-from starlette.requests import Request
-from starlette.responses import Response
-
-from loguru import logger
-
 from port_ocean.context.ocean import ocean
-from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-
-from integration import AWSResourceConfig
-from resync import ResyncAWSService
 
 from aws.auth.session_factory import (
     initialize_aws_account_sessions,
@@ -20,11 +7,8 @@ from aws.auth.session_factory import (
     get_all_account_sessions,
 )
 
-from aws.auth.utils import AWSSessionError
-from aws.live_events.webhook.processor import LiveEventsWebhookProcessor
-
 from aws.core.helpers.types import ObjectKind
-from aws.core.helpers.utils import is_access_denied_exception
+from resync import ResyncAWSService
 
 # exporters
 from aws.core.exporters.s3 import S3BucketExporter
@@ -40,17 +24,6 @@ from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
 from aws.core.exporters.ecs.service.models import PaginatedServiceRequest
 from aws.core.exporters.ecs.task_definition.exporter import EcsTaskDefinitionExporter
 from aws.core.exporters.ecs.task_definition.models import PaginatedTaskDefinitionRequest
-from aws.core.exporters.organizations.account.exporter import OrganizationsAccountExporter
-from aws.core.exporters.organizations.account.models import PaginatedAccountRequest
-from aws.core.exporters.aws_lambda.function.exporter import LambdaFunctionExporter
-from aws.core.exporters.aws_lambda.function.models import PaginatedLambdaFunctionRequest
-from aws.core.exporters.sqs import SqsQueueExporter
-from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
-from aws.core.exporters.ecr import EcrRepositoryExporter
-from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
-from aws.core.exporters.ec2.volume import EbsVolumeExporter
-from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
-# from aws.live_events.webhook.processor import LiveEventsWebhookProcessor
 
 
 # =========================
@@ -106,13 +79,6 @@ async def resync_rds_db_instance(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
-@ocean.on_resync(ObjectKind.LAMBDA_FUNCTION)
-async def resync_lambda_function(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(kind, LambdaFunctionExporter, PaginatedLambdaFunctionRequest, regional=True)
-    async for batch in service:
-        yield batch
-
-
 @ocean.on_resync(ObjectKind.ECS_SERVICE)
 async def resync_ecs_service(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(kind, EcsServiceExporter, PaginatedServiceRequest, regional=True)
@@ -137,21 +103,3 @@ async def resync_single_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             batch = []
     if batch:
         yield batch
-
-
-# =========================
-# WEBHOOK ROUTE
-# =========================
-
-ocean.add_webhook_processor(
-    "/live-events/webhook",
-    LiveEventsWebhookProcessor
-)
-
-
-# =========================
-# IMPORTANT: expose ASGI app
-# =========================
-app = ocean.app
-def get_app():
-    return app

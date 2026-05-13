@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+
+## Unreleased
+
+### Features
+
+- Added real-time live events support via EventBridge → SNS → Ocean webhook.
+  AWS resource changes (EC2, ECS, Lambda, S3) are reflected in Port within
+  seconds of occurring in the customer's cloud environment.
+  - Webhook endpoint: `POST /integration/live-events/webhook`
+  - SNS signature validation (X.509 certificate + PKCS1v15 signature check)
+  - Per-kind handlers for EC2::Instance, ECS::Service, Lambda::Function, S3::Bucket
+  - Auto-confirmation of SNS HTTPS subscriptions
+  - CloudFormation template for one-click customer infrastructure setup
+  - Architecture Decision Record documenting the chosen EventBridge + SNS approach
+  - New config field: `webhookSecret`
+
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
