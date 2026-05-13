@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.4.7 (2026-05-13)
+
+
+### Bug Fixes
+
+- Fixed workflow push webhook processing to detect removed workflow files and propagate workflow deletions.
+
+
 ## 5.4.5 (2026-05-12)
 
 
