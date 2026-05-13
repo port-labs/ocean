@@ -218,6 +218,12 @@ class VulnerabilitySelector(Selector):
         alias="enrichWithProject",
         description="Enrich each vulnerability with its associated project data. For large orgs this is API and memory intensive — use projectQueryParams to limit scope.",
     )
+    attach_ignore_data: bool = Field(
+        default=False,
+        alias="attachIgnoreData",
+        title="Attach Ignore Data",
+        description="",
+    )
 
 
 class PolicySelector(Selector):
