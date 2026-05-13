@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.53 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 0.5.52 (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+## 0.5.51 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 0.5.50 (2026-05-05)
+
+
+### Bug Fixes
+
+- Respect PagerDuty `daily-ratelimit-*` headers on analytics endpoints to halt resync analytics calls once the daily quota is reached, avoiding repeated 429s and dropped enrichment.
+
+
+## 0.5.49 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 0.5.48 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.5.47 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
 ## 0.5.46 (2026-04-23)
 
 

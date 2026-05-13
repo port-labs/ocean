@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.17 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 0.3.16 (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+## 0.3.15 (2026-05-07)
+
+
+### Improvements
+
+- Fixed HTTP 413 Payload Too Large errors for large organizations by batching NDJSON report records into fixed-size batches before yielding to Ocean
+
+
+## 0.3.14 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 0.3.13 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 0.3.12 (2026-04-30)
+
+
+### Improvements
+
+- Added optional `githubEnterpriseName` configuration to fetch Copilot usage reports from enterprise-level endpoints while preserving existing organization-level sync behavior
+
+
+## 0.3.11 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.3.10 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
 ## 0.3.9 (2026-04-23)
 
 

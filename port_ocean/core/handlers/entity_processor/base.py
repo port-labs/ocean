@@ -25,7 +25,6 @@ class BaseEntityProcessor(BaseHandler):
         mapping: ResourceConfig,
         raw_data: list[RAW_ITEM],
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
     ) -> CalculationResult:
         pass
 
@@ -34,7 +33,6 @@ class BaseEntityProcessor(BaseHandler):
         mapping: ResourceConfig,
         raw_data: list[RAW_ITEM],
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
     ) -> CalculationResult:
         """Public method to parse raw entity data and map it to an EntityDiff.
 
@@ -42,7 +40,6 @@ class BaseEntityProcessor(BaseHandler):
             mapping (ResourceConfig): The configuration for entity mapping.
             raw_data (list[RawEntity]): The raw data to be parsed.
             parse_all (bool): Whether to parse all data or just data that passed the selector.
-            send_raw_data_examples_amount (bool): Whether to send example data to the integration service.
 
         Returns:
             EntityDiff: The parsed entity differences.
@@ -50,6 +47,4 @@ class BaseEntityProcessor(BaseHandler):
         with logger.contextualize(kind=mapping.kind, resource_kind=mapping.kind):
             if not raw_data:
                 return CalculationResult(EntitySelectorDiff([], []), [])
-            return await self._parse_items(
-                mapping, raw_data, parse_all, send_raw_data_examples_amount
-            )
+            return await self._parse_items(mapping, raw_data, parse_all)

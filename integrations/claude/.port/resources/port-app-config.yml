@@ -1,0 +1,113 @@
+resources:
+  - kind: claude-usage-record
+    selector:
+      query: .results | length > 0
+      startingDate: '2025-01-01T00:00:00Z'
+      bucketWidth: 1d
+      groupBy: []
+    port:
+      entity:
+        mappings:
+          identifier: .starting_at[:10] + "-usage"
+          title: '"Claude Usage - " + .starting_at[:10]'
+          blueprint: '"claude_usage_record"'
+          properties:
+            record_date: .starting_at
+            uncached_input_tokens: (.results[0].uncached_input_tokens // 0)
+            output_tokens: (.results[0].output_tokens // 0)
+            cache_read_input_tokens: (.results[0].cache_read_input_tokens // 0)
+            cache_creation_5m_tokens: (.results[0].cache_creation.ephemeral_5m_input_tokens // 0)
+            cache_creation_1h_tokens: (.results[0].cache_creation.ephemeral_1h_input_tokens // 0)
+            web_search_requests: (.results[0].server_tool_use.web_search_requests // 0)
+  - kind: claude-cost-record
+    selector:
+      query: .results | length > 0
+      startingDate: '2025-01-01T00:00:00Z'
+      bucketWidth: 1d
+    port:
+      entity:
+        mappings:
+          identifier: .starting_at[:10] + "-cost"
+          title: '"Claude Cost - " + .starting_at[:10]'
+          blueprint: '"claude_cost_record"'
+          properties:
+            record_date: .starting_at
+            amount: ((.results[0].amount // "0") | tonumber)
+            currency: (.results[0].currency // "USD")
+  - kind: claude-usage-record
+    selector:
+      query: .results | length > 0
+      startingDate: '2025-01-01T00:00:00Z'
+      bucketWidth: 1d
+      groupBy:
+        - workspace_id
+    port:
+      itemsToParse: .results
+      itemsToParseTopLevelTransform: false
+      entity:
+        mappings:
+          identifier: (.item.workspace_id // "default") + "-" + .starting_at[:10]
+          title: (.item.workspace_id // "default") + " - " + .starting_at[:10]
+          blueprint: '"claude_workspace_usage"'
+          properties:
+            record_date: .starting_at
+            workspace_id: (.item.workspace_id // "default")
+            uncached_input_tokens: (.item.uncached_input_tokens // 0)
+            output_tokens: (.item.output_tokens // 0)
+            cache_read_input_tokens: (.item.cache_read_input_tokens // 0)
+            cache_creation_5m_tokens: (.item.cache_creation.ephemeral_5m_input_tokens // 0)
+            cache_creation_1h_tokens: (.item.cache_creation.ephemeral_1h_input_tokens // 0)
+            web_search_requests: (.item.server_tool_use.web_search_requests // 0)
+  - kind: claude-usage-record
+    selector:
+      query: .results | length > 0
+      bucketWidth: 1d
+      groupBy:
+        - model
+    port:
+      itemsToParse: .results
+      itemsToParseTopLevelTransform: false
+      entity:
+        mappings:
+          identifier: .item.model + "-" + .starting_at[:10]
+          title: .item.model + " - " + .starting_at[:10]
+          blueprint: '"claude_model_usage"'
+          properties:
+            record_date: .starting_at
+            model: .item.model
+            uncached_input_tokens: (.item.uncached_input_tokens // 0)
+            output_tokens: (.item.output_tokens // 0)
+            cache_read_input_tokens: (.item.cache_read_input_tokens // 0)
+            cache_creation_5m_tokens: (.item.cache_creation.ephemeral_5m_input_tokens // 0)
+            cache_creation_1h_tokens: (.item.cache_creation.ephemeral_1h_input_tokens // 0)
+            web_search_requests: (.item.server_tool_use.web_search_requests // 0)
+  - kind: claude-code-analytics
+    selector:
+      query: 'true'
+      timeFrame: 30
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .organization_id + "-" + (.actor.api_key_name // .actor.email //
+            "unknown") + "-" + .date[:10]
+          title: >-
+            (.actor.api_key_name // .actor.email // "unknown") + " - " +
+            .date[:10]
+          blueprint: '"claude_code_analytics"'
+          properties:
+            record_date: .date
+            organization_id: .organization_id
+            actor_type: .actor.type
+            actor_name: (.actor.api_key_name // .actor.email // "unknown")
+            terminal_type: .terminal_type
+            num_sessions: (.core_metrics.num_sessions // 0)
+            lines_added: (.core_metrics.lines_of_code.added // 0)
+            lines_removed: (.core_metrics.lines_of_code.removed // 0)
+            commits: (.core_metrics.commits_by_claude_code // 0)
+            pull_requests: (.core_metrics.pull_requests_by_claude_code // 0)
+            edit_tool_accepted: (.tool_actions.edit_tool.accepted // 0)
+            edit_tool_rejected: (.tool_actions.edit_tool.rejected // 0)
+            write_tool_accepted: (.tool_actions.write_tool.accepted // 0)
+            write_tool_rejected: (.tool_actions.write_tool.rejected // 0)
+            model_breakdown: .model_breakdown
