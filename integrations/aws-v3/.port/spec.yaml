@@ -14,6 +14,12 @@ features:
       - kind: AWS::ECR::Repository
       - kind: AWS::EC2::Volume
 configurations:
+  - name: credentialProviderPriority
+    required: false
+    type: string
+    sensitive: false
+    default: "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole"
+    description: The priority of the credential providers. The providers will be tried in the order of the priority. The first provider that is applicable will be used. The default value is "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole".
   - name: ouId
     required: false
     type: string

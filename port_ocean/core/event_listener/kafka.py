@@ -7,7 +7,11 @@ from typing import Any, Literal
 from confluent_kafka import Message
 from loguru import logger
 
-from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
+from port_ocean.consumers.kafka_consumer import (
+    KafkaConsumer,
+    KafkaConsumerConfig,
+    IntegrationResyncRequestsKafkaConsumer,
+)
 from port_ocean.context.ocean import (
     ocean,
 )
@@ -17,7 +21,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerSettings,
 )
 from pydantic import validator
-from port_ocean.core.models import EventListenerType
+from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
 
 
 class KafkaEventListenerSettings(EventListenerSettings):
@@ -120,7 +124,27 @@ class KafkaEventListener(BaseEventListener):
 
         return KafkaConsumerConfig.parse_obj(self.event_listener_config.dict())
 
+    async def _should_use_integration_resync_requests_consumer(self) -> bool:
+        try:
+            flags = await ocean.port_client.get_organization_feature_flags()
+            return (
+                IntegrationFeatureFlag.OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED
+                in flags
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to fetch organization feature flags. "
+                f"Falling back to legacy change log topic consumer: {e}"
+            )
+            return False
+
     def _should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
+        if "integration.resync.requests" in topic:
+            integration_identifier = msg_value.get("context", {}).get("integrationId")
+            if integration_identifier != self.integration_identifier:
+                return False
+            return True
+
         after = msg_value.get("diff", {}).get("after", {})
         # handles delete events from change log where there is no after
         if after is None:
@@ -156,26 +180,36 @@ class KafkaEventListener(BaseEventListener):
         if topic is None or not self._should_be_processed(message, topic):
             return
 
-        if "change.log" in topic and message is not None:
-            try:
-                await self._resync(message)
-            except Exception as e:
-                _type, _, tb = sys.exc_info()
-                logger.opt(exception=(_type, None, tb)).error(
-                    f"Failed to process message: {str(e)}"
-                )
+        try:
+            await self._resync(message)
+        except Exception as e:
+            _type, _, tb = sys.exc_info()
+            logger.opt(exception=(_type, None, tb)).error(
+                f"Failed to process message: {str(e)}"
+            )
 
     async def _start(self) -> None:
         """
         The main method that starts the Kafka consumer.
         It creates a KafkaConsumer instance with the given configuration and starts it in a separate thread.
         """
-        self.consumer = KafkaConsumer(
+        use_resync_requests_consumer = (
+            await self._should_use_integration_resync_requests_consumer()
+        )
+        consumer_cls = (
+            IntegrationResyncRequestsKafkaConsumer
+            if use_resync_requests_consumer
+            else KafkaConsumer
+        )
+        self.consumer = consumer_cls(
             msg_process=self._handle_message,
             config=await self._get_kafka_config(),
             org_id=self.org_id,
         )
-        logger.info("Starting Kafka consumer")
+        if use_resync_requests_consumer:
+            logger.info("Starting Kafka consumer for integration resync requests topic")
+        else:
+            logger.info("Starting Kafka consumer for change log topic")
 
         # We are running the consumer with asyncio.create_task to ensure that it runs in the background and not blocking
         # the integration's main event loop from finishing the startup process.
