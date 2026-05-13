@@ -166,6 +166,7 @@ class LiveEventsMixin(HandlerMixin):
                         data=data_entries,
                     )
                     await ocean.port_client.post_integration_raw_data_batch(
+                        event_id,
                         event,
                     )
                 except Exception as e:

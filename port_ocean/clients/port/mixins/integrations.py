@@ -330,57 +330,9 @@ class IntegrationClientMixin:
                     f"resync_start_time cannot be in the future: {resync_start_time}"
                 )
 
-    async def post_integration_raw_data(
-        self,
-        raw_data: list[dict[Any, Any]],
-        sync_id: str,
-        kind: str,
-        index: int,
-        operation: LakehouseOperation = LakehouseOperation.UPSERT,
-        resync_start_time: datetime | None = None,
-        event_type: LakehouseEventType | None = None,
-        event_id: str | None = None,
-    ) -> None:
-        self._validate_lakehouse_params(sync_id, kind, resync_start_time)
-
-        logger.debug(
-            "starting POST raw data request", raw_data=raw_data, operation=operation
-        )
-        headers = await self.auth.headers()
-
-        body: dict[str, Any] = {
-            "kind": kind,
-            "eventType": (
-                event_type.value if event_type else LakehouseEventType.LIVE_EVENT.value
-            ),
-            "data": [
-                {
-                    "request": {},
-                    "response": {},
-                    "items": raw_data,
-                    "metadata": {
-                        "operation": operation.value,
-                        "extractionTimestamp": int(datetime.now().timestamp() * 1000),
-                        "resourceIndex": index,
-                    },
-                }
-            ],
-        }
-        if resync_start_time is not None:
-            body["resyncStartTime"] = resync_start_time.isoformat()
-        if event_id:
-            body["eventId"] = event_id
-
-        response = await self.client.post(
-            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",
-            headers=headers,
-            json=body,
-        )
-        handle_port_status_code(response, should_raise=False, should_log=True)
-        logger.debug("Finished POST raw data request")
-
     async def post_integration_raw_data_batch(
         self,
+        sync_id: str,
         event: LakehouseDataEntryBatch,
     ) -> None:
         """Send multiple raw data entries in a single POST request.
@@ -428,7 +380,7 @@ class IntegrationClientMixin:
             body["eventId"] = event["event_id"]
 
         response = await self.client.post(
-            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(event['event_id'] or '')}/kind/{quote_plus(event['kind'])}",
+            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
             headers=headers,
             json=body,
         )

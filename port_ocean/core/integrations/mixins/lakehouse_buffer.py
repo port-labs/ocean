@@ -1,6 +1,7 @@
 import json
 import time
 from typing import Any
+import uuid
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -41,7 +42,7 @@ class LakehouseBuffer:
         self.kind = kind
         self.resync_start_time = resync_start_time
         self.event_type = event_type
-        
+
     async def flush(self) -> None:
         if not self._buffer:
             return
@@ -49,8 +50,10 @@ class LakehouseBuffer:
             f"Flushing {len(self._buffer)} buffered batch items to lakehouse"
             f" (~{self._current_size_bytes / (1024 * 1024):.1f} MB)"
         )
+        event_id = str(uuid.uuid4())
         event = LakehouseDataEntryBatch(
-            event_id=self.sync_id,
+            event_id=event_id,
+            type=self.event_type.value,
             kind=self.kind,
             event_type=self.event_type,
             resync_start_time=self.resync_start_time,
@@ -58,6 +61,7 @@ class LakehouseBuffer:
             data=self._buffer,
         )
         await ocean.port_client.post_integration_raw_data_batch(
+            self.sync_id,
             event,
         )
         self._buffer = []
