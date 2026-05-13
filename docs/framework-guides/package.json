@@ -32,7 +32,7 @@
     "docusaurus-plugin-module-alias": "^0.0.2",
     "docusaurus-plugin-sass": "^0.2.5",
     "prism-react-renderer": "^2.3.1",
-    "react": "^19.2.0",
+    "react": "^19.2.3",
     "react-dom": "^19.2.0",
     "redocusaurus": "^2.5.0",
     "remark-math": "^6.0.0",
