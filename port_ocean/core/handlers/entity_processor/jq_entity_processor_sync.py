@@ -94,11 +94,15 @@ class JQEntityProcessorSync:
     def _search_as_bool(data: dict[str, Any] | str, pattern: str) -> bool:
         compiled_pattern = JQEntityProcessorSync._compile(pattern)
         try:
-            value = compile_jq(compiled_pattern, data).first()
-        except JQInputNotJsonSerializableError:
-            value = compile_jq(compiled_pattern, make_json_compatible(data)).first()
-        if isinstance(value, bool):
-            return value
+            try:
+                value = compile_jq(compiled_pattern, data).first()
+            except JQInputNotJsonSerializableError:
+                value = compile_jq(compiled_pattern, make_json_compatible(data)).first()
+            if isinstance(value, bool):
+                return value
+        except ValueError as exc:
+            JQEntityProcessorSync._log_search_failure(pattern, exc)
+            return False
         raise EntityProcessorException(
             f"Expected boolean value for pattern {pattern!r}, got value:{value} of type: {type(value)} instead"
         )

@@ -229,6 +229,27 @@ class TestJQEntityProcessorSync:
         with pytest.raises(Exception):
             mocked_processor._search_as_bool(data, pattern)
 
+    def test_search_as_bool_runtime_value_error_returns_false(
+        self, mocked_processor: JQEntityProcessorSync
+    ) -> None:
+        """A JQ runtime ValueError (e.g. test() on null) should be swallowed:
+        the entity is filtered out (returns False) and a WARNING is logged
+        including the offending pattern."""
+        data = {"name": None}
+        pattern = '.name | test("^integration-")'
+        messages: list[str] = []
+        logger_id = logger.add(lambda msg: messages.append(str(msg)), level="WARNING")
+        try:
+            result = mocked_processor._search_as_bool(data, pattern)
+        finally:
+            logger.remove(logger_id)
+        assert result is False
+        assert any(
+            "null (null) cannot be matched, as it is not a string" in m
+            for m in messages
+        )
+        assert any('.name | test("^integration-")' in m for m in messages)
+
     def test_search_as_object(self, mocked_processor: JQEntityProcessorSync) -> None:
         """Test search_as_object with simple object mapping."""
         data = {"foo": {"bar": "baz"}}

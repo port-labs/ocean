@@ -246,6 +246,24 @@ class TestJQEntityProcessor:
         with pytest.raises(Exception):
             await mocked_processor._search_as_bool(data, pattern)
 
+    async def test_search_as_bool_runtime_value_error_returns_false(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"name": None}
+        pattern = '.name | test("^integration-")'
+        messages: list[str] = []
+        logger_id = logger.add(lambda msg: messages.append(str(msg)), level="WARNING")
+        try:
+            result = await mocked_processor._search_as_bool(data, pattern)
+        finally:
+            logger.remove(logger_id)
+        assert result is False
+        assert any(
+            "null (null) cannot be matched, as it is not a string" in m
+            for m in messages
+        )
+        assert any('.name | test("^integration-")' in m for m in messages)
+
     async def test_search_as_bool_non_bool_includes_pattern(
         self, mocked_processor: JQEntityProcessor
     ) -> None:

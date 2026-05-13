@@ -123,9 +123,13 @@ class JQEntityProcessor(BaseEntityProcessor):
         except JQInputNotJsonSerializableError:
             func = compile_jq(compiled_pattern, make_json_compatible(data))
 
-        value = func.first()
-        if isinstance(value, bool):
-            return value
+        try:
+            value = func.first()
+            if isinstance(value, bool):
+                return value
+        except ValueError as exc:
+            self._log_search_failure(pattern, exc)
+            return False
         raise EntityProcessorException(
             f"Expected boolean value for pattern {pattern!r}, got value:{value} of type: {type(value)} instead"
         )
