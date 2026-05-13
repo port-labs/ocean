@@ -10,9 +10,7 @@ from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.core.models import (
     CreatePortResourcesOrigin,
-    LakehouseDataEntry,
     LakehouseDataEntryBatch,
-    LakehouseOperation,
     LakehouseEventType,
 )
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
@@ -340,7 +338,9 @@ class IntegrationClientMixin:
         Each entry must be a LakehouseDataEntry with request, response, items,
         and metadata (operation, resource_index, extraction_timestamp).
         """
-        self._validate_lakehouse_params(event["event_id"] or "", event["kind"], None)
+        self._validate_lakehouse_params(
+            sync_id, event["kind"], event["resync_start_time"]
+        )
 
         logger.debug(
             "starting POST raw data batch request",

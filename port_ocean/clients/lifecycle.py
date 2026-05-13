@@ -18,7 +18,9 @@ class LifecycleClient:
     the external transform service.  Every public method swallows all exceptions
     so that lifecycle reporting never disrupts the core resync flow.
     """
+
     _client: httpx.AsyncClient
+
     def __init__(self, base_url: str, auth: PortAuthentication) -> None:
         self.base_url = base_url.rstrip("/")
         self.auth = auth
@@ -37,7 +39,9 @@ class LifecycleClient:
             headers = await self.auth.headers()
             response = await self._client.post(url, headers=headers, json=body)
             if response.is_error:
-                escaped_response_text = response.text.replace("{", "{{").replace("}", "}}")
+                escaped_response_text = response.text.replace("{", "{{").replace(
+                    "}", "}}"
+                )
                 logger.warning(
                     f"Lifecycle API returned an error for status={status} {escaped_response_text}",
                     status_code=response.status_code,

@@ -180,7 +180,7 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
     mock_ocean: Ocean,
 ) -> None:
     """Test lakehouse send when enabled - upsert-only event makes exactly one call."""
-    from unittest.mock import MagicMock, ANY
+    from unittest.mock import MagicMock
     from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
     mock_batch = AsyncMock()
@@ -206,21 +206,20 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
         )
 
         mock_batch.assert_called_once()
-        call_kwargs = mock_batch.call_args
+        call_args = mock_batch.call_args
+        sync_id, batch = call_args[0]
+        assert sync_id == "test-event-id"
+        assert batch["kind"] == "repository"
+        assert batch["event_type"] == LakehouseEventType.LIVE_EVENT
+        assert batch["type"] == "live-event"
+        assert batch["event_id"] == "test-event-id"
+        assert batch["resync_start_time"] is not None
 
-        # Positional: data_entries, sync_id, kind
-        data_entries = call_kwargs[0][0]
+        data_entries = batch["data"]
         assert len(data_entries) == 1
-        assert data_entries[0]["operation"] == LakehouseOperation.UPSERT
+        assert data_entries[0]["metadata"]["operation"] == LakehouseOperation.UPSERT
         assert data_entries[0]["items"] == raw_data
-        assert data_entries[0]["index"] == 0
-
-        assert call_kwargs[0][1] == "test-event-id"  # sync_id
-        assert call_kwargs[0][2] == "repository"  # kind
-
-        assert call_kwargs[1]["event_type"] == LakehouseEventType.LIVE_EVENT
-        assert call_kwargs[1]["event_id"] == "test-event-id"
-        assert call_kwargs[1]["resync_start_time"] is not None or call_kwargs[1]["resync_start_time"] == ANY
+        assert data_entries[0]["metadata"]["resource_index"] == 0
 
 
 @pytest.mark.asyncio
@@ -255,16 +254,17 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
         )
 
         mock_batch.assert_called_once()
-        call_kwargs = mock_batch.call_args
+        call_args = mock_batch.call_args
+        sync_id, batch = call_args[0]
+        assert sync_id == "test-event-id"
+        assert batch["event_id"] == "test-event-id"
+        assert batch["event_type"] == LakehouseEventType.LIVE_EVENT
 
-        data_entries = call_kwargs[0][0]
+        data_entries = batch["data"]
         assert len(data_entries) == 1
-        assert data_entries[0]["operation"] == LakehouseOperation.DELETE
+        assert data_entries[0]["metadata"]["operation"] == LakehouseOperation.DELETE
         assert data_entries[0]["items"] == raw_data
-        assert data_entries[0]["index"] == 0
-
-        assert call_kwargs[1]["event_type"] == LakehouseEventType.LIVE_EVENT
-        assert call_kwargs[1]["event_id"] == "test-event-id"
+        assert data_entries[0]["metadata"]["resource_index"] == 0
 
 
 @pytest.mark.asyncio
@@ -362,22 +362,22 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
 
         # Exactly ONE call (not two)
         mock_batch.assert_called_once()
-        call_kwargs = mock_batch.call_args
+        call_args = mock_batch.call_args
+        sync_id, batch = call_args[0]
+        assert sync_id == "test-event-id"
+        assert batch["kind"] == "repository"
+        assert batch["event_type"] == LakehouseEventType.LIVE_EVENT
+        assert batch["event_id"] == "test-event-id"
 
-        data_entries = call_kwargs[0][0]
+        data_entries = batch["data"]
         assert len(data_entries) == 2
 
         upsert_entry = data_entries[0]
-        assert upsert_entry["operation"] == LakehouseOperation.UPSERT
+        assert upsert_entry["metadata"]["operation"] == LakehouseOperation.UPSERT
         assert upsert_entry["items"] == upsert_data
-        assert upsert_entry["index"] == 0
+        assert upsert_entry["metadata"]["resource_index"] == 0
 
         delete_entry = data_entries[1]
-        assert delete_entry["operation"] == LakehouseOperation.DELETE
+        assert delete_entry["metadata"]["operation"] == LakehouseOperation.DELETE
         assert delete_entry["items"] == delete_data
-        assert delete_entry["index"] == 0
-
-        assert call_kwargs[0][1] == "test-event-id"  # sync_id
-        assert call_kwargs[0][2] == "repository"  # kind
-        assert call_kwargs[1]["event_type"] == LakehouseEventType.LIVE_EVENT
-        assert call_kwargs[1]["event_id"] == "test-event-id"
+        assert delete_entry["metadata"]["resource_index"] == 0

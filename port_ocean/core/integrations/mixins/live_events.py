@@ -159,6 +159,7 @@ class LiveEventsMixin(HandlerMixin):
                 try:
                     event = LakehouseDataEntryBatch(
                         event_id=event_id,
+                        type=LakehouseEventType.LIVE_EVENT.value,
                         kind=kind,
                         event_type=LakehouseEventType.LIVE_EVENT,
                         resync_start_time=webhook_event_raw_result.created_at,

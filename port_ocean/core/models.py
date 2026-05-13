@@ -5,7 +5,7 @@ from typing import Any, Literal, TypedDict
 from pydantic import BaseModel
 from pydantic.fields import Field
 
-import time
+
 class EventListenerType(StrEnum):
     WEBHOOK = "WEBHOOK"
     KAFKA = "KAFKA"
@@ -235,6 +235,7 @@ class ClaimedWorkflowNodeRun(WorkflowNodeRun):
     def execution_properties(self) -> dict[str, Any]:
         return self.config.get("integrationActionExecutionProperties", {})
 
+
 class LakehouseDataEntryMetadata(TypedDict):
     operation: LakehouseOperation
     resource_index: int
@@ -246,6 +247,7 @@ class LakehouseDataEntry(TypedDict):
     response: dict[str, Any]
     metadata: LakehouseDataEntryMetadata
     items: list[Any]
+
 
 class LakehouseDataEntryBatch(TypedDict):
     event_id: str | None
