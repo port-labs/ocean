@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum, StrEnum
 from typing import Any, Literal, TypedDict
 from pydantic import BaseModel
 from pydantic.fields import Field
 
-
+import time
 class EventListenerType(StrEnum):
     WEBHOOK = "WEBHOOK"
     KAFKA = "KAFKA"
@@ -233,3 +234,24 @@ class ClaimedWorkflowNodeRun(WorkflowNodeRun):
     @property
     def execution_properties(self) -> dict[str, Any]:
         return self.config.get("integrationActionExecutionProperties", {})
+
+class LakehouseDataEntryMetadata(TypedDict):
+    operation: LakehouseOperation
+    resource_index: int
+    extraction_timestamp: int
+
+
+class LakehouseDataEntry(TypedDict):
+    request: dict[str, Any]
+    response: dict[str, Any]
+    metadata: LakehouseDataEntryMetadata
+    items: list[Any]
+
+class LakehouseDataEntryBatch(TypedDict):
+    event_id: str | None
+    type: str | None
+    kind: str
+    event_type: LakehouseEventType
+    resync_start_time: datetime | None
+    extraction_timestamp: int
+    data: list[LakehouseDataEntry]

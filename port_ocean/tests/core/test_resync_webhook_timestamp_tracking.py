@@ -227,12 +227,16 @@ class TestPostIntegrationRawDataRequestBody:
 
         # Verify the request body
         request_body = call_args.kwargs["json"]
-        assert request_body["items"] == raw_data
-        assert request_body["operation"] == "upsert"
+        assert request_body["kind"] == "repository"
         assert request_body["eventType"] == "resync"
         assert request_body["resyncStartTime"] == resync_time.isoformat()
-        assert request_body["eventType"] == "resync"
-        assert "extractionTimestamp" in request_body
+        assert len(request_body["data"]) == 1
+        entry = request_body["data"][0]
+        assert entry["items"] == raw_data
+        assert entry["request"] == {}
+        assert entry["response"] == {}
+        assert entry["metadata"]["operation"] == "upsert"
+        assert "extractionTimestamp" in entry["metadata"]
 
     @pytest.mark.asyncio
     async def test_request_body_with_live_event_type(self) -> None:
@@ -273,11 +277,15 @@ class TestPostIntegrationRawDataRequestBody:
 
         # Verify the request body
         request_body = call_args.kwargs["json"]
-        assert request_body["items"] == raw_data
-        assert request_body["operation"] == "upsert"
+        assert request_body["kind"] == "repository"
         assert request_body["eventType"] == "live-event"
         assert request_body["resyncStartTime"] == webhook_time.isoformat()
-        assert request_body["eventType"] == "live-event"
+        assert len(request_body["data"]) == 1
+        entry = request_body["data"][0]
+        assert entry["items"] == raw_data
+        assert entry["request"] == {}
+        assert entry["response"] == {}
+        assert entry["metadata"]["operation"] == "upsert"
 
     @pytest.mark.asyncio
     async def test_request_body_without_optional_params(self) -> None:
@@ -316,7 +324,14 @@ class TestPostIntegrationRawDataRequestBody:
         # Verify the request body does NOT include optional fields, but includes default eventType
         request_body = call_args.kwargs["json"]
         assert "resyncStartTime" not in request_body
+        assert "eventId" not in request_body
+        assert request_body["kind"] == "repository"
         assert request_body["eventType"] == "live-event"
+        assert len(request_body["data"]) == 1
+        entry = request_body["data"][0]
+        assert entry["items"] == raw_data
+        assert entry["request"] == {}
+        assert entry["response"] == {}
 
 
 class TestWebhookEventTimestampTracking:

@@ -31,7 +31,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, ProcessExecutionMode, LakehouseEventType
+from port_ocean.core.models import Entity, LakehouseDataEntry, LakehouseDataEntryMetadata, ProcessExecutionMode, LakehouseEventType, LakehouseOperation
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -437,22 +437,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 else:
                     async_generators.append(result)
 
-            async def _send_to_lakehouse(items: RAW_RESULT) -> None:
-                await ocean.port_client.post_integration_raw_data(
-                    items,
-                    event.id,
-                    resource_config.kind,
-                    index,
-                    resync_start_time=event.attributes.get("resync_start_time"),
-                    event_type=LakehouseEventType.RESYNC,
-                )
 
             buffer: LakehouseBuffer | None = (
                 LakehouseBuffer(
-                    flush_fn=_send_to_lakehouse,
+                    sync_id=event.id,
+                    kind=resource_config.kind,
+                    resync_start_time=event.attributes.get("resync_start_time"),
+                    event_type=LakehouseEventType.RESYNC,
                     flush_interval_seconds=ocean.config.lakehouse_buffer_interval_seconds,
                 )
-                if dsp_mode and lakehouse_data_enabled
+                if lakehouse_data_enabled
                 else None
             )
 
@@ -466,72 +460,61 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         number_of_raw_results = 0
         number_of_transformed_entities = 0
         batch_index = 0
-
-        if dsp_mode:
-            if buffer and raw_results:
-                await buffer.add(raw_results)
-            for generator in async_generators:
-                try:
-                    async for items in generator:
-                        batch_index += 1
-                        if buffer:
-                            await buffer.add(items)
-                        number_of_raw_results += len(items)
-                except* OceanAbortException as error:
-                    ocean.metrics.sync_state = SyncState.FAILED
-                    errors.append(error)
-            if buffer:
-                await buffer.flush()
-            logger.info(
-                "DSP mode active: skipping transform and load phases",
-                kind=resource_config.kind,
-                raw_items_forwarded=number_of_raw_results,
-            )
-            return [], errors
-
+        
         if raw_results:
             if lakehouse_data_enabled:
-                await _send_to_lakehouse(raw_results)
+                metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
+                lakehouse_data_entry = LakehouseDataEntry(request={}, response={}, metadata=metadata, items=raw_results)
+                await buffer.add(lakehouse_data_entry)
             batch_index += 1
             number_of_raw_results += len(raw_results)
-            calculation_result = await self._register_resource_raw(
-                resource_config,
-                raw_results,
-                user_agent_type,
-                batch_index=batch_index,
-            )
-            errors.extend(calculation_result.errors)
-            passed_entities = list(calculation_result.entity_selector_diff.passed)
-            number_of_transformed_entities += (
-                calculation_result.number_of_transformed_entities
-            )
-            logger.info(
-                f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
-            )
+
+            if not dsp_mode:
+                calculation_result = await self._register_resource_raw(
+                    resource_config,
+                    raw_results,
+                    user_agent_type,
+                    batch_index=batch_index,
+                )
+                errors.extend(calculation_result.errors)
+                passed_entities = list(calculation_result.entity_selector_diff.passed)
+                number_of_transformed_entities += (
+                    calculation_result.number_of_transformed_entities
+                )
+                logger.info(
+                    f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
+                )
 
         for generator in async_generators:
             try:
                 async for items in generator:
                     batch_index += 1
-                    if lakehouse_data_enabled:
-                        await _send_to_lakehouse(items)
+                    if lakehouse_data_enabled and buffer:
+                        metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
+                        lakehouse_data_entry = LakehouseDataEntry(request={}, response={}, metadata=metadata, items=items)
+                        await buffer.add(lakehouse_data_entry)
                     number_of_raw_results += len(items)
-                    calculation_result = await self._register_resource_raw(
-                        resource_config,
-                        items,
-                        user_agent_type,
-                        batch_index=batch_index,
-                    )
-                    passed_entities.extend(
-                        calculation_result.entity_selector_diff.passed
-                    )
-                    errors.extend(calculation_result.errors)
-                    number_of_transformed_entities += (
-                        calculation_result.number_of_transformed_entities
-                    )
+
+                    if not dsp_mode:
+                        calculation_result = await self._register_resource_raw(
+                            resource_config,
+                            items,
+                            user_agent_type,
+                            batch_index=batch_index,
+                        )
+                        passed_entities.extend(
+                            calculation_result.entity_selector_diff.passed
+                        )
+                        errors.extend(calculation_result.errors)
+                        number_of_transformed_entities += (
+                            calculation_result.number_of_transformed_entities
+                        )
             except* OceanAbortException as error:
                 ocean.metrics.sync_state = SyncState.FAILED
                 errors.append(error)
+
+        if buffer:
+            await buffer.flush()
 
         logger.info(
             f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
