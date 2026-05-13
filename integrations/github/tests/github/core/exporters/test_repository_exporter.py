@@ -118,7 +118,7 @@ class TestRestRepositoryExporter:
                     organization="test-org",
                     organization_type="Organization",
                     type=mock_port_app_config.repository_type,
-                    included_relationships=["collaborators"],
+                    included_relations={"collaborators": {"include": True}},
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
@@ -149,11 +149,11 @@ class TestRestRepositoryExporter:
                 expected_collaborator_calls: list[tuple[str, dict[str, Any]]] = [
                     (
                         f"{rest_client.base_url}/repos/test-org/repo1/collaborators",
-                        {},
+                        {"affiliation": "all"},
                     ),
                     (
                         f"{rest_client.base_url}/repos/test-org/repo2/collaborators",
-                        {},
+                        {"affiliation": "all"},
                     ),
                 ]
 
@@ -274,3 +274,67 @@ class TestRestRepositoryExporter:
                     f"{rest_client.base_url}/search/repositories",
                     {"q": "org:test-org fork:true is:all"},
                 )
+
+    async def test_enrich_custom_properties_fetches_when_missing(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        repository: dict[str, Any] = {"name": "my-repo"}
+        api_response = [
+            {"property_name": "team", "value": "backend"},
+            {"property_name": "environment", "value": "production"},
+        ]
+
+        exporter = RestRepositoryExporter(rest_client)
+
+        with patch.object(
+            rest_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = api_response
+            result = await exporter._enrich_repository_with_custom_properties(
+                repository, "test-org", {"include": True}
+            )
+
+            assert result["custom_properties"] == {
+                "team": "backend",
+                "environment": "production",
+            }
+            mock_request.assert_called_once_with(
+                f"{rest_client.base_url}/repos/test-org/my-repo/properties/values"
+            )
+
+    async def test_enrich_custom_properties_skips_when_already_present(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        repository: dict[str, Any] = {
+            "name": "my-repo",
+            "custom_properties": {"team": "frontend"},
+        }
+
+        exporter = RestRepositoryExporter(rest_client)
+
+        with patch.object(
+            rest_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            result = await exporter._enrich_repository_with_custom_properties(
+                repository, "test-org", {"include": True}
+            )
+
+            assert result["custom_properties"] == {"team": "frontend"}
+            mock_request.assert_not_called()
+
+    async def test_enrich_custom_properties_sets_empty_dict_when_api_returns_empty(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        repository: dict[str, Any] = {"name": "my-repo"}
+
+        exporter = RestRepositoryExporter(rest_client)
+
+        with patch.object(
+            rest_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = []
+            result = await exporter._enrich_repository_with_custom_properties(
+                repository, "test-org", {"include": True}
+            )
+
+            assert result["custom_properties"] == {}

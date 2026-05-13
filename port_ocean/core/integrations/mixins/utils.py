@@ -126,11 +126,16 @@ def resync_error_handling() -> Generator[None, None, None]:
 
 
 async def resync_function_wrapper(
-    fn: Callable[[str], Awaitable[RAW_RESULT]], kind: str, items_to_parse: str | None = None
+    fn: Callable[[str], Awaitable[RAW_RESULT]],
+    kind: str,
+    send_raw_data_examples_amount: int = 0,
 ) -> RAW_RESULT:
     with resync_error_handling():
-        results = await fn(kind)
-        return validate_result(results)
+        results = validate_result(await fn(kind))
+        await send_raw_data_examples(
+            results, kind, send_raw_data_examples_amount
+        )
+        return results
 
 async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, items_to_parse: str | None = None, items_to_parse_top_level_transform: bool = True) -> AsyncGenerator[list[dict[str, Any]], None]:
     delete_target = extract_jq_deletion_path_revised(items_to_parse) or '.'
@@ -166,16 +171,47 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
         if batch:
             yield batch
 
+async def send_raw_data_examples(
+    result: RAW_RESULT, kind: str, amount: int
+) -> int:
+    if amount <= 0 or not result:
+        return 0
+
+    examples_to_send = [item.copy() for item in result[:amount]]
+    try:
+        await ocean.port_client.ingest_integration_kind_examples(
+            kind, examples_to_send, should_log=False
+        )
+        return len(examples_to_send)
+    except Exception as ex:
+        logger.warning(
+            f"Failed to send raw data example {ex}",
+            exc_info=True,
+        )
+        return 0
+
 async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None, items_to_parse_top_level_transform: bool = True
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE],
+    kind: str,
+    items_to_parse_name: str,
+    items_to_parse: str | None = None,
+    items_to_parse_top_level_transform: bool = True,
+    send_raw_data_examples_amount: int = 0,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
     errors = []
+    remaining_examples_to_send = send_raw_data_examples_amount
     try:
         while True:
             try:
                 with resync_error_handling():
                     result = validate_result(await anext(generator))
+                    sent_examples = await send_raw_data_examples(
+                        result, kind, remaining_examples_to_send
+                    )
+                    remaining_examples_to_send = max(
+                        0, remaining_examples_to_send - sent_examples
+                    )
 
                     if items_to_parse:
                         items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse, items_to_parse_top_level_transform)

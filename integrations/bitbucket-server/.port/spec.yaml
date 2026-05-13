@@ -1,6 +1,7 @@
 title: Bitbucket Server
 description: Bitbucket Server integration for Port Ocean
 icon: BitBucket
+formMappingEnabled: true
 features:
   - type: exporter
     section: Git Providers

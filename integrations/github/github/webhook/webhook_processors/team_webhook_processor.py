@@ -1,11 +1,10 @@
-from typing import Any, cast
+from typing import cast
 from loguru import logger
-from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.team_exporter import (
     GraphQLTeamWithMembersExporter,
     RestTeamExporter,
 )
-from github.core.options import SingleTeamOptions
+from github.core.options import ListTeamOptions, SingleTeamOptions
 from github.webhook.events import TEAM_DELETE_EVENTS, TEAM_EVENTS
 from github.helpers.utils import GithubClientType, ObjectKind
 from github.clients.client_factory import create_github_client
@@ -58,21 +57,33 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[team]
             )
 
-        exporter: AbstractGithubExporter[Any]
-        if selector.members:
-            graphql_client = create_github_client(GithubClientType.GRAPHQL)
-            exporter = GraphQLTeamWithMembersExporter(graphql_client)
-        else:
-            rest_client = create_github_client(GithubClientType.REST)
-            exporter = RestTeamExporter(rest_client)
+        rest_client = create_github_client(GithubClientType.REST)
+        exporter = RestTeamExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleTeamOptions(organization=organization, slug=team["slug"])
+            SingleTeamOptions(
+                organization=organization,
+                slug=team["slug"],
+                include_saml_email=selector.include_saml_email,
+            )
         )
         if not data_to_upsert:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
+
+        if selector.members:
+            graphql_exporter = GraphQLTeamWithMembersExporter(
+                create_github_client(GithubClientType.GRAPHQL)
+            )
+            extras_result = await graphql_exporter._enrich_team_with_extras(
+                [data_to_upsert],
+                ListTeamOptions(
+                    organization=organization,
+                    include_saml_email=selector.include_saml_email,
+                ),
+            )
+            data_to_upsert = extras_result[0]
 
         logger.info(f"Team {team['slug']} of organization: {organization} was upserted")
         return WebhookEventRawResults(

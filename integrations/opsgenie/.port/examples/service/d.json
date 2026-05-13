@@ -1,0 +1,12 @@
+{
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0054",
+  "name": "Demo Service",
+  "description": "This is a system generated service that creates the demo requests for the IT service management template product tours",
+  "teamId": null,
+  "tags": [],
+  "links": {
+    "web": "https://app.opsgenie.com/service/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0054/status",
+    "api": "https://api.opsgenie.com/v1/services/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0054"
+  },
+  "isExternal": false
+}

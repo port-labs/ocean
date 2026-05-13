@@ -136,11 +136,19 @@ class EntityPortDiff:
 class IntegrationFeatureFlag(StrEnum):
     USE_PROVISIONED_DEFAULTS = "USE_PROVISIONED_DEFAULTS"
     LAKEHOUSE_ELIGIBLE = "LAKEHOUSE_ELIGIBLE"
+    OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED = (
+        "OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED"
+    )
 
 
 class LakehouseOperation(StrEnum):
     UPSERT = "upsert"
     DELETE = "delete"
+
+
+class LakehouseEventType(StrEnum):
+    RESYNC = "resync"
+    LIVE_EVENT = "live-event"
 
 
 class RunStatus(StrEnum):

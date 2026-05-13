@@ -22,6 +22,7 @@ class Kind(StrEnum):
     BOARD = "board"
     COLUMN = "column"
     RELEASE = "release"
+    RELEASE_DEFINITION = "release-definition"
     ENVIRONMENT = "environment"
     RELEASE_DEPLOYMENT = "release-deployment"
     PIPELINE_DEPLOYMENT = "pipeline-deployment"
@@ -93,15 +94,18 @@ class AzureDevopsFolderSelector(Selector):
 
     project_name: str | None = Field(
         default=None,
+        title="Project Name",
         description="Name of the Azure DevOps project that contains the repositories to be scanned. If not provided, scans all projects.",
     )
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
+        title="Folders",
         description="Specify the repositories, branches and folders to include under this relative path",
     )
     included_files: list[str] = Field(
         alias="includedFiles",
+        title="Included Files",
         default_factory=list,
         description="List of file paths to fetch and attach to the folder entity",
     )
@@ -110,5 +114,11 @@ class AzureDevopsFolderSelector(Selector):
 class AzureDevopsFolderResourceConfig(ResourceConfig):
     """Resource configuration for folder scanning"""
 
-    kind: Literal["folder"]
-    selector: AzureDevopsFolderSelector
+    kind: Literal["folder"] = Field(
+        title="Azure Devops Folder",
+        description="Azure Devops folder resource kind.",
+    )
+    selector: AzureDevopsFolderSelector = Field(
+        title="Folder selector",
+        description="Selector for the folder resource.",
+    )

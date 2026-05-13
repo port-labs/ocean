@@ -171,6 +171,7 @@ class TestPullRequestWebhookProcessor:
                         repo_name="test-repo",
                         pr_number=101,
                         repo=None,
+                        enrich_with_first_commit=False,
                     )
                 )
             elif expected_delete:
