@@ -1189,10 +1189,9 @@ files = [
 name = "jsonref"
 version = "1.1.0"
 description = "jsonref is a library for automatic dereferencing of JSON Reference objects for Python."
-optional = true
+optional = false
 python-versions = ">=3.7"
-groups = ["main"]
-markers = "extra == \"cli\""
+groups = ["main", "dev"]
 files = [
     {file = "jsonref-1.1.0-py3-none-any.whl", hash = "sha256:590dc7773df6c21cbf948b5dac07a72a251db28b0238ceecce0a2abfa8ec30a9"},
     {file = "jsonref-1.1.0.tar.gz", hash = "sha256:32fe8e1d85af0fdefbebce950af85590b22b60f9e95443176adbde4e1ecea552"},
@@ -2698,4 +2697,4 @@ cli = ["click", "cookiecutter", "jinja2-strcase", "jinja2-time", "jsonref", "ric
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "aa2a132499ddabe6b660b94d7decbf8ed333c5b76ca0f7ff965aa36086b1bc8f"
+content-hash = "ea602f35bd47a21839a879e56f3f453dbf3699b29e6643939529d6b30af56ccf"
