@@ -118,7 +118,7 @@ class PollingEventListener(BaseEventListener):
 
             if not should_resync and await self.is_resync_requests_polling_enabled():
                 resync_request = (
-                    await ocean.app.port_client.get_integration_resync_requests()
+                    await ocean.app.port_client.get_integration_resync_request()
                 )
                 resync_request_updated_at = resync_request.get("updatedAt", "")
                 should_resync = self.should_resync_from_resync_request(
