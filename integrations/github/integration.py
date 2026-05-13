@@ -89,6 +89,12 @@ class GitHubRepositoryRelationSelector(BaseModel):
         default=False,
         description="Include SBOM for the repository.",
     )
+    custom_properties: bool = Field(
+        title="Include Custom Properties",
+        alias="customProperties",
+        default=False,
+        description="Include organization custom property values for the repository.",
+    )
 
     class Config:
         extra = "forbid"
@@ -104,6 +110,9 @@ class GitHubRepositoryRelationSelector(BaseModel):
 
         if self.sbom:
             result["sbom"] = {"include": self.sbom}
+
+        if self.custom_properties:
+            result["custom_properties"] = {"include": self.custom_properties}
 
         return result
 
@@ -271,9 +280,6 @@ class IncludeSAMLEmailSelector(Selector):
             "If no SAML identity is found for a user, `__SAMLEmail` will be null."
         ),
     )
-
-    class Config:
-        extra = "forbid"
 
 
 class GithubUserSelector(IncludeSAMLEmailSelector):

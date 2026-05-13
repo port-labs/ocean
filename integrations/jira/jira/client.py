@@ -3,6 +3,7 @@ import uuid
 from typing import Any, AsyncGenerator, Generator
 
 import httpx
+import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
@@ -36,6 +37,9 @@ WEBHOOK_EVENTS = [
     "user_created",
     "user_updated",
     "user_deleted",
+    "board_created",
+    "board_updated",
+    "board_deleted",
 ]
 
 OAUTH2_WEBHOOK_EVENTS = [
@@ -48,6 +52,9 @@ OAUTH2_WEBHOOK_EVENTS = [
     "jira:version_released",
     "jira:version_unreleased",
     "jira:version_moved",
+    "board_created",
+    "board_updated",
+    "board_deleted",
 ]
 
 
@@ -81,6 +88,12 @@ class JiraClient(OAuthClient):
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.teams_base_url = f"{self.jira_url}/gateway/api/public/teams/v1/org"
 
+        # For basic auth, agile URL is known immediately.
+        # For OAuth, it requires a cloud ID resolved via API - set in _get_agile_api_url()
+        self._agile_api_url: str | None = (
+            None if self.is_oauth_enabled() else f"{self.jira_rest_url}/agile/1.0"
+        )
+
         self._rate_limiter = JiraRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS)
         self.client = OceanAsyncClient(
             JiraRetryTransport,
@@ -103,6 +116,56 @@ class JiraClient(OAuthClient):
                 "OAuth token file was not available; falling back to configured Jira token for bearer auth"
             )
             return BearerAuth(self.jira_token)
+
+    async def _get_agile_api_url(self) -> str:
+        """Return the Agile REST API base URL for the current auth scheme.
+
+        For basic auth this is known at construction time.
+        For OAuth, the cloud ID must be resolved once via the accessible-resources
+        endpoint and the result is cached on the instance.
+        """
+        if self._agile_api_url is not None:
+            return self._agile_api_url
+
+        cloud_id = await self._get_cloud_id()
+        self._agile_api_url = (
+            f"https://api.atlassian.com/ex/jira/{cloud_id}/rest/agile/latest"
+        )
+        logger.debug(f"Resolved agile API URL: {self._agile_api_url}")
+        return self._agile_api_url
+
+    async def _get_cloud_id(self) -> str:
+        """
+        Resolve the Atlassian cloud ID for the configured Jira site from jira_url when OAuth gateway format is used,
+        otherwise resolve via accessible-resources endpoint.
+
+        See: https://developer.atlassian.com/cloud/oauth/getting-started/making-calls-to-api/#cloud-id
+        """
+        _ATLASSIAN_GATEWAY_PATTERN = re.compile(
+            r"https://api\.atlassian\.com/ex/jira/([^/]+)"
+        )
+        pattern_match = _ATLASSIAN_GATEWAY_PATTERN.match(self.jira_url.rstrip("/"))
+        if pattern_match:
+            cloud_id = pattern_match.group(1)
+            logger.debug(f"Extracted cloud ID {cloud_id} from jira_url")
+            return cloud_id
+
+        resources = await self._send_api_request(
+            "GET",
+            "https://api.atlassian.com/oauth/token/accessible-resources",
+        )
+        normalized_jira_url = self.jira_url.rstrip("/")
+        for resource in resources:
+            if resource.get("url", "").rstrip("/") == normalized_jira_url:
+                resolved_id: str = resource.get("id")
+                logger.debug(f"Resolved cloud ID {resolved_id} for {self.jira_url}")
+                return resolved_id
+
+        raise ValueError(
+            f"Could not resolve cloud ID for Jira site '{self.jira_url}'. "
+            f"Ensure the configured jira url matches one of the accessible sites "
+            f"for this OAuth token."
+        )
 
     def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
         logger.debug(
@@ -180,6 +243,45 @@ class JiraClient(OAuthClient):
 
             if "total" in response_data and start_at >= response_data["total"]:
                 break
+
+    async def _get_agile_paginated_data(
+        self,
+        url: str,
+        extract_key: str = "values",
+        initial_params: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Paginate Jira Agile REST API endpoints using offset-based pagination."""
+        params: dict[str, Any] = {**(initial_params or {})}
+        params.setdefault("maxResults", PAGE_SIZE)
+        start_at = 0
+
+        while True:
+            params["startAt"] = start_at
+            response_data = await self._send_api_request("GET", url, params=params)
+
+            items: list[dict[str, Any]] = response_data.get(extract_key, [])
+
+            if not items:
+                logger.debug(
+                    f"No items returned from {url} at startAt={start_at}, stopping pagination"
+                )
+                break
+
+            yield items
+
+            is_last = response_data.get("isLast")
+            if is_last is True:
+                logger.debug(f"Reached last page for {url} at startAt={start_at}")
+                break
+
+            if is_last is None and len(items) < params["maxResults"]:
+                logger.warning(
+                    f"isLast field absent from agile API response at {url}, "
+                    f"stopping pagination based on item count ({len(items)} < {params['maxResults']})"
+                )
+                break
+
+            start_at += len(items)
 
     async def _get_cursor_paginated_data(
         self,
@@ -513,3 +615,64 @@ class JiraClient(OAuthClient):
             )
             version["__projectKey"] = project["key"]
         return version
+
+    async def get_paginated_boards(
+        self, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Fetching boards from Jira")
+        resource_base_url = await self._get_agile_api_url()
+        endpoint = f"{resource_base_url}/board"
+
+        async for board_batch in self._get_agile_paginated_data(
+            endpoint, initial_params=params
+        ):
+            logger.info(f"Received board batch with {len(board_batch)} boards")
+            yield board_batch
+
+    async def get_single_board(self, board_id: int) -> dict[str, Any]:
+        """Used by webhook processors to re-fetch board state after board_created or board_updated events."""
+        logger.debug(f"Fetching single board: {board_id}")
+        resource_base_url = await self._get_agile_api_url()
+        return await self._send_api_request(
+            "GET", f"{resource_base_url}/board/{board_id}"
+        )
+
+    async def get_board_projects(
+        self, board_id: int
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch all projects associated with a board.
+
+        A board can be associated with multiple projects when its JQL filter
+        references more than one project. Uses the Agile REST API endpoint:
+        GET /rest/agile/1.0/board/{boardId}/project
+        """
+        agile_url = await self._get_agile_api_url()
+        async for project_batch in self._get_agile_paginated_data(
+            url=f"{agile_url}/board/{board_id}/project",
+        ):
+            yield project_batch
+
+    async def enrich_board_with_projects(self, board: dict[str, Any]) -> dict[str, Any]:
+        """Enrich a board with all associated project keys.
+
+        Fetches all projects for the board and injects __projectKeys
+        as a list for relation mapping.
+
+        Args:
+            board: The raw board object from the list endpoint.
+        """
+        board_id = board.get("id")
+        if board_id is None:
+            logger.warning("Board is missing id field, skipping project enrichment")
+            board["__projectKeys"] = []
+            return board
+
+        project_keys: list[str] = []
+
+        async for project_batch in self.get_board_projects(board_id):
+            project_keys.extend(
+                project["key"] for project in project_batch if project.get("key")
+            )
+
+        board["__projectKeys"] = project_keys
+        return board

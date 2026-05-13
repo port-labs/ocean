@@ -16,8 +16,8 @@ from github.core.options import (
 from github.clients.http.rest_client import GithubRestClient
 from collections import defaultdict
 
+from port_ocean.utils.cache import cache_coroutine_result
 from github.core.exporters.file_exporter.utils import (
-    MAX_FILE_SIZE,
     build_batch_file_query,
     decode_content,
     extract_file_index,
@@ -25,7 +25,10 @@ from github.core.exporters.file_exporter.utils import (
     filter_github_tree_entries_by_pattern,
     get_graphql_file_metadata,
 )
-from github.core.exporters.file_exporter.file_processor import FileProcessor
+from github.core.exporters.file_exporter.file_processor import (
+    FileProcessor,
+    FileResponseValidator,
+)
 
 
 class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
@@ -60,17 +63,20 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             )
             return None
 
-        response_size = response["size"]
-        content = None
-        if response_size <= MAX_FILE_SIZE:
-            content = decode_content(response["content"], response["encoding"])
-            logger.debug(
-                f"Successfully decoded file {file_path} ({response_size} bytes)"
-            )
-        else:
-            logger.warning(
-                f"File {file_path} exceeds size limit ({response_size} bytes > {MAX_FILE_SIZE}), skipping content processing from {organization}"
-            )
+        validator = FileResponseValidator(
+            file_path=file_path,
+            organization=organization,
+            repo_name=repo_name,
+            branch=str(branch),
+        )
+        if error := validator.validate(response):
+            logger.warning(error)
+            return {**response, "content": None}
+
+        content = decode_content(response["content"], response["encoding"])
+        logger.debug(
+            f"Successfully decoded file {file_path} ({response['size']} bytes) from {organization}/{repo_name} and branch {branch}"
+        )
 
         return {**response, "content": content}
 
@@ -379,6 +385,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return response
 
+    @cache_coroutine_result()
     async def get_tree_recursive(
         self, organization: str, repo: str, branch: str
     ) -> List[Dict[str, Any]]:
