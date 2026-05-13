@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.2.4-beta (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+## 2.2.3-beta (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 2.2.2-beta (2026-05-04)
+
+
+### Improvements
+
+- Introduce `CREDENTIAL_PROVIDER_PRIORITY` environment variable, allowing users to customize and control the priority order in which AWS credential providers are selected for authentication.
+
+
+## 2.2.1-beta (2026-04-26)
+
+
+### Features
+
+- Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind. 
+
+
+## 2.2.0-beta (2026-04-23)
+
+
+### Features
+
+- Added support to fetch resources exclusively from a user-specified AWS Organization Unit (OU), allowing targeted account discovery.
+
+### Improvements
+
+- Updated account activity checks to use the `State` property instead of `Status`, in preparation for AWS deprecating the `Status` field on September 9, 2026.
+
+
 ## 2.1.86-beta (2026-04-30)
 
 
@@ -782,6 +826,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
+
 - Bumped ocean version to ^0.29.8
 
 
@@ -830,6 +875,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 2.0.2-beta (2025-11-09)
 
