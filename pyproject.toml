@@ -41,7 +41,6 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.dependencies]
 python = "^3.12"
 pydantic = { version = "^1.10.26", extras = ["dotenv"] }
-requests = "^2.33.0"
 python-dotenv = "^1.2.2"
 loguru = "^0.7.0"
 pyyaml = "^6.0"
