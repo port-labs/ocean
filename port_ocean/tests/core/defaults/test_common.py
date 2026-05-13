@@ -102,7 +102,7 @@ def setup_mock_directories(tmp_path: Path) -> tuple[Path, Path, Path]:
 
 
 def test_custom_defaults_dir_used_if_valid(
-    setup_mock_directories: tuple[Path, Path, Path]
+    setup_mock_directories: tuple[Path, Path, Path],
 ) -> None:
     # Arrange
     _, custom_resources_dir, _ = setup_mock_directories
@@ -131,7 +131,7 @@ def test_custom_defaults_dir_used_if_valid(
 
 
 def test_fallback_to_default_dir_if_custom_dir_invalid(
-    setup_mock_directories: tuple[Path, Path, Path]
+    setup_mock_directories: tuple[Path, Path, Path],
 ) -> None:
     resources_dir, _, non_existing_dir = setup_mock_directories
 
