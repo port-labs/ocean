@@ -147,7 +147,10 @@ async def test_get_paginated_issues_with_project_params_fetches_issues_per_proje
         yield [mock_project]
 
     async def mock_get_project_vulnerabilities(
-        org_id: str, project: dict[str, Any], query_params: dict[str, Any]
+        org_id: str,
+        project: dict[str, Any],
+        query_params: dict[str, Any],
+        attach_ignore: bool = False,
     ) -> Any:
         yield mock_issues
 
@@ -191,7 +194,10 @@ async def test_get_paginated_issues_merges_api_params_with_base_version(
         yield [mock_project]
 
     async def mock_get_project_vulnerabilities(
-        org_id: str, project: dict[str, Any], query_params: dict[str, Any]
+        org_id: str,
+        project: dict[str, Any],
+        query_params: dict[str, Any],
+        attach_ignore: bool = False,
     ) -> Any:
         captured_query_params.append(query_params)
         yield []
@@ -248,6 +254,126 @@ async def test_get_paginated_issues_without_project_params_uses_org_endpoint(
     assert len(results) == 1
     assert results[0]["__organization"] == mock_org
     mock_get_projects.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_project_vulnerabilities_attaches_ignore_data_when_flag_true(
+    snyk_client: SnykClient, mock_event_context: MagicMock
+) -> None:
+    """When attach_ignore is True each issue is enriched with its ignore policy under __ignore_data."""
+    mock_project = {"id": "proj-1", "type": "npm"}
+    mock_issues = [
+        {"id": "issue-1", "attributes": {"key": "vuln-key-1"}},
+        {"id": "issue-2", "attributes": {"key": "vuln-key-2"}},
+    ]
+    ignore_lookup = {
+        "vuln-key-1": [{"id": "ignore-1"}],
+        "vuln-key-2": [{"id": "ignore-2a"}, {"id": "ignore-2b"}],
+    }
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        yield mock_issues
+
+    async def mock_extract_ignore_for_issue(
+        key: str, org_id: str, project: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        return ignore_lookup[key]
+
+    with (
+        patch.object(
+            snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+        ),
+        patch.object(
+            snyk_client,
+            "_extract_ignore_for_issue",
+            new=mock_extract_ignore_for_issue,
+        ),
+    ):
+        results = []
+        async for batch in snyk_client.get_project_vulnerabilities(
+            "org-1", mock_project, {}, attach_ignore=True
+        ):
+            results.extend(batch)
+
+    assert len(results) == 2
+    assert results[0]["__ignore_data"] == [{"id": "ignore-1"}]
+    assert results[1]["__ignore_data"] == [{"id": "ignore-2a"}, {"id": "ignore-2b"}]
+
+
+@pytest.mark.asyncio
+async def test_get_project_vulnerabilities_skips_ignore_lookup_when_flag_false(
+    snyk_client: SnykClient, mock_event_context: MagicMock
+) -> None:
+    """When attach_ignore is False issues are returned without __ignore_data and no lookup is performed."""
+    mock_project = {"id": "proj-1", "type": "npm"}
+    mock_issues = [{"id": "issue-1", "attributes": {"key": "vuln-key-1"}}]
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        yield mock_issues
+
+    extract_mock = AsyncMock(return_value=[])
+
+    with (
+        patch.object(
+            snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+        ),
+        patch.object(snyk_client, "_extract_ignore_for_issue", new=extract_mock),
+    ):
+        results = []
+        async for batch in snyk_client.get_project_vulnerabilities(
+            "org-1", mock_project, {}
+        ):
+            results.extend(batch)
+
+    assert len(results) == 1
+    assert "__ignore_data" not in results[0]
+    extract_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_issues_forwards_attach_ignore_to_project_vulnerabilities(
+    snyk_client: SnykClient, mock_event_context: MagicMock
+) -> None:
+    """attach_ignore=True routes through the per-project path and is forwarded down to get_project_vulnerabilities."""
+    mock_org = {"id": "org-1"}
+    mock_project = {"id": "proj-1", "type": "npm"}
+
+    captured_attach_ignore: list[bool] = []
+
+    async def mock_get_paginated_projects(
+        org: dict[str, Any], api_params: Any = None, enrich_with_org: bool = True
+    ) -> Any:
+        yield [mock_project]
+
+    async def mock_get_project_vulnerabilities(
+        org_id: str,
+        project: dict[str, Any],
+        query_params: dict[str, Any],
+        attach_ignore: bool = False,
+    ) -> Any:
+        captured_attach_ignore.append(attach_ignore)
+        yield []
+
+    with (
+        patch.object(
+            snyk_client, "get_paginated_projects", new=mock_get_paginated_projects
+        ),
+        patch.object(
+            snyk_client,
+            "get_project_vulnerabilities",
+            new=mock_get_project_vulnerabilities,
+        ),
+    ):
+        async for _ in snyk_client.get_paginated_issues(
+            org=mock_org, attach_ignore=True
+        ):
+            pass
+
+    assert captured_attach_ignore == [True]
 
 
 @pytest.mark.asyncio
