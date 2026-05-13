@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed workflow push webhook processing to detect removed workflow files and propagate workflow deletions.
 
 
+## 5.4.6 (2026-05-13)
+
+
+### Improvements
+
+- Cached recursive git tree retrieval in file exporter to reduce repeated API calls per repo/branch during file matching.
+
+
 ## 5.4.5 (2026-05-12)
 
 
