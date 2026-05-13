@@ -25,7 +25,7 @@
     "@docusaurus/theme-live-codeblock": "^3.9.2",
     "@docusaurus/theme-mermaid": "^3.9.2",
     "@docusaurus/theme-search-algolia": "^3.9.2",
-    "@easyops-cn/docusaurus-search-local": "^0.52.2",
+    "@easyops-cn/docusaurus-search-local": "^0.54.1",
     "@mdx-js/react": "^3.1.0",
     "@stackql/docusaurus-plugin-hubspot": "^1.1.0",
     "clsx": "^2.0.0",
