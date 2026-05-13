@@ -222,7 +222,7 @@ class VulnerabilitySelector(Selector):
         default=False,
         alias="attachIgnoreData",
         title="Attach Ignore Data",
-        description="",
+        description="Attach the matching ignore policy to each vulnerability under `__ignore_data`. Requires a per-project lookup, so use projectQueryParams to limit scope on large orgs.",
     )
 
 
@@ -344,9 +344,7 @@ class SnykPortAppConfig(PortAppConfig):
         | VulnerabilityResourceConfig
         | IssueResourceConfig
         | PolicyResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class SnykIntegration(BaseIntegration):
