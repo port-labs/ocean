@@ -64,6 +64,7 @@ _TRUSTED_SUBDOMAINS = (
     # Third-party API domains
     ".aikido.dev",
     ".amplication.com",
+    "api.anthropic.com",
     ".armorcode.com",
     ".atlassian.com",
     ".atlassian.net",
