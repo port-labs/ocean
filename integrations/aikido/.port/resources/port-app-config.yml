@@ -102,11 +102,14 @@ resources:
             timeToFixMinutes: .time_to_fix_minutes
             locations: .locations
             howToFix: .how_to_fix
+            teamId: .team_id
+            teamName: .team_name
           relations:
             aikidoRepositories: >-
               [.locations[]? | select(.type == "code_repository") | (.id | tostring)]
             aikidoContainers: >-
               [.locations[]? | select(.type == "container_repository") | (.id | tostring)]
+            aikidoTeam: .team_id | tostring
   - kind: issues
     selector:
       query: 'true'

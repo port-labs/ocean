@@ -310,6 +310,14 @@
                 "howToFix": {
                     "type": "string",
                     "title": "How To Fix"
+                },
+                "teamId": {
+                    "type": "number",
+                    "title": "Team ID"
+                },
+                "teamName": {
+                    "type": "string",
+                    "title": "Team Name"
                 }
             },
             "required": []
@@ -330,6 +338,12 @@
             "aikidoIssueGroup": {
                 "title": "Issue Group",
                 "target": "aikidoIssueGroup",
+                "required": false,
+                "many": false
+            },
+            "aikidoTeam": {
+                "title": "Team",
+                "target": "aikidoTeam",
                 "required": false,
                 "many": false
             }
