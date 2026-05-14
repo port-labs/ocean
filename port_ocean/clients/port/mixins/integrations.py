@@ -10,7 +10,7 @@ from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.core.models import (
     CreatePortResourcesOrigin,
-    LakehouseOperation,
+    LakehouseDataEntryBatch,
     LakehouseEventType,
 )
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
@@ -307,15 +307,8 @@ class IntegrationClientMixin:
         handle_port_status_code(response, should_raise, should_log)
         return response.json()
 
-    async def post_integration_raw_data(
-        self,
-        raw_data: list[dict[Any, Any]],
-        sync_id: str,
-        kind: str,
-        index: int,
-        operation: LakehouseOperation = LakehouseOperation.UPSERT,
-        resync_start_time: datetime | None = None,
-        event_type: LakehouseEventType | None = None,
+    def _validate_lakehouse_params(
+        self, sync_id: str, kind: str, resync_start_time: datetime | None
     ) -> None:
         if not sync_id:
             raise ValueError("sync_id cannot be empty")
@@ -335,27 +328,61 @@ class IntegrationClientMixin:
                     f"resync_start_time cannot be in the future: {resync_start_time}"
                 )
 
+    async def post_integration_raw_data_batch(
+        self,
+        sync_id: str,
+        event: LakehouseDataEntryBatch,
+    ) -> None:
+        """Send multiple raw data entries in a single POST request.
+
+        Each entry must be a LakehouseDataEntry with request, response, items,
+        and metadata (operation, resource_index, extraction_timestamp).
+        """
+        self._validate_lakehouse_params(
+            sync_id, event["kind"], event["resync_start_time"]
+        )
+
         logger.debug(
-            "starting POST raw data request", raw_data=raw_data, operation=operation
+            "starting POST raw data batch request",
+            entry_count=len(event["data"]),
+            kind=event["kind"],
         )
         headers = await self.auth.headers()
 
+        data = [
+            {
+                "request": entry["request"],
+                "response": entry["response"],
+                "items": entry["items"],
+                "metadata": {
+                    "operation": entry["metadata"]["operation"].value,
+                    "extractionTimestamp": entry["metadata"]["extraction_timestamp"],
+                    "resourceIndex": entry["metadata"]["resource_index"],
+                },
+            }
+            for entry in event["data"]
+        ]
+
         body: dict[str, Any] = {
-            "items": raw_data,
-            "extractionTimestamp": int(datetime.now().timestamp() * 1000),
-            "operation": operation.value,
-            "resourceIndex": index,
+            "kind": event["kind"],
             "eventType": (
-                event_type.value if event_type else LakehouseEventType.LIVE_EVENT.value
+                event["event_type"].value
+                if event["event_type"]
+                else LakehouseEventType.LIVE_EVENT.value
             ),
+            "extractionTimestamp": event["extraction_timestamp"],
+            "data": data,
         }
-        if resync_start_time is not None:
-            body["resyncStartTime"] = resync_start_time.isoformat()
+
+        if event["resync_start_time"] is not None:
+            body["resyncStartTime"] = event["resync_start_time"].isoformat()
+        if event["event_id"]:
+            body["eventId"] = event["event_id"]
 
         response = await self.client.post(
-            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",
+            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
             headers=headers,
             json=body,
         )
         handle_port_status_code(response, should_raise=False, should_log=True)
-        logger.debug("Finished POST raw data request")
+        logger.debug("Finished POST raw data batch request")
