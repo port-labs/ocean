@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.6 (2026-05-14)
+## 0.7.9 (2026-05-14)
 
 
 ### Improvements
 
 - Added support for Issue Worklogs to sync worklog entries from Jira issues into Port, including worklog author, time spent, and comments. This allows teams to track time spent on issues directly within Port and gain insights into effort distribution across projects and tasks.
+
+
+## 0.7.8 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 0.7.7 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 0.7.6 (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
 
 
 ## 0.7.5 (2026-05-07)

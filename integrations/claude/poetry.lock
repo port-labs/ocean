@@ -1501,13 +1501,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.41.7"
+version = "0.42.0"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.41.7-py3-none-any.whl", hash = "sha256:1180a10676b25a5264c0ec6d291044ce7a67ecafabfb4f01b106292828ef07e7"},
-    {file = "port_ocean-0.41.7.tar.gz", hash = "sha256:62ba6756e91bb63593cdae9a829ba6fd05171a718b4e0a3662154bc1386885a6"},
+    {file = "port_ocean-0.42.0-py3-none-any.whl", hash = "sha256:72eb040d903f329f1648d5e299601e90d82b6f42370cfbd154140b01ecc2a4bb"},
+    {file = "port_ocean-0.42.0.tar.gz", hash = "sha256:ff93d6589eb230a04837c0d38eea3763d45e6f00407c0f9a8eab0af52819f0e3"},
 ]
 
 [package.dependencies]
@@ -1516,7 +1516,7 @@ aiostream = ">=0.5.2,<0.7.0"
 click = {version = ">=8.1.3,<9.0.0", optional = true, markers = "extra == \"cli\""}
 confluent-kafka = ">=2.10.1,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
-cryptography = ">=46.0.5,<47.0.0"
+cryptography = ">=46.0.7,<47.0.0"
 fastapi = ">=0.121.0,<0.122.0"
 filelock = ">=3.20.1,<4.0.0"
 httpx = ">=0.28.1,<0.29.0"
@@ -1530,20 +1530,21 @@ jsonref = {version = ">=1.1.0,<2.0.0", optional = true, markers = "extra == \"cl
 loguru = ">=0.7.0,<0.8.0"
 prometheus-client = ">=0.21.1,<0.22.0"
 psutil = ">=7.2.1,<8.0.0"
-pydantic = {version = ">=1.10.8,<2.0.0", extras = ["dotenv"]}
+pydantic = {version = ">=1.10.26,<2.0.0", extras = ["dotenv"]}
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
 pyjwt = ">=2.12.0,<3.0.0"
-pytest-cov = ">=6.0.0,<7.0.0"
+pytest-cov = ">=6,<8"
 python-dateutil = ">=2.9.0.post0,<3.0.0"
+python-dotenv = ">=1.2.2,<2.0.0"
 pyyaml = ">=6.0,<7.0"
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
 six = ">=1.16.0,<2.0.0"
 tomli = ">=2.0.1,<3.0.0"
-urllib3 = ">=2.6.3,<3.0.0"
+urllib3 = ">=2.7.0,<3.0.0"
 uvicorn = ">=0.34.3,<0.35.0"
 virtualenv = ">=20.36.1,<21.0.0"
-werkzeug = ">=3.1.5,<4.0.0"
+werkzeug = ">=3.1.6,<4.0.0"
 
 [package.extras]
 cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-strcase (>=0.0.2,<0.0.3)", "jinja2-time (>=0.2.0,<0.3.0)", "jsonref (>=1.1.0,<2.0.0)", "rich (>=13.4.1,<14.0.0)"]
@@ -2181,13 +2182,13 @@ files = [
 
 [[package]]
 name = "urllib3"
-version = "2.6.3"
+version = "2.7.0"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 files = [
-    {file = "urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4"},
-    {file = "urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed"},
+    {file = "urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897"},
+    {file = "urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c"},
 ]
 
 [package.extras]
@@ -2264,4 +2265,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "71b8572f23df60eda3572f61055f8b343fe2f02826416fcb177831d690139648"
+content-hash = "cd6a357078be26dec24ee2451071ed5b86e303c93ad707314b923d94034aa323"
