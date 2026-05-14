@@ -64,6 +64,7 @@ _TRUSTED_SUBDOMAINS = (
     # Third-party API domains
     ".aikido.dev",
     ".amplication.com",
+    "api.anthropic.com",
     ".armorcode.com",
     ".atlassian.com",
     ".atlassian.net",
@@ -84,6 +85,7 @@ _TRUSTED_SUBDOMAINS = (
     ".okta.com",
     ".opsgenie.com",
     ".pagerduty.com",
+    ".sentinelone.net",
     ".sentry.io",
     ".servicenow.com",
     ".service-now.com",
