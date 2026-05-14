@@ -36,7 +36,7 @@ class HttpServerClient:
         max_concurrent_requests: int = 10,
         custom_headers: Optional[Dict[str, str]] = None,
     ):
-        self.base_url = base_url.rstrip("/")
+        self.base_url = base_url.strip().rstrip("/")
         self.auth_type = auth_type
         self.auth_config = auth_config
         self.pagination_config = pagination_config

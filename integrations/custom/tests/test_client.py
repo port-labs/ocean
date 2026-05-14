@@ -81,6 +81,39 @@ class TestHttpServerClient:
 
         assert captured_url == "https://api.example.com/v1/users"
 
+    async def test_url_construction_strips_whitespace_from_base_url(self) -> None:
+        """Leading/trailing spaces from SaaS or Helm config must not break the request host."""
+        client = HttpServerClient(
+            base_url="  https://api.example.com/  ",
+            auth_type="none",
+            auth_config={},
+            pagination_config={"pagination_type": "none"},
+        )
+
+        assert client.base_url == "https://api.example.com"
+
+        captured_url: str | None = None
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
+        ) -> AsyncMock:
+            nonlocal captured_url
+            captured_url = url
+            response = AsyncMock()
+            response.json = AsyncMock(return_value={"data": []})
+            response.raise_for_status = lambda: None
+            return response
+
+        with patch.object(client, "_make_request", mock_make_request):
+            async for _ in client.fetch_paginated_data(endpoint="/test"):
+                break
+
+        assert captured_url == "https://api.example.com/test"
+
     async def test_url_construction_base_with_path_component(self) -> None:
         """Test URL construction preserves base URL path components"""
         client = HttpServerClient(

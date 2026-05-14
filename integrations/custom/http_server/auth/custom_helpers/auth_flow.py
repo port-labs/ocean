@@ -45,7 +45,7 @@ class AuthFlowManager(httpx.Auth):
     ):
         self.custom_auth_request = custom_auth_request
         self.custom_auth_response = custom_auth_response
-        self.base_url: str = config.get("base_url", "")
+        self.base_url: str = str(config.get("base_url") or "").strip()
         self.auth_response: Optional[Dict[str, Any]] = None
         self.verify_ssl: bool = config.get("verify_ssl", True)
 
