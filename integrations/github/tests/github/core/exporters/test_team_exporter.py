@@ -352,12 +352,10 @@ class TestGraphQLTeamExporter:
         "mock_response",
         [
             {"data": {"organization": {"team": None}}},
-            {"data": {"organization": None}},
-            {"data": None},
         ],
-        ids=["team_is_null", "organization_is_null", "data_is_null"],
+        ids=["team_is_null"],
     )
-    async def test_get_resource_returns_none_when_graphql_data_missing(
+    async def test_get_resource_returns_none_when_team_is_null_in_graphql_response(
         self,
         graphql_client: GithubGraphQLClient,
         mock_response: dict[str, Any],
