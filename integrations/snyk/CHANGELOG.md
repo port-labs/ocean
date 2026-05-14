@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.1 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 0.5.0 (2026-05-13)
+
+
+### Improvements
+
+- Update default API version to `2026-03-25`
+
+### Features
+
+- Add support for Snyk org-level ignore policies
+
+
 ## 0.4.13 (2026-05-14)
 
 
