@@ -1,29 +1,33 @@
 from typing import Optional, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
 
 class ImageProperties(BaseModel):
-    repositoryName: str = Field(default_factory=str, alias="repositoryName")
-    imageId: dict[str, Any] = Field(default_factory=dict, alias="imageId")
-    imageManifest: Optional[str] = Field(default=None, alias="imageManifest")
-    imageManifestMediaType: Optional[str] = Field(default=None, alias="imageManifestMediaType")
-    registryId: Optional[str] = Field(default=None, alias="registryId")
-    imageSizeInBytes: Optional[int] = Field(default=None, alias="imageSizeInBytes")
-    imagePushedAt: Optional[datetime] = Field(default=None, alias="imagePushedAt")
+    repositoryName: str = Field(default_factory=str, alias="RepositoryName")
+    registryId: Optional[str] = Field(default=None, alias="RegistryId")
+    imageDigest: Optional[str] = Field(default=None, alias="ImageDigest")
+    imageTags: list[str] = Field(default_factory=list, alias="ImageTags")
+    imageSizeInBytes: Optional[int] = Field(default=None, alias="ImageSizeInBytes")
+    imagePushedAt: Optional[datetime] = Field(default=None, alias="ImagePushedAt")
+    imageManifestMediaType: Optional[str] = Field(
+        default=None, alias="ImageManifestMediaType"
+    )
+    artifactMediaType: Optional[str] = Field(default=None, alias="ArtifactMediaType")
+    lastRecordedPullTime: Optional[datetime] = Field(
+        default=None, alias="LastRecordedPullTime"
+    )
+    imageStatus: Optional[str] = Field(default=None, alias="ImageStatus")
+    imageScanStatus: Optional[dict[str, Any]] = Field(
+        default=None, alias="ImageScanStatus"
+    )
     imageScanFindingsSummary: Optional[dict[str, Any]] = Field(
-        default=None, alias="imageScanFindingsSummary"
+        default=None, alias="ImageScanFindingsSummary"
     )
-    imageScanningConfiguration: Optional[dict[str, Any]] = Field(
-        default=None, alias="imageScanningConfiguration"
-    )
-    artifactMediaType: Optional[str] = Field(default=None, alias="artifactMediaType")
-    lastRecordedPullTime: Optional[datetime] = Field(default=None, alias="lastRecordedPullTime")
-    tags: list[dict[str, str]] = Field(default_factory=list, alias="tags")
 
     class Config:
-        extra = "ignore"
+        extra = "allow"
         allow_population_by_field_name = True
 
 
@@ -39,11 +43,17 @@ class SingleImageRequest(ResourceRequestModel):
         ..., description="The name of the ECR repository containing the image"
     )
     image_tag: Optional[str] = Field(
-        default=None, description="The tag of the image to export (optional, can use image_digest instead)"
+        default=None, description="The tag of the image to export"
     )
     image_digest: Optional[str] = Field(
-        default=None, description="The digest of the image to export (optional, can use image_tag instead)"
+        default=None, description="The digest of the image to export"
     )
+
+    @root_validator
+    def require_tag_or_digest(cls, values: dict[str, Any]) -> dict[str, Any]:
+        if not values.get("image_tag") and not values.get("image_digest"):
+            raise ValueError("Either image_tag or image_digest must be provided")
+        return values
 
 
 class PaginatedImageRequest(ResourceRequestModel):

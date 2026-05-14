@@ -3,23 +3,6 @@ from aws.core.interfaces.action import Action, ActionMap
 from aws.core.helpers.utils import execute_concurrent_aws_operations
 
 
-class GetImageDetailsAction(Action):
-    """Fetches detailed information about ECR images."""
-
-    async def _execute(self, images: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return await execute_concurrent_aws_operations(
-            input_items=images,
-            operation_func=self._fetch_image_details,
-            get_resource_identifier=lambda img: f"{img['repositoryName']}:{img.get('imageId', {}).get('imageTag', img.get('imageId', {}).get('imageDigest', 'unknown'))}",
-            operation_name="image details",
-        )
-
-    async def _fetch_image_details(self, image: dict[str, Any]) -> dict[str, Any]:
-        # ECR describe_images already provides most details, so we return the image as-is
-        # with any additional processing if needed
-        return image
-
-
 class GetImageScanResultsAction(Action):
     """Fetches vulnerability scan results for ECR images."""
 
@@ -27,7 +10,7 @@ class GetImageScanResultsAction(Action):
         return await execute_concurrent_aws_operations(
             input_items=images,
             operation_func=self._fetch_image_scan_results,
-            get_resource_identifier=lambda img: f"{img['repositoryName']}:{img.get('imageId', {}).get('imageTag', img.get('imageId', {}).get('imageDigest', 'unknown'))}",
+            get_resource_identifier=lambda img: f"{img['repositoryName']}@{img['imageDigest']}",
             operation_name="image scan results",
         )
 
@@ -35,16 +18,19 @@ class GetImageScanResultsAction(Action):
         try:
             response = await self.client.describe_image_scan_findings(
                 repositoryName=image["repositoryName"],
-                imageId=image["imageId"]
+                imageId={"imageDigest": image["imageDigest"]},
             )
             return {
-                "imageScanFindingsSummary": response.get("imageScanFindingsSummary", {}),
-                "imageScanningConfiguration": response.get("imageScanningConfiguration", {}),
+                "imageScanFindingsSummary": {
+                    "findingSeverityCounts": response["imageScanFindings"].get(
+                        "findingSeverityCounts", {}
+                    )
+                }
             }
         except self.client.exceptions.ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
             if error_code in ["ScanNotFoundException", "ImageNotFoundException"]:
-                return {"imageScanFindingsSummary": {}, "imageScanningConfiguration": {}}
+                return {"imageScanFindingsSummary": {}}
             else:
                 raise
 
@@ -62,7 +48,6 @@ class EcrImageActionsMap(ActionMap):
 
     defaults: list[Type[Action]] = [
         DescribeImagesAction,
-        GetImageDetailsAction,
     ]
     options: list[Type[Action]] = [
         GetImageScanResultsAction,

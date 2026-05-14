@@ -1,4 +1,8 @@
+import asyncio
 from typing import Any, AsyncGenerator, Type
+
+from loguru import logger
+
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.ecr.image.actions import EcrImageActionsMap
 from aws.core.exporters.ecr.image.models import Image
@@ -25,20 +29,14 @@ class EcrImageExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            # Build imageIds filter based on provided parameters
             image_ids = []
             if options.image_tag:
                 image_ids.append({"imageTag": options.image_tag})
             if options.image_digest:
                 image_ids.append({"imageDigest": options.image_digest})
-            
-            # If neither tag nor digest provided, get latest
-            if not image_ids:
-                image_ids.append({"imageTag": "latest"})
 
             response = await proxy.client.describe_images(  # type: ignore[attr-defined]
-                repositoryName=options.repository_name,
-                imageIds=image_ids
+                repositoryName=options.repository_name, imageIds=image_ids
             )
             images = response["imageDetails"]
             if not images:
@@ -58,10 +56,11 @@ class EcrImageExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            # If repository_name is specified, only fetch images from that repository
             if options.repository_name:
                 paginator = proxy.get_paginator("describe_images", "imageDetails")
-                async for images in paginator.paginate(repositoryName=options.repository_name):
+                async for images in paginator.paginate(
+                    repositoryName=options.repository_name
+                ):
                     if images:
                         action_result = await inspector.inspect(
                             images,
@@ -75,26 +74,45 @@ class EcrImageExporter(IResourceExporter):
                     else:
                         yield []
             else:
-                # Fetch images from all repositories in the region
-                # First get all repositories
-                repo_paginator = proxy.get_paginator("describe_repositories", "repositories")
+                repo_paginator = proxy.get_paginator(
+                    "describe_repositories", "repositories"
+                )
                 async for repositories in repo_paginator.paginate():
-                    if repositories:
-                        for repository in repositories:
-                            repo_name = repository["repositoryName"]
-                            image_paginator = proxy.get_paginator("describe_images", "imageDetails")
-                            async for images in image_paginator.paginate(repositoryName=repo_name):
-                                if images:
-                                    action_result = await inspector.inspect(
-                                        images,
-                                        options.include,
-                                        extra_context={
-                                            "AccountId": options.account_id,
-                                            "Region": options.region,
-                                        },
-                                    )
-                                    yield action_result
-                                else:
-                                    yield []
-                    else:
+                    if not repositories:
                         yield []
+                        continue
+
+                    all_images: list[list[dict[str, Any]] | BaseException] = (
+                        await asyncio.gather(
+                            *(
+                                self._get_all_images(proxy, repo["repositoryName"])
+                                for repo in repositories
+                            ),
+                            return_exceptions=True,
+                        )
+                    )
+                    for repo_images in all_images:
+                        if isinstance(repo_images, Exception):
+                            logger.warning(
+                                f"Failed to fetch images for repository: {repo_images}"
+                            )
+                            continue
+                        if repo_images:
+                            action_result = await inspector.inspect(
+                                repo_images,
+                                options.include,
+                                extra_context={
+                                    "AccountId": options.account_id,
+                                    "Region": options.region,
+                                },
+                            )
+                            yield action_result
+
+    async def _get_all_images(
+        self, proxy: AioBaseClientProxy, repo_name: str
+    ) -> list[dict[str, Any]]:
+        images: list[dict[str, Any]] = []
+        paginator = proxy.get_paginator("describe_images", "imageDetails")
+        async for page in paginator.paginate(repositoryName=repo_name):
+            images.extend(page)
+        return images
