@@ -42,18 +42,11 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             )
             return None
 
-        data = response.get("data") or {}
-        organization_data = data.get("organization")
-        if not organization_data:
-            logger.warning(
-                f"GraphQL response missing organization data for slug: {slug} in organization {organization}"
-            )
-            return None
-
-        team = organization_data.get("team")
+        data = response["data"]
+        team = data["organization"].get("team")
         if not team:
             logger.warning(
-                f"Team not found via GraphQL with slug: {slug} in organization {organization}"
+                f"Team with team slug: {slug} is null in GraphQL response for organization {organization}. It may be an enterprise team."
             )
             return None
 
