@@ -101,9 +101,6 @@ class IntegrationClientMixin:
         return response.json().get("integration", {})
 
     async def _get_integration_resync_request(self) -> httpx.Response:
-        logger.info(
-            f"Fetching integration resync request for id: {self.integration_identifier}"
-        )
         return await self.client.get(
             f"{self.auth.api_url}/integration/{self.integration_identifier}/resync-request",
             headers=await self.auth.headers(),

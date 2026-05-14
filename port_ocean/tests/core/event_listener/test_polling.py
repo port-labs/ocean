@@ -11,25 +11,18 @@ from port_ocean.core.event_listener.polling import (
 from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
 
 
-def _run_once_repeat_every(*_args, **_kwargs):
-    def decorator(func):
-        async def wrapped():
-            await func()
+def _run_repeat_every_times(repetitions: int):
+    def mock_repeat_every(*_args, **_kwargs):
+        def decorator(func):
+            async def wrapped():
+                for _ in range(repetitions):
+                    await func()
 
-        return wrapped
+            return wrapped
 
-    return decorator
+        return decorator
 
-
-def _run_twice_repeat_every(*_args, **_kwargs):
-    def decorator(func):
-        async def wrapped():
-            await func()
-            await func()
-
-        return wrapped
-
-    return decorator
+    return mock_repeat_every
 
 
 @pytest.mark.asyncio
@@ -57,7 +50,7 @@ async def test_polling_resyncs_from_resync_requests_when_feature_flag_enabled(
         ),
     )
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
-    monkeypatch.setattr(polling_module, "repeat_every", _run_once_repeat_every)
+    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(1))
     monkeypatch.setattr(
         polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
     )
@@ -106,7 +99,7 @@ async def test_polling_does_not_fetch_resync_requests_when_feature_flag_disabled
         ),
     )
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
-    monkeypatch.setattr(polling_module, "repeat_every", _run_once_repeat_every)
+    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(1))
     monkeypatch.setattr(
         polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
     )
@@ -150,7 +143,7 @@ async def test_polling_resyncs_on_integration_change_without_resync_requests_loo
         ),
     )
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
-    monkeypatch.setattr(polling_module, "repeat_every", _run_once_repeat_every)
+    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(1))
     monkeypatch.setattr(
         polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
     )
@@ -189,6 +182,7 @@ def test_should_not_resync_when_resync_request_timestamp_is_missing(
     )
 
     assert listener.should_resync_from_resync_request("") is False
+    assert listener.should_resync_from_resync_request(None) is False
 
 
 def test_should_not_resync_when_resync_request_timestamp_is_invalid(
@@ -237,7 +231,7 @@ async def test_polling_does_not_resync_repeatedly_for_same_resync_request(
         ),
     )
     monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
-    monkeypatch.setattr(polling_module, "repeat_every", _run_twice_repeat_every)
+    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(2))
     monkeypatch.setattr(
         polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
     )

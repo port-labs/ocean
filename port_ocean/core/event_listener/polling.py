@@ -61,27 +61,48 @@ class PollingEventListener(BaseEventListener):
         return _last_updated_at != last_updated_at
 
     def should_resync_from_resync_request(self, last_updated_at: str | None) -> bool:
-        _last_updated_at = ocean.app.resync_state_updater.last_resync_request_updated_at
+        """
+        Determine whether a newer integration resync request should trigger a resync.
+
+        Returns `True` only when `last_updated_at` is a valid timestamp and it is newer
+        than the last processed resync-request timestamp. If no previous timestamp is
+        stored, a valid `last_updated_at` triggers a resync.
+
+        `last_resync_request_updated_at` is treated as a watermark for resync-request
+        events and is not reset by integration-change based resyncs. This intentionally
+        ignores replayed or stale request timestamps (incoming <= stored).
+        """
+        last_processed_resync_request_updated_at = (
+            ocean.app.resync_state_updater.last_resync_request_updated_at
+        )
 
         if not last_updated_at:
             return False
 
         try:
             resync_request_updated_at = convert_str_to_utc_datetime(last_updated_at)
-        except (TypeError, ValueError):
+        except ValueError:
             return False
 
-        if not _last_updated_at:
+        if not last_processed_resync_request_updated_at:
             return True
 
         try:
-            current_state_updated_at = convert_str_to_utc_datetime(_last_updated_at)
-        except (TypeError, ValueError):
+            current_state_updated_at = convert_str_to_utc_datetime(
+                last_processed_resync_request_updated_at
+            )
+        except ValueError:
             return True
 
         return current_state_updated_at < resync_request_updated_at
 
     async def is_resync_requests_polling_enabled(self) -> bool:
+        """
+        Check whether polling integration resync requests is enabled.
+
+        The result is loaded once from organization feature flags and cached for
+        subsequent polling iterations.
+        """
         if self._is_resync_requests_polling_enabled is None:
             organization_flags = (
                 await ocean.app.port_client.get_organization_feature_flags()
@@ -107,33 +128,45 @@ class PollingEventListener(BaseEventListener):
             logger.info(
                 f"Polling event listener iteration after {self.event_listener_config.interval}. Checking for changes"
             )
-            integration = await ocean.app.port_client.get_current_integration(
-                is_polling=True
-            )
-            last_updated_at = integration["updatedAt"]
+            try:
+                integration = await ocean.app.port_client.get_current_integration(
+                    is_polling=True
+                )
+                last_updated_at = integration["updatedAt"]
+            except Exception as error:
+                logger.exception(
+                    "Failed to fetch current integration in polling listener, skipping iteration",
+                    error=error,
+                )
+                return
+
             should_resync = self.should_resync(last_updated_at)
             resync_reason = "Detected change in integration, resyncing"
             resync_request_updated_at = ""
-            is_resync_request_triggered = False
 
             if not should_resync and await self.is_resync_requests_polling_enabled():
-                resync_request = (
-                    await ocean.app.port_client.get_integration_resync_request()
-                )
-                resync_request_updated_at = resync_request.get("updatedAt", "")
-                should_resync = self.should_resync_from_resync_request(
-                    resync_request_updated_at
-                )
-                if should_resync:
-                    resync_reason = "Detected integration resync request"
-                    is_resync_request_triggered = True
+                try:
+                    resync_request = (
+                        await ocean.app.port_client.get_integration_resync_request()
+                    )
+                    resync_request_updated_at = resync_request.get("updatedAt", "")
+                    should_resync = self.should_resync_from_resync_request(
+                        resync_request_updated_at
+                    )
+                    if should_resync:
+                        resync_reason = "Detected integration resync request"
+                except Exception as error:
+                    logger.exception(
+                        "Failed to fetch integration resync request in polling listener, continuing without resync request signal",
+                        error=error,
+                    )
 
             if should_resync:
                 logger.info(resync_reason)
                 ocean.app.resync_state_updater.last_integration_state_updated_at = (
                     last_updated_at
                 )
-                if is_resync_request_triggered:
+                if resync_request_updated_at:
                     ocean.app.resync_state_updater.last_resync_request_updated_at = (
                         resync_request_updated_at
                     )
