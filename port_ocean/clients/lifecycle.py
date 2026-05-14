@@ -43,7 +43,7 @@ class LifecycleClient:
                     "}", "}}"
                 )
                 logger.warning(
-                    f"Lifecycle API returned an error for status={status} {escaped_response_text}",
+                    f"Lifecycle API returned an error for status={status} {_truncate(escaped_response_text)}",
                     status_code=response.status_code,
                     response_body=_truncate(response.text),
                 )
