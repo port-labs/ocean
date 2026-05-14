@@ -55,6 +55,29 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: >
+      Shared secret for HMAC-SHA256 verification of inbound live-event payloads.
+      When set, every webhook must carry an `X-Port-Signature` header computed
+      over the raw body. When unset, only the SNS X.509 signature is enforced.
+      Note: the standard EventBridge → SNS → HTTPS path cannot inject custom
+      HTTP headers. This option requires an API Gateway or equivalent component
+      in front of the webhook endpoint to compute and inject the header.
+  - name: liveEventsEnabled
+    required: false
+    type: boolean
+    sensitive: false
+    default: true
+    description: Kill-switch for the live-events webhook path. False leaves the endpoint registered but short-circuits every event with a warning log. Useful for self-hosted deployments that prefer pure resync.
+  - name: snsCertHostAllowlist
+    required: false
+    type: string
+    sensitive: false
+    default: "amazonaws.com"
+    description: Comma-separated host suffixes whose SNS signing certs are trusted. The verifier also pins the `sns.` prefix on top of this. Default covers every commercial AWS region (`sns.<region>.amazonaws.com`); tighten (e.g. `us-east-1.amazonaws.com`) if the topic only lives in specific regions.
 disableDefaultInstallationMethods: true
 installationDocs:
   saas:
@@ -64,4 +87,4 @@ installationDocs:
 saas:
   enabled: true
   liveEvents:
-    enabled: false
+    enabled: true

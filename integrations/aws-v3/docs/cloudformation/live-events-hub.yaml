@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Port AWS-V3 live-events hub. Provisions the central SNS topic that
+  every member-account EventBridge rule publishes to, plus an HTTPS
+  subscription that delivers to the Ocean webhook endpoint. A DLQ
+  captures messages that exhaust SNS's retry budget.
+
+  Deploy this template ONCE, in the account and region you want as the
+  live-events hub. The member-account template (live-events-member.yaml)
+  is deployed separately as a StackSet across every member account.
+
+Parameters:
+  OceanWebhookUrl:
+    Type: String
+    Description: >
+      Full HTTPS URL of the integration's webhook endpoint
+      (e.g. https://ingest.<your-ocean>.io/integration/webhook).
+    AllowedPattern: ^https://.+$
+
+  OrganizationId:
+    Type: String
+    Default: ""
+    Description: >
+      AWS Organizations ID (e.g. o-xxxxxxxx). When set, the topic
+      policy allows every events.amazonaws.com principal in this org
+      to publish. Leave blank for standalone-account setups and use
+      AllowedAccountIds instead.
+
+  AllowedAccountIds:
+    Type: CommaDelimitedList
+    Default: ""
+    Description: >
+      Comma-separated AWS account IDs allowed to publish. Used only
+      when OrganizationId is blank.
+
+  TopicName:
+    Type: String
+    Default: port-aws-v3-live-events
+    Description: SNS topic name.
+
+  DlqRetentionSeconds:
+    Type: Number
+    Default: 1209600
+    MinValue: 60
+    MaxValue: 1209600
+    Description: >
+      Dead-letter queue message retention period in seconds.
+      Default is 1209600 (14 days — the SQS maximum).
+      Minimum is 60 (1 minute).
+
+Conditions:
+  UseOrganization: !Not [!Equals [!Ref OrganizationId, ""]]
+
+Resources:
+  LiveEventsDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${TopicName}-dlq
+      MessageRetentionPeriod: !Ref DlqRetentionSeconds
+      KmsMasterKeyId: alias/aws/sqs
+
+  LiveEventsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Ref TopicName
+      KmsMasterKeyId: alias/aws/sns
+
+  LiveEventsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref LiveEventsTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - !If
+            - UseOrganization
+            - Sid: AllowEventBridgeFromOrg
+              Effect: Allow
+              Principal:
+                Service: events.amazonaws.com
+              Action: SNS:Publish
+              Resource: !Ref LiveEventsTopic
+              Condition:
+                StringEquals:
+                  aws:PrincipalOrgID: !Ref OrganizationId
+            - Sid: AllowEventBridgeFromAccounts
+              Effect: Allow
+              Principal:
+                Service: events.amazonaws.com
+              Action: SNS:Publish
+              Resource: !Ref LiveEventsTopic
+              Condition:
+                StringEquals:
+                  aws:SourceAccount: !Ref AllowedAccountIds
+
+  DlqPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref LiveEventsDlq
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowSnsToSend
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt LiveEventsDlq.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref LiveEventsTopic
+
+  OceanHttpsSubscription:
+    Type: AWS::SNS::Subscription
+    DependsOn:
+      - LiveEventsTopicPolicy
+      - DlqPolicy
+    Properties:
+      Protocol: https
+      Endpoint: !Ref OceanWebhookUrl
+      TopicArn: !Ref LiveEventsTopic
+      # RawMessageDelivery must stay false: SNS wraps the EventBridge
+      # payload in its own envelope (carrying the X.509 signature the
+      # webhook verifier checks). The processor unwraps the envelope.
+      RawMessageDelivery: false
+      RedrivePolicy: !Sub |
+        {"deadLetterTargetArn": "${LiveEventsDlq.Arn}"}
+
+Outputs:
+  TopicArn:
+    Value: !Ref LiveEventsTopic
+    Description: ARN to put into AwsLiveEventsTopicArn on the member template.
+    Export:
+      Name: !Sub ${AWS::StackName}-TopicArn
+  DlqArn:
+    Value: !GetAtt LiveEventsDlq.Arn
+    Description: ARN of the dead-letter queue.

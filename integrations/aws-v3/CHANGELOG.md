@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.3.0-beta (2026-05-14)
+
+
+### Features
+
+- Added a live-events path alongside the scheduled resync. The integration now exposes `/integration/webhook`, consumes EventBridge events fan-in'd through a central SNS topic, and upserts/deletes Port entities within seconds of the AWS change. Day-one coverage: `AWS::EC2::Instance`, `AWS::ECS::Service`, `AWS::Lambda::Function`, `AWS::S3::Bucket`. Customer setup ships as two CloudFormation templates under `docs/cloudformation/` (hub-account stack + member-account StackSet); architecture and trade-offs in [`docs/adr-live-events.md`](docs/adr-live-events.md).
+
+
+### Improvements
+
+- New config knobs in `.port/spec.yaml`: `webhookSecret` (optional HMAC-SHA256, layered on top of SNS signature verification), `liveEventsEnabled` (kill-switch), `snsCertHostAllowlist` (suffix allowlist for SNS signing-cert URLs).
+- Webhook authentication rejects bad SNS X.509 signatures or mismatched HMACs with HTTP 401. Every decision point emits a structured `outcome=` log line.
+- Live-event handlers reuse `aws/core/exporters/` for the resource fetch. Adding a new kind is one EventBridge rule, one `AWSLiveEventProcessor` subclass (~30 lines), and one line in the registry.
+
+
+## 2.2.7-beta (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
 ## 2.2.6-beta (2026-05-14)
 
 

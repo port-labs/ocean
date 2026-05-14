@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Port AWS-V3 live-events member-account stack. Provisions the
+  EventBridge rules that forward EC2, ECS, Lambda, and S3 lifecycle
+  events to the hub-account SNS topic.
+
+  Designed to be deployed as a CloudFormation StackSet across
+  (account, region) pairs. For AWS Organizations, deploy with
+  SERVICE_MANAGED permissions targeting every account in the org and
+  every region of interest. For standalone accounts, deploy as a
+  per-account stack with the same parameters.
+
+  Note on HMAC (webhookSecret): SNS HTTPS delivery does not support
+  custom HTTP headers, and EventBridge InputTransformer cannot compute
+  a HMAC. The webhookSecret config option in the integration is
+  therefore only applicable when an API Gateway or similar component
+  sits in front of the Ocean webhook endpoint and injects the
+  X-Port-Signature header. For pure EventBridge → SNS → HTTPS
+  deployments, rely on SNS X.509 signature verification alone.
+
+Parameters:
+  AwsLiveEventsTopicArn:
+    Type: String
+    Description: >
+      ARN of the hub-account SNS topic created by live-events-hub.yaml.
+      Same value for every region; cross-region Publish is supported.
+
+Resources:
+
+  # --- EC2 instance state changes (native EventBridge events) -----
+
+  Ec2InstanceStateChangeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: port-aws-v3-ec2-instance-state-change
+      Description: Forward EC2 instance state changes to the Port live-events hub.
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - "EC2 Instance State-change Notification"
+      State: ENABLED
+      Targets:
+        - Arn: !Ref AwsLiveEventsTopicArn
+          Id: PortLiveEventsHub
+
+  # --- ECS service & deployment state changes (native events) -----
+
+  EcsServiceActionRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: port-aws-v3-ecs-service-action
+      Description: Forward ECS service lifecycle events to the Port live-events hub.
+      EventPattern:
+        source:
+          - aws.ecs
+        detail-type:
+          - "ECS Service Action"
+          - "ECS Deployment State Change"
+      State: ENABLED
+      Targets:
+        - Arn: !Ref AwsLiveEventsTopicArn
+          Id: PortLiveEventsHub
+
+  # --- Lambda lifecycle (CloudTrail-via-EventBridge) --------------
+
+  LambdaCloudTrailRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: port-aws-v3-lambda-cloudtrail
+      Description: >
+        Forward Lambda create/update/delete CloudTrail events to the Port
+        live-events hub. Requires CloudTrail to be enabled in this region
+        — default for new AWS accounts.
+      EventPattern:
+        source:
+          - aws.lambda
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - lambda.amazonaws.com
+          eventName:
+            - CreateFunction20150331
+            - UpdateFunctionConfiguration20150331v2
+            - UpdateFunctionCode20150331v2
+            - PublishVersion20150331
+            - TagResource20170331v2
+            - UntagResource20170331v2
+            - DeleteFunction20150331
+      State: ENABLED
+      Targets:
+        - Arn: !Ref AwsLiveEventsTopicArn
+          Id: PortLiveEventsHub
+
+  # --- S3 bucket lifecycle (CloudTrail-via-EventBridge) -----------
+
+  S3CloudTrailRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: port-aws-v3-s3-cloudtrail
+      Description: >
+        Forward S3 bucket-level CloudTrail events to the Port live-events
+        hub. Object-level events (GetObject, PutObject, ...) are
+        deliberately excluded — data-plane, not catalog-relevant.
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - s3.amazonaws.com
+          eventName:
+            - CreateBucket
+            - DeleteBucket
+            - PutBucketTagging
+            - PutBucketPolicy
+            - PutBucketEncryption
+            - PutPublicAccessBlock
+            - PutBucketOwnershipControls
+      State: ENABLED
+      Targets:
+        - Arn: !Ref AwsLiveEventsTopicArn
+          Id: PortLiveEventsHub
