@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.4.9 (2026-05-14)
+## 5.4.10 (2026-05-14)
 
 
 ### Bug Fixes
 
-- Fixed `'NoneType' object is not subscriptable` failure during team resync when a team or organization is `null` in the GraphQL response (e.g. team was deleted between the REST list and GraphQL enrichment call, or the GitHub App lacks permissions to read it). The exporter now logs a warning and skips the team instead of crashing the entire resync.
+- Prevent team resync from crashing when GraphQL returns `organization.team` as null for enterprise teams; log and skip the team instead.
+
+
+## 5.4.9 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
 
 
 ## 5.4.8 (2026-05-14)
