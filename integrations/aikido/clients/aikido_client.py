@@ -151,30 +151,28 @@ class AikidoClient:
         """
         Fetch all issues and yield them in batches of the specified size.
         """
+        
         all_issues = await self.get_all_issues()
         for i in range(0, len(all_issues), batch_size):
             yield all_issues[i : i + batch_size]
 
-    async def get_open_issue_groups(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch paginated open issue groups from the Aikido API."""
-
-        async for issue_groups in self.get_paginated_resource(
-            endpoint=OPEN_ISSUE_GROUPS_ENDPOINT,
-            resource_name="open issue groups",
-            first_page=FIRST_PAGE,
-            page_size=PAGE_SIZE,
-        ):
-            yield issue_groups
-
-    async def get_open_issue_groups_for_team(
-        self, team_id: str | int
+    async def get_open_issue_groups(
+        self, team_id: Optional[str | int] = None
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch paginated open issue groups for a specific team from the Aikido API."""
+        """Fetch paginated open issue groups from the Aikido API.
 
-        base_params = {"filter_team_id": team_id}
+        If team_id is provided, results are scoped to that team via filter_team_id.
+        """
+        
+        if team_id is None:
+            base_params: Dict[str, Any] = {}
+            resource_name = "open issue groups"
+        else:
+            base_params = {"filter_team_id": team_id}
+            resource_name = f"open issue groups for team {team_id}"
         async for issue_groups in self.get_paginated_resource(
             endpoint=OPEN_ISSUE_GROUPS_ENDPOINT,
-            resource_name=f"open issue groups for team {team_id}",
+            resource_name=resource_name,
             first_page=FIRST_PAGE,
             page_size=PAGE_SIZE,
             base_params=base_params,
