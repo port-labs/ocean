@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.4.10 (2026-05-14)
+
+
+### Bug Fixes
+
+- Prevent team resync from crashing when GraphQL returns `organization.team` as null for enterprise teams; log and skip the team instead.
+
+
+## 5.4.9 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 5.4.8 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 5.4.7 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 5.4.6 (2026-05-13)
+
+
+### Improvements
+
+- Cached recursive git tree retrieval in file exporter to reduce repeated API calls per repo/branch during file matching.
+
+
+## 5.4.5 (2026-05-12)
+
+
+### Bug Fixes
+
+- Prevented resync failures when `includedFiles` targets a path that is not a regular file (e.g. symlink/submodule) or when the GitHub Contents API response is missing `content`/`encoding`.
+
+
+## 5.4.4 (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
 ## 5.4.3 (2026-05-12)
 
 
