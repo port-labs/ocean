@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import AsyncGenerator
+import uuid
 
 from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
@@ -148,14 +149,13 @@ class LiveEventsMixin(HandlerMixin):
                         )
                     )
 
-                if not data_entries:
-                    continue
-
                 logger.debug(
                     f"Sending {len(data_entries)} data entries to lakehouse",
                     event_id=event_id,
                     kind=kind,
                 )
+            if not data_entries:
+                return
             try:
                 event = LakehouseDataEntryBatch(
                     event_id=event_id,
@@ -166,8 +166,9 @@ class LiveEventsMixin(HandlerMixin):
                     extraction_timestamp=int(datetime.now().timestamp() * 1000),
                     data=data_entries,
                 )
+                event_id_str = event_id or str(uuid.uuid4())
                 await ocean.port_client.post_integration_raw_data_batch(
-                    event_id,
+                    event_id_str,
                     event,
                 )
             except Exception as e:
