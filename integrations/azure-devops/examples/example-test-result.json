@@ -1,0 +1,63 @@
+{
+  "id": 100000,
+  "project": {
+    "id": "5aca29c0-dd0e-4459-98a3-5b432e55e7a8",
+    "name": "dummy-project",
+    "url": "[REDACTED]/_apis/projects/dummy-project"
+  },
+  "startedDate": "2026-05-10T19:11:56.713Z",
+  "completedDate": "2026-05-10T19:11:56.713Z",
+  "outcome": "Passed",
+  "revision": 1,
+  "state": "Completed",
+  "testCase": {
+    "name": "test_dummy"
+  },
+  "testRun": {
+    "id": "2",
+    "name": "Dummy Test Run",
+    "url": "[REDACTED]/dummy-project/_apis/test/Runs/2"
+  },
+  "lastUpdatedDate": "2026-05-10T19:11:57.177Z",
+  "priority": 0,
+  "build": {
+    "id": "9",
+    "name": "20260510.2",
+    "url": "[REDACTED]/_apis/build/Builds/9"
+  },
+  "createdDate": "2026-05-10T19:11:57.177Z",
+  "url": "[REDACTED]/dummy-project/_apis/test/Runs/2/Results/100000",
+  "failureType": "None",
+  "automatedTestStorage": "tests",
+  "automatedTestType": "JUnit",
+  "testCaseTitle": "test_dummy",
+  "customFields": [],
+  "testCaseReferenceId": 1,
+  "runBy": {
+    "displayName": "Jane Doe",
+    "url": "[REDACTED]/_apis/Identities/00000000-0000-0000-0000-000000000001",
+    "_links": {
+      "avatar": {
+        "href": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.000000000000000000000000000000000001"
+      }
+    },
+    "id": "00000000-0000-0000-0000-000000000001",
+    "uniqueName": "jane.doe@example.com",
+    "imageUrl": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.000000000000000000000000000000000001",
+    "descriptor": "aad.000000000000000000000000000000000001"
+  },
+  "lastUpdatedBy": {
+    "displayName": "dummy-project Build Service",
+    "url": "[REDACTED]/_apis/Identities/00000000-0000-0000-0000-000000000002",
+    "_links": {
+      "avatar": {
+        "href": "[REDACTED]/_apis/GraphProfile/MemberAvatars/svc.000000000000000000000000000000000002"
+      }
+    },
+    "id": "00000000-0000-0000-0000-000000000002",
+    "uniqueName": "Build\\5aca29c0-dd0e-4459-98a3-5b432e55e7a8",
+    "imageUrl": "[REDACTED]/_apis/GraphProfile/MemberAvatars/svc.000000000000000000000000000000000002",
+    "descriptor": "svc.000000000000000000000000000000000002"
+  },
+  "automatedTestName": "test_dummy"
+}

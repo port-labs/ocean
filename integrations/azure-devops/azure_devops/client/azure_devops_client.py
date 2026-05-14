@@ -70,6 +70,7 @@ MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
 MAX_CONCURRENT_PROJECTS = 5
+MAX_CONCURRENT_TEST_RUN_RESULTS = 10
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -2064,24 +2065,18 @@ class AzureDevopsClient(HTTPBaseClient):
     async def _fetch_enriched_test_runs(
         self,
         project_id: str,
-        include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
         params = {"includeRunDetails": True, **API_PARAMS}
         async for runs in self._get_paginated_by_top_and_skip(url, params=params):
-            yield await self._enrich_test_runs(
-                runs, project_id, include_results, coverage_config
-            )
+            yield await self._enrich_test_runs(runs, project_id, coverage_config)
 
     async def fetch_test_runs(
         self,
-        include_results: bool,
         coverage_config: Optional["CodeCoverageConfig"] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info(
-            f"Starting to fetch test runs with include_results={include_results}"
-        )
+        logger.info("Starting to fetch test runs")
 
         async for projects in self.generate_projects():
             semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
@@ -2091,7 +2086,6 @@ class AzureDevopsClient(HTTPBaseClient):
                     functools.partial(
                         self._fetch_enriched_test_runs,
                         project["id"],
-                        include_results,
                         coverage_config,
                     ),
                 )
@@ -2129,18 +2123,9 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         test_runs: list[dict[str, Any]],
         project_id: str,
-        include_results: bool = False,
         coverage_config: Optional["CodeCoverageConfig"] = None,
     ) -> list[dict[str, Any]]:
-        logger.info(
-            f"Enriching {len(test_runs)} test runs for project {project_id}, include_results={include_results}"
-        )
-
-        test_results_tasks: list[Awaitable[list[dict[str, Any]]]] = (
-            [self._fetch_test_results(project_id, run["id"]) for run in test_runs]
-            if include_results
-            else []
-        )
+        logger.info(f"Enriching {len(test_runs)} test runs for project {project_id}")
 
         coverage_tasks: list[Awaitable[dict[str, Any]]] = (
             [
@@ -2158,24 +2143,46 @@ class AzureDevopsClient(HTTPBaseClient):
         )
 
         await self._attach_async_results(
-            test_runs, test_results_tasks, "__testResults", []
-        )
-        await self._attach_async_results(
             test_runs, coverage_tasks, "__codeCoverage", {}
         )
 
         return test_runs
 
-    async def _fetch_test_results(
-        self, project_id: str, run_id: str
-    ) -> list[dict[str, Any]]:
-        """Fetch test results for a specific test run."""
-        results = []
+    async def generate_test_results(
+        self,
+        result_params: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        run_semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TEST_RUN_RESULTS)
+        async for runs_page in self.fetch_test_runs():
+            tasks = [
+                semaphore_async_iterator(
+                    run_semaphore,
+                    functools.partial(
+                        self._fetch_results_for_run,
+                        run["project"]["id"],
+                        run["id"],
+                        result_params,
+                    ),
+                )
+                for run in runs_page
+            ]
+            async for results_batch in stream_async_iterators_tasks(*tasks):
+                yield results_batch
+
+    async def _fetch_results_for_run(
+        self,
+        project_id: str,
+        run_id: int,
+        additional_params: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/test/runs/{run_id}/results"
+        )
         async for page in self._get_paginated_by_top_and_continuation_token(
-            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs/{run_id}/results"
+            url, additional_params=additional_params
         ):
-            results.extend(page)
-        return results
+            yield page
 
     async def _fetch_code_coverage(
         self, project_id: str, build_id: int, coverage_config: "CodeCoverageConfig"
@@ -2203,7 +2210,6 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         project_id: str,
         build_id: str,
-        include_results: bool = False,
         coverage_config: Optional["CodeCoverageConfig"] = None,
     ) -> list[dict[str, Any]]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
@@ -2215,7 +2221,5 @@ class AzureDevopsClient(HTTPBaseClient):
         async for runs in self._get_paginated_by_top_and_skip(url, params=params):
             all_runs.extend(runs)
         if all_runs:
-            await self._enrich_test_runs(
-                all_runs, project_id, include_results, coverage_config
-            )
+            await self._enrich_test_runs(all_runs, project_id, coverage_config)
         return all_runs

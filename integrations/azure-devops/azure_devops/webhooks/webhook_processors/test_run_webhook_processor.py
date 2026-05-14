@@ -46,7 +46,6 @@ class TestRunWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         test_runs = await client.get_test_runs_by_build(
             project_id,
             build_id,
-            config.selector.include_results,
             config.selector.code_coverage,
         )
         if not test_runs:

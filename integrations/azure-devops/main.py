@@ -63,6 +63,7 @@ from integration import (
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     AzureDevopsTestRunResourceConfig,
+    AzureDevopsTestResultResourceConfig,
     AzureDevopsPullRequestResourceConfig,
     AzureDevopsAdvancedSecurityResourceConfig,
     AzureDevopsRepositoryResourceConfig,
@@ -419,14 +420,22 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     selector = cast(AzureDevopsTestRunResourceConfig, event.resource_config).selector
-    include_results = selector.include_results
-    coverage_config = selector.code_coverage
 
-    async for test_runs in azure_devops_client.fetch_test_runs(
-        include_results, coverage_config
-    ):
+    async for test_runs in azure_devops_client.fetch_test_runs(selector.code_coverage):
         logger.info(f"Fetched {len(test_runs)} test runs")
         yield test_runs
+
+
+@ocean.on_resync(Kind.TEST_RESULT)
+async def resync_test_results(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(AzureDevopsTestResultResourceConfig, event.resource_config).selector
+
+    async for test_results in azure_devops_client.generate_test_results(
+        selector.to_params()
+    ):
+        logger.info(f"Resyncing {len(test_results)} test results")
+        yield test_results
 
 
 @ocean.on_resync(Kind.ITERATION)

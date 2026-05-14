@@ -214,12 +214,6 @@ class CodeCoverageConfig(BaseModel):
 
 
 class AzureDevopsTestRunSelector(Selector):
-    include_results: bool = Field(
-        default=True,
-        alias="includeResults",
-        title="Include Results",
-        description="Whether to include test results for each test run, defaults to true",
-    )
     code_coverage: Optional[CodeCoverageConfig] = Field(
         default=None,
         alias="codeCoverage",
@@ -236,6 +230,60 @@ class AzureDevopsTestRunResourceConfig(ResourceConfig):
     selector: AzureDevopsTestRunSelector = Field(
         title="Test run selector",
         description="Selector for the test run resource.",
+    )
+
+
+class AzureDevopsTestResultSelector(Selector):
+    outcomes: Optional[
+        list[
+            Literal[
+                "unspecified",
+                "none",
+                "passed",
+                "failed",
+                "inconclusive",
+                "timeout",
+                "aborted",
+                "blocked",
+                "notExecuted",
+                "warning",
+                "error",
+                "notApplicable",
+                "paused",
+                "inProgress",
+                "notImpacted",
+            ]
+        ]
+    ] = Field(
+        default=None,
+        alias="outcomes",
+        title="Outcomes",
+        description="Filter test results by outcome. When omitted, all outcomes are fetched.",
+    )
+    details_to_include: Optional[
+        Literal["none", "iterations", "workItems", "subResults", "point"]
+    ] = Field(
+        default=None,
+        alias="detailsToInclude",
+        title="Details to Include",
+        description="Extra detail level to expand on each result.",
+    )
+
+    def to_params(self) -> dict[str, Any]:
+        data = self.dict(by_alias=True, exclude_none=True, exclude={"query"})
+        if "outcomes" in data:
+            data["outcomes"] = ",".join(data["outcomes"])
+        return data
+
+
+class AzureDevopsTestResultResourceConfig(ResourceConfig):
+    kind: Literal["test-result"] = Field(
+        title="Azure Devops Test Result",
+        description="Azure Devops test result resource kind.",
+    )
+    selector: AzureDevopsTestResultSelector = Field(
+        title="Test result selector",
+        description="Selector for the test result resource.",
     )
 
 
@@ -609,6 +657,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsFileResourceConfig
         | AzureDevopsPipelineResourceConfig
         | AzureDevopsTestRunResourceConfig
+        | AzureDevopsTestResultResourceConfig
         | AzureDevopsPullRequestResourceConfig
         | AzureDevopsAdvancedSecurityResourceConfig
         | AzureDevopsRepositoryResourceConfig

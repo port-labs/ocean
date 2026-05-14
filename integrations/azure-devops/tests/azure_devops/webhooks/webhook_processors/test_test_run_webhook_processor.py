@@ -126,7 +126,6 @@ async def test_handle_event_success(
     }
     resource_config = MagicMock()
     resource_config.kind = "test-run"
-    resource_config.selector.include_results = True
     resource_config.selector.code_coverage = None
 
     result = await test_run_processor.handle_event(payload, resource_config)
@@ -136,7 +135,7 @@ async def test_handle_event_success(
     assert result.updated_raw_results[0]["id"] == 10
     assert result.updated_raw_results[1]["id"] == 11
     mock_client.get_test_runs_by_build.assert_called_once_with(
-        "project-123", "456", True, None
+        "project-123", "456", None
     )
 
 
@@ -159,7 +158,6 @@ async def test_handle_event_no_test_runs(
     }
     resource_config = MagicMock()
     resource_config.kind = "test-run"
-    resource_config.selector.include_results = False
     resource_config.selector.code_coverage = None
 
     result = await test_run_processor.handle_event(payload, resource_config)
