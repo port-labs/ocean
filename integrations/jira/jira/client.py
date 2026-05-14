@@ -40,6 +40,9 @@ WEBHOOK_EVENTS = [
     "board_created",
     "board_updated",
     "board_deleted",
+    "worklog_created",
+    "worklog_updated",
+    "worklog_deleted",
 ]
 
 OAUTH2_WEBHOOK_EVENTS = [
@@ -55,6 +58,9 @@ OAUTH2_WEBHOOK_EVENTS = [
     "board_created",
     "board_updated",
     "board_deleted",
+    "worklog_created",
+    "worklog_updated",
+    "worklog_deleted",
 ]
 
 
@@ -225,8 +231,7 @@ class JiraClient(OAuthClient):
         extract_key: str | None = None,
         initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = initial_params or {}
-        params |= self._generate_base_req_params()
+        params = {**self._generate_base_req_params(), **(initial_params or {})}
 
         start_at = 0
         while True:
@@ -676,3 +681,27 @@ class JiraClient(OAuthClient):
 
         board["__projectKeys"] = project_keys
         return board
+
+    async def get_paginated_worklogs_for_issue(
+        self,
+        issue_key: str,
+        max_results: int = 5000,
+        started_after: int | None = None,
+        started_before: int | None = None,
+        expand: str | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch worklogs for a single issue."""
+        url = f"{self.api_url}/issue/{issue_key}/worklog"
+        query_params: dict[str, Any] = {"maxResults": max_results}
+
+        if started_after is not None:
+            query_params["startedAfter"] = started_after
+        if started_before is not None:
+            query_params["startedBefore"] = started_before
+        if expand:
+            query_params["expand"] = expand
+
+        async for batch in self._get_paginated_data(
+            url, "worklogs", initial_params=query_params
+        ):
+            yield [{**worklog, "__issueKey": issue_key} for worklog in batch]

@@ -14,6 +14,7 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from jira.overrides import (
     JiraIssueConfig,
     JiraProjectResourceConfig,
+    JiraWorklogResourceConfig,
     TeamResourceConfig,
     JiraBoardResourceConfig,
 )
@@ -122,6 +123,29 @@ async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         logger.info(f"Received board batch with {len(board_batch)} boards")
         yield list(enriched_boards)
+
+
+@ocean.on_resync(Kinds.WORKLOG)
+async def on_resync_worklogs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_or_create_jira_client()
+    config = cast(JiraWorklogResourceConfig, event.resource_config)
+    selector = config.selector
+
+    async for issue_batch in client.get_paginated_issues(
+        {"jql": selector.jql, "fields": "key"}
+    ):
+        worklog_streams = [
+            client.get_paginated_worklogs_for_issue(
+                issue["key"],
+                max_results=selector.max_results,
+                started_after=selector.started_after,
+                started_before=selector.started_before,
+                expand=selector.expand,
+            )
+            for issue in issue_batch
+        ]
+        async for worklog_batch in stream_async_iterators_tasks(*worklog_streams):
+            yield worklog_batch
 
 
 # Called once when the integration starts.

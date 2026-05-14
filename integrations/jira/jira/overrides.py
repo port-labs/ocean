@@ -125,6 +125,61 @@ class JiraBoardResourceConfig(ResourceConfig):
     )
 
 
+class JiraWorklogSelector(Selector):
+    jql: str = Field(
+        default="updated >= -1w",
+        title="JQL Filter",
+        description=(
+            "JQL to scope which issues' worklogs are fetched. "
+            "Defaults to issues updated in the last week to avoid "
+            "re-fetching all worklogs on every resync."
+        ),
+    )
+    max_results: int = Field(
+        alias="maxResults",
+        default=5000,
+        title="Max Results",
+        description="The maximum number of items to return per page.",
+    )
+    started_after: int | None = Field(
+        alias="startedAfter",
+        default=None,
+        title="Started After",
+        description=(
+            "UNIX timestamp in milliseconds. "
+            "Only return worklogs started after this time."
+        ),
+    )
+    started_before: int | None = Field(
+        alias="startedBefore",
+        default=None,
+        title="Started Before",
+        description=(
+            "UNIX timestamp in milliseconds. "
+            "Only return worklogs started before this time."
+        ),
+    )
+    expand: str | None = Field(
+        default=None,
+        title="Expand",
+        description=(
+            "Use expand to include additional information about worklogs in the response. "
+            "Accepts 'properties', which returns worklog properties."
+        ),
+    )
+
+
+class JiraWorklogResourceConfig(ResourceConfig):
+    kind: Literal["worklog"] = Field(
+        title="Jira Worklog",
+        description="Jira worklog resource kind, representing time tracking entries on issues.",
+    )
+    selector: JiraWorklogSelector = Field(
+        title="Worklog Selector",
+        description="Selector for Jira worklog resources.",
+    )
+
+
 class JiraPortAppConfig(PortAppConfig):
     resources: list[
         TeamResourceConfig
@@ -133,6 +188,7 @@ class JiraPortAppConfig(PortAppConfig):
         | JiraUserResourceConfig
         | JiraReleaseResourceConfig
         | JiraBoardResourceConfig
+        | JiraWorklogResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore[assignment]
