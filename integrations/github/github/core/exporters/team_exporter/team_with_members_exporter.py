@@ -42,8 +42,20 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             )
             return None
 
-        data = response["data"]
-        team = data["organization"]["team"]
+        data = response.get("data") or {}
+        organization_data = data.get("organization")
+        if not organization_data:
+            logger.warning(
+                f"GraphQL response missing organization data for slug: {slug} in organization {organization}"
+            )
+            return None
+
+        team = organization_data.get("team")
+        if not team:
+            logger.warning(
+                f"Team not found via GraphQL with slug: {slug} in organization {organization}"
+            )
+            return None
 
         members_data = team["members"]
         member_nodes = members_data["nodes"]
@@ -121,7 +133,13 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
                 )
                 break
 
-            team_data = response["data"]["organization"]["team"]
+            organization_data = (response.get("data") or {}).get("organization")
+            team_data = (organization_data or {}).get("team")
+            if not team_data:
+                logger.warning(
+                    f"Team '{team_slug}' missing in GraphQL response while paginating members, stopping pagination"
+                )
+                break
 
             new_members_data = team_data["members"]
             all_member_nodes.extend(new_members_data["nodes"])
