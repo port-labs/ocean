@@ -2199,6 +2199,46 @@ class AzureDevopsClient(HTTPBaseClient):
         """Return empty coverage for test runs without a build (e.g., manual test runs)."""
         return {}
 
+    async def generate_code_coverages(
+        self,
+        coverage_config: "CodeCoverageConfig",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for builds in self.generate_builds():
+            coverage_entities: list[dict[str, Any]] = []
+            tasks = [
+                self._fetch_code_coverage(
+                    build["__projectId"], build["id"], coverage_config
+                )
+                for build in builds
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for build, result in zip(builds, results):
+                if isinstance(result, BaseException):
+                    logger.error(
+                        "Error fetching code coverage for build %s: %s",
+                        build["id"],
+                        result,
+                    )
+                    continue
+                if not result or not result.get("value"):
+                    continue
+                for coverage in result["value"]:
+                    coverage["__build"] = build
+                    coverage_entities.append(coverage)
+            if coverage_entities:
+                yield coverage_entities
+
+    async def get_code_coverage_for_build(
+        self,
+        project_id: str,
+        build_id: int,
+        coverage_config: "CodeCoverageConfig",
+    ) -> list[dict[str, Any]]:
+        result = await self._fetch_code_coverage(project_id, build_id, coverage_config)
+        if not result or not result.get("value"):
+            return []
+        return result["value"]
+
     async def get_test_runs_by_build(
         self,
         project_id: str,

@@ -239,6 +239,26 @@ class AzureDevopsTestRunResourceConfig(ResourceConfig):
     )
 
 
+class AzureDevopsCodeCoverageSelector(Selector):
+    code_coverage: CodeCoverageConfig = Field(
+        default_factory=CodeCoverageConfig,
+        alias="codeCoverage",
+        title="Code Coverage",
+        description="Code coverage configuration. Flags control detail level: 1 for Modules, 2 for Functions, 4 for BlockData. Values are additive (e.g. 7 for all).",
+    )
+
+
+class AzureDevopsCodeCoverageResourceConfig(ResourceConfig):
+    kind: Literal["code-coverage"] = Field(
+        title="Azure Devops Code Coverage",
+        description="Azure Devops code coverage resource kind.",
+    )
+    selector: AzureDevopsCodeCoverageSelector = Field(
+        title="Code coverage selector",
+        description="Selector for the code coverage resource.",
+    )
+
+
 class AzureDevopsPullRequestSelector(Selector):
     min_time_in_days: int = Field(
         default=7,
@@ -609,6 +629,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsFileResourceConfig
         | AzureDevopsPipelineResourceConfig
         | AzureDevopsTestRunResourceConfig
+        | AzureDevopsCodeCoverageResourceConfig
         | AzureDevopsPullRequestResourceConfig
         | AzureDevopsAdvancedSecurityResourceConfig
         | AzureDevopsRepositoryResourceConfig

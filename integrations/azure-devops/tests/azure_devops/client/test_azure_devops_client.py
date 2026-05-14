@@ -5092,3 +5092,145 @@ async def test_get_test_runs_by_build_empty(
 
                 assert len(result) == 0
                 mock_enrich.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_generate_code_coverages() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    mock_builds = [
+        {"id": 100, "__projectId": "proj1", "__project": {"id": "proj1", "name": "Project One"}},
+        {"id": 101, "__projectId": "proj1", "__project": {"id": "proj1", "name": "Project One"}},
+    ]
+
+    mock_coverage_response_100 = {
+        "value": [
+            {
+                "configuration": {"id": 51, "flavor": "Debug", "platform": "Any CPU"},
+                "state": "0",
+                "modules": [
+                    {
+                        "name": "myapp.dll",
+                        "statistics": {"blocksCovered": 10, "linesCovered": 50, "linesNotCovered": 10},
+                    }
+                ],
+                "codeCoverageFileUrl": "https://dev.azure.com/coverage/100",
+            }
+        ],
+        "count": 1,
+    }
+    mock_coverage_response_101: dict[str, Any] = {"value": [], "count": 0}
+
+    async def mock_generate_builds() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield mock_builds
+
+    from integration import CodeCoverageConfig
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        if build_id == 100:
+            return mock_coverage_response_100
+        return mock_coverage_response_101
+
+    with (
+        patch.object(client, "generate_builds", side_effect=mock_generate_builds),
+        patch.object(client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage),
+    ):
+        results: list[list[dict[str, Any]]] = []
+        coverage_config = CodeCoverageConfig(flags=1)
+        async for batch in client.generate_code_coverages(coverage_config):
+            results.append(batch)
+
+        assert len(results) == 1
+        assert len(results[0]) == 1
+        coverage = results[0][0]
+        assert coverage["configuration"]["id"] == 51
+        assert coverage["__build"]["id"] == 100
+        assert coverage["__build"]["__projectId"] == "proj1"
+
+
+@pytest.mark.asyncio
+async def test_generate_code_coverages_no_coverage() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    mock_builds = [
+        {"id": 200, "__projectId": "proj1", "__project": {"id": "proj1"}},
+    ]
+
+    async def mock_generate_builds() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield mock_builds
+
+    from integration import CodeCoverageConfig
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        return {}
+
+    with (
+        patch.object(client, "generate_builds", side_effect=mock_generate_builds),
+        patch.object(client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage),
+    ):
+        results: list[list[dict[str, Any]]] = []
+        coverage_config = CodeCoverageConfig(flags=1)
+        async for batch in client.generate_code_coverages(coverage_config):
+            results.append(batch)
+
+        assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_code_coverage_for_build() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    mock_response = {
+        "value": [
+            {
+                "configuration": {"id": 51, "flavor": "Debug", "platform": "Any CPU"},
+                "state": "0",
+                "modules": [{"name": "myapp.dll", "statistics": {"linesCovered": 50}}],
+            }
+        ],
+        "count": 1,
+    }
+
+    from integration import CodeCoverageConfig
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        return mock_response
+
+    with patch.object(client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage):
+        coverage_config = CodeCoverageConfig(flags=7)
+        result = await client.get_code_coverage_for_build("proj1", 100, coverage_config)
+
+        assert len(result) == 1
+        assert result[0]["configuration"]["id"] == 51
+
+
+@pytest.mark.asyncio
+async def test_get_code_coverage_for_build_empty() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    from integration import CodeCoverageConfig
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        return {}
+
+    with patch.object(client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage):
+        coverage_config = CodeCoverageConfig(flags=1)
+        result = await client.get_code_coverage_for_build("proj1", 100, coverage_config)
+
+        assert len(result) == 0

@@ -63,6 +63,7 @@ from integration import (
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     AzureDevopsTestRunResourceConfig,
+    AzureDevopsCodeCoverageResourceConfig,
     AzureDevopsPullRequestResourceConfig,
     AzureDevopsAdvancedSecurityResourceConfig,
     AzureDevopsRepositoryResourceConfig,
@@ -427,6 +428,21 @@ async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         logger.info(f"Fetched {len(test_runs)} test runs")
         yield test_runs
+
+
+@ocean.on_resync(Kind.CODE_COVERAGE)
+async def resync_code_coverages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(
+        AzureDevopsCodeCoverageResourceConfig, event.resource_config
+    ).selector
+    coverage_config = selector.code_coverage
+
+    async for coverages in azure_devops_client.generate_code_coverages(
+        coverage_config,
+    ):
+        logger.info(f"Fetched {len(coverages)} code coverage entries")
+        yield coverages
 
 
 @ocean.on_resync(Kind.ITERATION)
