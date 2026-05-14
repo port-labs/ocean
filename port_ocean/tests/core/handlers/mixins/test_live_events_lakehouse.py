@@ -23,7 +23,6 @@ from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.models import LakehouseOperation
 from port_ocean.ocean import Ocean
 
-
 one_webhook_event_raw_results_for_creation = WebhookEventRawResults(
     updated_raw_results=[
         {
