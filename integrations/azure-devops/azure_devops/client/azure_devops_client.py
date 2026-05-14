@@ -2180,7 +2180,7 @@ class AzureDevopsClient(HTTPBaseClient):
             f"/test/runs/{run_id}/results"
         )
         async for page in self._get_paginated_by_top_and_continuation_token(
-            url, additional_params=additional_params
+            url, additional_params={**additional_params, **API_PARAMS}
         ):
             yield page
 

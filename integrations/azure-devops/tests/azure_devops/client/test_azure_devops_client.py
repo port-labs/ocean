@@ -4973,7 +4973,7 @@ async def test_generate_test_results_propagates_params(
             async for _ in client.generate_test_results(result_params):
                 pass
 
-            assert captured_params == result_params
+            assert captured_params == {**result_params, "api-version": "7.1"}
 
 
 @pytest.mark.asyncio
