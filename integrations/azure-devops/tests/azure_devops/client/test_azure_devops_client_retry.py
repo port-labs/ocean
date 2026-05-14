@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES
 from azure_devops.client.file_processing import PathDescriptor, RecursionLevel
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.helpers.retry import RetryTransport
@@ -38,18 +39,24 @@ def _make_client_with_mock_transport(
     return client
 
 
-@pytest.mark.asyncio
-async def test_get_files_by_descriptors_retries_on_503(
-    mock_context: PortOceanContext, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    # POST is not in RetryTransport's default retryable methods, so the only thing
-    # that makes a 503 on itemsbatch retry is `extensions={"retryable": True}`.
-    # This test fails if that extension is ever dropped from the call site.
+@pytest.fixture(autouse=True)
+def _no_retry_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The 503 retry in _get_files_by_descriptors sleeps with exponential backoff;
+    # skip those waits so tests stay fast.
     async def no_sleep(_seconds: float) -> None:
         return None
 
-    monkeypatch.setattr("port_ocean.helpers.retry.asyncio.sleep", no_sleep)
+    monkeypatch.setattr(
+        "azure_devops.client.azure_devops_client.asyncio.sleep", no_sleep
+    )
 
+
+@pytest.mark.asyncio
+async def test_get_files_by_descriptors_retries_on_503(
+    mock_context: PortOceanContext,
+) -> None:
+    # Verifies the per-call 503 retry loop in _get_files_by_descriptors:
+    # the itemsbatch POST is re-sent on a 503 and the second response is parsed.
     expected_files = [
         {"path": "/src/app.py", "objectId": "abc"},
         {"path": "/src/util.py", "objectId": "def"},
@@ -86,17 +93,38 @@ async def test_get_files_by_descriptors_retries_on_503(
 
 
 @pytest.mark.asyncio
-async def test_get_files_by_descriptors_does_not_retry_post_without_retryable_extension(
-    mock_context: PortOceanContext, monkeypatch: pytest.MonkeyPatch
+async def test_get_files_by_descriptors_does_not_retry_on_502(
+    mock_context: PortOceanContext,
 ) -> None:
-    # Sanity check on the retry semantics this test file relies on:
-    # POSTs without `extensions={"retryable": True}` must NOT be retried, otherwise
-    # the positive test above would pass even if the extension was removed.
-    async def no_sleep(_seconds: float) -> None:
-        return None
+    # Only 503 is retried; other 5xx must surface immediately so that a real
+    # upstream error isn't masked by retries that can't help.
+    requests_seen: List[httpx.Request] = []
 
-    monkeypatch.setattr("port_ocean.helpers.retry.asyncio.sleep", no_sleep)
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests_seen.append(request)
+        return httpx.Response(502)
 
+    client = _make_client_with_mock_transport(mock_context, handler)
+    descriptor = PathDescriptor(
+        base_path="/src", recursion=RecursionLevel.FULL, pattern="/src/**"
+    )
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        await client._get_files_by_descriptors(
+            MOCK_REPOSITORY, [descriptor], MOCK_BRANCH
+        )
+
+    assert exc_info.value.response.status_code == 502
+    assert len(requests_seen) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_files_by_descriptors_exhausts_503_retries_then_raises(
+    mock_context: PortOceanContext,
+) -> None:
+    # If 503s persist past the budget, the method must raise instead of
+    # silently returning [], otherwise persistent outages would look like
+    # "no files in repository" and could cause false deletions.
     requests_seen: List[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -104,13 +132,14 @@ async def test_get_files_by_descriptors_does_not_retry_post_without_retryable_ex
         return httpx.Response(503)
 
     client = _make_client_with_mock_transport(mock_context, handler)
+    descriptor = PathDescriptor(
+        base_path="/src", recursion=RecursionLevel.FULL, pattern="/src/**"
+    )
 
-    with pytest.raises(httpx.HTTPStatusError):
-        await client.send_request(
-            "POST",
-            f"{MOCK_ORG_URL}/{MOCK_PROJECT_ID}/_apis/git/repositories/{MOCK_REPOSITORY_ID}/itemsbatch",
-            data=json.dumps({"itemDescriptors": []}),
-            headers={"Content-Type": "application/json"},
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        await client._get_files_by_descriptors(
+            MOCK_REPOSITORY, [descriptor], MOCK_BRANCH
         )
 
-    assert len(requests_seen) == 1
+    assert exc_info.value.response.status_code == 503
+    assert len(requests_seen) == MAX_TIMEMOUT_RETRIES + 1

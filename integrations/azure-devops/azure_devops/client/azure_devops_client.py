@@ -1633,8 +1633,8 @@ class AzureDevopsClient(HTTPBaseClient):
             ]
         }
 
-        timeout_retries = 0
-        while timeout_retries <= MAX_TIMEMOUT_RETRIES:
+        transient_retries = 0
+        while transient_retries <= MAX_TIMEMOUT_RETRIES:
             try:
                 response = await self.send_request(
                     "POST",
@@ -1642,9 +1642,8 @@ class AzureDevopsClient(HTTPBaseClient):
                     params=API_PARAMS,
                     data=json.dumps(request_data),
                     headers={"Content-Type": "application/json"},
-                    extensions={"retryable": True},
                 )
-                if not response or response.status_code >= 400:
+                if not response:
                     logger.warning(f"Failed to fetch items from {items_batch_url}")
                     return []
 
@@ -1656,13 +1655,13 @@ class AzureDevopsClient(HTTPBaseClient):
                 ]
 
             except ReadTimeout:
-                timeout_retries += 1
-                if timeout_retries <= MAX_TIMEMOUT_RETRIES:
+                transient_retries += 1
+                if transient_retries <= MAX_TIMEMOUT_RETRIES:
                     logger.warning(
                         f"Request timeout while fetching items for repository {repository['name']} "
-                        f"(attempt {timeout_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                        f"(attempt {transient_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
                     )
-                    await asyncio.sleep(2 ** (timeout_retries - 1))
+                    await asyncio.sleep(2 ** (transient_retries - 1))
                     continue
                 else:
                     logger.error(
@@ -1676,6 +1675,20 @@ class AzureDevopsClient(HTTPBaseClient):
                     )
 
             except HTTPStatusError as e:
+                if e.response.status_code == 503:
+                    transient_retries += 1
+                    if transient_retries <= MAX_TIMEMOUT_RETRIES:
+                        logger.warning(
+                            f"503 from itemsbatch for repository {repository['name']} "
+                            f"(attempt {transient_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                        )
+                        await asyncio.sleep(2 ** (transient_retries - 1))
+                        continue
+                    logger.error(
+                        f"Persistent 503 fetching items for repository {repository['name']} "
+                        f"after {MAX_TIMEMOUT_RETRIES + 1} attempts."
+                    )
+                    raise
                 logger.error(e.response.status_code)
                 logger.error(e.response.text)
                 if e.response.status_code == 400:
@@ -1683,8 +1696,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
                     )
                     return []
-                else:
-                    raise
+                raise
             except Exception as e:
                 logger.error(
                     f"Unexpected error processing files in {repository['name']}: {e}"
