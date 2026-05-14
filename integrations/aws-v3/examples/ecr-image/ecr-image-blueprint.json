@@ -1,0 +1,88 @@
+[
+  {
+    "identifier": "ecrImage",
+    "title": "ECR Image",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "repositoryName": {
+          "type": "string",
+          "title": "Repository Name",
+          "description": "The name of the ECR repository containing this image"
+        },
+        "imageTags": {
+          "type": "array",
+          "title": "Image Tags",
+          "description": "The tags associated with the container image",
+          "items": {
+            "type": "string"
+          }
+        },
+        "imageDigest": {
+          "type": "string",
+          "title": "Image Digest",
+          "description": "The sha256 digest of the image manifest"
+        },
+        "imageSizeInBytes": {
+          "type": "number",
+          "title": "Image Size (Bytes)",
+          "description": "The size of the image in bytes"
+        },
+        "imagePushedAt": {
+          "type": "string",
+          "title": "Image Pushed At",
+          "description": "The date and time the image was pushed to the repository",
+          "format": "date-time"
+        },
+        "artifactMediaType": {
+          "type": "string",
+          "title": "Artifact Media Type",
+          "description": "The media type of the artifact associated with the image"
+        },
+        "vulnerabilityCount": {
+          "type": "number",
+          "title": "Vulnerability Count",
+          "description": "Total number of vulnerabilities found in the image"
+        },
+        "criticalVulnerabilities": {
+          "type": "number",
+          "title": "Critical Vulnerabilities",
+          "description": "Number of critical severity vulnerabilities"
+        },
+        "highVulnerabilities": {
+          "type": "number",
+          "title": "High Vulnerabilities",
+          "description": "Number of high severity vulnerabilities"
+        },
+        "mediumVulnerabilities": {
+          "type": "number",
+          "title": "Medium Vulnerabilities",
+          "description": "Number of medium severity vulnerabilities"
+        },
+        "lowVulnerabilities": {
+          "type": "number",
+          "title": "Low Vulnerabilities",
+          "description": "Number of low severity vulnerabilities"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      },
+      "repository": {
+        "title": "Repository",
+        "target": "ecrRepository",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

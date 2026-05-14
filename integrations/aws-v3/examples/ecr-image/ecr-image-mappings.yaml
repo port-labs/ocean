@@ -1,0 +1,27 @@
+resources:
+  - kind: AWS::ECR::Image
+    selector:
+      query: 'true'
+      includeActions:
+        - GetImageScanResultsAction
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ImageDigest
+          title: (.Properties.RepositoryName + ":" + (.Properties.ImageTags[0] // .Properties.ImageDigest[7:19]))
+          blueprint: '"ecrImage"'
+          properties:
+            repositoryName: .Properties.RepositoryName
+            imageTags: .Properties.ImageTags
+            imageDigest: .Properties.ImageDigest
+            imageSizeInBytes: .Properties.ImageSizeInBytes
+            imagePushedAt: .Properties.ImagePushedAt
+            artifactMediaType: .Properties.ArtifactMediaType
+            vulnerabilityCount: (.Properties.ImageScanFindingsSummary.findingSeverityCounts.CRITICAL // 0) + (.Properties.ImageScanFindingsSummary.findingSeverityCounts.HIGH // 0) + (.Properties.ImageScanFindingsSummary.findingSeverityCounts.MEDIUM // 0) + (.Properties.ImageScanFindingsSummary.findingSeverityCounts.LOW // 0)
+            criticalVulnerabilities: .Properties.ImageScanFindingsSummary.findingSeverityCounts.CRITICAL // 0
+            highVulnerabilities: .Properties.ImageScanFindingsSummary.findingSeverityCounts.HIGH // 0
+            mediumVulnerabilities: .Properties.ImageScanFindingsSummary.findingSeverityCounts.MEDIUM // 0
+            lowVulnerabilities: .Properties.ImageScanFindingsSummary.findingSeverityCounts.LOW // 0
+          relations:
+            account: .__ExtraContext.AccountId
+            repository: '"arn:aws:ecr:" + .__ExtraContext.Region + ":" + .__ExtraContext.AccountId + ":repository/" + .Properties.RepositoryName'

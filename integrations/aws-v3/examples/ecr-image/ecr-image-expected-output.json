@@ -1,0 +1,28 @@
+{
+  "identifier": "sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+  "title": "bard:feature-branch",
+  "blueprint": "ecrImage",
+  "properties": {
+    "repositoryName": "bard",
+    "imageTags": [
+      "feature-branch",
+      "d02c43c",
+      "d02c43c9ee78120e940a311fab10b92c69f0358b",
+      "latest",
+      "build-8445827257"
+    ],
+    "imageDigest": "sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    "imageSizeInBytes": 49744047,
+    "imagePushedAt": "2024-03-27T02:33:35+00:00",
+    "artifactMediaType": "application/vnd.docker.container.image.v1+json",
+    "vulnerabilityCount": 0,
+    "criticalVulnerabilities": 0,
+    "highVulnerabilities": 0,
+    "mediumVulnerabilities": 0,
+    "lowVulnerabilities": 0
+  },
+  "relations": {
+    "account": "123456789012",
+    "repository": "arn:aws:ecr:eu-west-1:123456789012:repository/bard"
+  }
+}

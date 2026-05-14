@@ -1,0 +1,27 @@
+{
+  "Type": "AWS::ECR::Image",
+  "Properties": {
+    "RepositoryName": "bard",
+    "RegistryId": "123456789012",
+    "ImageDigest": "sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+    "ImageTags": [
+      "feature-branch",
+      "d02c43c",
+      "d02c43c9ee78120e940a311fab10b92c69f0358b",
+      "latest",
+      "build-8445827257"
+    ],
+    "ImageSizeInBytes": 49744047,
+    "ImagePushedAt": "2024-03-27T02:33:35+00:00",
+    "ImageManifestMediaType": "application/vnd.docker.distribution.manifest.v2+json",
+    "ArtifactMediaType": "application/vnd.docker.container.image.v1+json",
+    "LastRecordedPullTime": "2024-03-27T02:33:54.744000+00:00",
+    "ImageStatus": "ACTIVE",
+    "ImageScanStatus": null,
+    "ImageScanFindingsSummary": null
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
+  }
+}
