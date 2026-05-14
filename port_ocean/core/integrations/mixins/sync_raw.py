@@ -429,7 +429,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
             raw_results: RAW_RESULT = []
             lakehouse_data_enabled = await is_lakehouse_data_enabled()
-            dsp_mode = await is_dsp_mode_enabled()
 
             for result in results:
                 if isinstance(result, dict):
@@ -460,16 +459,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         number_of_raw_results = 0
         number_of_transformed_entities = 0
         batch_index = 0
-        
+
         if raw_results:
-            if lakehouse_data_enabled:
+            if lakehouse_data_enabled and buffer:
                 metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
                 lakehouse_data_entry = LakehouseDataEntry(request={}, response={}, metadata=metadata, items=raw_results)
                 await buffer.add(lakehouse_data_entry)
             batch_index += 1
             number_of_raw_results += len(raw_results)
 
-            if not dsp_mode:
+            if not await is_dsp_mode_enabled():
                 calculation_result = await self._register_resource_raw(
                     resource_config,
                     raw_results,
@@ -495,7 +494,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         await buffer.add(lakehouse_data_entry)
                     number_of_raw_results += len(items)
 
-                    if not dsp_mode:
+                    if not await is_dsp_mode_enabled():
                         calculation_result = await self._register_resource_raw(
                             resource_config,
                             items,
@@ -1152,8 +1151,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             logger.info(f"Resync will use the following mappings: {json.loads(app_config.json())}")
 
-            dsp_mode = await is_dsp_mode_enabled()
-            if dsp_mode:
+            if await is_dsp_mode_enabled():
                 logger.info(
                     "DSP mode active: ocean-core will skip transform, load and reconciliation"
                 )
@@ -1264,7 +1262,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         kinds=[MetricResourceKind.RECONCILIATION]
                     )
 
-                if dsp_mode:
+                if await is_dsp_mode_enabled():
                     logger.info(
                         "DSP mode active: skipping reconciliation, raw data handed off to external processor"
                     )

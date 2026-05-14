@@ -76,7 +76,6 @@ class LakehouseBuffer:
         now = time.monotonic()
         if self._last_flush_at is None:
             self._last_flush_at = now
-            return
 
         interval_exceeded = now - self._last_flush_at >= self._flush_interval
         size_exceeded = self._current_size_bytes >= self._max_size_bytes
@@ -89,4 +88,3 @@ class LakehouseBuffer:
                     f"{self._max_size_bytes / (1024 * 1024):.0f} MB), flushing"
                 )
             await self.flush()
-
