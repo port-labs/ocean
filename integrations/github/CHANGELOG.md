@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.4.10 (2026-05-14)
+
+
+### Bug Fixes
+
+- Prevent team resync from crashing when GraphQL returns `organization.team` as null for enterprise teams; log and skip the team instead.
+
+
 ## 5.4.9 (2026-05-14)
 
 
