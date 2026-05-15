@@ -48,7 +48,7 @@ def build_auth_provider(config: dict[str, Any]) -> AuthProvider:
         for field in ("client_id", "client_secret", "tenant_id"):
             if not config.get(field):
                 raise ValueError(
-                    f"Multiple Accounts mode requires '{field}'. "
+                    f"Service Principal auth requires '{field}'. "
                     "Provide clientId, clientSecret, and tenantId."
                 )
         os.environ["AZURE_TENANT_ID"] = config["tenant_id"]
@@ -60,11 +60,12 @@ def build_auth_provider(config: dict[str, Any]) -> AuthProvider:
         pat = config.get("personal_access_token")
         if not pat:
             raise ValueError(
-                "Single Account mode requires 'personal_access_token'."
+                "PAT auth requires 'personal_access_token'."
             )
         return PatAuthProvider(pat)
 
     raise ValueError(
-        f"Unknown account_mode '{account_mode}'. "
-        f"Expected '{ACCOUNT_MODE_SINGLE}' or '{ACCOUNT_MODE_MULTIPLE}'."
+        "No authentication configured. Provide either "
+        "personalAccessToken (PAT) or Service Principal credentials "
+        "(clientId, clientSecret, tenantId)."
     )

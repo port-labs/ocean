@@ -7,7 +7,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from azure_devops.client.azure_devops_client import AzureDevopsClient
 from integration import AzureDevopsFileResourceConfig
 from azure_devops.misc import Kind, extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_processors.base_processor import (
@@ -40,7 +39,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         except ValueError:
             return False
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         matching_resource_config = cast(AzureDevopsFileResourceConfig, resource_config)
@@ -55,7 +54,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        client = AzureDevopsClient.create_from_ocean_config()
+        client = self._get_client_for_webhook(payload)
         updates = payload["resource"]["refUpdates"]
         created, modified, deleted = await self._process_push_updates(
             matching_resource_config, payload, updates, client
@@ -80,7 +79,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         config: AzureDevopsFileResourceConfig,
         push_data: Dict[str, Any],
         updates: List[Dict[str, Any]],
-        client: AzureDevopsClient,
+        client:
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         created_files: List[Dict[str, Any]] = []
         modified_files: List[Dict[str, Any]] = []
@@ -117,7 +116,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         config: AzureDevopsFileResourceConfig,
         push_data: Dict[str, Any],
         update: Dict[str, Any],
-        client: AzureDevopsClient,
+        client:
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         logger.info(f"Processing ref update: {update}")
         repo_id = push_data["resource"]["repository"]["id"]
@@ -133,7 +132,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         repo_id: str,
         commit_id: str,
         config: AzureDevopsFileResourceConfig,
-        client: AzureDevopsClient,
+        client:
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
         logger.info(f"Fetching file changes for commit {commit_id} in repo {repo_id}")
         created_files: List[Dict[str, Any]] = []
@@ -205,7 +204,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         repo_info: Dict[str, Any],
         commit_id: str,
         changed_file: Dict[str, Any],
-        client: AzureDevopsClient,
+        client:
     ) -> Optional[Dict[str, Any]]:
         try:
             file_path = changed_file["item"]["path"]

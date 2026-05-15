@@ -1,6 +1,5 @@
 from typing import Any, Optional, Dict, cast
 
-from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import Kind
 from azure_devops.webhooks.events import RepositoryEvents
 from azure_devops.webhooks.webhook_processors.base_processor import (
@@ -38,11 +37,11 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         except ValueError:
             return False
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         repository_id = payload["resource"]["repository"]["id"]
-        client = AzureDevopsClient.create_from_ocean_config()
+        client = self._get_client_for_webhook(payload)
         repository = await self._get_repository_data(client, repository_id)
         if not repository:
             return WebhookEventRawResults(
@@ -66,7 +65,7 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
     @staticmethod
     async def _get_repository_data(
-        client: AzureDevopsClient, repository_id: str
+        client: repository_id: str
     ) -> Optional[Dict[str, Any]]:
         repository = await client.get_repository(repository_id)
         if not repository:

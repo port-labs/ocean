@@ -202,9 +202,17 @@ class AzureDevopsClient(HTTPBaseClient):
         project = response.json()
         return project
 
-    @cache_iterator_result()
     async def generate_projects(
         self, sync_default_team: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._generate_projects_cached(
+            self._organization_base_url, sync_default_team
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_projects_cached(
+        self, org_identifier: str, sync_default_team: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         sync_default_team: bool - The List projects endpoint of ADO API excludes default team of a project.
@@ -288,8 +296,14 @@ class AzureDevopsClient(HTTPBaseClient):
             "__projectId": project_id,
         }
 
-    @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._generate_teams_cached(self._organization_base_url):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_teams_cached(
+        self, org_identifier: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
         async for teams in self._get_paginated_by_top_and_skip(teams_url):
             yield teams
@@ -358,9 +372,15 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield users
 
-    @cache_iterator_result()
     async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate all security groups in the organization."""
+        async for batch in self._generate_groups_cached(self._organization_base_url):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_groups_cached(
+        self, org_identifier: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         groups_url = (
             self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/groups"
         )
@@ -489,9 +509,17 @@ class AzureDevopsClient(HTTPBaseClient):
         else:
             yield [repo for repo in repositories if self._repository_is_healthy(repo)]
 
-    @cache_iterator_result()
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
+    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
+        async for batch in self._generate_repositories_cached(
+            self._organization_base_url, include_disabled_repositories
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_repositories_cached(
+        self, org_identifier: str, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
@@ -895,8 +923,16 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             return []
 
-    @cache_iterator_result()
     async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._generate_environments_cached(
+            self._organization_base_url
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_environments_cached(
+        self, org_identifier: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
                 environments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments"
@@ -1358,9 +1394,17 @@ class AzureDevopsClient(HTTPBaseClient):
                         continue
                     raise
 
-    @cache_iterator_result()
     async def get_boards_in_organization(
         self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._get_boards_in_organization_cached(
+            self._organization_base_url
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _get_boards_in_organization_cached(
+        self, org_identifier: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             yield [
