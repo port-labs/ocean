@@ -18,6 +18,17 @@ class AWSSessionStrategy(ABC):
         """Yield (AccountInfo, AioSession) pairs for each account managed by this strategy."""
         pass
 
+    @abstractmethod
+    async def session_for_account(self, account_id: str) -> AioSession | None:
+        """Return a validated `AioSession` for the given account ID, or `None`.
+
+        Live-event handlers use this to resolve the right `AioSession` from the
+        `account` field carried in the EventBridge envelope, without invoking
+        the strategy's account-discovery iterator. Strategies that have not
+        completed a healthcheck must do so on first call.
+        """
+        pass
+
 
 class HealthCheckMixin(ABC):
     @abstractmethod

@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.4.5-beta (2026-05-14)
+
+
+### Improvements
+
+- Include `AWS::ECS::Service` in the default exporter resources in `.port/spec.yaml` so hosted installs ship with ECS service mapping enabled by default (required for live-events processing of `aws.ecs` EventBridge rules).
+
+
+## 2.4.4-beta (2026-05-14)
+
+
+### Fixes
+
+- **EC2 single-instance export:** `EC2InstanceExporter.get_resource` called `ResourceInspector` with raw instance-ID strings. Actions expect `DescribeInstances` **instance dicts**; the merge step then did `dict |= <string>` and raised `ValueError: dictionary update sequence element #0 has length 1; 2 is required`. The exporter now calls `describe_instances`, passes the returned `Instances` list to `inspect`, and adds `extra_context` (`AccountId`, `Region`). Adds `tests/core/exporters/ec2/instance/test_exporter.py`.
+
+
+## 2.4.3-beta (2026-05-14)
+
+
+### Improvements
+
+- Closed three rubric-mandated test gaps for the live-events feature. `TestUnknownEventResilience` (in `tests/webhook/test_pipeline.py`) posts an `aws.dynamodb` envelope and a malformed payload, asserting HTTP 200 + zero processor / exporter invocations — pinning the "log and discard safely" invariant. `TestDuplicateEventIdempotency` posts the same EC2 envelope twice and asserts both posts produce identical `SingleEC2InstanceRequest` identifiers (`instance_id`, `account_id`, `region`), proving deterministic upstream identity so Port's ARN-based dedup is the sole authoritative boundary. `tests/webhook/test_pagination_regression.py` parametrizes every kind processor and asserts `get_resource` is called exactly once while `get_paginated_resources` is never called — the live-events path is structurally barred from regressing the resync's pagination logic.
+
+
+## 2.4.2-beta (2026-05-14)
+
+
+### Documentation
+
+- Added `docs/live-events-setup.md`, the operator-facing setup walkthrough for the live-events pipeline. Covers the CloudTrail prerequisite for the Lambda + S3 rules, the bearer-token Secrets Manager flow, single-region and StackSet-based org-wide deploys, the `X-Port-Healthcheck` smoke test, zero-downtime + in-place token rotation procedures, a runnable DLQ replay script, temporary pause via `disable-rule`, retain-on-delete teardown semantics, and a symptom-to-fix troubleshooting matrix (CRLF token corruption, `Bearer ` double-prefix, S3-not-in-`us-east-1`, missing trail, `allowedAccountIds` mismatch, post-delete 404 race).
+
+
+## 2.4.1-beta (2026-05-14)
+
+
+### Improvements
+
+- Added registry-shape and HTTP-level pipeline regression tests for live events. `tests/webhook/test_registry.py` guards against `register_live_events_webhooks()` drift (missing middleware, missing processors, wrong path) and proves every canned EventBridge envelope matches exactly one kind processor. `tests/webhook/test_pipeline.py` runs the real auth middleware against a `TestClient` and asserts cross-processor isolation, the delete-shaped events skipping the exporter call, the allowlist gate actually preventing fetch, and the S3 exporter being invoked in the bucket's home region (not the envelope's `us-east-1`).
+
+
+## 2.4.0-beta (2026-05-14)
+
+
+### Features
+
+- Added per-kind live-event processors for `AWS::EC2::Instance`, `AWS::ECS::Service`, `AWS::Lambda::Function`, and `AWS::S3::Bucket`. Each consumes its native or CloudTrail-on-EventBridge envelope, resolves the right `AioSession` via `session_for_account`, calls the existing exporter's `get_resource(...)`, and routes the result through the framework's upsert/delete pipeline.
+- EC2: treats `state in {"shutting-down", "terminated"}` as a delete signal (since `shutting-down` precedes `terminated` by minutes and both are terminal); all other state transitions upsert.
+- ECS: parses cluster and service names from the service ARN in `payload.resources[0]`, handling both `ECS Service Action` and `ECS Deployment State Change` detail shapes; `SERVICE_DELETED` is the only event treated as an explicit delete.
+- Lambda: prefix-matches the date-versioned `eventName` values (`CreateFunction20…`, `UpdateFunctionConfiguration20…`, `UpdateFunctionCode20…`, `DeleteFunction20…`) so future API version bumps don't silently break delivery.
+- S3: resolves the bucket's home region from `detail.requestParameters.CreateBucketConfiguration.LocationConstraint` (defaulting to `us-east-1`) because the S3 control-plane envelope always carries `awsRegion: "us-east-1"`.
+- Race-case handling: any per-kind processor that receives `ResourceNotFoundException` (or peer codes) on a fetch converts the result into a delete payload, so resources deleted between event arrival and our fetch don't linger in the Port catalog until the next resync.
+
+
+## 2.3.0-beta (2026-05-14)
+
+
+### Features
+
+- Scaffolded live-events support (Phase 0): added `webhook_secret` and `allowedAccountIds` configuration fields, a path-scoped FastAPI middleware that returns HTTP 401 on bad/missing bearer for the `/integration/webhook/live-events` endpoint, an `_AwsAbstractWebhookProcessor` base with `authenticate` / `validate_payload` / `should_process_event` (account allowlist), and a `WebhookHealthcheckProcessor` for end-to-end smoke testing. Per-kind processors for EC2, ECS, Lambda, and S3 land in subsequent phases.
+- Added `session_for_account(account_id)` to `SingleAccountStrategy`, `MultiAccountStrategy`, and `OrganizationsStrategy`, plus `session_for_account` and `discover_valid_account_ids` helpers on `aws.auth.session_factory`, so live-event handlers can resolve the right `AioSession` from the EventBridge envelope's `account` field without iterating `get_all_account_sessions()`.
+
+
 ## 2.2.5-beta (2026-05-13)
 
 
@@ -44,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind. 
+- Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind.
 
 
 ## 2.2.0-beta (2026-04-23)

@@ -8,6 +8,7 @@ from aws.core.exporters.s3.bucket.actions import (
     GetBucketOwnershipControlsAction,
     GetBucketEncryptionAction,
     GetBucketTaggingAction,
+    ListBucketsAction,
 )
 from aws.core.interfaces.action import Action
 
@@ -348,6 +349,47 @@ class TestGetBucketTaggingAction:
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="network-error-bucket"
         )
+
+
+class TestListBucketsAction:
+    """Maps ListBuckets-style bucket dicts to Properties fragments."""
+
+    @pytest.fixture
+    def mock_client(self) -> AsyncMock:
+        return AsyncMock()
+
+    @pytest.fixture
+    def action(self, mock_client: AsyncMock) -> ListBucketsAction:
+        return ListBucketsAction(mock_client)
+
+    @pytest.mark.asyncio
+    async def test_execute_includes_creation_date_when_present(
+        self, action: ListBucketsAction
+    ) -> None:
+        from datetime import datetime, timezone
+
+        ts = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        result = await action.execute([{"Name": "b1", "CreationDate": ts}])
+        assert result == [
+            {
+                "BucketName": "b1",
+                "Arn": "arn:aws:s3:::b1",
+                "CreationDate": ts,
+            }
+        ]
+
+    @pytest.mark.asyncio
+    async def test_execute_without_creation_date(
+        self, action: ListBucketsAction
+    ) -> None:
+        """Single-bucket export passes Name-only stubs (e.g. S3 live-events)."""
+        result = await action.execute([{"Name": "test-bucket-23ff"}])
+        assert result == [
+            {
+                "BucketName": "test-bucket-23ff",
+                "Arn": "arn:aws:s3:::test-bucket-23ff",
+            }
+        ]
 
 
 class TestAllActionsIntegration:

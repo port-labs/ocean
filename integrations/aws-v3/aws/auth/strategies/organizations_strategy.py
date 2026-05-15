@@ -429,3 +429,16 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
         logger.info(
             f"Session provision complete: {len(self.valid_arns)} sessions yielded"
         )
+
+    async def session_for_account(self, account_id: str) -> AioSession | None:
+        if not (self.valid_arns and self.valid_sessions):
+            await self.healthcheck()
+
+        for arn, session in self.valid_sessions.items():
+            if extract_account_from_arn(arn) == account_id:
+                return session
+
+        logger.debug(
+            f"session_for_account: no validated session found for account {account_id}"
+        )
+        return None

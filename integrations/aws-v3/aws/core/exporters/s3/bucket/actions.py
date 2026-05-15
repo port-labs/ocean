@@ -120,13 +120,15 @@ class ListBucketsAction(Action):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         for bucket in buckets:
-            data = {
-                "CreationDate": bucket[
-                    "CreationDate"
-                ],  # ensure that every detail of the datetime string is preserved no rounding up or down
+            data: Dict[str, Any] = {
                 "BucketName": bucket["Name"],
                 "Arn": f"arn:aws:s3:::{bucket['Name']}",
             }
+            # Live-events / single-bucket export passes [{"Name": ...}] without CreationDate;
+            # full ListBuckets responses include it.
+            creation = bucket.get("CreationDate")
+            if creation is not None:
+                data["CreationDate"] = creation
             results.append(data)
         return results
 

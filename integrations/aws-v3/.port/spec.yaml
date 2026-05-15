@@ -10,6 +10,7 @@ features:
       - kind: AWS::S3::Bucket
       - kind: AWS::EC2::Instance
       - kind: AWS::ECS::Cluster
+      - kind: AWS::ECS::Service
       - kind: AWS::ECS::TaskDefinition
       - kind: AWS::ECR::Repository
       - kind: AWS::EC2::Volume
@@ -55,6 +56,24 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: >-
+      Shared bearer token validated on every inbound live-events webhook. Must
+      match the value configured in the AWS-side EventBridge Connection (see
+      docs/cloudformation/live-events.yaml). When unset, the live-events
+      endpoint rejects all requests with HTTP 401.
+  - name: allowedAccountIds
+    required: false
+    type: array
+    sensitive: false
+    description: >-
+      Optional allowlist of AWS account IDs whose live events should be
+      processed. When unset, the integration derives the allowlist from the
+      accounts that passed the auth health check. Events whose `account` is
+      not in the allowed set are dropped with a structured log line.
 disableDefaultInstallationMethods: true
 installationDocs:
   saas:
@@ -64,4 +83,4 @@ installationDocs:
 saas:
   enabled: true
   liveEvents:
-    enabled: false
+    enabled: true

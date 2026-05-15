@@ -136,6 +136,33 @@ async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSess
         yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session
 
 
+async def session_for_account(account_id: str) -> AioSession | None:
+    """Return a validated `AioSession` for `account_id`, or `None` if absent.
+
+    Wraps the active strategy's `session_for_account` so live-event handlers
+    can resolve the right session by AWS account ID without iterating
+    `get_all_account_sessions`. Returns `None` (rather than raising) so the
+    caller can drop the event with a structured log line.
+    """
+    strategy = await AccountStrategyFactory.create()
+    return await strategy.session_for_account(account_id)
+
+
+async def discover_valid_account_ids() -> set[str]:
+    """Return the set of AWS account IDs whose sessions passed healthcheck.
+
+    Used by the live-events processors to derive the default
+    `allowedAccountIds` set when the operator has not configured one
+    explicitly. Empty set means no accounts have been validated yet —
+    callers should treat that as "no filter" rather than "deny all".
+    """
+    strategy = await AccountStrategyFactory.create()
+    account_ids: set[str] = set()
+    async for account_info, _ in strategy.get_account_sessions():
+        account_ids.add(account_info["Id"])
+    return account_ids
+
+
 async def clear_aws_account_sessions() -> None:
     """Clear AWS account sessions after resync completes by deleting the cached strategy."""
     if AccountStrategyFactory._cached_strategy:
