@@ -37,21 +37,18 @@ class ServicePrincipalAuthProvider:
         return {"Authorization": f"Bearer {token}"}
 
 
+ACCOUNT_MODE_SINGLE = "Single Account"
+ACCOUNT_MODE_MULTIPLE = "Multiple Accounts"
+
+
 def build_auth_provider(config: dict[str, Any]) -> AuthProvider:
-    has_pat = bool(config.get("personal_access_token"))
-    has_sp = bool(config.get("client_id"))
+    account_mode = config.get("account_mode", ACCOUNT_MODE_SINGLE)
 
-    if has_pat and has_sp:
-        raise ValueError(
-            "Both PAT and Service Principal credentials are configured. "
-            "Use one authentication method, not both."
-        )
-
-    if has_sp:
+    if account_mode == ACCOUNT_MODE_MULTIPLE:
         for field in ("client_id", "client_secret", "tenant_id"):
             if not config.get(field):
                 raise ValueError(
-                    f"Service Principal auth requires '{field}'. "
+                    f"Multiple Accounts mode requires '{field}'. "
                     "Provide clientId, clientSecret, and tenantId."
                 )
         os.environ["AZURE_TENANT_ID"] = config["tenant_id"]
@@ -59,11 +56,15 @@ def build_auth_provider(config: dict[str, Any]) -> AuthProvider:
         os.environ["AZURE_CLIENT_SECRET"] = config["client_secret"]
         return ServicePrincipalAuthProvider(DefaultAzureCredential())
 
-    if has_pat:
-        return PatAuthProvider(config["personal_access_token"])
+    if account_mode == ACCOUNT_MODE_SINGLE:
+        pat = config.get("personal_access_token")
+        if not pat:
+            raise ValueError(
+                "Single Account mode requires 'personal_access_token'."
+            )
+        return PatAuthProvider(pat)
 
     raise ValueError(
-        "No authentication configured. Provide either "
-        "personalAccessToken (PAT) or Service Principal credentials "
-        "(clientId, clientSecret, tenantId)."
+        f"Unknown account_mode '{account_mode}'. "
+        f"Expected '{ACCOUNT_MODE_SINGLE}' or '{ACCOUNT_MODE_MULTIPLE}'."
     )

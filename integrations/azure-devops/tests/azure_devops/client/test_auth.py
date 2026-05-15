@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from azure_devops.client.auth import (
+    ACCOUNT_MODE_MULTIPLE,
+    ACCOUNT_MODE_SINGLE,
     ADO_SCOPE,
     PatAuthProvider,
     ServicePrincipalAuthProvider,
@@ -33,16 +35,25 @@ async def test_sp_auth_provider_returns_bearer_header() -> None:
     mock_credential.get_token.assert_called_once_with(ADO_SCOPE)
 
 
-def test_build_auth_provider_pat_mode() -> None:
+def test_build_auth_provider_single_account_mode() -> None:
+    provider = build_auth_provider(
+        {"account_mode": ACCOUNT_MODE_SINGLE, "personal_access_token": "my-pat"}
+    )
+    assert isinstance(provider, PatAuthProvider)
+
+
+def test_build_auth_provider_single_account_mode_default() -> None:
+    """account_mode defaults to Single Account when omitted."""
     provider = build_auth_provider({"personal_access_token": "my-pat"})
     assert isinstance(provider, PatAuthProvider)
 
 
-def test_build_auth_provider_sp_mode() -> None:
+def test_build_auth_provider_multiple_accounts_mode() -> None:
     with patch("azure_devops.client.auth.DefaultAzureCredential") as mock_dac:
         mock_dac.return_value = MagicMock()
         provider = build_auth_provider(
             {
+                "account_mode": ACCOUNT_MODE_MULTIPLE,
                 "client_id": "cid",
                 "client_secret": "csecret",
                 "tenant_id": "tid",
@@ -52,23 +63,18 @@ def test_build_auth_provider_sp_mode() -> None:
     mock_dac.assert_called_once()
 
 
-def test_build_auth_provider_no_credentials() -> None:
-    with pytest.raises(ValueError, match="No authentication configured"):
-        build_auth_provider({})
+def test_build_auth_provider_single_account_missing_pat() -> None:
+    with pytest.raises(ValueError, match="personal_access_token"):
+        build_auth_provider({"account_mode": ACCOUNT_MODE_SINGLE})
 
 
-def test_build_auth_provider_both_credentials() -> None:
-    with pytest.raises(ValueError, match="Both PAT and Service Principal"):
+def test_build_auth_provider_multiple_accounts_missing_sp_field() -> None:
+    with pytest.raises(ValueError, match="client_secret"):
         build_auth_provider(
-            {
-                "personal_access_token": "pat",
-                "client_id": "cid",
-                "client_secret": "csecret",
-                "tenant_id": "tid",
-            }
+            {"account_mode": ACCOUNT_MODE_MULTIPLE, "client_id": "cid"}
         )
 
 
-def test_build_auth_provider_partial_sp() -> None:
-    with pytest.raises(ValueError, match="client_secret"):
-        build_auth_provider({"client_id": "cid"})
+def test_build_auth_provider_unknown_mode() -> None:
+    with pytest.raises(ValueError, match="Unknown account_mode"):
+        build_auth_provider({"account_mode": "invalid"})
