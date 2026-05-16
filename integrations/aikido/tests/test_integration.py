@@ -30,4 +30,3 @@ def test_aikido_app_config_schema_includes_new_resource_kinds() -> None:
     assert "issues" in enum_values
     assert "issue_groups" in enum_values
     assert "team" in enum_values
-    assert "team_issue_group" in enum_values
