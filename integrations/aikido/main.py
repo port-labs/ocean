@@ -75,7 +75,7 @@ async def on_issue_groups_resync(
     client = init_aikido_client()
     selector = cast(IssueGroupResourceConfig, event.resource_config).selector
 
-    if selector.include_team:
+    if selector.scope_to_team:
         logger.info("Fetching team-scoped open issue groups from Aikido API")
         async for batch in _get_issue_groups_by_team(client):
             logger.info(f"Yielding team-scoped open issue groups batch of size: {len(batch)}")

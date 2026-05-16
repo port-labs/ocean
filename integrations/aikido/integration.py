@@ -66,11 +66,11 @@ class IssueResourceConfig(ResourceConfig):
 
 
 class IssueGroupSelector(Selector):
-    include_team: bool = Field(
+    scope_to_team: bool = Field(
         default=False,
-        alias="includeTeam",
-        title="Include Team",
-        description="Whether to fetch issue groups scoped by team, enriched with team context",
+        alias="scopeToTeam",
+        title="Scope To Team",
+        description="Whether to fetch issue groups scoped per team, enriched with team context",
     )
 
 

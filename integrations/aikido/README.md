@@ -84,11 +84,11 @@ This maps to the Aikido containers query parameter `filter_status`.
 
 ### Issue group selector filters
 
-You can control whether issue groups are fetched globally or scoped per team using `includeTeam` in the `issue_groups` selector.
+You can control whether issue groups are fetched globally or scoped per team using `scopeToTeam` in the `issue_groups` selector.
 
-When `includeTeam` is `true`, the integration iterates all active teams and fetches issue groups scoped to each team, enriching each record with `team_id` and `team_name`. The resulting entities map to the `aikidoTeamIssueGroup` blueprint with a relation back to the team.
+When `scopeToTeam` is `true`, the integration iterates all active teams and fetches issue groups scoped to each team, enriching each record with `team_id` and `team_name`. The resulting entities map to the `aikidoTeamIssueGroup` blueprint with a relation back to the team.
 
-When `includeTeam` is `false` (default), issue groups are fetched globally without team context and map to the `aikidoIssueGroup` blueprint.
+When `scopeToTeam` is `false` (default), issue groups are fetched globally without team context and map to the `aikidoIssueGroup` blueprint.
 
 Example (team-scoped):
 
@@ -97,7 +97,7 @@ resources:
 	- kind: issue_groups
 		selector:
 			query: 'true'
-			includeTeam: true
+			scopeToTeam: true
 ```
 
 ## Authentication

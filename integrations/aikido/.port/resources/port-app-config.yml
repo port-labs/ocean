@@ -87,7 +87,7 @@ resources:
   - kind: issue_groups
     selector:
       query: 'true'
-      includeTeam: true
+      scopeToTeam: true
     port:
       entity:
         mappings:
