@@ -84,9 +84,10 @@ resources:
               [.locations[]? | select(.type == "code_repository") | (.id | tostring)]
             aikidoContainers: >-
               [.locations[]? | select(.type == "container_repository") | (.id | tostring)]
-  - kind: team_issue_group
+  - kind: issue_groups
     selector:
       query: 'true'
+      includeTeam: true
     port:
       entity:
         mappings:

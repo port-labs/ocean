@@ -14,7 +14,6 @@ class ObjectKind:
     REPOSITORY = "repositories"
     ISSUES = "issues"
     ISSUE_GROUPS = "issue_groups"
-    TEAM_ISSUE_GROUP = "team_issue_group"
     TEAM = "team"
     CONTAINER = "containers"
 
@@ -66,17 +65,25 @@ class IssueResourceConfig(ResourceConfig):
     )
 
 
+class IssueGroupSelector(Selector):
+    include_team: bool = Field(
+        default=False,
+        alias="includeTeam",
+        title="Include Team",
+        description="Whether to fetch issue groups scoped by team, enriched with team context",
+    )
+
+
 class IssueGroupResourceConfig(ResourceConfig):
     kind: Literal["issue_groups"] = Field(
         title="Aikido Issue Group",
         description="Aikido issue group resource kind.",
     )
-
-class TeamIssueGroupResourceConfig(ResourceConfig):
-    kind: Literal["team_issue_group"] = Field(
-        title="Aikido Team Issue Group",
-        description="Aikido team issue group resource kind.",
+    selector: IssueGroupSelector = Field(
+        title="Issue Group Selector",
+        description="Selector for the Aikido issue group resource.",
     )
+
 
 class TeamResourceConfig(ResourceConfig):
     kind: Literal["team"] = Field(
@@ -92,7 +99,6 @@ class AikidoPortAppConfig(PortAppConfig):
         | IssueResourceConfig
         | IssueGroupResourceConfig
         | TeamResourceConfig
-        | TeamIssueGroupResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

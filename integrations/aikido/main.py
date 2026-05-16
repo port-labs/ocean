@@ -7,7 +7,7 @@ from port_ocean.helpers.retry import RetryConfig, register_retry_config_callback
 
 from clients.options import ListRepositoriesOptions, ListContainersOptions
 from initialize_client import init_aikido_client
-from integration import ObjectKind, RepositoryResourceConfig, ContainerResourceConfig
+from integration import ObjectKind, RepositoryResourceConfig, ContainerResourceConfig, IssueGroupResourceConfig
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
 
@@ -48,48 +48,43 @@ async def on_issues_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], No
         yield issue_batch
 
 
-@ocean.on_resync(ObjectKind.ISSUE_GROUPS)
-async def on_issue_groups_resync(
-    kind: str,
+async def _get_issue_groups_by_team(
+    client: Any,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
-    client = init_aikido_client()
-    logger.info("Fetching open issue groups from Aikido API")
-    async for issue_group_batch in client.get_open_issue_groups():
-        logger.info(
-            f"Yielding open issue groups batch of size: {len(issue_group_batch)}"
-        )
-        yield issue_group_batch
-
-
-@ocean.on_resync(ObjectKind.TEAM_ISSUE_GROUP)
-async def on_team_issue_groups_resync(
-    kind: str,
-) -> AsyncGenerator[list[dict[str, Any]], None]:
-    client = init_aikido_client()
-    
     async for team_batch in client.get_teams():
-        logger.info("Fetching team issue groups from Aikido API")
         for team in team_batch:
-
             if not team.get("active", False):
                 continue
-            
             team_id = team.get("id")
             if not team_id:
                 logger.warning(f"Skipping team with missing id: {team}")
                 continue
             team_name = team.get("name")
-            logger.info(f"Fetching issue groups for team {team_id},  from Aikido API")
-
-            async for team_issue_group_batch in client.get_open_issue_groups(team_id=str(team_id)):
-                enriched_batch = [
+            logger.info(f"Fetching issue groups for team {team_id} from Aikido API")
+            async for batch in client.get_open_issue_groups(team_id=str(team_id)):
+                yield [
                     {**issue_group, "team_id": team_id, "team_name": team_name}
-                    for issue_group in team_issue_group_batch
+                    for issue_group in batch
                 ]
-                logger.info(
-                    f"Yielding team issue groups batch of size: {len(enriched_batch)}"
-                )
-                yield enriched_batch
+
+
+@ocean.on_resync(ObjectKind.ISSUE_GROUPS)
+async def on_issue_groups_resync(
+    kind: str,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    client = init_aikido_client()
+    selector = cast(IssueGroupResourceConfig, event.resource_config).selector
+
+    if selector.include_team:
+        logger.info("Fetching team-scoped open issue groups from Aikido API")
+        async for batch in _get_issue_groups_by_team(client):
+            logger.info(f"Yielding team-scoped open issue groups batch of size: {len(batch)}")
+            yield batch
+    else:
+        logger.info("Fetching open issue groups from Aikido API")
+        async for batch in client.get_open_issue_groups():
+            logger.info(f"Yielding open issue groups batch of size: {len(batch)}")
+            yield batch
 
 
 @ocean.on_resync(ObjectKind.TEAM)
