@@ -38,6 +38,7 @@ class PortClient(
         integration_type: str,
         integration_version: str,
         ingest_url: str,
+        feature_flags_cache_ttl_seconds: float = 300.0,
     ):
         self.api_url = f"{base_url}/v1"
         self.client = get_internal_http_client(self)
@@ -57,7 +58,9 @@ class PortClient(
         )
         BlueprintClientMixin.__init__(self, self.auth, self.client)
         MigrationClientMixin.__init__(self, self.auth, self.client)
-        OrganizationClientMixin.__init__(self, self.auth, self.client)
+        OrganizationClientMixin.__init__(
+            self, self.auth, self.client, feature_flags_cache_ttl_seconds
+        )
         ActionsAndWorkflowRunsClientMixin.__init__(self, self.auth, self.client)
 
     async def get_kafka_creds(self) -> KafkaCreds:

@@ -348,6 +348,35 @@ class TestGraphQLTeamExporter:
             assert team == TEAM_BETA_RESOLVED
             mock_request.assert_called_once()
 
+    @pytest.mark.parametrize(
+        "mock_response",
+        [
+            {"data": {"organization": {"team": None}}},
+        ],
+        ids=["team_is_null"],
+    )
+    async def test_get_resource_returns_none_when_team_is_null_in_graphql_response(
+        self,
+        graphql_client: GithubGraphQLClient,
+        mock_response: dict[str, Any],
+    ) -> None:
+        exporter = GraphQLTeamWithMembersExporter(graphql_client)
+
+        with patch.object(
+            graphql_client,
+            "send_api_request",
+            new=AsyncMock(return_value=mock_response),
+        ):
+            team = await exporter.get_resource(
+                SingleTeamOptions(
+                    organization="test-org",
+                    slug="missing-team",
+                    include_saml_email=False,
+                )
+            )
+
+        assert team is None
+
     async def test_get_paginated_resources_is_retired(
         self, graphql_client: GithubGraphQLClient
     ) -> None:
