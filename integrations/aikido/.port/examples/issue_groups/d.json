@@ -1,5 +1,7 @@
 {
   "id": 26361953,
+  "team_id": 1310048,
+  "team_name": "Backend Team",
   "type": "open_source",
   "title": "golang.org/x/crypto",
   "description": "Attacker can trigger DOS-attack",
