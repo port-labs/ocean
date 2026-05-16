@@ -6,6 +6,7 @@ from port_ocean.context.ocean import ocean
 
 from azure_devops.client.auth import ACCOUNT_MODE_MULTIPLE, build_auth_provider
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.helpers.validate_config import validate_azure_devops_config
 
 
 class AzureDevopsClientManager:
@@ -51,6 +52,7 @@ class AzureDevopsClientManager:
     @classmethod
     def create_from_ocean_config_no_cache(cls) -> "AzureDevopsClientManager":
         config = ocean.integration_config
+        validate_azure_devops_config(config)
         auth_provider = build_auth_provider(config)
         webhook_auth_username = config.get("webhook_auth_username")
 

@@ -1,5 +1,6 @@
 from typing import Any, Optional, Dict, cast
 
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import Kind
 from azure_devops.webhooks.events import RepositoryEvents
 from azure_devops.webhooks.webhook_processors.base_processor import (
@@ -65,7 +66,7 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
     @staticmethod
     async def _get_repository_data(
-        client: repository_id: str
+        client: AzureDevopsClient, repository_id: str
     ) -> Optional[Dict[str, Any]]:
         repository = await client.get_repository(repository_id)
         if not repository:

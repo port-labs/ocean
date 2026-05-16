@@ -7,6 +7,7 @@ __organizationUrl / __organizationName.
 
 from typing import Any, AsyncGenerator, Optional
 
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.helpers.multi_org import iterate_per_organization
 
 
@@ -164,6 +165,22 @@ async def iter_release_deployments() -> AsyncGenerator[list[dict[str, Any]], Non
         yield batch
 
 
+async def iter_pipeline_deployments() -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def _handler(
+        client: AzureDevopsClient,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for environments in client.generate_environments():
+            for environment in environments:
+                async for deployments in client.generate_pipeline_deployments(
+                    environment_id=environment["id"],
+                    project=environment["project"],
+                ):
+                    yield deployments
+
+    async for batch in iterate_per_organization(_handler):
+        yield batch
+
+
 async def iter_pipeline_runs() -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
         lambda client: client.generate_pipeline_runs()
@@ -191,7 +208,9 @@ async def iter_iterations() -> AsyncGenerator[list[dict[str, Any]], None]:
 async def iter_advanced_security_alerts(
     params: Optional[dict[str, Any]] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
-    async def _handler(client: Any) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def _handler(
+        client: AzureDevopsClient,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for repositories in client.generate_repositories():
             for repository in repositories:
                 async for alerts in client.generate_advanced_security_alerts(

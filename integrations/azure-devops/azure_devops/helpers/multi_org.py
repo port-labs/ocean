@@ -1,9 +1,10 @@
 import asyncio
-from typing import Any, AsyncGenerator, Callable
+from typing import AsyncGenerator, Callable
 
 from loguru import logger
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.client.client_manager import AzureDevopsClientManager
 from azure_devops.misc import ORG_NAME_FIELD, ORG_URL_FIELD, extract_org_name_from_url
 
@@ -47,7 +48,9 @@ async def iterate_per_organization(
 
     semaphore = asyncio.BoundedSemaphore(CONCURRENT_ORG_RESYNCS)
 
-    async def _org_iter(client: Any) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def _org_iter(
+        client: AzureDevopsClient,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         org_url = client._organization_base_url
         org_name = extract_org_name_from_url(org_url)
         async with semaphore:

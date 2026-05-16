@@ -2,6 +2,7 @@ from typing import Any, cast
 
 from loguru import logger
 
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.client.client_manager import AzureDevopsClientManager
 from azure_devops.helpers import resync
 from azure_devops.helpers.multi_org import iterate_per_organization
@@ -75,7 +76,6 @@ from integration import (
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
 @ocean.on_resync(Kind.PROJECT)
@@ -170,7 +170,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 async def _enrich_repos_batch_with_included_files(
-    client: Any,
+    client: AzureDevopsClient,
     repositories: list[dict[str, Any]],
     file_paths: list[str],
 ) -> list[dict[str, Any]]:
@@ -294,19 +294,9 @@ async def resync_release_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kind.PIPELINE_DEPLOYMENT)
 async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    manager = AzureDevopsClientManager.create_from_ocean_config()
-    for client in manager.get_clients():
-        async for environments in client.generate_environments():
-            tasks = [
-                client.generate_pipeline_deployments(
-                    environment_id=environment["id"],
-                    project=environment["project"],
-                )
-                for environment in environments
-            ]
-            async for deployments in stream_async_iterators_tasks(*tasks):
-                logger.info(f"Fetched {len(deployments)} pipeline deployments")
-                yield deployments
+    async for deployments in resync.iter_pipeline_deployments():
+        logger.info(f"Fetched {len(deployments)} pipeline deployments")
+        yield deployments
 
 
 from azure_devops.enrichments.included_files import (  # noqa: E402
@@ -323,7 +313,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     logger.info(f"Starting file resync for paths: {config.selector.files.path}")
 
-    async def _handler(client: Any):
+    async def _handler(client: AzureDevopsClient):
         async for files_batch in client.generate_files(
             path=config.selector.files.path,
             repos=config.selector.files.repos,
@@ -362,7 +352,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AzureDevopsFolderResourceConfig, event.resource_config).selector
     included_files = selector.included_files or []
 
-    async def _handler(client: Any):
+    async def _handler(client: AzureDevopsClient):
         async for matching_folders in client.process_folder_patterns(
             selector.folders, selector.project_name
         ):
