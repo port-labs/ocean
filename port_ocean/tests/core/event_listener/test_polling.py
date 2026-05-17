@@ -21,7 +21,7 @@ def _run_repeat_every_times(
         *_args: Any, **_kwargs: Any
     ) -> Callable[[Callable[[], Awaitable[None]]], Callable[[], Awaitable[None]]]:
         def decorator(
-            func: Callable[[], Awaitable[None]]
+            func: Callable[[], Awaitable[None]],
         ) -> Callable[[], Awaitable[None]]:
             async def wrapped() -> None:
                 for _ in range(repetitions):
