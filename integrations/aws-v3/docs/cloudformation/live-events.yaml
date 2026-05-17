@@ -43,9 +43,10 @@ Description: >-
 #
 # Member-account template: each stack instance runs in one AWS account and one
 # Region. Deploy directly for a single account (repeat per region), or use the
-# companion StackSet template live-events-org-stackset.yaml for AWS Organizations
-# (service-managed StackSet → one stack instance per account × Region under the
-# target OUs).
+# companion StackSet template live-events-org-stackset.yaml for AWS Organizations:
+# set StackInstancesProvisioning to DEFER and use Stack sets console “Add stacks”
+# (OU + region pickers), or INLINE_PARAMETERS plus comma-separated OUs/regions so
+# the parent deploy creates instances; or CLI create-stack-instances afterward.
 #
 # The S3 rule is included only when the stack is deployed to us-east-1 (see the
 # `IsUsEast1` Condition); other regions get EC2 + ECS + Lambda rules only.

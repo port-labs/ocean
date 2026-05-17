@@ -2,10 +2,25 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   Port Ocean AWS-V3 — AWS Organizations service-managed StackSet for live events.
   Deploy from the management account (or a delegated CloudFormation admin) after
-  enabling Organizations trusted access for CloudFormation StackSets. Creates one
-  stack instance per (member account × Region) under the target organizational units,
-  using integrations/aws-v3/docs/cloudformation/live-events.yaml as the child template.
+  enabling Organizations trusted access for CloudFormation StackSets. Registers
+  the StackSet and child-template URL for live-events.yaml.
 
+# =============================================================================
+# CHOOSE HOW REGIONS ARE SET
+# =============================================================================
+#
+# StackInstancesProvisioning selects one path:
+#
+#   DEFER — Parent stack creates the StackSet only. Add stack instances in the
+#           CloudFormation console: Stack sets → your set → “Set deployment
+#           options” → “Add stacks to stack set” → pick OUs/account scope AND
+#           select Regions in the Stack Set region picker (no region list below).
+#
+#   INLINE_PARAMETERS — Deploy stack instances from this stack at the same time.
+#           Set TargetOrganizationalUnitIds + StackInstanceRegions (comma-separated
+#           IDs in each parameter field on CloudFormation deploy, or CLI
+#           --parameter-overrides). One member stack per OU coverage × Region.
+#
 # =============================================================================
 # PREREQUISITES
 # =============================================================================
@@ -15,44 +30,69 @@ Description: >-
 #
 # 2. AWS Organizations trusted access for CloudFormation StackSets enabled.
 #
-# 3. In every target member account (and each StackSet Region where instances run),
-#    create a Secrets Manager secret whose name matches WebhookSecretName and whose
-#    SecretString matches Ocean webhookSecret (same value org-wide).
+# 3. In every member account × Region where stack instances eventually run,
+#    create Secrets Manager secret WebhookSecretName matching Ocean webhookSecret.
 #
-# 4. Region coverage: StackInstanceRegionsMode=CUSTOM selects listed regions via
-#    StackInstanceRegions; ALL_STANDARD_COMMERCIAL uses the RegionsCsv mapping below
-#    (commercial partition IDs from docs.aws.amazon.com/general/latest/gr/rande.html —
-#    update the mapping when AWS adds Regions). Stacks only deploy successfully in
-#    Regions enabled for your organization.
-#
-# 5. Include us-east-1 in your effective region list if you want S3 bucket lifecycle
-#    live events (CloudTrail-on-EventBridge is evaluated in us-east-1 only).
+# 4. Include us-east-1 in your chosen Regions if you want S3 bucket live events
+#    (S3 CT-on-EB is modeled there only).
 #
 # =============================================================================
-# DEPLOY (management account example)
+# DEPLOY EXAMPLES (management account)
 # =============================================================================
 #
-#     aws cloudformation deploy \
-#         --region us-east-1 \
-#         --stack-name port-ocean-aws-live-events-org \
-#         --template-file live-events-org-stackset.yaml \
-#         --capabilities CAPABILITY_IAM \
+# A — Console region picker after stack succeeds (Provisioning=DEFER, default):
+#
+#     aws cloudformation deploy ... --parameter-overrides \
+#             LiveEventsTemplateURL=... \
+#             OceanWebhookUrl=... WebhookSecretName=...
+#
+#     Then Console → Stack sets → Add stacks → pick regions in the UI.
+#
+# B — Inline OU + Regions at deploy (Provisioning=INLINE_PARAMETERS):
+#
+#     aws cloudformation deploy ... \
 #         --parameter-overrides \
-#             LiveEventsTemplateURL=https://my-bucket.s3.amazonaws.com/live-events.yaml \
-#             TargetOrganizationalUnitIds=ou-abcd-11111111,ou-abcd-22222222 \
-#             StackInstanceRegionsMode=CUSTOM \
-#             StackInstanceRegions=us-east-1,us-west-2,eu-west-1 \
-#             OceanWebhookUrl=https://<your-ocean-host>/integration/webhook/live-events \
-#             WebhookSecretName=port-ocean-aws-live-events-webhook
+#             StackInstancesProvisioning=INLINE_PARAMETERS \
+#             TargetOrganizationalUnitIds='ou-xxxx,r-yyyy' \
+#             StackInstanceRegions='us-east-1,eu-west-1' \
+#             LiveEventsTemplateURL=...
 #
-# Deploy to every commercial-partition Region in the RegionsCsv mapping (see Mappings).
+# CLI after DEFER — create-stack-instances:
 #
-#     StackInstanceRegionsMode=ALL_STANDARD_COMMERCIAL
+#     aws cloudformation create-stack-instances \
+#         --stack-set-name port-ocean-aws-live-events \
+#         --deployment-targets OrganizationalUnitIds=ou-xxxx,r-yyyy \
+#         --regions us-east-1 us-west-2
 #
 # =============================================================================
 
 
 Parameters:
+
+  StackInstancesProvisioning:
+    Type: String
+    Default: DEFER
+    AllowedValues:
+      - DEFER
+      - INLINE_PARAMETERS
+    Description: >-
+      DEFER: create StackSet only; choose OUs and Regions in Stack Sets console (
+      region picker ). INLINE_PARAMETERS: also deploy instances using OU + region
+      parameters below.
+
+  TargetOrganizationalUnitIds:
+    Type: String
+    Default: ''
+    Description: >-
+      Required when StackInstancesProvisioning=INLINE_PARAMETERS — comma-separated
+      OU IDs and/or organization root r-xxxx (no spaces around commas). Ignored when DEFER.
+
+  StackInstanceRegions:
+    Type: String
+    Default: ''
+    Description: >-
+      Required when StackInstancesProvisioning=INLINE_PARAMETERS — comma-separated
+      AWS Regions (no spaces around commas). Ignored when DEFER.
 
   LiveEventsTemplateURL:
     Type: String
@@ -68,32 +108,6 @@ Parameters:
     AllowedPattern: ^[a-zA-Z][a-zA-Z0-9\-]{0,127}$
     ConstraintDescription: >-
       Alphanumeric and hyphens; 1–128 chars; must begin with a letter.
-
-  TargetOrganizationalUnitIds:
-    Type: CommaDelimitedList
-    Description: >-
-      Organizational unit IDs and/or organization root (r-xxxx) to deploy into.
-      Example: ou-abcd-11111111,r-abcd
-
-  StackInstanceRegionsMode:
-    Type: String
-    Default: CUSTOM
-    AllowedValues:
-      - CUSTOM
-      - ALL_STANDARD_COMMERCIAL
-    Description: >-
-      CUSTOM: deploy only to Regions listed in StackInstanceRegions.
-      ALL_STANDARD_COMMERCIAL: deploy every Region in Mapping
-      RegionInventory.StandardCommercialPartition.RegionsCsv (standard commercial IDs
-      from docs.aws.amazon.com/general/latest/gr/rande.html — extend when AWS launches
-      Regions). Opt-in Regions must be enabled Organization-wide where required.
-
-  StackInstanceRegions:
-    Type: CommaDelimitedList
-    Description: >-
-      Used when StackInstanceRegionsMode is CUSTOM — stack instances every
-      (member account × Region). Ignored when ALL_STANDARD_COMMERCIAL.
-    Default: us-east-1
 
   OceanWebhookUrl:
     Type: String
@@ -113,15 +127,15 @@ Parameters:
     Description: >-
       Passed through to live-events.yaml (resource name prefix; lowercase).
 
-  # StackSetCallAs:
-  #   Type: String
-  #   Default: SELF
-  #   AllowedValues:
-  #     - SELF
-  #     - DELEGATED_ADMIN
-  #   Description: >-
-  #     SELF when deploying from the organization management account; DELEGATED_ADMIN
-  #     when deploying from a registered delegated administrator account.
+  StackSetCallAs:
+    Type: String
+    Default: SELF
+    AllowedValues:
+      - SELF
+      - DELEGATED_ADMIN
+    Description: >-
+      SELF when deploying from the organization management account; DELEGATED_ADMIN
+      when deploying from a registered delegated administrator account.
 
   FailureTolerancePercentage:
     Type: Number
@@ -140,13 +154,27 @@ Parameters:
       Maximum percentage of stack instances per Region deployed in parallel.
 
 
-Mappings:
+Rules:
 
-  RegionInventory:
-    StandardCommercialPartition:
-      # AWS General Reference Regions table (commercial; excludes GovCloud/China — opt-in Regions).
-      # https://docs.aws.amazon.com/general/latest/gr/rande.html — append new GA Regions here when needed.
-      RegionsCsv: af-south-1,ap-east-1,ap-east-2,ap-northeast-1,ap-northeast-2,ap-northeast-3,ap-south-1,ap-south-2,ap-southeast-1,ap-southeast-2,ap-southeast-3,ap-southeast-4,ap-southeast-5,ap-southeast-6,ap-southeast-7,ca-central-1,ca-west-1,eu-central-1,eu-central-2,eu-north-1,eu-south-1,eu-south-2,eu-west-1,eu-west-2,eu-west-3,il-central-1,mx-central-1,me-central-1,me-south-1,sa-east-1,us-east-1,us-east-2,us-west-1,us-west-2
+  InlineRequiresOuAndRegions:
+    RuleCondition:
+      Fn::Equals:
+        - Ref: StackInstancesProvisioning
+        - INLINE_PARAMETERS
+    Assertions:
+      - AssertDescription: >-
+          INLINE_PARAMETERS requires non-empty TargetOrganizationalUnitIds and
+          StackInstanceRegions (comma-separated, no wrapping spaces).
+        Assert:
+          Fn::And:
+            - Fn::Not:
+                - Fn::Equals:
+                    - Ref: TargetOrganizationalUnitIds
+                    - ''
+            - Fn::Not:
+                - Fn::Equals:
+                    - Ref: StackInstanceRegions
+                    - ''
 
 
 Conditions:
@@ -156,10 +184,10 @@ Conditions:
       - Ref: StackSetCallAs
       - DELEGATED_ADMIN
 
-  DeployAllListedCommercialRegions:
+  UseInlineProvisioning:
     Fn::Equals:
-      - Ref: StackInstanceRegionsMode
-      - ALL_STANDARD_COMMERCIAL
+      - Ref: StackInstancesProvisioning
+      - INLINE_PARAMETERS
 
 
 Resources:
@@ -207,19 +235,18 @@ Resources:
           ParameterValue:
             Ref: ResourcePrefix
       StackInstancesGroup:
-        - DeploymentTargets:
-            OrganizationalUnitIds:
-              Ref: TargetOrganizationalUnitIds
-          Regions:
-            Fn::If:
-              - DeployAllListedCommercialRegions
-              - Fn::Split:
+        Fn::If:
+          - UseInlineProvisioning
+          - - DeploymentTargets:
+                OrganizationalUnitIds:
+                  Fn::Split:
+                    - ','
+                    - Ref: TargetOrganizationalUnitIds
+              Regions:
+                Fn::Split:
                   - ','
-                  - Fn::FindInMap:
-                      - RegionInventory
-                      - StandardCommercialPartition
-                      - RegionsCsv
-              - Ref: StackInstanceRegions
+                  - Ref: StackInstanceRegions
+          - Ref: AWS::NoValue
 
 
 Outputs:
@@ -230,3 +257,10 @@ Outputs:
       Fn::GetAtt:
         - LiveEventsStackSet
         - StackSetId
+
+  StackSetNameOutput:
+    Description: >-
+      Stack set name — for DEFER, use Stack sets console “Add stacks” + region picker;
+      for INLINE_PARAMETERS, instances were created via this deployment.
+    Value:
+      Ref: StackSetName
