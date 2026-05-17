@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Fixed outbound requests to Code Rabbit dropping hostname-based routing by adding sentinelone.net to the trusted subdomains list in the IP blocker
+- Fixed outbound requests to Code Rabbit dropping hostname-based routing by adding coderabbit.ai to the trusted subdomains list in the IP blocker
 
 ## 0.42.1 (2026-05-14)
 
