@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.42.2 (2026-05-14)
+
+### Improvements
+
+- Fixed outbound requests to Code Rabbit dropping hostname-based routing by adding sentinelone.net to the trusted subdomains list in the IP blocker
+
 ## 0.42.1 (2026-05-14)
 
 ### Improvements
