@@ -24,7 +24,7 @@ from port_ocean.exceptions.core import (
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.utils.async_http import _http_client
-from port_ocean.core.models import IntegrationFeatureFlag
+from port_ocean.core.models import IntegrationFeatureFlag, ProcessingMode
 
 
 async def is_lakehouse_data_enabled() -> bool:
@@ -51,6 +51,44 @@ async def is_lakehouse_data_enabled() -> bool:
             f"Failed to check lakehouse feature flags, assuming disabled: {e}"
         )
         return False
+
+
+async def is_dsp_mode_enabled() -> bool:
+    """Check if DSP (Data Source Processor) mode is active.
+
+    DSP mode offloads all transform/load/reconciliation to an external service.
+    Ocean still extracts raw data and forwards it to the lakehouse, but skips
+    all entity processing.  Requires an explicit opt-in via config AND the right
+    org feature flags.  Errors are swallowed so this never blocks core flows.
+
+    Returns:
+        bool: True only when all four conditions are met, False otherwise.
+    """
+    try:
+        if ocean.config.processing_mode != ProcessingMode.dsp:
+            return False
+        if not ocean.config.lakehouse_enabled:
+            logger.warning(
+                "DSP mode requested but lakehouse_enabled is False, falling back to ocean-core"
+            )
+            return False
+        flags = await ocean.port_client.get_organization_feature_flags()
+        if (
+            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
+            and IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags
+        ):
+            return True
+        logger.warning(
+            "DSP mode requested but required feature flags are missing "
+            f"(LAKEHOUSE_ELIGIBLE={IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags}, "
+            f"DATA_SOURCE_PROCESSOR_ENABLED={IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags}), "
+            "falling back to ocean-core"
+        )
+        return False
+    except Exception as e:
+        logger.warning(f"Failed to check DSP mode, falling back to ocean-core: {e}")
+        return False
+
 
 
 def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:

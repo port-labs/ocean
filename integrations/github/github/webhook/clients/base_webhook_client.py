@@ -77,7 +77,6 @@ class BaseGithubWebhookClient(GithubRestClient):
         self, webhook_id: str, config_data: dict[str, str], target: HookTarget
     ) -> None:
         webhook_data = {"config": config_data}
-        logger.info(f"Patching webhook {webhook_id} with data {webhook_data}")
 
         await self.send_api_request(
             target.hook_url(webhook_id),
