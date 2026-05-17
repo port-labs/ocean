@@ -423,7 +423,7 @@ async def test_get_paginated_policies_yields_multiple_pages(
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_targets_sends_exclude_empty_false_by_default(
+async def test_get_paginated_targets_without_api_params_only_sends_version(
     snyk_client: SnykClient,
 ) -> None:
     captured_query_params: list[dict[str, Any]] = []
@@ -431,7 +431,7 @@ async def test_get_paginated_targets_sends_exclude_empty_false_by_default(
     async def mock_get_paginated_resources(
         url_path: str, query_params: Any = None
     ) -> Any:
-        captured_query_params.append(query_params)
+        captured_query_params.append(query_params or {})
         yield []
 
     with patch.object(
@@ -443,9 +443,7 @@ async def test_get_paginated_targets_sends_exclude_empty_false_by_default(
             pass
 
     assert len(captured_query_params) == 1
-    assert (
-        captured_query_params[0]["exclude_empty"] is False
-    )  # assert called_params["exclude_empty"] is False
+    assert captured_query_params[0] == {"version": snyk_client.snyk_api_version}
 
 
 @pytest.mark.asyncio

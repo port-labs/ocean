@@ -274,6 +274,7 @@ def test_target_selector_api_query_params_exclude_empty_true_returns_only_target
 ):
     params = SnykTargetAPIQueryParams(exclude_empty=True)
     selector = TargetSelector(query="true", apiQueryParams=params)
+    assert selector.api_query_params is not None
     assert selector.api_query_params.exclude_empty is True
 
 
@@ -282,7 +283,9 @@ def test_target_selector_api_query_params_combined_filters() -> None:
         exclude_empty=False, is_private=False, display_name="snyk-fixtures"
     )
     selector = TargetSelector(query="true", apiQueryParams=params)
-    params = selector.api_query_params.generate_query_params()
-    assert params["exclude_empty"] is False
-    assert params["is_private"] is False
-    assert params["display_name"] == "snyk-fixtures"
+    assert selector.api_query_params is not None
+
+    result = selector.api_query_params.generate_query_params()
+    assert result["exclude_empty"] is False
+    assert result["is_private"] is False
+    assert result["display_name"] == "snyk-fixtures"
