@@ -16,12 +16,15 @@ class RegionPolicy(BaseModel):
 
 class AWSResourceSelector(Selector):
     region_policy: RegionPolicy = Field(
-        alias="regionPolicy", default_factory=RegionPolicy
+        default_factory=RegionPolicy, alias="regionPolicy"
     )
     include_actions: List[str] = Field(
-        alias="includeActions", default_factory=list, max_items=3
+        default_factory=list, max_items=3, alias="includeActions"
     )
-    max_concurrent_accounts: int = Field(alias="maxConcurrentAccounts", default=5)
+    max_concurrent_accounts: int = Field(default=5, alias="maxConcurrentAccounts")
+
+    class Config:
+        allow_population_by_field_name = True
 
     def is_region_allowed(self, region: str) -> bool:
         """

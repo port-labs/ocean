@@ -1,8 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  Port Ocean AWS-V3 — live events pipeline for a single account.
+  Port Ocean AWS-V3 — live events pipeline (member account scope).
   Deploys EventBridge rules (EC2, ECS, Lambda, S3) targeting a Port Ocean
-  webhook endpoint via an API Destination, with per-rule DLQs.
+  webhook endpoint via an API Destination, with per-rule DLQs. Use once per
+  account and region, or via an organization StackSet (see live-events-org-stackset.yaml).
 
 # =============================================================================
 # OVERVIEW
@@ -40,14 +41,14 @@ Description: >-
 # DEPLOYMENT MODEL
 # =============================================================================
 #
-# This is the SINGLE-ACCOUNT template. Deploy the stack to every region you
-# want monitored. The S3 rule is automatically included only when the stack is
-# deployed to us-east-1 (controlled by the `IsUsEast1` Condition); deploying to
-# other regions yields EC2 + ECS + Lambda rules only.
+# Member-account template: each stack instance runs in one AWS account and one
+# Region. Deploy directly for a single account (repeat per region), or use the
+# companion StackSet template live-events-org-stackset.yaml for AWS Organizations
+# (service-managed StackSet → one stack instance per account × Region under the
+# target OUs).
 #
-# For an organization-wide rollout, wrap this template in a CloudFormation
-# StackSet targeting the OUs containing your member accounts. The org-wide
-# variant is documented separately in the ADR.
+# The S3 rule is included only when the stack is deployed to us-east-1 (see the
+# `IsUsEast1` Condition); other regions get EC2 + ECS + Lambda rules only.
 #
 # =============================================================================
 # PREREQUISITES
@@ -59,13 +60,16 @@ Description: >-
 #
 # 2. A Secrets Manager secret containing the bearer token used to authenticate
 #    inbound webhook calls. The secret value must match the `webhookSecret`
-#    configured on the Ocean integration side. Create it before deploying:
+#    configured on the Ocean integration side. Create it before deploying (repeat
+#    in every member account when using a StackSet; use the same secret *name*
+#    and *value* in each account):
 #
 #        aws secretsmanager create-secret \
 #            --name port-ocean-aws-live-events-webhook \
 #            --secret-string "$(openssl rand -hex 32)"
 #
-#    Capture the ARN — you'll pass it as the `WebhookSecretArn` parameter.
+#    Pass either `WebhookSecretArn` (single-account / console deploys) or
+#    `WebhookSecretName` (StackSets — resolves in each stack instance account).
 #
 # 3. A CloudTrail trail active in the deployment region (for the Lambda rule)
 #    and in us-east-1 (for the S3 rule). Without an active trail in that
@@ -96,6 +100,10 @@ Description: >-
 #         --parameter-overrides \
 #             OceanWebhookUrl=https://<your-ocean-host>/integration/webhook/live-events \
 #             WebhookSecretArn=arn:aws:secretsmanager:us-east-1:<account>:secret:port-ocean-aws-live-events-webhook-XXXXXX
+#
+# StackSet / uniform secret name (same parameter value in every account):
+#
+#             WebhookSecretName=port-ocean-aws-live-events-webhook
 #
 # Repeat for every other region you want monitored. The S3 rule will be
 # omitted automatically.
@@ -156,12 +164,23 @@ Parameters:
 
   WebhookSecretArn:
     Type: String
+    Default: ''
     Description: >-
       ARN of an existing Secrets Manager secret whose SecretString is the raw
-      bearer token (no "Bearer " prefix). Must match the value of webhookSecret
-      in the Ocean integration config.
-    AllowedPattern: ^arn:aws:secretsmanager:[a-z0-9-]+:\d{12}:secret:.+$
-    ConstraintDescription: Must be a Secrets Manager secret ARN.
+      bearer token (no "Bearer " prefix). Must match webhookSecret in the Ocean
+      integration config. Leave empty when using WebhookSecretName.
+    AllowedPattern: (^$|^arn:aws:secretsmanager:[a-z0-9-]+:\d{12}:secret:.+$)
+    ConstraintDescription: >-
+      Empty, or a Secrets Manager secret ARN.
+
+  WebhookSecretName:
+    Type: String
+    Default: ''
+    Description: >-
+      Secrets Manager secret name (not ARN) in this stack's account and region.
+      Prefer this for StackSets: use the same name and SecretString in every
+      member account so one StackSet parameter works everywhere. Leave empty
+      when using WebhookSecretArn.
 
   ResourcePrefix:
     Type: String
@@ -199,7 +218,38 @@ Parameters:
       the DLQ. AWS default is 86400 (24 hours).
 
 
+Rules:
+
+  WebhookSecretXor:
+    Assertions:
+      - AssertDescription: >-
+          Specify exactly one of WebhookSecretArn or WebhookSecretName.
+        Assert:
+          Fn::And:
+            - Fn::Or:
+                - Fn::Not:
+                    - Fn::Equals:
+                        - Ref: WebhookSecretArn
+                        - ''
+                - Fn::Not:
+                    - Fn::Equals:
+                        - Ref: WebhookSecretName
+                        - ''
+            - Fn::Or:
+                - Fn::Equals:
+                    - Ref: WebhookSecretArn
+                    - ''
+                - Fn::Equals:
+                    - Ref: WebhookSecretName
+                    - ''
+
 Conditions:
+
+  UseWebhookSecretByName:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: WebhookSecretName
+          - ''
 
   # S3 control-plane events are global and only appear on the default
   # EventBridge bus in us-east-1. The S3 rule, S3 DLQ, and S3 DLQ policy
@@ -227,10 +277,17 @@ Resources:
         ApiKeyAuthParameters:
           ApiKeyName: Authorization
           ApiKeyValue:
-            Fn::Sub:
-              - 'Bearer {{resolve:secretsmanager:${SecretArn}:SecretString}}'
-              - SecretArn:
-                  Ref: WebhookSecretArn
+            Fn::If:
+              - UseWebhookSecretByName
+              - Fn::Join:
+                  - ''
+                  - - 'Bearer {{resolve:secretsmanager:'
+                    - Ref: WebhookSecretName
+                    - ':SecretString}}'
+              - Fn::Sub:
+                  - 'Bearer {{resolve:secretsmanager:${SecretArn}:SecretString}}'
+                  - SecretArn:
+                      Ref: WebhookSecretArn
 
   OceanApiDestination:
     Type: AWS::Events::ApiDestination

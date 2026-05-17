@@ -66,6 +66,11 @@ class Ec2InstanceWebhookProcessor(_AwsAbstractWebhookProcessor):
             f"account={account_id}, region={region}"
         )
 
+        if skipped := self._reject_if_logical_region_blocked(
+            resource_config, region
+        ):
+            return skipped
+
         if state in EC2_TERMINAL_STATES:
             logger.info(f"EC2 webhook: terminal state, emitting delete ({log_ctx})")
             return WebhookEventRawResults(

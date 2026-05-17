@@ -83,6 +83,11 @@ class EcsServiceWebhookProcessor(_AwsAbstractWebhookProcessor):
             f"account={account_id}, region={region}, event={event_name}"
         )
 
+        if skipped := self._reject_if_logical_region_blocked(
+            resource_config, region
+        ):
+            return skipped
+
         if event_name == ECS_SERVICE_DELETED_EVENT_NAME:
             logger.info(f"ECS webhook: SERVICE_DELETED, emitting delete ({log_ctx})")
             return WebhookEventRawResults(

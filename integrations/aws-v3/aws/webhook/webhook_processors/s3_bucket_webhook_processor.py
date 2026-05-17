@@ -82,6 +82,11 @@ class S3BucketWebhookProcessor(_AwsAbstractWebhookProcessor):
 
         bucket_region = _resolve_bucket_region(detail)
 
+        if skipped := self._reject_if_logical_region_blocked(
+            resource_config, bucket_region
+        ):
+            return skipped
+
         log_ctx = (
             f"bucket={bucket_name}, account={account_id}, region={bucket_region}, "
             f"event={event_name}"

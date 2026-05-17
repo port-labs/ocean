@@ -78,6 +78,11 @@ class LambdaFunctionWebhookProcessor(_AwsAbstractWebhookProcessor):
             f"event={event_name}"
         )
 
+        if skipped := self._reject_if_logical_region_blocked(
+            resource_config, region
+        ):
+            return skipped
+
         if event_name.startswith(LAMBDA_DELETE_EVENT_NAME_PREFIX):
             logger.info(
                 f"Lambda webhook: DeleteFunction event, emitting delete ({log_ctx})"

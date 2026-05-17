@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.4.7-beta (2026-05-17)
+
+
+### Improvements
+
+- Live-events processors now honor Port mapping **`selector.regionPolicy`** (same semantics as **`AWSResourceSelector.is_region_allowed`** on resync): EC2 / ECS / Lambda use EventBridge **`region`**; **S3** uses the resolved bucket home region (not the control-plane **`us-east-1`** envelope). Drops events with empty results and a structured log line when excluded.
+- **`AWSResourceSelector`:** `Config.allow_population_by_field_name` so snake-case kwargs work in integration code/tests while Port **`regionPolicy`** payloads stay unchanged (**`region_policy=`** was previously ignored).
+
+
 ## 2.4.5-beta (2026-05-14)
 
 

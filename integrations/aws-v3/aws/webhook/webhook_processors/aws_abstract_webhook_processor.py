@@ -10,18 +10,22 @@ shared contract:
   - `should_process_event()`enforces the `allowedAccountIds` allowlist.
 
 Concrete subclasses implement `_matches_event()`, `get_matching_kinds()`
-and `handle_event()`.
+and `handle_event()`, which applies `AWSResourceSelector.regionPolicy`
+to the workload region (`payload["region"]` or, for S3, the resolved
+bucket home region).
 """
 
 from __future__ import annotations
 
 import hmac
 from abc import abstractmethod
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
+from integration import AWSResourceConfig
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -29,6 +33,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
     WebhookEvent,
+    WebhookEventRawResults,
 )
 
 
@@ -158,3 +163,21 @@ class _AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
         if not raw.lower().startswith(_BEARER_PREFIX):
             return None
         return raw[len(_BEARER_PREFIX) :].strip() or None
+
+    def _reject_if_logical_region_blocked(
+        self,
+        resource_config: ResourceConfig,
+        logical_region: str,
+    ) -> WebhookEventRawResults | None:
+        """Return empty results when `regionPolicy` excludes `logical_region`."""
+        aws_rc = cast(AWSResourceConfig, resource_config)
+        if aws_rc.selector.is_region_allowed(logical_region):
+            return None
+        logger.info(
+            "AWS live-events processor: dropping workload region '{}' — "
+            "excluded by selector.regionPolicy",
+            logical_region,
+        )
+        return WebhookEventRawResults(
+            updated_raw_results=[], deleted_raw_results=[]
+        )
