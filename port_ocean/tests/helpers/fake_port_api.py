@@ -172,6 +172,16 @@ async def migration(migration_id: str, request: Request) -> Dict[str, Any]:
     }
 
 
+@app.router.get("/v1/integration/{integration_id}/resync-request")
+async def get_integration_resync_request(integration_id: str) -> Dict[str, Any]:
+    return {
+        "request": {
+            "id": f"resync-{integration_id}",
+            "updatedAt": "2024-01-01T00:00:00.000Z",
+        }
+    }
+
+
 CATCH_ALL = "/{full_path:path}"
 
 
