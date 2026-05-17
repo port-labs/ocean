@@ -7,17 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.4.15 (2026-05-18)
+
+
+### Bug Fixes
+
+- Added `excludeGraphqlFields` selector for PR GraphQL queries to omit problematic fields (e.g. `additions`, `deletions`, `changedFiles`) as a workaround for GitHub GraphQL query failures.
+
+
 ## 5.4.14 (2026-05-17)
 
 
 ### Improvements
 
 - Bumped ocean version to ^0.42.4
-
-### Bug Fixes
-
-- Added `excludeGraphqlFields` selector for PR GraphQL queries to omit problematic fields (e.g. `additions`, `deletions`, `changedFiles`) as a workaround for GitHub GraphQL query failures.
-- Made GraphQL PR export resilient to missing PR fields by using safe defaults during normalization, and skipped closed PR filtering entries when `updatedAt` is missing.
 
 
 ## 5.4.13 (2026-05-17)
