@@ -190,6 +190,26 @@ class AikidoClient:
         ):
             yield teams
 
+    async def get_open_issue_groups_by_team(
+        self,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch open issue groups scoped to each active team, enriched with team metadata."""
+        async for team_batch in self.get_teams():
+            for team in team_batch:
+                if not team.get("active", False):
+                    continue
+                team_id = team.get("id")
+                if not team_id:
+                    logger.warning(f"Skipping team with missing id: {team}")
+                    continue
+                team_name = team.get("name")
+                logger.info(f"Fetching issue groups for team {team_id} from Aikido API")
+                async for batch in self.get_open_issue_groups(team_id=str(team_id)):
+                    yield [
+                        {**issue_group, "__team_id": team_id, "__team_name": team_name}
+                        for issue_group in batch
+                    ]
+
     async def get_containers(
         self,
         options: Optional[ListContainersOptions] = None,

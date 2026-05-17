@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, cast
+from typing import AsyncGenerator, cast
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -48,26 +48,6 @@ async def on_issues_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], No
         yield issue_batch
 
 
-async def _get_issue_groups_by_team(
-    client: Any,
-) -> AsyncGenerator[list[dict[str, Any]], None]:
-    async for team_batch in client.get_teams():
-        for team in team_batch:
-            if not team.get("active", False):
-                continue
-            team_id = team.get("id")
-            if not team_id:
-                logger.warning(f"Skipping team with missing id: {team}")
-                continue
-            team_name = team.get("name")
-            logger.info(f"Fetching issue groups for team {team_id} from Aikido API")
-            async for batch in client.get_open_issue_groups(team_id=str(team_id)):
-                yield [
-                    {**issue_group, "__team_id": team_id, "__team_name": team_name}
-                    for issue_group in batch
-                ]
-
-
 @ocean.on_resync(ObjectKind.ISSUE_GROUPS)
 async def on_issue_groups_resync(
     kind: str,
@@ -77,7 +57,7 @@ async def on_issue_groups_resync(
 
     if selector.scope_to_team:
         logger.info("Fetching team-scoped open issue groups from Aikido API")
-        async for batch in _get_issue_groups_by_team(client):
+        async for batch in client.get_open_issue_groups_by_team():
             logger.info(f"Yielding team-scoped open issue groups batch of size: {len(batch)}")
             yield batch
     else:
