@@ -63,7 +63,7 @@ async def _get_issue_groups_by_team(
             logger.info(f"Fetching issue groups for team {team_id} from Aikido API")
             async for batch in client.get_open_issue_groups(team_id=str(team_id)):
                 yield [
-                    {**issue_group, "team_id": team_id, "team_name": team_name}
+                    {**issue_group, "__team_id": team_id, "__team_name": team_name}
                     for issue_group in batch
                 ]
 

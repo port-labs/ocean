@@ -1,7 +1,7 @@
 {
   "id": 26362012,
-  "team_id": 1310046,
-  "team_name": "Infra Test Team",
+  "__team_id": 1310046,
+  "__team_name": "Infra Test Team",
   "type": "sast",
   "title": "Remote Code Execution possible via eval()-type functions",
   "description": "in extHostExtensionService.ts and cancellation.ts",
