@@ -351,18 +351,30 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         opts = gql_options or PullRequestGraphQLOptions()
         repo_name = repo["name"]
 
+        assignees_nodes = pr_node.get("assignees", {}).get("nodes", [])
+        review_requests_nodes = pr_node.get("reviewRequests", {}).get("nodes", [])
+        labels_nodes = pr_node.get("labels", {}).get("nodes", [])
+        comments_total = pr_node.get("comments", {}).get("totalCount", 0)
+        review_threads_total = pr_node.get("reviewThreads", {}).get("totalCount", 0)
+        commits_total = pr_node.get("commits", {}).get("totalCount", 0)
+        pr_state = pr_node.get("state")
+        merge_state_status = pr_node.get("mergeStateStatus")
+        mergeable_enum = pr_node.get("mergeable")
+
         normalized: dict[str, Any] = {
             **pr_node,
-            "assignees": pr_node["assignees"]["nodes"],
-            "reviewRequests": pr_node["reviewRequests"]["nodes"],
-            "labels": pr_node["labels"]["nodes"],
+            "assignees": assignees_nodes,
+            "reviewRequests": review_requests_nodes,
+            "labels": labels_nodes,
             "requested_reviewers": self._extract_requested_reviewers(pr_node),
-            "comments": pr_node["comments"]["totalCount"],
-            "review_comments": pr_node["reviewThreads"]["totalCount"],
-            "commits": pr_node["commits"]["totalCount"],
-            "state": pr_node["state"].lower(),
-            "mergeable_state": pr_node["mergeStateStatus"].lower(),
-            "mergeable": True if pr_node["mergeable"] == "MERGEABLE" else False,
+            "comments": comments_total,
+            "review_comments": review_threads_total,
+            "commits": commits_total,
+            "state": pr_state.lower() if pr_state else None,
+            "mergeable_state": (
+                merge_state_status.lower() if merge_state_status else None
+            ),
+            "mergeable": True if mergeable_enum == "MERGEABLE" else False,
         }
 
         if opts.enrich_with_first_commit:
@@ -387,7 +399,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ) -> list[dict[str, Any]]:
         """Extract both users and teams from reviewRequests."""
         reviewers = []
-        nodes = pr_node["reviewRequests"]["nodes"]
+        nodes = pr_node.get("reviewRequests", {}).get("nodes", [])
         for node in nodes:
             reviewer = node["requestedReviewer"]
             typ = reviewer["__typename"]
