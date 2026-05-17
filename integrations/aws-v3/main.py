@@ -30,6 +30,8 @@ from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.exporters.ecr import EcrRepositoryExporter
 from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
+from aws.core.exporters.elasticache import ElastiCacheClusterExporter
+from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
 from aws.core.exporters.ec2.volume import EbsVolumeExporter
 from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
 from aws.core.helpers.utils import is_access_denied_exception
@@ -193,6 +195,15 @@ async def resync_sqs_queue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ecr_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EcrRepositoryExporter, PaginatedRepositoryRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.ELASTICACHE_CLUSTER)
+async def resync_elasticache_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, ElastiCacheClusterExporter, PaginatedCacheClusterRequest, regional=True
     )
     async for batch in service:
         yield batch
