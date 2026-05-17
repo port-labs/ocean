@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.9-beta (2026-05-17)
+## 2.2.10-beta (2026-05-17)
 
 
 ### Bug Fixes
 
 - Update docs embed link to match install path
+
+
+## 2.2.9-beta (2026-05-17)
+
+
+### Features
+
+- Added support for MSK (Amazon Managed Streaming for Apache Kafka) clusters
 
 
 ## 2.2.8-beta (2026-05-17)
