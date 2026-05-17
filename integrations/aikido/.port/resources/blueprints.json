@@ -242,113 +242,6 @@
             }
         }
     },
-     {
-        "identifier": "aikidoTeamIssueGroup",
-        "title": "Aikido Team Issue Group",
-        "icon": "Aikido",
-        "schema": {
-            "properties": {
-                "description": {
-                    "type": "string",
-                    "title": "Description"
-                },
-                "type": {
-                    "type": "string",
-                    "title": "Type",
-                    "enum": [
-                        "open_source",
-                        "leaked_secret",
-                        "cloud",
-                        "iac",
-                        "sast",
-                        "surface_monitoring",
-                        "mobile",
-                        "malware",
-                        "eol",
-                        "scm_security",
-                        "ai_pentest",
-                        "license"
-                    ]
-                },
-                "severityScore": {
-                    "type": "number",
-                    "title": "Severity Score"
-                },
-                "groupStatus": {
-                    "type": "string",
-                    "title": "Group Status",
-                    "enum": [
-                        "new",
-                        "todo",
-                        "task_open",
-                        "task_closed",
-                        "pull_request_open"
-                    ]
-                },
-                "severity": {
-                    "type": "string",
-                    "title": "Severity",
-                    "enum": ["critical", "high", "medium", "low"],
-                    "enumColors": {
-                        "critical": "red",
-                        "high": "orange",
-                        "medium": "yellow",
-                        "low": "green"
-                    }
-                },
-                "locations": {
-                    "items": {
-                        "type": "object"
-                    },
-                    "title": "Locations",
-                    "type": "array"
-                },
-                "timeToFixMinutes": {
-                    "type": "number",
-                    "title": "Time To Fix (Minutes)"
-                },
-                "howToFix": {
-                    "type": "string",
-                    "title": "How To Fix"
-                },
-                "teamId": {
-                    "type": "number",
-                    "title": "Team ID"
-                },
-                "teamName": {
-                    "type": "string",
-                    "title": "Team Name"
-                }
-            },
-            "required": []
-        },
-        "relations": {
-            "aikidoRepositories": {
-                "title": "Repositories",
-                "target": "aikidoRepository",
-                "required": false,
-                "many": true
-            },
-            "aikidoContainers": {
-                "title": "Containers",
-                "target": "aikidoContainer",
-                "required": false,
-                "many": true
-            },
-            "aikidoIssueGroup": {
-                "title": "Issue Group",
-                "target": "aikidoIssueGroup",
-                "required": false,
-                "many": false
-            },
-            "aikidoTeam": {
-                "title": "Team",
-                "target": "aikidoTeam",
-                "required": false,
-                "many": false
-            }
-        }
-    },
     {
         "identifier": "aikidoIssue",
         "title": "Aikido Issue",
@@ -459,12 +352,6 @@
             "aikidoIssueGroup": {
                 "title": "Issue Group",
                 "target": "aikidoIssueGroup",
-                "required": false,
-                "many": false
-            },
-            "aikidoTeamIssueGroup": {
-                "title": "Team Issue Group",
-                "target": "aikidoTeamIssueGroup",
                 "required": false,
                 "many": false
             }
