@@ -41,7 +41,7 @@ class LiveEventsMixin(HandlerMixin):
     async def _expand_raw_item(
         self, raw_item: RAW_ITEM, resource: ResourceConfig
     ) -> AsyncGenerator[list[RAW_ITEM], None]:
-        if resource.port.items_to_parse:
+        if resource.port.items_to_parse and not await is_dsp_mode_enabled():
             async for batch in handle_items_to_parse(
                 [raw_item],
                 resource.port.items_to_parse_name,
