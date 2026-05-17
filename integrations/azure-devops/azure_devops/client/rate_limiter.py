@@ -10,15 +10,16 @@ LIMIT_REMAINING_HEADER = "x-ratelimit-remaining"
 LIMIT_RESET_HEADER = "x-ratelimit-reset"
 LIMIT_RETRY_AFTER_HEADER = "retry-after"
 
+MIN_REMAINING_BACKOFF_SECONDS = 0.25
+MAX_RETRY_AFTER_WAIT_SECONDS = 30.0
+
 
 class AzureDevOpsRateLimiter:
     """Rate limiter for Azure DevOps API requests.
 
-    Manages concurrent requests and respects Azure DevOps rate limiting headers
-    to prevent hitting API limits. Uses semaphore for concurrency control and
-    proactively waits when approaching rate limits.
-
-    Reference: https://learn.microsoft.com/en-us/azure/devops/integrate/concepts/rate-limits?view=azure-devops
+    Waits on ``Retry-After`` (capped), applies a short smoothing delay when
+    ``X-RateLimit-Remaining`` is low, and records ``X-RateLimit-Reset`` for
+    logs only.
     """
 
     def __init__(self, max_concurrent: int = 15, minimum_limit_remaining: int = 1):
@@ -27,8 +28,7 @@ class AzureDevOpsRateLimiter:
 
         Args:
             max_concurrent: Maximum number of concurrent in-flight requests.
-            minimum_limit_remaining: Proactively sleep if remaining requests fall
-                below this threshold to avoid hitting rate limits.
+            minimum_limit_remaining: Smoothing delay threshold for remaining TSTUs.
         """
         self._minimum_limit_remaining = minimum_limit_remaining
         self._semaphore = asyncio.Semaphore(max_concurrent)
@@ -38,60 +38,43 @@ class AzureDevOpsRateLimiter:
         self._limit: Optional[int] = None
         self._remaining: Optional[int] = None
         self._reset_time: Optional[float] = None
+        # Wall-clock time until the latest Retry-After expires; None if unset.
+        self._retry_after_until: Optional[float] = None
 
     @property
     def seconds_until_reset(self) -> float:
-        """Calculate seconds until rate limit window resets.
-
-        Returns:
-            Seconds remaining until reset, or 0.0 if no reset time is set.
-        """
+        """Seconds until reset timestamp; for logging only, not used to gate requests."""
         if self._reset_time is not None:
             return max(0.0, self._reset_time - time.time())
         return 0.0
 
-    @property
-    def should_wait_for_retry_after(self) -> float:
-        """Calculate wait time based on rate limit reset time.
-
-        Returns:
-            Seconds to wait, or 0.0 if no wait is needed.
-        """
-        if self._reset_time is not None:
-            wait_time = self._reset_time - time.time()
-            return max(0.0, wait_time)
-        return 0.0
-
     async def __aenter__(self) -> "AzureDevOpsRateLimiter":
-        """Enter the async context manager.
-
-        Acquires semaphore and handles rate limiting logic before allowing request.
-        """
+        """Acquire semaphore; wait on Retry-After or low-remaining smoothing if needed."""
         await self._semaphore.acquire()
 
         async with self._lock:
-            # Check if we need to wait due to previous rate limit
-            retry_wait = self.should_wait_for_retry_after
-            if retry_wait > 0:
-                logger.debug(
-                    f"Rate limit: waiting {retry_wait:.2f}s due to previous rate limit"
-                )
-                await asyncio.sleep(retry_wait)
-                self._reset_rate_limit_state()
+            remaining = self._remaining
+            threshold = self._minimum_limit_remaining
+            retry_after_wait = (
+                max(0.0, self._retry_after_until - time.time())
+                if self._retry_after_until is not None
+                else 0.0
+            )
 
-            # Proactively wait if remaining requests are low (separate check)
-            if (
-                self._remaining is not None
-                and self._remaining <= self._minimum_limit_remaining
-            ):
-                reset_wait = self.seconds_until_reset
-                if reset_wait > 0:
-                    logger.debug(
-                        f"Rate limit: proactively waiting {reset_wait:.2f}s "
-                        f"(remaining: {self._remaining}, threshold: {self._minimum_limit_remaining})"
-                    )
-                    await asyncio.sleep(reset_wait)
-                    self._reset_rate_limit_state()
+        if retry_after_wait > 0:
+            bounded_wait = min(retry_after_wait, MAX_RETRY_AFTER_WAIT_SECONDS)
+            logger.debug(
+                f"Rate limit: honoring Retry-After wait {bounded_wait:.2f}s "
+                f"(requested: {retry_after_wait:.2f}s, "
+                f"cap: {MAX_RETRY_AFTER_WAIT_SECONDS}s)"
+            )
+            await asyncio.sleep(bounded_wait)
+        elif remaining is not None and remaining <= threshold:
+            logger.debug(
+                f"Rate limit: smoothing wait {MIN_REMAINING_BACKOFF_SECONDS}s "
+                f"(remaining: {remaining}, threshold: {threshold})"
+            )
+            await asyncio.sleep(MIN_REMAINING_BACKOFF_SECONDS)
 
         return self
 
@@ -108,47 +91,63 @@ class AzureDevOpsRateLimiter:
         self._semaphore.release()
 
     def _reset_rate_limit_state(self) -> None:
-        """Reset all rate limit state variables."""
+        """Reset all rate limit state variables. Used by tests."""
         self._limit = None
         self._remaining = None
         self._reset_time = None
+        self._retry_after_until = None
 
     async def update_from_headers(self, headers: httpx.Headers) -> None:
-        """
-        Update internal rate limit status from Azure DevOps response headers.
+        """Update rate-limit state from response headers.
 
-        Azure DevOps rate limit headers are only present when approaching limits:
-        - X-RateLimit-Limit: Total TSTUs (Team Services Time Units) allowed
-        - X-RateLimit-Remaining: TSTUs remaining in current window
-        - X-RateLimit-Reset: Unix timestamp when usage returns to 0
+        Uses pessimistic ``min`` for remaining and ``max`` for Retry-After when
+        concurrent responses arrive out of order.
 
         Args:
-            headers: HTTP response headers from Azure DevOps API
+            headers: HTTP response headers from the API.
         """
         async with self._lock:
             try:
                 limit_header = headers.get(LIMIT_HEADER)
                 remaining_header = headers.get(LIMIT_REMAINING_HEADER)
                 reset_header = headers.get(LIMIT_RESET_HEADER)
+                retry_after_header = headers.get(LIMIT_RETRY_AFTER_HEADER)
 
-                # Update limit and remaining if both are present
                 if limit_header and remaining_header:
                     self._limit = int(limit_header)
-                    self._remaining = int(remaining_header)
+                    incoming_remaining = int(remaining_header)
+                    if self._remaining is None:
+                        self._remaining = incoming_remaining
+                    else:
+                        self._remaining = min(self._remaining, incoming_remaining)
                     logger.debug(
                         f"Rate limit updated - Remaining: {self._remaining}/{self._limit} TSTUs"
                     )
 
-                # Update reset time if present
                 if reset_header:
                     self._reset_time = float(reset_header)
                     logger.debug(
                         f"Rate limit resets at {self._reset_time} "
-                        f"(in {self.seconds_until_reset:.2f}s)"
+                        f"(in {self.seconds_until_reset:.2f}s; telemetry only)"
                     )
 
-                # Log comprehensive status if any rate limit info is present
-                if any([limit_header, remaining_header, reset_header]):
+                if retry_after_header:
+                    retry_after_seconds = float(retry_after_header)
+                    incoming_until = time.time() + retry_after_seconds
+                    if self._retry_after_until is None:
+                        self._retry_after_until = incoming_until
+                    else:
+                        self._retry_after_until = max(
+                            self._retry_after_until, incoming_until
+                        )
+                    logger.debug(
+                        f"Retry-After received: {retry_after_seconds:.2f}s; "
+                        f"next request gated until {self._retry_after_until:.2f}"
+                    )
+
+                if any(
+                    [limit_header, remaining_header, reset_header, retry_after_header]
+                ):
                     remaining_str = (
                         f"{self._remaining}"
                         if self._remaining is not None

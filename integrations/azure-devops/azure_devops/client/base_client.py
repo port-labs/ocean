@@ -8,7 +8,6 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from azure_devops.client.rate_limiter import (
     AzureDevOpsRateLimiter,
-    LIMIT_RESET_HEADER,
     LIMIT_RETRY_AFTER_HEADER,
 )
 
@@ -23,7 +22,6 @@ class HTTPBaseClient:
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 retry_after_headers=[
-                    LIMIT_RESET_HEADER,
                     LIMIT_RETRY_AFTER_HEADER,
                 ],
             ),
