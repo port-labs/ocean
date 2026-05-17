@@ -2072,6 +2072,7 @@ class AzureDevopsClient(HTTPBaseClient):
         async for runs in self._get_paginated_by_top_and_skip(url, params=params):
             yield await self._enrich_test_runs(runs, project_id, coverage_config)
 
+    @cache_iterator_result()
     async def fetch_test_runs(
         self,
         coverage_config: Optional["CodeCoverageConfig"] = None,
