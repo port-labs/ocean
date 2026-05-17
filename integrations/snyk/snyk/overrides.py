@@ -244,7 +244,7 @@ class SnykTargetAPIQueryParams(GenerateQueryParamMixin):
     exclude_empty: Optional[bool] = Field(
         default=None,
         title="Exclude Empty",
-        description="When false, returns all targets including those with no associated projects. When true, returns only targets with at least one project. The integration defaults to false to ensure all targets are ingested.",
+        description="When false, returns all targets including those with no associated projects. When true, returns only targets with at least one project.",
     )
     is_private: Optional[bool] = Field(
         default=None,
