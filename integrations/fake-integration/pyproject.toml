@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fake-integration"
-version = "0.1.247-dev"
+version = "0.1.248-dev"
 description = "A useless fake integration that helps us test the Ocean Core"
 authors = ["Erik Zaadi <erik@getport.io>"]
 
