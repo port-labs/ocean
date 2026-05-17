@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, cast
+from typing import Any, AsyncGenerator, cast
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
