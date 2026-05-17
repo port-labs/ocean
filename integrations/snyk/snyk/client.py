@@ -12,6 +12,7 @@ from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
 from snyk.overrides import (
     SnykProjectAPIQueryParams,
+    SnykTargetAPIQueryParams,
     SnykPolicyAPIQueryParams,
     SnykVulnerabilityAPIQueryParams,
 )
@@ -303,7 +304,7 @@ class SnykClient:
         self,
         org: dict[str, Any],
         attach_project_data: bool = True,
-        api_params: Optional[SnykProjectAPIQueryParams] = None,
+        api_params: Optional[SnykTargetAPIQueryParams] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Fetching paginated targets for organization: {org['id']}")
 
