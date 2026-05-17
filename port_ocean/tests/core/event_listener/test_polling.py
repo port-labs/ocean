@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any, Awaitable, Callable
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -11,10 +12,18 @@ from port_ocean.core.event_listener.polling import (
 from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
 
 
-def _run_repeat_every_times(repetitions: int):
-    def mock_repeat_every(*_args, **_kwargs):
-        def decorator(func):
-            async def wrapped():
+def _run_repeat_every_times(
+    repetitions: int,
+) -> Callable[
+    ..., Callable[[Callable[[], Awaitable[None]]], Callable[[], Awaitable[None]]]
+]:
+    def mock_repeat_every(
+        *_args: Any, **_kwargs: Any
+    ) -> Callable[[Callable[[], Awaitable[None]]], Callable[[], Awaitable[None]]]:
+        def decorator(
+            func: Callable[[], Awaitable[None]]
+        ) -> Callable[[], Awaitable[None]]:
+            async def wrapped() -> None:
                 for _ in range(repetitions):
                     await func()
 
@@ -27,7 +36,7 @@ def _run_repeat_every_times(repetitions: int):
 
 @pytest.mark.asyncio
 async def test_polling_resyncs_from_resync_requests_when_feature_flag_enabled(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     port_client = MagicMock()
     port_client.get_current_integration = AsyncMock(
@@ -61,13 +70,14 @@ async def test_polling_resyncs_from_resync_requests_when_feature_flag_enabled(
             type=EventListenerType.POLLING
         ),
     )
-    listener._resync = AsyncMock()
+    resync_mock = AsyncMock()
+    monkeypatch.setattr(listener, "_resync", resync_mock)
 
     await listener._start()
 
     port_client.get_current_integration.assert_called_once_with(is_polling=True)
     port_client.get_integration_resync_request.assert_called_once()
-    listener._resync.assert_called_once_with({})
+    resync_mock.assert_called_once_with({})
     assert (
         app.resync_state_updater.last_integration_state_updated_at
         == "2024-01-01T00:00:00Z"
@@ -80,7 +90,7 @@ async def test_polling_resyncs_from_resync_requests_when_feature_flag_enabled(
 
 @pytest.mark.asyncio
 async def test_polling_does_not_fetch_resync_requests_when_feature_flag_disabled(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     port_client = MagicMock()
     port_client.get_current_integration = AsyncMock(
@@ -110,17 +120,18 @@ async def test_polling_does_not_fetch_resync_requests_when_feature_flag_disabled
             type=EventListenerType.POLLING
         ),
     )
-    listener._resync = AsyncMock()
+    resync_mock = AsyncMock()
+    monkeypatch.setattr(listener, "_resync", resync_mock)
 
     await listener._start()
 
     port_client.get_integration_resync_request.assert_not_called()
-    listener._resync.assert_not_called()
+    resync_mock.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_polling_resyncs_on_integration_change_without_resync_requests_lookup(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     port_client = MagicMock()
     port_client.get_current_integration = AsyncMock(
@@ -154,17 +165,18 @@ async def test_polling_resyncs_on_integration_change_without_resync_requests_loo
             type=EventListenerType.POLLING
         ),
     )
-    listener._resync = AsyncMock()
+    resync_mock = AsyncMock()
+    monkeypatch.setattr(listener, "_resync", resync_mock)
 
     await listener._start()
 
     port_client.get_organization_feature_flags.assert_not_called()
     port_client.get_integration_resync_request.assert_not_called()
-    listener._resync.assert_called_once_with({})
+    resync_mock.assert_called_once_with({})
 
 
 def test_should_not_resync_when_resync_request_timestamp_is_missing(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = SimpleNamespace(
         resync_state_updater=SimpleNamespace(
@@ -186,7 +198,7 @@ def test_should_not_resync_when_resync_request_timestamp_is_missing(
 
 
 def test_should_not_resync_when_resync_request_timestamp_is_invalid(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = SimpleNamespace(
         resync_state_updater=SimpleNamespace(
@@ -208,7 +220,7 @@ def test_should_not_resync_when_resync_request_timestamp_is_invalid(
 
 @pytest.mark.asyncio
 async def test_polling_does_not_resync_repeatedly_for_same_resync_request(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     port_client = MagicMock()
     port_client.get_current_integration = AsyncMock(
@@ -242,8 +254,9 @@ async def test_polling_does_not_resync_repeatedly_for_same_resync_request(
             type=EventListenerType.POLLING
         ),
     )
-    listener._resync = AsyncMock()
+    resync_mock = AsyncMock()
+    monkeypatch.setattr(listener, "_resync", resync_mock)
 
     await listener._start()
 
-    assert listener._resync.call_count == 1
+    assert resync_mock.call_count == 1
