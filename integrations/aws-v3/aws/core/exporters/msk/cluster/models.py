@@ -30,7 +30,7 @@ class MskClusterProperties(BaseModel):
     Tags: Dict[str, str] = Field(default_factory=dict)
 
     class Config:
-        extra = "ignore"
+        extra = "allow"
 
 
 class MskCluster(ResourceModel[MskClusterProperties]):
