@@ -10,6 +10,8 @@ encoded in `detail.requestParameters.CreateBucketConfiguration.LocationConstrain
 We pass the resolved real region to `S3BucketExporter.get_resource` so
 that the read happens in the bucket's home region and the resulting
 entity carries the right `Properties.LocationConstraint`.
+
+The bucket identifier comes from `detail.requestParameters.bucketName`.
 """
 
 from __future__ import annotations
@@ -20,7 +22,8 @@ from loguru import logger
 
 from aws.auth.session_factory import session_for_account
 from aws.core.exporters.s3 import S3BucketExporter
-from aws.core.exporters.s3.bucket.models import SingleBucketRequest
+from aws.core.exporters.s3.bucket.models import Bucket, SingleBucketRequest
+from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.helpers.types import ObjectKind
 from aws.core.helpers.utils import is_resource_not_found_exception
 from aws.webhook.events import (
@@ -54,10 +57,12 @@ class S3BucketWebhookProcessor(_AwsAbstractWebhookProcessor):
             or payload.get("detail-type") != EVENT_BRIDGE_CT_DETAIL_TYPE
         ):
             return False
-        detail = payload.get("detail") or {}
+        detail = payload.get("detail")
+        if not isinstance(detail, dict):
+            return False
         return (
-            detail.get("eventSource") == S3_EVENT_SOURCE
-            and detail.get("eventName") in _S3_EVENT_NAMES
+            detail["eventSource"] == S3_EVENT_SOURCE
+            and detail["eventName"] in _S3_EVENT_NAMES
         )
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -67,19 +72,12 @@ class S3BucketWebhookProcessor(_AwsAbstractWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         account_id = str(payload["account"])
+        if rejected := await self._reject_if_account_disallowed_after_auth(account_id):
+            return rejected
         detail = payload["detail"]
-        event_name = detail.get("eventName", "")
+        event_name = detail["eventName"]
 
-        bucket_name = _extract_bucket_name(detail)
-        if not bucket_name:
-            logger.warning(
-                "S3 webhook: could not resolve bucket name from detail; "
-                f"dropping (account={account_id}, event={event_name})"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
+        bucket_name = str(detail["requestParameters"]["bucketName"])
         bucket_region = _resolve_bucket_region(detail)
 
         if skipped := self._reject_if_logical_region_blocked(
@@ -151,14 +149,6 @@ class S3BucketWebhookProcessor(_AwsAbstractWebhookProcessor):
         )
 
 
-def _extract_bucket_name(detail: dict[str, Any]) -> str | None:
-    request_params = detail.get("requestParameters") or {}
-    name = request_params.get("bucketName")
-    if isinstance(name, str) and name:
-        return name
-    return None
-
-
 def _resolve_bucket_region(detail: dict[str, Any]) -> str:
     """Resolve the bucket's home region from the CloudTrail detail.
 
@@ -168,7 +158,7 @@ def _resolve_bucket_region(detail: dict[str, Any]) -> str:
     defaulting to `us-east-1` when absent (which matches the AWS-side
     default when callers omit a LocationConstraint).
     """
-    request_params = detail.get("requestParameters") or {}
+    request_params = detail["requestParameters"]
     create_config = request_params.get("CreateBucketConfiguration") or {}
     location = create_config.get("LocationConstraint")
     if isinstance(location, str) and location.strip():
@@ -179,14 +169,16 @@ def _resolve_bucket_region(detail: dict[str, Any]) -> str:
 def _build_delete_payload(
     bucket_name: str, account_id: str, region: str
 ) -> dict[str, Any]:
-    return {
-        "Type": "AWS::S3::Bucket",
-        "Properties": {
+    """Minimal delete row; same ResourceBuilder path as exporter/resync payloads."""
+    model = Bucket()
+    builder = ResourceBuilder(model)
+    builder.with_properties(
+        {
             "BucketName": bucket_name,
             "Arn": f"arn:aws:s3:::{bucket_name}",
             "LocationConstraint": region,
-        },
-        "__ExtraContext": {
-            "AccountId": account_id,
-        },
-    }
+        }
+    )
+    builder.with_extra_context({"AccountId": account_id})
+    builder.with_type(model.Type)
+    return builder.build()
