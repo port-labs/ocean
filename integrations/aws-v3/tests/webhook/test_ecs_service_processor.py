@@ -7,7 +7,6 @@ import pytest
 
 from aws.webhook.webhook_processors.ecs_service_webhook_processor import (
     EcsServiceWebhookProcessor,
-    _parse_service_arn,
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from tests.webhook.fixtures import (
@@ -25,23 +24,6 @@ def _resource_config() -> MagicMock:
     config = MagicMock()
     config.selector.include_actions = []
     return config
-
-
-class TestParseServiceArn:
-    def test_parses_well_formed_arn(self) -> None:
-        result = _parse_service_arn(
-            "arn:aws:ecs:us-east-1:123456789012:service/my-cluster/my-service"
-        )
-        assert result == ("my-cluster", "my-service")
-
-    def test_returns_none_for_non_service_arn(self) -> None:
-        assert (
-            _parse_service_arn("arn:aws:ecs:us-east-1:123456789012:cluster/my-cluster")
-            is None
-        )
-
-    def test_returns_none_for_malformed_arn(self) -> None:
-        assert _parse_service_arn("not-an-arn") is None
 
 
 class TestMatchesEvent:
@@ -127,17 +109,28 @@ class TestHandleEvent:
         assert request.cluster_name == "my-cluster"
 
     @pytest.mark.asyncio
-    async def test_drops_event_without_service_arn(self) -> None:
+    async def test_cluster_arn_in_resources_raises(self) -> None:
         payload = ecs_deployment_state_change_event("c", "s", "FOO")
         payload["resources"] = ["arn:aws:ecs:us-east-1:123456789012:cluster/c"]
         processor = _processor_for(payload)
 
-        result = await processor.handle_event(
-            payload=payload, resource_config=_resource_config()
-        )
+        with pytest.raises(ValueError):
+            await processor.handle_event(
+                payload=payload, resource_config=_resource_config()
+            )
 
-        assert result.updated_raw_results == []
-        assert result.deleted_raw_results == []
+    @pytest.mark.asyncio
+    async def test_incomplete_service_arn_raises(self) -> None:
+        payload = ecs_service_action_event("c", "s", "SERVICE_STEADY_STATE")
+        payload["resources"] = [
+            "arn:aws:ecs:us-east-1:123456789012:service/cluster-only"
+        ]
+        processor = _processor_for(payload)
+
+        with pytest.raises(ValueError):
+            await processor.handle_event(
+                payload=payload, resource_config=_resource_config()
+            )
 
     @pytest.mark.asyncio
     async def test_resource_not_found_converts_to_delete(self) -> None:
