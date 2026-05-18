@@ -1,14 +1,18 @@
 """Live-event processor for `AWS::ECS::Service` action / deployment events.
 
 Both `ECS Service Action` and `ECS Deployment State Change` envelopes
-carry the service ARN in `payload["resources"][0]`, even though their
+place the **service ARN** at `payload["resources"][0]` even though their
 `detail` shapes differ ("ECS Service Action" includes `clusterArn`
 and `eventName`; "ECS Deployment State Change" carries `deploymentId`
-and a different `eventName` vocabulary). Parsing the ARN gives us both
-`cluster_name` and `service_name` regardless of the envelope subtype.
+and a different `eventName` vocabulary). Parsing that ARN yields both
+`cluster_name` and `service_name` regardless of envelope subtype.
 
 `SERVICE_DELETED` is the only event we treat as an explicit delete;
 every other event triggers an upsert via `EcsServiceExporter.get_resource`.
+
+Invalid envelopes (missing `resources`, non-service ARN, or unexpected
+path shape) are not handled here: indexing and unpacking raise and fail
+the webhook request loudly.
 """
 
 from __future__ import annotations
@@ -19,7 +23,8 @@ from loguru import logger
 
 from aws.auth.session_factory import session_for_account
 from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
-from aws.core.exporters.ecs.service.models import SingleServiceRequest
+from aws.core.exporters.ecs.service.models import Service, SingleServiceRequest
+from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.helpers.types import ObjectKind
 from aws.core.helpers.utils import is_resource_not_found_exception
 from aws.webhook.events import (
@@ -55,37 +60,21 @@ class EcsServiceWebhookProcessor(_AwsAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         account_id = str(payload["account"])
         region = str(payload["region"])
+        if rejected := await self._reject_if_account_disallowed_after_auth(account_id):
+            return rejected
         detail = payload["detail"]
-        event_name = detail.get("eventName", "")
+        event_name = detail["eventName"]
 
-        service_arn = _extract_service_arn(payload)
-        if not service_arn:
-            logger.warning(
-                "ECS webhook: payload `resources` did not contain a service ARN; "
-                f"dropping (account={account_id}, region={region}, event={event_name})"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        parsed = _parse_service_arn(service_arn)
-        if parsed is None:
-            logger.warning(
-                f"ECS webhook: failed to parse service ARN `{service_arn}`; dropping"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-        cluster_name, service_name = parsed
+        service_arn = payload["resources"][0]
+        _, _, _, _, _, resource_path = service_arn.split(":", 5)
+        _, cluster_name, service_name = resource_path.split("/")
 
         log_ctx = (
             f"cluster={cluster_name}, service={service_name}, "
             f"account={account_id}, region={region}, event={event_name}"
         )
 
-        if skipped := self._reject_if_logical_region_blocked(
-            resource_config, region
-        ):
+        if skipped := self._reject_if_logical_region_blocked(resource_config, region):
             return skipped
 
         if event_name == ECS_SERVICE_DELETED_EVENT_NAME:
@@ -152,52 +141,26 @@ class EcsServiceWebhookProcessor(_AwsAbstractWebhookProcessor):
         )
 
 
-def _extract_service_arn(payload: EventPayload) -> str | None:
-    resources = payload.get("resources") or []
-    for arn in resources:
-        if isinstance(arn, str) and ":service/" in arn:
-            return arn
-    return None
-
-
-def _parse_service_arn(service_arn: str) -> tuple[str, str] | None:
-    """Return `(cluster_name, service_name)` from a `service/<cluster>/<service>` ARN.
-
-    ECS service ARNs are unique in that the resource portion encodes a
-    two-component path, not a single name; using a generic ARN parser and
-    splitting on `/` is the documented approach.
-    """
-    try:
-        _, _, _, _, _, resource_path = service_arn.split(":", 5)
-    except ValueError:
-        return None
-    parts = resource_path.split("/")
-    if len(parts) != 3 or parts[0] != "service":
-        return None
-    cluster_name, service_name = parts[1], parts[2]
-    if not cluster_name or not service_name:
-        return None
-    return cluster_name, service_name
-
-
 def _build_delete_payload(
     cluster_name: str, service_name: str, account_id: str, region: str
 ) -> dict[str, Any]:
+    """Minimal delete row; same ResourceBuilder path as exporter/resync payloads."""
     cluster_arn = f"arn:aws:ecs:{region}:{account_id}:cluster/{cluster_name}"
     service_arn = (
         f"arn:aws:ecs:{region}:{account_id}:service/{cluster_name}/{service_name}"
     )
-    return {
-        "Type": "AWS::ECS::Service",
-        "Properties": {
+    model = Service()
+    builder = ResourceBuilder(model)
+    builder.with_properties(
+        {
             "ServiceName": service_name,
             "ServiceArn": service_arn,
             "ClusterArn": cluster_arn,
             "Status": "INACTIVE",
-        },
-        "__ExtraContext": {
-            "AccountId": account_id,
-            "Region": region,
-            "ClusterArn": cluster_arn,
-        },
-    }
+        }
+    )
+    builder.with_extra_context(
+        {"AccountId": account_id, "Region": region, "ClusterArn": cluster_arn}
+    )
+    builder.with_type(model.Type)
+    return builder.build()
