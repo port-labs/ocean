@@ -7,7 +7,12 @@ from port_ocean.helpers.retry import RetryConfig, register_retry_config_callback
 
 from clients.options import ListRepositoriesOptions, ListContainersOptions
 from initialize_client import init_aikido_client
-from integration import ObjectKind, RepositoryResourceConfig, ContainerResourceConfig, IssueGroupResourceConfig
+from integration import (
+    ObjectKind,
+    RepositoryResourceConfig,
+    ContainerResourceConfig,
+    IssueGroupResourceConfig,
+)
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
 
@@ -58,7 +63,9 @@ async def on_issue_groups_resync(
     if selector.scope_to_team:
         logger.info("Fetching team-scoped open issue groups from Aikido API")
         async for batch in client.get_open_issue_groups_by_team():
-            logger.info(f"Yielding team-scoped open issue groups batch of size: {len(batch)}")
+            logger.info(
+                f"Yielding team-scoped open issue groups batch of size: {len(batch)}"
+            )
             yield batch
     else:
         logger.info("Fetching open issue groups from Aikido API")

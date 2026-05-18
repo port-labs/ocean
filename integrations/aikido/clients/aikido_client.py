@@ -151,7 +151,7 @@ class AikidoClient:
         """
         Fetch all issues and yield them in batches of the specified size.
         """
-        
+
         all_issues = await self.get_all_issues()
         for i in range(0, len(all_issues), batch_size):
             yield all_issues[i : i + batch_size]
@@ -163,7 +163,7 @@ class AikidoClient:
 
         If team_id is provided, results are scoped to that team via filter_team_id.
         """
-        
+
         if team_id is None:
             base_params: Dict[str, Any] = {}
             resource_name = "open issue groups"
