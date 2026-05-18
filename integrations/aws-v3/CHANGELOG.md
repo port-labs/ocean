@@ -7,23 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.9-beta (2026-05-19)
+## 2.2.13-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 2.2.12-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 2.2.11-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 2.2.10-beta (2026-05-17)
 
 
 ### Bug Fixes
 
-- `session_for_account()` returns `None` when the strategy raises `AWSSessionError`
-  (e.g. healthcheck failure) so live-event handlers drop events cleanly instead of
-  failing the webhook worker retry path.
+- Update docs embed link to match install path
 
 
-## 2.2.8-beta (2026-05-19)
+## 2.2.9-beta (2026-05-17)
 
 
-### Bug Fixes
+### Features
 
-- Live-events: derive `allowedAccountIds` from validated accounts only after bearer
-  authentication, avoiding AWS session/strategy work during processor selection.
+- Added support for MSK (Amazon Managed Streaming for Apache Kafka) clusters
+
+
+## 2.2.8-beta (2026-05-17)
+
+
+### Features
+
+- Added support for AWS::ElastiCache::Cluster kind to sync ElastiCache clusters (Redis and Memcached) with optional tag enrichment via ListTagsForResourceAction
 
 
 ## 2.2.7-beta (2026-05-14)
