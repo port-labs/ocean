@@ -90,6 +90,7 @@ _TRUSTED_SUBDOMAINS = (
     ".servicenow.com",
     ".service-now.com",
     ".snyk.io",
+    ".coderabbit.ai",
     ".sonarqube.org",
     ".statuspage.io",
     ".terraform.io",
