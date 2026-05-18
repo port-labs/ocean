@@ -7,7 +7,9 @@ shared contract:
   - `authenticate()`        constant-time bearer compare, defense-in-depth
                             against a missing/broken middleware.
   - `validate_payload()`    enforces the EventBridge envelope shape.
-  - `should_process_event()`enforces the `allowedAccountIds` allowlist.
+  - `should_process_event()` routes by event shape and (when configured)
+    `allowedAccountIds`; derived allowlist from healthchecks is enforced in
+    `handle_event()` after `authenticate()`.
 
 Concrete subclasses implement `_matches_event()`, `get_matching_kinds()`
 and `handle_event()`, which applies `AWSResourceSelector.regionPolicy`
@@ -19,7 +21,7 @@ from __future__ import annotations
 
 import hmac
 from abc import abstractmethod
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from loguru import logger
 
@@ -96,7 +98,11 @@ class _AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        """Route an event to this processor if it matches and the account is allowed."""
+        """Route if the event matches and passes explicit-account routing rules.
+
+        When `allowedAccountIds` is unset, routing does not contact AWS; the
+        derived validated-account set is enforced in `handle_event` after auth.
+        """
         payload = event.payload
         if not await self._matches_event(event):
             return False
@@ -108,7 +114,7 @@ class _AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
             )
             return False
 
-        if not await self._is_account_allowed(str(account_id)):
+        if not await self._is_account_allowed(str(account_id), phase="routing"):
             logger.info(
                 f"AWS live-events processor: dropping event from account {account_id} "
                 f"(not in allowedAccountIds)"
@@ -121,20 +127,41 @@ class _AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
     async def _matches_event(self, event: WebhookEvent) -> bool:
         """Return True if this processor handles the given EventBridge event."""
 
-    async def _is_account_allowed(self, account_id: str) -> bool:
+    async def _reject_if_account_disallowed_after_auth(
+        self, account_id: str
+    ) -> WebhookEventRawResults | None:
+        """Enforce allowlist after `authenticate()` (includes derived accounts)."""
+        if await self._is_account_allowed(account_id, phase="enforce"):
+            return None
+        logger.info(
+            f"AWS live-events processor: dropping event from account {account_id} "
+            f"(not in allowedAccountIds)"
+        )
+        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+
+    async def _is_account_allowed(
+        self,
+        account_id: str,
+        *,
+        phase: Literal["routing", "enforce"] = "enforce",
+    ) -> bool:
         """Check the account against the `allowedAccountIds` allowlist.
 
-        When `allowedAccountIds` is unset or empty in the integration
-        config, the allowlist is derived from the accounts that passed
-        the auth healthcheck. This avoids the drift trap where an
-        operator adds an account to the org and forgets to update the
-        allowlist (and vice-versa where `["*"]` would silently
-        unauthenticate every account).
+        *routing* (processor selection, before bearer auth) applies only
+        an explicit config list. It does **not** call
+        `discover_valid_account_ids()` so unauthenticated traffic cannot
+        trigger AWS session/strategy work.
+
+        *enforce* (after auth, from `handle_event`) uses an explicit list
+        if set; otherwise derives from validated accounts (see doc on drift).
         """
         configured = ocean.integration_config.get("allowed_account_ids")
         if configured:
             allowed = {str(a).strip() for a in self._coerce_to_list(configured) if a}
             return account_id in allowed
+
+        if phase == "routing":
+            return True
 
         from aws.auth.session_factory import discover_valid_account_ids
 
@@ -178,6 +205,4 @@ class _AwsAbstractWebhookProcessor(AbstractWebhookProcessor):
             "excluded by selector.regionPolicy",
             logical_region,
         )
-        return WebhookEventRawResults(
-            updated_raw_results=[], deleted_raw_results=[]
-        )
+        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
