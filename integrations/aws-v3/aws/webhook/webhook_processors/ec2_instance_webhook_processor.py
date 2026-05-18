@@ -16,7 +16,8 @@ from loguru import logger
 
 from aws.auth.session_factory import session_for_account
 from aws.core.exporters.ec2.instance import EC2InstanceExporter
-from aws.core.exporters.ec2.instance.models import SingleEC2InstanceRequest
+from aws.core.exporters.ec2.instance.models import EC2Instance, SingleEC2InstanceRequest
+from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.helpers.types import ObjectKind
 from aws.core.helpers.utils import is_resource_not_found_exception
 from aws.webhook.events import EC2_DETAIL_TYPE, EC2_SOURCE, EC2_TERMINAL_STATES
@@ -48,6 +49,8 @@ class Ec2InstanceWebhookProcessor(_AwsAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         account_id = str(payload["account"])
         region = str(payload["region"])
+        if rejected := await self._reject_if_account_disallowed_after_auth(account_id):
+            return rejected
         detail = payload["detail"]
         instance_id = detail.get("instance-id")
         state = detail.get("state")
@@ -66,9 +69,7 @@ class Ec2InstanceWebhookProcessor(_AwsAbstractWebhookProcessor):
             f"account={account_id}, region={region}"
         )
 
-        if skipped := self._reject_if_logical_region_blocked(
-            resource_config, region
-        ):
+        if skipped := self._reject_if_logical_region_blocked(resource_config, region):
             return skipped
 
         if state in EC2_TERMINAL_STATES:
@@ -136,19 +137,20 @@ def _build_delete_payload(
 ) -> dict[str, Any]:
     """Synthesize the minimum payload shape the JQ mapping needs for delete.
 
-    Mirrors the resync payload shape (`Type`, `Properties`, `__ExtraContext`)
-    so user-provided JQ identifier expressions like
-    `.Properties.InstanceArn` or `.Properties.InstanceId` resolve correctly.
+    Uses the same ResourceBuilder path as exporter/resync payloads so deletes
+    match serialization and nesting (Type, Properties, __ExtraContext). JQ
+    identifiers such as `.Properties.InstanceArn` or `.Properties.InstanceId`
+    resolve the same way.
     """
-    return {
-        "Type": "AWS::EC2::Instance",
-        "Properties": {
+    model = EC2Instance()
+    builder = ResourceBuilder(model)
+    builder.with_properties(
+        {
             "InstanceId": instance_id,
             "InstanceArn": f"arn:aws:ec2:{region}:{account_id}:instance/{instance_id}",
             "State": {"Name": state},
-        },
-        "__ExtraContext": {
-            "AccountId": account_id,
-            "Region": region,
-        },
-    }
+        }
+    )
+    builder.with_extra_context({"AccountId": account_id, "Region": region})
+    builder.with_type(model.Type)
+    return builder.build()
