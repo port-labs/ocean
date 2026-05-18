@@ -163,14 +163,12 @@ class TestHandleEvent:
         assert len(result.deleted_raw_results) == 1
 
     @pytest.mark.asyncio
-    async def test_drops_when_bucket_name_missing(self) -> None:
+    async def test_raises_when_bucket_name_missing(self) -> None:
         payload = s3_create_bucket_event("b")
         del payload["detail"]["requestParameters"]["bucketName"]
         processor = _processor_for(payload)
 
-        result = await processor.handle_event(
-            payload=payload, resource_config=_resource_config()
-        )
-
-        assert result.updated_raw_results == []
-        assert result.deleted_raw_results == []
+        with pytest.raises(KeyError):
+            await processor.handle_event(
+                payload=payload, resource_config=_resource_config()
+            )
