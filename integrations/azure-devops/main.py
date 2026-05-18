@@ -66,6 +66,7 @@ from integration import (
     AzureDevopsPullRequestResourceConfig,
     AzureDevopsAdvancedSecurityResourceConfig,
     AzureDevopsRepositoryResourceConfig,
+    AzureDevopsUserConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -87,8 +88,11 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kind.USER)
 async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = cast(AzureDevopsUserConfig, event.resource_config)
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for users in azure_devops_client.generate_users():
+    async for users in azure_devops_client.generate_users(
+        additional_params=config.selector.to_params(),
+    ):
         logger.info(f"Resyncing {len(users)} members")
         yield users
 
