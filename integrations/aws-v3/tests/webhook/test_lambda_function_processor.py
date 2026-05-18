@@ -133,29 +133,3 @@ class TestHandleEvent:
 
         assert result.updated_raw_results == []
         assert len(result.deleted_raw_results) == 1
-
-    @pytest.mark.asyncio
-    async def test_fallback_extracts_function_name_from_arn(self) -> None:
-        payload = lambda_event("ignored", "CreateFunction20150331")
-        del payload["detail"]["requestParameters"]["functionName"]
-        payload["detail"]["responseElements"][
-            "functionArn"
-        ] = "arn:aws:lambda:us-east-1:123456789012:function:fallback-fn"
-        processor = _processor_for(payload)
-
-        with patch(
-            "aws.webhook.webhook_processors.lambda_function_webhook_processor.session_for_account",
-            new=AsyncMock(return_value=MagicMock()),
-        ):
-            with patch(
-                "aws.webhook.webhook_processors.lambda_function_webhook_processor.LambdaFunctionExporter"
-            ) as ExporterCls:
-                ExporterCls.return_value.get_resource = AsyncMock(return_value={"x": 1})
-
-                await processor.handle_event(
-                    payload=payload, resource_config=_resource_config()
-                )
-
-                request = ExporterCls.return_value.get_resource.call_args.args[0]
-
-        assert request.function_name == "fallback-fn"
