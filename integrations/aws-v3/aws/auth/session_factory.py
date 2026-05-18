@@ -11,6 +11,7 @@ from typing import Any, TypedDict, AsyncIterator, Dict
 from aws.auth.providers.assume_role_with_web_identity_provider import (
     AssumeRoleWithWebIdentityProvider,
 )
+from aws.auth.utils import AWSSessionError
 import os
 
 StrategyType = SingleAccountStrategy | MultiAccountStrategy | OrganizationsStrategy
@@ -143,9 +144,21 @@ async def session_for_account(account_id: str) -> AioSession | None:
     can resolve the right session by AWS account ID without iterating
     `get_all_account_sessions`. Returns `None` (rather than raising) so the
     caller can drop the event with a structured log line.
+
+    Strategy healthcheck or session resolution failures (`AWSSessionError`)
+    are swallowed here so webhook workers do not treat transient auth issues
+    as fatal processor errors.
     """
-    strategy = await AccountStrategyFactory.create()
-    return await strategy.session_for_account(account_id)
+    try:
+        strategy = await AccountStrategyFactory.create()
+        return await strategy.session_for_account(account_id)
+    except AWSSessionError as e:
+        logger.warning(
+            "session_for_account: no usable AWS session for account {} — {}",
+            account_id,
+            e,
+        )
+        return None
 
 
 async def discover_valid_account_ids() -> set[str]:
