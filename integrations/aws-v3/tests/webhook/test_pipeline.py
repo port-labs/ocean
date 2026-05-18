@@ -16,10 +16,9 @@ What these catch that the per-processor unit tests don't:
     stack (any mounting-order bug surfaces here).
   - Multiple processors registered on the same path: when an EC2
     envelope arrives, only the EC2 processor's `handle_event` runs.
-  - `allowedAccountIds` actually stops the exporter call (the unit
-    test asserts `should_process_event` returns False; this test
-    asserts the exporter is never invoked, which is the operational
-    invariant).
+  - `allowedAccountIds` (explicit or derived post-auth) stops the
+    exporter call — this test asserts the exporter is never invoked,
+    which is the operational invariant.
 """
 
 from __future__ import annotations
@@ -372,6 +371,33 @@ class TestDeletePathDoesNotCallExporter:
             f"{label}: delete-shaped event should not invoke the exporter; "
             f"got {invocations}"
         )
+
+
+class TestDerivedAllowlistAfterAuth:
+    """When `allowedAccountIds` is unset, enforcement uses derived accounts only
+    inside `handle_event` (after bearer auth), not during processor routing.
+    """
+
+    def test_disallowed_derived_account_does_not_call_exporter(self) -> None:
+        invocations: list[str] = []
+        config = {"webhook_secret": SECRET}
+        app = _build_pipeline_app(invocations, config)
+
+        with _ocean_patch(app):
+            with (
+                patch(
+                    "aws.auth.session_factory.discover_valid_account_ids",
+                    new=AsyncMock(return_value={"999999999999"}),
+                ),
+                _stub_session_and_exporters(invocations),
+            ):
+                client = TestClient(app)
+                response = _send(client, ec2_state_change_event("i-0", "running"))
+
+        assert response.status_code == 200
+        assert (
+            "Ec2InstanceWebhookProcessor.exporter_called" not in invocations
+        ), invocations
 
 
 class TestAllowlistGate:
