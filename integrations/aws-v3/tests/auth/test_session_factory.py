@@ -7,6 +7,7 @@ from aws.auth.session_factory import (
     AccountStrategyFactory,
     get_all_account_sessions,
     clear_aws_account_sessions,
+    session_for_account,
 )
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
@@ -133,6 +134,29 @@ class TestAccountStrategyFactory:
                 with pytest.raises(Exception, match="Health check failed"):
                     async for _ in strategy.get_account_sessions():
                         break
+
+    @pytest.mark.asyncio
+    async def test_session_for_account_returns_none_on_awssession_error(
+        self, mock_single_account_config: dict[str, object]
+    ) -> None:
+        """`session_for_account` must not propagate AWSSessionError to webhook callers."""
+        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+            mock_ocean.integration_config = mock_single_account_config
+
+            mock_strategy = MagicMock()
+            mock_strategy.session_for_account = AsyncMock(
+                side_effect=AWSSessionError("healthcheck failed")
+            )
+            with patch.object(
+                AccountStrategyFactory,
+                "create",
+                new_callable=AsyncMock,
+                return_value=mock_strategy,
+            ):
+                result = await session_for_account("123456789012")
+
+        assert result is None
+        mock_strategy.session_for_account.assert_awaited_once_with("123456789012")
 
     @pytest.mark.asyncio
     async def test_provider_priority_default_prefers_web_identity(

@@ -28,7 +28,9 @@ class S3BucketExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"Name": options.bucket_name}], options.include
+                [{"Name": options.bucket_name}],
+                options.include,
+                extra_context={"AccountId": options.account_id},
             )
 
             return response[0]

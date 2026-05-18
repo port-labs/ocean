@@ -44,6 +44,7 @@ from aws.auth.session_factory import (
     initialize_aws_account_sessions,
     clear_aws_account_sessions,
 )
+from aws.webhook.registry import register_live_events_webhooks
 
 
 @ocean.on_resync_start()
@@ -227,3 +228,6 @@ async def resync_ec2_volume(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     async for batch in service:
         yield batch
+
+
+register_live_events_webhooks()

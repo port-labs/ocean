@@ -12,7 +12,6 @@ from aws.core.exporters.ec2.instance.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
-from loguru import logger
 
 
 class EC2InstanceExporter(IResourceExporter):
@@ -26,13 +25,32 @@ class EC2InstanceExporter(IResourceExporter):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
+            # `ResourceInspector` + `DescribeInstancesAction` expect **instance
+            # dicts** from DescribeInstances (same shape as the paginated path).
+            # Passing raw instance-id strings made `DescribeInstancesAction` return
+            # strings and broke merging (`dict |= "i-…"` → ValueError).
+            described = await proxy.client.describe_instances(
+                InstanceIds=[options.instance_id]
+            )
+            instances: List[Dict[str, Any]] = []
+            for reservation in described.get("Reservations", []):
+                instances.extend(reservation.get("Instances", []))
+            if not instances:
+                return {}
 
             inspector = ResourceInspector(
                 proxy.client,
                 self._actions_map(),
                 lambda: self._model_cls(),
             )
-            response = await inspector.inspect([options.instance_id], options.include)
+            response = await inspector.inspect(
+                instances,
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
+            )
 
             return response[0] if response else {}
 

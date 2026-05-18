@@ -1,0 +1,752 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Port Ocean AWS-V3 — live events pipeline (member account scope).
+  Deploys EventBridge rules (EC2, ECS, Lambda, S3) targeting a Port Ocean
+  webhook endpoint via an API Destination, with per-rule DLQs. Use once per
+  account and region, or via an organization StackSet (see live-events-org-stackset.yaml).
+
+# =============================================================================
+# OVERVIEW
+# =============================================================================
+#
+# This template provisions the AWS-side infrastructure required by the AWS-V3
+# Ocean integration's live-events path. See the ADR for design rationale:
+#   integrations/aws-v3/docs/adr-live-events.md
+#
+# Architecture (Option A in the ADR):
+#
+#   AWS service event
+#         │
+#         ▼
+#   EventBridge default bus
+#         │
+#         ▼
+#   EventBridge Rule  ──── on failure (after retries) ────▶  SQS DLQ (per rule)
+#         │
+#         ▼
+#   EventBridge API Destination
+#         │  Authorization: Bearer <webhookSecret>
+#         ▼
+#   Ocean webhook endpoint  →  /integration/webhook/live-events
+#
+# Four rules are provisioned:
+#
+#   1. EC2 instance state change      (native aws.ec2 events; per region)
+#   2. ECS service / deployment       (native aws.ecs events; per region)
+#   3. Lambda lifecycle               (CloudTrail-on-EventBridge; per region)
+#   4. S3 bucket lifecycle            (CloudTrail-on-EventBridge; us-east-1 only,
+#                                      because S3 control-plane is global)
+#
+# =============================================================================
+# DEPLOYMENT MODEL
+# =============================================================================
+#
+# Member-account template: each stack instance runs in one AWS account and one
+# Region. Deploy directly for a single account (repeat per region), or use the
+# companion StackSet template live-events-org-stackset.yaml for AWS Organizations:
+# set StackInstancesProvisioning to DEFER and use Stack sets console “Add stacks”
+# (OU + region pickers), or INLINE_PARAMETERS plus comma-separated OUs/regions so
+# the parent deploy creates instances; or CLI create-stack-instances afterward.
+#
+# The S3 rule is included only when the stack is deployed to us-east-1 (see the
+# `IsUsEast1` Condition); other regions get EC2 + ECS + Lambda rules only.
+#
+# =============================================================================
+# PREREQUISITES
+# =============================================================================
+#
+# 1. A Port Ocean AWS-V3 integration with live events enabled. The integration
+#    must expose the webhook endpoint at:
+#        <your-ocean-host>/integration/webhook/live-events
+#
+# 2. A Secrets Manager secret containing the bearer token used to authenticate
+#    inbound webhook calls. The secret value must match the `webhookSecret`
+#    configured on the Ocean integration side. Create it before deploying (repeat
+#    in every member account when using a StackSet; use the same secret *name*
+#    and *value* in each account):
+#
+#        aws secretsmanager create-secret \
+#            --name port-ocean-aws-live-events-webhook \
+#            --secret-string "$(openssl rand -hex 32)"
+#
+#    Pass either `WebhookSecretArn` (single-account / console deploys) or
+#    `WebhookSecretName` (StackSets — resolves in each stack instance account).
+#
+# 3. A CloudTrail trail active in the deployment region (for the Lambda rule)
+#    and in us-east-1 (for the S3 rule). Without an active trail in that
+#    region, `AWS API Call via CloudTrail` events do not appear on the default
+#    EventBridge bus — the Lambda and S3 rules will silently never match.
+#    Most customers already have a multi-region trail; if not, create one:
+#
+#        aws cloudtrail create-trail \
+#            --name port-ocean-aws-trail \
+#            --s3-bucket-name <existing-bucket> \
+#            --is-multi-region-trail
+#        aws cloudtrail start-logging --name port-ocean-aws-trail
+#
+#    Management events are sufficient — do NOT enable data events for this
+#    use case (cost-prohibitive and unnecessary).
+#
+# =============================================================================
+# DEPLOY
+# =============================================================================
+#
+# Deploy to us-east-1 first (gets EC2 + ECS + Lambda + S3 rules):
+#
+#     aws cloudformation deploy \
+#         --region us-east-1 \
+#         --stack-name port-ocean-aws-live-events \
+#         --template-file live-events.yaml \
+#         --capabilities CAPABILITY_IAM \
+#         --parameter-overrides \
+#             OceanWebhookUrl=https://<your-ocean-host>/integration/webhook/live-events \
+#             WebhookSecretArn=arn:aws:secretsmanager:us-east-1:<account>:secret:port-ocean-aws-live-events-webhook-XXXXXX
+#
+# StackSet / uniform secret name (same parameter value in every account):
+#
+#             WebhookSecretName=port-ocean-aws-live-events-webhook
+#
+# Repeat for every other region you want monitored. The S3 rule will be
+# omitted automatically.
+#
+# =============================================================================
+# VERIFY
+# =============================================================================
+#
+# After deployment, trigger a real event and confirm end-to-end delivery:
+#
+#     # EC2 native rule:
+#     aws ec2 stop-instances --instance-ids i-xxxxxxxxxxxxxxxxx
+#
+#     # Lambda CT-on-EB rule (may take 30s–2min for CloudTrail to deliver):
+#     aws lambda update-function-configuration \
+#         --function-name <your-test-function> \
+#         --timeout 30
+#
+#     # S3 CT-on-EB rule (deploy to us-east-1 first):
+#     aws s3api create-bucket --bucket port-ocean-test-$(date +%s) --region us-east-1
+#
+# Then check the integration's Port catalog for the corresponding entity update.
+#
+# Monitor the per-rule DLQ depth in CloudWatch — sustained nonzero depth
+# signals a delivery failure (e.g. webhook secret mismatch, Ocean down):
+#
+#     aws cloudwatch get-metric-statistics \
+#         --namespace AWS/SQS \
+#         --metric-name ApproximateNumberOfMessagesVisible \
+#         --dimensions Name=QueueName,Value=<dlq-name> \
+#         --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S) \
+#         --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
+#         --period 300 --statistics Maximum
+#
+# =============================================================================
+# TEARDOWN
+# =============================================================================
+#
+# DLQs use `DeletionPolicy: Retain` — any unprocessed events survive stack
+# deletion. Delete them manually after confirming the queues are empty:
+#
+#     aws cloudformation delete-stack --stack-name port-ocean-aws-live-events
+#     aws sqs delete-queue --queue-url <dlq-url>   # repeat per DLQ
+#
+# =============================================================================
+
+
+Parameters:
+
+  OceanWebhookUrl:
+    Type: String
+    Description: >-
+      Full Ocean webhook URL, ending in /integration/webhook/live-events
+      (e.g. https://my-org.getport.io/integration/webhook/live-events).
+    AllowedPattern: ^https://.+/integration/webhook/live-events$
+    ConstraintDescription: >-
+      Must be an HTTPS URL ending in /integration/webhook/live-events.
+
+  WebhookSecretArn:
+    Type: String
+    Default: ''
+    Description: >-
+      ARN of an existing Secrets Manager secret whose SecretString is the raw
+      bearer token (no "Bearer " prefix). Must match webhookSecret in the Ocean
+      integration config. Leave empty when using WebhookSecretName.
+    AllowedPattern: (^$|^arn:aws:secretsmanager:[a-z0-9-]+:\d{12}:secret:.+$)
+    ConstraintDescription: >-
+      Empty, or a Secrets Manager secret ARN.
+
+  WebhookSecretName:
+    Type: String
+    Default: ''
+    Description: >-
+      Secrets Manager secret name (not ARN) in this stack's account and region.
+      Prefer this for StackSets: use the same name and SecretString in every
+      member account so one StackSet parameter works everywhere. Leave empty
+      when using WebhookSecretArn.
+
+  ResourcePrefix:
+    Type: String
+    Default: port-ocean-aws-live-events
+    Description: Name prefix applied to all resources created by this stack.
+    AllowedPattern: ^[a-z0-9][a-z0-9-]{1,40}[a-z0-9]$
+    ConstraintDescription: >-
+      3–42 lowercase alphanumerics/hyphens; must not start or end with a hyphen.
+
+  InvocationRateLimitPerSecond:
+    Type: Number
+    Default: 300
+    MinValue: 1
+    MaxValue: 10000
+    Description: >-
+      Maximum invocations per second sent to the Ocean webhook. EventBridge
+      throttles excess traffic and retries via the rule's RetryPolicy.
+
+  MaximumRetryAttempts:
+    Type: Number
+    Default: 185
+    MinValue: 0
+    MaxValue: 185
+    Description: >-
+      Per-event retry attempts before the event is sent to the rule's DLQ.
+      AWS default is 185.
+
+  MaximumEventAgeInSeconds:
+    Type: Number
+    Default: 86400
+    MinValue: 60
+    MaxValue: 86400
+    Description: >-
+      Maximum age (seconds) an event can be retried before being dropped to
+      the DLQ. AWS default is 86400 (24 hours).
+
+
+Rules:
+
+  WebhookSecretXor:
+    Assertions:
+      - AssertDescription: >-
+          Specify exactly one of WebhookSecretArn or WebhookSecretName.
+        Assert:
+          Fn::And:
+            - Fn::Or:
+                - Fn::Not:
+                    - Fn::Equals:
+                        - Ref: WebhookSecretArn
+                        - ''
+                - Fn::Not:
+                    - Fn::Equals:
+                        - Ref: WebhookSecretName
+                        - ''
+            - Fn::Or:
+                - Fn::Equals:
+                    - Ref: WebhookSecretArn
+                    - ''
+                - Fn::Equals:
+                    - Ref: WebhookSecretName
+                    - ''
+
+Conditions:
+
+  UseWebhookSecretByName:
+    Fn::Not:
+      - Fn::Equals:
+          - Ref: WebhookSecretName
+          - ''
+
+  # S3 control-plane events are global and only appear on the default
+  # EventBridge bus in us-east-1. The S3 rule, S3 DLQ, and S3 DLQ policy
+  # are gated on this condition.
+  IsUsEast1:
+    Fn::Equals:
+      - Ref: AWS::Region
+      - us-east-1
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # EventBridge Connection + API Destination
+  # ---------------------------------------------------------------------------
+
+  OceanConnection:
+    Type: AWS::Events::Connection
+    Properties:
+      Name:
+        Fn::Sub: '${ResourcePrefix}-connection'
+      Description: >-
+        Bearer-token credential for invoking the Port Ocean webhook.
+      AuthorizationType: API_KEY
+      AuthParameters:
+        ApiKeyAuthParameters:
+          ApiKeyName: Authorization
+          ApiKeyValue:
+            Fn::If:
+              - UseWebhookSecretByName
+              - Fn::Join:
+                  - ''
+                  - - 'Bearer {{resolve:secretsmanager:'
+                    - Ref: WebhookSecretName
+                    - ':SecretString}}'
+              - Fn::Sub:
+                  - 'Bearer {{resolve:secretsmanager:${SecretArn}:SecretString}}'
+                  - SecretArn:
+                      Ref: WebhookSecretArn
+
+  OceanApiDestination:
+    Type: AWS::Events::ApiDestination
+    Properties:
+      Name:
+        Fn::Sub: '${ResourcePrefix}-api-destination'
+      Description: Port Ocean webhook endpoint
+      ConnectionArn:
+        Fn::GetAtt:
+          - OceanConnection
+          - Arn
+      InvocationEndpoint:
+        Ref: OceanWebhookUrl
+      HttpMethod: POST
+      InvocationRateLimitPerSecond:
+        Ref: InvocationRateLimitPerSecond
+  # ---------------------------------------------------------------------------
+  # IAM role: EventBridge rules → API Destination
+  # ---------------------------------------------------------------------------
+  #
+  # Single shared role used by all four rules. Permissions scoped to the
+  # specific API Destination ARN (least privilege).
+  #
+  # RoleName is deliberately omitted so CloudFormation generates a unique name
+  # per stack deployment — IAM is account-global, so a hard-coded name would
+  # collide if this stack is deployed to multiple regions.
+
+  EventBridgeRuleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: >-
+        Allows EventBridge rules to invoke the Port Ocean API Destination.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeOceanApiDestination
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: events:InvokeApiDestination
+                Resource:
+                  Fn::GetAtt:
+                    - OceanApiDestination
+                    - Arn
+  # ---------------------------------------------------------------------------
+  # Dead-letter queues (one per rule)
+  # ---------------------------------------------------------------------------
+  #
+  # Retain on stack deletion so unprocessed events survive teardown. Operator
+  # must drain or delete the queues manually after confirming they're empty.
+
+  Ec2DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      QueueName:
+        Fn::Sub: '${ResourcePrefix}-ec2-dlq'
+      MessageRetentionPeriod: 1209600  # 14 days
+
+  EcsDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      QueueName:
+        Fn::Sub: '${ResourcePrefix}-ecs-dlq'
+      MessageRetentionPeriod: 1209600
+
+  LambdaDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      QueueName:
+        Fn::Sub: '${ResourcePrefix}-lambda-dlq'
+      MessageRetentionPeriod: 1209600
+
+  S3DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Condition: IsUsEast1
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      QueueName:
+        Fn::Sub: '${ResourcePrefix}-s3-dlq'
+      MessageRetentionPeriod: 1209600
+
+  # ---------------------------------------------------------------------------
+  # DLQ queue policies (allow EventBridge to SendMessage)
+  # ---------------------------------------------------------------------------
+  #
+  # Scoped via `aws:SourceArn` condition to the specific rule that owns this
+  # DLQ, so a misconfigured rule elsewhere in the account cannot send to it.
+
+  Ec2DlqPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - Ref: Ec2DeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource:
+              Fn::GetAtt:
+                - Ec2DeadLetterQueue
+                - Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  Fn::GetAtt:
+                    - Ec2InstanceStateRule
+                    - Arn
+  EcsDlqPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - Ref: EcsDeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource:
+              Fn::GetAtt:
+                - EcsDeadLetterQueue
+                - Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  Fn::GetAtt:
+                    - EcsServiceRule
+                    - Arn
+  LambdaDlqPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - Ref: LambdaDeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource:
+              Fn::GetAtt:
+                - LambdaDeadLetterQueue
+                - Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  Fn::GetAtt:
+                    - LambdaLifecycleRule
+                    - Arn
+  S3DlqPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Condition: IsUsEast1
+    Properties:
+      Queues:
+        - Ref: S3DeadLetterQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sqs:SendMessage
+            Resource:
+              Fn::GetAtt:
+                - S3DeadLetterQueue
+                - Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn:
+                  Fn::GetAtt:
+                    - S3BucketLifecycleRule
+                    - Arn
+  # ---------------------------------------------------------------------------
+  # Rule 1: EC2 instance state changes (native aws.ec2 events)
+  # ---------------------------------------------------------------------------
+  #
+  # Fires on every EC2 instance state transition: pending, running, stopping,
+  # stopped, shutting-down, terminated. The handler treats shutting-down +
+  # terminated as deletes; all others as upserts.
+
+  Ec2InstanceStateRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name:
+        Fn::Sub: '${ResourcePrefix}-ec2-instance-state'
+      Description: EC2 instance state changes → Port Ocean
+      EventBusName: default
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.ec2
+        detail-type:
+          - EC2 Instance State-change Notification
+      Targets:
+        - Id: ocean-api-destination
+          Arn:
+            Fn::GetAtt:
+              - OceanApiDestination
+              - Arn
+          RoleArn:
+            Fn::GetAtt:
+              - EventBridgeRuleRole
+              - Arn
+          DeadLetterConfig:
+            Arn:
+              Fn::GetAtt:
+                - Ec2DeadLetterQueue
+                - Arn
+          RetryPolicy:
+            MaximumRetryAttempts:
+              Ref: MaximumRetryAttempts
+            MaximumEventAgeInSeconds:
+              Ref: MaximumEventAgeInSeconds
+  # ---------------------------------------------------------------------------
+  # Rule 2: ECS service + deployment events (native aws.ecs events)
+  # ---------------------------------------------------------------------------
+  #
+  # Covers SERVICE_DEPLOYMENT_*, SERVICE_STEADY_STATE, SERVICE_TASK_*, and
+  # deployment state transitions. Task-level and container-instance-level
+  # events are intentionally excluded — those are per-task noise, not service
+  # state.
+
+  EcsServiceRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name:
+        Fn::Sub: '${ResourcePrefix}-ecs-service'
+      Description: ECS service action / deployment state-change → Port Ocean
+      EventBusName: default
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.ecs
+        detail-type:
+          - ECS Service Action
+          - ECS Deployment State Change
+      Targets:
+        - Id: ocean-api-destination
+          Arn:
+            Fn::GetAtt:
+              - OceanApiDestination
+              - Arn
+          RoleArn:
+            Fn::GetAtt:
+              - EventBridgeRuleRole
+              - Arn
+          DeadLetterConfig:
+            Arn:
+              Fn::GetAtt:
+                - EcsDeadLetterQueue
+                - Arn
+          RetryPolicy:
+            MaximumRetryAttempts:
+              Ref: MaximumRetryAttempts
+            MaximumEventAgeInSeconds:
+              Ref: MaximumEventAgeInSeconds
+  # ---------------------------------------------------------------------------
+  # Rule 3: Lambda lifecycle (CloudTrail-on-EventBridge)
+  # ---------------------------------------------------------------------------
+  #
+  # Matches the four versioned eventName prefixes used by Lambda's
+  # management API:
+  #   - CreateFunction20150331
+  #   - UpdateFunctionConfiguration20150331(v2)
+  #   - UpdateFunctionCode20150331(v2)
+  #   - DeleteFunction20150331
+  #
+  # Prefix matching defends against future API version bumps. The integration
+  # handler performs the same prefix match internally as defense in depth.
+  #
+  # REQUIRES an active CloudTrail trail in this region capturing management
+  # events. Without it, `AWS API Call via CloudTrail` events do not reach the
+  # default bus and this rule will silently never fire.
+
+  LambdaLifecycleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name:
+        Fn::Sub: '${ResourcePrefix}-lambda-lifecycle'
+      Description: Lambda function lifecycle (CT-on-EB) → Port Ocean
+      EventBusName: default
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.lambda
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - lambda.amazonaws.com
+          eventName:
+            - prefix: CreateFunction20
+            - prefix: UpdateFunctionConfiguration20
+            - prefix: UpdateFunctionCode20
+            - prefix: DeleteFunction20
+      Targets:
+        - Id: ocean-api-destination
+          Arn:
+            Fn::GetAtt:
+              - OceanApiDestination
+              - Arn
+          RoleArn:
+            Fn::GetAtt:
+              - EventBridgeRuleRole
+              - Arn
+          DeadLetterConfig:
+            Arn:
+              Fn::GetAtt:
+                - LambdaDeadLetterQueue
+                - Arn
+          RetryPolicy:
+            MaximumRetryAttempts:
+              Ref: MaximumRetryAttempts
+            MaximumEventAgeInSeconds:
+              Ref: MaximumEventAgeInSeconds
+  # ---------------------------------------------------------------------------
+  # Rule 4: S3 bucket lifecycle (CloudTrail-on-EventBridge, us-east-1 only)
+  # ---------------------------------------------------------------------------
+  #
+  # S3 control-plane (CreateBucket/DeleteBucket) is global; CloudTrail
+  # surfaces these events only in us-east-1 on the default bus. The bucket's
+  # actual region is carried in
+  # detail.requestParameters.CreateBucketConfiguration.LocationConstraint
+  # (default us-east-1 when absent) — the integration handler reads it from
+  # there to call the S3 API in the bucket's home region.
+  #
+  # REQUIRES an active CloudTrail trail in us-east-1 capturing management
+  # events.
+
+  S3BucketLifecycleRule:
+    Type: AWS::Events::Rule
+    Condition: IsUsEast1
+    Properties:
+      Name:
+        Fn::Sub: '${ResourcePrefix}-s3-bucket-lifecycle'
+      Description: S3 bucket create/delete (CT-on-EB, global) → Port Ocean
+      EventBusName: default
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - s3.amazonaws.com
+          eventName:
+            - CreateBucket
+            - DeleteBucket
+      Targets:
+        - Id: ocean-api-destination
+          Arn:
+            Fn::GetAtt:
+              - OceanApiDestination
+              - Arn
+          RoleArn:
+            Fn::GetAtt:
+              - EventBridgeRuleRole
+              - Arn
+          DeadLetterConfig:
+            Arn:
+              Fn::GetAtt:
+                - S3DeadLetterQueue
+                - Arn
+          RetryPolicy:
+            MaximumRetryAttempts:
+              Ref: MaximumRetryAttempts
+            MaximumEventAgeInSeconds:
+              Ref: MaximumEventAgeInSeconds
+Outputs:
+
+  OceanWebhookUrl:
+    Description: The configured Ocean webhook URL (echoed for verification).
+    Value:
+      Ref: OceanWebhookUrl
+  ConnectionArn:
+    Description: EventBridge Connection ARN.
+    Value:
+      Fn::GetAtt:
+        - OceanConnection
+        - Arn
+    Export:
+      Name:
+        Fn::Sub: '${AWS::StackName}-ConnectionArn'
+
+  ApiDestinationArn:
+    Description: EventBridge API Destination ARN.
+    Value:
+      Fn::GetAtt:
+        - OceanApiDestination
+        - Arn
+    Export:
+      Name:
+        Fn::Sub: '${AWS::StackName}-ApiDestinationArn'
+
+  EventBridgeRuleRoleArn:
+    Description: IAM role assumed by EventBridge rules to invoke the API Destination.
+    Value:
+      Fn::GetAtt:
+        - EventBridgeRuleRole
+        - Arn
+  Ec2RuleArn:
+    Description: EC2 instance state-change rule ARN.
+    Value:
+      Fn::GetAtt:
+        - Ec2InstanceStateRule
+        - Arn
+  EcsRuleArn:
+    Description: ECS service / deployment rule ARN.
+    Value:
+      Fn::GetAtt:
+        - EcsServiceRule
+        - Arn
+  LambdaRuleArn:
+    Description: Lambda lifecycle (CT-on-EB) rule ARN.
+    Value:
+      Fn::GetAtt:
+        - LambdaLifecycleRule
+        - Arn
+  S3RuleArn:
+    Condition: IsUsEast1
+    Description: S3 bucket lifecycle (CT-on-EB) rule ARN — us-east-1 only.
+    Value:
+      Fn::GetAtt:
+        - S3BucketLifecycleRule
+        - Arn
+  Ec2DlqUrl:
+    Description: EC2 rule dead-letter queue URL.
+    Value:
+      Ref: Ec2DeadLetterQueue
+  EcsDlqUrl:
+    Description: ECS rule dead-letter queue URL.
+    Value:
+      Ref: EcsDeadLetterQueue
+  LambdaDlqUrl:
+    Description: Lambda rule dead-letter queue URL.
+    Value:
+      Ref: LambdaDeadLetterQueue
+  S3DlqUrl:
+    Condition: IsUsEast1
+    Description: S3 rule dead-letter queue URL — us-east-1 only.
+    Value:
+      Ref: S3DeadLetterQueue

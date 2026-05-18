@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.2.14-beta (2026-05-19)
+
+
+### Features
+
+- Added AWS-V3 live events: ingest EventBridge notifications via the `/webhook/live-events` endpoint with CloudFormation operator assets (`live-events.yaml`, org StackSet options and deployment docs).
+
+### Improvements
+
+- Allowlist: respect explicit account IDs early; apply derived accounts only after webhook auth.
+- Live-event webhook processors (EC2, ECS, Lambda, S3): stricter payloads and stable delete shapes for Port mapping.
+- Transient AWS session failures no longer abort the webhook worker; events are skipped with a warning.
+- More unit tests around webhooks and session lookup.
+
+
 ## 2.2.13-beta (2026-05-17)
 
 
