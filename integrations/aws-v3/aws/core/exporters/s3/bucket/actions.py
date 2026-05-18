@@ -20,6 +20,7 @@ class GetPublicAccessBlockAction(Action):
                 logger.error(
                     f"Error fetching bucket public access block for bucket '{bucket_name}': {pab_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], pab_result))
         return results
@@ -51,6 +52,7 @@ class GetBucketOwnershipControlsAction(Action):
                 logger.error(
                     f"Error fetching bucket ownership controls for bucket '{bucket_name}': {ownership_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], ownership_result))
         return results
@@ -79,6 +81,7 @@ class GetBucketEncryptionAction(Action):
                 logger.error(
                     f"Error fetching bucket encryption for bucket '{bucket_name}': {encryption_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], encryption_result))
         return results
@@ -106,6 +109,7 @@ class GetBucketLocationAction(Action):
                 logger.error(
                     f"Error fetching bucket location for bucket '{bucket_name}': {location_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], location_result))
         return results
@@ -143,6 +147,7 @@ class GetBucketTaggingAction(Action):
                 logger.error(
                     f"Error fetching bucket tagging for bucket '{bucket_name}': {tagging_result}"
                 )
+                results.append({})
                 continue
             else:
                 results.append(cast(Dict[str, Any], tagging_result))
