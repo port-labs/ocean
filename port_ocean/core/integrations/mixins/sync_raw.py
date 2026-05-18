@@ -1185,17 +1185,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             # Clear cache
             await ocean.app.cache_provider.clear()
 
-            # Execute resync_start hooks
-            for resync_start_fn in self.event_strategy["resync_start"]:
-                await resync_start_fn()
-
             if await is_dsp_mode_enabled():
-                await ocean.app.lifecycle_client.notify_started(
+                await ocean.app.lifecycle_client.notify_resync_started(
                     resync_id=event.id,
                     integration_id=ocean.config.integration.identifier,
                     integration_type=ocean.config.integration.type,
                     started_at=datetime.now(timezone.utc),
                 )
+
+            # Execute resync_start hooks
+            for resync_start_fn in self.event_strategy["resync_start"]:
+                await resync_start_fn()
 
             try:
                 did_fetched_current_state = True
@@ -1231,7 +1231,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
                 await self._handle_resync_abortion(creation_results, app_config)
                 if await is_dsp_mode_enabled():
-                    await ocean.app.lifecycle_client.notify_aborted(
+                    await ocean.app.lifecycle_client.notify_resync_aborted(
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
                         integration_type=ocean.config.integration.type,
@@ -1241,7 +1241,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.error(f"Error in resync: {e}")
                 await self._handle_resync_abortion(creation_results, app_config)
                 if await is_dsp_mode_enabled():
-                    await ocean.app.lifecycle_client.notify_failed(
+                    await ocean.app.lifecycle_client.notify_resync_failed(
                         resync_id=event.id,
                         integration_id=ocean.config.integration.identifier,
                         integration_type=ocean.config.integration.type,
@@ -1285,12 +1285,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             kind=MetricResourceKind.RECONCILIATION
                         )
 
-                    if await is_dsp_mode_enabled():
-                        await ocean.app.lifecycle_client.notify_finished(
-                            resync_id=event.id,
-                            integration_id=ocean.config.integration.identifier,
-                            integration_type=ocean.config.integration.type,
-                        )
+                    await ocean.app.lifecycle_client.notify_resync_finished(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
                     return True
 
                 success = await self.resync_reconciliation(
@@ -1319,13 +1318,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                 if await is_dsp_mode_enabled():
                     if success:
-                        await ocean.app.lifecycle_client.notify_finished(
+                        await ocean.app.lifecycle_client.notify_resync_finished(
                             resync_id=event.id,
                             integration_id=ocean.config.integration.identifier,
                             integration_type=ocean.config.integration.type,
                         )
                     else:
-                        await ocean.app.lifecycle_client.notify_failed(
+                        await ocean.app.lifecycle_client.notify_resync_failed(
                             resync_id=event.id,
                             integration_id=ocean.config.integration.identifier,
                             integration_type=ocean.config.integration.type,
