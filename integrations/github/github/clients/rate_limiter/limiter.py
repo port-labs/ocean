@@ -11,6 +11,8 @@ from github.clients.rate_limiter.utils import (
     is_rate_limit_response,
 )
 
+_RATE_LIMIT_USAGE_THRESHOLD: float = 95.0
+
 
 class GitHubRateLimiter:
     def __init__(self, config: GitHubRateLimiterConfig) -> None:
@@ -42,7 +44,7 @@ class GitHubRateLimiter:
             self._initialized = False
             return
 
-        if self.rate_limit_info.remaining <= 1:
+        if self.rate_limit_info.utilization_percentage >= _RATE_LIMIT_USAGE_THRESHOLD:
             delay = self.rate_limit_info.seconds_until_reset
             if delay > 0:
                 logger.bind(api_type=self.api_type, delay=delay).warning(

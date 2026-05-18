@@ -177,19 +177,19 @@ class TestRateLimiter:
         mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_enters_pause_when_remaining_le_1(
+    async def test_enters_pause_when_utilization_threshold_reached(
         self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
     ) -> None:
         """
-        If cached headers say remaining <= 1 and reset is in the future,
-        the next enter should sleep.
+        If cached headers show utilization at/above the threshold (95%) and reset is in the future,
+        the next enter should sleep until reset.
         """
         client = MockGitHubClient(github_host, client_config)
 
-        # Seed limiter with remaining == 1 and a short reset in the future
+        # Seed limiter at exactly the threshold: 95% utilization (remaining=50/1000)
         reset_in = 10
         info = RateLimitInfo(
-            limit=1000, remaining=1, reset_time=int(time.time()) + reset_in
+            limit=1000, remaining=50, reset_time=int(time.time()) + reset_in
         )
         client.rate_limiter.rate_limit_info = info  # trusted internal seed for the test
         client.rate_limiter._initialized = True
@@ -206,6 +206,32 @@ class TestRateLimiter:
         assert any(
             args[0] >= reset_in - 1 for args, _ in mock_sleep.call_args_list
         )  # allow a tiny timing skew
+
+    @pytest.mark.asyncio
+    async def test_does_not_pause_when_below_utilization_threshold(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """
+        If cached headers show utilization just below the threshold (95%), __aenter__ should
+        not sleep — it should optimistically decrement and proceed.
+        """
+        client = MockGitHubClient(github_host, client_config)
+
+        # Seed limiter just below the threshold: 94.9% utilization (remaining=51/1000)
+        info = RateLimitInfo(
+            limit=1000, remaining=51, reset_time=int(time.time()) + 3600
+        )
+        client.rate_limiter.rate_limit_info = info
+        client.rate_limiter._initialized = True
+
+        mock_sleep.reset_mock()
+        resp = await client.make_request("/user", remaining_override=999)
+        assert resp.status_code == 200
+
+        mock_sleep.assert_not_called()
+        # Optimistic decrement: 51 → 50, no reinit from the 999 in the response
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 50
 
     @pytest.mark.asyncio
     async def test_concurrent_requests_respect_semaphore(
@@ -443,11 +469,11 @@ class TestRateLimiterLogging:
     async def test_enforce_rate_limit_logs_bound_fields_when_sleeping(
         self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
     ) -> None:
-        """When remaining <= 1, logger.bind is called with api_type and delay."""
+        """When utilization is at/above the threshold, logger.bind is called with api_type and delay."""
         client = MockGitHubClient(github_host, client_config)
         reset_in = 15
         client.rate_limiter.rate_limit_info = RateLimitInfo(
-            limit=1000, remaining=1, reset_time=int(time.time()) + reset_in
+            limit=1000, remaining=50, reset_time=int(time.time()) + reset_in
         )
         client.rate_limiter._initialized = True
 
