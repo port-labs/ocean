@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.143-beta (2026-05-18)
+## 0.1.147-beta (2026-05-18)
 
 
 ### Improvements
 
 - Added `scopeToTeam` selector option to the `issue_groups` resource kind to support fetching issue groups scoped per team, enriched with `__team_id` and `__team_name`
+
+
+## 0.1.145-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 0.1.144-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 0.1.143-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
 
 
 ## 0.1.142-beta (2026-05-14)
