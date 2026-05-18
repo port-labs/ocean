@@ -1193,11 +1193,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     started_at=datetime.now(timezone.utc),
                 )
 
-            # Execute resync_start hooks
-            for resync_start_fn in self.event_strategy["resync_start"]:
-                await resync_start_fn()
-
             try:
+                # Execute resync_start hooks
+                for resync_start_fn in self.event_strategy["resync_start"]:
+                    await resync_start_fn()
+
                 did_fetched_current_state = True
             except httpx.HTTPError as e:
                 logger.warning(
