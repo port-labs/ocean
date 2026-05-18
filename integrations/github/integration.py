@@ -348,8 +348,8 @@ class GithubPullRequestSelector(RepoSearchSelector):
         alias="excludeGraphqlFields",
         default_factory=list,
         description=(
-            "When the api selector is set to graphql, omit these PullRequest GraphQL fields from the query. "
-            "Useful as a workaround for GitHub GraphQL instability. "
+            "When the api selector is set to graphql and this option is enabled, fields specified in this list will be omitted from the query. "
+            "This is useful as a workaround for GitHub GraphQL instability or to reduce rate limit cost. "
             "This option will be ignored if the api selector is set to rest."
         ),
     )
