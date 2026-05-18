@@ -168,19 +168,22 @@ class TestShouldProcessEvent:
             assert await processor.should_process_event(event) is False
 
     @pytest.mark.asyncio
-    async def test_derives_allowlist_from_healthcheck_when_unset(self) -> None:
+    async def test_routing_does_not_call_discover_when_allowlist_unset(self) -> None:
+        """Processor selection runs before auth; must not touch AWS/session discovery."""
         event = _make_event()
         processor = _StubProcessor(event=event)
+        mock_discover = AsyncMock(return_value={"123456789012"})
 
         with _patch_integration_config({}):
             with patch(
                 "aws.auth.session_factory.discover_valid_account_ids",
-                new=AsyncMock(return_value={"123456789012"}),
+                mock_discover,
             ):
                 assert await processor.should_process_event(event) is True
+        mock_discover.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_drops_when_derived_allowlist_excludes_account(self) -> None:
+    async def test_enforce_drops_when_derived_allowlist_excludes_account(self) -> None:
         event = _make_event()
         processor = _StubProcessor(event=event)
 
@@ -189,11 +192,14 @@ class TestShouldProcessEvent:
                 "aws.auth.session_factory.discover_valid_account_ids",
                 new=AsyncMock(return_value={"999999999999"}),
             ):
-                assert await processor.should_process_event(event) is False
+                assert (
+                    await processor._is_account_allowed("123456789012", phase="enforce")
+                    is False
+                )
 
     @pytest.mark.asyncio
-    async def test_falls_through_when_no_accounts_validated_yet(self) -> None:
-        """If healthcheck hasn't run yet, don't drop events on the floor."""
+    async def test_enforce_falls_through_when_no_accounts_validated_yet(self) -> None:
+        """Empty derived set means no filter yet — same as before, after auth."""
         event = _make_event()
         processor = _StubProcessor(event=event)
 
@@ -202,4 +208,7 @@ class TestShouldProcessEvent:
                 "aws.auth.session_factory.discover_valid_account_ids",
                 new=AsyncMock(return_value=set()),
             ):
-                assert await processor.should_process_event(event) is True
+                assert (
+                    await processor._is_account_allowed("123456789012", phase="enforce")
+                    is True
+                )
