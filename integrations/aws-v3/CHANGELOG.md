@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.2.9-beta (2026-05-19)
+
+
+### Bug Fixes
+
+- `session_for_account()` returns `None` when the strategy raises `AWSSessionError`
+  (e.g. healthcheck failure) so live-event handlers drop events cleanly instead of
+  failing the webhook worker retry path.
+
+
+## 2.2.8-beta (2026-05-19)
+
+
+### Bug Fixes
+
+- Live-events: derive `allowedAccountIds` from validated accounts only after bearer
+  authentication, avoiding AWS session/strategy work during processor selection.
+
+
 ## 2.2.7-beta (2026-05-14)
 
 
