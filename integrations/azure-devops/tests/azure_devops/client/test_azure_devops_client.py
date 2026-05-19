@@ -5095,7 +5095,7 @@ async def test_get_test_runs_by_build_empty(
 
 
 @pytest.mark.asyncio
-async def test_generate_code_coverages() -> None:
+async def test_generate_build_code_coverages() -> None:
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
     )
@@ -5141,7 +5141,7 @@ async def test_generate_code_coverages() -> None:
     ):
         results: list[list[dict[str, Any]]] = []
         coverage_config = CodeCoverageConfig(flags=1)
-        async for batch in client.generate_code_coverages(coverage_config):
+        async for batch in client.generate_build_code_coverages(coverage_config):
             results.append(batch)
 
         assert len(results) == 1
@@ -5153,7 +5153,7 @@ async def test_generate_code_coverages() -> None:
 
 
 @pytest.mark.asyncio
-async def test_generate_code_coverages_no_coverage() -> None:
+async def test_generate_build_code_coverages_no_coverage() -> None:
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
     )
@@ -5178,7 +5178,7 @@ async def test_generate_code_coverages_no_coverage() -> None:
     ):
         results: list[list[dict[str, Any]]] = []
         coverage_config = CodeCoverageConfig(flags=1)
-        async for batch in client.generate_code_coverages(coverage_config):
+        async for batch in client.generate_build_code_coverages(coverage_config):
             results.append(batch)
 
         assert len(results) == 0

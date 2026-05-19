@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added `code-coverage` as a separate kind, decoupled from the `test-run` kind
+- Added `build-code-coverage` as a separate kind, decoupled from the `test-run` kind
 
 
 ## 0.8.34 (2026-05-14)

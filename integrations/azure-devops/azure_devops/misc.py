@@ -27,7 +27,7 @@ class Kind(StrEnum):
     RELEASE_DEPLOYMENT = "release-deployment"
     PIPELINE_DEPLOYMENT = "pipeline-deployment"
     TEST_RUN = "test-run"
-    CODE_COVERAGE = "code-coverage"
+    BUILD_CODE_COVERAGE = "build-code-coverage"
     FILE = "file"
     USER = "user"
     FOLDER = "folder"

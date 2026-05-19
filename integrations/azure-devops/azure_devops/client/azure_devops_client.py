@@ -2199,7 +2199,7 @@ class AzureDevopsClient(HTTPBaseClient):
         """Return empty coverage for test runs without a build (e.g., manual test runs)."""
         return {}
 
-    async def generate_code_coverages(
+    async def generate_build_code_coverages(
         self,
         coverage_config: "CodeCoverageConfig",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:

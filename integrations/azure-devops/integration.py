@@ -239,7 +239,7 @@ class AzureDevopsTestRunResourceConfig(ResourceConfig):
     )
 
 
-class AzureDevopsCodeCoverageSelector(Selector):
+class AzureDevopsBuildCodeCoverageSelector(Selector):
     code_coverage: CodeCoverageConfig = Field(
         default_factory=CodeCoverageConfig,
         alias="codeCoverage",
@@ -248,14 +248,14 @@ class AzureDevopsCodeCoverageSelector(Selector):
     )
 
 
-class AzureDevopsCodeCoverageResourceConfig(ResourceConfig):
-    kind: Literal["code-coverage"] = Field(
-        title="Azure Devops Code Coverage",
-        description="Azure Devops code coverage resource kind.",
+class AzureDevopsBuildCodeCoverageResourceConfig(ResourceConfig):
+    kind: Literal["build-code-coverage"] = Field(
+        title="Azure Devops Build Code Coverage",
+        description="Azure Devops build code coverage resource kind.",
     )
-    selector: AzureDevopsCodeCoverageSelector = Field(
-        title="Code coverage selector",
-        description="Selector for the code coverage resource.",
+    selector: AzureDevopsBuildCodeCoverageSelector = Field(
+        title="Build code coverage selector",
+        description="Selector for the build code coverage resource.",
     )
 
 
@@ -629,7 +629,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsFileResourceConfig
         | AzureDevopsPipelineResourceConfig
         | AzureDevopsTestRunResourceConfig
-        | AzureDevopsCodeCoverageResourceConfig
+        | AzureDevopsBuildCodeCoverageResourceConfig
         | AzureDevopsPullRequestResourceConfig
         | AzureDevopsAdvancedSecurityResourceConfig
         | AzureDevopsRepositoryResourceConfig
