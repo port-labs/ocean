@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.305 (2026-05-19)
+
+
+### Improvements
+
+- Fixed broken link to Dynatrace Entity Types API documentation
+
+
 ## 0.1.304 (2026-05-19)
 
 
