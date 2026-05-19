@@ -5101,8 +5101,16 @@ async def test_generate_build_code_coverages() -> None:
     )
 
     mock_builds = [
-        {"id": 100, "__projectId": "proj1", "__project": {"id": "proj1", "name": "Project One"}},
-        {"id": 101, "__projectId": "proj1", "__project": {"id": "proj1", "name": "Project One"}},
+        {
+            "id": 100,
+            "__projectId": "proj1",
+            "__project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 101,
+            "__projectId": "proj1",
+            "__project": {"id": "proj1", "name": "Project One"},
+        },
     ]
 
     mock_coverage_response_100 = {
@@ -5113,7 +5121,11 @@ async def test_generate_build_code_coverages() -> None:
                 "modules": [
                     {
                         "name": "myapp.dll",
-                        "statistics": {"blocksCovered": 10, "linesCovered": 50, "linesNotCovered": 10},
+                        "statistics": {
+                            "blocksCovered": 10,
+                            "linesCovered": 50,
+                            "linesNotCovered": 10,
+                        },
                     }
                 ],
                 "codeCoverageFileUrl": "https://dev.azure.com/coverage/100",
@@ -5137,7 +5149,9 @@ async def test_generate_build_code_coverages() -> None:
 
     with (
         patch.object(client, "generate_builds", side_effect=mock_generate_builds),
-        patch.object(client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage),
+        patch.object(
+            client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage
+        ),
     ):
         results: list[list[dict[str, Any]]] = []
         coverage_config = CodeCoverageConfig(flags=1)
@@ -5174,7 +5188,9 @@ async def test_generate_build_code_coverages_no_coverage() -> None:
 
     with (
         patch.object(client, "generate_builds", side_effect=mock_generate_builds),
-        patch.object(client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage),
+        patch.object(
+            client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage
+        ),
     ):
         results: list[list[dict[str, Any]]] = []
         coverage_config = CodeCoverageConfig(flags=1)
@@ -5208,7 +5224,9 @@ async def test_get_code_coverage_for_build() -> None:
     ) -> Dict[str, Any]:
         return mock_response
 
-    with patch.object(client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage):
+    with patch.object(
+        client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage
+    ):
         coverage_config = CodeCoverageConfig(flags=7)
         result = await client.get_code_coverage_for_build("proj1", 100, coverage_config)
 
@@ -5229,7 +5247,9 @@ async def test_get_code_coverage_for_build_empty() -> None:
     ) -> Dict[str, Any]:
         return {}
 
-    with patch.object(client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage):
+    with patch.object(
+        client, "_fetch_code_coverage", side_effect=mock_fetch_code_coverage
+    ):
         coverage_config = CodeCoverageConfig(flags=1)
         result = await client.get_code_coverage_for_build("proj1", 100, coverage_config)
 
