@@ -7,7 +7,8 @@ from aws.core.exporters.memorydb.user.models import (
     PaginatedMemoryDbUserRequest,
     SingleMemoryDbUserRequest,
 )
-from aws.core.helpers.types import MEMORYDB_SUPPORTED_REGIONS, SupportedServices
+from aws.core.exporters.memorydb.user.regions import MEMORYDB_SUPPORTED_REGIONS
+from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
