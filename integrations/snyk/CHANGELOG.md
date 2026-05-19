@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Fixed integration silently excluding targets with no associated projects
+- Added `apiQueryParams` selector to the target kind, allowing customers to control target filtering including fetching targets with no associated projects
 
 
 ## 0.5.5 (2026-05-19)
