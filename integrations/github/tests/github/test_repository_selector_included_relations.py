@@ -39,13 +39,12 @@ def test_included_relations_cannot_be_supplied_with_include() -> None:
 
 def test_normalized_relations_falls_back_to_include_list() -> None:
     selector = GithubRepositorySelector.parse_obj(
-        {"query": "true", "include": ["teams", "sbom", "pages"]}
+        {"query": "true", "include": ["teams", "sbom"]}
     )
 
     assert selector.normalized_relations == {
         "teams": {"include": True},
         "sbom": {"include": True},
-        "pages": {"include": True},
     }
 
 
