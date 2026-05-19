@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.4.15 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 5.4.14 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 5.4.13 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 5.4.12 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 5.4.11 (2026-05-17)
+
+
+### Bug Fixes
+
+- Fixed workflow push webhook processing to detect removed workflow files and propagate workflow deletions.
+
+
+## 5.4.10 (2026-05-14)
+
+
+### Bug Fixes
+
+- Prevent team resync from crashing when GraphQL returns `organization.team` as null for enterprise teams; log and skip the team instead.
+
+
+## 5.4.9 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
 ## 5.4.8 (2026-05-14)
 
 

@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.2.14-beta (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 2.2.13-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 2.2.12-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 2.2.11-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 2.2.10-beta (2026-05-17)
+
+
+### Bug Fixes
+
+- Update docs embed link to match install path
+
+
+## 2.2.9-beta (2026-05-17)
+
+
+### Features
+
+- Added support for MSK (Amazon Managed Streaming for Apache Kafka) clusters
+
+
+## 2.2.8-beta (2026-05-17)
+
+
+### Features
+
+- Added support for AWS::ElastiCache::Cluster kind to sync ElastiCache clusters (Redis and Memcached) with optional tag enrichment via ListTagsForResourceAction
+
+
+## 2.2.7-beta (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
 ## 2.2.6-beta (2026-05-14)
 
 
@@ -52,7 +116,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind. 
+- Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind.
 
 
 ## 2.2.0-beta (2026-04-23)
