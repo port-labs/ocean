@@ -129,6 +129,22 @@ class LifecycleClient:
 
     # ── Granular (3-segment URL) ──────────────────────────────────────────────
 
+    def _build_granular_body(
+        self,
+        status: str,
+        kind_identifier: str | None,
+        **extra: Any,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {
+            "status": status,
+            "integration_version": __integration_version__,
+            "ocean_version": __version__,
+            **extra,
+        }
+        if kind_identifier is not None:
+            body["kind_identifier"] = kind_identifier
+        return body
+
     async def notify_started(
         self,
         event_id: str,
@@ -136,15 +152,15 @@ class LifecycleClient:
         integration_type: str,
         granularity: GranularityType,
         started_at: datetime | None = None,
+        kind_identifier: str | None = None,
     ) -> None:
         started_at = started_at or datetime.now(tz=timezone.utc)
-        body = self._build_body(
+        body = self._build_granular_body(
             "started",
+            kind_identifier,
             integration_id=integration_id,
             integration_type=integration_type,
             started_at=started_at.isoformat(),
-            integration_version=__integration_version__,
-            ocean_version=__version__,
         )
         logger.info(
             f"Notifying lifecycle API for status=started granularity={granularity.value}, event_id={event_id}"
@@ -156,12 +172,12 @@ class LifecycleClient:
         event_id: str,
         integration_type: str,
         granularity: GranularityType,
+        kind_identifier: str | None = None,
     ) -> None:
-        body = self._build_body(
+        body = self._build_granular_body(
             "finished",
+            kind_identifier,
             integration_type=integration_type,
-            integration_version=__integration_version__,
-            ocean_version=__version__,
         )
         logger.info(
             f"Notifying lifecycle API for status=finished granularity={granularity.value}, event_id={event_id}"
@@ -172,12 +188,9 @@ class LifecycleClient:
         self,
         event_id: str,
         granularity: GranularityType,
+        kind_identifier: str | None = None,
     ) -> None:
-        body = self._build_body(
-            "failed",
-            integration_version=__integration_version__,
-            ocean_version=__version__,
-        )
+        body = self._build_granular_body("failed", kind_identifier)
         logger.info(
             f"Notifying lifecycle API for status=failed granularity={granularity.value}, event_id={event_id}"
         )
@@ -187,12 +200,9 @@ class LifecycleClient:
         self,
         event_id: str,
         granularity: GranularityType,
+        kind_identifier: str | None = None,
     ) -> None:
-        body = self._build_body(
-            "aborted",
-            integration_version=__integration_version__,
-            ocean_version=__version__,
-        )
+        body = self._build_granular_body("aborted", kind_identifier)
         logger.info(
             f"Notifying lifecycle API for status=aborted granularity={granularity.value}, event_id={event_id}"
         )

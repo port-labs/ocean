@@ -10,6 +10,7 @@ import multiprocessing
 import httpx
 import json
 from loguru import logger
+from port_ocean.clients.lifecycle import GranularityType
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.metric_resource import metric_resource_context
@@ -817,6 +818,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 kind=resource_kind_id, blueprint=resource.port.entity.mappings.blueprint
             )
 
+            dsp_enabled = await is_dsp_mode_enabled()
+            resync_id = ocean.metrics.event_id
+            if dsp_enabled and resync_id:
+                await ocean.app.lifecycle_client.notify_started(
+                    event_id=resync_id,
+                    integration_id=ocean.config.integration.identifier,
+                    integration_type=ocean.config.integration.type,
+                    granularity=GranularityType.KIND,
+                    kind_identifier=resource_kind_id,
+                )
+
             task = asyncio.create_task(
                 self._register_in_batches(resource, user_agent_type, index)
             )
@@ -829,6 +841,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except asyncio.CancelledError:
                 logger.warning(f"Resource {resource.kind} processing was aborted")
                 ocean.metrics.sync_state = SyncState.ABORTED
+                if dsp_enabled and resync_id:
+                    await ocean.app.lifecycle_client.notify_aborted(
+                        event_id=resync_id,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
                 raise
             finally:
                 # Stop tracking and report resource usage metrics
@@ -839,6 +857,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             await ocean.metrics.report_kind_sync_metrics(
                 kind=resource_kind_id, blueprint=resource.port.entity.mappings.blueprint
             )
+
+            if dsp_enabled and resync_id:
+                if ocean.metrics.sync_state == SyncState.FAILED:
+                    await ocean.app.lifecycle_client.notify_failed(
+                        event_id=resync_id,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
+                else:
+                    await ocean.app.lifecycle_client.notify_finished(
+                        event_id=resync_id,
+                        integration_type=ocean.config.integration.type,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
 
             return kind_results
 

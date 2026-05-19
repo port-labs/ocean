@@ -247,3 +247,30 @@ class TestNotifyGranularStarted:
         )
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1/reconciliation"
+
+    @pytest.mark.asyncio
+    async def test_kind_identifier_included_when_provided(
+        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
+    ) -> None:
+        await lifecycle_client.notify_started(
+            event_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            granularity=GranularityType.KIND,
+            kind_identifier="pull-request-0",
+        )
+        body = mock_post.call_args[1]["json"]
+        assert body["kind_identifier"] == "pull-request-0"
+
+    @pytest.mark.asyncio
+    async def test_kind_identifier_omitted_when_not_provided(
+        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
+    ) -> None:
+        await lifecycle_client.notify_started(
+            event_id="r1",
+            integration_id="i1",
+            integration_type="github",
+            granularity=GranularityType.KIND,
+        )
+        body = mock_post.call_args[1]["json"]
+        assert "kind_identifier" not in body
