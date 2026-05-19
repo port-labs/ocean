@@ -349,39 +349,65 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         """Centralized normalization — used by ALL code paths."""
 
         opts = gql_options or PullRequestGraphQLOptions()
-        repo_name = repo["name"]
+        normalized = {**pr_node}
 
-        assignees_nodes = pr_node.get("assignees", {}).get("nodes", [])
-        review_requests_nodes = pr_node.get("reviewRequests", {}).get("nodes", [])
-        labels_nodes = pr_node.get("labels", {}).get("nodes", [])
-        comments_total = pr_node.get("comments", {}).get("totalCount", 0)
-        review_threads_total = pr_node.get("reviewThreads", {}).get("totalCount", 0)
-        commits_total = pr_node.get("commits", {}).get("totalCount", 0)
-        pr_state = pr_node.get("state")
-        merge_state_status = pr_node.get("mergeStateStatus")
-        mergeable_enum = pr_node.get("mergeable")
+        if "assignees" in pr_node:
+            normalized["assignees"] = (
+                pr_node["assignees"].get("nodes", [])
+            )
 
-        normalized: dict[str, Any] = {
-            **pr_node,
-            "assignees": assignees_nodes,
-            "reviewRequests": review_requests_nodes,
-            "labels": labels_nodes,
-            "requested_reviewers": self._extract_requested_reviewers(pr_node),
-            "comments": comments_total,
-            "review_comments": review_threads_total,
-            "commits": commits_total,
-            "state": pr_state.lower() if pr_state else None,
-            "mergeable_state": (
-                merge_state_status.lower() if merge_state_status else None
-            ),
-            "mergeable": True if mergeable_enum == "MERGEABLE" else False,
-        }
+        if "reviewRequests" in pr_node:
+            normalized["reviewRequests"] = (
+                pr_node["reviewRequests"].get("nodes", [])
+            )
+            normalized["requested_reviewers"] = (
+                self._extract_requested_reviewers(pr_node)
+            )
+
+        if "labels" in pr_node:
+            normalized["labels"] = (
+                pr_node["labels"].get("nodes", [])
+            )
+
+        if "comments" in pr_node:
+            normalized["comments"] = (
+                pr_node["comments"].get("totalCount")
+            )
+
+        if "reviewThreads" in pr_node:
+            normalized["review_comments"] = (
+                pr_node["reviewThreads"].get("totalCount")
+            )
+
+        if "commits" in pr_node:
+            normalized["commits"] = (
+                pr_node["commits"].get("totalCount")
+            )
+
+        if "state" in pr_node:
+            normalized["state"] = (
+                pr_node["state"].lower()
+                if pr_node["state"]
+                else None
+            )
+
+        if "mergeStateStatus" in pr_node:
+            normalized["mergeable_state"] = (
+                pr_node["mergeStateStatus"].lower()
+                if pr_node["mergeStateStatus"]
+                else None
+            )
+
+        if "mergeable" in pr_node:
+            normalized["mergeable"] = (
+                pr_node["mergeable"] == "MERGEABLE"
+            )
 
         if opts.enrich_with_first_commit:
             self._enrich_with_first_commit(normalized, pr_node)
 
         return enrich_with_organization(
-            enrich_with_repository(normalized, repo_name, repo=repo), organization
+            enrich_with_repository(normalized, repo["name"], repo=repo), organization
         )
 
     def _enrich_with_first_commit(
