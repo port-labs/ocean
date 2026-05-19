@@ -1,5 +1,5 @@
 import asyncio
-from typing import AsyncGenerator, Callable
+from typing import Any, AsyncGenerator, Callable
 
 from loguru import logger
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
