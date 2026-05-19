@@ -344,7 +344,7 @@ class GithubPullRequestSelector(RepoSearchSelector):
         ),
     )
     exclude_graphql_fields: list[str] = Field(
-        title="Exclude GraphQL fields",
+        title="Exclude GraphQL Fields",
         alias="excludeGraphqlFields",
         default_factory=list,
         description=(
