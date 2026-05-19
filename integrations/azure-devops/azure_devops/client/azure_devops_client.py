@@ -70,6 +70,7 @@ MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
 MAX_CONCURRENT_PROJECTS = 5
+MAX_CONCURRENT_BUILD_CODE_COVERAGES = 10
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -771,6 +772,7 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield self._enrich_builds_with_project_data(builds, project)
 
+    @cache_iterator_result()
     async def generate_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate builds across all projects in the organization.
 
@@ -2203,16 +2205,25 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         coverage_config: "CodeCoverageConfig",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_BUILD_CODE_COVERAGES)
         async for builds in self.generate_builds():
             coverage_entities: list[dict[str, Any]] = []
-            tasks = [
-                self._fetch_code_coverage(
-                    build["__projectId"], build["id"], coverage_config
-                )
-                for build in builds
-            ]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for build, result in zip(builds, results):
+
+            async def _guarded_fetch(
+                build: dict[str, Any],
+            ) -> tuple[dict[str, Any], dict[str, Any] | BaseException]:
+                async with semaphore:
+                    try:
+                        result = await self._fetch_code_coverage(
+                            build["__projectId"], build["id"], coverage_config
+                        )
+                        return build, result
+                    except Exception as exc:
+                        return build, exc
+
+            tasks = [_guarded_fetch(build) for build in builds]
+            results = await asyncio.gather(*tasks)
+            for build, result in results:
                 if isinstance(result, BaseException):
                     logger.error(
                         "Error fetching code coverage for build %s: %s",
