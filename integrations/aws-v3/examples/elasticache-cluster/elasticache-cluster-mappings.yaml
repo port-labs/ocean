@@ -1,0 +1,38 @@
+resources:
+  - kind: AWS::ElastiCache::Cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ARN
+          title: .Properties.CacheClusterId
+          blueprint: '"elasticacheCluster"'
+          properties:
+            arn: .Properties.ARN
+            cacheClusterId: .Properties.CacheClusterId
+            cacheClusterStatus: .Properties.CacheClusterStatus
+            cacheNodeType: .Properties.CacheNodeType
+            engine: .Properties.Engine
+            engineVersion: .Properties.EngineVersion
+            numCacheNodes: .Properties.NumCacheNodes
+            preferredAvailabilityZone: .Properties.PreferredAvailabilityZone
+            cacheClusterCreateTime: .Properties.CacheClusterCreateTime
+            preferredMaintenanceWindow: .Properties.PreferredMaintenanceWindow
+            cacheParameterGroup: .Properties.CacheParameterGroup
+            cacheSubnetGroupName: .Properties.CacheSubnetGroupName
+            cacheNodes: .Properties.CacheNodes
+            autoMinorVersionUpgrade: .Properties.AutoMinorVersionUpgrade
+            securityGroups: .Properties.SecurityGroups
+            replicationGroupId: .Properties.ReplicationGroupId
+            snapshotRetentionLimit: .Properties.SnapshotRetentionLimit
+            snapshotWindow: .Properties.SnapshotWindow
+            authTokenEnabled: .Properties.AuthTokenEnabled
+            transitEncryptionEnabled: .Properties.TransitEncryptionEnabled
+            atRestEncryptionEnabled: .Properties.AtRestEncryptionEnabled
+            networkType: .Properties.NetworkType
+            ipDiscovery: .Properties.IpDiscovery
+            logDeliveryConfigurations: .Properties.LogDeliveryConfigurations
+            tags: .Properties.TagList
+          relations:
+            account: .__ExtraContext.AccountId
