@@ -2,7 +2,7 @@ import datetime
 from loguru import logger
 
 
-def convert_str_to_utc_datetime(time_str: str) -> datetime.datetime | None:
+def convert_str_to_utc_datetime(time_str: str) -> datetime.datetime:
     """
     Convert a string representing time to a datetime object.
     :param time_str: a string representing time in the format "2021-09-01T12:00:00Z"

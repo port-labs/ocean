@@ -18,6 +18,7 @@ from github.helpers.gql_queries import (
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
 )
+from github.core.exporters.pull_request_exporter.utils import filter_prs_by_updated_at
 
 TEST_PULL_REQUESTS = [
     {
@@ -412,6 +413,64 @@ class TestGraphQLPullRequestExporter:
         assert pr["commits"] == 3
         assert pr["state"] == "open"
         assert "firstCommit" not in pr
+
+    async def test_get_resource_respects_exclude_graphql_fields(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        mock_pr_node = {
+            "id": 1,
+            "number": 101,
+            "title": "GraphQL PR",
+        }
+        mock_response = {"data": {"repository": {"pullRequest": mock_pr_node}}}
+
+        with (
+            patch(
+                "github.core.exporters.pull_request_exporter.core.parse_github_options",
+                return_value=(
+                    "repo1",
+                    "test-org",
+                    {
+                        "pr_number": 101,
+                        "repo": {"name": "repo1"},
+                        "exclude_graphql_fields": [
+                            "additions",
+                            "deletions",
+                            "changedFiles",
+                        ],
+                    },
+                ),
+            ),
+            patch.object(
+                graphql_client,
+                "send_api_request",
+                return_value=mock_response,
+            ) as mock_request,
+        ):
+            await exporter.get_resource(
+                SinglePullRequestOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    pr_number=101,
+                )
+            )
+
+        expected_payload = graphql_client.build_graphql_payload(
+            query=generate_pull_request_details_gql(
+                PullRequestGraphQLOptions(
+                    enrich_with_first_commit=False,
+                    exclude_graphql_fields=["additions", "deletions", "changedFiles"],
+                )
+            ),
+            variables={"organization": "test-org", "repo": "repo1", "prNumber": 101},
+        )
+        mock_request.assert_called_once_with(
+            graphql_client.base_url,
+            method="POST",
+            json_data=expected_payload,
+        )
 
     async def test_get_resource_enrich_with_first_commit(
         self, graphql_client: GithubGraphQLClient
@@ -889,3 +948,39 @@ class TestGraphQLPullRequestExporterInternals:
             {"login": "user1", "type": "User"},
             {"name": "team-name", "slug": "team-slug", "type": "Team"},
         ]
+
+    def test_normalize_pr_node_handles_missing_fields(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        pr_node: dict[str, Any] = {"id": "PR_min", "title": "t", "number": 1}
+
+        normalized = exporter._normalize_pr_node(pr_node, {"name": "repo1"}, "org")
+
+        # Minimal nodes should not be expanded with missing fields.
+        assert "assignees" not in normalized
+        assert "reviewRequests" not in normalized
+        assert "labels" not in normalized
+        assert "requested_reviewers" not in normalized
+        assert "comments" not in normalized
+        assert "review_comments" not in normalized
+        assert "commits" not in normalized
+        assert "state" not in normalized
+        assert "mergeable_state" not in normalized
+        assert "mergeable" not in normalized
+
+        # But normalization should always enrich with repo/org context.
+        assert normalized["__repository"] == "repo1"
+        assert normalized["__repository_object"] == {"name": "repo1"}
+        assert normalized["__organization"] == "org"
+
+
+def test_filter_prs_by_updated_at_skips_items_missing_updated_at() -> None:
+    prs: list[dict[str, Any]] = [
+        {"id": 1, "updatedAt": "2025-08-10T15:08:15Z"},
+        {"id": 2},  # missing updatedAt should be ignored
+    ]
+    filtered = filter_prs_by_updated_at(
+        prs, "updatedAt", datetime(2025, 8, 1, 0, 0, 0, tzinfo=UTC)
+    )
+    assert [pr["id"] for pr in filtered] == [1]

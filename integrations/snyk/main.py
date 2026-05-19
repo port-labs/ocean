@@ -35,7 +35,9 @@ async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     all_organizations = await snyk_client.get_organizations_in_groups()
     tasks = (
         snyk_client.get_paginated_targets(
-            org, attach_project_data=selector.attach_project_data
+            org,
+            attach_project_data=selector.attach_project_data,
+            api_params=selector.api_query_params,
         )
         for org in all_organizations
     )
