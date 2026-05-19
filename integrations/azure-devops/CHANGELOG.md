@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.40 (2026-05-19)
+
+
+### Features
+
+- Added `build-code-coverage` as a separate kind, decoupled from the `test-run` kind
+
+
 ## 0.8.39 (2026-05-19)
 
 
