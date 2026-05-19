@@ -31,11 +31,17 @@ class BaseGithubWebhookClient(GithubRestClient):
     """
 
     def __init__(
-        self, *, organization: str, webhook_secret: str | None = None, **kwargs: Any
+        self,
+        *,
+        organization: str,
+        webhook_secret: str | None = None,
+        skip_patching: bool = False,
+        **kwargs: Any,
     ):
         super().__init__(**kwargs)
         self.organization = organization
         self.webhook_secret = webhook_secret
+        self.skip_patching = skip_patching
         if self.webhook_secret:
             logger.info(
                 "Received secret for authenticating incoming webhooks. "
@@ -71,7 +77,6 @@ class BaseGithubWebhookClient(GithubRestClient):
         self, webhook_id: str, config_data: dict[str, str], target: HookTarget
     ) -> None:
         webhook_data = {"config": config_data}
-        logger.info(f"Patching webhook {webhook_id} with data {webhook_data}")
 
         await self.send_api_request(
             target.hook_url(webhook_id),
@@ -146,10 +151,15 @@ class BaseGithubWebhookClient(GithubRestClient):
             )
 
             if bool(self.webhook_secret) ^ bool(existing_webhook_secret):
-                await self._patch_webhook_config(
-                    existing_webhook_id, webhook_url, target
-                )
-                return
+                if self.skip_patching:
+                    logger.info(
+                        "Webhook secret mismatch detected but patching is disabled"
+                    )
+                else:
+                    await self._patch_webhook_config(
+                        existing_webhook_id, webhook_url, target
+                    )
+                    return
 
             logger.info("Webhook already exists with appropriate configuration")
 

@@ -16,6 +16,9 @@ class ObjectKind(StrEnum):
     SQS_QUEUE = "AWS::SQS::Queue"
     ECR_REPOSITORY = "AWS::ECR::Repository"
     MEMORYDB_USER = "AWS::MemoryDB::User"
+    MSK_CLUSTER = "AWS::MSK::Cluster"
+    ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
+    EC2_VOLUME = "AWS::EC2::Volume"
 
 
 SupportedServices = Literal[
@@ -29,4 +32,6 @@ SupportedServices = Literal[
     "lambda",
     "ecr",
     "memorydb",
+    "kafka",
+    "elasticache",
 ]
