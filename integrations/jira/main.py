@@ -138,7 +138,7 @@ async def on_resync_backlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         backlog_streams = [
             client.get_paginated_backlog_for_board(
                 board_id=board["id"],
-                jql=selector.jql or None,
+                jql=selector.jql,
                 fields=selector.fields,
                 max_results=selector.max_results,
                 use_software_api=selector.use_software_api,
