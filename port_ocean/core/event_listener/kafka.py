@@ -139,10 +139,18 @@ class KafkaEventListener(BaseEventListener):
             return False
 
     def _should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
-        if "integration.resync.requests" in topic:
+        if (
+            "integration.resync.requests" in topic
+        ):  # we are consuming the new integration resync requests topic
             integration_identifier = msg_value.get("context", {}).get("integrationId")
             if integration_identifier != self.integration_identifier:
                 return False
+            return True
+
+        if (
+            "change.log" in topic
+            and self._is_resync_request_message_should_be_processed(msg_value)
+        ):  # we are consuming the legacy change log topic and the message is a resync request
             return True
 
         after = msg_value.get("diff", {}).get("after", {})
@@ -161,6 +169,15 @@ class KafkaEventListener(BaseEventListener):
             return msg_value.get("changelogDestination", {}).get("type", "") == "KAFKA"
 
         return False
+
+    def _is_resync_request_message_should_be_processed(
+        self, msg_value: dict[Any, Any]
+    ) -> bool:
+        return (
+            msg_value.get("context", {}).get("integrationId")
+            == self.integration_identifier
+            and msg_value.get("action", "") == "RESYNC"
+        )
 
     async def _handle_message(self, raw_msg: Message) -> None:
         """
