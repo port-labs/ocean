@@ -2,7 +2,6 @@ import base64
 from abc import abstractmethod
 from typing import Dict, Optional
 
-from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -10,7 +9,6 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
-    WebhookEvent,
     WebhookEventRawResults,
 )
 
