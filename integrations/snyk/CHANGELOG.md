@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+
+## 0.5.7 (2026-05-19)
+
+
+### Bug Fixes
+
+- Added `apiQueryParams` selector to the target kind, allowing customers to control target filtering including fetching targets with no associated projects
+
+
+## 0.5.6 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 0.5.5 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
 ## 0.5.4 (2026-05-17)
 
 

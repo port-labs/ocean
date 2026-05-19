@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.8.39 (2026-05-17)
+## 0.8.41 (2026-05-20)
 
 
 ### Bug Fixes
 
 - Fixed rate limiter treating `X-RateLimit-Reset` as a wait deadline, which could cause webhook processing to hit Ocean's 90s timeout
+
+
+## 0.8.40 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 0.8.39 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
 
 
 ## 0.8.38 (2026-05-17)
