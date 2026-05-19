@@ -349,27 +349,47 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         """Centralized normalization — used by ALL code paths."""
 
         opts = gql_options or PullRequestGraphQLOptions()
-        repo_name = repo["name"]
+        normalized = {**pr_node}
 
-        normalized: dict[str, Any] = {
-            **pr_node,
-            "assignees": pr_node["assignees"]["nodes"],
-            "reviewRequests": pr_node["reviewRequests"]["nodes"],
-            "labels": pr_node["labels"]["nodes"],
-            "requested_reviewers": self._extract_requested_reviewers(pr_node),
-            "comments": pr_node["comments"]["totalCount"],
-            "review_comments": pr_node["reviewThreads"]["totalCount"],
-            "commits": pr_node["commits"]["totalCount"],
-            "state": pr_node["state"].lower(),
-            "mergeable_state": pr_node["mergeStateStatus"].lower(),
-            "mergeable": True if pr_node["mergeable"] == "MERGEABLE" else False,
-        }
+        if "assignees" in pr_node:
+            normalized["assignees"] = pr_node["assignees"].get("nodes", [])
+
+        if "reviewRequests" in pr_node:
+            normalized["reviewRequests"] = pr_node["reviewRequests"].get("nodes", [])
+            normalized["requested_reviewers"] = self._extract_requested_reviewers(
+                pr_node
+            )
+
+        if "labels" in pr_node:
+            normalized["labels"] = pr_node["labels"].get("nodes", [])
+
+        if "comments" in pr_node:
+            normalized["comments"] = pr_node["comments"].get("totalCount")
+
+        if "reviewThreads" in pr_node:
+            normalized["review_comments"] = pr_node["reviewThreads"].get("totalCount")
+
+        if "commits" in pr_node:
+            normalized["commits"] = pr_node["commits"].get("totalCount")
+
+        if "state" in pr_node:
+            normalized["state"] = pr_node["state"].lower() if pr_node["state"] else None
+
+        if "mergeStateStatus" in pr_node:
+            normalized["mergeable_state"] = (
+                pr_node["mergeStateStatus"].lower()
+                if pr_node["mergeStateStatus"]
+                else None
+            )
+
+        if "mergeable" in pr_node:
+            normalized["mergeable"] = pr_node["mergeable"] == "MERGEABLE"
 
         if opts.enrich_with_first_commit:
             self._enrich_with_first_commit(normalized, pr_node)
 
         return enrich_with_organization(
-            enrich_with_repository(normalized, repo_name, repo=repo), organization
+            enrich_with_repository(normalized, repo["name"], repo=repo), organization
         )
 
     def _enrich_with_first_commit(
@@ -387,7 +407,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ) -> list[dict[str, Any]]:
         """Extract both users and teams from reviewRequests."""
         reviewers = []
-        nodes = pr_node["reviewRequests"]["nodes"]
+        nodes = pr_node.get("reviewRequests", {}).get("nodes", [])
         for node in nodes:
             reviewer = node["requestedReviewer"]
             typ = reviewer["__typename"]
