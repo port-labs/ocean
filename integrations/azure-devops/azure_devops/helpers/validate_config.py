@@ -1,6 +1,21 @@
-from typing import Any
+from typing import Any, Union
 
 from azure_devops.client.auth import ACCOUNT_MODE_MULTIPLE, ACCOUNT_MODE_SINGLE
+
+
+def parse_organization_urls(raw: Union[list[str], str, None]) -> list[str]:
+    """Normalise the organizationUrls config value.
+
+    The spec declares this field as ``type: array``, so the Ocean framework
+    delivers it as a Python list.  However, older integrations or manual
+    Helm/env-var deployments may still supply a comma-separated string.
+    This helper handles both forms and returns a clean list of URLs.
+    """
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return [u.strip().rstrip("/") for u in raw if str(u).strip()]
+    return [u.strip().rstrip("/") for u in str(raw).split(",") if u.strip()]
 
 
 def validate_azure_devops_config(config: dict[str, Any]) -> None:
@@ -26,8 +41,7 @@ def validate_azure_devops_config(config: dict[str, Any]) -> None:
                 raise ValueError(
                     f"Multiple Accounts mode requires '{field}'."
                 )
-        raw_urls = config.get("organization_urls", "")
-        org_urls = [u.strip() for u in raw_urls.split(",") if u.strip()]
+        org_urls = parse_organization_urls(config.get("organization_urls"))
         if not org_urls:
             raise ValueError(
                 "Multiple Accounts mode requires at least one URL in 'organizationUrls'."

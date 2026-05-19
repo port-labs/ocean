@@ -6,7 +6,10 @@ from port_ocean.context.ocean import ocean
 
 from azure_devops.client.auth import ACCOUNT_MODE_MULTIPLE, build_auth_provider
 from azure_devops.client.azure_devops_client import AzureDevopsClient
-from azure_devops.helpers.validate_config import validate_azure_devops_config
+from azure_devops.helpers.validate_config import (
+    parse_organization_urls,
+    validate_azure_devops_config,
+)
 
 
 class AzureDevopsClientManager:
@@ -57,8 +60,7 @@ class AzureDevopsClientManager:
         webhook_auth_username = config.get("webhook_auth_username")
 
         if config.get("account_mode") == ACCOUNT_MODE_MULTIPLE:
-            raw_urls = config.get("organization_urls", "")
-            org_urls = [u.strip().rstrip("/") for u in raw_urls.split(",") if u.strip()]
+            org_urls = parse_organization_urls(config.get("organization_urls"))
             clients = [
                 AzureDevopsClient(url, auth_provider, webhook_auth_username)
                 for url in org_urls

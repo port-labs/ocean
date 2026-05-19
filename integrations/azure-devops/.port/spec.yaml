@@ -69,8 +69,8 @@ configurations:
         then:
           required: true
   - name: organizationUrls
-    description: Comma-separated list of Azure DevOps organization URLs to sync, or leave blank to sync all organizations the app has access to.
-    type: string
+    description: List of Azure DevOps organization URLs to sync (e.g. "https://dev.azure.com/{your-organization}").
+    type: array
     required: false
     dependencies:
       - on: accountMode
