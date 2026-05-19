@@ -957,16 +957,22 @@ class TestGraphQLPullRequestExporterInternals:
 
         normalized = exporter._normalize_pr_node(pr_node, {"name": "repo1"}, "org")
 
-        assert normalized["assignees"] == []
-        assert normalized["reviewRequests"] == []
-        assert normalized["labels"] == []
-        assert normalized["requested_reviewers"] == []
-        assert normalized["comments"] == 0
-        assert normalized["review_comments"] == 0
-        assert normalized["commits"] == 0
-        assert normalized["state"] is None
-        assert normalized["mergeable_state"] is None
-        assert normalized["mergeable"] is False
+        # Minimal nodes should not be expanded with missing fields.
+        assert "assignees" not in normalized
+        assert "reviewRequests" not in normalized
+        assert "labels" not in normalized
+        assert "requested_reviewers" not in normalized
+        assert "comments" not in normalized
+        assert "review_comments" not in normalized
+        assert "commits" not in normalized
+        assert "state" not in normalized
+        assert "mergeable_state" not in normalized
+        assert "mergeable" not in normalized
+
+        # But normalization should always enrich with repo/org context.
+        assert normalized["__repository"] == "repo1"
+        assert normalized["__repository_object"] == {"name": "repo1"}
+        assert normalized["__organization"] == "org"
 
 
 def test_filter_prs_by_updated_at_skips_items_missing_updated_at() -> None:

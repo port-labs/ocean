@@ -352,44 +352,28 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         normalized = {**pr_node}
 
         if "assignees" in pr_node:
-            normalized["assignees"] = (
-                pr_node["assignees"].get("nodes", [])
-            )
+            normalized["assignees"] = pr_node["assignees"].get("nodes", [])
 
         if "reviewRequests" in pr_node:
-            normalized["reviewRequests"] = (
-                pr_node["reviewRequests"].get("nodes", [])
-            )
-            normalized["requested_reviewers"] = (
-                self._extract_requested_reviewers(pr_node)
+            normalized["reviewRequests"] = pr_node["reviewRequests"].get("nodes", [])
+            normalized["requested_reviewers"] = self._extract_requested_reviewers(
+                pr_node
             )
 
         if "labels" in pr_node:
-            normalized["labels"] = (
-                pr_node["labels"].get("nodes", [])
-            )
+            normalized["labels"] = pr_node["labels"].get("nodes", [])
 
         if "comments" in pr_node:
-            normalized["comments"] = (
-                pr_node["comments"].get("totalCount")
-            )
+            normalized["comments"] = pr_node["comments"].get("totalCount")
 
         if "reviewThreads" in pr_node:
-            normalized["review_comments"] = (
-                pr_node["reviewThreads"].get("totalCount")
-            )
+            normalized["review_comments"] = pr_node["reviewThreads"].get("totalCount")
 
         if "commits" in pr_node:
-            normalized["commits"] = (
-                pr_node["commits"].get("totalCount")
-            )
+            normalized["commits"] = pr_node["commits"].get("totalCount")
 
         if "state" in pr_node:
-            normalized["state"] = (
-                pr_node["state"].lower()
-                if pr_node["state"]
-                else None
-            )
+            normalized["state"] = pr_node["state"].lower() if pr_node["state"] else None
 
         if "mergeStateStatus" in pr_node:
             normalized["mergeable_state"] = (
@@ -399,9 +383,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             )
 
         if "mergeable" in pr_node:
-            normalized["mergeable"] = (
-                pr_node["mergeable"] == "MERGEABLE"
-            )
+            normalized["mergeable"] = pr_node["mergeable"] == "MERGEABLE"
 
         if opts.enrich_with_first_commit:
             self._enrich_with_first_commit(normalized, pr_node)
