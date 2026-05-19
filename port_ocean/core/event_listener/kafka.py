@@ -147,9 +147,8 @@ class KafkaEventListener(BaseEventListener):
                 return False
             return True
 
-        if (
-            "change.log" in topic
-            and self._is_resync_request_message_should_be_processed(msg_value)
+        if "change.log" in topic and self._should_resync_request_be_processed(
+            msg_value
         ):  # we are consuming the legacy change log topic and the message is a resync request
             return True
 
@@ -170,9 +169,7 @@ class KafkaEventListener(BaseEventListener):
 
         return False
 
-    def _is_resync_request_message_should_be_processed(
-        self, msg_value: dict[Any, Any]
-    ) -> bool:
+    def _should_resync_request_be_processed(self, msg_value: dict[Any, Any]) -> bool:
         return (
             msg_value.get("context", {}).get("integrationId")
             == self.integration_identifier
