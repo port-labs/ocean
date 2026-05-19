@@ -1,7 +1,6 @@
 import asyncio
 import uuid
 from typing import Any, AsyncGenerator, Generator
-from typing_extensions import deprecated
 
 import httpx
 import re
@@ -487,9 +486,6 @@ class JiraClient(OAuthClient):
         async for issue_batch in self._get_token_paginated_data(url, "issues", params):
             yield self._enrich_with_board_id(issue_batch, board_id)
 
-    @deprecated(
-        "_fetch_backlog_from_agile_api is deprecated and will be removed in favor of _fetch_backlog_from_software_api by November 1, 2026. The software API endpoint provides more efficient pagination and is the current standard for backlog retrieval. Please migrate to the software API endpoint as soon as possible."
-    )
     async def _fetch_backlog_from_agile_api(
         self,
         board_id: int,
@@ -500,6 +496,9 @@ class JiraClient(OAuthClient):
         Deprecated: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/#api-rest-agile-1-0-board-boardid-backlog-get
         Scheduled for removal: November 1, 2026.
         """
+        logger.warning(
+            "Fetching backlog via agile API endpoint is deprecated and scheduled for removal by November 1, 2026. Set useSoftwareApi to false only if you need to force legacy behavior for specific boards that are not compatible with the software API endpoint. Please migrate to the software API endpoint as soon as possible."
+        )
         agile_url = await self._get_agile_api_url()
         url = f"{agile_url}/board/{board_id}/backlog"
         async for issue_batch in self._get_agile_paginated_data(
@@ -811,8 +810,9 @@ class JiraClient(OAuthClient):
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 400:
                 logger.warning(
-                    f"Board {board_id} returned 400 — board type does not support backlog "
-                    f"(e.g. Kanban or backlog disabled), skipping"
+                    f"Board {board_id} returned 400, skipping. "
+                    f"Possible causes: board type does not support backlog (e.g. Kanban or backlog disabled), "
+                    f"or the JQL filter is invalid."
                 )
                 return
             raise

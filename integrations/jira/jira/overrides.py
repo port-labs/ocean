@@ -133,7 +133,7 @@ class JiraBacklogSelector(Selector):
             "JQL filter applied on top of the board's backlog scope. "
             "Defaults to recently updated or incomplete issues to avoid "
             "re-ingesting the full backlog history on every resync. "
-            "Set to an empty string to fetch all backlog issues."
+            "Leave unset or remove the value entirely to fetch all backlog issues."
         ),
     )
     fields: list[str] | None = Field(
