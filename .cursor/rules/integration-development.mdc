@@ -85,6 +85,7 @@ Integration Development Guidelines
     - Include version numbers
     - Describe new features and fixes
     - Note breaking changes
+    - Every PR that modifies an integration MUST add an entry to `integrations/<name>/CHANGELOG.md` under a new version heading immediately after the `<!-- towncrier release notes start -->` comment, using Keep a Changelog format (`### Features`, `### Improvements`, or `### Bug Fixes`)
 
 12. Testing Requirements
     - Write unit tests for new code
@@ -93,9 +94,11 @@ Integration Development Guidelines
     - Maintain test coverage
 
 13. Versioning
-    - Each feature branch need to bump the latest version
+    - Each feature branch need to bump the latest version in `integrations/<name>/pyproject.toml`
+    - Apply a patch bump (e.g. 0.1.1 → 0.1.2) for fixes and minor improvements; a minor bump (e.g. 0.1.x → 0.2.0) for new features
     - In case of merge conflict take the version from the merged branch and bump it
     - Don't merge versions! existing version need to remain as it is and each branch creates its own version
+    - The version in `pyproject.toml` and the new `CHANGELOG.md` heading MUST match
 
 14. Code Quality
     - run `make lint` command on the integration folder before any commit
