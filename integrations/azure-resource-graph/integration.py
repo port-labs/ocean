@@ -98,7 +98,9 @@ class AzurePortAppConfig(PortAppConfig):
         AzureResourceGraphConfig
         | AzureResourceContainerConfig
         | AzureSubscriptionResourceConfig
-    ] = Field(default_factory=list)  # type: ignore[assignment]
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
 
 
 class AzureResourceGraphIntegration(BaseIntegration):
