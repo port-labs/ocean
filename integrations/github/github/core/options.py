@@ -43,6 +43,7 @@ class SinglePullRequestOptions(RepositoryIdentifier):
 
     pr_number: Required[int]
     enrich_with_first_commit: NotRequired[bool]
+    exclude_graphql_fields: NotRequired[list[str]]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -52,10 +53,18 @@ class ListPullRequestOptions(RepositoryIdentifier):
     max_results: Required[int]
     updated_after: Required[datetime]
     enrich_with_first_commit: NotRequired[bool]
+    exclude_graphql_fields: NotRequired[list[str]]
 
 
 class PullRequestGraphQLOptions(BaseModel):
     enrich_with_first_commit: bool = Field(default=False)
+    exclude_graphql_fields: list[str] = Field(
+        default_factory=list,
+        description=(
+            "List of PullRequest GraphQL fields to omit from the query. "
+            "Useful as a workaround for GitHub GraphQL instability around certain fields."
+        ),
+    )
 
 
 class SingleIssueOptions(RepositoryIdentifier):

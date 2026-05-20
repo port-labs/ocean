@@ -251,7 +251,7 @@ async def resync_generator_wrapper(
                         0, remaining_examples_to_send - sent_examples
                     )
 
-                    if items_to_parse:
+                    if items_to_parse and not await is_dsp_mode_enabled():
                         items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse, items_to_parse_top_level_transform)
                         del result
                         async for batch in items_to_parse_generator:
