@@ -692,7 +692,7 @@ class GithubCollaboratorConfig(ResourceConfig):
 
 
 class GithubPortAppConfig(PortAppConfig):
-    organizations: List[str] = Field(
+    organizations: List[int] = Field(
         title="Organizations",
         default_factory=list,
         description=(
