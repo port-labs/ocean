@@ -11,6 +11,7 @@ def test_normalized_relations_from_included_relations_alias() -> None:
             "includedRelations": {
                 "teams": True,
                 "sbom": False,
+                "pages": True,
                 "collaborators": {"affiliation": "direct"},
             },
         }
@@ -18,6 +19,7 @@ def test_normalized_relations_from_included_relations_alias() -> None:
 
     assert selector.normalized_relations == {
         "teams": {"include": True},
+        "pages": {"include": True},
         "collaborators": {"include": True, "affiliation": "direct"},
     }
 
