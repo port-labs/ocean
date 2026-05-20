@@ -12,7 +12,7 @@ features:
 configurations:
   - name: baseUrl
     required: true
-    type: string
+    type: url
     description: "The base URL of your HTTP API, for example: https://api.example.com"
   - name: authType
     required: false
