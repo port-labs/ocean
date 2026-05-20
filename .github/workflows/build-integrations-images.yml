@@ -97,7 +97,7 @@ jobs:
 
       - name: Build Docker Image
         id: build
-        uses: ./.github/workflows/actions/build-docker-image
+        uses: ./.github/actions/build-docker-image
         with:
           dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}
           platforms: ${{ matrix.platform }}

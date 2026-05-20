@@ -30,7 +30,6 @@ from port_ocean.utils.signal import signal_handler
 from typing import Any, Dict, List, Optional, Type, Literal
 
 from github.entity_processors.file_entity_processor import FileEntityProcessor
-from github.helpers.models import RepoSearchParams
 from github.helpers.utils import ObjectKind
 from github.webhook.live_event_group_selector import get_primary_id
 from github.helpers.port_app_config import (
@@ -42,12 +41,7 @@ FILE_PROPERTY_PREFIX = "file://"
 
 
 class RepoSearchSelector(Selector):
-    repo_search: Optional[RepoSearchParams] = Field(
-        title="Repositories",
-        alias="repoSearch",
-        description="Ingest specific repositories using <a target='_blank' href='https://docs.github.com/en/search-github/searching-on-github/searching-for-repositories'>Github repository search API</a>",
-        default=None,
-    )
+    pass
 
 
 class IncludedFilesConfig(BaseModel):
@@ -129,6 +123,11 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
             }
         }
 
+    required_test_selector: str = Field(
+        title="Required Test Selector",
+        alias="requiredTestSelector",
+        description="Temporary required selector field for schema breakage validation.",
+    )
     include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
         title="Additional Repository Data",
         description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
@@ -692,7 +691,7 @@ class GithubCollaboratorConfig(ResourceConfig):
 
 
 class GithubPortAppConfig(PortAppConfig):
-    organizations: List[int] = Field(
+    organizations: List[str] = Field(
         title="Organizations",
         default_factory=list,
         description=(
