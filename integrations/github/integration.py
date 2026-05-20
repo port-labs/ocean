@@ -119,22 +119,15 @@ class GitHubRepositoryRelationSelector(BaseModel):
 
 class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
     class Config:
-        @staticmethod
-        def schema_extra(schema: dict[str, Any], _model: type[BaseModel]) -> None:
-            schema["extra"] = {
+        schema_extra = {
+            "extra": {
                 "ui_schema": {
                     "mutuallyExclusiveSelectorGroups": [
                         {"legacyKey": "include", "newKey": "includedRelations"}
                     ]
                 }
             }
-
-            properties = schema.setdefault("properties", {})
-            properties["optionalTestSelector"] = {
-                "title": "Optional Test Selector",
-                "description": "Temporary optional selector field for non-breaking schema validation.",
-                "type": "string",
-            }
+        }
 
     include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
         title="Additional Repository Data",

@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.6.0 (2026-05-20)
+## 5.5.1 (2026-05-20)
 
 
-### Breaking Changes
+### Improvements
 
-- Temporarily changed repository selector fields to validate schema breakage detection.
+- Added `labeled` and `unlabeled` to the supported `pull_request` webhook actions so PR label changes are processed in real time.
 
 
 ## 5.5.0 (2026-05-19)
