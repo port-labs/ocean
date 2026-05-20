@@ -12,6 +12,7 @@ from pydantic import Field, BaseModel
 
 class AzureAPIParams(BaseModel):
     version: str = Field(
+        ...,
         title="Version",
         description="The API version to use for the resource graph",
     )
@@ -28,6 +29,7 @@ class AzureSubscriptionParams(BaseModel):
 
 class AzureResourceGraphSelector(Selector):
     graph_query: str = Field(
+        ...,
         title="Graph Query",
         alias="graphQuery",
         description="Use this to map Azure Resource Graph data by setting the table name to a supported <a target='_blank' href='https://learn.microsoft.com/en-us/azure/governance/resource-graph/reference/supported-tables-resources'>Azure Resource Graph table</a>",
@@ -50,7 +52,9 @@ class AzureResourceGraphSelector(Selector):
         def schema_extra(schema: dict, model: type) -> None:
             props = schema.get("properties", {})
             if "subscription" in props:
-                props["subscription"]["default"] = {"apiParams": {"version": "2022-12-01"}}
+                props["subscription"]["default"] = {
+                    "apiParams": {"version": "2022-12-01"}
+                }
 
 
 class AzureResourceGraphConfig(ResourceConfig):
@@ -94,7 +98,9 @@ class AzurePortAppConfig(PortAppConfig):
         AzureResourceGraphConfig
         | AzureResourceContainerConfig
         | AzureSubscriptionResourceConfig
-    ] = Field(default_factory=list)  # type: ignore[assignment]
+    ] = Field(
+        default_factory=list
+    )  # type: ignore[assignment]
 
 
 class AzureResourceGraphIntegration(BaseIntegration):
