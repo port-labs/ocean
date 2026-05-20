@@ -9,8 +9,9 @@ def filter_prs_by_updated_at(
     return [
         pr
         for pr in prs
-        if datetime.strptime(pr[updated_at_field], "%Y-%m-%dT%H:%M:%SZ").replace(
-            tzinfo=UTC
+        if (
+            (updated_at := pr.get(updated_at_field))
+            and datetime.strptime(updated_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+            >= updated_after
         )
-        >= updated_after
     ]
