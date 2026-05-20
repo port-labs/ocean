@@ -45,6 +45,7 @@ runs:
       uses: baptiste0928/cargo-install@v3
       with:
         crate: json-schema-diff
+        features: build-binary
 
     - name: Compare Schemas and Report
       shell: bash
