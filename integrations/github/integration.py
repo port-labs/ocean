@@ -41,7 +41,6 @@ from github.helpers.port_app_config import (
 FILE_PROPERTY_PREFIX = "file://"
 
 
-
 class RepoSearchSelector(Selector):
     repo_search: Optional[RepoSearchParams] = Field(
         title="Repositories",
