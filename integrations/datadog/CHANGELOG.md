@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Add missing field metadata for schema validation compliance
-- Reduced SLOHistorySelector `period_of_time_in_months` default from 12 to 6 for improved performance, and fixed `period_of_time_in_days` validator to safely handle None values
 
 
 ## 0.3.143 (2026-05-19)
