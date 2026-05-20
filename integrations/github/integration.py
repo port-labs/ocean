@@ -130,16 +130,11 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
             }
 
             properties = schema.setdefault("properties", {})
-            properties.pop("repoSearch", None)
-            properties["requiredTestSelector"] = {
-                "title": "Required Test Selector",
-                "description": "Temporary required selector field for schema breakage validation.",
+            properties["optionalTestSelector"] = {
+                "title": "Optional Test Selector",
+                "description": "Temporary optional selector field for non-breaking schema validation.",
                 "type": "string",
             }
-
-            required = schema.setdefault("required", [])
-            if "requiredTestSelector" not in required:
-                required.append("requiredTestSelector")
 
     include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
         title="Additional Repository Data",

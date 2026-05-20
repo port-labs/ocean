@@ -16,32 +16,9 @@ jobs:
   detect-changes:
     uses: ./.github/workflows/detect-changes-matrix.yml
 
-  clear-schema-diff-comments:
-    runs-on: ubuntu-latest
-    needs: [detect-changes]
-    steps:
-      - name: Clear Previous Schema Diff Comments
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          if [ -z "${PR_NUMBER}" ]; then
-            exit 0
-          fi
-
-          comment_ids=$(gh api "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" \
-            --jq '.[] | select(.user.type == "Bot" and (.body | contains("<!-- port-app-config-schema-diff:"))) | .id')
-
-          for comment_id in ${comment_ids}; do
-            gh api \
-              --method DELETE \
-              "repos/${REPOSITORY}/issues/comments/${comment_id}"
-          done
-
   check-schema-diff:
     runs-on: ubuntu-latest
-    needs: [detect-changes, clear-schema-diff-comments]
+    needs: [detect-changes]
     if: ${{ needs.detect-changes.outputs.integrations != '[]' }}
     strategy:
       max-parallel: 5
