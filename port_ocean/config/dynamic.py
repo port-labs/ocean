@@ -42,14 +42,19 @@ class Configuration(BaseModel, extra=Extra.allow):
 
 
 def dynamic_parse(value: Any, field: ModelField) -> Any:
-    should_json_load = issubclass(field.annotation, dict) or issubclass(
-        field.annotation, list
-    )
+    is_list = issubclass(field.annotation, list)
+    should_json_load = issubclass(field.annotation, dict) or is_list
     if isinstance(value, str) and should_json_load:
         try:
             return json.loads(value)
         except json.JSONDecodeError:
-            pass
+            if is_list:
+                # Fall back to comma-separated string splitting for list fields.
+                # This handles cases where the value is provided as a plain
+                # comma-separated string (e.g. from Helm/env-var deployments).
+                parts = [v.strip() for v in value.split(",") if v.strip()]
+                if parts:
+                    return parts
     return value
 
 
