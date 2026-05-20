@@ -22,6 +22,8 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "collaborators": "_enrich_repository_with_collaborators",
         "teams": "_enrich_repository_with_teams",
         "sbom": "_enrich_repository_with_sbom",
+        "custom_properties": "_enrich_repository_with_custom_properties",
+        "pages": "_enrich_repository_with_pages",
     }
 
     async def get_resource[
@@ -230,6 +232,31 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         repository["__teams"] = all_teams
         return repository
 
+    async def _enrich_repository_with_custom_properties(
+        self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
+    ) -> RAW_ITEM:
+        if "custom_properties" in repository:
+            return repository
+        repo_name = repository["name"]
+        logger.info(
+            f"Fetching custom properties for repository {repo_name} in organization {organization}"
+        )
+        properties = cast(
+            list[Dict[str, Any]],
+            await self.client.send_api_request(
+                f"{self.client.base_url}/repos/{organization}/{repo_name}/properties/values"
+            ),
+        )
+        repository["custom_properties"] = (
+            {prop["property_name"]: prop["value"] for prop in properties}
+            if properties
+            else {}
+        )
+        logger.info(
+            f"Fetched {len(repository['custom_properties'])} custom properties for repository {repo_name} in organization {organization}"
+        )
+        return repository
+
     async def _enrich_repository_with_sbom(
         self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
     ) -> RAW_ITEM:
@@ -245,4 +272,21 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             return repository
 
         repository["__sbom"] = response.get("sbom", {})
+        return repository
+
+    async def _enrich_repository_with_pages(
+        self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
+    ) -> RAW_ITEM:
+        repo_name = repository["name"]
+
+        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/pages"
+        response = await self.client.send_api_request(url)
+        if not response:
+            logger.debug(
+                f"Skipping GitHub Pages enrichment for repository {repo_name} in organization {organization}: empty response"
+            )
+            repository["__pages"] = {}
+            return repository
+
+        repository["__pages"] = response
         return repository

@@ -9,8 +9,6 @@ from github.webhook.events import USER_DELETE_EVENTS, USER_UPSERT_EVENTS
 from github.core.options import SingleUserOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
@@ -19,13 +17,14 @@ from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.user_webhook_processor import (
     UserWebhookProcessor,
 )
+from integration import GithubUserConfig, GithubUserSelector
 
 
 @pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+def resource_config() -> GithubUserConfig:
+    return GithubUserConfig(
         kind=ObjectKind.USER,
-        selector=Selector(query="true"),
+        selector=GithubUserSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -92,7 +91,7 @@ class TestUserWebhookProcessor:
     async def test_handle_event_create_and_delete(
         self,
         user_webhook_processor: UserWebhookProcessor,
-        resource_config: ResourceConfig,
+        resource_config: GithubUserConfig,
         action: str,
         is_deletion: bool,
         expected_updated: bool,
@@ -126,7 +125,11 @@ class TestUserWebhookProcessor:
                 )
 
             mock_exporter.get_resource.assert_called_once_with(
-                SingleUserOptions(organization="test-org", login="test-user")
+                SingleUserOptions(
+                    organization="test-org",
+                    login="test-user",
+                    include_saml_email=False,
+                )
             )
 
         assert isinstance(result, WebhookEventRawResults)

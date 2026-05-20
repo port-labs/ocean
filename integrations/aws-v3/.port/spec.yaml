@@ -10,8 +10,22 @@ features:
       - kind: AWS::S3::Bucket
       - kind: AWS::EC2::Instance
       - kind: AWS::ECS::Cluster
+      - kind: AWS::ECS::TaskDefinition
       - kind: AWS::ECR::Repository
+      - kind: AWS::MSK::Cluster
+      - kind: AWS::EC2::Volume
 configurations:
+  - name: credentialProviderPriority
+    required: false
+    type: string
+    sensitive: false
+    default: "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole"
+    description: The priority of the credential providers. The providers will be tried in the order of the priority. The first provider that is applicable will be used. The default value is "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole".
+  - name: ouId
+    required: false
+    type: string
+    sensitive: false
+    description: AWS Organization Unit (OU) ID to discover active accounts from. When provided, the integration will only attempt to use discover active accounts from the specified OU.
   - name: accountRoleArn
     required: false
     type: string
@@ -47,7 +61,7 @@ installationDocs:
   saas:
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installations?installation-method=single-account#installation-methods
+      docs: build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installation/hosted-by-port/?installation-method=single-account
 saas:
   enabled: true
   liveEvents:

@@ -12,6 +12,7 @@ features:
       - kind: merge-request
       - kind: releases
       - kind: tags
+      - kind: branch
 configurations:
   - name: gitlabToken
     required: true

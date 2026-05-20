@@ -89,6 +89,17 @@ class GitHubRepositoryRelationSelector(BaseModel):
         default=False,
         description="Include SBOM for the repository.",
     )
+    custom_properties: bool = Field(
+        title="Include Custom Properties",
+        alias="customProperties",
+        default=False,
+        description="Include organization custom property values for the repository.",
+    )
+    pages: bool = Field(
+        title="Include GitHub Pages",
+        default=False,
+        description="Include GitHub Pages configuration for the repository.",
+    )
 
     class Config:
         extra = "forbid"
@@ -104,6 +115,12 @@ class GitHubRepositoryRelationSelector(BaseModel):
 
         if self.sbom:
             result["sbom"] = {"include": self.sbom}
+
+        if self.custom_properties:
+            result["custom_properties"] = {"include": self.custom_properties}
+
+        if self.pages:
+            result["pages"] = {"include": self.pages}
 
         return result
 
@@ -127,8 +144,8 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
     )
     included_relations: Optional[GitHubRepositoryRelationSelector] = Field(
         alias="includedRelations",
-        title="Included Repository Relations",
-        description="Fetch additional data related to the repository. Configure per-relation options (for example, collaborator `affiliation`). Accepted relations: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>.",
+        title="Additional Repository Data",
+        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples/#repositories-with-multiple-relationships'>teams, collaborators, sbom, custom properties and pages</a>",
         default=None,
     )
 
@@ -260,10 +277,31 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
+class IncludeSAMLEmailSelector(Selector):
+    include_saml_email: bool = Field(
+        title="Include SAML email",
+        alias="includeSAMLEmail",
+        default=False,
+        description=(
+            "When enabled, the integration will enrich exported GitHub users with "
+            "`__SAMLEmail` populated from the organization's SAML external identity (nameId). "
+            "If no SAML identity is found for a user, `__SAMLEmail` will be null."
+        ),
+    )
+
+
+class GithubUserSelector(IncludeSAMLEmailSelector):
+    pass
+
+
 class GithubUserConfig(ResourceConfig):
     kind: Literal[ObjectKind.USER] = Field(
         title="Github User",
         description="Github user resource kind.",
+    )
+    selector: GithubUserSelector = Field(
+        title="User selector",
+        description="Selector for the user resource.",
     )
 
 
@@ -310,6 +348,16 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "When the api selector is set to graphql and this option is enabled, each pull request is enriched with the "
             "first commit on the branch (OID and committed timestamp in UTC). Use this to measure "
             "lead time from the initial commit through review and merge."
+            "This option will be ignored if the api selector is set to rest."
+        ),
+    )
+    exclude_graphql_fields: list[str] = Field(
+        title="Exclude GraphQL Fields",
+        alias="excludeGraphqlFields",
+        default_factory=list,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, fields specified in this list will be omitted from the query. "
+            "This is useful as a workaround for GitHub GraphQL instability or to reduce rate limit cost. "
             "This option will be ignored if the api selector is set to rest."
         ),
     )
@@ -360,7 +408,7 @@ class GithubIssueConfig(ResourceConfig):
     )
 
 
-class GithubTeamSector(Selector):
+class GithubTeamSelector(IncludeSAMLEmailSelector):
     members: bool = Field(
         title="Include Members",
         default=True,
@@ -369,7 +417,7 @@ class GithubTeamSector(Selector):
 
 
 class GithubTeamConfig(ResourceConfig):
-    selector: GithubTeamSector = Field(
+    selector: GithubTeamSelector = Field(
         title="Team selector",
         description="Selector for the team resource.",
     )

@@ -12,6 +12,8 @@ def create_github_client() -> GitHubClient:
 
     integration_config: dict[str, Any] = ocean.integration_config
     _github_client = GitHubClient(
-        integration_config["github_host"], integration_config["github_token"]
+        integration_config["github_host"],
+        integration_config["github_token"],
+        integration_config.get("github_enterprise_name"),
     )
     return _github_client

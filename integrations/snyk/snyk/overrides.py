@@ -106,9 +106,7 @@ class SnykProjectAPIQueryParams(GenerateQueryParamMixin):
 
 class SnykVulnerabilityAPIQueryParams(GenerateQueryParamMixin):
     type: Optional[
-        Literal[
-            "package", "vulnerability", "license", "cloud", "code", "custom", "config"
-        ]
+        Literal["package_vulnerability", "license", "cloud", "code", "custom", "config"]
     ] = Field(default=None, title="Type", description="The type of an issue.")
     updated_before: Optional[str] = Field(
         default=None,
@@ -153,6 +151,39 @@ class SnykVulnerabilityAPIQueryParams(GenerateQueryParamMixin):
     )
 
 
+class SnykPolicyAPIQueryParams(GenerateQueryParamMixin):
+    search: Optional[str] = Field(
+        default=None,
+        title="Search Filter",
+        description="Filter policies by keyword matched against ignore_type, ignored_by.name, or ignored_by.email in policy rules (e.g. 'wont-fix' or 'alice@example.com').",
+    )
+
+    review: Optional[
+        list[Literal["pending", "approved", "rejected", "not-required"]]
+    ] = Field(
+        default=None,
+        title="Review State",
+        description="Filter policies to only those whose rules match the specified review state(s).",
+    )
+    expires_before: Optional[str] = Field(
+        default=None,
+        title="Expires Before",
+        description="Select only policies with an expiry strictly before the given time. e.g 2024-03-16T00:00:00Z",
+        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
+    )
+    expires_after: Optional[str] = Field(
+        default=None,
+        title="Expires After",
+        description="Select only policies with an expiry strictly past the given time. e.g 2024-03-16T00:00:00Z",
+        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
+    )
+    expires_never: Optional[bool] = Field(
+        default=None,
+        title="Expires Never",
+        description="Select only policies that never expire.",
+    )
+
+
 class ProjectSelector(Selector):
     attach_issues_to_project: bool = Field(
         alias="attachIssuesToProject",
@@ -189,6 +220,15 @@ class VulnerabilitySelector(Selector):
     )
 
 
+class PolicySelector(Selector):
+    api_query_params: Optional[SnykPolicyAPIQueryParams] = Field(
+        alias="apiQueryParams",
+        default=None,
+        title="API Query Params",
+        description="Snyk Org-level Policy API query params.",
+    )
+
+
 class ProjectResourceConfig(ResourceConfig):
     kind: Literal["project"] = Field(
         title="Snyk Project",
@@ -200,12 +240,47 @@ class ProjectResourceConfig(ResourceConfig):
     )
 
 
+class SnykTargetAPIQueryParams(GenerateQueryParamMixin):
+    exclude_empty: Optional[bool] = Field(
+        default=None,
+        title="Exclude Empty",
+        description="When false, returns all targets including those with no associated projects. When true, returns only targets with at least one project.",
+    )
+    is_private: Optional[bool] = Field(
+        default=None,
+        title="Is Private",
+        description="Return targets that match the provided value of is_private.",
+    )
+    url: Optional[str] = Field(
+        default=None,
+        title="URL",
+        description="Return targets that match the provided remote URL.",
+    )
+    display_name: Optional[str] = Field(
+        default=None,
+        title="Display Name",
+        description="Return targets with display names starting with the provided string.",
+    )
+    created_gte: Optional[str] = Field(
+        default=None,
+        title="Created At or After",
+        description="Return only targets created at or after the specified date. Must be RFC3339 with timezone (e.g. 2022-01-01T16:00:00Z).",
+        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
+    )
+
+
 class TargetSelector(Selector):
     attach_project_data: bool = Field(
         default=True,
         alias="attachProjectData",
         title="Attach Project Data",
         description="Whether to attach project data to the target during ingestion.",
+    )
+    api_query_params: Optional[SnykTargetAPIQueryParams] = Field(
+        alias="apiQueryParams",
+        default=None,
+        title="API Query Params",
+        description="Snyk target API query params. For more information see the <a href='https://docs.snyk.io/snyk-api/reference/targets#get-orgs-org_id-targets' target='_blank'>Snyk API docs</a>.",
     )
 
 
@@ -245,6 +320,16 @@ class IssueResourceConfig(ResourceConfig):
     )
 
 
+class PolicyResourceConfig(ResourceConfig):
+    kind: Literal["policy"] = Field(
+        title="Snyk Policy",
+        description="An org-level Snyk policy that defines rules for ignoring or marking issues across projects.",
+    )
+    selector: PolicySelector = Field(
+        title="Policy Selector", description="Selector to filter Snyk policies"
+    )
+
+
 class SnykPortAppConfig(PortAppConfig):
     resources: list[
         ProjectResourceConfig
@@ -252,6 +337,7 @@ class SnykPortAppConfig(PortAppConfig):
         | OrganizationResourceConfig
         | VulnerabilityResourceConfig
         | IssueResourceConfig
+        | PolicyResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore[assignment]

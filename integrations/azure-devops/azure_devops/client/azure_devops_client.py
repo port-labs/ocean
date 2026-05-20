@@ -14,6 +14,7 @@ from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.webhooks.events import (
+    BuildEvents,
     RepositoryEvents,
     PullRequestEvents,
     PushEvents,
@@ -86,6 +87,7 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_COMMENTED
     ),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_DELETED),
+    WebhookSubscription(publisherId="tfs", eventType=BuildEvents.BUILD_COMPLETE),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_RESTORED),
     WebhookSubscription(
         publisherId=ADVANCED_SECURITY_PUBLISHER_ID,
@@ -342,12 +344,14 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return base_url
 
-    async def generate_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_users(
+        self, additional_params: dict[str, str] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         users_url = (
             self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
         )
         async for users in self._get_paginated_by_top_and_continuation_token(
-            users_url, data_key="items"
+            users_url, data_key="items", additional_params=additional_params or {}
         ):
             yield users
 
@@ -467,25 +471,40 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 yield members
 
+    async def _fetch_repositories_for_project(
+        self,
+        project: dict[str, Any],
+        include_disabled_repositories: bool,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
+        response = await self.send_request("GET", repos_url)
+        if not response:
+            return
+        repositories = response.json()["value"]
+        if include_disabled_repositories:
+            yield repositories
+        else:
+            yield [repo for repo in repositories if self._repository_is_healthy(repo)]
+
     @cache_iterator_result()
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
-            for project in projects:
-                repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-                response = await self.send_request("GET", repos_url)
-                if not response:
-                    continue
-                repositories = response.json()["value"]
-                if include_disabled_repositories:
-                    yield repositories
-                else:
-                    yield [
-                        repo
-                        for repo in repositories
-                        if self._repository_is_healthy(repo)
-                    ]
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._fetch_repositories_for_project,
+                        project,
+                        include_disabled_repositories,
+                    ),
+                )
+                for project in projects
+            ]
+            async for repositories in stream_async_iterators_tasks(*tasks):
+                yield repositories
 
     async def generate_branches(
         self,
@@ -592,7 +611,10 @@ class AzureDevopsClient(HTTPBaseClient):
                         pipeline["__projectId"] = project["id"]
                     yield pipelines
 
-    async def generate_releases(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_releases(
+        self,
+        additional_params: dict[str, str] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
                 releases_url = (
@@ -600,9 +622,28 @@ class AzureDevopsClient(HTTPBaseClient):
                     + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
                 )
                 async for releases in self._get_paginated_by_top_and_continuation_token(
-                    releases_url
+                    releases_url, additional_params=additional_params or {}
                 ):
                     yield releases
+
+    async def generate_release_definitions(
+        self,
+        additional_params: dict[str, str] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                definitions_url = (
+                    self._format_service_url("vsrm")
+                    + f"/{project['id']}/{API_URL_PREFIX}/release/definitions"
+                )
+                async for (
+                    definitions
+                ) in self._get_paginated_by_top_and_continuation_token(
+                    definitions_url, additional_params=additional_params or {}
+                ):
+                    for definition in definitions:
+                        definition["__project"] = project
+                    yield definitions
 
     async def generate_pipeline_runs(
         self,
@@ -1220,6 +1261,20 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         return response.json()
 
+    async def get_release_definition(
+        self, project_id: str, definition_id: str, project: dict[str, Any]
+    ) -> dict[Any, Any] | None:
+        definition_url = (
+            self._format_service_url("vsrm")
+            + f"/{project_id}/{API_URL_PREFIX}/release/definitions/{definition_id}"
+        )
+        response = await self.send_request("GET", definition_url)
+        if not response:
+            return None
+        definition = response.json()
+        definition["__project"] = project
+        return definition
+
     async def get_release_deployment(
         self, project_id: str, release_id: int, environment_id: int
     ) -> dict[Any, Any] | None:
@@ -1578,8 +1633,8 @@ class AzureDevopsClient(HTTPBaseClient):
             ]
         }
 
-        timeout_retries = 0
-        while timeout_retries <= MAX_TIMEMOUT_RETRIES:
+        transient_retries = 0
+        while transient_retries <= MAX_TIMEMOUT_RETRIES:
             try:
                 response = await self.send_request(
                     "POST",
@@ -1588,7 +1643,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     data=json.dumps(request_data),
                     headers={"Content-Type": "application/json"},
                 )
-                if not response or response.status_code >= 400:
+                if not response:
                     logger.warning(f"Failed to fetch items from {items_batch_url}")
                     return []
 
@@ -1600,13 +1655,13 @@ class AzureDevopsClient(HTTPBaseClient):
                 ]
 
             except ReadTimeout:
-                timeout_retries += 1
-                if timeout_retries <= MAX_TIMEMOUT_RETRIES:
+                transient_retries += 1
+                if transient_retries <= MAX_TIMEMOUT_RETRIES:
                     logger.warning(
                         f"Request timeout while fetching items for repository {repository['name']} "
-                        f"(attempt {timeout_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                        f"(attempt {transient_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
                     )
-                    await asyncio.sleep(2 ** (timeout_retries - 1))
+                    await asyncio.sleep(2 ** (transient_retries - 1))
                     continue
                 else:
                     logger.error(
@@ -1620,6 +1675,20 @@ class AzureDevopsClient(HTTPBaseClient):
                     )
 
             except HTTPStatusError as e:
+                if e.response.status_code == 503:
+                    transient_retries += 1
+                    if transient_retries <= MAX_TIMEMOUT_RETRIES:
+                        logger.warning(
+                            f"503 from itemsbatch for repository {repository['name']} "
+                            f"(attempt {transient_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                        )
+                        await asyncio.sleep(2 ** (transient_retries - 1))
+                        continue
+                    logger.error(
+                        f"Persistent 503 fetching items for repository {repository['name']} "
+                        f"after {MAX_TIMEMOUT_RETRIES + 1} attempts."
+                    )
+                    raise
                 logger.error(e.response.status_code)
                 logger.error(e.response.text)
                 if e.response.status_code == 400:
@@ -1627,8 +1696,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
                     )
                     return []
-                else:
-                    raise
+                raise
             except Exception as e:
                 logger.error(
                     f"Unexpected error processing files in {repository['name']}: {e}"
@@ -2013,7 +2081,7 @@ class AzureDevopsClient(HTTPBaseClient):
         coverage_config: Optional["CodeCoverageConfig"],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-        params = {"includeRunDetails": True}
+        params = {"includeRunDetails": True, **API_PARAMS}
         async for runs in self._get_paginated_by_top_and_skip(url, params=params):
             yield await self._enrich_test_runs(
                 runs, project_id, include_results, coverage_config
@@ -2129,7 +2197,7 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Starting to fetch code coverage for project {project_id}, run id={build_id}, flags={coverage_config.flags}"
         )
 
-        params = {"buildId": build_id}
+        params: dict[str, Any] = {"buildId": build_id, **API_PARAMS}
         if coverage_config.flags is not None:
             params["flags"] = coverage_config.flags
 
@@ -2143,3 +2211,24 @@ class AzureDevopsClient(HTTPBaseClient):
     async def _no_coverage(self) -> dict[str, Any]:
         """Return empty coverage for test runs without a build (e.g., manual test runs)."""
         return {}
+
+    async def get_test_runs_by_build(
+        self,
+        project_id: str,
+        build_id: str,
+        include_results: bool = False,
+        coverage_config: Optional["CodeCoverageConfig"] = None,
+    ) -> list[dict[str, Any]]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
+        params: dict[str, Any] = {
+            "includeRunDetails": True,
+            "buildUri": f"vstfs:///Build/Build/{build_id}",
+        }
+        all_runs: list[dict[str, Any]] = []
+        async for runs in self._get_paginated_by_top_and_skip(url, params=params):
+            all_runs.extend(runs)
+        if all_runs:
+            await self._enrich_test_runs(
+                all_runs, project_id, include_results, coverage_config
+            )
+        return all_runs

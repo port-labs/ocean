@@ -13,6 +13,7 @@ import port_ocean.helpers.metric.metric
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.disk import DiskCacheProvider
 from port_ocean.cache.memory import InMemoryCacheProvider
+from port_ocean.clients.lifecycle import LifecycleClient
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import (
@@ -26,7 +27,9 @@ from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
 from port_ocean.core.models import ProcessExecutionMode
+from port_ocean.health import create_health_router
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.misc import IntegrationStateStatus
@@ -67,6 +70,7 @@ class Ocean:
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
             ingest_url=self.config.port.ingest_url,
+            feature_flags_cache_ttl_seconds=self.config.port.feature_flags_cache_ttl_seconds,
         )
         self.cache_provider: CacheProvider = self._get_caching_provider()
         self.process_execution_mode: ProcessExecutionMode = (
@@ -105,6 +109,10 @@ class Ocean:
         self.resync_state_updater = ResyncStateUpdater(
             self.port_client, self.config.scheduled_resync_interval
         )
+        self.lifecycle_client: LifecycleClient = LifecycleClient(
+            base_url=str(self.config.port.lifecycle_url),
+            auth=self.port_client.auth,
+        )
         self.app_initialized = False
         self._status_heartbeat_task: asyncio.Task[None] | None = None
 
@@ -131,6 +139,14 @@ class Ocean:
                     logger.info(
                         "Graceful shutdown completed - sync state set to aborted"
                     )
+                    if await is_dsp_mode_enabled():
+                        resync_id = self.metrics.event_id.strip()
+                        if resync_id:
+                            await self.lifecycle_client.notify_resync_aborted(
+                                resync_id=resync_id,
+                                integration_id=self.config.integration.identifier,
+                                integration_type=self.config.integration.type,
+                            )
                 else:
                     logger.info(
                         "Graceful shutdown completed - sync was already completed, status unchanged"
@@ -293,6 +309,9 @@ class Ocean:
         )
         self.fast_api_app.include_router(
             self.metrics.create_mertic_router(), prefix=f"{self.route_prefix}/metrics"
+        )
+        self.fast_api_app.include_router(
+            create_health_router(), prefix=f"{self.route_prefix}/health"
         )
 
         @asynccontextmanager

@@ -23,6 +23,18 @@ from port_ocean.utils.misc import get_spec_file, load_module
 _config_factory_cache: dict[str, Any] = {}
 
 
+def _flatten_exception_tree(exc: BaseException) -> list[Exception]:
+    """Return leaf exceptions from an ExceptionGroup (recursively) or a single error."""
+    if isinstance(exc, ExceptionGroup):
+        leaves: list[Exception] = []
+        for sub in exc.exceptions:
+            leaves.extend(_flatten_exception_tree(sub))
+        return leaves
+    if isinstance(exc, Exception):
+        return [exc]
+    return []
+
+
 @dataclass
 class ResyncResult:
     upserted_entities: list[dict[str, Any]] = field(default_factory=list)
@@ -84,6 +96,9 @@ class IntegrationTestHarness:
             _config_factory_cache[self.integration_path] = config_factory
 
         # Build config override with test defaults
+        # Force single_process: the Port mock captures entities in-process. On Linux CI,
+        # the default is multi_process, so subprocesses would have their own copy of
+        # upserted_entities and the harness would see an empty list.
         config = {
             "port": {
                 "client_id": "test-client-id",
@@ -96,6 +111,7 @@ class IntegrationTestHarness:
                 "type": "test",
             },
             "send_raw_data_examples": False,
+            "process_execution_mode": "single_process",
             **self.config_overrides,
         }
 
@@ -228,8 +244,7 @@ class IntegrationTestHarness:
                 silent=False,
             )
         except ExceptionGroup as e:
-            # ExceptionGroup contains multiple errors - extract them
-            errors = list(e.exceptions) if hasattr(e, "exceptions") else [e]
+            errors = _flatten_exception_tree(e)
             logger.warning(f"Resync raised ExceptionGroup with {len(errors)} errors")
             return ResyncResult(
                 upserted_entities=list(self.port_mock.upserted_entities),
