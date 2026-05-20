@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
+from pydantic import BaseModel, Field
 
 
 class ListOrganizationOptions(TypedDict):
@@ -18,7 +19,7 @@ class SingleOrganizationOptions(TypedDict):
 
 class SingleRepositoryOptions(SingleOrganizationOptions):
     name: str
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class ListRepositoryOptions(SingleOrganizationOptions):
@@ -27,7 +28,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     type: str
     organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -41,6 +42,8 @@ class SinglePullRequestOptions(RepositoryIdentifier):
     """Options for fetching a single pull request."""
 
     pr_number: Required[int]
+    enrich_with_first_commit: NotRequired[bool]
+    exclude_graphql_fields: NotRequired[list[str]]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -49,6 +52,19 @@ class ListPullRequestOptions(RepositoryIdentifier):
     states: Required[list[str]]
     max_results: Required[int]
     updated_after: Required[datetime]
+    enrich_with_first_commit: NotRequired[bool]
+    exclude_graphql_fields: NotRequired[list[str]]
+
+
+class PullRequestGraphQLOptions(BaseModel):
+    enrich_with_first_commit: bool = Field(default=False)
+    exclude_graphql_fields: list[str] = Field(
+        default_factory=list,
+        description=(
+            "List of PullRequest GraphQL fields to omit from the query. "
+            "Useful as a workaround for GitHub GraphQL instability around certain fields."
+        ),
+    )
 
 
 class SingleIssueOptions(RepositoryIdentifier):
@@ -64,21 +80,23 @@ class ListIssueOptions(RepositoryIdentifier):
     labels: NotRequired[Optional[str]]
 
 
-class SingleUserOptions(SingleOrganizationOptions):
+class BaseUserOptions(SingleOrganizationOptions):
+    include_saml_email: NotRequired[bool]
+
+
+class SingleUserOptions(BaseUserOptions):
     login: Required[str]
 
 
-class ListUserOptions(SingleOrganizationOptions):
+class ListUserOptions(BaseUserOptions):
     """Options for listing users."""
 
-    include_bots: Required[bool]
 
-
-class SingleTeamOptions(SingleOrganizationOptions):
+class SingleTeamOptions(BaseUserOptions):
     slug: Required[str]
 
 
-class ListTeamOptions(SingleOrganizationOptions):
+class ListTeamOptions(BaseUserOptions):
     """Options for listing teams."""
 
 
@@ -160,6 +178,19 @@ class ListDeploymentsOptions(RepositoryIdentifier):
     environment: NotRequired[Optional[str]]
 
 
+class SingleDeploymentStatusOptions(RepositoryIdentifier):
+    """Options for fetching a single deployment status."""
+
+    deployment_id: Required[str]
+    status_id: Required[str]
+
+
+class ListDeploymentStatusesOptions(RepositoryIdentifier):
+    """Options for listing deployment statuses."""
+
+    deployment_id: Required[str]
+
+
 class SingleDependabotAlertOptions(RepositoryIdentifier):
     """Options for fetching a single Dependabot alert."""
 
@@ -237,6 +268,8 @@ class SingleCollaboratorOptions(RepositoryIdentifier):
 
 class ListCollaboratorOptions(RepositoryIdentifier):
     """Options for listing collaborators."""
+
+    affiliation: Required[str]
 
 
 class BaseSecretScanningAlertOptions(RepositoryIdentifier):

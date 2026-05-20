@@ -1,0 +1,25 @@
+{
+  "id": "31440986-0c26-4def-ae3d-feadd2d3498e",
+  "name": "test-azure-sync-project",
+  "url": "[REDACTED]/_apis/projects/31440986-0c26-4def-ae3d-feadd2d3498e",
+  "state": "wellFormed",
+  "revision": 11,
+  "_links": {
+    "self": {
+      "href": "[REDACTED]/_apis/projects/31440986-0c26-4def-ae3d-feadd2d3498e"
+    },
+    "collection": {
+      "href": "[REDACTED]/_apis/projectCollections/1d8e3089-8f24-43f5-96f6-7a561518619b"
+    },
+    "web": {
+      "href": "[REDACTED]/test-azure-sync-project"
+    }
+  },
+  "visibility": "private",
+  "defaultTeam": {
+    "id": "f2aeaf29-ca65-4631-8554-a35ac5812617",
+    "name": "test-azure-sync-project Team",
+    "url": "[REDACTED]/_apis/projects/31440986-0c26-4def-ae3d-feadd2d3498e/teams/f2aeaf29-ca65-4631-8554-a35ac5812617"
+  },
+  "lastUpdateTime": "2026-03-31T09:36:39.42Z"
+}

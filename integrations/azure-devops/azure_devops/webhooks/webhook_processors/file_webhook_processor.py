@@ -13,6 +13,10 @@ from azure_devops.misc import Kind, extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
 )
+from azure_devops.enrichments.included_files import (
+    IncludedFilesEnricher,
+    FileIncludedFilesStrategy,
+)
 from azure_devops.client.file_processing import matches_glob_pattern, parse_file_content
 from azure_devops.webhooks.events import PushEvents
 
@@ -60,11 +64,11 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         included_files = selector.included_files or []
         updated = created + modified
         if included_files and updated:
-            from main import _enrich_file_entities_batch_with_included_files
-
-            updated = await _enrich_file_entities_batch_with_included_files(
-                client, updated, included_files
+            enricher = IncludedFilesEnricher(
+                client=client,
+                strategy=FileIncludedFilesStrategy(included_files=included_files),
             )
+            updated = await enricher.enrich_batch(updated)
 
         return WebhookEventRawResults(
             updated_raw_results=updated,

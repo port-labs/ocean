@@ -36,6 +36,11 @@ module "port_ocean_ecs" {
   container_port             = var.container_port
   image_registry             = var.image_registry
 
+  // Resource Settings
+  ecs_use_fargate = var.ecs_use_fargate
+  cpu             = var.cpu
+  memory          = var.memory
+
   port = {
     client_id     = var.port.client_id
     client_secret = var.port.client_secret

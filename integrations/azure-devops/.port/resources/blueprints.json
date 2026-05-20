@@ -135,7 +135,9 @@
           "enum": [
             "Issue",
             "Epic",
-            "Task"
+            "Task",
+            "Bug",
+            "User Story"
           ],
           "enumColors": {
             "Issue": "green",

@@ -1,3 +1,4 @@
+from itertools import batched
 from typing import cast, Any, Dict
 
 from loguru import logger
@@ -9,7 +10,11 @@ from port_ocean.utils.async_iterators import (
 )
 import asyncio
 from gitlab.clients.client_factory import create_gitlab_client
-from gitlab.clients.utils import build_group_params, build_project_params
+from gitlab.clients.utils import (
+    build_group_params,
+    build_project_params,
+    build_branch_params,
+)
 from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
 from integration import (
     GitLabFilesResourceConfig,
@@ -18,12 +23,14 @@ from integration import (
     GitLabFoldersResourceConfig,
     GitlabGroupWithMembersResourceConfig,
     GitlabMemberResourceConfig,
+    GitlabProjectWithMembersResourceConfig,
     GitlabMergeRequestResourceConfig,
     PipelineResourceConfig,
     JobResourceConfig,
     ReleaseResourceConfig,
     TagResourceConfig,
     GitlabIssueResourceConfig,
+    BranchResourceConfig,
 )
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
@@ -60,16 +67,21 @@ from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
 from gitlab.webhook.webhook_processors.project_webhook_processor import (
     ProjectWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.project_with_member_webhook_processor import (
+    ProjectWithMemberWebhookProcessor,
+)
 from gitlab.webhook.webhook_processors.tag_webhook_processor import (
     TagWebhookProcessor,
 )
 from gitlab.webhook.webhook_processors.release_webhook_processor import (
     ReleaseWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.branch_webhook_processor import (
+    BranchWebhookProcessor,
+)
 from gitlab.clients.options import IssueOptions
 
-
-RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
+RESYNC_MEMBERS_BATCH_SIZE = 10
 DEFAULT_MAX_CONCURRENT = 10
 
 
@@ -92,15 +104,6 @@ async def _fetch_included_files_content(
             )
             included[file_path] = None
     return included
-
-
-def _apply_included_files(
-    entities: list[dict[str, Any]],
-    included: dict[str, Any],
-) -> None:
-    """Apply fetched included files to a batch of entities."""
-    for entity in entities:
-        entity["__includedFiles"] = included
 
 
 @ocean.on_start()
@@ -130,10 +133,11 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files = selector.included_files or []
 
+    params = build_project_params(
+        include_only_active_projects=include_only_active_projects
+    )
     async for projects_batch in client.get_projects(
-        params=build_project_params(
-            include_only_active_projects=include_only_active_projects
-        ),
+        params=params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=include_languages,
         search_queries=search_queries,
@@ -307,6 +311,34 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield releases_batch
 
 
+@ocean.on_resync(ObjectKind.BRANCH)
+async def on_resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(BranchResourceConfig, event.resource_config).selector
+    include_only_active_projects = selector.include_only_active_projects
+
+    async for projects_batch in client.get_projects(
+        params=build_project_params(
+            include_only_active_projects=include_only_active_projects
+        ),
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        include_languages=False,
+    ):
+        logger.info(f"Processing batch of {len(projects_batch)} projects for branches")
+
+        async for branches_batch in client.get_branches(
+            projects_batch,
+            max_concurrent=DEFAULT_MAX_CONCURRENT,
+            default_branches_only=selector.default_branch_only,
+            params=(
+                build_branch_params(selector)
+                if not selector.default_branch_only
+                else None
+            ),
+        ):
+            yield branches_batch
+
+
 @ocean.on_resync(ObjectKind.GROUP_WITH_MEMBERS)
 async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -320,20 +352,16 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     async for groups_batch in client.get_groups(
         params=build_group_params(include_only_active_groups=include_only_active_groups)
     ):
-        for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
-            current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
-            logger.info(
-                f"Processing members for {i + len(current_batch)}/{len(groups_batch)} groups"
-            )
-
+        for batch in batched(groups_batch, RESYNC_MEMBERS_BATCH_SIZE):
+            logger.info(f"Processing members for batch of {len(batch)} groups")
             tasks = [
                 client.enrich_group_with_members(
                     group, include_bot_members, include_inherited_members
                 )
-                for group in current_batch
+                for group in batch
             ]
             results = await asyncio.gather(*tasks)
-            yield results
+            yield list(results)
 
 
 @ocean.on_resync(ObjectKind.MEMBER)
@@ -347,17 +375,45 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for groups_batch in client.get_groups(
         params=build_group_params(include_only_active_groups=include_only_active_groups)
     ):
-        for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
-            current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
+        for batch in batched(groups_batch, RESYNC_MEMBERS_BATCH_SIZE):
             tasks = [
                 client.get_group_members(
                     group["id"], include_bot_members, include_inherited_members
                 )
-                for group in current_batch
+                for group in batch
             ]
-            async for batch in stream_async_iterators_tasks(*tasks):
-                if batch:
-                    yield batch
+            async for members_batch in stream_async_iterators_tasks(*tasks):
+                if members_batch:
+                    yield members_batch
+
+
+@ocean.on_resync(ObjectKind.PROJECT_WITH_MEMBERS)
+async def on_resync_projects_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(
+        GitlabProjectWithMembersResourceConfig, event.resource_config
+    ).selector
+    include_bot_members = bool(selector.include_bot_members)
+    include_inherited_members = selector.include_inherited_members
+    include_only_active_projects = selector.include_only_active_projects
+
+    async for projects_batch in client.get_projects(
+        params=build_project_params(
+            include_only_active_projects=include_only_active_projects
+        ),
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        include_languages=False,
+    ):
+        for batch in batched(projects_batch, RESYNC_MEMBERS_BATCH_SIZE):
+            logger.info(f"Processing members for batch of {len(batch)} projects")
+            tasks = [
+                client.enrich_project_with_members(
+                    project, include_bot_members, include_inherited_members
+                )
+                for project in batch
+            ]
+            results = await asyncio.gather(*tasks)
+            yield list(results)
 
 
 @ocean.on_resync(ObjectKind.FILE)
@@ -379,14 +435,11 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     files_cache: dict[str, dict[str, Any]] = {}
+    found_any_files = False
 
-    async for files_batch in client.search_files(
-        scope,
-        search_path,
-        repositories,
-        skip_parsing,
-        build_group_params(include_only_active_groups=include_only_active_groups),
-    ):
+    async def _enrich_and_yield(
+        files_batch: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
         enriched_batch = await client._enrich_files_with_repos(files_batch)
         if included_files:
             for file_entity in enriched_batch:
@@ -397,7 +450,38 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         client, repo, included_files
                     )
                 file_entity["__includedFiles"] = files_cache[repo_key]
-        yield enriched_batch
+        return enriched_batch
+
+    async for files_batch in client.search_files(
+        scope,
+        search_path,
+        repositories,
+        skip_parsing,
+        build_group_params(include_only_active_groups=include_only_active_groups),
+    ):
+        enriched_batch = await _enrich_and_yield(files_batch)
+        if enriched_batch:
+            found_any_files = True
+            yield enriched_batch
+
+    if not found_any_files and not repositories:
+        logger.info(
+            "Group-level file search returned no results. "
+            "Falling back to project-level file search."
+        )
+        # control project filtering using group selector to avoid adding a new selector
+        params = build_project_params(
+            include_only_active_projects=include_only_active_groups
+        )
+        async for files_batch in client.search_files_in_projects(
+            scope,
+            search_path,
+            skip_parsing,
+            params,
+        ):
+            enriched_batch = await _enrich_and_yield(files_batch)
+            if enriched_batch:
+                yield enriched_batch
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
@@ -406,6 +490,10 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(GitLabFoldersResourceConfig, event.resource_config).selector
     included_files = selector.included_files or []
 
+    include_only_active_projects = selector.include_only_active_projects
+    projects_params = build_project_params(
+        include_only_active_projects=include_only_active_projects
+    )
     for folder_selector in selector.folders:
         path = folder_selector.path
         repos = folder_selector.repos
@@ -415,16 +503,13 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.info(
                 f"No repositories specified for path {path}; syncing from all projects"
             )
-            include_only_active_projects = selector.include_only_active_projects
+
             async for projects_batch in client.get_projects(
-                params=build_project_params(
-                    include_only_active_projects=include_only_active_projects
-                ),
+                params=projects_params,
                 max_concurrent=DEFAULT_MAX_CONCURRENT,
                 include_languages=False,
             ):
                 for project in projects_batch:
-                    cached_files: dict[str, Any] | None = None
                     async for folders_batch in client.get_repository_folders(
                         path=path,
                         repository=project["path_with_namespace"],
@@ -432,11 +517,21 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     ):
                         if folders_batch:
                             if included_files:
-                                if cached_files is None:
-                                    cached_files = await _fetch_included_files_content(
-                                        client, project, included_files
-                                    )
-                                _apply_included_files(folders_batch, cached_files)
+                                from gitlab.enrichments.included_files import (
+                                    IncludedFilesEnricher,
+                                    FolderIncludedFilesStrategy,
+                                )
+
+                                enricher = IncludedFilesEnricher(
+                                    client=client,
+                                    strategy=FolderIncludedFilesStrategy(
+                                        folder_selectors=selector.folders,
+                                        global_included_files=included_files,
+                                    ),
+                                )
+                                folders_batch = await enricher.enrich_batch(
+                                    folders_batch
+                                )
                             logger.info(
                                 f"Found {len(folders_batch)} folders in {project['path_with_namespace']}"
                             )
@@ -444,17 +539,23 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else:
             # Process specific repos
             for repo in repos:
-                cached_files = None
                 async for folders_batch in client.get_repository_folders(
                     path=path, repository=repo.name, branch=repo.branch
                 ):
                     if included_files and folders_batch:
-                        if cached_files is None:
-                            # Extract project from the first folder entity
-                            cached_files = await _fetch_included_files_content(
-                                client, folders_batch[0].get("repo", {}), included_files
-                            )
-                        _apply_included_files(folders_batch, cached_files)
+                        from gitlab.enrichments.included_files import (
+                            IncludedFilesEnricher,
+                            FolderIncludedFilesStrategy,
+                        )
+
+                        enricher = IncludedFilesEnricher(
+                            client=client,
+                            strategy=FolderIncludedFilesStrategy(
+                                folder_selectors=selector.folders,
+                                global_included_files=included_files,
+                            ),
+                        )
+                        folders_batch = await enricher.enrich_batch(folders_batch)
                     logger.info(f"Found batch of {len(folders_batch)} matching folders")
                     yield folders_batch
 
@@ -470,5 +571,7 @@ ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", ProjectWithMemberWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", BranchWebhookProcessor)

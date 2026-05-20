@@ -1,0 +1,13 @@
+{
+  "self": "https://api.atlassian.com/ex/jira/00000000-0000-0000-0000-000000000000/rest/api/3/user?accountId=5c0000000000000000000000",
+  "accountId": "5c0000000000000000000000",
+  "accountType": "app",
+  "avatarUrls": {
+    "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5c0000000000000000000000/00000000-0000-0000-0000-000000000005/48",
+    "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5c0000000000000000000000/00000000-0000-0000-0000-000000000005/24",
+    "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5c0000000000000000000000/00000000-0000-0000-0000-000000000005/16",
+    "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5c0000000000000000000000/00000000-0000-0000-0000-000000000005/32"
+  },
+  "displayName": "Atlassian Assist",
+  "active": true
+}

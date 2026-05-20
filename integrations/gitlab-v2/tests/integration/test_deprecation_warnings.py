@@ -114,7 +114,7 @@ class TestDeprecationWarnings:
 
             assert result == "file content"
             MockFileProcessor.assert_called_once_with(handler.context)
-            mock_instance._search.assert_called_once_with(data, pattern)
+            mock_instance._search.assert_called_once_with(data, pattern, None)
 
     async def test_search_prefix_delegates_to_search_entity_processor(
         self, handler: GitManipulationHandler
@@ -135,4 +135,4 @@ class TestDeprecationWarnings:
 
             assert result is True
             MockSearchProcessor.assert_called_once_with(handler.context)
-            mock_instance._search.assert_called_once_with(data, pattern)
+            mock_instance._search.assert_called_once_with(data, pattern, None)

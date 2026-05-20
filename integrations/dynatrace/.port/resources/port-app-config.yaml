@@ -16,7 +16,7 @@ resources:
             firstSeen: ".firstSeenTms / 1000 | todate"
             lastSeen: ".lastSeenTms / 1000 | todate"
             type: .type
-            tags: .tags[].stringRepresentation
+            tags: '[(.tags // [])[].stringRepresentation]'
 
   - kind: problem
     selector:
@@ -110,4 +110,4 @@ resources:
             firstSeen: .firstSeenTms / 1000 | todate
             lastSeen: .lastSeenTms / 1000 | todate
             type: .type
-            tags: .tags[].stringRepresentation
+            tags: '[(.tags // [])[].stringRepresentation]'

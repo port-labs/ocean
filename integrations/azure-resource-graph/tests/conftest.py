@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 from unittest.mock import MagicMock, AsyncMock
@@ -7,6 +8,7 @@ from azure.core.credentials import AccessToken
 from azure.core.credentials_async import AsyncTokenCredential
 
 from azure_integration.helpers.rate_limiter import AdaptiveTokenBucketRateLimiter
+from azure_integration.factory import AzureClientFactory
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
@@ -52,9 +54,19 @@ def mock_httpx_client() -> AsyncMock:
 
 
 @pytest.fixture(autouse=True)
+def reset_factory() -> Generator[None, None, None]:
+    AzureClientFactory._instances = {}
+    AzureClientFactory._instance = None
+    yield
+    AzureClientFactory._instances = {}
+    AzureClientFactory._instance = None
+
+
+@pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.is_saas.return_value = False
         mock_ocean_app.config.integration.config = {
             "azure_client_id": "123",
             "azure_client_secret": "secret",

@@ -2,6 +2,7 @@ title: GitHub
 description: GitHub integration for Port Ocean
 icon: Github
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean
+formMappingEnabled: true
 features:
   - type: exporter
     section: Git Providers
@@ -20,6 +21,7 @@ features:
       - kind: branch
       - kind: environment
       - kind: deployment
+      - kind: deployment-status
       - kind: dependabot-alert
       - kind: code-scanning-alerts
       - kind: file
@@ -59,6 +61,11 @@ configurations:
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.
     sensitive: true
     required: false
+  - name: skipWebhookPatching
+    type: boolean
+    required: false
+    default: false
+    description: When enabled, the integration will not update existing webhook configurations on GitHub.
 saas:
   enabled: true
   liveEvents:
@@ -110,15 +117,16 @@ installationDocs:
       enabled: false
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=github-app-wizard
+      docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=installation-method&s1=hosted-by-port#setup
   githubWorkflow:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=pat&installation-methods=one-time-ci&cicd-method=github
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=install&s1=ci-deployment&cicd-method=github#setup
   gitlabCI:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=pat&installation-methods=one-time-ci&cicd-method=gitlab
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=install&s1=ci-deployment&cicd-method=gitlab#setup
   helm:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=custom-github-app&installation-methods=real-time-self-hosted&deploy=helm
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=prerequisites&s1=kubernetes#setup
   docker:
-    enabled: false
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/?method=pat&step=prerequisites&s1=docker#setup

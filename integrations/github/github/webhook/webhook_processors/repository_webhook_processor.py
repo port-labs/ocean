@@ -1,10 +1,16 @@
 from typing import cast
 from loguru import logger
-from github.webhook.events import REPOSITORY_DELETE_EVENTS, REPOSITORY_UPSERT_EVENTS
+from github.webhook.events import (
+    COLLABORATOR_EVENTS,
+    REPOSITORY_DELETE_EVENTS,
+    REPOSITORY_UPSERT_EVENTS,
+    TEAM_COLLABORATOR_EVENTS,
+)
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
+    CollaboratorEventValidator,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -23,17 +29,37 @@ from github.enrichments.included_files import (
 )
 
 
-class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
+class RepositoryWebhookProcessor(
+    BaseRepositoryWebhookProcessor, CollaboratorEventValidator
+):
     async def _validate_payload(self, payload: EventPayload) -> bool:
-        action = payload.get("action")
-        if not action:
+        valid_actions = (
+            REPOSITORY_UPSERT_EVENTS
+            + REPOSITORY_DELETE_EVENTS
+            + COLLABORATOR_EVENTS
+            + TEAM_COLLABORATOR_EVENTS
+        )
+        repository = payload.get("repository")
+
+        if payload.get("action") not in valid_actions or not repository:
             return False
 
-        valid_actions = REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
-        return action in valid_actions
+        visibility = repository.get("visibility")
+        default_branch = repository.get("default_branch")
+
+        return visibility is not None and default_branch is not None
+
+    def should_filter_by_visibility(self) -> bool:
+        """
+        Repository processor must handle visibility transitions explicitly
+        to emit delete events.
+        """
+        return False
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return event.headers.get("x-github-event") == "repository"
+        is_repository_event = event.headers.get("x-github-event") == "repository"
+        is_collaborator_event = await self.should_process_collaborator_event(event)
+        return is_repository_event or is_collaborator_event
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.REPOSITORY]
@@ -44,6 +70,7 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         action = payload["action"]
         repo = payload["repository"]
         name = repo["name"]
+        visibility = repo["visibility"]
         organization = self.get_webhook_payload_organization(payload)["login"]
         resource_config = cast(GithubRepositoryConfig, resource_config)
 
@@ -57,17 +84,27 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         if action in REPOSITORY_DELETE_EVENTS:
+            logger.info(f"Repository {name} deleted. Deleting repository.")
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[repo]
+            )
+
+        if not await self.validate_repository_visibility(visibility):
+            logger.info(
+                f"Repository {name} no longer matches visibility filter. Deleting repository."
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[repo]
             )
 
         rest_client = create_github_client()
         exporter = RestRepositoryExporter(rest_client)
+        included_relations = resource_config.selector.normalized_relations
 
         options = SingleRepositoryOptions(
             organization=organization,
             name=name,
-            included_relationships=cast(list[str], resource_config.selector.include),
+            included_relations=included_relations,
         )
 
         data_to_upsert = await exporter.get_resource(options)

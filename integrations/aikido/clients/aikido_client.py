@@ -1,15 +1,23 @@
 from typing import Any, AsyncGenerator, List, Dict, Optional
 from httpx import HTTPStatusError, AsyncClient
+from aiolimiter import AsyncLimiter
 from clients.auth_client import AikidoAuth
+from clients.options import ListRepositoriesOptions, ListContainersOptions
 from loguru import logger
 from port_ocean.utils import http_async_client
 
 API_VERSION = "v1"
-PAGE_SIZE = 100
+FIRST_PAGE = 0
+PAGE_SIZE = 20
+REPOSITORIES_PAGE_SIZE = 100
+REQUESTS_PER_MINUTE = 15
+
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
 ISSUE_DETAILS_ENDPOINT = f"api/public/{API_VERSION}/issues"
 REPOSITORIES_ENDPOINT = f"api/public/{API_VERSION}/repositories/code"
-REPO_FIRST_PAGE = 0
+OPEN_ISSUE_GROUPS_ENDPOINT = f"api/public/{API_VERSION}/open-issue-groups"
+TEAMS_ENDPOINT = f"api/public/{API_VERSION}/teams"
+CONTAINERS_ENDPOINT = f"api/public/{API_VERSION}/containers"
 
 
 class AikidoClient:
@@ -22,6 +30,7 @@ class AikidoClient:
         self.base_url = base_url.rstrip("/")
         self.http_client: AsyncClient = http_async_client
         self.auth = AikidoAuth(base_url, client_id, client_secret, self.http_client)
+        self.rate_limiter = AsyncLimiter(REQUESTS_PER_MINUTE, 60)
 
     async def _send_api_request(
         self,
@@ -32,68 +41,93 @@ class AikidoClient:
     ) -> Dict[str, Any]:
         """
         Send an authenticated API request to the Aikido API.
+        Rate limited to stay under Aikido's 20 req/min limit.
         """
         token = await self.auth.get_token()
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        async with self.rate_limiter:
 
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            }
 
-        try:
-            response = await self.http_client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json_data,
-                headers=headers,
-                timeout=30,
-            )
-            response.raise_for_status()
-            return response.json()
-        except HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning(
-                    f"Requested resource not found: {url}; message: {str(e)}"
+            try:
+                response = await self.http_client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_data,
+                    headers=headers,
+                    timeout=30,
                 )
-                return {}
-            logger.error(f"API request failed for {url}: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error during API request to {url}: {e}")
-            raise
+                response.raise_for_status()
+                return response.json()
+            except HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    logger.warning(
+                        f"Requested resource not found: {url}; message: {str(e)}"
+                    )
+                    return {}
+                logger.error(f"API request failed for {url}: {e}")
+                raise
+            except Exception as e:
+                logger.error(f"Unexpected error during API request to {url}: {e}")
+                raise
 
-    async def get_repositories(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """
-        Fetch repositories from the Aikido API.
-        Yields batches of repositories as lists of dicts.
-        """
-        endpoint = REPOSITORIES_ENDPOINT
-        params = {"per_page": PAGE_SIZE, "page": REPO_FIRST_PAGE}
+    async def get_paginated_resource(
+        self,
+        endpoint: str,
+        resource_name: str,
+        first_page: int = FIRST_PAGE,
+        page_size: int = PAGE_SIZE,
+        base_params: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        params = {**(base_params or {}), "per_page": page_size, "page": first_page}
 
         while True:
             try:
-                repos = await self._send_api_request(endpoint, params=params)
+                resources = await self._send_api_request(endpoint, params=params)
 
-                if not isinstance(repos, list):
+                if not isinstance(resources, list):
                     break
 
-                if not repos:
-                    logger.info(f"No repositories returned for page {params['page']}")
+                if not resources:
+                    logger.info(
+                        f"No {resource_name} returned for page {params['page']}"
+                    )
                     break
 
-                logger.info(f"Fetched {len(repos)} repositories from Aikido API")
-                yield repos
+                logger.info(f"Fetched {len(resources)} {resource_name} from Aikido API")
+                fetched_count = len(resources)
+                yield resources
 
-                if len(repos) < PAGE_SIZE:
+                if fetched_count < page_size:
                     break
 
                 params["page"] += 1
             except Exception as e:
-                logger.error(f"Error fetching repositories: {e}")
+                logger.error(f"Error fetching {resource_name}: {e}")
                 break
+
+    async def get_repositories(
+        self,
+        options: Optional[ListRepositoriesOptions] = None,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """
+        Fetch repositories from the Aikido API.
+        Yields batches of repositories as lists of dicts.
+        """
+        base_params = dict(options) if options else {}
+        async for repositories in self.get_paginated_resource(
+            endpoint=REPOSITORIES_ENDPOINT,
+            resource_name="repositories",
+            first_page=FIRST_PAGE,
+            page_size=REPOSITORIES_PAGE_SIZE,
+            base_params=base_params,
+        ):
+            yield repositories
 
     async def get_all_issues(self) -> List[Dict[str, Any]]:
         """
@@ -120,6 +154,44 @@ class AikidoClient:
         all_issues = await self.get_all_issues()
         for i in range(0, len(all_issues), batch_size):
             yield all_issues[i : i + batch_size]
+
+    async def get_open_issue_groups(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch paginated open issue groups from the Aikido API."""
+
+        async for issue_groups in self.get_paginated_resource(
+            endpoint=OPEN_ISSUE_GROUPS_ENDPOINT,
+            resource_name="open issue groups",
+            first_page=FIRST_PAGE,
+            page_size=PAGE_SIZE,
+        ):
+            yield issue_groups
+
+    async def get_teams(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch paginated teams from the Aikido API."""
+
+        async for teams in self.get_paginated_resource(
+            endpoint=TEAMS_ENDPOINT,
+            resource_name="teams",
+            first_page=FIRST_PAGE,
+            page_size=PAGE_SIZE,
+        ):
+            yield teams
+
+    async def get_containers(
+        self,
+        options: Optional[ListContainersOptions] = None,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch paginated containers from the Aikido API."""
+
+        base_params = dict(options) if options else {}
+        async for containers in self.get_paginated_resource(
+            endpoint=CONTAINERS_ENDPOINT,
+            resource_name="containers",
+            first_page=FIRST_PAGE,
+            page_size=PAGE_SIZE,
+            base_params=base_params,
+        ):
+            yield containers
 
     async def get_issue(self, issue_id: str) -> Dict[str, Any]:
         """

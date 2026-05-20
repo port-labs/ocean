@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum, StrEnum
 from typing import Any, Literal, TypedDict
 from pydantic import BaseModel
@@ -136,6 +137,28 @@ class EntityPortDiff:
 class IntegrationFeatureFlag(StrEnum):
     USE_PROVISIONED_DEFAULTS = "USE_PROVISIONED_DEFAULTS"
     LAKEHOUSE_ELIGIBLE = "LAKEHOUSE_ELIGIBLE"
+    OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED = (
+        "OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED"
+    )
+    OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED = (
+        "OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED"
+    )
+    DATA_SOURCE_PROCESSOR_ENABLED = "DATA_SOURCE_PROCESSOR_ENABLED"
+
+
+class ProcessingMode(StrEnum):
+    ocean_core = "ocean-core"
+    dsp = "dsp"
+
+
+class LakehouseOperation(StrEnum):
+    UPSERT = "upsert"
+    DELETE = "delete"
+
+
+class LakehouseEventType(StrEnum):
+    RESYNC = "resync"
+    LIVE_EVENT = "live-event"
 
 
 class RunStatus(StrEnum):
@@ -156,9 +179,8 @@ class WorkflowNodeRunResult(StrEnum):
 
 
 class WorkflowNodeRunLog(BaseModel):
-    logLevel: Literal["INFO", "WARN", "ERROR", "DEBUG"]
-    log: str
-    tags: dict[str, str] = Field(default_factory=dict)
+    level: Literal["INFO", "WARN", "ERROR", "DEBUG"]
+    message: str
 
 
 class IntegrationActionInvocationPayload(BaseModel):
@@ -185,14 +207,31 @@ class ActionRun(BaseModel):
 class WorkflowNodeRun(BaseModel):
     identifier: str
     status: WorkflowNodeRunStatus
-    node: dict[str, Any]
-    config: dict[str, Any]
-    result: WorkflowNodeRunResult | None = None
-    output: dict[str, Any] = Field(default_factory=dict)
+    node: dict[str, Any] | None = None
 
     @property
     def id(self) -> str:
         return self.identifier
+
+    @property
+    def action_type(self) -> str:
+        if not self.node:
+            return ""
+        return self.node.get("config", {}).get("integrationInvocationType", "")
+
+    @property
+    def execution_properties(self) -> dict[str, Any]:
+        if not self.node:
+            return {}
+        return self.node.get("config", {}).get(
+            "integrationActionExecutionProperties", {}
+        )
+
+
+class ClaimedWorkflowNodeRun(WorkflowNodeRun):
+    config: dict[str, Any]
+    result: WorkflowNodeRunResult | None = None
+    output: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def action_type(self) -> str:
@@ -201,3 +240,26 @@ class WorkflowNodeRun(BaseModel):
     @property
     def execution_properties(self) -> dict[str, Any]:
         return self.config.get("integrationActionExecutionProperties", {})
+
+
+class LakehouseDataEntryMetadata(TypedDict):
+    operation: LakehouseOperation
+    resource_index: int
+    extraction_timestamp: int
+
+
+class LakehouseDataEntry(TypedDict):
+    request: dict[str, Any]
+    response: dict[str, Any]
+    metadata: LakehouseDataEntryMetadata
+    items: list[Any]
+
+
+class LakehouseDataEntryBatch(TypedDict):
+    event_id: str | None
+    type: str | None
+    kind: str
+    event_type: LakehouseEventType
+    resync_start_time: datetime | None
+    extraction_timestamp: int
+    data: list[LakehouseDataEntry]

@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 from urllib.parse import quote_plus
 
@@ -8,9 +8,14 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.models import CreatePortResourcesOrigin
+from port_ocean.core.models import (
+    CreatePortResourcesOrigin,
+    LakehouseDataEntryBatch,
+    LakehouseEventType,
+)
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
+from port_ocean.version import __version__ as ocean_core_version
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -66,11 +71,21 @@ class IntegrationClientMixin:
 
         return response.json().get("integrations", [])
 
-    async def _get_current_integration(self) -> httpx.Response:
+    async def _get_current_integration(
+        self, *, is_polling: bool = False
+    ) -> httpx.Response:
         logger.info(f"Fetching integration with id: {self.integration_identifier}")
+        request_kwargs: dict[str, Any] = {
+            "headers": await self.auth.headers(),
+        }
+        if is_polling:
+            request_kwargs["params"] = {
+                "oceanCoreVersion": ocean_core_version,
+                "isPolling": "true",
+            }
         response = await self.client.get(
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
-            headers=await self.auth.headers(),
+            **request_kwargs,
         )
         return response
 
@@ -78,10 +93,25 @@ class IntegrationClientMixin:
         self,
         should_raise: bool = True,
         should_log: bool = True,
+        *,
+        is_polling: bool = False,
     ) -> dict[str, Any]:
-        response = await self._get_current_integration()
+        response = await self._get_current_integration(is_polling=is_polling)
         handle_port_status_code(response, should_raise, should_log)
         return response.json().get("integration", {})
+
+    async def _get_integration_resync_request(self) -> httpx.Response:
+        return await self.client.get(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/resync-request",
+            headers=await self.auth.headers(),
+        )
+
+    async def get_integration_resync_request(
+        self, should_raise: bool = True, should_log: bool = True
+    ) -> dict[str, Any]:
+        response = await self._get_integration_resync_request()
+        handle_port_status_code(response, should_raise, should_log)
+        return response.json().get("request") or {}
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:
@@ -213,6 +243,19 @@ class IntegrationClientMixin:
         handle_port_status_code(response, should_log=False)
         logger.debug("Finished POST metrics request")
 
+    async def post_integration_metrics_heartbeat(self, event_id: str) -> None:
+        logger.debug("starting PUT metrics heartbeat request", event_id=event_id)
+        metrics_attributes = await self.get_metrics_attributes()
+        url = metrics_attributes["ingestUrl"] + "/heartbeat"
+        headers = await self.auth.headers()
+        response = await self.client.post(
+            url,
+            headers=headers,
+            json={"eventId": event_id},
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Finished PUT metrics heartbeat request")
+
     async def put_integration_sync_metrics(self, kind_metrics: dict[str, Any]) -> None:
         logger.debug("starting PUT metrics request", kind_metrics=kind_metrics)
         metrics_attributes = await self.get_metrics_attributes()
@@ -277,18 +320,82 @@ class IntegrationClientMixin:
         handle_port_status_code(response, should_raise, should_log)
         return response.json()
 
-    async def post_integration_raw_data(
-        self, raw_data: list[dict[Any, Any]], sync_id: str, kind: str
+    def _validate_lakehouse_params(
+        self, sync_id: str, kind: str, resync_start_time: datetime | None
     ) -> None:
-        logger.debug("starting POST raw data request", raw_data=raw_data)
+        if not sync_id:
+            raise ValueError("sync_id cannot be empty")
+        if not kind:
+            raise ValueError("kind cannot be empty")
+        if resync_start_time is not None:
+            # Normalize both timestamps to UTC for comparison
+            # If resync_start_time is naive, treat it as UTC
+            if resync_start_time.tzinfo is None:
+                resync_time_utc = resync_start_time.replace(tzinfo=timezone.utc)
+            else:
+                resync_time_utc = resync_start_time
+
+            now_utc = datetime.now(timezone.utc)
+            if resync_time_utc > now_utc:
+                raise ValueError(
+                    f"resync_start_time cannot be in the future: {resync_start_time}"
+                )
+
+    async def post_integration_raw_data_batch(
+        self,
+        sync_id: str,
+        event: LakehouseDataEntryBatch,
+    ) -> None:
+        """Send multiple raw data entries in a single POST request.
+
+        Each entry must be a LakehouseDataEntry with request, response, items,
+        and metadata (operation, resource_index, extraction_timestamp).
+        """
+        self._validate_lakehouse_params(
+            sync_id, event["kind"], event["resync_start_time"]
+        )
+
+        logger.debug(
+            "starting POST raw data batch request",
+            entry_count=len(event["data"]),
+            kind=event["kind"],
+        )
         headers = await self.auth.headers()
+
+        data = [
+            {
+                "request": entry["request"],
+                "response": entry["response"],
+                "items": entry["items"],
+                "metadata": {
+                    "operation": entry["metadata"]["operation"].value,
+                    "extractionTimestamp": entry["metadata"]["extraction_timestamp"],
+                    "resourceIndex": entry["metadata"]["resource_index"],
+                },
+            }
+            for entry in event["data"]
+        ]
+
+        body: dict[str, Any] = {
+            "kind": event["kind"],
+            "eventType": (
+                event["event_type"].value
+                if event["event_type"]
+                else LakehouseEventType.LIVE_EVENT.value
+            ),
+            "extractionTimestamp": event["extraction_timestamp"],
+            "data": data,
+        }
+
+        if event["resync_start_time"] is not None:
+            body["resyncStartTime"] = event["resync_start_time"].isoformat()
+        if event["event_id"]:
+            body["eventId"] = event["event_id"]
+
         response = await self.client.post(
-            f"{self.auth.ingest_url}/lakehouse/integration-type/{self.auth.integration_type}/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
+            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
             headers=headers,
-            json={
-                "items": raw_data,
-                "extractionTimestamp": int(datetime.now().timestamp() * 1000),
-            },
+            json=body,
         )
         handle_port_status_code(response, should_raise=False, should_log=True)
-        logger.debug("Finished POST raw data request")
+        logger.debug("Finished POST raw data batch request")

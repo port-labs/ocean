@@ -1,7 +1,9 @@
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from wcmatch import glob
 from enum import StrEnum
 from typing import (
     Any,
+    AsyncGenerator,
     Dict,
     List,
     NamedTuple,
@@ -14,10 +16,12 @@ from typing import (
 from loguru import logger
 
 from port_ocean.utils import cache
+from port_ocean.utils.cache import cache_coroutine_result
 
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
+    from github.clients.http.graphql_client import GithubGraphQLClient
 
 
 BASE_GLOB_FLAGS = glob.GLOBSTAR | glob.IGNORECASE
@@ -45,6 +49,7 @@ class ObjectKind(StrEnum):
     BRANCH = "branch"
     ENVIRONMENT = "environment"
     DEPLOYMENT = "deployment"
+    DEPLOYMENT_STATUS = "deployment-status"
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
     SECRET_SCANNING_ALERT = "secret-scanning-alerts"
@@ -224,3 +229,92 @@ def has_exhausted_rate_limit_headers(headers: Any) -> bool:
 def matches_glob_pattern(path: str, pattern: str, flags: int = 0) -> bool:
     combined_flags = BASE_GLOB_FLAGS | flags
     return glob.globmatch(path, pattern, flags=combined_flags)
+
+
+@cache_coroutine_result()
+async def get_saml_identities(
+    client: "GithubGraphQLClient", organization: str
+) -> dict[str, str]:
+    """Fetch and cache SAML identities for an organization.
+
+    Returns a mapping of GitHub login -> SAML nameId (email).
+    """
+    from github.helpers.gql_queries import LIST_EXTERNAL_IDENTITIES_GQL
+
+    variables = {
+        "organization": organization,
+        "first": 100,
+        "__path": "organization.samlIdentityProvider.externalIdentities",
+        "__node_key": "edges",
+    }
+
+    saml_users: dict[str, str] = {}
+
+    logger.info(f"Starting SAML identity fetch for organization '{organization}'")
+
+    try:
+        async for identity_batch in client.send_paginated_request(
+            LIST_EXTERNAL_IDENTITIES_GQL,
+            variables,
+        ):
+            for user in identity_batch:
+                if user["node"].get("user"):
+                    login = user["node"]["user"]["login"]
+                    name_id = user["node"]["samlIdentity"]["nameId"]
+                    saml_users[login] = name_id
+
+        logger.info(
+            f"SAML fetch complete for '{organization}': {len(saml_users)} identities"
+        )
+    except TypeError:
+        logger.info(f"SAML not enabled for organization '{organization}'")
+
+    return saml_users
+
+
+async def enrich_members_with_saml_email(
+    client: "GithubGraphQLClient",
+    organization: str,
+    members: list[dict[str, Any]],
+    include_saml_email: bool,
+) -> None:
+    """
+    Enrich members in-place:
+    - If include_saml_email=True: add '__SAMLEmail' field for all members
+    - Always: fill 'email' field from SAML when it's missing
+    """
+    if not members:
+        return
+
+    if not include_saml_email and all(m.get("email") for m in members):
+        return
+
+    saml_map = await get_saml_identities(client, organization)
+
+    enriched = 0
+    for member in members:
+        login = member.get("login")
+        saml_email = saml_map.get(login) if login else None
+
+        member_has_email = member.get("email")
+        should_fallback_to_saml_email = not member_has_email and saml_email
+
+        if include_saml_email or should_fallback_to_saml_email:
+            member["__SAMLEmail"] = saml_email
+
+        if should_fallback_to_saml_email:
+            member["email"] = saml_email
+            enriched += 1
+
+    if enriched > 0:
+        logger.info(
+            f"Enriched {enriched}/{len(members)} members with SAML email "
+            f"for organization '{organization}'"
+        )
+
+
+async def tag_batch_with_org(
+    organization: str, iterator: ASYNC_GENERATOR_RESYNC_TYPE
+) -> AsyncGenerator[Tuple[str, List[Dict[str, Any]]], None]:
+    async for batch in iterator:
+        yield (organization, batch)

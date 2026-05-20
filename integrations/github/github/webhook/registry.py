@@ -28,6 +28,9 @@ from github.webhook.webhook_processors.environment_webhook_processor import (
 from github.webhook.webhook_processors.deployment_webhook_processor import (
     DeploymentWebhookProcessor,
 )
+from github.webhook.webhook_processors.deployment_status_webhook_processor import (
+    DeploymentStatusWebhookProcessor,
+)
 from github.webhook.webhook_processors.team_member_webhook_processor import (
     TeamMemberWebhookProcessor,
 )
@@ -82,6 +85,7 @@ def register_live_events_webhooks() -> None:
     ocean.add_webhook_processor(WEBHOOK_PATH, BranchWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, EnvironmentWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, DeploymentWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, DeploymentStatusWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, WorkflowRunWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, WorkflowWebhookProcessor)
     ocean.add_webhook_processor(WEBHOOK_PATH, DependabotAlertWebhookProcessor)

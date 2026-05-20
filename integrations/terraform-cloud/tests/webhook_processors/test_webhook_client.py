@@ -106,7 +106,7 @@ class TestEnsureWorkspaceWebhook:
             mock_exists.return_value = True
 
             await webhook_client._ensure_workspace_webhook(
-                workspace, webhook_url, semaphore
+                workspace, webhook_url, "test-secret", semaphore
             )
 
             mock_exists.assert_called_once_with("ws-123", webhook_url)
@@ -136,11 +136,13 @@ class TestEnsureWorkspaceWebhook:
             mock_exists.return_value = False
 
             await webhook_client._ensure_workspace_webhook(
-                workspace, webhook_url, semaphore
+                workspace, webhook_url, "test-secret", semaphore
             )
 
             mock_exists.assert_called_once_with("ws-123", webhook_url)
-            mock_create.assert_called_once_with("ws-123", "test-workspace", webhook_url)
+            mock_create.assert_called_once_with(
+                "ws-123", "test-workspace", webhook_url, "test-secret"
+            )
 
     @pytest.mark.asyncio
     async def test_ensure_workspace_webhook_handles_error(
@@ -161,7 +163,7 @@ class TestEnsureWorkspaceWebhook:
             mock_exists.side_effect = Exception("API Error")
 
             await webhook_client._ensure_workspace_webhook(
-                workspace, webhook_url, semaphore
+                workspace, webhook_url, "test-secret", semaphore
             )
 
     @pytest.mark.asyncio
@@ -185,10 +187,12 @@ class TestEnsureWorkspaceWebhook:
             mock_exists.return_value = False
 
             await webhook_client._ensure_workspace_webhook(
-                workspace, webhook_url, semaphore
+                workspace, webhook_url, "test-secret", semaphore
             )
 
-            mock_create.assert_called_once_with("ws-123", "ws-123", webhook_url)
+            mock_create.assert_called_once_with(
+                "ws-123", "ws-123", webhook_url, "test-secret"
+            )
 
 
 class TestEnsureWorkspaceWebhooks:
@@ -212,7 +216,7 @@ class TestEnsureWorkspaceWebhooks:
             mock_workspaces.return_value = workspace_generator()
 
             await webhook_client.ensure_workspace_webhooks(
-                "https://example.com", max_concurrent=5
+                "https://example.com", webhook_secret="test-secret", max_concurrent=5
             )
 
             assert mock_ensure.call_count == 2
@@ -235,7 +239,9 @@ class TestEnsureWorkspaceWebhooks:
 
             mock_workspaces.return_value = workspace_generator()
 
-            await webhook_client.ensure_workspace_webhooks("https://example.com/")
+            await webhook_client.ensure_workspace_webhooks(
+                "https://example.com/", webhook_secret="test-secret"
+            )
 
             expected_url = "https://example.com/integration/webhook"
             call_args = mock_ensure.call_args[0]
@@ -261,7 +267,9 @@ class TestEnsureWorkspaceWebhooks:
 
             mock_workspaces.return_value = workspace_generator()
 
-            await webhook_client.ensure_workspace_webhooks("https://example.com")
+            await webhook_client.ensure_workspace_webhooks(
+                "https://example.com", webhook_secret="test-secret"
+            )
 
             assert mock_ensure.call_count == 2
 
@@ -275,7 +283,7 @@ class TestCreateWebhook:
             mock_send.return_value = {"data": {"id": "nc-123"}}
 
             await webhook_client._create_webhook(
-                "ws-123", "test-workspace", "https://example.com/webhook"
+                "ws-123", "test-workspace", "https://example.com/webhook", "test-secret"
             )
 
             mock_send.assert_called_once()
@@ -307,7 +315,7 @@ class TestCreateWebhook:
             mock_send.return_value = {"data": {"id": "nc-123"}}
 
             await webhook_client._create_webhook(
-                "ws-123", "test-workspace", "https://example.com/webhook"
+                "ws-123", "test-workspace", "https://example.com/webhook", "test-secret"
             )
 
             call_args = mock_send.call_args
@@ -325,7 +333,10 @@ class TestCreateWebhook:
 
             with pytest.raises(Exception, match="API Error"):
                 await webhook_client._create_webhook(
-                    "ws-123", "test-workspace", "https://example.com/webhook"
+                    "ws-123",
+                    "test-workspace",
+                    "https://example.com/webhook",
+                    "test-secret",
                 )
 
 

@@ -88,6 +88,8 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
         __model_name="Config",
         __base__=BaseOceanModel,
         **fields,
-        __validators__={"dynamic_parse": validator("*", pre=True)(dynamic_parse)},
+        __validators__={
+            "dynamic_parse": validator("*", pre=True, allow_reuse=True)(dynamic_parse)
+        },
     )
     return dynamic_model

@@ -7,10 +7,11 @@ from azure_devops.client.base_client import (
     CONTINUATION_TOKEN_HEADER,
     PAGE_SIZE,
 )
+from port_ocean.context.ocean import PortOceanContext
 
 
 @pytest.fixture
-def mock_client() -> HTTPBaseClient:
+def mock_client(mock_context: PortOceanContext) -> HTTPBaseClient:
     return HTTPBaseClient(personal_access_token="test_token")
 
 

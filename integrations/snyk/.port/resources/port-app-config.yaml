@@ -37,6 +37,7 @@ resources:
   - kind: target
     selector:
       query: 'true'
+      attachProjectData: 'true'
     port:
       entity:
         mappings:

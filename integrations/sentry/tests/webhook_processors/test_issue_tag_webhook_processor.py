@@ -12,10 +12,10 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
-from integration import ObjectKind, IssueResourceConfig, IssueSelector
+from integration import IssueTagResourceConfig, ObjectKind, IssueSelector
 
 
-def _resource_config() -> IssueResourceConfig:
+def _resource_config() -> IssueTagResourceConfig:
     """Create a minimal ResourceConfig for testing."""
     port = PortResourceConfig(
         entity=MappingsConfig(
@@ -27,7 +27,7 @@ def _resource_config() -> IssueResourceConfig:
             )
         )
     )
-    return IssueResourceConfig(
+    return IssueTagResourceConfig(
         kind="issue-tag",
         selector=IssueSelector(query="true"),
         port=port,

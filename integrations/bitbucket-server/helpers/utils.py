@@ -17,4 +17,3 @@ class BitbucketClientConfig:
     rate_limit_window: int
     page_size: int = DEFAULT_PAGE_SIZE
     max_concurrent_requests: int = DEFAULT_MAX_CONCURRENT_REQUESTS
-    project_filter_regex: str | None = None

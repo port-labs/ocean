@@ -26,6 +26,7 @@ def mock_ocean_context() -> None:
 
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.is_saas.return_value = False
         mock_ocean_app.config.integration.config = {
             "opencost_host": TEST_INTEGRATION_CONFIG["opencost_host"],
         }

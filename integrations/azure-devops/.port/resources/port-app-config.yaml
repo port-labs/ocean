@@ -72,6 +72,7 @@ resources:
   - kind: work-item
     selector:
       query: 'true'
+      wiql: "[System.State] NOT IN ('Closed','Done','Removed') OR [System.ChangedDate] >= @today - 7"
       expand: 'All'
     port:
       entity:
@@ -82,8 +83,8 @@ resources:
           properties:
             type: .fields."System.WorkItemType"
             state: .fields."System.State"
-            effort: .fields."Microsoft.VSTS.Scheduling.Effort"
-            description: .fields."System.Description"
+            effort: .fields."Microsoft.VSTS.Scheduling.Effort" // -1
+            description: .fields."System.Description" // ''
             link: .url
             reason: .fields."System.Reason"
             createdBy: .fields."System.CreatedBy".displayName

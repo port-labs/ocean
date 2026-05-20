@@ -7,3 +7,7 @@ class PortClientException(BaseOceanException):
 
 class KafkaCredentialsNotFound(PortClientException):
     pass
+
+
+class BlockedIPError(PortClientException):
+    pass

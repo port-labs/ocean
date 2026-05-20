@@ -37,7 +37,6 @@ class BitbucketClient:
         is_version_8_7_or_older: bool = False,
         page_size: int = DEFAULT_PAGE_SIZE,
         max_concurrent_requests: int = DEFAULT_MAX_CONCURRENT_REQUESTS,
-        project_filter_regex: str | None = None,
     ):
         """
         Initialize the Bitbucket client with authentication and configuration.
@@ -53,7 +52,6 @@ class BitbucketClient:
             is_version_8_7_or_older: Whether the Bitbucket Server version is 8.7 or older
             page_size: Number of items per page for paginated requests (default: 100)
             max_concurrent_requests: Maximum number of concurrent repository PR requests (default: 10)
-            project_filter_regex: Optional regex pattern to filter project keys (e.g., "^PROJ-.*" for prefix or ".*-PROD$" for suffix)
         """
         self.username = username
         self.password = password
@@ -65,10 +63,6 @@ class BitbucketClient:
         self.is_version_8_7_or_older = is_version_8_7_or_older
         self.page_size = page_size
         self.max_concurrent_requests = max_concurrent_requests
-
-        self.project_filter_regex = (
-            re.compile(project_filter_regex) if project_filter_regex else None
-        )
 
         if rate_limit is None or rate_limit_window is None:
             raise ValueError(
@@ -120,22 +114,23 @@ class BitbucketClient:
                 logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
                 raise
 
-    def _should_include_project(self, project_key: str) -> bool:
+    @staticmethod
+    def _should_include_project(
+        project_key: str, project_filter_regex: re.Pattern[str] | None
+    ) -> bool:
         """
         Check if a project should be included based on filter patterns.
 
         Args:
             project_key: The project key to check
+            project_filter_regex: Compiled regex pattern to filter project keys
 
         Returns:
             True if the project should be included, False otherwise
         """
-        # If no filters are set, include all projects
-        if not self.project_filter_regex:
+        if not project_filter_regex:
             return True
-
-        # Check regex filter
-        return bool(self.project_filter_regex.match(project_key))
+        return bool(project_filter_regex.match(project_key))
 
     async def get_paginated_resource(
         self,
@@ -212,7 +207,9 @@ class BitbucketClient:
 
     @cache_iterator_result()
     async def get_projects(
-        self, projects_filter: Optional[set[str]] = None
+        self,
+        projects_filter: Optional[set[str]] = None,
+        project_filter_regex: str | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get projects from Bitbucket, optionally filtered by project keys or regex pattern.
@@ -221,31 +218,31 @@ class BitbucketClient:
 
         Args:
             projects_filter: Optional set of project keys to filter by (converted to regex internally)
+            project_filter_regex: Optional regex string to filter project keys
 
         Yields:
             Batches of project data
         """
-        # Convert projects_filter set to regex pattern if provided
         projects_regex = None
         if projects_filter:
             projects_regex = self._create_regex_from_project_keys(projects_filter)
 
+        compiled_filter_regex = (
+            re.compile(project_filter_regex) if project_filter_regex else None
+        )
+
         logger.info(
             f"Getting projects with filter: {projects_filter}, "
-            f"regex: {self.project_filter_regex}, "
+            f"regex: {compiled_filter_regex}, "
             f"projects_regex: {projects_regex}"
         )
 
         async for project_batch in self._get_all_projects():
-            # Apply filtering: must match projects_regex (if provided) AND project_filter_regex (if set)
             filtered_batch = [
                 p
                 for p in project_batch
                 if (not projects_regex or projects_regex.match(p["key"]))
-                and (
-                    not self.project_filter_regex
-                    or self.project_filter_regex.match(p["key"])
-                )
+                and self._should_include_project(p["key"], compiled_filter_regex)
             ]
             if filtered_batch:
                 yield filtered_batch
@@ -269,7 +266,9 @@ class BitbucketClient:
 
     @cache_iterator_result()
     async def get_repositories(
-        self, projects_filter: set[str] | None = None
+        self,
+        projects_filter: set[str] | None = None,
+        project_filter_regex: str | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get repositories across multiple projects, optionally filtered by project keys.
@@ -277,11 +276,14 @@ class BitbucketClient:
 
         Args:
             projects_filter: Optional set of project keys to filter by
+            project_filter_regex: Optional regex string to filter project keys
 
         Yields:
             Batches of repository data
         """
-        async for project_batch in self.get_projects(projects_filter):
+        async for project_batch in self.get_projects(
+            projects_filter, project_filter_regex
+        ):
             tasks = [
                 semaphore_async_iterator(
                     self.semaphore,
@@ -316,7 +318,10 @@ class BitbucketClient:
             yield cast(list[dict[str, Any]], pr_batch)
 
     async def get_pull_requests(
-        self, projects_filter: set[str] | None = None, state: str = "OPEN"
+        self,
+        projects_filter: set[str] | None = None,
+        state: str = "OPEN",
+        project_filter_regex: str | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get pull requests across multiple repositories, optionally filtered by project keys.
@@ -325,11 +330,14 @@ class BitbucketClient:
         Args:
             projects_filter: Optional set of project keys to filter by
             state: State of pull requests to fetch (default: "OPEN")
+            project_filter_regex: Optional regex string to filter project keys
 
         Yields:
             Batches of pull request data
         """
-        async for repo_batch in self.get_repositories(projects_filter):
+        async for repo_batch in self.get_repositories(
+            projects_filter, project_filter_regex
+        ):
             tasks = [
                 semaphore_async_iterator(
                     self.semaphore,

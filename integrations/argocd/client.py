@@ -5,26 +5,16 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from loguru import logger
 import json
+from misc import ResourceKindsWithSpecialHandling
 
 from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.utils import http_async_client
 
 
-class ObjectKind(StrEnum):
-    PROJECT = "project"
-    APPLICATION = "application"
-
-
-class ResourceKindsWithSpecialHandling(StrEnum):
-    DEPLOYMENT_HISTORY = "deployment-history"
-    KUBERNETES_RESOURCE = "kubernetes-resource"
-    MANAGED_RESOURCE = "managed-resource"
-    CLUSTER = "cluster"
-
-
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
 
 PAGE_SIZE = 100
+MAXIMUM_CONCURRENT_CLUSTER_REQUESTS = 10
 
 
 class ClusterState(StrEnum):
@@ -93,12 +83,17 @@ class ArgocdClient:
     async def get_paginated_resources(
         self, url: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.debug(f"Fetching paginated resources from {url} with params: {params}")
         try:
             if not self.use_streaming:
                 response_data = await self._send_api_request(
                     url=url, query_params=params
                 )
-                for batch in batched(response_data.get("items", []), PAGE_SIZE):
+                items = response_data.get("items") or []
+                if not items:
+                    logger.info(f"No items found in response from {url}")
+                    return
+                for batch in batched(items, PAGE_SIZE):
                     yield list(batch)
             else:
                 async for resources in self.streaming_client.stream_json(
@@ -140,47 +135,26 @@ class ArgocdClient:
                     return {}
                 raise exception
 
-    async def get_clusters(
-        self, skip_unavailable_clusters: bool = False
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_clusters(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
         async for clusters in self.get_paginated_resources(url):
-            if skip_unavailable_clusters:
-                yield [
-                    cluster
-                    for cluster in clusters
-                    if cluster.get("connectionState", {}).get("status")
-                    == ClusterState.AVAILABLE.value
-                ]
-            else:
-                yield clusters
+            yield clusters
 
-    async def get_available_clusters(self) -> list[dict[str, Any]]:
-        available_clusters: list[dict[str, Any]] = []
-        async for clusters in self.get_clusters(skip_unavailable_clusters=True):
-            available_clusters.extend(clusters)
-        return available_clusters
-
-    async def get_resources_for_available_clusters(
-        self, resource_kind: ObjectKind
+    async def get_resources(
+        self, resource_kind: str, query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        available_clusters = await self.get_available_clusters()
-        cluster_names = [cluster["name"] for cluster in available_clusters]
         url = f"{self.api_url}/{resource_kind}s"
 
-        for cluster_name in cluster_names:
-            params = {"cluster": cluster_name}
-            async for resources in self.get_paginated_resources(url, params=params):
-                yield resources
+        async for resources in self.get_paginated_resources(url, params=query_params):
+            yield resources
 
     async def get_application_by_name(
-        self, name: str, namespace: Optional[str] = None
+        self,
+        name: str,
+        params: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
-        query_params = {}
-        if namespace:
-            query_params["appNamespace"] = namespace
-        application = await self._send_api_request(url=url, query_params=query_params)
+        url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{name}"
+        application = await self._send_api_request(url=url, query_params=params)
         return application
 
     async def get_deployment_history(
@@ -191,8 +165,8 @@ class ArgocdClient:
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         has_applications = False
-        async for applications in self.get_resources_for_available_clusters(
-            resource_kind=ObjectKind.APPLICATION
+        async for applications in self.get_resources(
+            resource_kind=ResourceKindsWithSpecialHandling.APPLICATION
         ):
             has_applications = True
             for application in applications:
@@ -213,8 +187,8 @@ class ArgocdClient:
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         has_applications = False
-        async for applications in self.get_resources_for_available_clusters(
-            resource_kind=ObjectKind.APPLICATION
+        async for applications in self.get_resources(
+            resource_kind=ResourceKindsWithSpecialHandling.APPLICATION
         ):
             has_applications = True
             for app in applications:
@@ -246,7 +220,7 @@ class ArgocdClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         application_name = application["metadata"]["name"]
         logger.info(f"Fetching managed resources for application: {application_name}")
-        url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
+        url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/{application_name}/managed-resources"
 
         async for managed_resources in self.get_paginated_resources(url):
             yield [

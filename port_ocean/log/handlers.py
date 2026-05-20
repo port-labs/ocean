@@ -46,7 +46,9 @@ def _serialize_record(record: logging.LogRecord) -> dict[str, Any]:
         extra["exc_info"] = serialized_exception
     extra = _serialize_posix_paths(extra)
     return {
-        "message": record.msg,
+        "message": record.msg.rstrip(
+            "\n"
+        ),  # strip trailing newline that exception messages and multiline strings can leave
         "level": record.levelname,
         "timestamp": datetime.utcfromtimestamp(record.created).strftime(
             "%Y-%m-%dT%H:%M:%S.%fZ"

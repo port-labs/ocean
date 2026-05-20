@@ -39,7 +39,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ghcr.io/port-labs/port-ocean-base-builder:latest
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
-          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          docker-password: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
           build-args: |
             ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
           skip-push: ${{ github.event_name == 'pull_request' }}
@@ -51,7 +51,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ghcr.io/port-labs/port-ocean-base-runner:latest
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
-          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          docker-password: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
           skip-init: 'true'
           build-args: |
             ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}

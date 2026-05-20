@@ -78,6 +78,8 @@ async def get_fake_persons_batch(
         },
     )
 
+    response.raise_for_status()
+
     raw_persons = response.json()
 
     return [

@@ -7,6 +7,423 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.241-post1 (2026-05-19)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+0.2.240-post1 (2026-05-19)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+0.2.239-post1 (2026-05-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+0.2.238-post1 (2026-05-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+0.2.237-post1 (2026-05-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+0.2.236-post1 (2026-05-14)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+0.2.235-post1 (2026-05-14)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+0.2.234-post1 (2026-05-13)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+0.2.233-post1 (2026-05-12)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+0.2.232-post1 (2026-05-07)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+0.2.231-post1 (2026-04-30)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+0.2.230-post1 (2026-04-29)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+0.2.229-post1 (2026-04-29)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+0.2.228-post1 (2026-04-23)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+0.2.227-post1 (2026-04-23)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+0.2.226-post1 (2026-04-21)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+0.2.225-post1 (2026-04-21)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+0.2.224-post1 (2026-04-20)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+0.2.223-post1 (2026-04-16)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+0.2.222-post1 (2026-04-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+0.2.221-post1 (2026-04-12)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+0.2.220-post1 (2026-04-09)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+0.2.219-post1 (2026-04-08)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+0.2.218-post1 (2026-04-06)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+0.2.217-post1 (2026-04-06)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+0.2.216-post1 (2026-04-06)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+0.2.215-post1 (2026-04-06)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+0.2.214-post1 (2026-04-05)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+0.2.213-post1 (2026-03-30)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+0.2.212-post1 (2026-03-25)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+0.2.211-post1 (2026-03-24)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+0.2.210-post1 (2026-03-22)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+0.2.209-post1 (2026-03-19)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+0.2.208-post1 (2026-03-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+0.2.207-post1 (2026-03-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+0.2.206-post1 (2026-03-16)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+0.2.205-post1 (2026-03-16)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+0.2.204-post1 (2026-03-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+0.2.203-post1 (2026-03-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+0.2.202-post1 (2026-03-12)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+- Updated `_search` method signature to accept `field` to align with the base `JQEntityProcessor` interface
+
+
+0.2.201-post1 (2026-03-11)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
+0.2.200-post1 (2026-03-10)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.10
+
+
+0.2.199-post1 (2026-03-09)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.9
+
+
+0.2.198-post1 (2026-03-08)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+0.2.197-post1 (2026-03-03)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+0.2.196-post1 (2026-03-03)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
+
+
+0.2.195-post1 (2026-03-02)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+0.2.194-post1 (2026-03-01)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+0.2.193-post1 (2026-03-01)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+0.2.192-post1 (2026-02-26)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+0.2.191-post1 (2026-02-26)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+0.2.190-post1 (2026-02-25)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
 0.2.189-post1 (2026-02-24)
 ==========================
 

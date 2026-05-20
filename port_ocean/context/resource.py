@@ -57,7 +57,9 @@ async def resource_context(
         ResourceContext(resource_config=resource_config, index=index)
     )
 
-    with logger.contextualize(resource_kind=resource.kind):
-        yield resource
+    try:
+        with logger.contextualize(resource_kind=resource.kind):
+            yield resource
 
-    _resource_context_stack.pop()
+    finally:
+        _resource_context_stack.pop()

@@ -7,7 +7,6 @@ from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
 from loguru import logger
 
 from port_ocean.clients.port.utils import _http_client as _port_http_client
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.ocean_types import (
@@ -25,6 +24,72 @@ from port_ocean.exceptions.core import (
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.utils.async_http import _http_client
+from port_ocean.core.models import IntegrationFeatureFlag, ProcessingMode
+
+
+async def is_lakehouse_data_enabled() -> bool:
+    """Check if lakehouse data is enabled.
+
+    This function checks the organization feature flags and config to determine
+    if lakehouse data sending is enabled. It handles errors gracefully since
+    lakehouse sending is intended to be best-effort and should not block core
+    processing flows.
+
+    Returns:
+        bool: True if lakehouse data is enabled, False otherwise (including on error)
+    """
+    try:
+        flags = await ocean.port_client.get_organization_feature_flags()
+        if (
+            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
+            and ocean.config.lakehouse_enabled
+        ):
+            return True
+        return False
+    except Exception as e:
+        logger.warning(
+            f"Failed to check lakehouse feature flags, assuming disabled: {e}"
+        )
+        return False
+
+
+async def is_dsp_mode_enabled() -> bool:
+    """Check if DSP (Data Source Processor) mode is active.
+
+    DSP mode offloads all transform/load/reconciliation to an external service.
+    Ocean still extracts raw data and forwards it to the lakehouse, but skips
+    all entity processing.  Requires an explicit opt-in via config AND the right
+    org feature flags.  Errors are swallowed so this never blocks core flows.
+
+    Returns:
+        bool: True only when all four conditions are met, False otherwise.
+    """
+    try:
+        if ocean.config.processing_mode != ProcessingMode.dsp:
+            return False
+        if not ocean.config.lakehouse_enabled:
+            logger.warning(
+                "DSP mode requested but lakehouse_enabled is False, falling back to ocean-core"
+            )
+            return False
+        flags = await ocean.port_client.get_organization_feature_flags()
+        if (
+            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
+            and IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags
+        ):
+            return True
+        logger.warning(
+            "DSP mode requested but required feature flags are missing "
+            f"(LAKEHOUSE_ELIGIBLE={IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags}, "
+            f"DATA_SOURCE_PROCESSOR_ENABLED={IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags}), "
+            "falling back to ocean-core"
+        )
+        return False
+    except Exception as e:
+        logger.warning(f"Failed to check DSP mode, falling back to ocean-core: {e}")
+        return False
+
+
 
 def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
     """
@@ -99,23 +164,34 @@ def resync_error_handling() -> Generator[None, None, None]:
 
 
 async def resync_function_wrapper(
-    fn: Callable[[str], Awaitable[RAW_RESULT]], kind: str, items_to_parse: str | None = None
+    fn: Callable[[str], Awaitable[RAW_RESULT]],
+    kind: str,
+    send_raw_data_examples_amount: int = 0,
 ) -> RAW_RESULT:
     with resync_error_handling():
-        results = await fn(kind)
-        return validate_result(results)
+        results = validate_result(await fn(kind))
+        await send_raw_data_examples(
+            results, kind, send_raw_data_examples_amount
+        )
+        return results
 
-async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, items_to_parse: str | None = None) -> AsyncGenerator[list[dict[str, Any]], None]:
+async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, items_to_parse: str | None = None, items_to_parse_top_level_transform: bool = True) -> AsyncGenerator[list[dict[str, Any]], None]:
     delete_target = extract_jq_deletion_path_revised(items_to_parse) or '.'
     jq_expression = f". | del({delete_target})"
     batch_size = ocean.config.yield_items_to_parse_batch_size
 
-    while len(result) > 0:
-        item = result.pop(0)
-        entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
-        items_to_parse_data =  await entity_processor._search(item, items_to_parse)
-        if event.resource_config.port.items_to_parse_top_level_transform:
-            item = await entity_processor._search(item, jq_expression)
+    entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
+
+    for item in result:
+        items_to_parse_data = await entity_processor._search(item, items_to_parse)
+        if items_to_parse_top_level_transform:
+            transformed = await entity_processor._search(item, jq_expression)
+            if transformed is None:
+                logger.warning(
+                    f"Top-level transform '{jq_expression}' returned None for item, skipping..."
+                )
+                continue
+            item = transformed
         if not isinstance(items_to_parse_data, list):
             logger.warning(
                 f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items_to_parse_data)}."
@@ -123,29 +199,60 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
             )
             continue
         batch = []
-        while len(items_to_parse_data) > 0:
-            if (len(batch) >= batch_size):
+        for parsed_item in items_to_parse_data:
+            if len(batch) >= batch_size:
                 yield batch
                 batch = []
             merged_item = {**item}
-            merged_item[items_to_parse_name] = items_to_parse_data.pop(0)
+            merged_item[items_to_parse_name] = parsed_item
             batch.append(merged_item)
-        if len(batch) > 0:
+        if batch:
             yield batch
 
+async def send_raw_data_examples(
+    result: RAW_RESULT, kind: str, amount: int
+) -> int:
+    if amount <= 0 or not result:
+        return 0
+
+    examples_to_send = [item.copy() for item in result[:amount]]
+    try:
+        await ocean.port_client.ingest_integration_kind_examples(
+            kind, examples_to_send, should_log=False
+        )
+        return len(examples_to_send)
+    except Exception as ex:
+        logger.warning(
+            f"Failed to send raw data example {ex}",
+            exc_info=True,
+        )
+        return 0
+
 async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE],
+    kind: str,
+    items_to_parse_name: str,
+    items_to_parse: str | None = None,
+    items_to_parse_top_level_transform: bool = True,
+    send_raw_data_examples_amount: int = 0,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
     errors = []
+    remaining_examples_to_send = send_raw_data_examples_amount
     try:
         while True:
             try:
                 with resync_error_handling():
                     result = validate_result(await anext(generator))
+                    sent_examples = await send_raw_data_examples(
+                        result, kind, remaining_examples_to_send
+                    )
+                    remaining_examples_to_send = max(
+                        0, remaining_examples_to_send - sent_examples
+                    )
 
-                    if items_to_parse:
-                        items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse)
+                    if items_to_parse and not await is_dsp_mode_enabled():
+                        items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse, items_to_parse_top_level_transform)
                         del result
                         async for batch in items_to_parse_generator:
                             yield batch

@@ -13,6 +13,7 @@ def mock_ocean_context() -> None:
     """Mock the PortOcean context to prevent initialization errors."""
     try:
         mock_ocean_app = MagicMock()
+        mock_ocean_app.is_saas.return_value = False
         mock_ocean_app.config.integration.config = {
             "checkmarx_base_url": "https://ast.checkmarx.net",
             "checkmarx_iam_url": "https://iam.checkmarx.net",

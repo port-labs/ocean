@@ -268,9 +268,9 @@ class TestIntegration:
         assert entities[0].entity["title"] == "Test"
         assert entities[0].entity["properties"]["url"] is None
         assert entities[0].entity["properties"]["description"] is None
-        # Should have misconfigurations for the missing fields
-        assert "url" in entities[0].misconfigurations
-        assert "description" in entities[0].misconfigurations
+        # Should have misconfigurations for the missing fields (dot-separated path keys)
+        assert "properties.url" in entities[0].misconfigurations
+        assert "properties.description" in entities[0].misconfigurations
 
     def test_processing_with_array_data(self, setup_mock_ocean: Any) -> None:
         """Test processing data that contains arrays."""

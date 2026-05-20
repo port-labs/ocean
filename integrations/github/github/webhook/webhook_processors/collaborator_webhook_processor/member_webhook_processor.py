@@ -10,10 +10,10 @@ from github.helpers.utils import (
 )
 from github.webhook.events import (
     COLLABORATOR_DELETE_EVENTS,
-    COLLABORATOR_EVENTS,
 )
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
+    CollaboratorEventValidator,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -21,20 +21,20 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
+from github.webhook.webhook_processors.collaborator_webhook_processor.utils import (
+    skip_if_affiliation_filtered,
+)
 
 
-class CollaboratorMemberWebhookProcessor(BaseRepositoryWebhookProcessor):
+class CollaboratorMemberWebhookProcessor(
+    BaseRepositoryWebhookProcessor, CollaboratorEventValidator
+):
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
-        has_required_fields = not ({"action", "repository", "member"} - payload.keys())
-
-        return has_required_fields and "login" in payload.get("member", {})
+        return await self.validate_member_collaborator_payload(payload)
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return (
-            event.headers.get("x-github-event") == "member"
-            and event.payload.get("action") in COLLABORATOR_EVENTS
-        )
+        return await self.should_process_member_collaborator_event(event)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.COLLABORATOR]
@@ -53,6 +53,10 @@ class CollaboratorMemberWebhookProcessor(BaseRepositoryWebhookProcessor):
             f"Processing member event: {action} for {username} in {repo_name} of organization: {organization}"
         )
 
+        skipped = skip_if_affiliation_filtered(resource_config)
+        if skipped is not None:
+            return skipped
+
         if action in COLLABORATOR_DELETE_EVENTS:
             logger.info(
                 f"Collaborator {username} was removed from repository {repo_name} of organization: {organization}"
@@ -63,7 +67,7 @@ class CollaboratorMemberWebhookProcessor(BaseRepositoryWebhookProcessor):
             }
 
             data_to_delete = enrich_with_organization(
-                enrich_with_repository(constructed_payload, repo_name, repo=repository),
+                enrich_with_repository(constructed_payload, repo_name),
                 organization,
             )
             return WebhookEventRawResults(

@@ -17,6 +17,15 @@ on:
       infra:
         value: ${{ jobs.detect-changes.outputs.infra }}
         description: "Determine if any changes to docker infra"
+      has_core_code_changes:
+        value: ${{ jobs.detect-changes.outputs.has_core_code_changes }}
+        description: "True if PR touches meaningful code under port_ocean/ or .github/workflows/ (excludes README/changelog md)"
+      has_integration_code_changes:
+        value: ${{ jobs.detect-changes.outputs.has_integration_code_changes }}
+        description: "True if PR touches meaningful code under integrations/ (excludes README/changelog md)"
+      has_code_changes:
+        value: ${{ jobs.detect-changes.outputs.has_code_changes }}
+        description: "True if has_core_code_changes or has_integration_code_changes"
 
 jobs:
   detect-changes:
@@ -28,6 +37,9 @@ jobs:
       core: ${{ steps.set-all-matrix.outputs.core }}
       core_ci_files_changed: ${{ steps.set-all-matrix.outputs.core_ci_files_changed }}
       infra: ${{ steps.set-all-matrix.outputs.infra}}
+      has_core_code_changes: ${{ steps.set-all-matrix.outputs.has_core_code_changes }}
+      has_integration_code_changes: ${{ steps.set-all-matrix.outputs.has_integration_code_changes }}
+      has_code_changes: ${{ steps.set-all-matrix.outputs.has_code_changes }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v5
@@ -49,6 +61,7 @@ jobs:
               - '!docs/**'
             core_ci_files:
               - '.github/workflows/core-test.yml'
+              - '.github/workflows/integration-tests.yml'
               - '.github/workflows/detect-changes-matrix.yml'
               - '.github/actions/**'
               - 'scripts/run-smoke-test.sh'
@@ -59,6 +72,20 @@ jobs:
               - '!integrations/_infra/*'
             infra:
               - 'integrations/_infra/*'
+            core_code_changes:
+              - 'port_ocean/**'
+              - '.github/workflows/**'
+              - '!**/*.md'
+              - '!**/changelog/**'
+              - '!**/CHANGELOG*'
+              - '!**/README*'
+            integration_code_changes:
+              - 'integrations/**'
+              - '!integrations/**/*.md'
+              - '!integrations/_infra/*'
+              - '!**/changelog/**'
+              - '!**/CHANGELOG*'
+              - '!**/README*'
 
       - name: Set integrations and all matrix
         id: set-all-matrix
@@ -80,3 +107,6 @@ jobs:
           echo "integrations=${INTEGRATIONS}" >> $GITHUB_OUTPUT
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
           echo "infra=${HAS_INFRA}" >> $GITHUB_OUTPUT
+          echo "has_core_code_changes=${{ steps.changed-files.outputs.core_code_changes_all_changed_files != '[]' }}" >> $GITHUB_OUTPUT
+          echo "has_integration_code_changes=${{ steps.changed-files.outputs.integration_code_changes_all_changed_files != '[]' }}" >> $GITHUB_OUTPUT
+          echo "has_code_changes=${{ steps.changed-files.outputs.core_code_changes_all_changed_files != '[]' || steps.changed-files.outputs.integration_code_changes_all_changed_files != '[]' }}" >> $GITHUB_OUTPUT

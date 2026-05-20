@@ -1,4 +1,4 @@
-from typing import List, Literal, TypedDict, Required, NotRequired, Optional
+from typing import Any, List, Literal, TypedDict, Required, NotRequired, Optional
 
 
 class IssueOptions(TypedDict):
@@ -19,3 +19,31 @@ class IssueOptions(TypedDict):
 class ProjectOptions(TypedDict):
     include_archived: NotRequired[Optional[bool]]
     impact: NotRequired[Optional[Literal["LBI", "MBI", "HBI"]]]
+
+
+class VulnerabilityFindingOptions(TypedDict):
+    max_pages: Required[int]
+    status_list: NotRequired[
+        List[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]]
+    ]
+    severity_list: NotRequired[
+        Optional[List[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "NONE"]]]
+    ]
+
+
+class SbomArtifactOptions(TypedDict):
+    max_pages: Required[int]
+    group_list: NotRequired[
+        Optional[
+            List[
+                Literal[
+                    "CODE_LIBRARY",
+                    "OS_PACKAGE",
+                    "PLUGIN",
+                    "CUSTOM",
+                    "CI_COMPONENT",
+                ]
+            ]
+        ]
+    ]
+    resource_filter: NotRequired[Optional[dict[str, Any]]]

@@ -1,5 +1,11 @@
 import asyncio
 from typing import Any, cast
+from snyk.overrides import (
+    PolicyResourceConfig,
+    ProjectResourceConfig,
+    TargetResourceConfig,
+    VulnerabilityResourceConfig,
+)
 from loguru import logger
 from IntegrationKind import IntegrationKind
 from initialize_client import init_client
@@ -7,23 +13,12 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-from snyk.overrides import ProjectResourceConfig
-from snyk.utils import enrich_batch_with_org
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.target_webhook_processor import TargetWebhookProcessor
-
-
-async def process_project_issues(
-    project: dict[str, Any],
-    enrich_with_org: bool = False,
-) -> list[dict[str, Any]]:
-    snyk_client = init_client()
-    organization_id = project["relationships"]["organization"]["data"]["id"]
-    issues = await snyk_client.get_issues(organization_id, project["id"])
-    if not enrich_with_org:
-        return issues
-    return enrich_batch_with_org(issues, project["__organization"])
+from webhook_processors.vulnerability_webhook_processor import (
+    VulnerabilityWebhookProcessor,
+)
 
 
 @ocean.on_resync(IntegrationKind.ORGANIZATION)
@@ -35,8 +30,17 @@ async def on_organization_resync(kind: str) -> list[dict[str, Any]]:
 @ocean.on_resync(IntegrationKind.TARGET)
 async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
+    selector = cast(TargetResourceConfig, event.resource_config).selector
+
     all_organizations = await snyk_client.get_organizations_in_groups()
-    tasks = (snyk_client.get_paginated_targets(org) for org in all_organizations)
+    tasks = (
+        snyk_client.get_paginated_targets(
+            org,
+            attach_project_data=selector.attach_project_data,
+            api_params=selector.api_query_params,
+        )
+        for org in all_organizations
+    )
     async for targets in stream_async_iterators_tasks(*tasks):
         logger.debug(f"Received batch with {len(targets)} targets")
         yield targets
@@ -45,18 +49,24 @@ async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(IntegrationKind.PROJECT)
 async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
+    selector = cast(ProjectResourceConfig, event.resource_config).selector
     all_organizations = await snyk_client.get_organizations_in_groups()
-    tasks = (snyk_client.get_paginated_projects(org) for org in all_organizations)
+    tasks = (
+        snyk_client.get_paginated_projects(
+            org=org, api_params=selector.api_query_params
+        )
+        for org in all_organizations
+    )
     async for projects in stream_async_iterators_tasks(*tasks):
         logger.debug(f"Received batch with {len(projects)} projects")
 
-        if cast(
-            ProjectResourceConfig, event.resource_config
-        ).selector.attach_issues_to_project:
+        if selector.attach_issues_to_project:
             logger.warning(
                 "The flag attach_issues_to_project is set to True, fetching issues for projects in batch. Please know that this approach of mapping issues to projects will be deprecated soon, in favour of our new data model for Snyk resources. Refer to the documentation for more information: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk/#project"
             )
-            issue_tasks = [process_project_issues(project) for project in projects]
+            issue_tasks = [
+                snyk_client.process_project_issues(project) for project in projects
+            ]
             issues = await asyncio.gather(*issue_tasks)
             yield [
                 {**project, "__issues": issues}
@@ -77,7 +87,7 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     all_organizations = await snyk_client.get_organizations_in_groups()
     project_tasks = (
-        snyk_client.get_paginated_projects(org) for org in all_organizations
+        snyk_client.get_paginated_projects(org=org) for org in all_organizations
     )
 
     async for projects in stream_async_iterators_tasks(*project_tasks):
@@ -86,7 +96,7 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             f"Received batch with {len(projects)} projects, getting their issues parallelled"
         )
         tasks = [
-            process_project_issues(project, enrich_with_org=True)
+            snyk_client.process_project_issues(project, enrich_with_org=True)
             for project in projects
         ]
         project_issues_list = await asyncio.gather(*tasks)
@@ -103,10 +113,33 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_vulnerability_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
     all_organizations = await snyk_client.get_organizations_in_groups()
-    tasks = (snyk_client.get_paginated_issues(org) for org in all_organizations)
+    selector = cast(VulnerabilityResourceConfig, event.resource_config).selector
+    tasks = (
+        snyk_client.get_paginated_issues(
+            org=org,
+            api_params=selector.api_query_params,
+            project_params=selector.project_query_params,
+            attach_project=selector.enrich_with_project,
+        )
+        for org in all_organizations
+    )
     async for issues_batch in stream_async_iterators_tasks(*tasks):
         logger.debug(f"Received batch with {len(issues_batch)} issues")
         yield issues_batch
+
+
+@ocean.on_resync(IntegrationKind.POLICY)
+async def on_policy_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    snyk_client = init_client()
+    selector = cast(PolicyResourceConfig, event.resource_config).selector
+    all_organizations = await snyk_client.get_organizations_in_groups()
+    tasks = (
+        snyk_client.get_paginated_policies(org, api_params=selector.api_query_params)
+        for org in all_organizations
+    )
+    async for policies in stream_async_iterators_tasks(*tasks):
+        logger.debug(f"Received batch with {len(policies)} policies")
+        yield policies
 
 
 @ocean.on_start()
@@ -129,3 +162,4 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", TargetWebhookProcessor)
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", VulnerabilityWebhookProcessor)

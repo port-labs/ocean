@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any, cast
 
 from loguru import logger
@@ -43,16 +42,31 @@ from azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor i
 from azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor import (
     PipelineRunWebhookProcessor,
 )
+from azure_devops.webhooks.webhook_processors.release_webhook_processor import (
+    ReleaseWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.release_definition_webhook_processor import (
+    ReleaseDefinitionWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.test_run_webhook_processor import (
+    TestRunWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.release_deployment_webhook_processor import (
+    ReleaseDeploymentWebhookProcessor,
+)
 from integration import (
     AzureDevopsPipelineResourceConfig,
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
+    AzureDevopsReleaseConfig,
+    AzureDevopsReleaseDefinitionConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     AzureDevopsTestRunResourceConfig,
     AzureDevopsPullRequestResourceConfig,
     AzureDevopsAdvancedSecurityResourceConfig,
     AzureDevopsRepositoryResourceConfig,
+    AzureDevopsUserConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -74,8 +88,11 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kind.USER)
 async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = cast(AzureDevopsUserConfig, event.resource_config)
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for users in azure_devops_client.generate_users():
+    async for users in azure_devops_client.generate_users(
+        additional_params=config.selector.to_params(),
+    ):
         logger.info(f"Resyncing {len(users)} members")
         yield users
 
@@ -102,6 +119,22 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for members in azure_devops_client.generate_members():
         logger.info(f"Resyncing {len(members)} members")
+        yield members
+
+
+@ocean.on_resync(Kind.GROUP)
+async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for groups in azure_devops_client.generate_groups():
+        logger.info(f"Resyncing {len(groups)} groups")
+        yield groups
+
+
+@ocean.on_resync(Kind.GROUP_MEMBER)
+async def resync_group_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for members in azure_devops_client.generate_group_members():
+        logger.info(f"Resyncing {len(members)} group members")
         yield members
 
 
@@ -146,47 +179,24 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield pull_requests
 
 
-async def _enrich_repo_with_included_files(
-    client: AzureDevopsClient,
-    repo: dict[str, Any],
-    file_paths: list[str],
-) -> dict[str, Any]:
-    """Enrich a repository dict with __includedFiles from the given file paths."""
-    repo_id = repo.get("id", "")
-    default_branch_ref = repo.get("defaultBranch", "refs/heads/main")
-    # Strip the refs/heads/ prefix to get the branch name
-    branch_name = default_branch_ref.replace("refs/heads/", "")
-    included: dict[str, Any] = {}
-
-    for file_path in file_paths:
-        try:
-            content_bytes = await client.get_file_by_branch(
-                file_path, repo_id, branch_name
-            )
-            included[file_path] = (
-                content_bytes.decode("utf-8") if content_bytes else None
-            )
-        except Exception as e:
-            logger.debug(
-                f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch_name}: {e}"
-            )
-            included[file_path] = None
-
-    repo["__includedFiles"] = included
-    return repo
-
-
 async def _enrich_repos_batch_with_included_files(
     client: AzureDevopsClient,
     repositories: list[dict[str, Any]],
     file_paths: list[str],
 ) -> list[dict[str, Any]]:
     """Enrich a batch of repositories with included files."""
-    tasks = [
-        _enrich_repo_with_included_files(client, repo, file_paths)
-        for repo in repositories
-    ]
-    return list(await asyncio.gather(*tasks))
+    if not file_paths or not repositories:
+        return repositories
+    from azure_devops.enrichments.included_files import (
+        IncludedFilesEnricher,
+        RepositoryIncludedFilesStrategy,
+    )
+
+    enricher = IncludedFilesEnricher(
+        client=client,
+        strategy=RepositoryIncludedFilesStrategy(included_files=file_paths),
+    )
+    return await enricher.enrich_batch(repositories)
 
 
 @ocean.on_resync(Kind.REPOSITORY)
@@ -250,10 +260,24 @@ async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kind.RELEASE)
 async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = cast(AzureDevopsReleaseConfig, event.resource_config)
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for releases in azure_devops_client.generate_releases():
+    async for releases in azure_devops_client.generate_releases(
+        additional_params=config.selector.to_params(),
+    ):
         logger.info(f"Resyncing {len(releases)} releases")
         yield releases
+
+
+@ocean.on_resync(Kind.RELEASE_DEFINITION)
+async def resync_release_definitions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = cast(AzureDevopsReleaseDefinitionConfig, event.resource_config)
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for definitions in azure_devops_client.generate_release_definitions(
+        additional_params=config.selector.to_params(),
+    ):
+        logger.info(f"Resyncing {len(definitions)} release definitions")
+        yield definitions
 
 
 @ocean.on_resync(Kind.BUILD)
@@ -306,86 +330,11 @@ async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield deployments
 
 
-async def _enrich_folder_with_included_files(
-    client: AzureDevopsClient,
-    folder: dict[str, Any],
-    file_paths: list[str],
-) -> dict[str, Any]:
-    """Enrich a folder entity with __includedFiles from the given file paths."""
-    repo = folder.get("__repository", {})
-    repo_id = repo.get("id", "")
-    branch = folder.get("__branch") or repo.get(
-        "defaultBranch", "refs/heads/main"
-    ).replace("refs/heads/", "")
-    included: dict[str, Any] = {}
-
-    for file_path in file_paths:
-        try:
-            content_bytes = await client.get_file_by_branch(file_path, repo_id, branch)
-            included[file_path] = (
-                content_bytes.decode("utf-8") if content_bytes else None
-            )
-        except Exception as e:
-            logger.debug(
-                f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch}: {e}"
-            )
-            included[file_path] = None
-
-    folder["__includedFiles"] = included
-    return folder
-
-
-async def _enrich_folders_batch_with_included_files(
-    client: AzureDevopsClient,
-    folders: list[dict[str, Any]],
-    file_paths: list[str],
-) -> list[dict[str, Any]]:
-    """Enrich a batch of folders with included files."""
-    tasks = [
-        _enrich_folder_with_included_files(client, folder, file_paths)
-        for folder in folders
-    ]
-    return list(await asyncio.gather(*tasks))
-
-
-async def _enrich_file_entity_with_included_files(
-    client: AzureDevopsClient,
-    file_entity: dict[str, Any],
-    file_paths: list[str],
-) -> dict[str, Any]:
-    """Enrich a file entity with __includedFiles from the given file paths."""
-    repo = file_entity.get("repo", {})
-    repo_id = repo.get("id", "")
-    branch = repo.get("defaultBranch", "refs/heads/main").replace("refs/heads/", "")
-    included: dict[str, Any] = {}
-
-    for file_path in file_paths:
-        try:
-            content_bytes = await client.get_file_by_branch(file_path, repo_id, branch)
-            included[file_path] = (
-                content_bytes.decode("utf-8") if content_bytes else None
-            )
-        except Exception as e:
-            logger.debug(
-                f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch}: {e}"
-            )
-            included[file_path] = None
-
-    file_entity["__includedFiles"] = included
-    return file_entity
-
-
-async def _enrich_file_entities_batch_with_included_files(
-    client: AzureDevopsClient,
-    file_entities: list[dict[str, Any]],
-    file_paths: list[str],
-) -> list[dict[str, Any]]:
-    """Enrich a batch of file entities with included files."""
-    tasks = [
-        _enrich_file_entity_with_included_files(client, fe, file_paths)
-        for fe in file_entities
-    ]
-    return list(await asyncio.gather(*tasks))
+from azure_devops.enrichments.included_files import (  # noqa: E402
+    IncludedFilesEnricher,
+    FileIncludedFilesStrategy,
+    FolderIncludedFilesStrategy,
+)
 
 
 @ocean.on_resync(Kind.FILE)
@@ -403,9 +352,11 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if files_batch:
             logger.info(f"Resyncing batch of {len(files_batch)} files")
             if included_files:
-                files_batch = await _enrich_file_entities_batch_with_included_files(
-                    azure_devops_client, files_batch, included_files
+                enricher = IncludedFilesEnricher(
+                    client=azure_devops_client,
+                    strategy=FileIncludedFilesStrategy(included_files=included_files),
                 )
+                files_batch = await enricher.enrich_batch(files_batch)
             yield files_batch
 
 
@@ -453,9 +404,14 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         selector.folders, selector.project_name
     ):
         if included_files:
-            matching_folders = await _enrich_folders_batch_with_included_files(
-                azure_devops_client, matching_folders, included_files
+            enricher = IncludedFilesEnricher(
+                client=azure_devops_client,
+                strategy=FolderIncludedFilesStrategy(
+                    folder_selectors=selector.folders,
+                    global_included_files=included_files,
+                ),
             )
+            matching_folders = await enricher.enrich_batch(matching_folders)
         yield matching_folders
 
 
@@ -513,3 +469,7 @@ ocean.add_webhook_processor("/webhook", AdvancedSecurityWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PipelineWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PipelineStageWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PipelineRunWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ReleaseWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ReleaseDefinitionWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ReleaseDeploymentWebhookProcessor)
+ocean.add_webhook_processor("/webhook", TestRunWebhookProcessor)

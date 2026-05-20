@@ -1,0 +1,159 @@
+{
+  "id": "3f644902-c009-4f73-a5bf-0448b8fd6a99",
+  "sourceRule": {
+    "__typename": "Control",
+    "id": "wc-id-3204",
+    "name": "Subscription with compute instances using non-PQC compliant SSH authorized keys",
+    "controlDescription": "This subscription contains compute instances with SSH authorized keys (public keys) that use classical cryptographic algorithms (such as RSA or ECDSA) which are not resistant to quantum computing attacks. The authorized keys stored on these instances do not utilize Post-Quantum Cryptography (PQC) compliant algorithms.\n\nAuthorized keys using classical algorithms are at risk of being compromised by future quantum computers. An attacker with access to quantum computing capabilities could forge signatures or derive corresponding private keys, gaining unauthorized access to systems within the subscription that trust these authorized keys.\n",
+    "resolutionRecommendation": "### Ensure quantum-resistant cryptography\n* Migrate private keys to PQC-compliant algorithms such as ML-DSA (Dilithium) or hybrid key schemes that combine classical and quantum-resistant algorithms.\n* Update SSH configurations to generate and accept only quantum-safe key types.\n* Rotate existing private keys and replace them with quantum-resistant alternatives.\n* Store private keys securely using approved secret management solutions.\n\n### Ensure secure use of cloud keys\n* Manage all cloud keys using approved secret management solutions. Your environment should not contain cleartext cloud keys.\n* Alternatively, remove the key from the resource.\n* If removing the key is impossible, restrict the permissions assigned to the cloud key or store the key encrypted at rest.\n* Set an expiration date for all secrets and rotate them on a regular basis.",
+    "securitySubCategories": [
+      {
+        "title": "3.13.10 Establish and manage cryptographic keys for cryptography employed in organizational systems.",
+        "category": {
+          "name": "3.13 System and Communications Protection",
+          "framework": {
+            "name": "NIST 800-171 Rev.2"
+          }
+        }
+      },
+      {
+        "title": "3.13.11 Employ FIPS-validated cryptography when used to protect the confidentiality of CUI.",
+        "category": {
+          "name": "3.13 System and Communications Protection",
+          "framework": {
+            "name": "NIST 800-171 Rev.2"
+          }
+        }
+      },
+      {
+        "title": "A.10.1.2 Key management",
+        "category": {
+          "name": "A.10 Cryptography",
+          "framework": {
+            "name": "ISO/IEC 27001"
+          }
+        }
+      },
+      {
+        "title": "Data Encrypted for Impact",
+        "category": {
+          "name": "Impact",
+          "framework": {
+            "name": "MITRE ATT&CK Cloud Matrix"
+          }
+        }
+      },
+      {
+        "title": "Data Encrypted for Impact",
+        "category": {
+          "name": "Impact",
+          "framework": {
+            "name": "MITRE ATT&CK Matrix"
+          }
+        }
+      },
+      {
+        "title": "Exposed secret",
+        "category": {
+          "name": "External Attack Surface Management",
+          "framework": {
+            "name": "Wiz for Risk Assessment"
+          }
+        }
+      },
+      {
+        "title": "File misconfigurations",
+        "category": {
+          "name": "Session Negotiation - PQC Compliance",
+          "framework": {
+            "name": "Wiz for Post-Quantum Cryptography Security"
+          }
+        }
+      },
+      {
+        "title": "SC-12 Cryptographic Key Establishment and Management",
+        "category": {
+          "name": "SC System And Communications Protection",
+          "framework": {
+            "name": "NIST SP 800-53 Revision 5"
+          }
+        }
+      },
+      {
+        "title": "SC-13 Cryptographic Protection",
+        "category": {
+          "name": "SC System And Communications Protection",
+          "framework": {
+            "name": "NIST SP 800-53 Revision 5"
+          }
+        }
+      }
+    ]
+  },
+  "createdAt": "2026-03-25T05:46:26.592582Z",
+  "updatedAt": "2026-03-25T05:46:26.592582Z",
+  "dueAt": null,
+  "type": "TOXIC_COMBINATION",
+  "resolvedAt": null,
+  "statusChangedAt": "2026-03-25T05:46:26.592582Z",
+  "projects": [
+    {
+      "id": "4f76f599-1f6c-5cb6-a0b9-a262517aeacd",
+      "name": "Test Folder - Test",
+      "slug": "testfolder",
+      "businessUnit": "",
+      "riskProfile": {
+        "businessImpact": "MBI"
+      }
+    },
+    {
+      "id": "83b76efe-a7b6-5762-8a53-8e8f59e68bd8",
+      "name": "Project 2",
+      "slug": "project-2",
+      "businessUnit": "",
+      "riskProfile": {
+        "businessImpact": "MBI"
+      }
+    },
+    {
+      "id": "af52828c-4eb1-5c4e-847c-ebc3a5ead531",
+      "name": "project 4",
+      "slug": "project-4",
+      "businessUnit": "Dev",
+      "riskProfile": {
+        "businessImpact": "MBI"
+      }
+    },
+    {
+      "id": "d6ac50bb-aec0-52fc-80ab-bacd7b02f178",
+      "name": "Project1",
+      "slug": "project1",
+      "businessUnit": "Dev",
+      "riskProfile": {
+        "businessImpact": "MBI"
+      }
+    }
+  ],
+  "status": "OPEN",
+  "severity": "LOW",
+  "entitySnapshot": {
+    "id": "94e76baa-85fd-5928-b829-1669a2ca9660",
+    "type": "SUBSCRIPTION",
+    "nativeType": "account",
+    "name": "wiz-integrations",
+    "status": "Active",
+    "cloudPlatform": "AWS",
+    "cloudProviderURL": "https://console.aws.amazon.com/organizations/v2/home/accounts/998231069301",
+    "providerId": "998231069301",
+    "region": "",
+    "resourceGroupExternalId": "",
+    "subscriptionExternalId": "998231069301",
+    "subscriptionName": "wiz-integrations",
+    "subscriptionTags": {},
+    "tags": {},
+    "createdAt": null,
+    "externalId": "998231069301"
+  },
+  "serviceTickets": null,
+  "notes": null
+}

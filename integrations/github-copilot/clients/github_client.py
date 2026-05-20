@@ -1,25 +1,40 @@
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, cast
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 import httpx
+import json
 import re
 from loguru import logger
 from port_ocean.utils import http_async_client
 from urllib.parse import parse_qs, urlparse
+from itertools import batched
 
 from .github_endpoints import GithubEndpoints
 
 
 class GitHubClient:
-    def __init__(self, base_url: str, token: str):
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        enterprise_name: Optional[str] = None,
+    ):
         self._token = token
         self._client = http_async_client
         self._headers = self._get_headers()
         self.base_url = base_url
+        self.enterprise_name = enterprise_name
         self.NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
         self.pagination_page_size_limit = 100
         self.pagination_header_name = "Link"
         self.copilot_disabled_status_code = 422
         self.forbidden_status_code = 403
+
+    def _get_required_enterprise_slug(self) -> str:
+        if not self.enterprise_name:
+            raise ValueError("Enterprise slug must be set to use this method")
+        return self.enterprise_name
 
     async def get_organizations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for organizations in self._get_paginated_data(
@@ -27,49 +42,334 @@ class GitHubClient:
         ):
             yield organizations
 
-    async def get_teams_of_organization(
+    async def get_organization_usage_metrics(
         self, organization: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        url = self._resolve_route_params(
-            GithubEndpoints.LIST_TEAMS.value, {"org": organization["login"]}
+        "Fetches the 28-day usage manifest and downloads metrics from signed URLs."
+        logger.info(
+            f"Fetching organization metrics download links for {organization['login']}"
         )
-        async for teams in self._get_paginated_data(
-            url,
-            ignore_status_code=[self.forbidden_status_code],
-        ):
-            yield teams
-
-    async def get_metrics_for_organization(
-        self, organization: dict[str, Any]
-    ) -> list[dict[str, Any]] | None:
         url = self._resolve_route_params(
-            GithubEndpoints.COPILOT_ORGANIZATION_METRICS.value,
+            GithubEndpoints.COPILOT_ORGANIZATION_METRICS_28_DAY.value,
             {"org": organization["login"]},
         )
-        return await self.send_api_request(
+        response = await self._send_api_request(
             "get",
             url,
-            ignore_status_code=[
-                self.copilot_disabled_status_code,
-                self.forbidden_status_code,
-            ],
+            ignore_status_code=[self.forbidden_status_code],
         )
 
-    async def get_metrics_for_team(
-        self, organization: dict[str, Any], team: dict[str, Any]
-    ) -> list[dict[str, Any]] | None:
-        url = self._resolve_route_params(
-            GithubEndpoints.COPILOT_TEAM_METRICS.value,
-            {"org": organization["login"], "team": team["slug"]},
+        if not response:
+            logger.info(
+                f"No usage metrics found for organization {organization['login']}"
+            )
+            return
+
+        response_data = response.json()
+        if not (download_links := response_data["download_links"]):
+            logger.info(
+                f"No usage metrics found for organization {organization['login']}"
+            )
+            return
+
+        logger.info(
+            f"Received {len(download_links)} report download links for organization {organization['login']} "
+            f"covering {response_data['report_start_day']} to {response_data['report_end_day']}"
         )
-        return await self.send_api_request(
+
+        async for batch in self._download_and_yield_reports(download_links):
+            yield batch
+
+    async def fetch_organization_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for organizations_batch in self.get_organizations():
+            for organization in organizations_batch:
+                async for reports in self.get_organization_usage_metrics(organization):
+                    day_totals = [
+                        day
+                        for report in reports
+                        if report and "day_totals" in report
+                        for day in report["day_totals"]
+                    ]
+                    if not day_totals:
+                        continue
+
+                    self._enrich_metrics_with_organization(
+                        day_totals, organization, record_date_key="day"
+                    )
+                    yield day_totals
+
+    async def _fetch_report_from_signed_url(
+        self, signed_url: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.debug("Fetching report from signed URL")
+        try:
+            async for batch in self._stream_ndjson_report_in_batches(signed_url):
+                yield batch
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error fetching report from signed URL: {e}")
+            raise
+
+    async def _stream_ndjson_report_in_batches(
+        self, signed_url: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Streams an NDJSON report line by line and yields records in batches.
+
+        Each line is parsed as it arrives from the HTTP stream and accumulated into a batch of size pagination_page_size_limit before being yielded.
+        """
+        logger.debug(
+            f"Streaming NDJSON report in batches from signed URL: {signed_url}"
+        )
+        current_batch: list[dict[str, Any]] = []
+        ocean_client = cast(OceanAsyncClient, self._client)
+        async with ocean_client.stream("GET", signed_url) as response:
+            response.raise_for_status()
+
+            async for raw_line in response.aiter_lines():
+                stripped_line = raw_line.strip()
+                if not stripped_line:
+                    continue
+
+                try:
+                    record = json.loads(stripped_line)
+                    current_batch.append(record)
+
+                    if len(current_batch) >= self.pagination_page_size_limit:
+                        yield current_batch
+                        current_batch = []
+
+                except json.JSONDecodeError as parse_error:
+                    logger.warning(
+                        f"Skipping malformed NDJSON line from {signed_url}: {parse_error}"
+                    )
+
+        if current_batch:
+            yield current_batch
+
+    async def _get_users_usage_metrics(
+        self, organization: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Fetch the Copilot 28-day users usage manifest for an organization,
+        download report files from the returned signed URLs, and yield report
+        records in batches.
+        """
+
+        org_login = organization.get("login")
+        if not org_login:
+            logger.warning(f"Skipping organization without login: {organization}")
+            return
+
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_USERS_USAGE_METRICS_28_DAY.value,
+            {"org": org_login},
+        )
+        response = await self._send_api_request(
             "get",
             url,
-            ignore_status_code=[
-                self.copilot_disabled_status_code,
-                self.forbidden_status_code,
-            ],
+            ignore_status_code=[self.forbidden_status_code],
         )
+
+        if not response:
+            logger.info(f"No users usage metrics found for organization {org_login}")
+            return
+
+        response_data = response.json()
+        download_links = response_data.get("download_links", [])
+        if not download_links:
+            logger.info(
+                f"No users usage metrics download links found for organization {org_login}"
+            )
+            return
+
+        report_start_day = response_data.get("report_start_day", "unknown")
+        report_end_day = response_data.get("report_end_day", "unknown")
+        logger.info(
+            f"Received {len(download_links)} user activity report download links for organization {org_login} "
+            f"covering {report_start_day} to {report_end_day}"
+        )
+        async for batch in self._download_and_yield_reports_safe(
+            download_links, context=f"organization {org_login}"
+        ):
+            yield batch
+
+    async def fetch_users_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Fetch the Copilot 28-day users usage reports for all organizations and
+        yield enriched report records in batches.
+        """
+        async for organizations_batch in self.get_organizations():
+            for organization in organizations_batch:
+                async for reports in self._get_users_usage_metrics(organization):
+                    if not reports:
+                        logger.info(
+                            f"No user activity metrics found for organization {organization['login']}"
+                        )
+                        continue
+
+                    yield [
+                        {**record, "__organization": organization} for record in reports
+                    ]
+
+    async def _get_enterprise_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetches the 28-day enterprise-level usage manifest and downloads metrics."""
+        enterprise = self._get_required_enterprise_slug()
+        logger.info(f"Fetching enterprise metrics download links for {enterprise}")
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_ENTERPRISE_METRICS_28_DAY.value,
+            {"enterprise": enterprise},
+        )
+        response = await self._send_api_request(
+            "get",
+            url,
+            ignore_status_code=[self.forbidden_status_code],
+        )
+
+        if not response:
+            logger.info(f"No usage metrics found for enterprise {enterprise}")
+            return
+
+        response_data = response.json()
+        download_links = response_data.get("download_links", [])
+        if not download_links:
+            logger.info(
+                f"No usage metrics download links found for enterprise {enterprise}"
+            )
+            return
+
+        logger.info(
+            f"Received {len(download_links)} report download links for enterprise "
+            f"{enterprise} covering {response_data.get('report_start_day')} "
+            f"to {response_data.get('report_end_day')}"
+        )
+
+        async for batch in self._download_and_yield_reports(download_links):
+            yield batch
+
+    async def fetch_enterprise_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Fetch enterprise-level Copilot usage metrics, extract ``day_totals``,
+        and enrich each record with an ``__enterprise`` key.
+        """
+        enterprise = self._get_required_enterprise_slug()
+        enterprise_context = {"slug": enterprise}
+
+        async for reports in self._get_enterprise_usage_metrics():
+            day_totals = [
+                day
+                for report in reports
+                if report and "day_totals" in report
+                for day in report["day_totals"]
+            ]
+            if not day_totals:
+                continue
+
+            for metric in day_totals:
+                metric["__enterprise"] = enterprise_context
+
+            yield day_totals
+
+    async def _get_enterprise_users_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetches the 28-day enterprise-level users usage manifest and downloads reports."""
+        enterprise = self._get_required_enterprise_slug()
+        logger.info(f"Fetching enterprise user metrics download links for {enterprise}")
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_ENTERPRISE_USERS_USAGE_METRICS_28_DAY.value,
+            {"enterprise": enterprise},
+        )
+        response = await self._send_api_request(
+            "get",
+            url,
+            ignore_status_code=[self.forbidden_status_code],
+        )
+
+        if not response:
+            logger.info(f"No users usage metrics found for enterprise {enterprise}")
+            return
+
+        response_data = response.json()
+        download_links = response_data.get("download_links", [])
+        if not download_links:
+            logger.info(
+                f"No users usage metrics download links found for enterprise {enterprise}"
+            )
+            return
+
+        logger.info(
+            f"Received {len(download_links)} user activity report download links for "
+            f"enterprise {enterprise} covering "
+            f"{response_data.get('report_start_day')} to {response_data.get('report_end_day')}"
+        )
+
+        async for batch in self._download_and_yield_reports_safe(
+            download_links, context=f"enterprise {enterprise}"
+        ):
+            yield batch
+
+    async def fetch_enterprise_users_usage_metrics(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Fetch enterprise-level Copilot user usage metrics and enrich each
+        record with an ``__enterprise`` key.
+        """
+        enterprise = self._get_required_enterprise_slug()
+        enterprise_context = {"slug": enterprise}
+
+        async for reports in self._get_enterprise_users_usage_metrics():
+            if not reports:
+                logger.info(
+                    f"No user activity metrics found for enterprise {enterprise}"
+                )
+                continue
+
+            yield [{**record, "__enterprise": enterprise_context} for record in reports]
+
+    async def _download_and_yield_reports(
+        self, download_links: list[str]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Download signed-URL reports and yield fixed-size batches."""
+        for signed_urls_batch in batched(
+            download_links, self.pagination_page_size_limit
+        ):
+            tasks = [
+                self._fetch_report_from_signed_url(signed_url)
+                for signed_url in signed_urls_batch
+            ]
+            async for report_stream in stream_async_iterators_tasks(*tasks):
+                yield report_stream
+
+    async def _download_and_yield_reports_safe(
+        self, download_links: list[str], context: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Download signed-URL reports with per-URL failure isolation.
+
+        Failed URLs are logged as warnings and skipped — one inaccessible
+        signed URL does not abort the remaining report downloads.
+        """
+        for signed_urls_batch in batched(
+            download_links, self.pagination_page_size_limit
+        ):
+            for signed_url in signed_urls_batch:
+                try:
+                    async for batch in self._fetch_report_from_signed_url(signed_url):
+                        yield batch
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to fetch Copilot usage report for {context} "
+                        f"from signed URL {signed_url}: {e}"
+                    )
 
     async def _get_paginated_data(
         self,
@@ -142,7 +442,7 @@ class GitHubClient:
                 return None
 
             if ignore_status_code and e.response.status_code in ignore_status_code:
-                logger.info(
+                logger.warning(
                     f"Ignoring status code {e.response.status_code} for {method} request to {path}"
                 )
                 return None
@@ -186,3 +486,16 @@ class GitHubClient:
         :return: A formatted string with placeholders replaced by their corresponding values.
         """
         return endpoint_template.format(**params)
+
+    def _enrich_metrics_with_organization(
+        self,
+        metrics: list[dict[str, Any]],
+        organization: dict[str, Any],
+        record_date_key: str = "date",
+    ) -> list[dict[str, Any]]:
+        for metric in metrics:
+            logger.info(
+                f"Enriching metric of day {metric[record_date_key]} with organization {organization['login']}"
+            )
+            metric["__organization"] = organization
+        return metrics

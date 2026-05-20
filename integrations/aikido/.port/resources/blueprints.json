@@ -5,10 +5,6 @@
         "icon": "Aikido",
         "schema": {
             "properties": {
-                "name": {
-                    "type": "string",
-                    "title": "Repository Name"
-                },
                 "provider": {
                     "type": "string",
                     "title": "Provider",
@@ -35,12 +31,212 @@
                     "title": "Last Scanned At"
                 }
             },
-            "required": ["name", "provider"]
+            "required": ["provider"]
+        }
+    },
+    {
+        "identifier": "aikidoContainer",
+        "title": "Aikido Container",
+        "icon": "Aikido",
+        "schema": {
+            "properties": {
+                "provider": {
+                    "type": "string",
+                    "title": "Provider",
+                    "enum": [
+                        "aws",
+                        "aws_ecr",
+                        "gcp-artifact-registry",
+                        "gcp-container-registry",
+                        "docker-hub",
+                        "github",
+                        "quay",
+                        "acr",
+                        "gitlab",
+                        "gitlab-self",
+                        "digitalocean",
+                        "scaleway",
+                        "cloudsmith",
+                        "harbor",
+                        "artifactory",
+                        "custom_upload",
+                        "oci"
+                    ]
+                },
+                "cloudId": {
+                    "type": "number",
+                    "title": "Cloud ID"
+                },
+                "registryId": {
+                    "type": "number",
+                    "title": "Registry ID"
+                },
+                "registryName": {
+                    "type": "string",
+                    "title": "Registry Name"
+                },
+                "tag": {
+                    "type": "string",
+                    "title": "Tag Filter"
+                },
+                "distro": {
+                    "type": "string",
+                    "title": "Distribution"
+                },
+                "distroVersion": {
+                    "type": "string",
+                    "title": "Distribution Version"
+                },
+                "lastScannedAt": {
+                    "type": "number",
+                    "title": "Last Scanned At"
+                },
+                "lastScannedTag": {
+                    "type": "string",
+                    "title": "Last Scanned Tag"
+                },
+                "lastPushedAt": {
+                    "type": "number",
+                    "title": "Last Pushed At"
+                }
+            },
+            "required": ["provider"]
         },
         "relations": {
-            "aikidoIssue": {
-                "title": "Issues",
-                "target": "aikidoIssue",
+            "aikidoRepository": {
+                "title": "Repository",
+                "target": "aikidoRepository",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "aikidoTeam",
+        "title": "Aikido Team",
+        "icon": "Aikido",
+        "schema": {
+            "properties": {
+                "externalSource": {
+                    "type": "string",
+                    "title": "External Source",
+                    "enum": ["github", "gitlab", "bitbucket", "backstage_io"]
+                },
+                "externalSourceId": {
+                    "type": "string",
+                    "title": "External Source ID"
+                },
+                "responsibilities": {
+                    "type": "array",
+                    "title": "Responsibilities",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "active": {
+                    "type": "boolean",
+                    "title": "Active"
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "aikidoRepositories": {
+                "title": "Repositories",
+                "target": "aikidoRepository",
+                "required": false,
+                "many": true
+            },
+            "aikidoContainers": {
+                "title": "Containers",
+                "target": "aikidoContainer",
+                "required": false,
+                "many": true
+            }
+        }
+    },
+    {
+        "identifier": "aikidoIssueGroup",
+        "title": "Aikido Issue Group",
+        "icon": "Aikido",
+        "schema": {
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "type": {
+                    "type": "string",
+                    "title": "Type",
+                    "enum": [
+                        "open_source",
+                        "leaked_secret",
+                        "cloud",
+                        "iac",
+                        "sast",
+                        "surface_monitoring",
+                        "mobile",
+                        "malware",
+                        "eol",
+                        "scm_security",
+                        "ai_pentest",
+                        "license"
+                    ]
+                },
+                "severityScore": {
+                    "type": "number",
+                    "title": "Severity Score"
+                },
+                "groupStatus": {
+                    "type": "string",
+                    "title": "Group Status",
+                    "enum": [
+                        "new",
+                        "todo",
+                        "task_open",
+                        "task_closed",
+                        "pull_request_open"
+                    ]
+                },
+                "severity": {
+                    "type": "string",
+                    "title": "Severity",
+                    "enum": ["critical", "high", "medium", "low"],
+                    "enumColors": {
+                        "critical": "red",
+                        "high": "orange",
+                        "medium": "yellow",
+                        "low": "green"
+                    }
+                },
+                "locations": {
+                    "items": {
+                        "type": "object"
+                    },
+                    "title": "Locations",
+                    "type": "array"
+                },
+                "timeToFixMinutes": {
+                    "type": "number",
+                    "title": "Time To Fix (Minutes)"
+                },
+                "howToFix": {
+                    "type": "string",
+                    "title": "How To Fix"
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "aikidoRepositories": {
+                "title": "Repositories",
+                "target": "aikidoRepository",
+                "required": false,
+                "many": true
+            },
+            "aikidoContainers": {
+                "title": "Containers",
+                "target": "aikidoContainer",
                 "required": false,
                 "many": true
             }
@@ -59,7 +255,8 @@
                 "attackSurface": {
                     "type": "string",
                     "title": "Attack Surface",
-                    "enum": ["backend", "frontend", "infrastructure", "docker_container", "cloud"]
+                    "enum": ["backend", "frontend", "infrastructure", "docker_container", "cloud", "not_applicable"],
+                    "default": "not_applicable"
                 },
                 "status": {
                     "type": "string",
@@ -75,7 +272,13 @@
                 "severity": {
                     "type": "string",
                     "title": "Severity",
-                    "enum": ["critical", "high", "medium", "low"]
+                    "enum": ["critical", "high", "medium", "low"],
+                    "enumColors": {
+                        "critical": "red",
+                        "high": "orange",
+                        "medium": "yellow",
+                        "low": "green"
+                    }
                 },
                 "severityScore": {
                     "type": "number",
@@ -94,6 +297,10 @@
                     "type": "string",
                     "title": "Affected File"
                 },
+                "affectedPackage": {
+                    "type": "string",
+                    "title": "Affected Package"
+                },
                 "codeRepoName": {
                     "type": "string",
                     "title": "Code Repository Name"
@@ -102,9 +309,29 @@
                     "type": "number",
                     "title": "Code Repository ID"
                 },
+                "containerRepoId": {
+                    "type": "number",
+                    "title": "Container Repository ID"
+                },
+                "containerRepoName": {
+                    "type": "string",
+                    "title": "Container Repository Name"
+                },
+                "firstDetectedAt": {
+                    "type": "number",
+                    "title": "First Detected At"
+                },
+                "ignoredAt": {
+                    "type": "number",
+                    "title": "Ignored At"
+                },
                 "closedAt": {
                     "type": "number",
                     "title": "Closed At"
+                },
+                "slaDays": {
+                    "type": "number",
+                    "title": "SLA (Days)"
                 }
             },
             "required": ["status", "severity", "type"]
@@ -113,6 +340,18 @@
             "aikidoRepository": {
                 "title": "Repository",
                 "target": "aikidoRepository",
+                "required": false,
+                "many": false
+            },
+            "aikidoContainer": {
+                "title": "Container",
+                "target": "aikidoContainer",
+                "required": false,
+                "many": false
+            },
+            "aikidoIssueGroup": {
+                "title": "Issue Group",
+                "target": "aikidoIssueGroup",
                 "required": false,
                 "many": false
             }

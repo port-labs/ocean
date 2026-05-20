@@ -1,0 +1,48 @@
+{
+  "user": {
+    "subjectKind": "user",
+    "metaType": "member",
+    "directoryAlias": "eridotdev_gmail.com#EXT#",
+    "domain": "24eb9212-0a9d-4c91-8771-07b003999688",
+    "principalName": "eridotdev@gmail.com",
+    "mailAddress": "eridotdev@gmail.com",
+    "origin": "aad",
+    "originId": "4fcde711-b718-481f-af3f-de4c1b0bdd4b",
+    "displayName": "Eri Adeodu",
+    "_links": {
+      "self": {
+        "href": "https://vssps.dev.azure.com/eridotdev/_apis/Graph/Users/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ1"
+      },
+      "memberships": {
+        "href": "https://vssps.dev.azure.com/eridotdev/_apis/Graph/Memberships/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ1"
+      },
+      "membershipState": {
+        "href": "https://vssps.dev.azure.com/eridotdev/_apis/Graph/MembershipStates/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ1"
+      },
+      "storageKey": {
+        "href": "https://vssps.dev.azure.com/eridotdev/_apis/Graph/StorageKeys/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ1"
+      },
+      "avatar": {
+        "href": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ1"
+      }
+    },
+    "url": "https://vssps.dev.azure.com/eridotdev/_apis/Graph/Users/aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ1",
+    "descriptor": "aad.YmIwYWViMWEtNDcyYi03ZDU3LTkzOTMtODBlNzhiZmJhYmQ1"
+  },
+  "extensions": [],
+  "id": "bb0aeb1a-472b-6d57-9393-80e78bfbabd5",
+  "accessLevel": {
+    "licensingSource": "account",
+    "accountLicenseType": "express",
+    "msdnLicenseType": "none",
+    "gitHubLicenseType": "none",
+    "licenseDisplayName": "Basic",
+    "status": "active",
+    "statusMessage": "",
+    "assignmentSource": "unknown"
+  },
+  "lastAccessedDate": "2026-04-02T05:51:41.0879405Z",
+  "dateCreated": "2026-03-31T09:33:34.1786342Z",
+  "projectEntitlements": [],
+  "groupAssignments": []
+}

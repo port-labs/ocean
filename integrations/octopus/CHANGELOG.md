@@ -7,6 +7,377 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.2.86 (2026-05-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+# Port_Ocean 0.2.85 (2026-05-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+# Port_Ocean 0.2.84 (2026-05-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+# Port_Ocean 0.2.83 (2026-05-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+# Port_Ocean 0.2.82 (2026-05-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+# Port_Ocean 0.2.81 (2026-05-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+# Port_Ocean 0.2.80 (2026-05-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+# Port_Ocean 0.2.79 (2026-05-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+# Port_Ocean 0.2.78 (2026-05-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+# Port_Ocean 0.2.77 (2026-05-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+# Port_Ocean 0.2.76 (2026-04-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+# Port_Ocean 0.2.75 (2026-04-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+# Port_Ocean 0.2.74 (2026-04-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+# Port_Ocean 0.2.73 (2026-04-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+# Port_Ocean 0.2.72 (2026-04-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+# Port_Ocean 0.2.71 (2026-04-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+# Port_Ocean 0.2.70 (2026-04-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+# Port_Ocean 0.2.69 (2026-04-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+# Port_Ocean 0.2.68 (2026-04-20)
+
+### Improvements
+
+- Added Literal kind definitions to `OctopusPortAppConfig` for schema validation compliance
+
+
+# Port_Ocean 0.2.67 (2026-04-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+# Port_Ocean 0.2.66 (2026-04-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+# Port_Ocean 0.2.65 (2026-04-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+# Port_Ocean 0.2.64 (2026-04-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+# Port_Ocean 0.2.63 (2026-04-08)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+# Port_Ocean 0.2.62 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+# Port_Ocean 0.2.61 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+# Port_Ocean 0.2.60 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+# Port_Ocean 0.2.59 (2026-04-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+# Port_Ocean 0.2.58 (2026-04-05)
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+# Port_Ocean 0.2.57 (2026-03-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+# Port_Ocean 0.2.56 (2026-03-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+# Port_Ocean 0.2.55 (2026-03-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+# Port_Ocean 0.2.54 (2026-03-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+# Port_Ocean 0.2.53 (2026-03-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+# Port_Ocean 0.2.52 (2026-03-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.20
+
+
+# Port_Ocean 0.2.51 (2026-03-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.19
+
+
+# Port_Ocean 0.2.50 (2026-03-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.18
+
+
+# Port_Ocean 0.2.49 (2026-03-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.17
+
+
+# Port_Ocean 0.2.48 (2026-03-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.16
+
+
+# Port_Ocean 0.2.47 (2026-03-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.14
+
+
+# Port_Ocean 0.2.46 (2026-03-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.12
+
+
+# Port_Ocean 0.2.45 (2026-03-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.11
+
+
+# Port_Ocean 0.2.44 (2026-03-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.10
+
+
+# Port_Ocean 0.2.43 (2026-03-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.9
+
+
+# Port_Ocean 0.2.42 (2026-03-08)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.7
+
+
+# Port_Ocean 0.2.41 (2026-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.6
+
+
+# Port_Ocean 0.2.40 (2026-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.5
+
+
+# Port_Ocean 0.2.39 (2026-03-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.4
+
+
+# Port_Ocean 0.2.38 (2026-03-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.3
+
+
+# Port_Ocean 0.2.37 (2026-03-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.2
+
+
+# Port_Ocean 0.2.36 (2026-02-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.1
+
+
+# Port_Ocean 0.2.35 (2026-02-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.38.0
+
+
+# Port_Ocean 0.2.34 (2026-02-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
 # Port_Ocean 0.2.33 (2026-02-24)
 
 ### Improvements

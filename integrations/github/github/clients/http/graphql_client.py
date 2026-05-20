@@ -1,5 +1,6 @@
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
+import httpx
 from loguru import logger
 
 from github.clients.http.base_client import AbstractGithubClient
@@ -22,6 +23,7 @@ class GithubGraphQLClient(AbstractGithubClient):
     ) -> None:
         super().__init__(github_host=github_host, authenticator=authenticator, **kwargs)
         self._graphql_url = self._compute_graphql_base_url(self.github_host)
+        self._graphql_client: Optional[httpx.AsyncClient] = None
 
     def _compute_graphql_base_url(self, github_host: str) -> str:
         parsed = urlparse(github_host.rstrip("/"))
@@ -29,6 +31,12 @@ class GithubGraphQLClient(AbstractGithubClient):
         return urlunparse(
             parsed._replace(path=graphql_path, params="", query="", fragment="")
         )
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        if self._graphql_client is None:
+            self._graphql_client = self.authenticator._make_client(frozenset({"POST"}))
+        return self._graphql_client
 
     @property
     def base_url(self) -> str:
@@ -45,6 +53,8 @@ class GithubGraphQLClient(AbstractGithubClient):
         self,
         response: Dict[str, Any],
         ignored_errors: Optional[List[IgnoredError]] = None,
+        query_path: Optional[str] = None,
+        query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         if "errors" not in response:
             return response
@@ -64,6 +74,9 @@ class GithubGraphQLClient(AbstractGithubClient):
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
 
         if non_ignored_exceptions:
+            logger.error(
+                f"[GraphQL] Query failed for path {query_path} with variables {query_params}"
+            )
             raise GraphQLErrorGroup(non_ignored_exceptions)
 
         return {}
@@ -77,6 +90,8 @@ class GithubGraphQLClient(AbstractGithubClient):
         ignored_errors: Optional[List[IgnoredError]] = None,
         ignore_default_errors: bool = True,
         authenticator_headers_params: Optional[Dict[str, Any]] = {},
+        query_path: Optional[str] = None,
+        query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         response = await super().send_api_request(
             resource=resource,
@@ -86,7 +101,9 @@ class GithubGraphQLClient(AbstractGithubClient):
             ignored_errors=ignored_errors,
             authenticator_headers_params=authenticator_headers_params,
         )
-        response = self._handle_graphql_errors(response, ignored_errors)
+        response = self._handle_graphql_errors(
+            response, ignored_errors, query_path=query_path, query_params=query_params
+        )
         return response
 
     def build_graphql_payload(
@@ -119,7 +136,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             )
 
         cursor = None
-        logger.info(f"Starting GraphQL pagination for query with path {path}")
+        logger.info(f"[GraphQL] Starting pagination for query with path {path}")
 
         while True:
             payload = self.build_graphql_payload(resource, params, cursor=cursor)
@@ -128,6 +145,8 @@ class GithubGraphQLClient(AbstractGithubClient):
                 method=method,
                 json_data=payload,
                 ignored_errors=ignored_errors,
+                query_path=path,
+                query_params=params,
             )
             if not response:
                 break
@@ -143,7 +162,7 @@ class GithubGraphQLClient(AbstractGithubClient):
                 break
 
             cursor = page_info.get("endCursor")
-            logger.debug(f"Next page cursor: {cursor}")
+            logger.debug(f"[GraphQL] Next page cursor: {cursor}")
 
     def _extract_nodes(
         self, data: Dict[str, Any], path: str, node_key: str = "nodes"
