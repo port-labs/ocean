@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -49,7 +49,7 @@ class AzureResourceGraphSelector(Selector):
 
     class Config:
         @staticmethod
-        def schema_extra(schema: dict, model: type) -> None:
+        def schema_extra(schema: dict[Any, Any], model: type) -> None:
             props = schema.get("properties", {})
             if "subscription" in props:
                 props["subscription"]["default"] = {
