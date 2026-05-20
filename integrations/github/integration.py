@@ -343,6 +343,16 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "This option will be ignored if the api selector is set to rest."
         ),
     )
+    exclude_graphql_fields: list[str] = Field(
+        title="Exclude GraphQL Fields",
+        alias="excludeGraphqlFields",
+        default_factory=list,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, fields specified in this list will be omitted from the query. "
+            "This is useful as a workaround for GitHub GraphQL instability or to reduce rate limit cost. "
+            "This option will be ignored if the api selector is set to rest."
+        ),
+    )
 
     @property
     def updated_after(self) -> datetime:

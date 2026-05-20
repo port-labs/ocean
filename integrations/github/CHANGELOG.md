@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.1 (2026-05-20)
+
+
+### Improvements
+
+- Added `labeled` and `unlabeled` to the supported `pull_request` webhook actions so PR label changes are processed in real time.
+
+
+## 5.5.0 (2026-05-19)
+
+
+### Bug Fixes
+
+- Added `excludeGraphqlFields` selector for PR GraphQL queries to omit problematic fields (e.g. `additions`, `deletions`, `changedFiles`) as a workaround for GitHub GraphQL query failures.
+
+
+## 5.4.16 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 5.4.15 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
 ## 5.4.14 (2026-05-17)
 
 
