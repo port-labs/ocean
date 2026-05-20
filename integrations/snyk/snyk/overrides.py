@@ -240,12 +240,47 @@ class ProjectResourceConfig(ResourceConfig):
     )
 
 
+class SnykTargetAPIQueryParams(GenerateQueryParamMixin):
+    exclude_empty: Optional[bool] = Field(
+        default=None,
+        title="Exclude Empty",
+        description="When false, returns all targets including those with no associated projects. When true, returns only targets with at least one project.",
+    )
+    is_private: Optional[bool] = Field(
+        default=None,
+        title="Is Private",
+        description="Return targets that match the provided value of is_private.",
+    )
+    url: Optional[str] = Field(
+        default=None,
+        title="URL",
+        description="Return targets that match the provided remote URL.",
+    )
+    display_name: Optional[str] = Field(
+        default=None,
+        title="Display Name",
+        description="Return targets with display names starting with the provided string.",
+    )
+    created_gte: Optional[str] = Field(
+        default=None,
+        title="Created At or After",
+        description="Return only targets created at or after the specified date. Must be RFC3339 with timezone (e.g. 2022-01-01T16:00:00Z).",
+        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
+    )
+
+
 class TargetSelector(Selector):
     attach_project_data: bool = Field(
         default=True,
         alias="attachProjectData",
         title="Attach Project Data",
         description="Whether to attach project data to the target during ingestion.",
+    )
+    api_query_params: Optional[SnykTargetAPIQueryParams] = Field(
+        alias="apiQueryParams",
+        default=None,
+        title="API Query Params",
+        description="Snyk target API query params. For more information see the <a href='https://docs.snyk.io/snyk-api/reference/targets#get-orgs-org_id-targets' target='_blank'>Snyk API docs</a>.",
     )
 
 
