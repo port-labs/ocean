@@ -39,7 +39,6 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
-        extensions: Optional[dict[str, Any]] = None,
     ) -> Response | None:
         self._client.auth = BasicAuth("", self._personal_access_token)
         self._client.follow_redirects = True
@@ -52,7 +51,6 @@ class HTTPBaseClient:
                     data=data,
                     params=params,
                     headers=headers,
-                    extensions=extensions,
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
