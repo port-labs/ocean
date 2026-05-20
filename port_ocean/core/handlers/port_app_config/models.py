@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 from port_ocean.clients.port.types import RequestOptions
 
-
 CUSTOM_KIND = "__custom__"
 
 

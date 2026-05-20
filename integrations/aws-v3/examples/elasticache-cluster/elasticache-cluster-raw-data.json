@@ -1,0 +1,54 @@
+{
+  "Type": "AWS::ElastiCache::Cluster",
+  "Properties": {
+    "CacheClusterId": "my-cluster",
+    "ARN": "arn:aws:elasticache:eu-west-1:123456789012:cluster:my-cluster",
+    "ClientDownloadLandingPage": "https://console.aws.amazon.com/elasticache/home#client-download:",
+    "CacheNodeType": "cache.t4g.micro",
+    "Engine": "redis",
+    "EngineVersion": "7.1.0",
+    "CacheClusterStatus": "available",
+    "NumCacheNodes": 1,
+    "PreferredAvailabilityZone": "eu-west-1b",
+    "CacheClusterCreateTime": "2025-04-16T17:42:04.653000+00:00",
+    "PreferredMaintenanceWindow": "sun:04:30-sun:05:30",
+    "PendingModifiedValues": {},
+    "CacheSecurityGroups": [],
+    "CacheParameterGroup": {
+      "CacheParameterGroupName": "default.redis7",
+      "ParameterApplyStatus": "in-sync",
+      "CacheNodeIdsToReboot": []
+    },
+    "CacheSubnetGroupName": "default",
+    "CacheNodes": [
+      {
+        "CacheNodeId": "0001",
+        "CacheNodeStatus": "available",
+        "CacheNodeCreateTime": "2025-04-16T17:42:04.653000+00:00",
+        "Endpoint": {
+          "Address": "my-cluster.xxxxxx.0001.euw1.cache.amazonaws.com",
+          "Port": 6379
+        },
+        "ParameterGroupStatus": "in-sync",
+        "CustomerAvailabilityZone": "eu-west-1b"
+      }
+    ],
+    "AutoMinorVersionUpgrade": true,
+    "SecurityGroups": [],
+    "ReplicationGroupId": null,
+    "SnapshotRetentionLimit": 0,
+    "SnapshotWindow": "02:30-03:30",
+    "AuthTokenEnabled": false,
+    "TransitEncryptionEnabled": false,
+    "AtRestEncryptionEnabled": false,
+    "ReplicationGroupLogDeliveryEnabled": false,
+    "LogDeliveryConfigurations": [],
+    "NetworkType": "ipv4",
+    "IpDiscovery": "ipv4",
+    "TagList": []
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
+  }
+}

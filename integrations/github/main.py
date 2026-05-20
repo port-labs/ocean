@@ -80,6 +80,7 @@ from github.helpers.utils import (
     ObjectKind,
     GithubClientType,
     enrich_user_with_primary_email,
+    tag_batch_with_org,
 )
 
 from integration import (
@@ -117,6 +118,7 @@ MAX_CONCURRENT_REPOS = 10
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
     github_host = ocean.integration_config["github_host"]
     webhook_secret = ocean.integration_config["webhook_secret"]
+    skip_patching = ocean.integration_config["skip_webhook_patching"]
     authenticator = GitHubAuthenticatorFactory.create(
         github_host=github_host,
         organization=org_name,
@@ -130,6 +132,7 @@ async def _create_webhooks_for_organization(org_name: str, base_url: str) -> Non
         authenticator=authenticator,
         organization=org_name,
         webhook_secret=webhook_secret,
+        skip_patching=skip_patching,
     )
 
     logger.info(f"Subscribing to GitHub webhooks for organization: {org_name}")
@@ -279,24 +282,29 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for org in organizations:
             if org["type"] == "Organization":
                 org_name = org["login"]
-                exporter: AbstractGithubExporter[Any]
-
-                if selector.members:
-                    exporter = GraphQLTeamWithMembersExporter(graphql_client)
-                else:
-                    exporter = RestTeamExporter(rest_client)
+                rest_exporter = RestTeamExporter(rest_client)
 
                 tasks.append(
-                    exporter.get_paginated_resources(
-                        ListTeamOptions(
-                            organization=org_name,
-                            include_saml_email=selector.include_saml_email,
-                        )
+                    tag_batch_with_org(
+                        org_name,
+                        rest_exporter.get_paginated_resources(
+                            ListTeamOptions(organization=org_name)
+                        ),
                     )
                 )
 
         if tasks:
-            async for teams in stream_async_iterators_tasks(*tasks):
+            async for org_name, teams in stream_async_iterators_tasks(*tasks):
+                if selector.members:
+                    graphql_exporter = GraphQLTeamWithMembersExporter(graphql_client)
+                    teams = await graphql_exporter._enrich_team_with_extras(
+                        teams,
+                        ListTeamOptions(
+                            organization=org_name,
+                            include_saml_email=selector.include_saml_email,
+                        ),
+                    )
+
                 yield teams
 
 
@@ -442,6 +450,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 updated_after=config.selector.updated_after,
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
+                                exclude_graphql_fields=config.selector.exclude_graphql_fields,
                             )
                         )
                     )
