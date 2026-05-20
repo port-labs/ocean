@@ -23,6 +23,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "teams": "_enrich_repository_with_teams",
         "sbom": "_enrich_repository_with_sbom",
         "custom_properties": "_enrich_repository_with_custom_properties",
+        "pages": "_enrich_repository_with_pages",
     }
 
     async def get_resource[
@@ -271,4 +272,21 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             return repository
 
         repository["__sbom"] = response.get("sbom", {})
+        return repository
+
+    async def _enrich_repository_with_pages(
+        self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
+    ) -> RAW_ITEM:
+        repo_name = repository["name"]
+
+        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/pages"
+        response = await self.client.send_api_request(url)
+        if not response:
+            logger.debug(
+                f"Skipping GitHub Pages enrichment for repository {repo_name} in organization {organization}: empty response"
+            )
+            repository["__pages"] = {}
+            return repository
+
+        repository["__pages"] = response
         return repository
