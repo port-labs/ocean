@@ -137,10 +137,7 @@ async def on_resync_worklogs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         worklog_streams = [
             client.get_paginated_worklogs_for_issue(
                 issue["key"],
-                max_results=selector.max_results,
-                started_after=selector.started_after,
-                started_before=selector.started_before,
-                expand=selector.expand,
+                api_params=selector.api_query_params,
             )
             for issue in issue_batch
         ]

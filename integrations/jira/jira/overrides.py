@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import Field, validator
+from pydantic import Field, validator, BaseModel
 
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -125,6 +125,32 @@ class JiraBoardResourceConfig(ResourceConfig):
     )
 
 
+class JiraWorklogAPIQueryParams(BaseModel):
+    class Config:
+        allow_population_by_field_name = True
+
+    started_after: int | None = Field(
+        alias="startedAfter",
+        default=None,
+        title="Started After",
+        description="UNIX timestamp in milliseconds. Only return worklogs started after this time.",
+    )
+    started_before: int | None = Field(
+        alias="startedBefore",
+        default=None,
+        title="Started Before",
+        description="UNIX timestamp in milliseconds. Only return worklogs started before this time.",
+    )
+    expand: str | None = Field(
+        default=None,
+        title="Expand",
+        description=(
+            "Include additional worklog data in the response. "
+            "Accepts 'properties' to return custom worklog properties attached to each worklog entry. "
+        ),
+    )
+
+
 class JiraWorklogSelector(Selector):
     jql: str = Field(
         default="updated >= -1w",
@@ -135,37 +161,11 @@ class JiraWorklogSelector(Selector):
             "re-fetching all worklogs on every resync."
         ),
     )
-    max_results: int = Field(
-        alias="maxResults",
-        default=5000,
-        title="Max Results",
-        description="The maximum number of items to return per page.",
-    )
-    started_after: int | None = Field(
-        alias="startedAfter",
+    api_query_params: JiraWorklogAPIQueryParams | None = Field(
+        alias="apiQueryParams",
         default=None,
-        title="Started After",
-        description=(
-            "UNIX timestamp in milliseconds. "
-            "Only return worklogs started after this time."
-        ),
-    )
-    started_before: int | None = Field(
-        alias="startedBefore",
-        default=None,
-        title="Started Before",
-        description=(
-            "UNIX timestamp in milliseconds. "
-            "Only return worklogs started before this time."
-        ),
-    )
-    expand: str | None = Field(
-        default=None,
-        title="Expand",
-        description=(
-            "Use expand to include additional information about worklogs in the response. "
-            "Accepts 'properties', which returns worklog properties."
-        ),
+        title="API Query Params",
+        description="Additional query parameters for the worklog API.",
     )
 
 

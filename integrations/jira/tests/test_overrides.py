@@ -246,10 +246,7 @@ def test_jira_worklog_selector_defaults_are_correct() -> None:
     selector = config.resources[0].selector
     assert isinstance(selector, JiraWorklogSelector)
     assert selector.jql == "updated >= -1w"
-    assert selector.max_results == 5000
-    assert selector.started_after is None
-    assert selector.started_before is None
-    assert selector.expand is None
+    assert selector.api_query_params is None
 
 
 def test_jira_worklog_selector_custom_jql() -> None:
@@ -268,36 +265,25 @@ def test_jira_worklog_selector_custom_jql() -> None:
     assert config.resources[0].selector.jql == "project = TEST"
 
 
-def test_jira_worklog_selector_custom_max_results() -> None:
-    config = JiraPortAppConfig.parse_obj(
-        {
-            "resources": [
-                {
-                    "kind": "worklog",
-                    "selector": {"query": "true", "maxResults": 100},
-                    "port": WORKLOG_MAPPING,
-                }
-            ]
-        }
-    )
-    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
-    assert config.resources[0].selector.max_results == 100
-
-
 def test_jira_worklog_selector_started_after_filter() -> None:
     config = JiraPortAppConfig.parse_obj(
         {
             "resources": [
                 {
                     "kind": "worklog",
-                    "selector": {"query": "true", "startedAfter": 1700000000000},
+                    "selector": {
+                        "query": "true",
+                        "apiQueryParams": {"startedAfter": 1700000000000},
+                    },
                     "port": WORKLOG_MAPPING,
                 }
             ]
         }
     )
     assert isinstance(config.resources[0], JiraWorklogResourceConfig)
-    assert config.resources[0].selector.started_after == 1700000000000
+    selector = config.resources[0].selector
+    assert selector.api_query_params is not None
+    assert selector.api_query_params.started_after == 1700000000000
 
 
 def test_jira_worklog_selector_started_before_filter() -> None:
@@ -306,14 +292,19 @@ def test_jira_worklog_selector_started_before_filter() -> None:
             "resources": [
                 {
                     "kind": "worklog",
-                    "selector": {"query": "true", "startedBefore": 1800000000000},
+                    "selector": {
+                        "query": "true",
+                        "apiQueryParams": {"startedBefore": 1800000000000},
+                    },
                     "port": WORKLOG_MAPPING,
                 }
             ]
         }
     )
     assert isinstance(config.resources[0], JiraWorklogResourceConfig)
-    assert config.resources[0].selector.started_before == 1800000000000
+    selector = config.resources[0].selector
+    assert selector.api_query_params is not None
+    assert selector.api_query_params.started_before == 1800000000000
 
 
 def test_jira_worklog_selector_expand_properties() -> None:
@@ -322,14 +313,19 @@ def test_jira_worklog_selector_expand_properties() -> None:
             "resources": [
                 {
                     "kind": "worklog",
-                    "selector": {"query": "true", "expand": "properties"},
+                    "selector": {
+                        "query": "true",
+                        "apiQueryParams": {"expand": "properties"},
+                    },
                     "port": WORKLOG_MAPPING,
                 }
             ]
         }
     )
     assert isinstance(config.resources[0], JiraWorklogResourceConfig)
-    assert config.resources[0].selector.expand == "properties"
+    selector = config.resources[0].selector
+    assert selector.api_query_params is not None
+    assert selector.api_query_params.expand == "properties"
 
 
 def test_jira_worklog_selector_explicit_none_started_after_resolves_to_none() -> None:
@@ -338,14 +334,14 @@ def test_jira_worklog_selector_explicit_none_started_after_resolves_to_none() ->
             "resources": [
                 {
                     "kind": "worklog",
-                    "selector": {"query": "true", "startedAfter": None},
+                    "selector": {"query": "true"},
                     "port": WORKLOG_MAPPING,
                 }
             ]
         }
     )
     assert isinstance(config.resources[0], JiraWorklogResourceConfig)
-    assert config.resources[0].selector.started_after is None
+    assert config.resources[0].selector.api_query_params is None
 
 
 def test_jira_worklog_selector_explicit_none_started_before_resolves_to_none() -> None:
@@ -361,7 +357,7 @@ def test_jira_worklog_selector_explicit_none_started_before_resolves_to_none() -
         }
     )
     assert isinstance(config.resources[0], JiraWorklogResourceConfig)
-    assert config.resources[0].selector.started_before is None
+    assert config.resources[0].selector.api_query_params is None
 
 
 def test_jira_worklog_selector_explicit_none_expand_resolves_to_none() -> None:
@@ -370,14 +366,14 @@ def test_jira_worklog_selector_explicit_none_expand_resolves_to_none() -> None:
             "resources": [
                 {
                     "kind": "worklog",
-                    "selector": {"query": "true", "expand": None},
+                    "selector": {"query": "true"},
                     "port": WORKLOG_MAPPING,
                 }
             ]
         }
     )
     assert isinstance(config.resources[0], JiraWorklogResourceConfig)
-    assert config.resources[0].selector.expand is None
+    assert config.resources[0].selector.api_query_params is None
 
 
 def test_jira_worklog_selector_all_params_combined() -> None:
@@ -389,10 +385,11 @@ def test_jira_worklog_selector_all_params_combined() -> None:
                     "selector": {
                         "query": "true",
                         "jql": "project = TEST",
-                        "maxResults": 1000,
-                        "startedAfter": 1700000000000,
-                        "startedBefore": 1800000000000,
-                        "expand": "properties",
+                        "apiQueryParams": {
+                            "startedAfter": 1700000000000,
+                            "startedBefore": 1800000000000,
+                            "expand": "properties",
+                        },
                     },
                     "port": WORKLOG_MAPPING,
                 }
@@ -402,10 +399,10 @@ def test_jira_worklog_selector_all_params_combined() -> None:
     assert isinstance(config.resources[0], JiraWorklogResourceConfig)
     selector = config.resources[0].selector
     assert selector.jql == "project = TEST"
-    assert selector.max_results == 1000
-    assert selector.started_after == 1700000000000
-    assert selector.started_before == 1800000000000
-    assert selector.expand == "properties"
+    assert selector.api_query_params is not None
+    assert selector.api_query_params.started_after == 1700000000000
+    assert selector.api_query_params.started_before == 1800000000000
+    assert selector.api_query_params.expand == "properties"
 
 
 def test_jira_worklog_resource_config_is_distinct_from_board_config() -> None:

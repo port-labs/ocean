@@ -1,4 +1,5 @@
 from typing import Any
+from jira.overrides import JiraWorklogAPIQueryParams
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -1521,24 +1522,6 @@ async def test_get_paginated_worklogs_for_issue_calls_correct_url(
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_worklogs_for_issue_sends_max_results_to_api(
-    mock_jira_client: JiraClient,
-) -> None:
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
-
-        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
-            "TEST-1", max_results=100
-        ):
-            pass
-
-        sent_params = mock_request.call_args[1]["params"]
-        assert sent_params["maxResults"] == 100
-
-
-@pytest.mark.asyncio
 async def test_get_paginated_worklogs_for_issue_sends_started_after_when_provided(
     mock_jira_client: JiraClient,
 ) -> None:
@@ -1548,7 +1531,8 @@ async def test_get_paginated_worklogs_for_issue_sends_started_after_when_provide
         mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
 
         async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
-            "TEST-1", started_after=1700000000000
+            "TEST-1",
+            api_params=JiraWorklogAPIQueryParams(started_after=1700000000000),
         ):
             pass
 
@@ -1566,7 +1550,8 @@ async def test_get_paginated_worklogs_for_issue_sends_started_before_when_provid
         mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
 
         async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
-            "TEST-1", started_before=1800000000000
+            "TEST-1",
+            api_params=JiraWorklogAPIQueryParams(started_before=1800000000000),
         ):
             pass
 
@@ -1583,7 +1568,9 @@ async def test_get_paginated_worklogs_for_issue_omits_started_after_when_none(
     ) as mock_request:
         mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
 
-        async for _ in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1", api_params=None
+        ):
             pass
 
         sent_params = mock_request.call_args[1]["params"]
@@ -1599,7 +1586,9 @@ async def test_get_paginated_worklogs_for_issue_omits_started_before_when_none(
     ) as mock_request:
         mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
 
-        async for _ in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1", api_params=None
+        ):
             pass
 
         sent_params = mock_request.call_args[1]["params"]
@@ -1616,7 +1605,8 @@ async def test_get_paginated_worklogs_for_issue_sends_expand_when_provided(
         mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
 
         async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
-            "TEST-1", expand="properties"
+            "TEST-1",
+            api_params=JiraWorklogAPIQueryParams(expand="properties"),
         ):
             pass
 
@@ -1633,7 +1623,9 @@ async def test_get_paginated_worklogs_for_issue_omits_expand_when_none(
     ) as mock_request:
         mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
 
-        async for _ in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1", api_params=None
+        ):
             pass
 
         sent_params = mock_request.call_args[1]["params"]

@@ -7,6 +7,7 @@ import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
+from jira.overrides import JiraWorklogAPIQueryParams
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -685,21 +686,19 @@ class JiraClient(OAuthClient):
     async def get_paginated_worklogs_for_issue(
         self,
         issue_key: str,
-        max_results: int = 5000,
-        started_after: int | None = None,
-        started_before: int | None = None,
-        expand: str | None = None,
+        api_params: JiraWorklogAPIQueryParams | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch worklogs for a single issue."""
         url = f"{self.api_url}/issue/{issue_key}/worklog"
-        query_params: dict[str, Any] = {"maxResults": max_results}
 
-        if started_after is not None:
-            query_params["startedAfter"] = started_after
-        if started_before is not None:
-            query_params["startedBefore"] = started_before
-        if expand:
-            query_params["expand"] = expand
+        query_params: dict[str, Any] = {}
+        if api_params:
+            if api_params.started_after is not None:
+                query_params["startedAfter"] = api_params.started_after
+            if api_params.started_before is not None:
+                query_params["startedBefore"] = api_params.started_before
+            if api_params.expand:
+                query_params["expand"] = api_params.expand
 
         async for batch in self._get_paginated_data(
             url, "worklogs", initial_params=query_params
