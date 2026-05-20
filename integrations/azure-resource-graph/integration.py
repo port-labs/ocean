@@ -30,7 +30,7 @@ class AzureSubscriptionParams(BaseModel):
 class AzureResourceGraphSelector(Selector):
     graph_query: str = Field(
         ...,
-        title="Graph Query",
+        title="Kusto Graph Query",
         alias="graphQuery",
         description="Use this to map Azure Resource Graph data by setting the table name to a supported <a target='_blank' href='https://learn.microsoft.com/en-us/azure/governance/resource-graph/reference/supported-tables-resources'>Azure Resource Graph table</a>",
     )
@@ -98,9 +98,7 @@ class AzurePortAppConfig(PortAppConfig):
         AzureResourceGraphConfig
         | AzureResourceContainerConfig
         | AzureSubscriptionResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class AzureResourceGraphIntegration(BaseIntegration):
