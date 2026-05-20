@@ -20,7 +20,7 @@ class SLOHistorySelector(Selector):
     )
     period_of_time_in_months: int = Field(
         alias="periodOfTimeInMonths",
-        default=6,
+        default=12,
         title="Period of Time in Months",
         description="How far back in time to fetch SLO history (1-12 months).",
         ge=1,
