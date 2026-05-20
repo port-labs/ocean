@@ -18,6 +18,7 @@ class ResyncStateUpdater:
         # So that the polling event-listener can decide whether to perform a full resync or not
         # TODO: remove this once we separate the state from the integration
         self.last_integration_state_updated_at: str = ""
+        self.last_resync_request_updated_at: str | None = None
 
     def _calculate_next_scheduled_resync(
         self,
