@@ -38,7 +38,7 @@ class AWSResourceSelector(Selector):
         max_items=3,
         title="Include Actions",
         description="Additional AWS resource types to include when fetching resources (max 3). "
-        'Example: ["AWS::Organizations::Policy", "AWS::Organizations::DelegatedAdministrator"].',
+        'Example: ["AWS::EC2::Instance", "AWS::ECS::Cluster"].',
     )
     max_concurrent_accounts: int = Field(
         alias="maxConcurrentAccounts",
