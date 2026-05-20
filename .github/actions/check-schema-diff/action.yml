@@ -94,6 +94,83 @@ runs:
         DIFF_EXIT_CODE=$?
         set -e
 
+        CUSTOM_DIFF_OUTPUT=$(python3 - "$integration_type.base.json" "$integration_type.revision.json" <<'PY'
+        import json
+        import sys
+        from collections.abc import Iterator
+        from typing import Any
+
+        base_path, revision_path = sys.argv[1], sys.argv[2]
+
+        with open(base_path, encoding="utf-8") as base_file:
+            base_schema = json.load(base_file)
+
+        with open(revision_path, encoding="utf-8") as revision_file:
+            revision_schema = json.load(revision_file)
+
+        JsonPath = tuple[str | int, ...]
+
+        def iter_object_schemas(node: Any, path: JsonPath = ()) -> Iterator[tuple[JsonPath, dict[str, Any]]]:
+            if isinstance(node, dict):
+                if isinstance(node.get("properties"), dict):
+                    yield path, node
+
+                for key, value in node.items():
+                    if isinstance(value, (dict, list)):
+                        yield from iter_object_schemas(value, (*path, key))
+            elif isinstance(node, list):
+                for index, value in enumerate(node):
+                    if isinstance(value, (dict, list)):
+                        yield from iter_object_schemas(value, (*path, index))
+
+        def format_path(path: JsonPath) -> str:
+            result = "$"
+            for part in path:
+                if isinstance(part, int):
+                    result += f"[{part}]"
+                elif part.isidentifier():
+                    result += f".{part}"
+                else:
+                    result += f"[{part!r}]"
+            return result
+
+        base_objects = dict(iter_object_schemas(base_schema))
+        revision_objects = dict(iter_object_schemas(revision_schema))
+
+        for path in sorted(base_objects.keys() & revision_objects.keys(), key=format_path):
+            base_object = base_objects[path]
+            revision_object = revision_objects[path]
+
+            base_properties = set(base_object.get("properties", {}))
+            revision_properties = set(revision_object.get("properties", {}))
+
+            for property_name in sorted(base_properties - revision_properties):
+                print(json.dumps({
+                    "path": format_path((*path, "properties", property_name)),
+                    "change": {"PropertyRemove": {"removed": property_name}},
+                    "is_breaking": True,
+                }))
+
+            base_required = set(base_object.get("required", []))
+            revision_required = set(revision_object.get("required", []))
+
+            for property_name in sorted(revision_required - base_required):
+                print(json.dumps({
+                    "path": format_path((*path, "required", property_name)),
+                    "change": {"RequiredAdd": {"added": property_name}},
+                    "is_breaking": True,
+                }))
+        PY
+        )
+
+        if [ -n "$CUSTOM_DIFF_OUTPUT" ]; then
+          if [ -n "$DIFF_OUTPUT" ]; then
+            DIFF_OUTPUT="${DIFF_OUTPUT}"$'\n'"${CUSTOM_DIFF_OUTPUT}"
+          else
+            DIFF_OUTPUT="$CUSTOM_DIFF_OUTPUT"
+          fi
+        fi
+
         COMMENT_MARKER="<!-- port-app-config-schema-diff:${integration_type} -->"
         COMMENT_FILE="/tmp/schema-diff-comment-${integration_type}.md"
 
