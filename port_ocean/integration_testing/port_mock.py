@@ -1,4 +1,5 @@
 import json as json_lib
+import re
 from typing import Any
 from urllib.parse import unquote_plus
 
@@ -123,6 +124,13 @@ class PortMockResponder:
             "POST",
             "/syncMetrics",
             {"json": {"ok": True}},
+        )
+
+        # Resync request (integ-service)
+        self.transport.add_route(
+            "GET",
+            re.compile(r"/integration/[^/]+/resync-request"),
+            {"json": {"request": {}}},
         )
 
         # Blueprint get/patch — generic catch-all for blueprints

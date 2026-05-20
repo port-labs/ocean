@@ -7,6 +7,142 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.0 (2026-05-19)
+
+
+### Bug Fixes
+
+- Added `excludeGraphqlFields` selector for PR GraphQL queries to omit problematic fields (e.g. `additions`, `deletions`, `changedFiles`) as a workaround for GitHub GraphQL query failures.
+
+
+## 5.4.16 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 5.4.15 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 5.4.14 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 5.4.13 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 5.4.12 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 5.4.11 (2026-05-17)
+
+
+### Bug Fixes
+
+- Fixed workflow push webhook processing to detect removed workflow files and propagate workflow deletions.
+
+
+## 5.4.10 (2026-05-14)
+
+
+### Bug Fixes
+
+- Prevent team resync from crashing when GraphQL returns `organization.team` as null for enterprise teams; log and skip the team instead.
+
+
+## 5.4.9 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 5.4.8 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 5.4.7 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 5.4.6 (2026-05-13)
+
+
+### Improvements
+
+- Cached recursive git tree retrieval in file exporter to reduce repeated API calls per repo/branch during file matching.
+
+
+## 5.4.5 (2026-05-12)
+
+
+### Bug Fixes
+
+- Prevented resync failures when `includedFiles` targets a path that is not a regular file (e.g. symlink/submodule) or when the GitHub Contents API response is missing `content`/`encoding`.
+
+
+## 5.4.4 (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+## 5.4.3 (2026-05-12)
+
+
+### Bug Fixes
+
+- Added opt-in `customProperties` selector under `includedRelations` to enrich repositories with organization custom property values via the properties/values API.
+
+
+## 5.4.2 (2026-05-11)
+
+
+### Bug Fixes
+
+- Fix repo search query in live-events
+
+
+## 5.4.1 (2026-05-10)
+
+
+### Improvements
+
+- Enriched GitHub team export and team webhook upsert payloads with organization context, and consolidated GraphQL team-member enrichment.
+
+
 ## 5.4.0 (2026-05-07)
 
 
