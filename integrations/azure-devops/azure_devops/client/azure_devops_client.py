@@ -344,12 +344,14 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return base_url
 
-    async def generate_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_users(
+        self, additional_params: dict[str, str] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         users_url = (
             self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
         )
         async for users in self._get_paginated_by_top_and_continuation_token(
-            users_url, data_key="items"
+            users_url, data_key="items", additional_params=additional_params or {}
         ):
             yield users
 
@@ -1631,8 +1633,8 @@ class AzureDevopsClient(HTTPBaseClient):
             ]
         }
 
-        timeout_retries = 0
-        while timeout_retries <= MAX_TIMEMOUT_RETRIES:
+        transient_retries = 0
+        while transient_retries <= MAX_TIMEMOUT_RETRIES:
             try:
                 response = await self.send_request(
                     "POST",
@@ -1641,7 +1643,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     data=json.dumps(request_data),
                     headers={"Content-Type": "application/json"},
                 )
-                if not response or response.status_code >= 400:
+                if not response:
                     logger.warning(f"Failed to fetch items from {items_batch_url}")
                     return []
 
@@ -1653,13 +1655,13 @@ class AzureDevopsClient(HTTPBaseClient):
                 ]
 
             except ReadTimeout:
-                timeout_retries += 1
-                if timeout_retries <= MAX_TIMEMOUT_RETRIES:
+                transient_retries += 1
+                if transient_retries <= MAX_TIMEMOUT_RETRIES:
                     logger.warning(
                         f"Request timeout while fetching items for repository {repository['name']} "
-                        f"(attempt {timeout_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                        f"(attempt {transient_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
                     )
-                    await asyncio.sleep(2 ** (timeout_retries - 1))
+                    await asyncio.sleep(2 ** (transient_retries - 1))
                     continue
                 else:
                     logger.error(
@@ -1673,6 +1675,20 @@ class AzureDevopsClient(HTTPBaseClient):
                     )
 
             except HTTPStatusError as e:
+                if e.response.status_code == 503:
+                    transient_retries += 1
+                    if transient_retries <= MAX_TIMEMOUT_RETRIES:
+                        logger.warning(
+                            f"503 from itemsbatch for repository {repository['name']} "
+                            f"(attempt {transient_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                        )
+                        await asyncio.sleep(2 ** (transient_retries - 1))
+                        continue
+                    logger.error(
+                        f"Persistent 503 fetching items for repository {repository['name']} "
+                        f"after {MAX_TIMEMOUT_RETRIES + 1} attempts."
+                    )
+                    raise
                 logger.error(e.response.status_code)
                 logger.error(e.response.text)
                 if e.response.status_code == 400:
@@ -1680,8 +1696,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
                     )
                     return []
-                else:
-                    raise
+                raise
             except Exception as e:
                 logger.error(
                     f"Unexpected error processing files in {repository['name']}: {e}"
@@ -2066,7 +2081,7 @@ class AzureDevopsClient(HTTPBaseClient):
         coverage_config: Optional["CodeCoverageConfig"],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
-        params = {"includeRunDetails": True}
+        params = {"includeRunDetails": True, **API_PARAMS}
         async for runs in self._get_paginated_by_top_and_skip(url, params=params):
             yield await self._enrich_test_runs(
                 runs, project_id, include_results, coverage_config
@@ -2182,7 +2197,7 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Starting to fetch code coverage for project {project_id}, run id={build_id}, flags={coverage_config.flags}"
         )
 
-        params = {"buildId": build_id}
+        params: dict[str, Any] = {"buildId": build_id, **API_PARAMS}
         if coverage_config.flags is not None:
             params["flags"] = coverage_config.flags
 

@@ -89,6 +89,12 @@ class GitHubRepositoryRelationSelector(BaseModel):
         default=False,
         description="Include SBOM for the repository.",
     )
+    custom_properties: bool = Field(
+        title="Include Custom Properties",
+        alias="customProperties",
+        default=False,
+        description="Include organization custom property values for the repository.",
+    )
 
     class Config:
         extra = "forbid"
@@ -104,6 +110,9 @@ class GitHubRepositoryRelationSelector(BaseModel):
 
         if self.sbom:
             result["sbom"] = {"include": self.sbom}
+
+        if self.custom_properties:
+            result["custom_properties"] = {"include": self.custom_properties}
 
         return result
 
@@ -331,6 +340,16 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "When the api selector is set to graphql and this option is enabled, each pull request is enriched with the "
             "first commit on the branch (OID and committed timestamp in UTC). Use this to measure "
             "lead time from the initial commit through review and merge."
+            "This option will be ignored if the api selector is set to rest."
+        ),
+    )
+    exclude_graphql_fields: list[str] = Field(
+        title="Exclude GraphQL Fields",
+        alias="excludeGraphqlFields",
+        default_factory=list,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, fields specified in this list will be omitted from the query. "
+            "This is useful as a workaround for GitHub GraphQL instability or to reduce rate limit cost. "
             "This option will be ignored if the api selector is set to rest."
         ),
     )

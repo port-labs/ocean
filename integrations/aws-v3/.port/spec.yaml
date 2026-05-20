@@ -13,6 +13,7 @@ features:
       - kind: AWS::ECS::Cluster
       - kind: AWS::ECS::TaskDefinition
       - kind: AWS::ECR::Repository
+      - kind: AWS::MSK::Cluster
       - kind: AWS::EC2::Volume
 configurations:
   - name: credentialProviderPriority
@@ -61,7 +62,7 @@ installationDocs:
   saas:
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installations?installation-method=single-account#installation-methods
+      docs: build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installation/hosted-by-port/?installation-method=single-account
 saas:
   enabled: true
   liveEvents:

@@ -23,6 +23,18 @@ from port_ocean.utils.misc import get_spec_file, load_module
 _config_factory_cache: dict[str, Any] = {}
 
 
+def _flatten_exception_tree(exc: BaseException) -> list[Exception]:
+    """Return leaf exceptions from an ExceptionGroup (recursively) or a single error."""
+    if isinstance(exc, ExceptionGroup):
+        leaves: list[Exception] = []
+        for sub in exc.exceptions:
+            leaves.extend(_flatten_exception_tree(sub))
+        return leaves
+    if isinstance(exc, Exception):
+        return [exc]
+    return []
+
+
 @dataclass
 class ResyncResult:
     upserted_entities: list[dict[str, Any]] = field(default_factory=list)
@@ -232,8 +244,7 @@ class IntegrationTestHarness:
                 silent=False,
             )
         except ExceptionGroup as e:
-            # ExceptionGroup contains multiple errors - extract them
-            errors = list(e.exceptions) if hasattr(e, "exceptions") else [e]
+            errors = _flatten_exception_tree(e)
             logger.warning(f"Resync raised ExceptionGroup with {len(errors)} errors")
             return ResyncResult(
                 upserted_entities=list(self.port_mock.upserted_entities),
