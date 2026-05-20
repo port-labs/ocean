@@ -145,8 +145,10 @@ class JiraWorklogAPIQueryParams(BaseModel):
         default=None,
         title="Expand",
         description=(
-            "Include additional worklog data in the response. "
-            "Accepts 'properties' to return custom worklog properties attached to each worklog entry. "
+            "Include additional worklog data in the response using Jira's resource expansion. "
+            "Accepts a comma-separated list of properties to expand. "
+            "Example: 'properties' returns custom worklog properties attached to each entry. "
+            "See <a href='https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/#expansion' target='_blank'>Jira expansion docs</a>."
         ),
     )
 

@@ -18,6 +18,12 @@ PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 MAX_CONCURRENT_REQUESTS = 10
 
+WORKLOG_WEBHOOK_EVENTS = [
+    "worklog_created",
+    "worklog_updated",
+    "worklog_deleted",
+]
+
 WEBHOOK_EVENTS = [
     "jira:issue_created",
     "jira:issue_updated",
@@ -41,9 +47,7 @@ WEBHOOK_EVENTS = [
     "board_created",
     "board_updated",
     "board_deleted",
-    "worklog_created",
-    "worklog_updated",
-    "worklog_deleted",
+    *WORKLOG_WEBHOOK_EVENTS,
 ]
 
 OAUTH2_WEBHOOK_EVENTS = [
@@ -59,9 +63,7 @@ OAUTH2_WEBHOOK_EVENTS = [
     "board_created",
     "board_updated",
     "board_deleted",
-    "worklog_created",
-    "worklog_updated",
-    "worklog_deleted",
+    *WORKLOG_WEBHOOK_EVENTS,
 ]
 
 

@@ -5,17 +5,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from jira.client import WEBHOOK_EVENTS
+from jira.client import WORKLOG_WEBHOOK_EVENTS
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
 
 from initialize_client import get_or_create_jira_client
-
-
-WORKLOG_WEBHOOK_EVENTS = frozenset(
-    event for event in WEBHOOK_EVENTS if event.startswith("worklog_")
-)
 
 
 class WorklogWebhookProcessor(AbstractWebhookProcessor):
