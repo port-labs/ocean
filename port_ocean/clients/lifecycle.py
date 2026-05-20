@@ -14,6 +14,7 @@ def _truncate(text: str, max_len: int = 256) -> str:
 
 
 class GranularityType(Enum):
+    RESYNC = "RESYNC"
     KIND = "KIND"
     BATCH = "BATCH"
     LIVE_EVENT = "LIVE_EVENT"
@@ -90,6 +91,8 @@ class LifecycleClient:
             "started",
             integration_id=integration_id,
             integration_type=integration_type,
+            integration_version=__integration_version__,
+            ocean_version=__version__,
             started_at=started_at.isoformat(),
         )
         logger.info(
