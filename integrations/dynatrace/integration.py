@@ -31,7 +31,7 @@ class DynatraceEntitySelector(Selector):
         title="Entity Types",
         description=(
             "List of Dynatrace entity types to fetch. "
-            "See <a target='_blank' href='https://docs.dynatrace.com/docs/dynatrace-api/environment-api/entity-v2/get-entity-types'>"
+            "See <a target='_blank' href='https://docs.dynatrace.com/docs/dynatrace-api/environment-api/entity-v2/get-all-entity-types'>"
             "Dynatrace Entity Types API</a> for all available types."
         ),
         alias="entityTypes",

@@ -6,8 +6,10 @@ Tests verify the implementation of resync_start_time and event_type columns.
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
-from port_ocean.core.models import LakehouseEventType, LakehouseOperation
+
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
+from port_ocean.core.models import LakehouseEventType, LakehouseOperation
+from port_ocean.tests.helpers.lakehouse_batch import make_single_entry_lakehouse_batch
 
 
 class TestLakehouseEventTypeEnum:
@@ -37,7 +39,7 @@ class TestLakehouseEventTypeEnum:
 
 
 class TestPostIntegrationRawDataInputValidation:
-    """Test input validation in post_integration_raw_data"""
+    """Test input validation in post_integration_raw_data_batch"""
 
     @pytest.mark.asyncio
     async def test_empty_sync_id_raises_error(self) -> None:
@@ -49,13 +51,12 @@ class TestPostIntegrationRawDataInputValidation:
             client=MagicMock(),
         )
 
+        event = make_single_entry_lakehouse_batch(
+            [{"test": "data"}], kind="repository", index=0
+        )
+
         with pytest.raises(ValueError, match="sync_id cannot be empty"):
-            await mixin.post_integration_raw_data(
-                raw_data=[{"test": "data"}],
-                sync_id="",  # Empty - should fail
-                kind="repository",
-                index=0,
-            )
+            await mixin.post_integration_raw_data_batch("", event)
 
     @pytest.mark.asyncio
     async def test_empty_kind_raises_error(self) -> None:
@@ -67,13 +68,10 @@ class TestPostIntegrationRawDataInputValidation:
             client=MagicMock(),
         )
 
+        event = make_single_entry_lakehouse_batch([{"test": "data"}], kind="", index=0)
+
         with pytest.raises(ValueError, match="kind cannot be empty"):
-            await mixin.post_integration_raw_data(
-                raw_data=[{"test": "data"}],
-                sync_id="test-sync-123",
-                kind="",  # Empty - should fail
-                index=0,
-            )
+            await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
     @pytest.mark.asyncio
     async def test_future_resync_start_time_raises_error(self) -> None:
@@ -86,14 +84,15 @@ class TestPostIntegrationRawDataInputValidation:
         )
         future_time = datetime.now(timezone.utc) + timedelta(hours=1)
 
+        event = make_single_entry_lakehouse_batch(
+            [{"test": "data"}],
+            kind="repository",
+            index=0,
+            resync_start_time=future_time,
+        )
+
         with pytest.raises(ValueError, match="cannot be in the future"):
-            await mixin.post_integration_raw_data(
-                raw_data=[{"test": "data"}],
-                sync_id="test-sync-123",
-                kind="repository",
-                index=0,
-                resync_start_time=future_time,  # Future - should fail
-            )
+            await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
     @pytest.mark.asyncio
     async def test_past_resync_start_time_succeeds(self) -> None:
@@ -115,17 +114,18 @@ class TestPostIntegrationRawDataInputValidation:
         past_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
         # Should not raise
+        event = make_single_entry_lakehouse_batch(
+            [{"test": "data"}],
+            kind="repository",
+            index=0,
+            resync_start_time=past_time,
+            event_type=LakehouseEventType.RESYNC,
+        )
+
         with patch(
             "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
         ):
-            await mixin.post_integration_raw_data(
-                raw_data=[{"test": "data"}],
-                sync_id="test-sync-123",
-                kind="repository",
-                index=0,
-                resync_start_time=past_time,
-                event_type=LakehouseEventType.RESYNC,
-            )
+            await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
     @pytest.mark.asyncio
     async def test_timezone_naive_future_timestamp_raises_error(self) -> None:
@@ -141,14 +141,15 @@ class TestPostIntegrationRawDataInputValidation:
         # This tests that the code properly handles naive datetimes
         future_time_naive = datetime(2099, 12, 31, 23, 59, 59)
 
+        event = make_single_entry_lakehouse_batch(
+            [{"test": "data"}],
+            kind="repository",
+            index=0,
+            resync_start_time=future_time_naive,
+        )
+
         with pytest.raises(ValueError, match="cannot be in the future"):
-            await mixin.post_integration_raw_data(
-                raw_data=[{"test": "data"}],
-                sync_id="test-sync-123",
-                kind="repository",
-                index=0,
-                resync_start_time=future_time_naive,
-            )
+            await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
     @pytest.mark.asyncio
     async def test_timezone_naive_past_timestamp_succeeds(self) -> None:
@@ -172,21 +173,22 @@ class TestPostIntegrationRawDataInputValidation:
         past_time_naive = datetime(2020, 1, 1, 0, 0, 0)
 
         # Should not raise - naive datetime treated as UTC
+        event = make_single_entry_lakehouse_batch(
+            [{"test": "data"}],
+            kind="repository",
+            index=0,
+            resync_start_time=past_time_naive,
+            event_type=LakehouseEventType.RESYNC,
+        )
+
         with patch(
             "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
         ):
-            await mixin.post_integration_raw_data(
-                raw_data=[{"test": "data"}],
-                sync_id="test-sync-123",
-                kind="repository",
-                index=0,
-                resync_start_time=past_time_naive,
-                event_type=LakehouseEventType.RESYNC,
-            )
+            await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
 
 class TestPostIntegrationRawDataRequestBody:
-    """Test request body construction in post_integration_raw_data"""
+    """Test request body construction in post_integration_raw_data_batch"""
 
     @pytest.mark.asyncio
     async def test_request_body_with_resync_event_type(self) -> None:
@@ -207,19 +209,22 @@ class TestPostIntegrationRawDataRequestBody:
 
         resync_time = datetime(2024, 3, 29, 10, 0, 0, tzinfo=timezone.utc)
         raw_data = [{"name": "test-repo", "stars": 100}]
+        fixed_ts = 1711706400000
+
+        event = make_single_entry_lakehouse_batch(
+            raw_data,
+            kind="repository",
+            index=0,
+            operation=LakehouseOperation.UPSERT,
+            resync_start_time=resync_time,
+            event_type=LakehouseEventType.RESYNC,
+            extraction_timestamp=fixed_ts,
+        )
 
         with patch(
             "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
         ):
-            await mixin.post_integration_raw_data(
-                raw_data=raw_data,
-                sync_id="resync-abc-123",
-                kind="repository",
-                index=0,
-                operation=LakehouseOperation.UPSERT,
-                resync_start_time=resync_time,
-                event_type=LakehouseEventType.RESYNC,
-            )
+            await mixin.post_integration_raw_data_batch("resync-abc-123", event)
 
         # Verify the call was made
         assert mock_client.post.called
@@ -227,12 +232,17 @@ class TestPostIntegrationRawDataRequestBody:
 
         # Verify the request body
         request_body = call_args.kwargs["json"]
-        assert request_body["items"] == raw_data
-        assert request_body["operation"] == "upsert"
+        assert request_body["kind"] == "repository"
         assert request_body["eventType"] == "resync"
         assert request_body["resyncStartTime"] == resync_time.isoformat()
-        assert request_body["eventType"] == "resync"
-        assert "extractionTimestamp" in request_body
+        assert request_body["extractionTimestamp"] == fixed_ts
+        assert len(request_body["data"]) == 1
+        entry = request_body["data"][0]
+        assert entry["items"] == raw_data
+        assert entry["request"] == {}
+        assert entry["response"] == {}
+        assert entry["metadata"]["operation"] == "upsert"
+        assert "extractionTimestamp" in entry["metadata"]
 
     @pytest.mark.asyncio
     async def test_request_body_with_live_event_type(self) -> None:
@@ -253,19 +263,22 @@ class TestPostIntegrationRawDataRequestBody:
 
         webhook_time = datetime(2024, 3, 29, 10, 30, 0, tzinfo=timezone.utc)
         raw_data = [{"name": "updated-repo", "stars": 150}]
+        fixed_ts = 1711708200000
+
+        event = make_single_entry_lakehouse_batch(
+            raw_data,
+            kind="repository",
+            index=0,
+            operation=LakehouseOperation.UPSERT,
+            resync_start_time=webhook_time,
+            event_type=LakehouseEventType.LIVE_EVENT,
+            extraction_timestamp=fixed_ts,
+        )
 
         with patch(
             "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
         ):
-            await mixin.post_integration_raw_data(
-                raw_data=raw_data,
-                sync_id="webhook-xyz-789",
-                kind="repository",
-                index=0,
-                operation=LakehouseOperation.UPSERT,
-                resync_start_time=webhook_time,
-                event_type=LakehouseEventType.LIVE_EVENT,
-            )
+            await mixin.post_integration_raw_data_batch("webhook-xyz-789", event)
 
         # Verify the call was made
         assert mock_client.post.called
@@ -273,11 +286,16 @@ class TestPostIntegrationRawDataRequestBody:
 
         # Verify the request body
         request_body = call_args.kwargs["json"]
-        assert request_body["items"] == raw_data
-        assert request_body["operation"] == "upsert"
+        assert request_body["kind"] == "repository"
         assert request_body["eventType"] == "live-event"
         assert request_body["resyncStartTime"] == webhook_time.isoformat()
-        assert request_body["eventType"] == "live-event"
+        assert request_body["extractionTimestamp"] == fixed_ts
+        assert len(request_body["data"]) == 1
+        entry = request_body["data"][0]
+        assert entry["items"] == raw_data
+        assert entry["request"] == {}
+        assert entry["response"] == {}
+        assert entry["metadata"]["operation"] == "upsert"
 
     @pytest.mark.asyncio
     async def test_request_body_without_optional_params(self) -> None:
@@ -298,16 +316,16 @@ class TestPostIntegrationRawDataRequestBody:
 
         raw_data = [{"name": "test-repo"}]
 
+        event = make_single_entry_lakehouse_batch(
+            raw_data,
+            kind="repository",
+            index=0,
+        )
+
         with patch(
             "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
         ):
-            await mixin.post_integration_raw_data(
-                raw_data=raw_data,
-                sync_id="test-sync-123",
-                kind="repository",
-                index=0,
-                # No resync_start_time or event_type
-            )
+            await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
         # Verify the call was made
         assert mock_client.post.called
@@ -316,7 +334,15 @@ class TestPostIntegrationRawDataRequestBody:
         # Verify the request body does NOT include optional fields, but includes default eventType
         request_body = call_args.kwargs["json"]
         assert "resyncStartTime" not in request_body
+        assert "eventId" not in request_body
+        assert request_body["kind"] == "repository"
         assert request_body["eventType"] == "live-event"
+        assert isinstance(request_body["extractionTimestamp"], int)
+        assert len(request_body["data"]) == 1
+        entry = request_body["data"][0]
+        assert entry["items"] == raw_data
+        assert entry["request"] == {}
+        assert entry["response"] == {}
 
 
 class TestWebhookEventTimestampTracking:
@@ -454,11 +480,11 @@ class TestTimestampConversionToMilliseconds:
 
 
 class TestBackwardCompatibility:
-    """Test backward compatibility with existing code"""
+    """Test batch ingest with minimal parameters"""
 
     @pytest.mark.asyncio
     async def test_optional_params_can_be_omitted(self) -> None:
-        """Verify resync_start_time and event_type can be omitted"""
+        """Verify resync_start_time and event_type can be omitted on the batch event"""
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
@@ -473,21 +499,19 @@ class TestBackwardCompatibility:
             client=mock_client,
         )
 
-        # Should work without new parameters (backward compatible)
+        event = make_single_entry_lakehouse_batch(
+            [{"test": "data"}],
+            kind="repository",
+            index=0,
+            operation=LakehouseOperation.UPSERT,
+        )
+
         with patch(
             "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
         ):
-            await mixin.post_integration_raw_data(
-                raw_data=[{"test": "data"}],
-                sync_id="sync-123",
-                kind="repository",
-                index=0,
-                operation=LakehouseOperation.UPSERT,
-            )
+            await mixin.post_integration_raw_data_batch("sync-123", event)
 
         assert mock_client.post.called
-
-        # For backward compatibility:
 
         assert LakehouseEventType.RESYNC.value == "resync"
         assert LakehouseEventType.LIVE_EVENT.value == "live-event"
