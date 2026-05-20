@@ -26,6 +26,8 @@ PULL_REQUEST_EVENTS = [
     "unassigned",
     "review_request_removed",
     "closed",
+    "labeled",
+    "unlabeled",
 ]
 
 TEAM_UPSERT_EVENTS = ["created", "edited"]
