@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.3 (2026-05-20)
+
+
+### Improvements
+
+- Continued independent GitHub resync streams when one stream fails, while surfacing deferred errors so incomplete syncs still skip reconciliation deletes.
+
+
 ## 5.5.2 (2026-05-20)
 
 
