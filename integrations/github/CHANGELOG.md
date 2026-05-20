@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.2 (2026-05-20)
+
+
+### Improvements
+
+- Added optional GitHub Pages enrichment for repository resources via the `pages` included relation, storing the Pages configuration under `__pages`.
+
+
 ## 5.5.1 (2026-05-20)
 
 
