@@ -255,8 +255,6 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         logger.info(f"[GraphQL] Fetching open PRs from {organization}/{repo_name}")
 
-        if repo_name == "product-MAIN":
-            raise Exception("my test exception")
 
         async for pr_nodes in self.client.send_paginated_request(
             generate_list_pull_requests_gql(pr_gql_options),
