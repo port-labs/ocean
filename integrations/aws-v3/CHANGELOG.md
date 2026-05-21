@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.16-beta (2026-05-20)
+## 2.2.18-beta (2026-05-21)
 
 
 ### Features
 
-- Added support for `AWS::ECR::Image` kind, enabling syncing of ECR container images into Port with properties including image digest, tags, size, push time, artifact media type, and vulnerability scan findings summary
+- Added `tagStatus` and `imageStatus` selectors to `AWS::ECR::Image`, enabling API-level filtering of ECR images. Defaults to `tagStatus: TAGGED` and `imageStatus: ACTIVE` so only active, tagged images are synced
+
+
+## 2.2.17-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 2.2.16-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
 
 
 ## 2.2.15-beta (2026-05-19)
