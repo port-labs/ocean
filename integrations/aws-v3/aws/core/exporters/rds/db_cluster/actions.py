@@ -1,8 +1,6 @@
-from typing import Any, Type, cast
+from typing import Any, Type
 from aws.core.interfaces.action import Action, ActionMap
-from aws.core.helpers.utils import is_recoverable_aws_exception
-from loguru import logger
-import asyncio
+from aws.core.helpers.utils import execute_concurrent_aws_operations
 
 
 class DescribeDBClustersAction(Action):
@@ -16,34 +14,18 @@ class ListTagsForResourceAction(Action):
     """Fetches tags for RDS DB clusters."""
 
     async def _execute(self, db_clusters: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        tag_results = await asyncio.gather(
-            *(self._fetch_tags(cluster) for cluster in db_clusters),
-            return_exceptions=True,
+        return await execute_concurrent_aws_operations(
+            input_items=db_clusters,
+            operation_func=self._fetch_tags,
+            get_resource_identifier=lambda c: c.get("DBClusterIdentifier", "unknown"),
+            operation_name="DB cluster tags",
         )
 
-        results: list[dict[str, Any]] = []
-        for idx, tag_result in enumerate(tag_results):
-            if isinstance(tag_result, Exception):
-                cluster_id = db_clusters[idx].get("DBClusterIdentifier", "unknown")
-                if is_recoverable_aws_exception(tag_result):
-                    logger.warning(
-                        f"Skipping tags for DB cluster '{cluster_id}': {tag_result}"
-                    )
-                    continue
-                else:
-                    logger.error(
-                        f"Error fetching tags for DB cluster '{cluster_id}': {tag_result}"
-                    )
-                    raise tag_result
-            results.extend(cast(list[dict[str, Any]], tag_result))
-        logger.info(f"Successfully fetched tags for {len(results)} DB clusters")
-        return results
-
-    async def _fetch_tags(self, db_cluster: dict[str, Any]) -> list[dict[str, Any]]:
+    async def _fetch_tags(self, db_cluster: dict[str, Any]) -> dict[str, Any]:
         response = await self.client.list_tags_for_resource(
             ResourceName=db_cluster["DBClusterArn"]
         )
-        return [{"Tags": response["TagList"]}]
+        return {"TagList": response["TagList"]}
 
 
 class RdsDbClusterActionsMap(ActionMap):

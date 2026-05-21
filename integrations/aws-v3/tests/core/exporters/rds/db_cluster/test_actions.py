@@ -55,7 +55,7 @@ class TestListTagsForResourceAction:
         assert isinstance(action, Action)
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.rds.db_cluster.actions.logger")
+    @patch("aws.core.helpers.utils.logger")
     async def test_execute_success(
         self, mock_logger: MagicMock, action: ListTagsForResourceAction
     ) -> None:
@@ -95,13 +95,13 @@ class TestListTagsForResourceAction:
 
         expected_result = [
             {
-                "Tags": [
+                "TagList": [
                     {"Key": "Environment", "Value": "production"},
                     {"Key": "Team", "Value": "platform"},
                 ]
             },
             {
-                "Tags": [
+                "TagList": [
                     {"Key": "Environment", "Value": "staging"},
                 ]
             },
@@ -115,11 +115,11 @@ class TestListTagsForResourceAction:
             ResourceName="arn:aws:rds:us-east-1:123456789012:cluster:cluster-2"
         )
         mock_logger.info.assert_called_once_with(
-            "Successfully fetched tags for 2 DB clusters"
+            "Successfully fetched DB cluster tags for 2 resources"
         )
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.rds.db_cluster.actions.logger")
+    @patch("aws.core.helpers.utils.logger")
     async def test_execute_with_recoverable_exception(
         self, mock_logger: MagicMock, action: ListTagsForResourceAction
     ) -> None:
@@ -149,18 +149,18 @@ class TestListTagsForResourceAction:
 
         result = await action.execute(db_clusters)
 
-        assert result == [{"Tags": [{"Key": "Environment", "Value": "production"}]}]
+        assert result == [{"TagList": [{"Key": "Environment", "Value": "production"}]}]
         mock_logger.warning.assert_called_once()
         assert (
-            "Skipping tags for DB cluster 'cluster-2'"
+            "Skipping DB cluster tags for 'cluster-2'"
             in mock_logger.warning.call_args[0][0]
         )
         mock_logger.info.assert_called_once_with(
-            "Successfully fetched tags for 1 DB clusters"
+            "Successfully fetched DB cluster tags for 1 resources"
         )
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.rds.db_cluster.actions.logger")
+    @patch("aws.core.helpers.utils.logger")
     async def test_execute_with_non_recoverable_exception(
         self, mock_logger: MagicMock, action: ListTagsForResourceAction
     ) -> None:
@@ -183,12 +183,12 @@ class TestListTagsForResourceAction:
         assert exc_info.value.response["Error"]["Code"] == "NetworkError"
         mock_logger.error.assert_called_once()
         assert (
-            "Error fetching tags for DB cluster 'cluster-1'"
+            "Error fetching DB cluster tags for 'cluster-1'"
             in mock_logger.error.call_args[0][0]
         )
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.rds.db_cluster.actions.logger")
+    @patch("aws.core.helpers.utils.logger")
     async def test_execute_empty_tag_list(
         self, mock_logger: MagicMock, action: ListTagsForResourceAction
     ) -> None:
@@ -204,12 +204,12 @@ class TestListTagsForResourceAction:
 
         result = await action.execute(db_clusters)
 
-        assert result == [{"Tags": []}]
+        assert result == [{"TagList": []}]
         action.client.list_tags_for_resource.assert_called_once_with(
             ResourceName="arn:aws:rds:us-east-1:123456789012:cluster:cluster-1"
         )
         mock_logger.info.assert_called_once_with(
-            "Successfully fetched tags for 1 DB clusters"
+            "Successfully fetched DB cluster tags for 1 resources"
         )
 
 
