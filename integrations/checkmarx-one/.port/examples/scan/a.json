@@ -1,0 +1,113 @@
+{
+  "id": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "status": "Completed",
+  "statusDetails": [
+    {
+      "name": "general",
+      "status": "Completed",
+      "details": "",
+      "startDate": "2025-10-28T13:29:26.427023Z",
+      "endDate": "2025-10-28T13:32:39.463243Z"
+    },
+    {
+      "name": "apisec",
+      "status": "Completed",
+      "details": "",
+      "startDate": "2025-10-28T13:29:59.359511Z",
+      "endDate": "2025-10-28T13:30:00.378442Z"
+    },
+    {
+      "name": "sast",
+      "status": "Completed",
+      "details": "",
+      "loc": 15821,
+      "startDate": "2025-10-28T13:29:29.463659Z",
+      "endDate": "2025-10-28T13:29:59.354118Z"
+    },
+    {
+      "name": "sca",
+      "status": "Completed",
+      "details": "",
+      "startDate": "2025-10-28T13:29:29.463843Z",
+      "endDate": "2025-10-28T13:32:39.222768Z"
+    },
+    {
+      "name": "containers",
+      "status": "Completed",
+      "details": "",
+      "startDate": "2025-10-28T13:29:29.459901Z",
+      "endDate": "2025-10-28T13:29:50.051436Z"
+    },
+    {
+      "name": "kics",
+      "status": "Completed",
+      "details": "",
+      "startDate": "2025-10-28T13:29:29.456063Z",
+      "endDate": "2025-10-28T13:29:33.599979Z"
+    }
+  ],
+  "branch": "dependabot/pip/bleach-6.3.0",
+  "createdAt": "2025-10-28T13:29:26.427023Z",
+  "updatedAt": "2025-10-28T13:32:39.463243Z",
+  "projectId": "6ace8769-7ad3-4812-8990-0d4111ba0156",
+  "projectName": "john-doe-org/example-repo",
+  "userAgent": "grpc-java-netty/1.75.0",
+  "initiator": "dependabot[bot]",
+  "tags": {},
+  "metadata": {
+    "id": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+    "type": "git",
+    "Handler": {
+      "GitHandler": {
+        "branch": "dependabot/pip/bleach-6.3.0",
+        "repo_url": "https://github.com/john-doe-org/example-repo",
+        "credentials": {
+          "type": "apiKey",
+          "value": "*****",
+          "username": "*****"
+        }
+      }
+    },
+    "configs": [
+      {
+        "type": "sast",
+        "value": {
+          "baseBranch": "main",
+          "presetName": "",
+          "incremental": "false"
+        }
+      },
+      {
+        "type": "kics"
+      },
+      {
+        "type": "apisec"
+      },
+      {
+        "type": "containers"
+      },
+      {
+        "type": "sca",
+        "value": {
+          "enableContainersScan": "false"
+        }
+      }
+    ],
+    "project": {
+      "id": "6ace8769-7ad3-4812-8990-0d4111ba0156"
+    },
+    "created_at": {
+      "nanos": 150850883,
+      "seconds": 1761658166
+    }
+  },
+  "engines": [
+    "sast",
+    "kics",
+    "apisec",
+    "containers",
+    "sca"
+  ],
+  "sourceType": "github",
+  "sourceOrigin": "PR Webhook"
+}

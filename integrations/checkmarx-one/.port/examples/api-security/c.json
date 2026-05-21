@@ -1,0 +1,18 @@
+{
+  "risk_id": "376157ac-2560-4ceb-a4d3-2188739ae8b0",
+  "api_id": "0304f628-50de-40db-84ed-c9a13e7e4aa9",
+  "severity": "high",
+  "name": "Reflected_XSS",
+  "status": "recurrent",
+  "http_method": "GET",
+  "url": "/load",
+  "origin": "code",
+  "documented": null,
+  "authenticated": null,
+  "discovery_date": "2025-10-28 13:29:59+00:00",
+  "scan_id": "557eba2f-4a6d-4533-8043-79ca9a63a440",
+  "sast_risk_id": "8Y7Ggt1hVks6kkXSmQeiFhqn/NA=",
+  "project_id": "6ace8769-7ad3-4812-8990-0d4111ba0156",
+  "state": "to_verify",
+  "__scan_id": "557eba2f-4a6d-4533-8043-79ca9a63a440"
+}

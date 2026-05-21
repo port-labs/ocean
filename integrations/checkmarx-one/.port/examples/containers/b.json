@@ -1,0 +1,44 @@
+{
+  "type": "containers",
+  "id": "CVE-2022-30636",
+  "alternateId": "110601048",
+  "similarityId": "CVE-2022-30636",
+  "status": "RECURRENT",
+  "state": "TO_VERIFY",
+  "severity": "LOW",
+  "confidenceLevel": 0,
+  "created": "2025-09-10T12:02:15Z",
+  "firstFoundAt": "2025-08-21T10:39:19Z",
+  "foundAt": "2025-09-10T12:02:15Z",
+  "firstScanId": "777d0393-5990-46a0-a835-eea725c37a2d",
+  "description": "The package golang.org/x/crypto and github.com/golang/crypto versions v0.0.0-20160816185256-f0e11a3ccc7e through v0.0.0-20220518034528-6f7dac969898 are vulnerable to Path Traversal Vulnerability. The param \"httpTokenCacheKey\" uses \"path.Base\" to extract the expected HTTP-01 token value to lookup in the DirCache implementation. On Windows, \"path.Base\" acts differently to \"filepath.Base\", since Windows uses a different path separator (\\ vs. /), allowing a user to provide a relative path, i.e. \".well-known/acme-challenge/..\\..\\asd\" becomes \"..\\..\\asd\". The extracted path is then suffixed with +http-01, joined with the cache directory, and opened. Since the controlled path is suffixed with +http-01 before opening, the impact of this is significantly limited, since it only allows reading arbitrary files on the system if and only if they have this suffix.",
+  "data": {
+    "packageName": "golang.org/x/crypto",
+    "packageVersion": "v0.0.0-20190611184440-5c40567a22f8",
+    "imageName": "example-user/example-image",
+    "imageTag": "1.13",
+    "imageFilePath": "Dockerfile",
+    "imageOrigin": "Dockerfile"
+  },
+  "comments": {
+    "comments": ""
+  },
+  "vulnerabilityDetails": {
+    "cvssScore": 3.7,
+    "cveName": "CVE-2022-30636",
+    "cweId": "CWE-22",
+    "cvss": {
+      "scope": "UNCHANGED",
+      "score": "3.7",
+      "severity": "Low",
+      "attack_vector": "NETWORK",
+      "integrity_impact": "NONE",
+      "user_interaction": "NONE",
+      "attack_complexity": "HIGH",
+      "availability_impact": "NONE",
+      "privileges_required": "NONE",
+      "confidentiality_impact": "LOW"
+    }
+  },
+  "__scan_id": "838c9e28-d88e-4464-92c8-754b9e21d49e"
+}

@@ -1,0 +1,24 @@
+{
+  "id": "8f060e6b-f931-4af8-82c3-5f0fcf9a7922",
+  "name": "janedoe/example-docs",
+  "tenantId": "b3c4d5e6-f7a8-9012-bcde-f01234567891",
+  "createdAt": "2025-08-25T08:38:20.026568Z",
+  "updatedAt": "2025-08-25T08:38:20.026568Z",
+  "groups": [],
+  "tags": {},
+  "repoUrl": "",
+  "mainBranch": "",
+  "origin": "GitHub",
+  "scmRepoId": "example-docs",
+  "repoId": 23456,
+  "criticality": 0,
+  "privatePackage": false,
+  "imported_proj_name": "janedoe/example-docs",
+  "applicationIds": [
+    "2c5a6511-2111-4d1d-b3b9-34e88c3888fd",
+    "87c7faa5-55eb-4480-8c8d-040761a9939f",
+    "642f378d-ab28-42c1-bf19-5da129fe89a9",
+    "ea6d819c-8904-45a0-b625-04a2c3a97a2f",
+    "8f44f254-5d0e-48a8-ad1a-e96e835083fa"
+  ]
+}
