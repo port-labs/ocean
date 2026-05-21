@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.25 (2026-05-19)
+## 0.3.26 (2026-05-21)
 
 
 ### Improvements
 
 - Fixed GitHub Copilot enterprise user usage mapping errors caused by a missing blueprint relation
+
+
+## 0.3.25 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
 
 
 ## 0.3.24 (2026-05-19)
