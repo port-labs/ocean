@@ -6,6 +6,7 @@ from snyk.overrides import (
     SnykPolicyAPIQueryParams,
     SnykProjectAPIQueryParams,
     SnykVulnerabilityAPIQueryParams,
+    SnykTargetAPIQueryParams,
 )
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -20,6 +21,8 @@ MOCK_PROJECT_ID = "12345"
 MOCK_ISSUES = [{"id": "issue1"}, {"id": "issue2"}]
 MOCK_ORG_URL = "https://your_organization_url.com"
 MOCK_PERSONAL_ACCESS_TOKEN = "personal_access_token"
+
+MOCK_ORG = {"id": "test-org-id", "name": "Test Org"}
 
 
 # Port Ocean Mocks
@@ -417,3 +420,52 @@ async def test_get_paginated_policies_yields_multiple_pages(
     assert len(batches) == 2
     assert [r["id"] for r in batches[0]] == ["policy-1"]
     assert [r["id"] for r in batches[1]] == ["policy-2", "policy-3"]
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_targets_without_api_params_only_sends_version(
+    snyk_client: SnykClient,
+) -> None:
+    captured_query_params: list[dict[str, Any]] = []
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        captured_query_params.append(query_params or {})
+        yield []
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        async for _ in snyk_client.get_paginated_targets(
+            org=MOCK_ORG, attach_project_data=False, api_params=None
+        ):
+            pass
+
+    assert len(captured_query_params) == 1
+    assert captured_query_params[0] == {"version": snyk_client.snyk_api_version}
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_targets_respects_explicit_exclude_empty_true(
+    snyk_client: SnykClient,
+) -> None:
+    captured_query_params: list[dict[str, Any]] = []
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        captured_query_params.append(query_params or {})
+        yield []
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        api_params = SnykTargetAPIQueryParams(exclude_empty=True)
+        async for _ in snyk_client.get_paginated_targets(
+            org=MOCK_ORG, attach_project_data=False, api_params=api_params
+        ):
+            pass
+
+    assert len(captured_query_params) == 1
+    assert captured_query_params[0]["exclude_empty"] is True

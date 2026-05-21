@@ -142,7 +142,7 @@ class Ocean:
                     if await is_dsp_mode_enabled():
                         resync_id = self.metrics.event_id.strip()
                         if resync_id:
-                            await self.lifecycle_client.notify_aborted(
+                            await self.lifecycle_client.notify_resync_aborted(
                                 resync_id=resync_id,
                                 integration_id=self.config.integration.identifier,
                                 integration_type=self.config.integration.type,
