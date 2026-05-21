@@ -90,6 +90,8 @@ class LifecycleClient:
             "started",
             integration_id=integration_id,
             integration_type=integration_type,
+            integration_version=__integration_version__,
+            ocean_version=__version__,
             started_at=started_at.isoformat(),
         )
         logger.info(
