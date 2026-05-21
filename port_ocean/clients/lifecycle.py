@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
-from typing import Any
 from enum import Enum
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -105,7 +105,13 @@ class LifecycleClient:
         integration_id: str,
         integration_type: str,
     ) -> None:
-        body = self._build_body("finished", integration_type=integration_type)
+        body = self._build_body(
+            "finished",
+            integration_id=integration_id,
+            integration_type=integration_type,
+            integration_version=__integration_version__,
+            ocean_version=__version__,
+        )
         logger.info(f"Notifying lifecycle API resync finished, resync_id={resync_id}")
         await self._post(self._resync_url(resync_id), body)
 

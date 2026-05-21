@@ -139,7 +139,11 @@ class TestNotifyResyncFinished:
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1"
         body = mock_post.call_args[1]["json"]
-        assert body == {"status": "finished", "integration_type": "github"}
+        assert body["status"] == "finished"
+        assert body["integration_id"] == "i1"
+        assert body["integration_type"] == "github"
+        assert "integration_version" in body
+        assert "ocean_version" in body
 
 
 class TestNotifyResyncFailed:
