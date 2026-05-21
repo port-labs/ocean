@@ -6,9 +6,7 @@ from github.actions.registry import register_actions_executors
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from github.helpers.async_iterators import (
-    stream_independent_async_iterators as stream_async_iterators_tasks,
-)
+from github.helpers.async_iterators import stream_independent_async_iterators
 
 from github.core.exporters.team_exporter import (
     GraphQLTeamWithMembersExporter,
@@ -222,7 +220,9 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
             for org in organizations
         )
-        async for repositories in stream_async_iterators_tasks(*tasks):
+        async for repositories in stream_independent_async_iterators(
+            *tasks, context=kind
+        ):
             if included_files_enricher:
                 repositories = await included_files_enricher.enrich_batch(repositories)
             yield repositories
@@ -260,7 +260,7 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield [org]
 
         if tasks:
-            async for users in stream_async_iterators_tasks(*tasks):
+            async for users in stream_independent_async_iterators(*tasks, context=kind):
                 yield users
 
 
@@ -296,7 +296,9 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 )
 
         if tasks:
-            async for org_name, teams in stream_async_iterators_tasks(*tasks):
+            async for org_name, teams in stream_independent_async_iterators(
+                *tasks, context=kind
+            ):
                 if selector.members:
                     graphql_exporter = GraphQLTeamWithMembersExporter(graphql_client)
                     teams = await graphql_exporter._enrich_team_with_extras(
@@ -348,7 +350,9 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for workflows in stream_async_iterators_tasks(*tasks):
+                async for workflows in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield workflows
 
 
@@ -402,7 +406,9 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             for workflow in workflows
                         ]
 
-                    async for runs in stream_async_iterators_tasks(*tasks):
+                    async for runs in stream_independent_async_iterators(
+                        *tasks, context=kind
+                    ):
                         yield runs
 
 
@@ -457,7 +463,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for pull_requests in stream_async_iterators_tasks(*tasks):
+                async for pull_requests in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield pull_requests
 
 
@@ -502,7 +510,9 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for issues in stream_async_iterators_tasks(*tasks):
+                async for issues in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield issues
 
 
@@ -544,7 +554,9 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for releases in stream_async_iterators_tasks(*tasks):
+                async for releases in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield releases
 
 
@@ -586,7 +598,9 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for tags in stream_async_iterators_tasks(*tasks):
+                async for tags in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield tags
 
 
@@ -635,12 +649,16 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
 
                     if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for branches in stream_async_iterators_tasks(*tasks):
+                        async for branches in stream_independent_async_iterators(
+                            *tasks, context=kind
+                        ):
                             yield branches
                         tasks.clear()
 
                 if tasks:
-                    async for branches in stream_async_iterators_tasks(*tasks):
+                    async for branches in stream_independent_async_iterators(
+                        *tasks, context=kind
+                    ):
                         yield branches
 
 
@@ -683,7 +701,9 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for environments in stream_async_iterators_tasks(*tasks):
+                async for environments in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield environments
 
 
@@ -728,7 +748,9 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for deployments in stream_async_iterators_tasks(*tasks):
+                async for deployments in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield deployments
 
 
@@ -804,7 +826,9 @@ async def resync_deployment_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 )
                             )
 
-                        async for statuses in stream_async_iterators_tasks(*tasks):
+                        async for statuses in stream_independent_async_iterators(
+                            *tasks, context=kind
+                        ):
                             yield statuses
 
 
@@ -851,7 +875,9 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for alerts in stream_async_iterators_tasks(*tasks):
+                async for alerts in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield alerts
 
 
@@ -896,7 +922,9 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for alerts in stream_async_iterators_tasks(*tasks):
+                async for alerts in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield alerts
 
 
@@ -1021,7 +1049,9 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for collaborators in stream_async_iterators_tasks(*tasks):
+                async for collaborators in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield collaborators
 
 
@@ -1066,7 +1096,9 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
                         )
                     )
 
-                async for alerts in stream_async_iterators_tasks(*tasks):
+                async for alerts in stream_independent_async_iterators(
+                    *tasks, context=kind
+                ):
                     yield alerts
 
 

@@ -1,22 +1,14 @@
 import asyncio
-from collections.abc import AsyncIterable, AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterable
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
 from loguru import logger
+from github.helpers.utils import ObjectKind
 
 T = TypeVar("T")
 
-
-@dataclass(slots=True)
-class _IteratorDone:
-    pass
-
-
-@dataclass(slots=True)
-class _IteratorError:
-    index: int
-    error: Exception
+CANCELLED_TASK_CLEANUP_TIMEOUT = 10
 
 
 @dataclass(slots=True)
@@ -24,35 +16,57 @@ class _IteratorItem(Generic[T]):
     item: T
 
 
-async def stream_independent_async_iterators(
-    *iterators: AsyncIterable[T], context: str = "GitHub independent iterator"
-) -> AsyncIterator[T]:
-    """Stream independent iterators while deferring their failures.
+@dataclass(slots=True)
+class _IteratorFinished:
+    error: Exception | None = None
 
-    A failed iterator should not stop other independent iterators from finishing. Any
-    collected failures are raised after all surviving iterators are exhausted, allowing
-    Ocean to mark the kind as incomplete and skip reconciliation deletes.
+
+async def stream_independent_async_iterators(
+    *iterators: AsyncIterable[T], context: ObjectKind | str = "GitHub Independent"
+) -> AsyncGenerator[T, None]:
+    """
+    Stream multiple async iterators concurrently while deferring failures.
+
+    Characteristics:
+    - Items are yielded as they arrive.
+    - Ordering is nondeterministic.
+    - One iterator failing does not stop others.
+    - Errors are raised as an ExceptionGroup after surviving iterators finish.
+    - Errors are only surfaced if the stream is fully consumed.
     """
     if not iterators:
         return
 
-    queue: asyncio.Queue[_IteratorDone | _IteratorError | _IteratorItem[T]] = (
-        asyncio.Queue(maxsize=len(iterators))
+    queue: asyncio.Queue[_IteratorItem[T] | _IteratorFinished] = asyncio.Queue(
+        maxsize=max(len(iterators) * 2, 32)
     )
+
     errors: list[Exception] = []
 
     async def consume(index: int, iterator: AsyncIterable[T]) -> None:
+        error: Exception | None = None
+
         try:
             async for item in iterator:
                 await queue.put(_IteratorItem(item))
+
+        except asyncio.CancelledError:
+            raise
+
         except Exception as exc:
+            error = exc
+
             logger.exception(
-                f"{context} {index + 1} failed; continuing remaining siblings",
-                exc_info=exc,
+                f"{context} iterator {index} failed; " "continuing remaining siblings"
             )
-            await queue.put(_IteratorError(index=index, error=exc))
+
         finally:
-            await queue.put(_IteratorDone())
+            current_task = asyncio.current_task()
+
+            if current_task and current_task.cancelling():
+                return
+
+            await queue.put(_IteratorFinished(error=error))
 
     tasks = [
         asyncio.create_task(consume(index, iterator))
@@ -63,17 +77,35 @@ async def stream_independent_async_iterators(
         remaining = len(tasks)
         while remaining:
             message = await queue.get()
-            if isinstance(message, _IteratorDone):
+
+            if isinstance(message, _IteratorFinished):
                 remaining -= 1
-            elif isinstance(message, _IteratorError):
-                errors.append(message.error)
+
+                if message.error is not None:
+                    errors.append(message.error)
             else:
                 yield message.item
     finally:
         for task in tasks:
             if not task.done():
                 task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+
+        done, pending = await asyncio.wait(
+            tasks,
+            timeout=CANCELLED_TASK_CLEANUP_TIMEOUT,
+        )
+
+        await asyncio.gather(*done, return_exceptions=True)
+
+        if pending:
+            logger.warning(
+                f"{context} cleanup timed out after "
+                f"{CANCELLED_TASK_CLEANUP_TIMEOUT} seconds while waiting "
+                f"for {len(pending)} cancelled iterator task(s)"
+            )
 
     if errors:
-        raise ExceptionGroup(f"{context} failed with {len(errors)} error(s)", errors)
+        raise ExceptionGroup(
+            f"{context} failed with {len(errors)} error(s)",
+            errors,
+        )
