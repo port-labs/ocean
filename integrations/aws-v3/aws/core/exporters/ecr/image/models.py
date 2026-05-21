@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Literal
 from datetime import datetime
 from pydantic import BaseModel, Field, root_validator
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
@@ -61,4 +61,12 @@ class PaginatedImageRequest(ResourceRequestModel):
 
     repository_name: Optional[str] = Field(
         default=None, description="Limit images to a specific repository (optional)"
+    )
+    tag_status: Literal["TAGGED", "UNTAGGED", "ANY"] = Field(
+        default="TAGGED",
+        description="ECR DescribeImagesFilter.tagStatus value.",
+    )
+    image_status: Literal["ACTIVE", "ARCHIVED", "ACTIVATING", "ANY"] = Field(
+        default="ACTIVE",
+        description="ECR DescribeImagesFilter.imageStatus value.",
     )

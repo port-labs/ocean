@@ -2,6 +2,8 @@ resources:
   - kind: AWS::ECR::Image
     selector:
       query: 'true'
+      tagStatus: TAGGED
+      imageStatus: ACTIVE
       includeActions:
         - GetImageScanResultsAction
     port:

@@ -3,7 +3,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import AWSResourceConfig
+from integration import AWSResourceConfig, EcrImageResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.exporters.s3 import S3BucketExporter
 from aws.core.helpers.types import ObjectKind
@@ -223,8 +223,16 @@ async def resync_elasticache_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ECR_IMAGE)
 async def resync_ecr_image(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    ecr_config = cast(EcrImageResourceConfig, event.resource_config)
     service = ResyncAWSService(
-        kind, EcrImageExporter, PaginatedImageRequest, regional=True
+        kind,
+        EcrImageExporter,
+        PaginatedImageRequest,
+        regional=True,
+        extra_options={
+            "tag_status": ecr_config.selector.tag_status,
+            "image_status": ecr_config.selector.image_status,
+        },
     )
     async for batch in service:
         yield batch

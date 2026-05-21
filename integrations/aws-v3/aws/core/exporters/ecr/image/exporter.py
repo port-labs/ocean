@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, AsyncGenerator, Type
+from typing import Any, AsyncGenerator, Mapping, Type
 
 from loguru import logger
 
@@ -56,10 +56,15 @@ class EcrImageExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
+            ecr_filter = {
+                "tagStatus": options.tag_status,
+                "imageStatus": options.image_status,
+            }
+
             if options.repository_name:
                 paginator = proxy.get_paginator("describe_images", "imageDetails")
                 async for images in paginator.paginate(
-                    repositoryName=options.repository_name
+                    repositoryName=options.repository_name, filter=ecr_filter
                 ):
                     if images:
                         action_result = await inspector.inspect(
@@ -85,7 +90,9 @@ class EcrImageExporter(IResourceExporter):
                     all_images: list[list[dict[str, Any]] | BaseException] = (
                         await asyncio.gather(
                             *(
-                                self._get_all_images(proxy, repo["repositoryName"])
+                                self._get_all_images(
+                                    proxy, repo["repositoryName"], ecr_filter
+                                )
                                 for repo in repositories
                             ),
                             return_exceptions=True,
@@ -109,10 +116,15 @@ class EcrImageExporter(IResourceExporter):
                             yield action_result
 
     async def _get_all_images(
-        self, proxy: AioBaseClientProxy, repo_name: str
+        self,
+        proxy: AioBaseClientProxy,
+        repo_name: str,
+        ecr_filter: Mapping[str, str],
     ) -> list[dict[str, Any]]:
         images: list[dict[str, Any]] = []
         paginator = proxy.get_paginator("describe_images", "imageDetails")
-        async for page in paginator.paginate(repositoryName=repo_name):
+        async for page in paginator.paginate(
+            repositoryName=repo_name, filter=ecr_filter
+        ):
             images.extend(page)
         return images

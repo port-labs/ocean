@@ -4,7 +4,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from pydantic import Field, BaseModel
-from typing import List
+from typing import List, Literal
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -59,6 +59,23 @@ class AWSResourceSelector(Selector):
 
 class AWSResourceConfig(ResourceConfig):
     selector: AWSResourceSelector
+
+
+class EcrImageSelector(AWSResourceSelector):
+    tag_status: Literal["TAGGED", "UNTAGGED", "ANY"] = Field(
+        default="TAGGED",
+        alias="tagStatus",
+        description="Filter images by tag status (passed to ECR DescribeImagesFilter). Default: TAGGED.",
+    )
+    image_status: Literal["ACTIVE", "ARCHIVED", "ACTIVATING", "ANY"] = Field(
+        default="ACTIVE",
+        alias="imageStatus",
+        description="Filter images by lifecycle status (passed to ECR DescribeImagesFilter). Default: ACTIVE.",
+    )
+
+
+class EcrImageResourceConfig(AWSResourceConfig):
+    selector: EcrImageSelector
 
 
 class AWSPortAppConfig(PortAppConfig):
