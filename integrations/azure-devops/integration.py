@@ -295,12 +295,34 @@ class AzureDevopsRepositoryResourceConfig(ResourceConfig):
     )
 
 
+class AzureDevopsUserSelector(Selector):
+    include_fields: Optional[
+        list[Literal["license", "extensions", "projects", "groupRules"]]
+    ] = Field(
+        default=None,
+        alias="includeFields",
+        title="Include Fields",
+        description="List of additional properties to include in user entitlements.",
+    )
+
+    def to_params(self) -> dict[str, str]:
+        data = self.dict(
+            by_alias=True,
+            exclude_none=True,
+            exclude={"query"},
+        )
+        if "includeFields" in data:
+            data["select"] = ",".join(data["includeFields"])
+            del data["includeFields"]
+        return data
+
+
 class AzureDevopsUserConfig(ResourceConfig):
     kind: Literal[Kind.USER] = Field(
         title="Azure Devops User",
         description="Azure Devops user resource kind.",
     )
-    selector: AzureDevopsSelector = Field(
+    selector: AzureDevopsUserSelector = Field(
         title="User selector",
         description="Selector for the user resource.",
     )
@@ -361,12 +383,73 @@ class AzureDevopsColumnConfig(ResourceConfig):
     )
 
 
+class AzureDevopsReleaseSelector(Selector):
+    expand: Optional[
+        Literal[
+            "environments",
+            "artifacts",
+            "approvals",
+            "manualInterventions",
+            "variables",
+            "tags",
+        ]
+    ] = Field(
+        default=None,
+        title="Expand",
+        description="Property to expand on each release. When set, the expanded data is available in JQ mappings.",
+    )
+    status_filter: Optional[Literal["abandoned", "active", "draft", "undefined"]] = (
+        Field(
+            alias="statusFilter",
+            default=None,
+            title="Status Filter",
+            description="Filter releases by status.",
+        )
+    )
+    tag_filter: Optional[list[str]] = Field(
+        alias="tagFilter",
+        default=None,
+        title="Tag Filter",
+        description="List of tags to filter releases by.",
+    )
+    source_branch_filter: Optional[str] = Field(
+        alias="sourceBranchFilter",
+        default=None,
+        title="Source Branch Filter",
+        description="Filter releases by artifact source branch (e.g. 'refs/heads/main').",
+    )
+    min_created_time: Optional[str] = Field(
+        alias="minCreatedTime",
+        default=None,
+        title="Min Created Time",
+        description="Only include releases created after this date (ISO 8601 format, e.g. '2025-01-01').",
+    )
+    max_created_time: Optional[str] = Field(
+        alias="maxCreatedTime",
+        default=None,
+        title="Max Created Time",
+        description="Only include releases created before this date (ISO 8601 format, e.g. '2026-01-01').",
+    )
+
+    def to_params(self) -> dict[str, str]:
+        data = self.dict(
+            by_alias=True,
+            exclude_none=True,
+            exclude={"query"},
+        )
+        if "expand" in data:
+            data["$expand"] = data.pop("expand")
+        if "tagFilter" in data:
+            data["tagFilter"] = ",".join(data["tagFilter"])
+        return data
+
+
 class AzureDevopsReleaseConfig(ResourceConfig):
     kind: Literal[Kind.RELEASE] = Field(
         title="Azure Devops Release",
         description="Azure Devops release resource kind.",
     )
-    selector: AzureDevopsSelector = Field(
+    selector: AzureDevopsReleaseSelector = Field(
         title="Release selector",
         description="Selector for the release resource.",
     )
@@ -413,6 +496,47 @@ class AzureDevopsEnvironmentConfig(ResourceConfig):
     selector: AzureDevopsSelector = Field(
         title="Environment selector",
         description="Selector for the environment resource.",
+    )
+
+
+class AzureDevopsReleaseDefinitionSelector(Selector):
+    expand: Optional[
+        Literal[
+            "environments", "artifacts", "triggers", "variables", "tags", "lastRelease"
+        ]
+    ] = Field(
+        default="environments",
+        title="Expand",
+        description="Property to expand on each release definition. Defaults to 'environments' which provides stage information.",
+    )
+    tag_filter: Optional[list[str]] = Field(
+        alias="tagFilter",
+        default=None,
+        title="Tag Filter",
+        description="List of tags. Only release definitions with these tags will be returned.",
+    )
+
+    def to_params(self) -> dict[str, str]:
+        data = self.dict(
+            by_alias=True,
+            exclude_none=True,
+            exclude={"query"},
+        )
+        if "expand" in data:
+            data["$expand"] = data.pop("expand")
+        if "tagFilter" in data:
+            data["tagFilter"] = ",".join(data["tagFilter"])
+        return data
+
+
+class AzureDevopsReleaseDefinitionConfig(ResourceConfig):
+    kind: Literal[Kind.RELEASE_DEFINITION] = Field(
+        title="Azure Devops Release Definition",
+        description="Azure Devops release definition resource kind.",
+    )
+    selector: AzureDevopsReleaseDefinitionSelector = Field(
+        title="Release definition selector",
+        description="Selector for the release definition resource.",
     )
 
 
@@ -499,6 +623,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsPipelineStageConfig
         | AzureDevopsPipelineRunConfig
         | AzureDevopsEnvironmentConfig
+        | AzureDevopsReleaseDefinitionConfig
         | AzureDevopsReleaseDeploymentConfig
         | AzureDevopsPipelineDeploymentConfig
         | AzureDevopsIterationConfig

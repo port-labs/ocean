@@ -15,19 +15,19 @@ configurations:
     description: "The base URL of the Azure."
   - name: azureClientId
     type: string
-    required: true
+    required: false
     sensitive: true
-    description: "The client ID of your Azure service principal."
+    description: "The client ID of your Azure app registration."
   - name: azureClientSecret
     type: string
-    required: true
+    required: false
     sensitive: true
     description: "The client secret of your Azure service principal."
   - name: azureTenantId
     type: string
-    required: true
+    required: false
     sensitive: true
-    description: "The tenant ID of your Azure service principal."
+    description: "The tenant ID of your Azure directory."
   - name: azureSubscriptionBatchSize
     type: integer
     required: false
