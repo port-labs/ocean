@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.16-beta (2026-05-20)
+## 2.2.18-beta (2026-05-21)
 
 
 ### Improvements
 
 - Adopted generic AWSResourceConfig approach for resource kind definitions, replacing explicit per-kind models with a single configurable resource config
+
+
+## 2.2.17-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 2.2.16-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
 
 
 ## 2.2.15-beta (2026-05-19)
