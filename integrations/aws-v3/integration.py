@@ -38,7 +38,7 @@ class AWSResourceSelector(Selector):
         max_items=3,
         title="Include Actions",
         description="Additional AWS resource types to include when fetching resources (max 3). "
-        'EC2 Action Example: [DescribeInstanceStatusAction].',
+        "EC2 Action Example: [DescribeInstanceStatusAction].",
     )
     max_concurrent_accounts: int = Field(
         alias="maxConcurrentAccounts",
