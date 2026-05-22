@@ -49,19 +49,9 @@ class PipelineStageWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     ) -> WebhookEventRawResults:
         client = AzureDevopsClient.create_from_ocean_config()
         pipeline_id = payload["resource"]["pipeline"]["id"]
-        project_id = payload["resourceContainers"]["project"]["id"]
+        project = payload["resourceContainers"]["project"]
         run_id = payload["resource"]["run"]["id"]
         stage_id = payload["resource"]["stage"]["id"]
-
-        project = await client.get_single_project(project_id)
-        if not project:
-            logger.warning(
-                f"Project with ID {project_id} not found for pipeline run {run_id}, skipping event..."
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
 
         pipeline_stage = await client.get_pipeline_stage(
             project, pipeline_id, run_id, stage_id

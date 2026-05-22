@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.42 (2026-05-24)
+
+
+### Bug Fixes
+
+- Refactored webhook processing to reduce API pressure and improve reliability during overlapping resync and live event workloads.
+
+
 ## 0.8.41 (2026-05-20)
 
 

@@ -17,7 +17,6 @@ def pipeline_run_processor(
 ) -> PipelineRunWebhookProcessor:
     mock_client = MagicMock()
     mock_client.get_pipeline_run = AsyncMock()
-    mock_client.get_single_project = AsyncMock()
     mock_client.get_pipeline = AsyncMock()
     mock_client.annotate_runs = MagicMock()
     monkeypatch.setattr(
@@ -153,7 +152,7 @@ async def test_pipeline_run_handle_event_success(
 ) -> None:
     mock_client = MagicMock()
     mock_client.get_pipeline_run = AsyncMock(return_value={"id": "run-456"})
-    mock_client.get_single_project = AsyncMock(return_value={"id": "project-123"})
+    mock_client.get_single_project = AsyncMock()
     mock_client.get_pipeline = AsyncMock(return_value={"id": "pipeline-789"})
     mock_client.annotate_runs = MagicMock()
     monkeypatch.setattr(
@@ -162,7 +161,7 @@ async def test_pipeline_run_handle_event_success(
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {"project": {"id": "project-123", "name": "Proj"}},
         "resource": {
             "run": {"id": "run-456"},
             "pipeline": {"id": "pipeline-789"},
@@ -179,9 +178,46 @@ async def test_pipeline_run_handle_event_success(
     mock_client.get_pipeline_run.assert_called_once_with(
         "project-123", "pipeline-789", "run-456"
     )
-    mock_client.get_single_project.assert_called_once_with("project-123")
+    mock_client.get_single_project.assert_not_called()
     mock_client.get_pipeline.assert_called_once_with("project-123", "pipeline-789")
     mock_client.annotate_runs.assert_called_once()
+    annotate_kwargs = mock_client.annotate_runs.call_args.kwargs
+    assert annotate_kwargs["project"] == {"id": "project-123", "name": "Proj"}
+    assert annotate_kwargs["pipeline"] == {"id": "pipeline-789"}
+
+
+@pytest.mark.asyncio
+async def test_pipeline_run_handle_event_project_built_from_payload_without_name(
+    pipeline_run_processor: PipelineRunWebhookProcessor,
+    mock_event_context: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the payload's resourceContainers.project has no `name`, the
+    processor must still skip the get_single_project call and pass a project
+    dict with name=None to annotate_runs."""
+    mock_client = MagicMock()
+    mock_client.get_pipeline_run = AsyncMock(return_value={"id": "run-456"})
+    mock_client.get_single_project = AsyncMock()
+    mock_client.get_pipeline = AsyncMock(return_value={"id": "pipeline-789"})
+    mock_client.annotate_runs = MagicMock()
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
+        lambda: mock_client,
+    )
+
+    payload = {
+        "resourceContainers": {"project": {"id": "project-123"}},
+        "resource": {
+            "run": {"id": "run-456"},
+            "pipeline": {"id": "pipeline-789"},
+        },
+    }
+    result = await pipeline_run_processor.handle_event(payload, MagicMock())
+
+    assert len(result.updated_raw_results) == 1
+    mock_client.get_single_project.assert_not_called()
+    annotate_kwargs = mock_client.annotate_runs.call_args.kwargs
+    assert annotate_kwargs["project"] == {"id": "project-123", "name": None}
 
 
 @pytest.mark.asyncio
@@ -211,33 +247,6 @@ async def test_pipeline_run_handle_event_not_found(
 
 
 @pytest.mark.asyncio
-async def test_pipeline_run_handle_event_project_not_found(
-    pipeline_run_processor: PipelineRunWebhookProcessor,
-    mock_event_context: None,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    mock_client = MagicMock()
-    mock_client.get_pipeline_run = AsyncMock(return_value={"id": "run-456"})
-    mock_client.get_single_project = AsyncMock(return_value=None)
-    monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
-    )
-
-    payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
-        "resource": {
-            "run": {"id": "run-456"},
-            "pipeline": {"id": "pipeline-789"},
-        },
-    }
-    result = await pipeline_run_processor.handle_event(payload, MagicMock())
-
-    assert len(result.updated_raw_results) == 0
-    assert len(result.deleted_raw_results) == 0
-
-
-@pytest.mark.asyncio
 async def test_pipeline_run_handle_event_pipeline_not_found(
     pipeline_run_processor: PipelineRunWebhookProcessor,
     mock_event_context: None,
@@ -245,7 +254,7 @@ async def test_pipeline_run_handle_event_pipeline_not_found(
 ) -> None:
     mock_client = MagicMock()
     mock_client.get_pipeline_run = AsyncMock(return_value={"id": "run-456"})
-    mock_client.get_single_project = AsyncMock(return_value={"id": "project-123"})
+    mock_client.get_single_project = AsyncMock()
     mock_client.get_pipeline = AsyncMock(return_value=None)
     monkeypatch.setattr(
         "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
@@ -263,3 +272,4 @@ async def test_pipeline_run_handle_event_pipeline_not_found(
 
     assert len(result.updated_raw_results) == 0
     assert len(result.deleted_raw_results) == 0
+    mock_client.get_single_project.assert_not_called()

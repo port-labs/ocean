@@ -16,7 +16,6 @@ def pipeline_stage_processor(
     event: WebhookEvent, monkeypatch: pytest.MonkeyPatch
 ) -> PipelineStageWebhookProcessor:
     mock_client = MagicMock()
-    mock_client.get_single_project = AsyncMock()
     mock_client.get_pipeline_stage = AsyncMock()
     monkeypatch.setattr(
         "azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor.AzureDevopsClient.create_from_ocean_config",
@@ -76,9 +75,8 @@ async def test_pipeline_stage_handle_event_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     mock_client = MagicMock()
-    project = {"id": "project-123"}
     stage = {"id": "stage-789"}
-    mock_client.get_single_project = AsyncMock(return_value=project)
+    mock_client.get_single_project = AsyncMock()
     mock_client.get_pipeline_stage = AsyncMock(return_value=stage)
     monkeypatch.setattr(
         "azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor.AzureDevopsClient.create_from_ocean_config",
@@ -86,7 +84,7 @@ async def test_pipeline_stage_handle_event_success(
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {"project": {"id": "project-123", "name": "Proj"}},
         "resource": {
             "run": {"id": "run-456"},
             "stage": {"id": "stage-789"},
@@ -98,20 +96,27 @@ async def test_pipeline_stage_handle_event_success(
     assert isinstance(result, WebhookEventRawResults)
     assert len(result.updated_raw_results) == 1
     assert result.updated_raw_results[0]["id"] == "stage-789"
-    mock_client.get_single_project.assert_called_once_with("project-123")
+    mock_client.get_single_project.assert_not_called()
     mock_client.get_pipeline_stage.assert_called_once_with(
-        project, "pipeline-101", "run-456", "stage-789"
+        {"id": "project-123", "name": "Proj"},
+        "pipeline-101",
+        "run-456",
+        "stage-789",
     )
 
 
 @pytest.mark.asyncio
-async def test_pipeline_stage_handle_event_project_not_found(
+async def test_pipeline_stage_handle_event_project_built_from_payload_without_name(
     pipeline_stage_processor: PipelineStageWebhookProcessor,
     mock_event_context: None,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """When the payload's resourceContainers.project has no `name`, the
+    processor must still skip the get_single_project call and pass a project
+    dict with name=None to get_pipeline_stage."""
     mock_client = MagicMock()
-    mock_client.get_single_project = AsyncMock(return_value=None)
+    mock_client.get_single_project = AsyncMock()
+    mock_client.get_pipeline_stage = AsyncMock(return_value={"id": "stage-789"})
     monkeypatch.setattr(
         "azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor.AzureDevopsClient.create_from_ocean_config",
         lambda: mock_client,
@@ -127,7 +132,14 @@ async def test_pipeline_stage_handle_event_project_not_found(
     }
     result = await pipeline_stage_processor.handle_event(payload, MagicMock())
 
-    assert len(result.updated_raw_results) == 0
+    assert len(result.updated_raw_results) == 1
+    mock_client.get_single_project.assert_not_called()
+    mock_client.get_pipeline_stage.assert_called_once_with(
+        {"id": "project-123", "name": None},
+        "pipeline-101",
+        "run-456",
+        "stage-789",
+    )
 
 
 @pytest.mark.asyncio
@@ -137,7 +149,7 @@ async def test_pipeline_stage_handle_event_stage_not_found(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     mock_client = MagicMock()
-    mock_client.get_single_project = AsyncMock(return_value={"id": "project-123"})
+    mock_client.get_single_project = AsyncMock()
     mock_client.get_pipeline_stage = AsyncMock(return_value=None)
     monkeypatch.setattr(
         "azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor.AzureDevopsClient.create_from_ocean_config",
@@ -155,3 +167,4 @@ async def test_pipeline_stage_handle_event_stage_not_found(
     result = await pipeline_stage_processor.handle_event(payload, MagicMock())
 
     assert len(result.updated_raw_results) == 0
+    mock_client.get_single_project.assert_not_called()
