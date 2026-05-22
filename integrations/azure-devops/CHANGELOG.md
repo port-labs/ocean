@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.8.42 (2026-05-24)
+## 0.8.44 (2026-05-24)
 
 
 ### Bug Fixes
@@ -15,12 +15,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored webhook processing to reduce API pressure and improve reliability during overlapping resync and live event workloads.
 
 
+## 0.8.43 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 0.8.42 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
 ## 0.8.41 (2026-05-20)
 
 
 ### Bug Fixes
 
-- Fixed rate limiter treating `X-RateLimit-Reset` as a wait deadline, which could cause webhook processing to hit Ocean's 90s timeout
+- Fixed file resyncs aborting on transient `503` responses from the `itemsbatch` endpoint by opting the request into the retry path.
 
 
 ## 0.8.40 (2026-05-19)

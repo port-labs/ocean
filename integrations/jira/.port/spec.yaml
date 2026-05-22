@@ -13,6 +13,7 @@ features:
       - kind: user
       - kind: release
       - kind: board
+      - kind: worklog
 configurations:
   - name: appHost
     required: false
