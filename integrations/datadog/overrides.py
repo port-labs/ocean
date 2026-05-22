@@ -36,9 +36,12 @@ class SLOHistorySelector(Selector):
     )
     concurrency: int = Field(
         alias="concurrency",
-        default=2,
+        default=50,
         title="Concurrency",
-        description="Number of concurrent requests to make to Datadog.",
+        description=(
+            "Number of concurrent requests to make to Datadog. "
+            "Increasing this value speeds up data sync but risks hitting API rate limits. "
+        ),
         ge=1,
     )
 
@@ -68,7 +71,7 @@ class DatadogMetricSelector(BaseModel):
     )
 
 
-class DatadogSelector(BaseModel):
+class ServiceMetricSelector(BaseModel):
     metric: str = Field(
         alias="metric",
         title="Metric",
@@ -89,23 +92,24 @@ class DatadogSelector(BaseModel):
         default=1,
         title="Timeframe",
         description="Time frame in minutes for the metric query.",
+        ge=1,
     )
 
 
-class DatadogResourceSelector(Selector):
-    datadog_selector: DatadogSelector = Field(
+class ServiceMetricResourceSelector(Selector):
+    metric_selector: ServiceMetricSelector = Field(
         alias="datadogSelector",
         title="Datadog Selector",
         description="Datadog metric query configuration.",
     )
 
 
-class DatadogResourceConfig(ResourceConfig):
+class ServiceMetricResourceConfig(ResourceConfig):
     kind: Literal["serviceMetric"] = Field(
         title="Datadog Service Metric",
         description="Datadog service metric resource kind.",
     )
-    selector: DatadogResourceSelector = Field(
+    selector: ServiceMetricResourceSelector = Field(
         title="Service Metric Selector",
         description="Selector for the Datadog service metric resource.",
     )
@@ -197,7 +201,7 @@ class DataDogPortAppConfig(PortAppConfig):
         ServiceDependencyResourceConfig
         | TeamResourceConfig
         | SLOHistoryResourceConfig
-        | DatadogResourceConfig
+        | ServiceMetricResourceConfig
         | HostResourceConfig
         | MonitorResourceConfig
         | SLOResourceConfig
