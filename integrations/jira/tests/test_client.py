@@ -1,4 +1,5 @@
 from typing import Any
+from jira.overrides import JiraWorklogAPIQueryParams
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -85,6 +86,83 @@ MOCK_BOARD_WITHOUT_ADMINS = {
     },
     "isPrivate": False,
     # admins field absent entirely
+}
+
+MOCK_WORKLOG = {
+    "self": "https://example.atlassian.net/rest/api/3/issue/10001/worklog/10100",
+    "author": {
+        "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Atest-account-id",
+        "accountId": "712020:test-account-id",
+        "emailAddress": "test.user@example.com",
+        "avatarUrls": {
+            "48x48": "https://example.atlassian.net/avatar/48x48.png",
+            "24x24": "https://example.atlassian.net/avatar/24x24.png",
+            "16x16": "https://example.atlassian.net/avatar/16x16.png",
+            "32x32": "https://example.atlassian.net/avatar/32x32.png",
+        },
+        "displayName": "Test User",
+        "active": True,
+        "timeZone": "UTC",
+        "accountType": "atlassian",
+    },
+    "updateAuthor": {
+        "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Atest-account-id",
+        "accountId": "712020:test-account-id",
+        "emailAddress": "test.user@example.com",
+        "avatarUrls": {
+            "48x48": "https://example.atlassian.net/avatar/48x48.png",
+            "24x24": "https://example.atlassian.net/avatar/24x24.png",
+            "16x16": "https://example.atlassian.net/avatar/16x16.png",
+            "32x32": "https://example.atlassian.net/avatar/32x32.png",
+        },
+        "displayName": "Test User",
+        "active": True,
+        "timeZone": "UTC",
+        "accountType": "atlassian",
+    },
+    "comment": {"type": "doc", "version": 1, "content": []},
+    "created": "2024-01-15T10:00:00.000+0000",
+    "updated": "2024-01-15T10:00:00.000+0000",
+    "started": "2024-01-15T09:00:00.000+0000",
+    "timeSpent": "1d",
+    "timeSpentSeconds": 28800,
+    "id": "10100",
+    "issueId": "10001",
+}
+
+MOCK_WORKLOG_API_RESPONSE = {
+    "startAt": 0,
+    "maxResults": 5000,
+    "total": 1,
+    "worklogs": [MOCK_WORKLOG],
+}
+
+MOCK_WORKLOG_API_RESPONSE_EMPTY = {
+    "startAt": 0,
+    "maxResults": 5000,
+    "total": 0,
+    "worklogs": [],
+}
+
+MOCK_WORKLOG_API_RESPONSE_PAGE_1 = {
+    "startAt": 0,
+    "maxResults": 5000,
+    "total": 2,
+    "worklogs": [MOCK_WORKLOG],
+}
+
+MOCK_WORKLOG_API_RESPONSE_PAGE_2 = {
+    "startAt": 1,
+    "maxResults": 5000,
+    "total": 2,
+    "worklogs": [{**MOCK_WORKLOG, "id": "10101", "issueId": "10001"}],
+}
+
+MOCK_ISSUE_WITH_KEY = {
+    "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+    "id": "10001",
+    "self": "https://example.atlassian.net/rest/api/3/issue/10001",
+    "key": "TEST-1",
 }
 
 
@@ -1381,3 +1459,251 @@ async def test_enrich_board_with_projects_returns_empty_list_when_board_has_no_i
 
     assert enriched["__projectKeys"] == []
     mock_request.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_enriches_worklog_with_issue_key(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE
+
+        worklogs: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            worklogs.extend(batch)
+
+        assert len(worklogs) == 1
+        assert worklogs[0]["__issueKey"] == "TEST-1"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_preserves_all_original_fields(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE
+
+        worklogs: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            worklogs.extend(batch)
+
+        worklog = worklogs[0]
+        assert worklog["id"] == "10100"
+        assert worklog["issueId"] == "10001"
+        assert worklog["timeSpent"] == "1d"
+        assert worklog["timeSpentSeconds"] == 28800
+        assert worklog["started"] == "2024-01-15T09:00:00.000+0000"
+        assert worklog["created"] == "2024-01-15T10:00:00.000+0000"
+        assert worklog["updated"] == "2024-01-15T10:00:00.000+0000"
+        assert worklog["author"]["accountId"] == "712020:test-account-id"
+        assert worklog["author"]["displayName"] == "Test User"
+        assert worklog["author"]["emailAddress"] == "test.user@example.com"
+        assert worklog["author"]["timeZone"] == "UTC"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_calls_correct_url(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            pass
+
+        called_url = mock_request.call_args[0][1]
+        assert called_url == f"{mock_jira_client.api_url}/issue/TEST-1/worklog"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_sends_started_after_when_provided(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1",
+            api_params=JiraWorklogAPIQueryParams(started_after=1700000000000),
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert sent_params["startedAfter"] == 1700000000000
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_sends_started_before_when_provided(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1",
+            api_params=JiraWorklogAPIQueryParams(started_before=1800000000000),
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert sent_params["startedBefore"] == 1800000000000
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_omits_started_after_when_none(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1", api_params=None
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert "startedAfter" not in sent_params
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_omits_started_before_when_none(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1", api_params=None
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert "startedBefore" not in sent_params
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_sends_expand_when_provided(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1",
+            api_params=JiraWorklogAPIQueryParams(expand="properties"),
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert sent_params["expand"] == "properties"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_omits_expand_when_none(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1", api_params=None
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert "expand" not in sent_params
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_paginates_across_multiple_pages(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            MOCK_WORKLOG_API_RESPONSE_PAGE_1,
+            MOCK_WORKLOG_API_RESPONSE_PAGE_2,
+        ]
+
+        worklogs: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            worklogs.extend(batch)
+
+        assert len(worklogs) == 2
+        assert mock_request.call_count == 2
+        assert worklogs[0]["id"] == "10100"
+        assert worklogs[1]["id"] == "10101"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_second_page_uses_correct_start_at(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            MOCK_WORKLOG_API_RESPONSE_PAGE_1,
+            MOCK_WORKLOG_API_RESPONSE_PAGE_2,
+        ]
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            pass
+
+        second_call_params = mock_request.call_args_list[1][1]["params"]
+        assert second_call_params["startAt"] == 1
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_returns_empty_for_issue_with_no_worklogs(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        worklogs: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            worklogs.extend(batch)
+
+        assert worklogs == []
+        assert mock_request.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_all_worklogs_carry_correct_issue_key(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            MOCK_WORKLOG_API_RESPONSE_PAGE_1,
+            MOCK_WORKLOG_API_RESPONSE_PAGE_2,
+        ]
+
+        worklogs: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            worklogs.extend(batch)
+
+        assert all(worklog["__issueKey"] == "TEST-1" for worklog in worklogs)
