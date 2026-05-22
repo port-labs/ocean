@@ -25,8 +25,8 @@ class NewRelicSelector(Selector):
         title="Include Open Issue Count",
         description="Whether to calculate and attach the open issue count to each entity.",
     )
-    entity_query_filter: str = Field(
-        default="",
+    entity_query_filter: str | None = Field(
+        default=None,
         alias="entityQueryFilter",
         title="Entity Query Filter",
         description=(
@@ -37,8 +37,8 @@ class NewRelicSelector(Selector):
             "for supported filter syntax."
         ),
     )
-    entity_extra_properties_query: str = Field(
-        default="",
+    entity_extra_properties_query: str | None = Field(
+        default=None,
         alias="entityExtraPropertiesQuery",
         title="Additional Properties Query",
         description=(

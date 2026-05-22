@@ -52,6 +52,12 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 async for entity in EntitiesHandler(
                     http_client
                 ).list_entities_by_resource_kind(kind):
+                    if port_resource_configuration.selector.entity_query_filter is None:
+                        logger.info(
+                            f"Skipping resync for kind without entity_query_filter, kind: {kind}",
+                        )
+                        return
+
                     if port_resource_configuration.selector.calculate_open_issue_count:
                         number_of_open_issues = await IssuesHandler(
                             http_client
