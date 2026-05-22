@@ -88,7 +88,7 @@ class TestNotifyResyncStarted:
         assert url == "http://localhost:3017/v1/lifecycle/r1"
 
     @pytest.mark.asyncio
-    async def test_body_has_integration_id_and_no_granularity(
+    async def test_body_has_integration_id_and_versions(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
         started_at = datetime(2026, 4, 14, 12, 0, 0, tzinfo=timezone.utc)
@@ -103,6 +103,8 @@ class TestNotifyResyncStarted:
         assert body["integration_id"] == "i1"
         assert body["integration_type"] == "github"
         assert body["started_at"] == started_at.isoformat()
+        assert "integration_version" in body
+        assert "ocean_version" in body
         assert "granularity" not in body
         assert "event_id" not in body
 
@@ -137,7 +139,11 @@ class TestNotifyResyncFinished:
         url = mock_post.call_args[0][0]
         assert url == "http://localhost:3017/v1/lifecycle/r1"
         body = mock_post.call_args[1]["json"]
-        assert body == {"status": "finished", "integration_type": "github"}
+        assert body["status"] == "finished"
+        assert body["integration_id"] == "i1"
+        assert body["integration_type"] == "github"
+        assert "integration_version" in body
+        assert "ocean_version" in body
 
 
 class TestNotifyResyncFailed:

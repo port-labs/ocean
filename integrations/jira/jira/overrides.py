@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import Field, validator
+from pydantic import Field, validator, BaseModel
 
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -151,6 +151,63 @@ class JiraEpicResourceConfig(ResourceConfig):
         description="Selector for Jira epic resources.",
     )
 
+      
+class JiraWorklogAPIQueryParams(BaseModel):
+    class Config:
+        allow_population_by_field_name = True
+
+    started_after: int | None = Field(
+        alias="startedAfter",
+        default=None,
+        title="Started After",
+        description="UNIX timestamp in milliseconds. Only return worklogs started after this time.",
+    )
+    started_before: int | None = Field(
+        alias="startedBefore",
+        default=None,
+        title="Started Before",
+        description="UNIX timestamp in milliseconds. Only return worklogs started before this time.",
+    )
+    expand: str | None = Field(
+        default=None,
+        title="Expand",
+        description=(
+            "Include additional worklog data in the response using Jira's resource expansion. "
+            "Accepts a comma-separated list of properties to expand. "
+            "Example: 'properties' returns custom worklog properties attached to each entry. "
+            "See <a href='https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/#expansion' target='_blank'>Jira expansion docs</a>."
+        ),
+    )
+
+
+class JiraWorklogSelector(Selector):
+    jql: str = Field(
+        default="updated >= -1w",
+        title="JQL Filter",
+        description=(
+            "JQL to scope which issues' worklogs are fetched. "
+            "Defaults to issues updated in the last week to avoid "
+            "re-fetching all worklogs on every resync."
+        ),
+    )
+    api_query_params: JiraWorklogAPIQueryParams | None = Field(
+        alias="apiQueryParams",
+        default=None,
+        title="API Query Params",
+        description="Additional query parameters for the worklog API.",
+    )
+
+
+class JiraWorklogResourceConfig(ResourceConfig):
+    kind: Literal["worklog"] = Field(
+        title="Jira Worklog",
+        description="Jira worklog resource kind, representing time tracking entries on issues.",
+    )
+    selector: JiraWorklogSelector = Field(
+        title="Worklog Selector",
+        description="Selector for Jira worklog resources.",
+    )
+
 
 class JiraPortAppConfig(PortAppConfig):
     resources: list[
@@ -161,6 +218,7 @@ class JiraPortAppConfig(PortAppConfig):
         | JiraReleaseResourceConfig
         | JiraBoardResourceConfig
         | JiraEpicResourceConfig
+        | JiraWorklogResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore[assignment]

@@ -16,6 +16,7 @@ from jira.client import MAX_CONCURRENT_REQUESTS
 from jira.overrides import (
     JiraIssueConfig,
     JiraProjectResourceConfig,
+    JiraWorklogResourceConfig,
     TeamResourceConfig,
     JiraBoardResourceConfig,
     JiraEpicResourceConfig,
@@ -151,6 +152,26 @@ async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for epic_batch in stream_async_iterators_tasks(*epic_streams):
                 logger.info(f"Received epic batch with {len(epic_batch)} epics")
                 yield epic_batch
+                
+                
+@ocean.on_resync(Kinds.WORKLOG)
+async def on_resync_worklogs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_or_create_jira_client()
+    config = cast(JiraWorklogResourceConfig, event.resource_config)
+    selector = config.selector
+
+    async for issue_batch in client.get_paginated_issues(
+        {"jql": selector.jql, "fields": "key"}
+    ):
+        worklog_streams = [
+            client.get_paginated_worklogs_for_issue(
+                issue["key"],
+                api_params=selector.api_query_params,
+            )
+            for issue in issue_batch
+        ]
+        async for worklog_batch in stream_async_iterators_tasks(*worklog_streams):
+            yield worklog_batch
 
 
 # Called once when the integration starts.

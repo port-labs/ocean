@@ -5,6 +5,8 @@ from jira.overrides import (
     JiraBoardSelector,
     JiraEpicSelector,
     JiraEpicResourceConfig,
+    JiraWorklogResourceConfig,
+    JiraWorklogSelector,
 )
 
 
@@ -23,6 +25,29 @@ BOARD_MAPPING = {
             },
             "relations": {
                 "project": ".location.projectKey",
+            },
+        }
+    }
+}
+
+WORKLOG_MAPPING = {
+    "entity": {
+        "mappings": {
+            "identifier": ".id",
+            "title": '.author.displayName + " - " + .started',
+            "blueprint": '"jiraWorklog"',
+            "properties": {
+                "timeSpent": ".timeSpent",
+                "timeSpentSeconds": ".timeSpentSeconds",
+                "started": ".started",
+                "created": ".created",
+                "updated": ".updated",
+                "authorAccountId": ".author.accountId",
+                "authorDisplayName": ".author.displayName",
+                "authorEmail": ".author.emailAddress",
+            },
+            "relations": {
+                "issue": ".__issueKey",
             },
         }
     }

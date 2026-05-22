@@ -9,3 +9,4 @@ class Kinds(StrEnum):
     RELEASE = "release"
     BOARD = "board"
     EPIC = "epic"
+    WORKLOG = "worklog"

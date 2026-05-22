@@ -7,6 +7,7 @@ import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
+from jira.overrides import JiraWorklogAPIQueryParams
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -16,6 +17,12 @@ from .retry_transport import JiraRetryTransport
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 MAX_CONCURRENT_REQUESTS = 10
+
+WORKLOG_WEBHOOK_EVENTS = [
+    "worklog_created",
+    "worklog_updated",
+    "worklog_deleted",
+]
 
 WEBHOOK_EVENTS = [
     "jira:issue_created",
@@ -40,6 +47,7 @@ WEBHOOK_EVENTS = [
     "board_created",
     "board_updated",
     "board_deleted",
+    *WORKLOG_WEBHOOK_EVENTS,
 ]
 
 OAUTH2_WEBHOOK_EVENTS = [
@@ -55,6 +63,7 @@ OAUTH2_WEBHOOK_EVENTS = [
     "board_created",
     "board_updated",
     "board_deleted",
+    *WORKLOG_WEBHOOK_EVENTS,
 ]
 
 
@@ -225,8 +234,7 @@ class JiraClient(OAuthClient):
         extract_key: str | None = None,
         initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = initial_params or {}
-        params |= self._generate_base_req_params()
+        params = {**self._generate_base_req_params(), **(initial_params or {})}
 
         start_at = 0
         while True:
@@ -744,3 +752,25 @@ class JiraClient(OAuthClient):
             "GET",
             f"{agile_url}/epic/{epic_id_or_key}",
         )
+      
+    async def get_paginated_worklogs_for_issue(
+        self,
+        issue_key: str,
+        api_params: JiraWorklogAPIQueryParams | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch worklogs for a single issue."""
+        url = f"{self.api_url}/issue/{issue_key}/worklog"
+
+        query_params: dict[str, Any] = {}
+        if api_params:
+            if api_params.started_after is not None:
+                query_params["startedAfter"] = api_params.started_after
+            if api_params.started_before is not None:
+                query_params["startedBefore"] = api_params.started_before
+            if api_params.expand:
+                query_params["expand"] = api_params.expand
+
+        async for batch in self._get_paginated_data(
+            url, "worklogs", initial_params=query_params
+        ):
+            yield [{**worklog, "__issueKey": issue_key} for worklog in batch]
