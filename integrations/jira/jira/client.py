@@ -752,7 +752,7 @@ class JiraClient(OAuthClient):
             "GET",
             f"{agile_url}/epic/{epic_id_or_key}",
         )
-      
+
     async def get_paginated_worklogs_for_issue(
         self,
         issue_key: str,

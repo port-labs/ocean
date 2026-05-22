@@ -1740,7 +1740,7 @@ async def test_get_paginated_worklogs_for_issue_all_worklogs_carry_correct_issue
 
         assert all(worklog["__issueKey"] == "TEST-1" for worklog in worklogs)
 
-        
+
 class TestGetPaginatedEpicsForBoard:
     @pytest.mark.asyncio
     async def test_fetches_incomplete_epics_by_default_using_done_false_param(

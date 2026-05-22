@@ -152,8 +152,8 @@ async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for epic_batch in stream_async_iterators_tasks(*epic_streams):
                 logger.info(f"Received epic batch with {len(epic_batch)} epics")
                 yield epic_batch
-                
-                
+
+
 @ocean.on_resync(Kinds.WORKLOG)
 async def on_resync_worklogs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_or_create_jira_client()

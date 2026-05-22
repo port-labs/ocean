@@ -230,6 +230,220 @@ def test_jira_board_selector_rejects_blank_project_key(
         )
 
 
+def test_jira_worklog_resource_config_parses_correctly() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "worklog",
+                    "selector": {"query": "true"},
+                    "port": WORKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert len(config.resources) == 1
+    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
+    assert config.resources[0].kind == "worklog"
+
+
+def test_jira_worklog_selector_defaults_are_correct() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "worklog",
+                    "selector": {"query": "true"},
+                    "port": WORKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
+    selector = config.resources[0].selector
+    assert isinstance(selector, JiraWorklogSelector)
+    assert selector.jql == "updated >= -1w"
+    assert selector.api_query_params is None
+
+
+def test_jira_worklog_selector_custom_jql() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "worklog",
+                    "selector": {"query": "true", "jql": "project = TEST"},
+                    "port": WORKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
+    assert config.resources[0].selector.jql == "project = TEST"
+
+
+def test_jira_worklog_selector_started_after_filter() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "worklog",
+                    "selector": {
+                        "query": "true",
+                        "apiQueryParams": {"startedAfter": 1700000000000},
+                    },
+                    "port": WORKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
+    selector = config.resources[0].selector
+    assert selector.api_query_params is not None
+    assert selector.api_query_params.started_after == 1700000000000
+
+
+def test_jira_worklog_selector_started_before_filter() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "worklog",
+                    "selector": {
+                        "query": "true",
+                        "apiQueryParams": {"startedBefore": 1800000000000},
+                    },
+                    "port": WORKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
+    selector = config.resources[0].selector
+    assert selector.api_query_params is not None
+    assert selector.api_query_params.started_before == 1800000000000
+
+
+def test_jira_worklog_selector_expand_properties() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "worklog",
+                    "selector": {
+                        "query": "true",
+                        "apiQueryParams": {"expand": "properties"},
+                    },
+                    "port": WORKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
+    selector = config.resources[0].selector
+    assert selector.api_query_params is not None
+    assert selector.api_query_params.expand == "properties"
+
+
+def test_jira_worklog_selector_explicit_none_started_after_resolves_to_none() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "worklog",
+                    "selector": {"query": "true"},
+                    "port": WORKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
+    assert config.resources[0].selector.api_query_params is None
+
+
+def test_jira_worklog_selector_explicit_none_started_before_resolves_to_none() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "worklog",
+                    "selector": {"query": "true", "startedBefore": None},
+                    "port": WORKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
+    assert config.resources[0].selector.api_query_params is None
+
+
+def test_jira_worklog_selector_explicit_none_expand_resolves_to_none() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "worklog",
+                    "selector": {"query": "true"},
+                    "port": WORKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
+    assert config.resources[0].selector.api_query_params is None
+
+
+def test_jira_worklog_selector_all_params_combined() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "worklog",
+                    "selector": {
+                        "query": "true",
+                        "jql": "project = TEST",
+                        "apiQueryParams": {
+                            "startedAfter": 1700000000000,
+                            "startedBefore": 1800000000000,
+                            "expand": "properties",
+                        },
+                    },
+                    "port": WORKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraWorklogResourceConfig)
+    selector = config.resources[0].selector
+    assert selector.jql == "project = TEST"
+    assert selector.api_query_params is not None
+    assert selector.api_query_params.started_after == 1700000000000
+    assert selector.api_query_params.started_before == 1800000000000
+    assert selector.api_query_params.expand == "properties"
+
+
+def test_jira_worklog_resource_config_is_distinct_from_board_config() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "board",
+                    "selector": {"query": "true"},
+                    "port": BOARD_MAPPING,
+                },
+                {
+                    "kind": "worklog",
+                    "selector": {"query": "true"},
+                    "port": WORKLOG_MAPPING,
+                },
+            ]
+        }
+    )
+    assert len(config.resources) == 2
+    assert isinstance(config.resources[0], JiraBoardResourceConfig)
+    assert isinstance(config.resources[1], JiraWorklogResourceConfig)
+
+
 def test_epic_selector_defaults_to_incomplete_epics_only_for_performance() -> None:
     # Default done='false' protects large Jira instances from pulling full
     # epic history on first install — customers opt-in to done epics explicitly.
