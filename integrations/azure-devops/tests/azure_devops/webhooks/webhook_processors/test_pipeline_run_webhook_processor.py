@@ -217,7 +217,7 @@ async def test_pipeline_run_handle_event_project_built_from_payload_without_name
     assert len(result.updated_raw_results) == 1
     mock_client.get_single_project.assert_not_called()
     annotate_kwargs = mock_client.annotate_runs.call_args.kwargs
-    assert annotate_kwargs["project"] == {"id": "project-123", "name": None}
+    assert annotate_kwargs["project"] == {"id": "project-123"}
 
 
 @pytest.mark.asyncio

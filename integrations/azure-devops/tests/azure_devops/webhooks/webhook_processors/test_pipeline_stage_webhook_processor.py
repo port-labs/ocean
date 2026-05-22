@@ -135,7 +135,7 @@ async def test_pipeline_stage_handle_event_project_built_from_payload_without_na
     assert len(result.updated_raw_results) == 1
     mock_client.get_single_project.assert_not_called()
     mock_client.get_pipeline_stage.assert_called_once_with(
-        {"id": "project-123", "name": None},
+        {"id": "project-123"},
         "pipeline-101",
         "run-456",
         "stage-789",
