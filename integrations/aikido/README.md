@@ -82,6 +82,24 @@ resources:
 
 This maps to the Aikido containers query parameter `filter_status`.
 
+### Issue group selector filters
+
+You can control whether issue groups are fetched globally or scoped per team using `scopeToTeam` in the `issue_groups` selector.
+
+When `scopeToTeam` is `true`, the integration iterates all active teams and fetches issue groups scoped to each team, enriching each record with `__team_id` and `__team_name`. 
+
+When `scopeToTeam` is `false` (default), issue groups are fetched globally without team context.
+
+Example (team-scoped):
+
+```yaml
+resources:
+	- kind: issue_groups
+		selector:
+			query: 'true'
+			scopeToTeam: true
+```
+
 ## Authentication
 
 The integration automatically handles OAuth2 token generation and renewal using your client credentials. Tokens are cached and refreshed as needed.
