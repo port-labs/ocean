@@ -125,18 +125,22 @@ class JiraBoardResourceConfig(ResourceConfig):
     )
 
 
-class JiraEpicSelector(Selector):
+class JiraEpicAPIQueryParams(BaseModel):
     done: Literal["true", "false"] | None = Field(
-        alias="done",
-        default="false",
-        title="Epic Completion Filter",
+        default=None,
+        title="Done",
+        description="Filter epics by completion status. 'true' returns only completed epics, 'false' returns only incomplete epics. Omit to return all epics.",
+    )
+
+
+class JiraEpicSelector(Selector):
+    status: list[Literal["incomplete", "complete"]] | None = Field(
+        default=["incomplete"],
+        title="Epic Status",
         description=(
-            "Filter epics by completion status. Defaults to 'false' (incomplete epics only) "
-            "for performance — large Jira instances accumulate thousands of completed epics "
-            "over time, pulling them all significantly increases resync duration. "
-            "Set to 'true' to fetch only completed epics, or null to fetch all epics. "
-            "See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/"
-            "#api-rest-agile-1-0-board-boardid-epic-get"
+            "Filter epics by status. Accepts 'complete', 'incomplete', or both. "
+            "Omit to fetch all epics regardless of status. "
+            "Example: ['incomplete'] fetches only incomplete epics."
         ),
     )
 

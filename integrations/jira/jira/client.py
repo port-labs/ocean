@@ -1,13 +1,13 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator, Literal
+from typing import Any, AsyncGenerator, Generator
 
 import httpx
 import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
-from jira.overrides import JiraWorklogAPIQueryParams
+from jira.overrides import JiraEpicAPIQueryParams, JiraWorklogAPIQueryParams
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -688,7 +688,7 @@ class JiraClient(OAuthClient):
     async def get_paginated_epics_for_board(
         self,
         board_id: int,
-        done: Literal["true", "false"] | None,
+        api_params: JiraEpicAPIQueryParams | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Yield epic batches for a board, filtered by completion status.
 
@@ -701,38 +701,20 @@ class JiraClient(OAuthClient):
         See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/
         #api-rest-agile-1-0-board-boardid-epic-get
         """
-        if not board_id:
-            logger.warning(
-                f"Skipping epic fetch - board_id '{board_id}' is not a valid Jira board ID"
-            )
-            return
-
         agile_url = await self._get_agile_api_url()
         url = f"{agile_url}/board/{board_id}/epic"
 
         query_params: dict[str, Any] = {}
-        if done is not None:
-            query_params["done"] = done
+        if api_params and api_params.done is not None:
+            query_params["done"] = api_params.done
 
-        try:
-            async for epic_batch in self._get_agile_paginated_data(
-                url=url,
-                initial_params=query_params,
-            ):
-                for epic in epic_batch:
-                    epic["__boardId"] = board_id
-                yield epic_batch
-        except httpx.HTTPStatusError as err:
-            match err.response.status_code:
-                case 401:
-                    raise
-                case 403 | 404:
-                    logger.warning(
-                        f"Board {board_id} returned HTTP {err.response.status_code} — "
-                        f"skipping board and continuing resync"
-                    )
-                case _:
-                    raise
+        async for epic_batch in self._get_agile_paginated_data(
+            url=url,
+            initial_params=query_params,
+        ):
+            for epic in epic_batch:
+                epic["__boardId"] = board_id
+            yield epic_batch
 
     async def get_single_epic(
         self,

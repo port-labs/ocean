@@ -1,4 +1,5 @@
 from typing import Any, cast
+from jira.overrides import JiraEpicAPIQueryParams
 
 from jira.overrides import JiraWorklogAPIQueryParams
 import asyncio
@@ -1759,7 +1760,7 @@ class TestGetPaginatedEpicsForBoard:
             batches: list[list[dict[str, Any]]] = []
             async for batch in mock_jira_client.get_paginated_epics_for_board(
                 board_id=1,
-                done="false",
+                api_params=JiraEpicAPIQueryParams(done="false"),
             ):
                 batches.append(batch)
 
@@ -1785,7 +1786,7 @@ class TestGetPaginatedEpicsForBoard:
             batches: list[list[dict[str, Any]]] = []
             async for batch in mock_jira_client.get_paginated_epics_for_board(
                 board_id=1,
-                done="true",
+                api_params=JiraEpicAPIQueryParams(done="true"),
             ):
                 batches.append(batch)
 
@@ -1812,7 +1813,7 @@ class TestGetPaginatedEpicsForBoard:
             batches: list[list[dict[str, Any]]] = []
             async for batch in mock_jira_client.get_paginated_epics_for_board(
                 board_id=1,
-                done=None,
+                api_params=None,
             ):
                 batches.append(batch)
 
@@ -1837,7 +1838,7 @@ class TestGetPaginatedEpicsForBoard:
             batches: list[list[dict[str, Any]]] = []
             async for batch in mock_jira_client.get_paginated_epics_for_board(
                 board_id=1,
-                done="false",
+                api_params=JiraEpicAPIQueryParams(done="false"),
             ):
                 batches.append(batch)
 
@@ -1869,7 +1870,7 @@ class TestGetPaginatedEpicsForBoard:
             batches: list[list[dict[str, Any]]] = []
             async for batch in mock_jira_client.get_paginated_epics_for_board(
                 board_id=1,
-                done="false",
+                api_params=JiraEpicAPIQueryParams(done="false"),
             ):
                 batches.append(batch)
 
@@ -1877,56 +1878,6 @@ class TestGetPaginatedEpicsForBoard:
             assert mock_request.call_count == 2
             assert batches[0][0]["id"] == 17022
             assert batches[1][0]["id"] == 17023
-
-    @pytest.mark.asyncio
-    async def test_skips_board_and_logs_warning_on_http_status_error(
-        self, mock_jira_client: JiraClient
-    ) -> None:
-        """HTTPStatusError on a board must yield nothing and log warning with
-        board_id and status code — one inaccessible board must not abort
-        the entire resync fan-out across remaining boards."""
-        with patch.object(
-            mock_jira_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.side_effect = httpx.HTTPStatusError(
-                "Forbidden",
-                request=Request(
-                    "GET",
-                    "https://example.atlassian.net/rest/agile/latest/board/99/epic",
-                ),
-                response=Response(
-                    403,
-                    request=Request("GET", "https://example.atlassian.net"),
-                ),
-            )
-
-            batches: list[list[dict[str, Any]]] = []
-            async for batch in mock_jira_client.get_paginated_epics_for_board(
-                board_id=99,
-                done="false",
-            ):
-                batches.append(batch)
-
-            assert len(batches) == 0
-
-    @pytest.mark.asyncio
-    async def test_skips_without_api_call_when_board_id_is_zero(
-        self, mock_jira_client: JiraClient
-    ) -> None:
-        """board_id=0 is not a valid Jira board ID — must yield nothing
-        without making an API call."""
-        with patch.object(
-            mock_jira_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            batches: list[list[dict[str, Any]]] = []
-            async for batch in mock_jira_client.get_paginated_epics_for_board(
-                board_id=0,
-                done="false",
-            ):
-                batches.append(batch)
-
-            assert len(batches) == 0
-            mock_request.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_enriches_each_epic_with_board_id_for_relation_mapping(
@@ -1945,70 +1896,12 @@ class TestGetPaginatedEpicsForBoard:
             batches: list[list[dict[str, Any]]] = []
             async for batch in mock_jira_client.get_paginated_epics_for_board(
                 board_id=7,
-                done="false",
+                api_params=JiraEpicAPIQueryParams(done="false"),
             ):
                 batches.append(batch)
 
             for epic in batches[0]:
                 assert epic["__boardId"] == 7
-
-    @pytest.mark.asyncio
-    async def test_skips_board_and_logs_warning_on_http_404_not_found(
-        self, mock_jira_client: JiraClient
-    ) -> None:
-        """404 means board deleted or no view permission, must yield nothing and log warning, not abort resync."""
-        with patch.object(
-            mock_jira_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.side_effect = httpx.HTTPStatusError(
-                "Not Found",
-                request=Request(
-                    "GET",
-                    "https://example.atlassian.net/rest/agile/latest/board/99/epic",
-                ),
-                response=Response(
-                    404,
-                    request=Request("GET", "https://example.atlassian.net"),
-                ),
-            )
-
-            batches: list[list[dict[str, Any]]] = []
-            async for batch in mock_jira_client.get_paginated_epics_for_board(
-                board_id=99,
-                done="false",
-            ):
-                batches.append(batch)
-
-            assert len(batches) == 0
-
-    @pytest.mark.asyncio
-    async def test_skips_board_and_logs_warning_on_http_403_forbidden(
-        self, mock_jira_client: JiraClient
-    ) -> None:
-        """403 means no valid license for this board. Must yield nothing and log warning, not abort resync."""
-        with patch.object(
-            mock_jira_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.side_effect = httpx.HTTPStatusError(
-                "Forbidden",
-                request=Request(
-                    "GET",
-                    "https://example.atlassian.net/rest/agile/latest/board/99/epic",
-                ),
-                response=Response(
-                    403,
-                    request=Request("GET", "https://example.atlassian.net"),
-                ),
-            )
-
-            batches: list[list[dict[str, Any]]] = []
-            async for batch in mock_jira_client.get_paginated_epics_for_board(
-                board_id=99,
-                done="false",
-            ):
-                batches.append(batch)
-
-            assert len(batches) == 0
 
     @pytest.mark.asyncio
     async def test_propagates_http_401_to_fail_resync_fast(
@@ -2033,7 +1926,7 @@ class TestGetPaginatedEpicsForBoard:
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
                 async for _ in mock_jira_client.get_paginated_epics_for_board(
                     board_id=99,
-                    done="false",
+                    api_params=JiraEpicAPIQueryParams(done="false"),
                 ):
                     pass
 
@@ -2174,7 +2067,7 @@ class TestGetPaginatedEpicsFanOut:
             ) -> None:
                 async for batch in mock_jira_client.get_paginated_epics_for_board(
                     board_id=cast(int, board["id"]),
-                    done="false",
+                    api_params=JiraEpicAPIQueryParams(done="false"),
                 ):
                     all_epics.extend(batch)
 
@@ -2182,75 +2075,3 @@ class TestGetPaginatedEpicsFanOut:
 
             assert mock_request.call_count == board_count
             assert len(all_epics) == board_count * epics_per_board
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "board_count, failing_board_ids",
-        [
-            (200, [10, 50, 100]),
-            pytest.param(500, [1, 100, 250, 499], marks=pytest.mark.slow),
-            pytest.param(1000, list(range(100, 1001, 100)), marks=pytest.mark.slow),
-        ],
-        ids=[
-            "200_boards_3_failing",
-            "500_boards_4_failing",
-            "1000_boards_10_failing",
-        ],
-    )
-    async def test_fan_out_skips_failing_boards_and_continues_resync(
-        self,
-        mock_jira_client: JiraClient,
-        board_count: int,
-        failing_board_ids: list[int],
-    ) -> None:
-        board_ids: list[int] = list(range(1, board_count + 1))
-        boards: list[dict[str, Any]] = [
-            {"id": board_id, "name": f"Board {board_id}"} for board_id in board_ids
-        ]
-        failing_set: set[int] = set(failing_board_ids)
-
-        with patch.object(
-            mock_jira_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-
-            async def dynamic_side_effect(*args: Any, **kwargs: Any) -> dict[str, Any]:
-                url: str = args[1] if len(args) > 1 else kwargs.get("url", "")
-                board_id = int(url.split("/board/")[1].split("/")[0])
-                if board_id in failing_set:
-                    raise httpx.HTTPStatusError(
-                        "Forbidden",
-                        request=Request("GET", url),
-                        response=Response(
-                            403,
-                            request=Request("GET", "https://example.atlassian.net"),
-                        ),
-                    )
-                return {
-                    "isLast": True,
-                    "values": [
-                        {
-                            **MOCK_EPIC,
-                            "id": board_id * 1000,
-                            "key": f"PORT-{board_id * 1000}",
-                            "__boardId": board_id,
-                        }
-                    ],
-                }
-
-            mock_request.side_effect = dynamic_side_effect
-
-            all_epics: list[dict[str, Any]] = []
-
-            async def collect_epics_for_board(
-                board: dict[str, Any],
-            ) -> None:
-                async for batch in mock_jira_client.get_paginated_epics_for_board(
-                    board_id=cast(int, board["id"]),
-                    done="false",
-                ):
-                    all_epics.extend(batch)
-
-            await asyncio.gather(*[collect_epics_for_board(board) for board in boards])
-
-            expected_successful_boards = board_count - len(failing_board_ids)
-            assert len(all_epics) == expected_successful_boards
