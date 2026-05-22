@@ -84,10 +84,6 @@ class AWSResourceSelector(Selector):
 
 
 class AWSResourceConfig(ResourceConfig):
-    kind: str = Field(
-        title="Custom Kind",
-        description="Use this to map AWS resources supported by the <a target='_blank' href='https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/supported-resources.html'>AWS Cloud Control API</a> by setting the kind name to the resource type.\n\nExample: AWS::S3::Bucket",
-    )
     selector: AWSResourceSelector = Field(
         title="Selector",
         description="Selector for the AWS resource.",
