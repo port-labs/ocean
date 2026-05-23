@@ -47,6 +47,7 @@ class AWSResourceSelector(Selector):
         description="Maximum number of AWS accounts to process concurrently. "
         "Higher values speed up resync but increase API rate limit pressure and memory usage. "
         "Recommended range: 2-10. Reduce if you encounter throttling errors.",
+        gte=1,
     )
 
     def is_region_allowed(self, region: str) -> bool:
