@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.42.9 (2026-05-23)
+
+### Improvements
+
+- Added earlywarning.io to the trusted subdomains list in the IP blocker to fix hostname rewriting for hosted custom integrations
+
 ## 0.42.8 (2026-05-21)
 
 ### Improvements
