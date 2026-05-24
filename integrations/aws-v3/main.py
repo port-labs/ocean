@@ -3,7 +3,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import AWSResourceConfig
+from integration import AWSResourceConfig, EcrImageResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.exporters.s3 import S3BucketExporter
 from aws.core.helpers.types import ObjectKind
@@ -28,12 +28,13 @@ from aws.core.exporters.aws_lambda.function.exporter import LambdaFunctionExport
 from aws.core.exporters.aws_lambda.function.models import PaginatedLambdaFunctionRequest
 from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
-from aws.core.exporters.ecr import EcrRepositoryExporter
+from aws.core.exporters.ecr import EcrRepositoryExporter, EcrImageExporter
 from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
 from aws.core.exporters.msk import MskClusterExporter
 from aws.core.exporters.msk.cluster.models import PaginatedMskClusterRequest
 from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
+from aws.core.exporters.ecr.image.models import PaginatedImageRequest
 from aws.core.exporters.ec2.volume import EbsVolumeExporter
 from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
 from aws.core.helpers.utils import is_access_denied_exception
@@ -215,6 +216,23 @@ async def resync_msk_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_elasticache_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, ElastiCacheClusterExporter, PaginatedCacheClusterRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.ECR_IMAGE)
+async def resync_ecr_image(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    ecr_config = cast(EcrImageResourceConfig, event.resource_config)
+    service = ResyncAWSService(
+        kind,
+        EcrImageExporter,
+        PaginatedImageRequest,
+        regional=True,
+        extra_options={
+            "tag_status": ecr_config.selector.tag_status,
+            "image_status": ecr_config.selector.image_status,
+        },
     )
     async for batch in service:
         yield batch

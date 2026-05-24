@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.2.18-beta (2026-05-21)
+
+
+### Features
+
+- Added `tagStatus` and `imageStatus` selectors to `AWS::ECR::Image`, enabling API-level filtering of ECR images. Defaults to `tagStatus: TAGGED` and `imageStatus: ACTIVE` so only active, tagged images are synced
+
+
 ## 2.2.17-beta (2026-05-21)
 
 

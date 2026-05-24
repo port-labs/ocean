@@ -17,6 +17,7 @@ class ObjectKind(StrEnum):
     ECR_REPOSITORY = "AWS::ECR::Repository"
     MSK_CLUSTER = "AWS::MSK::Cluster"
     ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
+    ECR_IMAGE = "AWS::ECR::Image"
     EC2_VOLUME = "AWS::EC2::Volume"
 
 

@@ -129,11 +129,13 @@ class ResyncAWSService:
         exporter_cls: Type["IResourceExporter"],
         request_cls: Type[ResourceRequestModel],
         regional: bool,
+        extra_options: Dict[str, Any] | None = None,
     ):
         self.kind = kind
         self.exporter_cls = exporter_cls
         self.request_cls = request_cls
         self.regional = regional
+        self.extra_options: Dict[str, Any] = extra_options or {}
 
         self.aws_resource_config = cast(AWSResourceConfig, event.resource_config)
         self.include_actions = self.aws_resource_config.selector.include_actions
@@ -148,6 +150,7 @@ class ResyncAWSService:
                 region=region,
                 include=self.include_actions,
                 account_id=account_id,
+                **self.extra_options,
             )
 
         return options_factory
