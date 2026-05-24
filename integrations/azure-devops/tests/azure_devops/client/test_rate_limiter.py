@@ -1,8 +1,7 @@
 import asyncio
 import time
-from contextlib import contextmanager
 from typing import Generator
-from unittest.mock import AsyncMock, patch, create_autospec
+from unittest.mock import AsyncMock, Mock, patch, create_autospec
 
 import httpx
 import pytest
@@ -10,33 +9,24 @@ from azure_devops.client.rate_limiter import (
     AzureDevOpsRateLimiter,
     _RATE_LIMIT_USAGE_THRESHOLD,
 )
-from port_ocean.context.event import EventContext, EventType, _event_context_stack
+from port_ocean.context.event import EventType
 
 
 pytestmark = pytest.mark.asyncio
 
 
-@contextmanager
-def _event_context(event_type: str) -> Generator[EventContext, None, None]:
-    """Push an EventContext onto the stack for the duration of the block."""
-    context = EventContext(event_type=event_type)
-    _event_context_stack.push(context)
-    try:
-        yield context
-    finally:
-        _event_context_stack.pop()
+@pytest.fixture(autouse=True)
+def mock_event() -> Generator[Mock, None, None]:
+    """The limiter reads ``event.event_type`` inside ``_should_sleep``.
 
-
-@pytest.fixture
-def resync_event_context() -> Generator[EventContext, None, None]:
-    with _event_context(EventType.RESYNC) as ctx:
-        yield ctx
-
-
-@pytest.fixture
-def webhook_event_context() -> Generator[EventContext, None, None]:
-    with _event_context(EventType.HTTP_REQUEST) as ctx:
-        yield ctx
+    Patching the limiter's bound ``event`` avoids needing a real
+    port_ocean event context stack. Defaults to RESYNC; tests that need
+    a different event type can mutate ``mock_event.event_type``.
+    """
+    mock = Mock()
+    mock.event_type = EventType.RESYNC
+    with patch("azure_devops.client.rate_limiter.event", mock):
+        yield mock
 
 
 @pytest.fixture
@@ -52,7 +42,6 @@ class TestAzureDevOpsRateLimiter:
     async def test_resync_sleeps_when_utilization_at_threshold(
         self,
         mock_sleep: AsyncMock,
-        resync_event_context: EventContext,
         mock_client: AsyncMock,
     ) -> None:
         """RESYNC: sleeps when utilization reaches the 95% threshold."""
@@ -78,7 +67,7 @@ class TestAzureDevOpsRateLimiter:
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_resync_sleeps_when_utilization_above_threshold(
-        self, mock_sleep: AsyncMock, resync_event_context: EventContext
+        self, mock_sleep: AsyncMock
     ) -> None:
         """RESYNC: sleeps when utilization is above the 95% threshold."""
         reset_time = time.time() + 15.0
@@ -99,7 +88,7 @@ class TestAzureDevOpsRateLimiter:
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_resync_does_not_sleep_below_threshold(
-        self, mock_sleep: AsyncMock, resync_event_context: EventContext
+        self, mock_sleep: AsyncMock
     ) -> None:
         """RESYNC: does not sleep when utilization is below the 95% threshold."""
         reset_time = time.time() + 20.0
@@ -118,9 +107,10 @@ class TestAzureDevOpsRateLimiter:
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_non_resync_sleeps_when_remaining_at_critical_floor(
-        self, mock_sleep: AsyncMock, webhook_event_context: EventContext
+        self, mock_sleep: AsyncMock, mock_event: Mock
     ) -> None:
         """Non-RESYNC: sleeps only when remaining requests fall to <= 1."""
+        mock_event.event_type = EventType.HTTP_REQUEST
         reset_time = time.time() + 25.0
         rate_limiter = AzureDevOpsRateLimiter()
 
@@ -138,9 +128,10 @@ class TestAzureDevOpsRateLimiter:
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_non_resync_does_not_sleep_above_critical_floor(
-        self, mock_sleep: AsyncMock, webhook_event_context: EventContext
+        self, mock_sleep: AsyncMock, mock_event: Mock
     ) -> None:
         """Non-RESYNC: does not sleep even at high utilization if remaining > 1."""
+        mock_event.event_type = EventType.HTTP_REQUEST
         reset_time = time.time() + 10.0
         rate_limiter = AzureDevOpsRateLimiter()
 
@@ -159,13 +150,14 @@ class TestAzureDevOpsRateLimiter:
     async def test_retry_after_path_respects_event_type_gate(
         self,
         mock_sleep: AsyncMock,
-        webhook_event_context: EventContext,
+        mock_event: Mock,
     ) -> None:
         """The retry-after sleep path also defers to the event-type gate.
 
         A non-RESYNC caller with remaining > 1 should not block on a stale
         reset_time alone.
         """
+        mock_event.event_type = EventType.HTTP_REQUEST
         reset_time = time.time() + 20.0
         rate_limiter = AzureDevOpsRateLimiter()
 
@@ -242,9 +234,10 @@ class TestAzureDevOpsRateLimiter:
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_proactive_wait_is_skipped_if_reset_in_past(
-        self, mock_sleep: AsyncMock, webhook_event_context: EventContext
+        self, mock_sleep: AsyncMock, mock_event: Mock
     ) -> None:
         """No sleep if the reset time is in the past."""
+        mock_event.event_type = EventType.HTTP_REQUEST
         rate_limiter = AzureDevOpsRateLimiter()
         rate_limiter._limit = 1000
         rate_limiter._remaining = 1
@@ -256,9 +249,7 @@ class TestAzureDevOpsRateLimiter:
         mock_sleep.assert_not_awaited()
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
-    async def test_no_wait_when_no_rate_limit_info(
-        self, mock_sleep: AsyncMock, webhook_event_context: EventContext
-    ) -> None:
+    async def test_no_wait_when_no_rate_limit_info(self, mock_sleep: AsyncMock) -> None:
         """No sleep when no rate limit information has been received."""
         rate_limiter = AzureDevOpsRateLimiter()
 
@@ -267,9 +258,7 @@ class TestAzureDevOpsRateLimiter:
 
         mock_sleep.assert_not_awaited()
 
-    async def test_concurrent_requests_are_limited_by_semaphore(
-        self, webhook_event_context: EventContext
-    ) -> None:
+    async def test_concurrent_requests_are_limited_by_semaphore(self) -> None:
         concurrent_limit = 10
         rate_limiter = AzureDevOpsRateLimiter(max_concurrent=concurrent_limit)
 
@@ -358,7 +347,7 @@ class TestAzureDevOpsRateLimiter:
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_state_reset_after_resync_threshold_sleep(
-        self, mock_sleep: AsyncMock, resync_event_context: EventContext
+        self, mock_sleep: AsyncMock
     ) -> None:
         """RESYNC: rate limit state is reset after proactive waiting."""
         reset_time = time.time() + 10.0
@@ -379,9 +368,10 @@ class TestAzureDevOpsRateLimiter:
 
     @patch("asyncio.sleep", new_callable=AsyncMock)
     async def test_state_reset_after_non_resync_critical_floor_sleep(
-        self, mock_sleep: AsyncMock, webhook_event_context: EventContext
+        self, mock_sleep: AsyncMock, mock_event: Mock
     ) -> None:
         """Non-RESYNC: state cleared after sleeping at the critical floor."""
+        mock_event.event_type = EventType.HTTP_REQUEST
         reset_time = time.time() + 5.0
         rate_limiter = AzureDevOpsRateLimiter()
 
@@ -398,9 +388,7 @@ class TestAzureDevOpsRateLimiter:
         assert rate_limiter._reset_time is None
         mock_sleep.assert_awaited_once()
 
-    async def test_context_manager_semaphore_release_on_exception(
-        self, webhook_event_context: EventContext
-    ) -> None:
+    async def test_context_manager_semaphore_release_on_exception(self) -> None:
         rate_limiter = AzureDevOpsRateLimiter(max_concurrent=5)
         initial_semaphore_value = rate_limiter._semaphore._value
 

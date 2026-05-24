@@ -62,7 +62,6 @@ class AzureDevOpsRateLimiter:
 
     @property
     def is_utilization_threshold_exceeded(self) -> bool:
-        """Whether utilization has reached the configured threshold"""
         return self.utilization >= _RATE_LIMIT_USAGE_THRESHOLD
 
     async def __aenter__(self) -> "AzureDevOpsRateLimiter":
@@ -81,29 +80,18 @@ class AzureDevOpsRateLimiter:
                     f"remaining={self._remaining}, limit={self._limit}, "
                     f"utilization={self.utilization:.2%})"
                 )
-                await self._sleep(wait_time)
+                await asyncio.sleep(wait_time)
+                self._reset_rate_limit_state()
 
         return self
 
     def _should_sleep(self) -> bool:
-        """Decide whether the current call site should actually sleep.
-
-        For RESYNC events, we proactively yield once utilization reaches
-        the configured threshold so that bulk resyncs leave headroom
-        for real-time traffic. For all other event types we only sleep
-        when remaining requests fall to the critical floor configured
-        via ``minimum_limit_remaining``.
-        """
         if event.event_type == EventType.RESYNC:
             return self.is_utilization_threshold_exceeded
         return (
             self._remaining is not None
             and self._remaining <= self._minimum_limit_remaining
         )
-
-    async def _sleep(self, duration_in_seconds: float) -> None:
-        await asyncio.sleep(duration_in_seconds)
-        self._reset_rate_limit_state()
 
     async def __aexit__(
         self,
