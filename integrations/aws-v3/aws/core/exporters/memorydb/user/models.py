@@ -14,7 +14,7 @@ class MemoryDbUserProperties(BaseModel):
     TagList: list[dict[str, Any]] = Field(default_factory=list)
 
     class Config:
-        extra = "ignore"
+        extra = "allow"
         allow_population_by_field_name = True
 
 
