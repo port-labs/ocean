@@ -33,12 +33,14 @@ class ListParentsAction(Action):
                     logger.warning(
                         f"Administrator or management account has been denied access to list parents for account {accounts[idx]['Id']}, {result}, skipping ..."
                     )
+                    results.append({"Parents": []})
                     continue
                 elif is_resource_not_found_exception(result):
                     logger.warning(
                         f"Failed to list parents for account {accounts[idx]['Id']}: {result}"
                     )
                     results.append({"Parents": []})
+                    continue
                 else:
                     raise result
             results.append(cast(Dict[str, List[Dict[str, Any]]], result))
