@@ -7,12 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.14-beta (2026-05-18)
+## 2.2.18-beta (2026-05-24)
 
 
 ### Bug Fixes
 
 - Fixed silent index-shift in concurrent action result merging that caused enrichment data (tags, encryption, etc.) to be applied to the wrong AWS resource when one resource's API call returned a recoverable error. All recoverable-skip paths in S3, SQS, RDS, Lambda, Organizations, and the shared `execute_concurrent_aws_operations` helper (used by ECR, ECS, EC2) now preserve list alignment via an empty placeholder.
+
+
+## 2.2.17-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 2.2.16-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 2.2.15-beta (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 2.2.14-beta (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
 
 
 ## 2.2.13-beta (2026-05-17)

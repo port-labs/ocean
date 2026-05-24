@@ -85,6 +85,7 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 pr_number=number,
                 repo=repo if is_graphql_api else None,
                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
+                exclude_graphql_fields=config.selector.exclude_graphql_fields,
             )
         )
         if not data_to_upsert:

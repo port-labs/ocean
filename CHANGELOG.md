@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.42.8 (2026-05-21)
+
+### Improvements
+
+- Added missing values to lifecycle API
+
+## 0.42.7 (2026-05-19)
+
+### Features
+
+- Remove lifecycle url from settings
+
+## 0.42.6 (2026-05-19)
+
+### Features
+
+- Send all granularities to lifecycle-api
+
+## 0.42.5 (2026-05-19)
+
+### Features
+
+- Kafka event listener: while consuming the legacy `{org_id}.change.log` topic, also process manual resync request messages (`action: RESYNC` with matching `context.integrationId`) in addition to integration changelog events.
+
 
 ## 0.42.4 (2026-05-17)
 
