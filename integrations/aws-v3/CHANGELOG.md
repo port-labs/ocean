@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.17-beta (2026-05-21)
+## 2.2.18-beta (2026-05-24)
 
 
 ### Features
 
 - Added support for `AWS::MemoryDB::User` resource kind, enabling ingestion of MemoryDB users into the Port catalog with attributes such as status, access string, ACL names, authentication mode, and optional tags via `ListTagsForMemoryDbUserAction`.
+
+
+## 2.2.17-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
 
 
 ## 2.2.16-beta (2026-05-21)
