@@ -1508,14 +1508,12 @@ async def test_backlog_passes_jql_and_fields_through_to_api(
             board_id=1,
             jql="statusCategory != Done",
             fields=["summary", "status", "assignee"],
-            max_results=25,
         ):
             pass
 
         sent_params = mock_request.call_args.kwargs["params"]
         assert sent_params["jql"] == "statusCategory != Done"
         assert sent_params["fields"] == "summary,status,assignee"
-        assert sent_params["maxResults"] == 25
 
 
 @pytest.mark.asyncio
@@ -1562,6 +1560,8 @@ async def test_backlog_use_software_api_false_routes_to_agile(
         call_url = mock_request.call_args.args[1]
         assert "/agile/" in call_url
         assert batches[0][0]["__boardId"] == 1
+
+
 async def test_get_paginated_worklogs_for_issue_enriches_worklog_with_issue_key(
     mock_jira_client: JiraClient,
 ) -> None:

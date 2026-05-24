@@ -5,9 +5,6 @@ from jira.overrides import (
     JiraBoardSelector,
     JiraBacklogResourceConfig,
     JiraBacklogSelector,
-    JiraEpicResourceConfig,
-    JiraWorklogResourceConfig,
-    JiraWorklogSelector,
 )
 
 
@@ -287,7 +284,6 @@ def test_jira_backlog_selector_defaults() -> None:
     assert isinstance(selector, JiraBacklogSelector)
     assert selector.jql == "updated >= -1w OR statusCategory != Done"
     assert selector.fields is None
-    assert selector.max_results == 50
     assert selector.use_software_api is True
 
 
@@ -328,40 +324,6 @@ def test_jira_backlog_selector_explicit_none_fields() -> None:
     assert selector.fields is None
 
 
-def test_jira_backlog_selector_accepts_max_results_within_bounds() -> None:
-    selector = JiraBacklogSelector.parse_obj({"query": "true", "maxResults": 100})
-    assert selector.max_results == 100
-
-
-def test_jira_backlog_selector_accepts_max_results_at_lower_bound() -> None:
-    selector = JiraBacklogSelector.parse_obj({"query": "true", "maxResults": 1})
-    assert selector.max_results == 1
-
-
-def test_jira_backlog_selector_accepts_max_results_at_upper_bound() -> None:
-    selector = JiraBacklogSelector.parse_obj({"query": "true", "maxResults": 5000})
-    assert selector.max_results == 5000
-
-
-def test_jira_backlog_selector_rejects_max_results_below_lower_bound() -> None:
-    with pytest.raises(Exception):
-        JiraBacklogSelector.parse_obj({"query": "true", "maxResults": 0})
-
-
-def test_jira_backlog_selector_rejects_negative_max_results() -> None:
-    with pytest.raises(Exception):
-        JiraBacklogSelector.parse_obj({"query": "true", "maxResults": -10})
-
-
-def test_jira_backlog_selector_rejects_max_results_above_upper_bound() -> None:
-    """5000 is the software/1.0 API ceiling — values above this would either
-    be silently capped server-side or rejected. Failing fast at config time
-    surfaces the misconfiguration to the operator instead of producing
-    confusingly small page sizes at runtime."""
-    with pytest.raises(Exception):
-        JiraBacklogSelector.parse_obj({"query": "true", "maxResults": 5001})
-
-
 def test_jira_backlog_selector_use_software_api_explicit_true() -> None:
     selector = JiraBacklogSelector.parse_obj({"query": "true", "useSoftwareApi": True})
     assert selector.use_software_api is True
@@ -384,7 +346,6 @@ def test_jira_backlog_selector_all_fields_combined() -> None:
                         "query": "true",
                         "jql": "project = PORT",
                         "fields": ["id", "key", "summary"],
-                        "maxResults": 200,
                         "useSoftwareApi": False,
                     },
                     "port": BACKLOG_MAPPING,
@@ -396,5 +357,4 @@ def test_jira_backlog_selector_all_fields_combined() -> None:
     selector = config.resources[0].selector
     assert selector.jql == "project = PORT"
     assert selector.fields == ["id", "key", "summary"]
-    assert selector.max_results == 200
     assert selector.use_software_api is False

@@ -142,7 +142,6 @@ async def on_resync_backlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 board_id=board["id"],
                 jql=selector.jql,
                 fields=selector.fields,
-                max_results=selector.max_results,
                 use_software_api=selector.use_software_api,
             )
             for board in boards_with_ids
@@ -151,7 +150,8 @@ async def on_resync_backlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for issue_batch in stream_async_iterators_tasks(*backlog_streams):
             logger.debug(f"Received backlog batch with {len(issue_batch)} issues")
             yield issue_batch
-            
+
+
 @ocean.on_resync(Kinds.EPIC)
 async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_or_create_jira_client()

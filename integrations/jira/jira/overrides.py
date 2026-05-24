@@ -124,6 +124,7 @@ class JiraBoardResourceConfig(ResourceConfig):
         description="Selector for Jira board resources.",
     )
 
+
 class JiraBacklogSelector(Selector):
     jql: str | None = Field(
         default="updated >= -1w OR statusCategory != Done",
@@ -142,18 +143,6 @@ class JiraBacklogSelector(Selector):
             "Specific issue fields to return. Omit to return all fields. "
             "Use field projection to reduce payload size on large boards, "
             "e.g. ['id', 'key', 'summary', 'status', 'assignee', 'priority']."
-        ),
-    )
-    max_results: int = Field(
-        alias="maxResults",
-        default=50,
-        ge=1,
-        le=5000,
-        title="Max Results Per Page",
-        description=(
-            "Number of issues to fetch per page. "
-            "agile/1.0 silently caps at 50. software/1.0 supports up to 5000. "
-            "Increase this only when using the software API for large boards."
         ),
     )
     use_software_api: bool = Field(
@@ -178,6 +167,7 @@ class JiraBacklogResourceConfig(ResourceConfig):
         title="Backlog Selector",
         description="Selector for Jira backlog resources.",
     )
+
 
 class JiraEpicAPIQueryParams(BaseModel):
     done: Literal["true", "false"] | None = Field(

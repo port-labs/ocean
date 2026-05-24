@@ -779,7 +779,6 @@ class JiraClient(OAuthClient):
         board_id: int,
         jql: str | None = None,
         fields: list[str] | None = None,
-        max_results: int = PAGE_SIZE,
         *,
         use_software_api: bool = True,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -791,8 +790,7 @@ class JiraClient(OAuthClient):
         ``agile`` endpoint, which is scheduled for removal on November 1, 2026.
         """
         logger.info(
-            f"Fetching backlog for board {board_id} "
-            f"(jql='{jql or 'none'}', max_results={max_results}, "
+            f"Fetching backlog for board {board_id}. "
             f"use_software_api={use_software_api})"
         )
 
@@ -801,7 +799,6 @@ class JiraClient(OAuthClient):
             query_params["jql"] = jql
         if fields is not None:
             query_params["fields"] = ",".join(fields)
-        query_params["maxResults"] = max_results
 
         if not use_software_api:
             async for backlogs in self._fetch_backlog_from_agile_api(
@@ -824,7 +821,7 @@ class JiraClient(OAuthClient):
                 )
                 return
             raise
-            
+
     async def get_paginated_epics_for_board(
         self,
         board_id: int,
