@@ -12,6 +12,9 @@ from typing import Any, AsyncIterator, Dict, List, cast
 from botocore.utils import ArnParser
 from aiobotocore.client import AioBaseClient
 
+# Determinded based on the AWS IAM ARN reference docs: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
+VALID_IAM_ARN_PREFIXES = ("arn:aws:iam::", "arn:aws-us-gov:iam::", "arn:aws-cn:iam::")
+
 
 class OrganizationDiscoveryMixin(AWSSessionStrategy):
     """Mixin for organizations discovery."""
@@ -54,8 +57,8 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
 
         organization_role_arn = self._get_organization_account_role_arn()
 
-        # validate role arn format
-        if not organization_role_arn.startswith("arn:aws:iam::"):
+        # validate role arn format to accept all AWS partitions (commercial, GovCloud, China)
+        if not any(organization_role_arn.startswith(p) for p in VALID_IAM_ARN_PREFIXES):
             raise AWSSessionError("account_role_arn must be a valid ARN")
 
         arn_data = ArnParser().parse_arn(arn=organization_role_arn)
@@ -66,7 +69,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
     def _build_role_arn(self, account_id: str) -> str:
         """Build the role ARN for the organization account."""
         details = self._get_organization_account_role_details()
-        return f"arn:aws:iam::{account_id}:{details['resource']}"
+        return f"arn:{details['partition']}:iam::{account_id}:{details['resource']}"
 
     async def _get_organization_session(self) -> AioSession:
         """Get or create the organization session for the management account."""
