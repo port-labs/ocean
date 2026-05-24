@@ -58,7 +58,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         organization_role_arn = self._get_organization_account_role_arn()
 
         # validate role arn format to accept all AWS partitions (commercial, GovCloud, China)
-        if not any(organization_role_arn.startswith(p) for p in VALID_IAM_ARN_PREFIXES):
+        if not organization_role_arn.startswith(VALID_IAM_ARN_PREFIXES):
             raise AWSSessionError("account_role_arn must be a valid ARN")
 
         arn_data = ArnParser().parse_arn(arn=organization_role_arn)
