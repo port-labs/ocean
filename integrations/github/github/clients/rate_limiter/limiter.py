@@ -10,6 +10,8 @@ from github.clients.rate_limiter.utils import (
     RateLimiterRequiredHeaders,
     is_rate_limit_response,
 )
+from port_ocean.context.event import event
+
 
 _RATE_LIMIT_USAGE_THRESHOLD: float = 95.0
 
@@ -44,17 +46,30 @@ class GitHubRateLimiter:
             self._initialized = False
             return
 
-        if self.rate_limit_info.utilization_percentage >= _RATE_LIMIT_USAGE_THRESHOLD:
-            delay = self.rate_limit_info.seconds_until_reset
-            if delay > 0:
-                logger.bind(api_type=self.api_type, delay=delay).warning(
-                    f"Requests paused for {delay:.1f}s due to rate limit"
-                )
-                await asyncio.sleep(delay)
-            self._initialized = False
+        if event.event_type == "resync":
+            should_sleep = (
+                self.rate_limit_info.utilization_percentage
+                >= _RATE_LIMIT_USAGE_THRESHOLD
+            )
+        else:
+            should_sleep = self.rate_limit_info.remaining <= 1
+
+        if should_sleep:
+            await self._sleep()
             return
 
         self.rate_limit_info.remaining -= 1
+
+    async def _sleep(self) -> None:
+        if self.rate_limit_info is None:
+            return
+        delay = self.rate_limit_info.seconds_until_reset
+        if delay > 0:
+            logger.bind(api_type=self.api_type, delay=delay).warning(
+                f"Requests paused for {delay:.1f}s due to rate limit"
+            )
+            await asyncio.sleep(delay)
+        self._initialized = False
 
     def is_rate_limit_response(self, response: httpx.Response) -> bool:
         return is_rate_limit_response(response)

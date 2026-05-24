@@ -7,6 +7,8 @@ import time
 from unittest.mock import Mock, patch
 import httpx
 
+from port_ocean.context.event import EventType
+
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.base_client import AbstractGithubClient
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
@@ -35,6 +37,20 @@ def clear_rate_limiter_registry() -> Generator[None, None, None]:
     GitHubRateLimiterRegistry._instances.clear()
     yield
     GitHubRateLimiterRegistry._instances.clear()
+
+
+@pytest.fixture(autouse=True)
+def mock_event() -> Generator[Mock, None, None]:
+    """The limiter reads ``event.event_type`` inside ``_enforce_rate_limit``.
+
+    Patching the limiter's bound ``event`` reference avoids needing a real
+    port_ocean event context stack. Defaults to ``resync``; tests that need
+    a different event type can mutate ``mock_event.event_type``.
+    """
+    mock = Mock()
+    mock.event_type = EventType.RESYNC
+    with patch("github.clients.rate_limiter.limiter.event", mock):
+        yield mock
 
 
 class _DummyHeaders:
@@ -675,3 +691,159 @@ class TestBaseClientRateLimit403Mapping:
 
         with pytest.raises(httpx.HTTPStatusError):
             await client.make_request(resource, ignore_default_errors=False)
+
+
+class TestConditionalSleepThreshold:
+    """Sleep criteria differ by event type:
+
+    - ``resync``: pause once cached utilization is at/above the 95% threshold,
+      so a long-running resync gives the budget room to recover.
+    - anything else (e.g. webhook ``http_request``): pause only when the budget
+      is effectively gone (``remaining <= 1``), so single-shot work is not
+      delayed by a partially-consumed budget.
+    """
+
+    def _seed(
+        self,
+        limiter: Any,
+        *,
+        remaining: int,
+        limit: int = 1000,
+        reset_in: int = 600,
+    ) -> None:
+        limiter.rate_limit_info = RateLimitInfo(
+            limit=limit, remaining=remaining, reset_time=int(time.time()) + reset_in
+        )
+        limiter._initialized = True
+
+    @pytest.mark.asyncio
+    async def test_resync_sleeps_at_utilization_threshold(
+        self,
+        client_config: GitHubRateLimiterConfig,
+        github_host: str,
+        mock_sleep: Mock,
+        mock_event: Mock,
+    ) -> None:
+        """Resync: exactly 95% utilization (remaining=50/1000) triggers a sleep."""
+        mock_event.event_type = EventType.RESYNC
+        client = MockGitHubClient(github_host, client_config)
+        self._seed(client.rate_limiter, remaining=50, reset_in=10)
+
+        mock_sleep.reset_mock()
+        resp = await client.make_request("/user", remaining_override=999)
+        assert resp.status_code == 200
+
+        assert mock_sleep.call_count >= 1
+        assert any(args[0] >= 9 for args, _ in mock_sleep.call_args_list)
+
+    @pytest.mark.asyncio
+    async def test_resync_does_not_sleep_below_utilization_threshold(
+        self,
+        client_config: GitHubRateLimiterConfig,
+        github_host: str,
+        mock_sleep: Mock,
+        mock_event: Mock,
+    ) -> None:
+        """Resync: 94.9% utilization (remaining=51/1000) proceeds optimistically."""
+        mock_event.event_type = EventType.RESYNC
+        client = MockGitHubClient(github_host, client_config)
+        self._seed(client.rate_limiter, remaining=51)
+
+        mock_sleep.reset_mock()
+        resp = await client.make_request("/user", remaining_override=999)
+        assert resp.status_code == 200
+
+        mock_sleep.assert_not_called()
+        # Optimistic decrement: 51 → 50, no reinit from response 999 (already initialized).
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 50
+
+    @pytest.mark.asyncio
+    async def test_non_resync_sleeps_only_when_remaining_at_or_below_one(
+        self,
+        client_config: GitHubRateLimiterConfig,
+        github_host: str,
+        mock_sleep: Mock,
+        mock_event: Mock,
+    ) -> None:
+        """Non-resync (e.g. webhook): remaining<=1 is the sleep trigger."""
+        mock_event.event_type = EventType.HTTP_REQUEST
+        client = MockGitHubClient(github_host, client_config)
+        self._seed(client.rate_limiter, remaining=1, reset_in=20)
+
+        mock_sleep.reset_mock()
+        resp = await client.make_request("/webhook", remaining_override=999)
+        assert resp.status_code == 200
+
+        assert mock_sleep.call_count >= 1
+        assert any(args[0] >= 19 for args, _ in mock_sleep.call_args_list)
+
+    @pytest.mark.asyncio
+    async def test_non_resync_ignores_utilization_threshold(
+        self,
+        client_config: GitHubRateLimiterConfig,
+        github_host: str,
+        mock_sleep: Mock,
+        mock_event: Mock,
+    ) -> None:
+        """Non-resync at 95% utilization but with remaining > 1 must NOT sleep.
+
+        This is the load-bearing case for webhooks: a partially-consumed
+        budget should not delay an individual delivery — only true exhaustion
+        does.
+        """
+        mock_event.event_type = EventType.HTTP_REQUEST
+        client = MockGitHubClient(github_host, client_config)
+        self._seed(client.rate_limiter, remaining=50)  # 95% utilization
+
+        mock_sleep.reset_mock()
+        resp = await client.make_request("/webhook", remaining_override=999)
+        assert resp.status_code == 200
+
+        mock_sleep.assert_not_called()
+        # Optimistic decrement happened — confirms the non-sleep branch ran.
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 49
+
+    @pytest.mark.asyncio
+    async def test_non_resync_does_not_sleep_with_healthy_budget(
+        self,
+        client_config: GitHubRateLimiterConfig,
+        github_host: str,
+        mock_sleep: Mock,
+        mock_event: Mock,
+    ) -> None:
+        """Non-resync with plenty of budget: no sleep, just an optimistic decrement."""
+        mock_event.event_type = EventType.HTTP_REQUEST
+        client = MockGitHubClient(github_host, client_config)
+        self._seed(client.rate_limiter, remaining=500)
+
+        mock_sleep.reset_mock()
+        resp = await client.make_request("/webhook", remaining_override=999)
+        assert resp.status_code == 200
+
+        mock_sleep.assert_not_called()
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 499
+
+    @pytest.mark.asyncio
+    async def test_sleep_path_does_not_decrement_remaining(
+        self,
+        client_config: GitHubRateLimiterConfig,
+        github_host: str,
+        mock_sleep: Mock,
+        mock_event: Mock,
+    ) -> None:
+        """When sleep fires, ``_sleep`` flips ``_initialized=False`` and the function
+        returns before the optimistic decrement — confirming the early-return."""
+        mock_event.event_type = EventType.RESYNC
+        client = MockGitHubClient(github_host, client_config)
+        self._seed(client.rate_limiter, remaining=50, reset_in=5)
+
+        async with client.rate_limiter:
+            pass
+
+        # _sleep() sets _initialized = False; remaining is untouched (no decrement).
+        assert client.rate_limiter._initialized is False
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 50
