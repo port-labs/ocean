@@ -8,3 +8,5 @@ class Kinds(StrEnum):
     TEAM = "team"
     RELEASE = "release"
     BOARD = "board"
+    EPIC = "epic"
+    WORKLOG = "worklog"

@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.43 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 0.8.42 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 0.8.41 (2026-05-20)
+
+
+### Bug Fixes
+
+- Fixed file resyncs aborting on transient `503` responses from the `itemsbatch` endpoint by opting the request into the retry path.
+
+
+## 0.8.40 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
 ## 0.8.39 (2026-05-19)
 
 
