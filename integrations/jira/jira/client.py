@@ -7,7 +7,7 @@ import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
-from jira.overrides import JiraWorklogAPIQueryParams
+from jira.overrides import JiraEpicAPIQueryParams, JiraWorklogAPIQueryParams
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -684,6 +684,56 @@ class JiraClient(OAuthClient):
 
         board["__projectKeys"] = project_keys
         return board
+
+    async def get_paginated_epics_for_board(
+        self,
+        board_id: int,
+        api_params: JiraEpicAPIQueryParams | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield epic batches for a board, filtered by completion status.
+
+        Epic retrieval is per-board. The done query param is optional:
+        - done='false' (default) — incomplete epics only, protects large instances
+          from pulling full epic history on first install
+        - done='true' — completed epics only
+        - done=None — omits the param entirely, fetches all epics
+
+        See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/
+        #api-rest-agile-1-0-board-boardid-epic-get
+        """
+        agile_url = await self._get_agile_api_url()
+        url = f"{agile_url}/board/{board_id}/epic"
+
+        query_params: dict[str, Any] = {}
+        if api_params and api_params.done is not None:
+            query_params["done"] = api_params.done
+
+        async for epic_batch in self._get_agile_paginated_data(
+            url=url,
+            initial_params=query_params,
+        ):
+            for epic in epic_batch:
+                epic["__boardId"] = board_id
+            yield epic_batch
+
+    async def get_single_epic(
+        self,
+        epic_id_or_key: int | str,
+    ) -> dict[str, Any]:
+        """Fetch a single epic by numeric ID or Jira issue key.
+
+        Accepts both formats per the Jira Agile API contract:
+        - Numeric ID: 17022
+        - Issue key: EXAMPLEISSUE-6459
+
+        See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-epic/
+        #api-rest-agile-1-0-epic-epicidorkey-get
+        """
+        agile_url = await self._get_agile_api_url()
+        return await self._send_api_request(
+            "GET",
+            f"{agile_url}/epic/{epic_id_or_key}",
+        )
 
     async def get_paginated_worklogs_for_issue(
         self,

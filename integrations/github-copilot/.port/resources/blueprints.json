@@ -160,6 +160,13 @@
       }
     },
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "github_team": {
+        "target": "githubTeam",
+        "title": "GitHub Team",
+        "required": false,
+        "many": true
+      }
+    }
   }
 ]
