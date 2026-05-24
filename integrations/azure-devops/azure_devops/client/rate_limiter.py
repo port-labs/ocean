@@ -4,11 +4,14 @@ from typing import Any, Optional, Type
 
 import httpx
 from loguru import logger
+from port_ocean.context.event import EventType, event
 
 LIMIT_HEADER = "x-ratelimit-limit"
 LIMIT_REMAINING_HEADER = "x-ratelimit-remaining"
 LIMIT_RESET_HEADER = "x-ratelimit-reset"
 LIMIT_RETRY_AFTER_HEADER = "retry-after"
+
+_RATE_LIMIT_USAGE_THRESHOLD = 0.95
 
 
 class AzureDevOpsRateLimiter:
@@ -51,16 +54,16 @@ class AzureDevOpsRateLimiter:
         return 0.0
 
     @property
-    def should_wait_for_retry_after(self) -> float:
-        """Calculate wait time based on rate limit reset time.
+    def utilization(self) -> float:
+        """Current rate limit utilization as a fraction between 0.0 and 1.0"""
+        if self._limit is None or self._remaining is None or self._limit == 0:
+            return 0.0
+        return (self._limit - self._remaining) / self._limit
 
-        Returns:
-            Seconds to wait, or 0.0 if no wait is needed.
-        """
-        if self._reset_time is not None:
-            wait_time = self._reset_time - time.time()
-            return max(0.0, wait_time)
-        return 0.0
+    @property
+    def is_utilization_threshold_exceeded(self) -> bool:
+        """Whether utilization has reached the configured threshold"""
+        return self.utilization >= _RATE_LIMIT_USAGE_THRESHOLD
 
     async def __aenter__(self) -> "AzureDevOpsRateLimiter":
         """Enter the async context manager.
@@ -70,30 +73,37 @@ class AzureDevOpsRateLimiter:
         await self._semaphore.acquire()
 
         async with self._lock:
-            # Check if we need to wait due to previous rate limit
-            retry_wait = self.should_wait_for_retry_after
-            if retry_wait > 0:
-                logger.debug(
-                    f"Rate limit: waiting {retry_wait:.2f}s due to previous rate limit"
+            wait_time = self.seconds_until_reset
+            if wait_time > 0 and self._should_sleep():
+                logger.info(
+                    f"Rate limit: waiting {wait_time:.2f}s "
+                    f"(event_type={event.event_type}, "
+                    f"remaining={self._remaining}, limit={self._limit}, "
+                    f"utilization={self.utilization:.2%})"
                 )
-                await asyncio.sleep(retry_wait)
-                self._reset_rate_limit_state()
-
-            # Proactively wait if remaining requests are low (separate check)
-            if (
-                self._remaining is not None
-                and self._remaining <= self._minimum_limit_remaining
-            ):
-                reset_wait = self.seconds_until_reset
-                if reset_wait > 0:
-                    logger.debug(
-                        f"Rate limit: proactively waiting {reset_wait:.2f}s "
-                        f"(remaining: {self._remaining}, threshold: {self._minimum_limit_remaining})"
-                    )
-                    await asyncio.sleep(reset_wait)
-                    self._reset_rate_limit_state()
+                await self._sleep(wait_time)
 
         return self
+
+    def _should_sleep(self) -> bool:
+        """Decide whether the current call site should actually sleep.
+
+        For RESYNC events, we proactively yield once utilization reaches
+        the configured threshold so that bulk resyncs leave headroom
+        for real-time traffic. For all other event types we only sleep
+        when remaining requests fall to the critical floor configured
+        via ``minimum_limit_remaining``.
+        """
+        if event.event_type == EventType.RESYNC:
+            return self.is_utilization_threshold_exceeded
+        return (
+            self._remaining is not None
+            and self._remaining <= self._minimum_limit_remaining
+        )
+
+    async def _sleep(self, duration_in_seconds: float) -> None:
+        await asyncio.sleep(duration_in_seconds)
+        self._reset_rate_limit_state()
 
     async def __aexit__(
         self,
