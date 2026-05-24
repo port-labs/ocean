@@ -521,7 +521,9 @@ def test_epic_selector_accepts_both_statuses() -> None:
         }
     )
     assert isinstance(config.resources[0], JiraEpicResourceConfig)
-    assert set(config.resources[0].selector.status) == {"complete", "incomplete"}
+    selector = config.resources[0].selector
+    assert selector.status is not None
+    assert set(selector.status) == {"complete", "incomplete"}
 
 
 def test_epic_selector_accepts_none_status_to_fetch_all() -> None:
