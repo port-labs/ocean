@@ -27,7 +27,7 @@ class PollingEventListenerSettings(EventListenerSettings):
 
     type: Literal[EventListenerType.POLLING]
     resync_on_start: bool = True
-    interval: int = 60
+    interval: int = 10
 
 
 class PollingEventListener(BaseEventListener):
@@ -65,8 +65,9 @@ class PollingEventListener(BaseEventListener):
         Determine whether a newer integration resync request should trigger a resync.
 
         Returns `True` only when `last_updated_at` is a valid timestamp and it is newer
-        than the last processed resync-request timestamp. If no previous timestamp is
-        stored, a valid `last_updated_at` triggers a resync.
+        than the last processed resync-request timestamp. If no request timestamp was
+        stored yet, the integration-state timestamp is used as the first baseline so
+        old resync requests are not replayed after a regular polling resync.
 
         `last_resync_request_updated_at` is treated as a watermark for resync-request
         events and is not reset by integration-change based resyncs. This intentionally
@@ -84,13 +85,16 @@ class PollingEventListener(BaseEventListener):
         except ValueError:
             return False
 
-        if not last_processed_resync_request_updated_at:
+        baseline_updated_at = (
+            last_processed_resync_request_updated_at
+            or ocean.app.resync_state_updater.last_integration_state_updated_at
+        )
+
+        if not baseline_updated_at:
             return True
 
         try:
-            current_state_updated_at = convert_str_to_utc_datetime(
-                last_processed_resync_request_updated_at
-            )
+            current_state_updated_at = convert_str_to_utc_datetime(baseline_updated_at)
         except ValueError:
             return True
 
