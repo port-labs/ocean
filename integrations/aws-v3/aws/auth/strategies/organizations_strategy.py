@@ -12,7 +12,7 @@ from typing import Any, AsyncIterator, Dict, List, cast
 from botocore.utils import ArnParser
 from aiobotocore.client import AioBaseClient
 
-# Determinded based on the AWS IAM ARN reference docs: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
+# Determined based on the AWS IAM ARN reference docs: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
 VALID_IAM_ARN_PREFIXES = ("arn:aws:iam::", "arn:aws-us-gov:iam::", "arn:aws-cn:iam::")
 
 
