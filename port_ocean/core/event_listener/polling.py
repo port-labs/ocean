@@ -27,7 +27,7 @@ class PollingEventListenerSettings(EventListenerSettings):
 
     type: Literal[EventListenerType.POLLING]
     resync_on_start: bool = True
-    interval: int = 10
+    interval: int = 60
 
 
 class PollingEventListener(BaseEventListener):
