@@ -11,12 +11,13 @@ class AccountProperties(BaseModel):
     Email: str = Field(default_factory=str)
     Parents: List[Dict[str, Any]] = Field(default_factory=list)
     Tags: List[Dict[str, Any]] = Field(default_factory=list)
-    Status: str = Field(default_factory=str)
+    Status: Optional[str] = None
+    State: Optional[str] = None
     JoinedTimestamp: Optional[datetime] = None
     JoinedMethod: Optional[str] = None
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         populate_by_name = True
 
 

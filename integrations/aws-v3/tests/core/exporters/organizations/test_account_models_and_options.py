@@ -35,7 +35,8 @@ class TestAccountProperties:
         assert props.Name is None
         assert props.Email == ""
         assert props.Tags == []
-        assert props.Status == ""
+        assert props.Status is None
+        assert props.State is None
         assert props.Id == ""
         assert props.Arn == ""
         assert props.Parents == []
@@ -65,6 +66,33 @@ class TestAccountProperties:
             == "arn:aws:organizations::123456789012:account/o-root/111111111111"
         )
         assert props.JoinedTimestamp == ts
+
+    def test_with_state_field(self) -> None:
+        props = AccountProperties(
+            Id="111111111111",
+            State="ACTIVE",
+        )
+        assert props.State == "ACTIVE"
+        assert props.Status is None
+
+    def test_with_both_status_and_state(self) -> None:
+        props = AccountProperties(
+            Id="111111111111",
+            Status="ACTIVE",
+            State="ACTIVE",
+        )
+        assert props.Status == "ACTIVE"
+        assert props.State == "ACTIVE"
+
+    def test_extra_fields_are_ignored(self) -> None:
+        props = AccountProperties(
+            Id="111111111111",
+            State="ACTIVE",
+            UnknownFutureField="some-value",  # type: ignore[call-arg]
+        )
+        assert props.Id == "111111111111"
+        assert props.State == "ACTIVE"
+        assert not hasattr(props, "UnknownFutureField")
 
 
 class TestAccountModel:

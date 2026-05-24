@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.2.18-beta (2026-05-24)
+
+
+### Bug Fixes
+
+- Added `State` field to `AccountProperties` and changed `extra` to `ignore` so AWS Organizations accounts are ingested correctly when the new `State` field (introduced Sept 2025) is present alongside the deprecated `Status` field
+
+
 ## 2.2.17-beta (2026-05-21)
 
 

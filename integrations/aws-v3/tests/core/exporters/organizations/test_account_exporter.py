@@ -135,3 +135,65 @@ class TestOrganizationsAccountExporter:
         mock_inspector.inspect.assert_any_call(
             [{"Id": "333333333333"}], ["ListParentsAction"]
         )
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.organizations.account.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.organizations.account.exporter.ResourceInspector")
+    async def test_get_paginated_resources_with_state_and_status_fields(
+        self,
+        mock_inspector_class: MagicMock,
+        mock_proxy_class: MagicMock,
+        exporter: OrganizationsAccountExporter,
+    ) -> None:
+        """AWS Organizations API currently returns both State and Status on accounts.
+        State was added Sept 2025; Status is deprecated Sept 2026. Both must be accepted.
+        """
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+        async def mock_paginate() -> AsyncGenerator[list[dict[str, str]], None]:
+            yield [
+                {"Id": "111111111111", "Status": "ACTIVE", "State": "ACTIVE"},
+                {"Id": "222222222222", "Status": "ACTIVE", "State": "ACTIVE"},
+            ]
+
+        class MockPaginator:
+            def paginate(self) -> AsyncGenerator[list[dict[str, str]], None]:
+                return mock_paginate()
+
+        mock_proxy.get_paginator = MagicMock(return_value=MockPaginator())
+
+        mock_inspector = AsyncMock()
+        mock_inspector_class.return_value = mock_inspector
+
+        acc1 = Account(
+            Properties=AccountProperties(
+                Id="111111111111", Status="ACTIVE", State="ACTIVE"
+            )
+        )
+        acc2 = Account(
+            Properties=AccountProperties(
+                Id="222222222222", Status="ACTIVE", State="ACTIVE"
+            )
+        )
+
+        mock_inspector.inspect.return_value = [
+            acc1.dict(exclude_none=True),
+            acc2.dict(exclude_none=True),
+        ]
+
+        options = PaginatedAccountRequest(
+            region="us-east-1", account_id="999999999999", include=["ListParentsAction"]
+        )
+
+        results = []
+        async for page in exporter.get_paginated_resources(options):
+            results.extend(page)
+
+        assert len(results) == 2
+        assert results[0]["Properties"]["Status"] == "ACTIVE"
+        assert results[0]["Properties"]["State"] == "ACTIVE"
+        assert results[1]["Properties"]["Status"] == "ACTIVE"
+        assert results[1]["Properties"]["State"] == "ACTIVE"
