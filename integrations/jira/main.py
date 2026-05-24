@@ -17,6 +17,7 @@ from jira.overrides import (
     JiraWorklogResourceConfig,
     TeamResourceConfig,
     JiraBoardResourceConfig,
+    JiraEpicResourceConfig,
 )
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
@@ -123,6 +124,26 @@ async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         logger.info(f"Received board batch with {len(board_batch)} boards")
         yield list(enriched_boards)
+
+
+@ocean.on_resync(Kinds.EPIC)
+async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_or_create_jira_client()
+    selector = cast(JiraEpicResourceConfig, event.resource_config).selector
+
+    logger.info("Starting epic resync")
+    async for board_batch in client.get_paginated_boards():
+        epic_streams = [
+            client.get_paginated_epics_for_board(
+                board_id=board["id"],
+                api_params=selector.api_query_params,
+            )
+            for board in board_batch
+            if board.get("id")
+        ]
+        async for epic_batch in stream_async_iterators_tasks(*epic_streams):
+            logger.info(f"Received epic batch with {len(epic_batch)} epics")
+            yield epic_batch
 
 
 @ocean.on_resync(Kinds.WORKLOG)
