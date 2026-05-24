@@ -1,5 +1,5 @@
 import asyncio
-from typing import cast, Any, Literal
+from typing import cast, Any
 
 from loguru import logger
 from initialize_client import get_or_create_jira_client
@@ -10,7 +10,6 @@ from webhook_processors.board_webhook_processor import BoardWebhookProcessor
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-from jira.overrides import JiraEpicAPIQueryParams
 
 from jira.overrides import (
     JiraIssueConfig,
@@ -133,20 +132,14 @@ async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(JiraEpicResourceConfig, event.resource_config).selector
 
     logger.info("Starting epic resync")
-
-    done: Literal["true", "false"] | None = None
-    if selector.status and len(selector.status) == 1:
-        done = "true" if selector.status[0] == "complete" else "false"
-    api_params = JiraEpicAPIQueryParams(done=done) if done else None
-
     async for board_batch in client.get_paginated_boards():
-        boards_with_ids = [board for board in board_batch if board.get("id")]
         epic_streams = [
             client.get_paginated_epics_for_board(
                 board_id=board["id"],
-                api_params=api_params,
+                api_params=selector.api_query_params,
             )
-            for board in boards_with_ids
+            for board in board_batch
+            if board.get("id")
         ]
         async for epic_batch in stream_async_iterators_tasks(*epic_streams):
             logger.info(f"Received epic batch with {len(epic_batch)} epics")

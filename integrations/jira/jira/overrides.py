@@ -144,6 +144,15 @@ class JiraEpicSelector(Selector):
         ),
     )
 
+    @property
+    def api_query_params(self) -> JiraEpicAPIQueryParams | None:
+        if not self.status or len(self.status) != 1:
+            return None
+        done: Literal["true", "false"] = (
+            "true" if self.status[0] == "complete" else "false"
+        )
+        return JiraEpicAPIQueryParams(done=done)
+
 
 class JiraEpicResourceConfig(ResourceConfig):
     kind: Literal["epic"] = Field(
