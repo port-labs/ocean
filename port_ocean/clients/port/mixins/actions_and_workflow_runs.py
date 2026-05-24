@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Literal
 import httpx
 from port_ocean.clients.port.authentication import PortAuthentication
@@ -10,7 +11,8 @@ from port_ocean.core.models import (
     RunStatus,
     WorkflowNodeRunStatus,
     WorkflowNodeRunResult,
-    StaleRunVerdict,
+    StaleRunOutcome,
+    StaleRunCloseDecision,
 )
 
 
@@ -144,24 +146,58 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
 
     async def get_stale_runs(
         self,
-        inactivity_minutes: int = 15,
-        limit: int = 100,
-    ) -> list[ActionRun]:
-        """Return IN_PROGRESS action runs owned by this installation that have been inactive
-        for at least *inactivity_minutes*. Stale detection only applies to action runs,
-        not workflow-node runs."""
-        return await self.get_stale_action_runs(
-            inactivity_minutes=inactivity_minutes,
-            limit=limit,
+        inactivity_minutes: int,
+        limit: int,
+    ) -> list[ActionRun | WorkflowNodeRun]:
+        """Return IN_PROGRESS runs (both action runs and workflow-node runs) owned
+        by this installation that have been inactive for at least *inactivity_minutes*.
+        """
+        action_runs, wf_node_runs = await asyncio.gather(
+            self.get_stale_action_runs(
+                inactivity_minutes=inactivity_minutes, limit=limit
+            ),
+            self.get_stale_wf_node_runs(
+                inactivity_minutes=inactivity_minutes, limit=limit
+            ),
         )
+        return [*action_runs, *wf_node_runs]
 
-    async def close_stale_run(self, verdict: StaleRunVerdict) -> None:
-        """Close a stale run according to the given verdict."""
-        await self.patch_run(
-            verdict.run_id,
-            {"status": verdict.status, "summary": verdict.summary},
-            should_raise=False,
-        )
+    async def close_stale_run(
+        self,
+        run: ActionRun | WorkflowNodeRun,
+        decision: StaleRunCloseDecision,
+    ) -> None:
+        """Close a stale run, mapping the executor's outcome to the correct API payload."""
+        if self._is_wf_node_run(run):
+            result_map = {
+                StaleRunOutcome.SUCCESS: WorkflowNodeRunResult.SUCCESS,
+                StaleRunOutcome.FAILURE: WorkflowNodeRunResult.FAILED,
+                StaleRunOutcome.CANCELLED: WorkflowNodeRunResult.CANCELLED,
+            }
+            await self.post_wf_node_run_logs(
+                run.id,
+                [WorkflowNodeRunLog(level="ERROR", message=decision.summary)],
+                should_raise=False,
+            )
+            await self.patch_wf_node_run(
+                run.id,
+                {
+                    "status": WorkflowNodeRunStatus.COMPLETED,
+                    "result": result_map[decision.outcome],
+                },
+                should_raise=False,
+            )
+        else:
+            status = (
+                RunStatus.SUCCESS
+                if decision.outcome == StaleRunOutcome.SUCCESS
+                else RunStatus.FAILURE
+            )
+            await self.patch_run(
+                run.id,
+                {"status": status, "summary": decision.summary},
+                should_raise=False,
+            )
 
     async def report_run_completed(
         self,

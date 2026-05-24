@@ -11,6 +11,7 @@ from port_ocean.core.models import (
 from port_ocean.exceptions.execution_manager import RunAlreadyAcknowledgedError
 
 INTERNAL_WORKFLOW_CLIENT_HEADER = {"x-port-reserved-usage": "true"}
+INTERNAL_WORKFLOW_NODE_RUN_FIELDS = "identifier,status,node"
 
 
 class WorkflowNodesClientMixin:
@@ -79,6 +80,32 @@ class WorkflowNodesClientMixin:
             json={"logs": [log.dict() for log in logs]},
         )
         handle_port_status_code(response, should_raise=should_raise)
+
+    async def get_stale_wf_node_runs(
+        self,
+        inactivity_minutes: int,
+        limit: int,
+    ) -> list[WorkflowNodeRun]:
+        """Fetch IN_PROGRESS workflow-node runs owned by this installation that
+        have been inactive for at least *inactivity_minutes*."""
+        response = await self.client.get(
+            f"{self.auth.api_url}/workflows/nodes/runs/stale",
+            headers={**(await self.auth.headers()), **INTERNAL_WORKFLOW_CLIENT_HEADER},
+            params={
+                "installationId": self.auth.integration_identifier,
+                "inactivityMinutes": inactivity_minutes,
+                "limit": limit,
+                "include": INTERNAL_WORKFLOW_NODE_RUN_FIELDS,
+            },
+        )
+        if response.is_error:
+            logger.error("Error fetching stale workflow node runs", error=response.text)
+            return []
+
+        return [
+            WorkflowNodeRun.parse_obj(run)
+            for run in response.json().get("nodeRuns", [])
+        ]
 
     async def get_wf_node_run_by_external_id(
         self, external_id: str

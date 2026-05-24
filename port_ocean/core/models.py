@@ -244,11 +244,33 @@ class ClaimedWorkflowNodeRun(WorkflowNodeRun):
         return self.config.get("integrationActionExecutionProperties", {})
 
 
-class StaleRunVerdict(BaseModel):
-    """Verdict returned by an executor's inspect_stale_runs to indicate a run should be closed."""
+class StaleRunOutcome(StrEnum):
+    """Run-type-agnostic outcome used by executors in StaleRunCloseDecision.
+
+    The execution manager maps this to the appropriate API payload:
+    - ActionRun:         SUCCESS → RunStatus.SUCCESS
+                         FAILURE → RunStatus.FAILURE
+                         CANCELLED → RunStatus.FAILURE  (no CANCELLED on ActionRun)
+    - WorkflowNodeRun:  SUCCESS → WorkflowNodeRunResult.SUCCESS
+                         FAILURE → WorkflowNodeRunResult.FAILED
+                         CANCELLED → WorkflowNodeRunResult.CANCELLED
+    """
+
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    CANCELLED = "CANCELLED"
+
+
+class StaleRunCloseDecision(BaseModel):
+    """Returned by AbstractExecutor.inspect_stale_runs for each run that should be closed.
+
+    Executors only express *what happened* (outcome + human summary); they do
+    not need to know whether the underlying run is an ActionRun or a
+    WorkflowNodeRun.  The execution manager handles the type-specific API call.
+    """
 
     run_id: str
-    status: RunStatus
+    outcome: StaleRunOutcome
     summary: str
 
 

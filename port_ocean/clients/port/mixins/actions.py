@@ -94,8 +94,8 @@ class ActionsClientMixin:
 
     async def get_stale_action_runs(
         self,
-        inactivity_minutes: int = 15,
-        limit: int = 100,
+        inactivity_minutes: int,
+        limit: int,
     ) -> list[ActionRun]:
         """Fetch IN_PROGRESS runs owned by this installation that have been
         inactive for at least *inactivity_minutes*."""

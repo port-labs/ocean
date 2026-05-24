@@ -5,7 +5,11 @@ from typing import Optional, Type
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.models import ActionRun, StaleRunVerdict, WorkflowNodeRun
+from port_ocean.core.models import (
+    ActionRun,
+    StaleRunCloseDecision,
+    WorkflowNodeRun,
+)
 
 
 class AbstractExecutor(ABC):
@@ -112,28 +116,32 @@ class AbstractExecutor(ABC):
         pass
 
     async def inspect_stale_runs(
-        self, stale_runs: list[ActionRun]
-    ) -> list[StaleRunVerdict] | None:
-        """Inspect stale-candidate runs and return verdicts for which ones to close.
+        self, stale_runs: list[ActionRun | WorkflowNodeRun]
+    ) -> list[StaleRunCloseDecision] | None:
+        """Inspect stale-candidate runs and return close decisions for the ones to terminate.
 
         Executors that can verify whether the underlying external job is truly
-        done (e.g. via a GitHub GraphQL batch query) should override this method
-        and return a :class:`StaleRunVerdict` for every run that should be closed,
-        with the appropriate terminal status and a human-readable summary.
+        done (e.g. via a GitHub GraphQL batch query) should override this method.
 
-        Runs that are not included in the returned list are left untouched and
-        will be re-evaluated on the next sweep.
+        For each run that should be closed, return a :class:`StaleRunCloseDecision`
+        with the appropriate ``outcome`` (SUCCESS / FAILURE / CANCELLED) and a
+        human-readable ``summary``.  The execution manager translates the outcome to
+        the correct API payload depending on the run type — executors do not need to
+        distinguish between ActionRun and WorkflowNodeRun.
+
+        Runs not included in the returned list are left untouched and will be
+        re-evaluated on the next sweep.
 
         Returning ``None`` (the default) signals that this executor does not
         support stale-run detection; the execution manager will skip stale
         sweeping entirely for this executor.
 
         Args:
-            stale_runs: Action runs that have been IN_PROGRESS beyond the
-                configured inactivity threshold.
+            stale_runs: Runs that have been IN_PROGRESS beyond the configured
+                inactivity threshold.
 
         Returns:
-            A list of :class:`StaleRunVerdict` objects, or ``None`` to opt out.
+            A list of :class:`StaleRunCloseDecision` objects, or ``None`` to opt out.
         """
         return None
 
