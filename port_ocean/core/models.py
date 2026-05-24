@@ -194,6 +194,8 @@ class ActionRun(BaseModel):
     id: str
     status: RunStatus
     payload: IntegrationActionInvocationPayload
+    externalRunId: str | None = None
+    externalMetadata: dict[str, Any] | None = None
 
     @property
     def action_type(self) -> str:
@@ -240,6 +242,14 @@ class ClaimedWorkflowNodeRun(WorkflowNodeRun):
     @property
     def execution_properties(self) -> dict[str, Any]:
         return self.config.get("integrationActionExecutionProperties", {})
+
+
+class StaleRunVerdict(BaseModel):
+    """Verdict returned by an executor's inspect_stale_runs to indicate a run should be closed."""
+
+    run_id: str
+    status: RunStatus
+    summary: str
 
 
 class LakehouseDataEntryMetadata(TypedDict):

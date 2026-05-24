@@ -91,3 +91,39 @@ class ActionsClientMixin:
             json={"message": message},
         )
         handle_port_status_code(response, should_raise=False)
+
+    async def get_stale_action_runs(
+        self,
+        inactivity_minutes: int = 15,
+        limit: int = 100,
+    ) -> list[ActionRun]:
+        """Fetch IN_PROGRESS runs owned by this installation that have been
+        inactive for at least *inactivity_minutes*."""
+        response = await self.client.get(
+            f"{self.auth.api_url}/actions/runs/stale",
+            headers={**(await self.auth.headers()), **INTERNAL_ACTIONS_CLIENT_HEADER},
+            params={
+                "installationId": self.auth.integration_identifier,
+                "inactivityMinutes": inactivity_minutes,
+                "limit": limit,
+            },
+        )
+        if response.is_error:
+            logger.error("Error fetching stale runs", error=response.text)
+            return []
+
+        return [ActionRun.parse_obj(run) for run in response.json().get("runs", [])]
+
+    async def patch_run_external_metadata(
+        self,
+        run_id: str,
+        external_metadata: dict[str, Any],
+        should_raise: bool = False,
+    ) -> None:
+        """Persist integration-specific metadata on a run (e.g. workflowRunNodeId)."""
+        response = await self.client.patch(
+            f"{self.auth.api_url}/actions/runs/{run_id}",
+            headers=await self.auth.headers(),
+            json={"externalMetadata": external_metadata},
+        )
+        handle_port_status_code(response, should_raise=should_raise)

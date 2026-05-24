@@ -10,6 +10,7 @@ from port_ocean.core.models import (
     RunStatus,
     WorkflowNodeRunStatus,
     WorkflowNodeRunResult,
+    StaleRunVerdict,
 )
 
 
@@ -140,6 +141,27 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 run.id,
                 {"link": link, "externalRunId": external_id},
             )
+
+    async def get_stale_runs(
+        self,
+        inactivity_minutes: int = 15,
+        limit: int = 100,
+    ) -> list[ActionRun]:
+        """Return IN_PROGRESS action runs owned by this installation that have been inactive
+        for at least *inactivity_minutes*. Stale detection only applies to action runs,
+        not workflow-node runs."""
+        return await self.get_stale_action_runs(
+            inactivity_minutes=inactivity_minutes,
+            limit=limit,
+        )
+
+    async def close_stale_run(self, verdict: StaleRunVerdict) -> None:
+        """Close a stale run according to the given verdict."""
+        await self.patch_run(
+            verdict.run_id,
+            {"status": verdict.status, "summary": verdict.summary},
+            should_raise=False,
+        )
 
     async def report_run_completed(
         self,

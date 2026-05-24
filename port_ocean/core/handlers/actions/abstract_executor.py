@@ -5,7 +5,7 @@ from typing import Optional, Type
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.models import ActionRun, WorkflowNodeRun
+from port_ocean.core.models import ActionRun, StaleRunVerdict, WorkflowNodeRun
 
 
 class AbstractExecutor(ABC):
@@ -110,6 +110,32 @@ class AbstractExecutor(ABC):
             ```
         """
         pass
+
+    async def inspect_stale_runs(
+        self, stale_runs: list[ActionRun]
+    ) -> list[StaleRunVerdict] | None:
+        """Inspect stale-candidate runs and return verdicts for which ones to close.
+
+        Executors that can verify whether the underlying external job is truly
+        done (e.g. via a GitHub GraphQL batch query) should override this method
+        and return a :class:`StaleRunVerdict` for every run that should be closed,
+        with the appropriate terminal status and a human-readable summary.
+
+        Runs that are not included in the returned list are left untouched and
+        will be re-evaluated on the next sweep.
+
+        Returning ``None`` (the default) signals that this executor does not
+        support stale-run detection; the execution manager will skip stale
+        sweeping entirely for this executor.
+
+        Args:
+            stale_runs: Action runs that have been IN_PROGRESS beyond the
+                configured inactivity threshold.
+
+        Returns:
+            A list of :class:`StaleRunVerdict` objects, or ``None`` to opt out.
+        """
+        return None
 
     @abstractmethod
     async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:

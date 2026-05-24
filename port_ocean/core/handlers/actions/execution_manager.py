@@ -20,6 +20,8 @@ from port_ocean.utils.signal import SignalHandler
 RATE_LIMIT_MAX_BACKOFF_SECONDS = 10
 QUEUE_GET_TIMEOUT_SECONDS = 1
 GLOBAL_SOURCE = "__global__"
+STALE_RUNS_SWEEP_INTERVAL_MINUTES = 5
+STALE_RUNS_INACTIVITY_MINUTES = 15
 
 
 class ExecutionManager:
@@ -83,6 +85,7 @@ class ExecutionManager:
     ):
         self._webhook_manager = webhook_manager
         self._polling_task: asyncio.Task[None] | None = None
+        self._stale_sweep_task: asyncio.Task[None] | None = None
         self._workers_pool: set[asyncio.Task[None]] = set[asyncio.Task[None]]()
         self._actions_executors: Dict[str, AbstractExecutor] = {}
         self._is_shutting_down = asyncio.Event()
@@ -98,6 +101,8 @@ class ExecutionManager:
         self._poll_check_interval_seconds: int = poll_check_interval_seconds
         self._visibility_timeout_ms: int = visibility_timeout_ms
         self._max_wait_seconds_before_shutdown: float = max_wait_seconds_before_shutdown
+        self._stale_runs_sweep_interval_minutes: int = STALE_RUNS_SWEEP_INTERVAL_MINUTES
+        self._stale_runs_inactivity_minutes: int = STALE_RUNS_INACTIVITY_MINUTES
 
         signal_handler.register(self.shutdown)
 
@@ -137,6 +142,13 @@ class ExecutionManager:
             return
 
         self._polling_task = asyncio.create_task(self._poll_action_runs())
+
+        if self._has_stale_run_handlers():
+            self._stale_sweep_task = asyncio.create_task(self._sweep_stale_runs())
+        else:
+            logger.info(
+                "No executors implement handle_stale_runs, skipping stale run sweeper"
+            )
 
         workers_count = max(1, self._workers_count)
         for _ in range(workers_count):
@@ -423,6 +435,105 @@ class ExecutionManager:
                     run, error_summary, should_raise=False
                 )
 
+    def _has_stale_run_handlers(self) -> bool:
+        """Return True if at least one registered executor overrides handle_stale_runs."""
+        return any(
+            type(executor).inspect_stale_runs is not AbstractExecutor.inspect_stale_runs
+            for executor in self._actions_executors.values()
+        )
+
+    async def _sweep_stale_runs(self) -> None:
+        """
+        Background task that periodically fetches stale IN_PROGRESS runs and
+        closes those that executors determine are no longer active.
+
+        Only started when at least one executor overrides handle_stale_runs
+        (checked once in start_processing_action_runs).
+        """
+        while not self._is_shutting_down.is_set():
+            try:
+                await asyncio.sleep(0)
+
+                participating_executors = {
+                    action_type: executor
+                    for action_type, executor in self._actions_executors.items()
+                    if type(executor).inspect_stale_runs
+                    is not AbstractExecutor.inspect_stale_runs
+                }
+
+                stale_runs = await ocean.port_client.get_stale_runs(
+                    inactivity_minutes=self._stale_runs_inactivity_minutes,
+                )
+
+                if not stale_runs:
+                    logger.debug(
+                        "No stale runs found, sleeping until next sweep",
+                        inactivity_minutes=self._stale_runs_inactivity_minutes,
+                    )
+                    await asyncio.sleep(self._stale_runs_sweep_interval_minutes * 60)
+                    continue
+
+                logger.info(
+                    "Stale run sweep: found candidates",
+                    count=len(stale_runs),
+                )
+
+                # Group stale runs by action type so each executor only sees its own.
+                runs_by_action: Dict[str, list[ActionRun]] = {}
+                for run in stale_runs:
+                    action_type = run.action_type
+                    if action_type not in participating_executors:
+                        logger.debug(
+                            "No executor registered for stale run, skipping",
+                            run_id=run.id,
+                            action_type=action_type,
+                        )
+                        continue
+                    runs_by_action.setdefault(action_type, []).append(run)
+
+                for action_type, runs in runs_by_action.items():
+                    executor = participating_executors[action_type]
+                    try:
+                        verdicts = await executor.inspect_stale_runs(runs)
+                    except Exception as e:
+                        logger.error(
+                            "Executor raised an error in handle_stale_runs",
+                            action_type=action_type,
+                            error=e,
+                        )
+                        continue
+
+                    if verdicts is None:
+                        logger.debug(
+                            "Executor opted out of stale-run handling",
+                            action_type=action_type,
+                        )
+                        continue
+
+                    for verdict in verdicts:
+                        try:
+                            await ocean.port_client.close_stale_run(verdict)
+                            logger.info(
+                                "Closed stale run",
+                                run_id=verdict.run_id,
+                                status=verdict.status,
+                                summary=verdict.summary,
+                            )
+                        except Exception as e:
+                            logger.error(
+                                "Failed to close stale run",
+                                run_id=verdict.run_id,
+                                error=e,
+                            )
+
+            except Exception as e:
+                logger.error(
+                    "Unexpected error in stale runs sweeper, will retry",
+                    error=e,
+                )
+
+            await asyncio.sleep(self._stale_runs_sweep_interval_minutes * 60)
+
     async def _gracefully_cancel_task(self, task: asyncio.Task[None] | None) -> None:
         """
         Gracefully cancel a task.
@@ -447,6 +558,7 @@ class ExecutionManager:
             await asyncio.wait_for(
                 asyncio.gather(
                     self._gracefully_cancel_task(self._polling_task),
+                    self._gracefully_cancel_task(self._stale_sweep_task),
                     *(worker for worker in self._workers_pool),
                 ),
                 timeout=self._max_wait_seconds_before_shutdown,
