@@ -44,7 +44,7 @@ class DbClusterProperties(BaseModel):
     DBSubnetGroup: Optional[str] = Field(default=None)
 
     class Config:
-        extra = "ignore"
+        extra = "allow"
 
 
 class DbCluster(ResourceModel[DbClusterProperties]):
