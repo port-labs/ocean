@@ -138,19 +138,18 @@ class TestOrganizationsAccountExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.organizations.account.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.organizations.account.exporter.ResourceInspector")
     async def test_get_paginated_resources_with_state_and_status_fields(
         self,
-        mock_inspector_class: MagicMock,
         mock_proxy_class: MagicMock,
         exporter: OrganizationsAccountExporter,
     ) -> None:
-        """AWS Organizations API currently returns both State and Status on accounts.
-        State was added Sept 2025; Status is deprecated Sept 2026. Both must be accepted.
-        """
+        """Verifies that raw AWS paginator output containing both State and Status fields
+        passes Pydantic validation through the real ResourceInspector/ResourceBuilder path.
+        ResourceInspector is intentionally NOT mocked so AccountProperties(**raw_dict) actually runs.
+        ListAccountsAction._execute returns its input unchanged and makes no client calls,
+        so the mock client is sufficient."""
         mock_proxy = AsyncMock()
-        mock_client = AsyncMock()
-        mock_proxy.client = mock_client
+        mock_proxy.client = AsyncMock()
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
         async def mock_paginate() -> AsyncGenerator[list[dict[str, str]], None]:
@@ -165,27 +164,8 @@ class TestOrganizationsAccountExporter:
 
         mock_proxy.get_paginator = MagicMock(return_value=MockPaginator())
 
-        mock_inspector = AsyncMock()
-        mock_inspector_class.return_value = mock_inspector
-
-        acc1 = Account(
-            Properties=AccountProperties(
-                Id="111111111111", Status="ACTIVE", State="ACTIVE"
-            )
-        )
-        acc2 = Account(
-            Properties=AccountProperties(
-                Id="222222222222", Status="ACTIVE", State="ACTIVE"
-            )
-        )
-
-        mock_inspector.inspect.return_value = [
-            acc1.dict(exclude_none=True),
-            acc2.dict(exclude_none=True),
-        ]
-
         options = PaginatedAccountRequest(
-            region="us-east-1", account_id="999999999999", include=["ListParentsAction"]
+            region="us-east-1", account_id="999999999999", include=[]
         )
 
         results = []
