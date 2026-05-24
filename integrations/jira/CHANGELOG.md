@@ -7,12 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.15 (2026-05-19)
+## 0.7.19 (2026-05-22)
 
 
 ### Improvements
 
 - Added `backlog` kind to sync Backlog issues into Port using the Jira Software Cloud REST API.
+
+
+## 0.7.18 (2026-05-22)
+
+
+### Improvements
+
+- Added support for syncing Jira Epics as a new `epic` kind in Port.
+
+
+## 0.7.17 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 0.7.16 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 0.7.15 (2026-05-20)
+
+
+### Improvements
+
+- Added support for Issue Worklogs to sync worklog entries from Jira issues into Port, including worklog author, time spent, and comments. This allows teams to track time spent on issues directly within Port and gain insights into effort distribution across projects and tasks.
 
 
 ## 0.7.14 (2026-05-19)

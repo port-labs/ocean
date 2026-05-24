@@ -14,9 +14,11 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from jira.overrides import (
     JiraIssueConfig,
     JiraProjectResourceConfig,
+    JiraWorklogResourceConfig,
     TeamResourceConfig,
     JiraBoardResourceConfig,
     JiraBacklogResourceConfig,
+    JiraEpicResourceConfig,
 )
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
@@ -149,6 +151,45 @@ async def on_resync_backlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for issue_batch in stream_async_iterators_tasks(*backlog_streams):
             logger.debug(f"Received backlog batch with {len(issue_batch)} issues")
             yield issue_batch
+            
+@ocean.on_resync(Kinds.EPIC)
+async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_or_create_jira_client()
+    selector = cast(JiraEpicResourceConfig, event.resource_config).selector
+
+    logger.info("Starting epic resync")
+    async for board_batch in client.get_paginated_boards():
+        epic_streams = [
+            client.get_paginated_epics_for_board(
+                board_id=board["id"],
+                api_params=selector.api_query_params,
+            )
+            for board in board_batch
+            if board.get("id")
+        ]
+        async for epic_batch in stream_async_iterators_tasks(*epic_streams):
+            logger.info(f"Received epic batch with {len(epic_batch)} epics")
+            yield epic_batch
+
+
+@ocean.on_resync(Kinds.WORKLOG)
+async def on_resync_worklogs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_or_create_jira_client()
+    config = cast(JiraWorklogResourceConfig, event.resource_config)
+    selector = config.selector
+
+    async for issue_batch in client.get_paginated_issues(
+        {"jql": selector.jql, "fields": "key"}
+    ):
+        worklog_streams = [
+            client.get_paginated_worklogs_for_issue(
+                issue["key"],
+                api_params=selector.api_query_params,
+            )
+            for issue in issue_batch
+        ]
+        async for worklog_batch in stream_async_iterators_tasks(*worklog_streams):
+            yield worklog_batch
 
 
 # Called once when the integration starts.

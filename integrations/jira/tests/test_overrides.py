@@ -5,6 +5,9 @@ from jira.overrides import (
     JiraBoardSelector,
     JiraBacklogResourceConfig,
     JiraBacklogSelector,
+    JiraEpicResourceConfig,
+    JiraWorklogResourceConfig,
+    JiraWorklogSelector,
 )
 
 
@@ -46,6 +49,44 @@ BACKLOG_MAPPING = {
             },
         }
     }
+}
+
+WORKLOG_MAPPING = {
+    "entity": {
+        "mappings": {
+            "identifier": ".id",
+            "title": '.author.displayName + " - " + .started',
+            "blueprint": '"jiraWorklog"',
+            "properties": {
+                "timeSpent": ".timeSpent",
+                "timeSpentSeconds": ".timeSpentSeconds",
+                "started": ".started",
+                "created": ".created",
+                "updated": ".updated",
+                "authorAccountId": ".author.accountId",
+                "authorDisplayName": ".author.displayName",
+                "authorEmail": ".author.emailAddress",
+            },
+            "relations": {
+                "issue": ".__issueKey",
+            },
+        }
+    }
+}
+
+
+EPIC_MAPPING = {
+    "identifier": ".id | tostring",
+    "title": ".name // .key",
+    "blueprint": '"jiraEpic"',
+    "properties": {
+        "summary": ".summary",
+        "done": ".done",
+        "name": ".name // .key",
+    },
+    "relations": {
+        "board": ".__boardId",
+    },
 }
 
 

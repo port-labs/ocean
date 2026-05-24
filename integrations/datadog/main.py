@@ -13,8 +13,8 @@ from initialize_client import init_client
 from integration import ObjectKind
 from overrides import (
     SLOHistoryResourceConfig,
-    DatadogResourceConfig,
-    DatadogSelector,
+    ServiceMetricResourceConfig,
+    ServiceMetricSelector,
     TeamResourceConfig,
     ServiceDependencyResourceConfig,
 )
@@ -124,9 +124,9 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
-    params: DatadogSelector = cast(
-        DatadogResourceConfig, event.resource_config
-    ).selector.datadog_selector
+    params: ServiceMetricSelector = cast(
+        ServiceMetricResourceConfig, event.resource_config
+    ).selector.metric_selector
 
     async for metrics in dd_client.get_metrics(
         metric_query=params.metric,
