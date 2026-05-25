@@ -18,12 +18,12 @@ def retry_transient_network(max_attempts: int = 3) -> Callable:
                     return await func(*args, **kwargs)
 
                 except (
-                    httpx.TimeoutException,  # All httpx timeouts (Read, Write, Connect, Pool)
-                    asyncio.TimeoutError,  # Event loop timeouts
-                    TimeoutError,  # Python 3.11+ native timeouts
-                    httpx.RequestError,  # Other connection drops
-                    ConnectionError,  # OS-level connection resets
-                    OSError,  # OS-level socket flakiness
+                    httpx.TimeoutException,
+                    asyncio.TimeoutError,
+                    TimeoutError,
+                    httpx.RequestError,
+                    ConnectionError,
+                    OSError,
                 ) as exc:
                     if attempt < max_attempts:
                         logger.warning(
@@ -39,11 +39,11 @@ def retry_transient_network(max_attempts: int = 3) -> Callable:
                         return None
 
                 except asyncio.CancelledError:
-                    # Let the app shut down cleanly if cancelled
+
                     raise
 
                 except Exception as exc:
-                    # Pure logic bugs (e.g. KeyError, TypeError). Do not retry these.
+
                     logger.error(
                         f"Unexpected logic error during HTTP request: {type(exc).__name__}: {exc}"
                     )
@@ -67,7 +67,7 @@ class OceanHttpClient:
     def __init__(self, auth: PortAuthentication, timeout: int = 10) -> None:
         self.auth = auth
         self._timeout = timeout
-        # Do NOT create the httpx client here.
+
         self._client: httpx.AsyncClient | None = None
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -81,13 +81,12 @@ class OceanHttpClient:
         """Generic POST request -- best-effort, never raises. Retries on transient/5xx errors."""
         headers = await self.auth.headers()
 
-        # Grab the safely bound client to avoid asyncio subprocess lock issues
         client = self._get_client()
 
         response = await client.post(url, headers=headers, json=json)
 
         if response.is_error:
-            # Manually raise 5xx errors so the decorator catches and retries them
+
             if response.status_code >= 500:
                 response.raise_for_status()
 
@@ -101,7 +100,5 @@ class OceanHttpClient:
             logger.info(
                 f"API request succeeded for POST {url}",
                 status_code=response.status_code,
-                # Usually you don't need to log the response body on success for all clients,
-                # but leaving it here if you want the verbose trail!
                 response_body=_truncate(response.text),
             )
