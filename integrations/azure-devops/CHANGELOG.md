@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.45 (2026-05-25)
+
+
+### Features
+
+- Added multi-organization (Multiple Accounts) support via Entra ID service principal, allowing a single integration to sync across multiple Azure DevOps organizations
+- Webhook events are now routed to the correct per-org client; events from unknown organizations are dropped instead of falling back to the wrong org
+
+
 ## 0.8.44 (2026-05-24)
 
 
