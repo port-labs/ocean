@@ -25,7 +25,7 @@ def _reset_clients_after_fork() -> None:
     for client in GithubClientFactory._instances.values():
         client.authenticator._http_client = None
     GithubClientFactory._instances.clear()
-    GitHubRateLimiterRegistry._instances.clear()
+    GitHubRateLimiterRegistry.reset_for_fork()
 
 
 os.register_at_fork(after_in_child=_reset_clients_after_fork)
