@@ -127,7 +127,7 @@ async def semaphore_async_iterator(
             yield result
 
 
-async def _consume_iterator(
+async def _stream_iterator_to_queue(
     *,
     index: int,
     iterator: typing.AsyncIterable[T],
@@ -181,7 +181,7 @@ async def stream_independent_async_iterators(
 
     tasks = [
         asyncio.create_task(
-            _consume_iterator(
+            _stream_iterator_to_queue(
                 index=index,
                 iterator=iterator,
                 queue=queue,
