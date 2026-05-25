@@ -35,7 +35,7 @@ def lifecycle_client(
     mock_auth: MagicMock, mock_post: AsyncMock, monkeypatch: pytest.MonkeyPatch
 ) -> LifecycleClient:
     client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
-    monkeypatch.setattr(client, "_do_post", mock_post)
+    monkeypatch.setattr(client, "_raw_post", mock_post)
     return client
 
 
@@ -582,3 +582,66 @@ class TestNotifyGranularAborted:
             event_id="e1",
             granularity=GranularityType.KIND,
         )
+
+
+class TestRetryBehavior:
+    def _make_response(self, status_code: int) -> httpx.Response:
+        return httpx.Response(status_code, content=b"")
+
+    @pytest.mark.asyncio
+    async def test_post_retried_on_503(self, mock_auth: MagicMock) -> None:
+        client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+        client._transport._wrapped_transport.handle_async_request = AsyncMock(
+            side_effect=[self._make_response(503), self._make_response(200)]
+        )
+        with (
+            patch.object(client._transport, "_calculate_sleep", return_value=0.0),
+            patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+        ):
+            await client.notify_resync_started(
+                resync_id="r1", integration_id="i1", integration_type="github"
+            )
+        assert (
+            client._transport._wrapped_transport.handle_async_request.await_count == 2
+        )
+
+    @pytest.mark.asyncio
+    async def test_post_retried_on_connect_error(self, mock_auth: MagicMock) -> None:
+        client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+        client._transport._wrapped_transport.handle_async_request = AsyncMock(
+            side_effect=[httpx.ConnectError("refused"), self._make_response(200)]
+        )
+        with (
+            patch.object(client._transport, "_calculate_sleep", return_value=0.0),
+            patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+        ):
+            await client.notify_resync_started(
+                resync_id="r1", integration_id="i1", integration_type="github"
+            )
+        assert (
+            client._transport._wrapped_transport.handle_async_request.await_count == 2
+        )
+
+    @pytest.mark.asyncio
+    async def test_logs_warning_when_all_retries_exhausted(
+        self, mock_auth: MagicMock
+    ) -> None:
+        client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+        max_attempts = 3
+        client._transport._retry_config.max_attempts = max_attempts
+        client._transport._wrapped_transport.handle_async_request = AsyncMock(
+            return_value=self._make_response(503)
+        )
+        with (
+            patch.object(client._transport, "_calculate_sleep", return_value=0.0),
+            patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+            patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger,
+        ):
+            await client.notify_resync_started(
+                resync_id="r1", integration_id="i1", integration_type="github"
+            )
+        assert (
+            client._transport._wrapped_transport.handle_async_request.await_count
+            == max_attempts + 1
+        )
+        mock_logger.warning.assert_called_once()
