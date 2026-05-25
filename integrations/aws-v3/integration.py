@@ -4,7 +4,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from pydantic import Field, BaseModel
-from typing import List
+from typing import List, Literal
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -91,8 +91,97 @@ class AWSResourceConfig(ResourceConfig):
     )
 
 
+class AWSS3BucketResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::S3::Bucket"] = Field(
+        title="AWS S3 Bucket",
+        description="AWS S3 Bucket resource kind.",
+    )
+
+
+class AWSEC2InstanceResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::EC2::Instance"] = Field(
+        title="AWS EC2 Instance",
+        description="AWS EC2 Instance resource kind.",
+    )
+
+
+class AWSECSClusterResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::ECS::Cluster"] = Field(
+        title="AWS ECS Cluster",
+        description="AWS ECS Cluster resource kind.",
+    )
+
+
+class AWSOrganizationsAccountResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::Organizations::Account"] = Field(
+        title="AWS Organizations Account",
+        description="AWS Organizations Account resource kind.",
+    )
+
+
+class AWSAccountInfoResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::Account::Info"] = Field(
+        title="AWS Account Info",
+        description="AWS Account Info resource kind.",
+    )
+
+
+class AWSRDSDBInstanceResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::RDS::DBInstance"] = Field(
+        title="AWS RDS DB Instance",
+        description="AWS RDS DB Instance resource kind.",
+    )
+
+
+class AWSEKSClusterResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::EKS::Cluster"] = Field(
+        title="AWS EKS Cluster",
+        description="AWS EKS Cluster resource kind.",
+    )
+
+
+class AWSLambdaFunctionResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::Lambda::Function"] = Field(
+        title="AWS Lambda Function",
+        description="AWS Lambda Function resource kind.",
+    )
+
+
+class AWSECSServiceResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::ECS::Service"] = Field(
+        title="AWS ECS Service",
+        description="AWS ECS Service resource kind.",
+    )
+
+
+class AWSSQSQueueResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::SQS::Queue"] = Field(
+        title="AWS SQS Queue",
+        description="AWS SQS Queue resource kind.",
+    )
+
+
+class AWSECRRepositoryResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::ECR::Repository"] = Field(
+        title="AWS ECR Repository",
+        description="AWS ECR Repository resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
-    resources: List[AWSResourceConfig] = Field(
+    resources: List[
+        AWSS3BucketResourceConfig
+        | AWSEC2InstanceResourceConfig
+        | AWSECSClusterResourceConfig
+        | AWSOrganizationsAccountResourceConfig
+        | AWSAccountInfoResourceConfig
+        | AWSRDSDBInstanceResourceConfig
+        | AWSEKSClusterResourceConfig
+        | AWSLambdaFunctionResourceConfig
+        | AWSECSServiceResourceConfig
+        | AWSSQSQueueResourceConfig
+        | AWSECRRepositoryResourceConfig
+    ] = Field(
         default_factory=list,
         title="Resources",
         description="The list of resource configurations to sync from AWS.",
