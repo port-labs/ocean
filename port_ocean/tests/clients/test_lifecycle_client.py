@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -6,6 +5,13 @@ import httpx
 import pytest
 
 from port_ocean.clients.dsp.lifecycle import GranularityType, LifecycleClient
+
+
+@pytest.fixture(autouse=True)
+def mock_ocean_context():
+    with patch("port_ocean.helpers.async_client.ocean") as mock_ocean:
+        mock_ocean.app.is_saas = MagicMock(return_value=False)
+        yield mock_ocean
 
 
 @pytest.fixture
@@ -29,13 +35,7 @@ def lifecycle_client(
     mock_auth: MagicMock, mock_post: AsyncMock, monkeypatch: pytest.MonkeyPatch
 ) -> LifecycleClient:
     client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
-    # Mock the underlying httpx client's post method instead of OceanHttpClient.post
-    # This allows the @retry_transient_network decorator to properly handle exceptions
-    mock_httpx_client = MagicMock(spec=httpx.AsyncClient)
-    mock_httpx_client.post = mock_post
-    monkeypatch.setattr(client._client, "_client", mock_httpx_client)
-    # Skip actual sleep delays during retries to speed up tests
-    monkeypatch.setattr(asyncio, "sleep", AsyncMock())
+    monkeypatch.setattr(client, "_do_post", mock_post)
     return client
 
 
@@ -199,7 +199,7 @@ class TestNotifyResyncAborted:
         error_response.text = "internal error"
         mock_post.return_value = error_response
 
-        with patch("port_ocean.clients.dsp.client.logger") as mock_logger:
+        with patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger:
             await lifecycle_client.notify_resync_aborted(
                 resync_id="r1", integration_id="i1", integration_type="github"
             )
@@ -217,7 +217,7 @@ class TestNotifyResyncAborted:
         error_response.text = "x" * 1000
         mock_post.return_value = error_response
 
-        with patch("port_ocean.clients.dsp.client.logger") as mock_logger:
+        with patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger:
             await lifecycle_client.notify_resync_aborted(
                 resync_id="r1", integration_id="i1", integration_type="github"
             )
