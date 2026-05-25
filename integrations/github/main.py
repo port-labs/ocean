@@ -6,8 +6,10 @@ from github.actions.registry import register_actions_executors
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-from github.helpers.async_iterators import stream_independent_async_iterators
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+    stream_independent_async_iterators,
+)
 
 from github.core.exporters.team_exporter import (
     GraphQLTeamWithMembersExporter,
