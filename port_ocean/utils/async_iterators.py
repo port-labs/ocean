@@ -127,7 +127,7 @@ async def semaphore_async_iterator(
             yield result
 
 
-async def _consume_iterator(
+async def _stream_iterator_to_queue(
     *,
     index: int,
     iterator: typing.AsyncIterable[T],
@@ -147,9 +147,7 @@ async def _consume_iterator(
     except Exception as exc:
         error = exc
 
-        logger.exception(
-            f"{context} iterator {index} failed; continuing remaining"
-        )
+        logger.exception(f"{context} iterator {index} failed; continuing remaining")
 
     finally:
         if is_closing.is_set():
@@ -183,7 +181,7 @@ async def stream_independent_async_iterators(
 
     tasks = [
         asyncio.create_task(
-            _consume_iterator(
+            _stream_iterator_to_queue(
                 index=index,
                 iterator=iterator,
                 queue=queue,
