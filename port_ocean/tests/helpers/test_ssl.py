@@ -163,7 +163,7 @@ async def test_ocean_async_client_defaults_to_third_party_ssl_settings(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        async_client_module.httpx,
+        httpx,
         "AsyncHTTPTransport",
         RecordingTransport,
     )
@@ -189,7 +189,7 @@ async def test_ocean_async_client_keeps_explicit_verify_override(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        async_client_module.httpx,
+        httpx,
         "AsyncHTTPTransport",
         RecordingTransport,
     )
