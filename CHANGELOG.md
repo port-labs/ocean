@@ -7,10 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.42.10 (2026-05-25)
-### Bug Fixes
+## 0.42.11 (2026-05-25)
+
+### Improvements
 
 -  Lifecycle use backoff and handling exception
+
+## 0.42.10 (2026-05-25)
+
+### Improvements
+
+- Added a shared async iterator utility for streaming independent iterators while deferring failures until surviving iterators finish.
 
 ## 0.42.9 (2026-05-24)
 
