@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from port_ocean.clients.port.client import PortClient
+from port_ocean.config.settings import SslSettings
 from port_ocean.context.ocean import ocean, initialize_port_ocean_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.ocean import Ocean
@@ -24,6 +25,8 @@ def port_client_for_fake_integration() -> Tuple[SmokeTestDetails, PortClient]:
     if not ocean.initialized:
         mock_ocean = MagicMock(spec=Ocean)
         mock_ocean.is_saas.return_value = False
+        mock_ocean.config = MagicMock()
+        mock_ocean.config.ssl = SslSettings()
         initialize_port_ocean_context(mock_ocean)
 
     smoke_test_details = get_smoke_test_details()

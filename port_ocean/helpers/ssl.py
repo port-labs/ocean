@@ -7,7 +7,6 @@ from __future__ import annotations
 import ssl
 from typing import TYPE_CHECKING, Literal
 
-from loguru import logger
 
 if TYPE_CHECKING:
     from port_ocean.config.settings import SslClientSettings
@@ -49,14 +48,3 @@ def resolve_verify_param_for_ocean_role(role: OceanSslRole) -> bool | ssl.SSLCon
         ocean.config.ssl.port if role == "port" else ocean.config.ssl.third_party
     )
     return resolve_verify_param(ssl_settings)
-
-
-def resolve_custom_integration_verify(verify_ssl: bool) -> bool | ssl.SSLContext:
-    if not verify_ssl:
-        logger.warning(
-            "integration config verify_ssl=false is deprecated. "
-            "Use OCEAN__SSL__THIRD_PARTY__VERIFY=false instead."
-        )
-        return False
-
-    return resolve_verify_param_for_ocean_role("third_party")

@@ -44,6 +44,24 @@ def test_resolve_verify_param_for_ocean_role_without_context_returns_true(
     assert resolve_verify_param_for_ocean_role(role) is True
 
 
+def test_resolve_verify_param_for_ocean_role_with_mock_ocean_config() -> None:
+    from unittest.mock import MagicMock
+
+    import port_ocean.context.ocean as ocean_ctx_module
+    from port_ocean.config.settings import SslSettings
+    from port_ocean.context.ocean import initialize_port_ocean_context
+    from port_ocean.ocean import Ocean
+
+    mock_ocean = MagicMock(spec=Ocean)
+    mock_ocean.config = MagicMock()
+    mock_ocean.config.ssl = SslSettings()
+    initialize_port_ocean_context(mock_ocean)
+
+    assert resolve_verify_param_for_ocean_role("port") is True
+
+    ocean_ctx_module._port_ocean = ocean_ctx_module.PortOceanContext(None)
+
+
 def test_integration_configuration_reads_structured_ssl_env_vars(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
