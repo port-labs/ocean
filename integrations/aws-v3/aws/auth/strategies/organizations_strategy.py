@@ -9,11 +9,11 @@ from aiobotocore.session import AioSession
 from loguru import logger
 import asyncio
 from typing import Any, AsyncIterator, Dict, List, cast
-from botocore.utils import ArnParser
+from botocore.utils import ArnParser, InvalidArnException
 from aiobotocore.client import AioBaseClient
 
-# Determined based on the AWS IAM ARN reference docs: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
-VALID_IAM_ARN_PREFIXES = ("arn:aws:iam::", "arn:aws-us-gov:iam::", "arn:aws-cn:iam::")
+# https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
+VALID_AWS_PARTITIONS = frozenset({"aws", "aws-us-gov", "aws-cn"})
 
 
 class OrganizationDiscoveryMixin(AWSSessionStrategy):
@@ -57,11 +57,16 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
 
         organization_role_arn = self._get_organization_account_role_arn()
 
-        # validate role arn format to accept all AWS partitions (commercial, GovCloud, China)
-        if not organization_role_arn.startswith(VALID_IAM_ARN_PREFIXES):
+        try:
+            arn_data = ArnParser().parse_arn(arn=organization_role_arn)
+        except InvalidArnException:
             raise AWSSessionError("account_role_arn must be a valid ARN")
 
-        arn_data = ArnParser().parse_arn(arn=organization_role_arn)
+        if (
+            arn_data["service"] != "iam"
+            or arn_data["partition"] not in VALID_AWS_PARTITIONS
+        ):
+            raise AWSSessionError("account_role_arn must be a valid ARN")
 
         self._organization_role_details = arn_data
         return self._organization_role_details
