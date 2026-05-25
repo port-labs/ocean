@@ -1,6 +1,6 @@
 import base64
 from abc import abstractmethod
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -27,9 +27,11 @@ COLLECTION_BASE_URL_PATH = ("collection", "baseUrl")
 
 
 def _enrich_items(
-    items: list, org_url: str, org_name: str
-) -> list:
-    return [{**item, ORG_URL_FIELD: org_url, ORG_NAME_FIELD: org_name} for item in items]
+    items: list[dict[str, Any]], org_url: str, org_name: str
+) -> list[dict[str, Any]]:
+    return [
+        {**item, ORG_URL_FIELD: org_url, ORG_NAME_FIELD: org_name} for item in items
+    ]
 
 
 class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
@@ -63,10 +65,9 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
         containers = payload.get(RESOURCE_CONTAINERS_KEY, {})
         account_key, base_url_key = ACCOUNT_BASE_URL_PATH
         collection_key, _ = COLLECTION_BASE_URL_PATH
-        url = (
-            containers.get(account_key, {}).get(base_url_key)
-            or containers.get(collection_key, {}).get(base_url_key)
-        )
+        url = containers.get(account_key, {}).get(base_url_key) or containers.get(
+            collection_key, {}
+        ).get(base_url_key)
         return url.rstrip("/") if url else None
 
     def _get_client_for_webhook(self, payload: EventPayload) -> AzureDevopsClient:
@@ -108,7 +109,9 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
 
         org_url = self._extract_org_url_from_payload(payload)
         if not org_url:
-            logger.warning("Dropping webhook event: organization URL not found in payload")
+            logger.warning(
+                "Dropping webhook event: organization URL not found in payload"
+            )
             return empty
 
         manager = AzureDevopsClientManager.create_from_ocean_config()

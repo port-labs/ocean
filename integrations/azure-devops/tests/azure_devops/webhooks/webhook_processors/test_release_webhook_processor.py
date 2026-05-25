@@ -111,9 +111,9 @@ async def test_release_validate_payload_valid(
         "eventType": ReleaseEvents.RELEASE_CREATED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"release": {"id": 42}},
     }
     assert await release_processor.validate_payload(valid_payload) is True
@@ -128,8 +128,8 @@ async def test_release_validate_payload_missing_project(
         "eventType": ReleaseEvents.RELEASE_CREATED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+        },
         "resource": {"release": {"id": 42}},
     }
     assert await release_processor.validate_payload(invalid_payload) is False
@@ -144,9 +144,9 @@ async def test_release_validate_payload_missing_release(
         "eventType": ReleaseEvents.RELEASE_CREATED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {},
     }
     assert await release_processor.validate_payload(invalid_payload) is False
@@ -173,9 +173,9 @@ async def test_release_handle_event_success(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"release": {"id": 42}},
     }
 
@@ -209,9 +209,9 @@ async def test_release_handle_event_not_found(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"release": {"id": 42}},
     }
 

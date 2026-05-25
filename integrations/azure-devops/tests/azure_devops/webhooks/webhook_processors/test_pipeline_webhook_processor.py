@@ -80,9 +80,9 @@ async def test_pipeline_validate_payload_valid(
         "eventType": PipelineEvents.PIPELINE_UPDATED,
         "publisherId": PIPELINES_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"checkConfigurationId": "pipeline-123"},
     }
     assert await pipeline_processor.validate_payload(valid_payload) is True
@@ -97,9 +97,9 @@ async def test_pipeline_validate_payload_invalid(
         "eventType": PipelineEvents.PIPELINE_UPDATED,
         "publisherId": PIPELINES_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {},
     }
     assert await pipeline_processor.validate_payload(invalid_payload) is False
@@ -124,9 +124,9 @@ async def test_pipeline_handle_event_success_no_enrich(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"checkConfigurationId": "pipeline-123"},
     }
     resource_config = MagicMock()
@@ -163,9 +163,9 @@ async def test_pipeline_handle_event_success_with_enrich(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"checkConfigurationId": "pipeline-123"},
     }
     resource_config = MagicMock()
@@ -199,9 +199,9 @@ async def test_pipeline_handle_event_not_found(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"checkConfigurationId": "pipeline-123"},
     }
     result = await pipeline_processor.handle_event(payload, MagicMock())

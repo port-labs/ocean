@@ -70,9 +70,7 @@ def test_build_auth_provider_single_account_missing_pat() -> None:
 
 def test_build_auth_provider_multiple_accounts_missing_sp_field() -> None:
     with pytest.raises(ValueError, match="client_secret"):
-        build_auth_provider(
-            {"account_mode": ACCOUNT_MODE_MULTIPLE, "client_id": "cid"}
-        )
+        build_auth_provider({"account_mode": ACCOUNT_MODE_MULTIPLE, "client_id": "cid"})
 
 
 def test_build_auth_provider_unknown_mode() -> None:

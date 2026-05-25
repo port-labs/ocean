@@ -14,7 +14,9 @@ CONCURRENT_ORG_RESYNCS = 3
 def _enrich_batch(
     batch: list[dict[str, Any]], org_url: str, org_name: str
 ) -> list[dict[str, Any]]:
-    return [{**item, ORG_URL_FIELD: org_url, ORG_NAME_FIELD: org_name} for item in batch]
+    return [
+        {**item, ORG_URL_FIELD: org_url, ORG_NAME_FIELD: org_name} for item in batch
+    ]
 
 
 async def _iter_org(

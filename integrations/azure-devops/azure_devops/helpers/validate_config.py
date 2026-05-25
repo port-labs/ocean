@@ -27,20 +27,14 @@ def validate_azure_devops_config(config: dict[str, Any]) -> None:
 
     if account_mode == ACCOUNT_MODE_SINGLE:
         if not config.get("organization_url"):
-            raise ValueError(
-                "Single Account mode requires 'organizationUrl'."
-            )
+            raise ValueError("Single Account mode requires 'organizationUrl'.")
         if not config.get("personal_access_token"):
-            raise ValueError(
-                "Single Account mode requires 'personalAccessToken'."
-            )
+            raise ValueError("Single Account mode requires 'personalAccessToken'.")
 
     elif account_mode == ACCOUNT_MODE_MULTIPLE:
         for field in ("client_id", "client_secret", "tenant_id"):
             if not config.get(field):
-                raise ValueError(
-                    f"Multiple Accounts mode requires '{field}'."
-                )
+                raise ValueError(f"Multiple Accounts mode requires '{field}'.")
         org_urls = parse_organization_urls(config.get("organization_urls"))
         if not org_urls:
             raise ValueError(

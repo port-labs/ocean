@@ -27,7 +27,9 @@ class GitManipulationHandler(JQEntityProcessor):
 
         return await super()._search(data, pattern, field)
 
-    def _get_client_for_entity(self, data: Dict[str, Any]) -> Optional[AzureDevopsClient]:
+    def _get_client_for_entity(
+        self, data: Dict[str, Any]
+    ) -> Optional[AzureDevopsClient]:
         """Resolve the per-org client from __organizationUrl on the entity."""
         org_url: Optional[str] = data.get(ORG_URL_FIELD)
         if not org_url:

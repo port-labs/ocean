@@ -49,9 +49,9 @@ async def test_advanced_security_validate_payload(
         "eventType": AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,
         "publisherId": ADVANCED_SECURITY_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "proj-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "proj-123"},
+        },
         "resource": {
             "repositoryId": "repo-123",
             "alertId": "alert-123",
@@ -107,9 +107,9 @@ async def test_advanced_security_handle_event(
     # Setup
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "proj-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "proj-123"},
+        },
         "resource": {
             "repositoryId": "repo-123",
             "alertId": "alert-123",

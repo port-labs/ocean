@@ -78,9 +78,9 @@ async def test_validate_payload_valid(
         "eventType": BuildEvents.BUILD_COMPLETE,
         "publisherId": "tfs",
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"id": 456},
     }
     assert await test_run_processor.validate_payload(payload) is True
@@ -93,8 +93,8 @@ async def test_validate_payload_missing_project(
 ) -> None:
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+        },
         "resource": {"id": 456},
     }
     assert await test_run_processor.validate_payload(payload) is False
@@ -107,9 +107,9 @@ async def test_validate_payload_missing_build_id(
 ) -> None:
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {},
     }
     assert await test_run_processor.validate_payload(payload) is False
@@ -138,9 +138,9 @@ async def test_handle_event_success(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"id": 456},
     }
     resource_config = MagicMock()
@@ -178,9 +178,9 @@ async def test_handle_event_no_test_runs(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"id": 456},
     }
     resource_config = MagicMock()

@@ -59,13 +59,10 @@ def build_auth_provider(config: dict[str, Any]) -> AuthProvider:
     if account_mode == ACCOUNT_MODE_SINGLE:
         pat = config.get("personal_access_token")
         if not pat:
-            raise ValueError(
-                "PAT auth requires 'personal_access_token'."
-            )
+            raise ValueError("PAT auth requires 'personal_access_token'.")
         return PatAuthProvider(pat)
 
     raise ValueError(
-        "No authentication configured. Provide either "
-        "personalAccessToken (PAT) or Service Principal credentials "
-        "(clientId, clientSecret, tenantId)."
+        f"Unknown account_mode: '{account_mode}'. "
+        "Expected 'Single Account' (PAT) or 'Multiple Accounts' (Service Principal)."
     )

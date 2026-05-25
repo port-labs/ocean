@@ -135,12 +135,8 @@ async def test_work_item_validate_payload_valid(
         "publisherId": "tfs",
         "resource": {"id": 123},
         "resourceContainers": {
-
-                "account": {"baseUrl": "https://dev.azure.com/test/"},
-
-                "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"
-
-            }
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     assert await work_item_processor.validate_payload(valid_payload) is True
@@ -199,12 +195,8 @@ async def test_work_item_handle_event_created(
         "publisherId": "tfs",
         "resource": {"id": 123},
         "resourceContainers": {
-
-                "account": {"baseUrl": "https://dev.azure.com/test/"},
-
-                "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"
-
-            }
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()
@@ -255,12 +247,8 @@ async def test_work_item_handle_event_updated(
         "publisherId": "tfs",
         "resource": {"id": 456},
         "resourceContainers": {
-
-                "account": {"baseUrl": "https://dev.azure.com/test/"},
-
-                "project": {"id": "project-456", "baseUrl": "https://dev.azure.com/test/"
-
-            }
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-456", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()
@@ -309,12 +297,8 @@ async def test_work_item_handle_event_commented(
         "publisherId": "tfs",
         "resource": {"id": 789},
         "resourceContainers": {
-
-                "account": {"baseUrl": "https://dev.azure.com/test/"},
-
-                "project": {"id": "project-789", "baseUrl": "https://dev.azure.com/test/"
-
-            }
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-789", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()
@@ -350,12 +334,8 @@ async def test_work_item_handle_event_deleted(
         "publisherId": "tfs",
         "resource": {"id": 999},
         "resourceContainers": {
-
-                "account": {"baseUrl": "https://dev.azure.com/test/"},
-
-                "project": {"id": "project-999", "baseUrl": "https://dev.azure.com/test/"
-
-            }
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-999", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()
@@ -380,12 +360,8 @@ async def test_work_item_validate_payload_missing_work_item_id(
         "publisherId": "tfs",
         "resource": {},
         "resourceContainers": {
-
-                "account": {"baseUrl": "https://dev.azure.com/test/"},
-
-                "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"
-
-            }
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     assert await work_item_processor.validate_payload(payload) is False
@@ -401,9 +377,9 @@ async def test_work_item_validate_payload_missing_project_id(
         "publisherId": "tfs",
         "resource": {"id": 123},
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": None
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": None},
+        },
     }
     assert await work_item_processor.validate_payload(payload) is False
 
@@ -431,8 +407,8 @@ async def test_work_item_validate_payload_missing_project_in_containers(
         "publisherId": "tfs",
         "resource": {"id": 123},
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+        },
     }
     assert await work_item_processor.validate_payload(payload) is False
 
@@ -462,12 +438,8 @@ async def test_work_item_handle_event_not_found(
         "publisherId": "tfs",
         "resource": {"id": 404},
         "resourceContainers": {
-
-                "account": {"baseUrl": "https://dev.azure.com/test/"},
-
-                "project": {"id": "project-404", "baseUrl": "https://dev.azure.com/test/"
-
-            }
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-404", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()
@@ -504,12 +476,8 @@ async def test_work_item_handle_event_exception(
         "publisherId": "tfs",
         "resource": {"id": 500},
         "resourceContainers": {
-
-                "account": {"baseUrl": "https://dev.azure.com/test/"},
-
-                "project": {"id": "project-500", "baseUrl": "https://dev.azure.com/test/"
-
-            }
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-500", "baseUrl": "https://dev.azure.com/test/"},
         },
     }
     resource_config = MagicMock()

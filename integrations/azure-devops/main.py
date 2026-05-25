@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, AsyncGenerator, cast
 
 from loguru import logger
 
@@ -344,7 +344,9 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     logger.info(f"Starting file resync for paths: {config.selector.files.path}")
 
-    async def _handler(client: AzureDevopsClient):
+    async def _handler(
+        client: AzureDevopsClient,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for files_batch in client.generate_files(
             path=config.selector.files.path,
             repos=config.selector.files.repos,
@@ -383,7 +385,9 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AzureDevopsFolderResourceConfig, event.resource_config).selector
     included_files = selector.included_files or []
 
-    async def _handler(client: AzureDevopsClient):
+    async def _handler(
+        client: AzureDevopsClient,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for matching_folders in client.process_folder_patterns(
             selector.folders, selector.project_name
         ):

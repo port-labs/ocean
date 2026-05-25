@@ -80,9 +80,9 @@ async def test_validate_payload_valid(
         "eventType": ReleaseEvents.RELEASE_CREATED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "release": {"id": 42},
             "project": {"id": "project-123", "name": "TestProject"},
@@ -98,9 +98,9 @@ async def test_validate_payload_missing_resource_project(
 ) -> None:
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"release": {"id": 42}},
     }
     assert await definition_processor.validate_payload(payload) is False
@@ -113,8 +113,8 @@ async def test_validate_payload_missing_project(
 ) -> None:
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+        },
         "resource": {"release": {"id": 42}},
     }
     assert await definition_processor.validate_payload(payload) is False
@@ -127,9 +127,9 @@ async def test_validate_payload_missing_release(
 ) -> None:
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {},
     }
     assert await definition_processor.validate_payload(payload) is False
@@ -169,9 +169,9 @@ async def test_handle_event_success(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "release": {"id": 42},
             "project": mock_project,
@@ -209,9 +209,9 @@ async def test_handle_event_release_not_found(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "release": {"id": 42},
             "project": {"id": "project-123", "name": "TestProject"},
@@ -251,9 +251,9 @@ async def test_handle_event_definition_not_found(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "release": {"id": 42},
             "project": {"id": "project-123", "name": "TestProject"},

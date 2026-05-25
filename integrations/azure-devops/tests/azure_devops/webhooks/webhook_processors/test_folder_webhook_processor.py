@@ -75,7 +75,9 @@ async def test_folder_should_process_event(
                     }
                 ],
             },
-            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
+            "resourceContainers": {
+                "account": {"baseUrl": "https://dev.azure.com/test/"}
+            },
         },
         headers={},
     )
@@ -133,7 +135,9 @@ async def test_folder_handle_event_with_unconfigured_repo(
                     }
                 ],
             },
-            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
+            "resourceContainers": {
+                "account": {"baseUrl": "https://dev.azure.com/test/"}
+            },
         },
         headers={},
     )
@@ -182,7 +186,9 @@ async def test_folder_handle_event(
                     }
                 ],
             },
-            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
+            "resourceContainers": {
+                "account": {"baseUrl": "https://dev.azure.com/test/"}
+            },
         },
         headers={},
     )
@@ -238,7 +244,9 @@ async def test_folder_handle_event_with_deleted_folder(
                     }
                 ],
             },
-            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
+            "resourceContainers": {
+                "account": {"baseUrl": "https://dev.azure.com/test/"}
+            },
         },
         headers={},
     )
@@ -294,7 +302,9 @@ async def test_folder_handle_event_with_non_matching_pattern(
                     }
                 ],
             },
-            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
+            "resourceContainers": {
+                "account": {"baseUrl": "https://dev.azure.com/test/"}
+            },
         },
         headers={},
     )

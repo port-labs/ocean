@@ -111,9 +111,9 @@ async def test_deployment_validate_payload_completed(
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "deployment": {
                 "release": {"id": 10},
@@ -133,9 +133,9 @@ async def test_deployment_validate_payload_started(
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_STARTED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "environment": {
                 "releaseId": 10,
@@ -155,8 +155,8 @@ async def test_deployment_validate_payload_missing_project(
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+        },
         "resource": {
             "deployment": {
                 "release": {"id": 10},
@@ -176,9 +176,9 @@ async def test_deployment_validate_payload_missing_deployment_and_environment(
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {},
     }
     assert await deployment_processor.validate_payload(invalid_payload) is False
@@ -193,9 +193,9 @@ async def test_deployment_validate_payload_completed_missing_release_id(
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "deployment": {
                 "definitionEnvironmentId": 3,
@@ -214,9 +214,9 @@ async def test_deployment_validate_payload_completed_missing_definition_environm
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "deployment": {
                 "release": {"id": 10},
@@ -235,9 +235,9 @@ async def test_deployment_validate_payload_started_missing_release_id(
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_STARTED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "environment": {
                 "definitionEnvironmentId": 5,
@@ -256,9 +256,9 @@ async def test_deployment_validate_payload_started_missing_definition_environmen
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_STARTED,
         "publisherId": RELEASE_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "environment": {
                 "releaseId": 10,
@@ -289,9 +289,9 @@ async def test_deployment_handle_event_completed_success(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "deployment": {
                 "release": {"id": 10},
@@ -331,9 +331,9 @@ async def test_deployment_handle_event_started_success(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "environment": {
                 "releaseId": 10,
@@ -370,9 +370,9 @@ async def test_deployment_handle_event_not_found(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "deployment": {
                 "release": {"id": 10},

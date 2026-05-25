@@ -74,7 +74,9 @@ class TestAzureDevopsIncludedFilesEnrichment:
                 "url": "http://example.com",
                 "repository": {"id": "repo-123"},
             },
-            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
+            "resourceContainers": {
+                "account": {"baseUrl": "https://dev.azure.com/test/"}
+            },
         }
 
         resource_config = MagicMock()
@@ -120,7 +122,9 @@ class TestAzureDevopsIncludedFilesEnrichment:
                 "url": "http://example.com",
                 "repository": {"id": "repo-123"},
             },
-            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
+            "resourceContainers": {
+                "account": {"baseUrl": "https://dev.azure.com/test/"}
+            },
         }
 
         resource_config = MagicMock()

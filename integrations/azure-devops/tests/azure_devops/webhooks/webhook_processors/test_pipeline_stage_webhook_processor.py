@@ -64,9 +64,9 @@ async def test_pipeline_stage_validate_payload_valid(
         "eventType": PipelineStageEvents.PIPELINE_STAGE_STATE_CHANGED,
         "publisherId": PIPELINES_PUBLISHER_ID,
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "run": {"id": "run-456"},
             "stage": {"id": "stage-789"},
@@ -98,9 +98,9 @@ async def test_pipeline_stage_handle_event_success(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "run": {"id": "run-456"},
             "stage": {"id": "stage-789"},
@@ -137,9 +137,9 @@ async def test_pipeline_stage_handle_event_project_not_found(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "run": {"id": "run-456"},
             "stage": {"id": "stage-789"},
@@ -171,9 +171,9 @@ async def test_pipeline_stage_handle_event_stage_not_found(
 
     payload = {
         "resourceContainers": {
-    "account": {"baseUrl": "https://dev.azure.com/test/"},
-    "project": {"id": "project-123"
-}},
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "run": {"id": "run-456"},
             "stage": {"id": "stage-789"},
