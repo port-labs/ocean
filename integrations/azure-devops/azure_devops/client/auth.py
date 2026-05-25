@@ -6,7 +6,9 @@ from azure.core.credentials_async import AsyncTokenCredential
 from azure.identity.aio import DefaultAzureCredential
 
 
-ADO_SCOPE = "499b84ac-1321-427f-aa17-267ca6975798/.default"
+AZURE_DEVOPS_API_SCOPE = "499b84ac-1321-427f-aa17-267ca6975798/.default"
+ACCOUNT_MODE_SINGLE = "Single Account"
+ACCOUNT_MODE_MULTIPLE = "Multiple Accounts"
 
 
 class AuthProvider(Protocol):
@@ -33,12 +35,8 @@ class ServicePrincipalAuthProvider:
         self._credential = credential
 
     async def get_auth_headers(self) -> dict[str, str]:
-        token = (await self._credential.get_token(ADO_SCOPE)).token
+        token = (await self._credential.get_token(AZURE_DEVOPS_API_SCOPE)).token
         return {"Authorization": f"Bearer {token}"}
-
-
-ACCOUNT_MODE_SINGLE = "Single Account"
-ACCOUNT_MODE_MULTIPLE = "Multiple Accounts"
 
 
 def build_auth_provider(config: dict[str, Any]) -> AuthProvider:
