@@ -11,6 +11,8 @@ from azure_devops.helpers.validate_config import (
     validate_azure_devops_config,
 )
 
+CLIENT_MANAGER_CACHE_KEY = "azure_devops_client_manager"
+
 
 class AzureDevopsClientManager:
     """Manages one AzureDevopsClient per configured organization.
@@ -21,35 +23,25 @@ class AzureDevopsClientManager:
     tenant-scoped, not org-scoped).
     """
 
-    def __init__(self, clients: list) -> None:
+    def __init__(self, clients: list[AzureDevopsClient]) -> None:
         self._clients = clients
-        self._clients_by_url: dict[str, object] = {
+        self._clients_by_url: dict[str, AzureDevopsClient] = {
             c._organization_base_url: c for c in clients
         }
 
-    def get_clients(self) -> list:
+    def get_clients(self) -> list[AzureDevopsClient]:
         return list(self._clients)
 
-    def get_client_for_org(self, org_url: str) -> Optional[object]:
+    def get_client_for_org(self, org_url: str) -> Optional[AzureDevopsClient]:
         normalized = org_url.rstrip("/")
         return self._clients_by_url.get(normalized)
 
-    def get_client_for_org_or_first(self, org_url: Optional[str]) -> object:
-        if org_url:
-            client = self.get_client_for_org(org_url)
-            if client:
-                return client
-            logger.warning(
-                f"No client found for org '{org_url}', falling back to first client"
-            )
-        return self._clients[0]
-
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClientManager":
-        if cache := event.attributes.get("azure_devops_client_manager"):
+        if cache := event.attributes.get(CLIENT_MANAGER_CACHE_KEY):
             return cache
         manager = cls.create_from_ocean_config_no_cache()
-        event.attributes["azure_devops_client_manager"] = manager
+        event.attributes[CLIENT_MANAGER_CACHE_KEY] = manager
         return manager
 
     @classmethod

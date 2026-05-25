@@ -165,19 +165,20 @@ async def iter_release_deployments() -> AsyncGenerator[list[dict[str, Any]], Non
         yield batch
 
 
-async def iter_pipeline_deployments() -> AsyncGenerator[list[dict[str, Any]], None]:
-    async def _handler(
-        client: AzureDevopsClient,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for environments in client.generate_environments():
-            for environment in environments:
-                async for deployments in client.generate_pipeline_deployments(
-                    environment_id=environment["id"],
-                    project=environment["project"],
-                ):
-                    yield deployments
+async def _pipeline_deployments_per_client(
+    client: AzureDevopsClient,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async for environments in client.generate_environments():
+        for environment in environments:
+            async for deployments in client.generate_pipeline_deployments(
+                environment_id=environment["id"],
+                project=environment["project"],
+            ):
+                yield deployments
 
-    async for batch in iterate_per_organization(_handler):
+
+async def iter_pipeline_deployments() -> AsyncGenerator[list[dict[str, Any]], None]:
+    async for batch in iterate_per_organization(_pipeline_deployments_per_client):
         yield batch
 
 
@@ -205,18 +206,23 @@ async def iter_iterations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield batch
 
 
+async def _advanced_security_alerts_per_client(
+    client: AzureDevopsClient,
+    params: dict[str, Any],
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async for repositories in client.generate_repositories():
+        for repository in repositories:
+            async for alerts in client.generate_advanced_security_alerts(
+                repository, params
+            ):
+                yield alerts
+
+
 async def iter_advanced_security_alerts(
     params: Optional[dict[str, Any]] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
-    async def _handler(
-        client: AzureDevopsClient,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for repositories in client.generate_repositories():
-            for repository in repositories:
-                async for alerts in client.generate_advanced_security_alerts(
-                    repository, params or {}
-                ):
-                    yield alerts
-
-    async for batch in iterate_per_organization(_handler):
+    resolved_params = params or {}
+    async for batch in iterate_per_organization(
+        lambda client: _advanced_security_alerts_per_client(client, resolved_params)
+    ):
         yield batch

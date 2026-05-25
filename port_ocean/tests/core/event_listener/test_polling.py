@@ -218,6 +218,27 @@ def test_should_not_resync_when_resync_request_timestamp_is_invalid(
     assert listener.should_resync_from_resync_request("not-a-timestamp") is False
 
 
+def test_should_not_resync_old_request_when_request_watermark_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = SimpleNamespace(
+        resync_state_updater=SimpleNamespace(
+            last_integration_state_updated_at="2024-01-01T00:10:00Z",
+            last_resync_request_updated_at=None,
+        )
+    )
+    monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
+
+    listener = PollingEventListener(
+        events={"on_resync": AsyncMock(return_value=True)},
+        event_listener_config=PollingEventListenerSettings(
+            type=EventListenerType.POLLING
+        ),
+    )
+
+    assert listener.should_resync_from_resync_request("2024-01-01T00:05:00Z") is False
+
+
 @pytest.mark.asyncio
 async def test_polling_does_not_resync_repeatedly_for_same_resync_request(
     monkeypatch: pytest.MonkeyPatch,

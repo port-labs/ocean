@@ -4,11 +4,17 @@ from loguru import logger
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.client.client_manager import AzureDevopsClientManager
+from azure_devops.enrichments.included_files import (
+    FileIncludedFilesStrategy,
+    FolderIncludedFilesStrategy,
+    IncludedFilesEnricher,
+    RepositoryIncludedFilesStrategy,
+)
 from azure_devops.helpers import resync
 from azure_devops.helpers.multi_org import iterate_per_organization
 from azure_devops.misc import (
-    ORG_URL_FIELD,
     ACTIVE_PULL_REQUEST_SEARCH_CRITERIA,
+    ORG_URL_FIELD,
     AzureDevopsFolderResourceConfig,
     Kind,
     create_closed_pull_request_search_criteria,
@@ -99,14 +105,25 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AzureDevopsTeamResourceConfig, event.resource_config).selector
     async for teams in resync.iter_teams():
         logger.info(f"Resyncing {len(teams)} teams")
-        if selector.include_members:
-            client = AzureDevopsClientManager.create_from_ocean_config().get_client_for_org_or_first(
-                teams[0].get(ORG_URL_FIELD) if teams else None
-            )
-            logger.info(f"Enriching {len(teams)} teams with members")
-            yield await client.enrich_teams_with_members(teams)
-        else:
+        if not selector.include_members:
             yield teams
+            continue
+        org_url = teams[0].get(ORG_URL_FIELD) if teams else None
+        if not org_url:
+            logger.warning("Skipping member enrichment: no org URL in teams batch")
+            yield teams
+            continue
+        client = AzureDevopsClientManager.create_from_ocean_config().get_client_for_org(
+            org_url
+        )
+        if not client:
+            logger.warning(
+                f"Skipping member enrichment: no client found for org '{org_url}'"
+            )
+            yield teams
+            continue
+        logger.info(f"Enriching {len(teams)} teams with members")
+        yield await client.enrich_teams_with_members(teams)
 
 
 @ocean.on_resync(Kind.MEMBER)
@@ -136,12 +153,25 @@ async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_repo = config.selector.include_repo
     async for pipelines in resync.iter_pipelines():
         logger.info(f"Resyncing {len(pipelines)} pipelines")
-        if include_repo:
-            client = AzureDevopsClientManager.create_from_ocean_config().get_client_for_org_or_first(
-                pipelines[0].get(ORG_URL_FIELD) if pipelines else None
+        if not include_repo:
+            yield pipelines
+            continue
+        org_url = pipelines[0].get(ORG_URL_FIELD) if pipelines else None
+        if not org_url:
+            logger.warning("Skipping repo enrichment: no org URL in pipelines batch")
+            yield pipelines
+            continue
+        client = AzureDevopsClientManager.create_from_ocean_config().get_client_for_org(
+            org_url
+        )
+        if not client:
+            logger.warning(
+                f"Skipping repo enrichment: no client found for org '{org_url}'"
             )
-            logger.info(f"Enriching {len(pipelines)} pipelines with repository")
-            pipelines = await client.enrich_pipelines_with_repository(pipelines)
+            yield pipelines
+            continue
+        logger.info(f"Enriching {len(pipelines)} pipelines with repository")
+        pipelines = await client.enrich_pipelines_with_repository(pipelines)
         yield pipelines
 
 
@@ -177,11 +207,6 @@ async def _enrich_repos_batch_with_included_files(
     """Enrich a batch of repositories with included files."""
     if not file_paths or not repositories:
         return repositories
-    from azure_devops.enrichments.included_files import (
-        IncludedFilesEnricher,
-        RepositoryIncludedFilesStrategy,
-    )
-
     enricher = IncludedFilesEnricher(
         client=client,
         strategy=RepositoryIncludedFilesStrategy(included_files=file_paths),
@@ -196,13 +221,26 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for repositories in resync.iter_repositories():
         logger.info(f"Resyncing {len(repositories)} repositories")
-        if included_files:
-            client = AzureDevopsClientManager.create_from_ocean_config().get_client_for_org_or_first(
-                repositories[0].get(ORG_URL_FIELD) if repositories else None
+        if not included_files:
+            yield repositories
+            continue
+        org_url = repositories[0].get(ORG_URL_FIELD) if repositories else None
+        if not org_url:
+            logger.warning("Skipping file enrichment: no org URL in repositories batch")
+            yield repositories
+            continue
+        client = AzureDevopsClientManager.create_from_ocean_config().get_client_for_org(
+            org_url
+        )
+        if not client:
+            logger.warning(
+                f"Skipping file enrichment: no client found for org '{org_url}'"
             )
-            repositories = await _enrich_repos_batch_with_included_files(
-                client, repositories, included_files
-            )
+            yield repositories
+            continue
+        repositories = await _enrich_repos_batch_with_included_files(
+            client, repositories, included_files
+        )
         yield repositories
 
 
@@ -297,13 +335,6 @@ async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for deployments in resync.iter_pipeline_deployments():
         logger.info(f"Fetched {len(deployments)} pipeline deployments")
         yield deployments
-
-
-from azure_devops.enrichments.included_files import (  # noqa: E402
-    IncludedFilesEnricher,
-    FileIncludedFilesStrategy,
-    FolderIncludedFilesStrategy,
-)
 
 
 @ocean.on_resync(Kind.FILE)

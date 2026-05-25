@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
@@ -74,8 +75,6 @@ def extract_org_name_from_url(url: str) -> str:
       - https://dev.azure.com/{org}[/...]
       - https://{org}.visualstudio.com[/...]
     """
-    from urllib.parse import urlparse
-
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
 

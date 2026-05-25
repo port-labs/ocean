@@ -11,6 +11,27 @@ from azure_devops.misc import ORG_NAME_FIELD, ORG_URL_FIELD, extract_org_name_fr
 CONCURRENT_ORG_RESYNCS = 3
 
 
+def _enrich_batch(
+    batch: list[dict[str, Any]], org_url: str, org_name: str
+) -> list[dict[str, Any]]:
+    return [{**item, ORG_URL_FIELD: org_url, ORG_NAME_FIELD: org_name} for item in batch]
+
+
+async def _iter_org(
+    client: AzureDevopsClient,
+    handler: Callable[..., AsyncGenerator[list[dict[str, Any]], None]],
+    semaphore: asyncio.BoundedSemaphore,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
+    org_url = client._organization_base_url
+    org_name = extract_org_name_from_url(org_url)
+    async with semaphore:
+        try:
+            async for batch in handler(client):
+                yield _enrich_batch(batch, org_url, org_name)
+        except Exception as e:
+            logger.error(f"Error resyncing org '{org_url}': {e}")
+
+
 async def iterate_per_organization(
     handler: Callable[..., AsyncGenerator[list[dict[str, Any]], None]],
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -30,36 +51,15 @@ async def iterate_per_organization(
         logger.warning("AzureDevopsClientManager has no clients configured")
         return
 
-    def _enrich(
-        batch: list[dict[str, Any]], org_url: str, org_name: str
-    ) -> list[dict[str, Any]]:
-        return [
-            {**item, ORG_URL_FIELD: org_url, ORG_NAME_FIELD: org_name}
-            for item in batch
-        ]
-
     if len(clients) == 1:
         client = clients[0]
         org_url = client._organization_base_url
         org_name = extract_org_name_from_url(org_url)
         async for batch in handler(client):
-            yield _enrich(batch, org_url, org_name)
+            yield _enrich_batch(batch, org_url, org_name)
         return
 
     semaphore = asyncio.BoundedSemaphore(CONCURRENT_ORG_RESYNCS)
-
-    async def _org_iter(
-        client: AzureDevopsClient,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        org_url = client._organization_base_url
-        org_name = extract_org_name_from_url(org_url)
-        async with semaphore:
-            try:
-                async for batch in handler(client):
-                    yield _enrich(batch, org_url, org_name)
-            except Exception as e:
-                logger.error(f"Error resyncing org '{org_url}': {e}")
-
-    tasks = [_org_iter(client) for client in clients]
+    tasks = [_iter_org(client, handler, semaphore) for client in clients]
     async for batch in stream_async_iterators_tasks(*tasks):
         yield batch
