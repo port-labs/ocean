@@ -22,6 +22,11 @@ async def _fail_after_first() -> AsyncGenerator[int, None]:
     raise RuntimeError("Iterator page failed")
 
 
+async def _cancel_after_first() -> AsyncGenerator[int, None]:
+    yield 1
+    raise asyncio.CancelledError()
+
+
 async def _fail_immediately() -> AsyncGenerator[int, None]:
     should_fail = True
     if should_fail:
@@ -114,6 +119,19 @@ async def test_stream_independent_async_iterators_defers_failures_until_finish()
     assert sorted(items) == [1, 2, 3]
     assert "test sync failed with 1 error(s)" in str(exc_info.value)
     assert isinstance(exc_info.value.exceptions[0], RuntimeError)
+
+
+async def test_stream_independent_async_iterators_handles_independent_cancellation() -> (
+    None
+):
+    items = [
+        item
+        async for item in stream_independent_async_iterators(
+            _cancel_after_first(), _yield_items(2, 3), context="test sync"
+        )
+    ]
+
+    assert sorted(items) == [1, 2, 3]
 
 
 async def test_stream_independent_async_iterators_collects_multiple_failures() -> None:

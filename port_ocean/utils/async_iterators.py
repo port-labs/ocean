@@ -132,6 +132,7 @@ async def _consume_iterator(
     index: int,
     iterator: typing.AsyncIterable[T],
     queue: asyncio.Queue[_IteratorItem[T] | _IteratorFinished],
+    is_closing: asyncio.Event,
     context: str,
 ) -> None:
     error: Exception | None = None
@@ -151,9 +152,7 @@ async def _consume_iterator(
         )
 
     finally:
-        current_task = asyncio.current_task()
-
-        if current_task and current_task.cancelling():
+        if is_closing.is_set():
             return
 
         await queue.put(_IteratorFinished(error=error))
@@ -180,6 +179,7 @@ async def stream_independent_async_iterators(
     )
 
     errors: list[Exception] = []
+    is_closing = asyncio.Event()
 
     tasks = [
         asyncio.create_task(
@@ -187,6 +187,7 @@ async def stream_independent_async_iterators(
                 index=index,
                 iterator=iterator,
                 queue=queue,
+                is_closing=is_closing,
                 context=context,
             )
         )
@@ -207,6 +208,7 @@ async def stream_independent_async_iterators(
                 yield message.item
 
     finally:
+        is_closing.set()
         for task in tasks:
             if not task.done():
                 task.cancel()
