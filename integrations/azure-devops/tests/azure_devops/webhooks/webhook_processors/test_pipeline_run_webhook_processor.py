@@ -20,9 +20,13 @@ def pipeline_run_processor(
     mock_client.get_single_project = AsyncMock()
     mock_client.get_pipeline = AsyncMock()
     mock_client.annotate_runs = MagicMock()
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
     return PipelineRunWebhookProcessor(event)
 
@@ -93,7 +97,10 @@ async def test_pipeline_run_validate_payload_valid(
     valid_payload = {
         "eventType": PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
         "publisherId": PIPELINES_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+    "account": {"baseUrl": "https://dev.azure.com/test/"},
+    "project": {"id": "project-123"
+}},
         "resource": {
             "run": {"id": "run-456"},
             "pipeline": {"id": "pipeline-789"},
@@ -108,7 +115,9 @@ async def test_pipeline_run_validate_payload_missing_project(
     mock_event_context: None,
 ) -> None:
     invalid_payload = {
-        "resourceContainers": {},
+        "resourceContainers": {
+    "account": {"baseUrl": "https://dev.azure.com/test/"},
+},
         "resource": {
             "run": {"id": "run-456"},
             "pipeline": {"id": "pipeline-789"},
@@ -123,7 +132,10 @@ async def test_pipeline_run_validate_payload_missing_run(
     mock_event_context: None,
 ) -> None:
     invalid_payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+    "account": {"baseUrl": "https://dev.azure.com/test/"},
+    "project": {"id": "project-123"
+}},
         "resource": {
             "pipeline": {"id": "pipeline-789"},
         },
@@ -137,7 +149,10 @@ async def test_pipeline_run_validate_payload_missing_pipeline(
     mock_event_context: None,
 ) -> None:
     invalid_payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+    "account": {"baseUrl": "https://dev.azure.com/test/"},
+    "project": {"id": "project-123"
+}},
         "resource": {
             "run": {"id": "run-456"},
         },
@@ -156,13 +171,20 @@ async def test_pipeline_run_handle_event_success(
     mock_client.get_single_project = AsyncMock(return_value={"id": "project-123"})
     mock_client.get_pipeline = AsyncMock(return_value={"id": "pipeline-789"})
     mock_client.annotate_runs = MagicMock()
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+    "account": {"baseUrl": "https://dev.azure.com/test/"},
+    "project": {"id": "project-123"
+}},
         "resource": {
             "run": {"id": "run-456"},
             "pipeline": {"id": "pipeline-789"},
@@ -192,13 +214,20 @@ async def test_pipeline_run_handle_event_not_found(
 ) -> None:
     mock_client = MagicMock()
     mock_client.get_pipeline_run = AsyncMock(return_value=None)
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+    "account": {"baseUrl": "https://dev.azure.com/test/"},
+    "project": {"id": "project-123"
+}},
         "resource": {
             "run": {"id": "run-456"},
             "pipeline": {"id": "pipeline-789"},
@@ -219,13 +248,20 @@ async def test_pipeline_run_handle_event_project_not_found(
     mock_client = MagicMock()
     mock_client.get_pipeline_run = AsyncMock(return_value={"id": "run-456"})
     mock_client.get_single_project = AsyncMock(return_value=None)
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+    "account": {"baseUrl": "https://dev.azure.com/test/"},
+    "project": {"id": "project-123"
+}},
         "resource": {
             "run": {"id": "run-456"},
             "pipeline": {"id": "pipeline-789"},
@@ -247,13 +283,20 @@ async def test_pipeline_run_handle_event_pipeline_not_found(
     mock_client.get_pipeline_run = AsyncMock(return_value={"id": "run-456"})
     mock_client.get_single_project = AsyncMock(return_value={"id": "project-123"})
     mock_client.get_pipeline = AsyncMock(return_value=None)
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+    "account": {"baseUrl": "https://dev.azure.com/test/"},
+    "project": {"id": "project-123"
+}},
         "resource": {
             "run": {"id": "run-456"},
             "pipeline": {"id": "pipeline-789"},

@@ -11,9 +11,13 @@ from azure_devops.misc import Kind, AzureDevopsFolderResourceConfig
 def mock_client(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     mock_client = MagicMock()
     mock_client.get_commit_changes = AsyncMock()
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.folder_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
     return mock_client
 
@@ -71,6 +75,7 @@ async def test_folder_should_process_event(
                     }
                 ],
             },
+            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
         },
         headers={},
     )
@@ -128,6 +133,7 @@ async def test_folder_handle_event_with_unconfigured_repo(
                     }
                 ],
             },
+            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
         },
         headers={},
     )
@@ -176,6 +182,7 @@ async def test_folder_handle_event(
                     }
                 ],
             },
+            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
         },
         headers={},
     )
@@ -231,6 +238,7 @@ async def test_folder_handle_event_with_deleted_folder(
                     }
                 ],
             },
+            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
         },
         headers={},
     )
@@ -286,6 +294,7 @@ async def test_folder_handle_event_with_non_matching_pattern(
                     }
                 ],
             },
+            "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
         },
         headers={},
     )
