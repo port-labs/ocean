@@ -6,6 +6,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
+from port_ocean.helpers.ssl import SSLClientType, get_ssl_context
 from port_ocean.version import __integration_version__, __version__
 
 
@@ -41,7 +42,10 @@ class LifecycleClient:
     def __init__(self, base_url: str, auth: PortAuthentication) -> None:
         self.base_url = base_url.rstrip("/")
         self.auth = auth
-        self._client = httpx.AsyncClient(timeout=httpx.Timeout(10))
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(10),
+            verify=get_ssl_context(SSLClientType.PORT),
+        )
 
     def _build_body(self, status: str, **extra: Any) -> dict[str, Any]:
         return {"status": status, **extra}

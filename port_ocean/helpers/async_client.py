@@ -1,4 +1,4 @@
-from typing import Any, Type
+from typing import Any, AsyncGenerator, Dict, List, Type
 
 import httpx
 from loguru import logger
@@ -6,8 +6,8 @@ from port_ocean.context.ocean import ocean
 
 from port_ocean.helpers.ip_blocker import IPBlockerTransport
 from port_ocean.helpers.retry import RetryTransport, RetryConfig
+from port_ocean.helpers.ssl import SSLClientType, get_ssl_context
 from port_ocean.helpers.stream import Stream
-from typing import AsyncGenerator, List, Dict
 
 
 class OceanAsyncClient(httpx.AsyncClient):
@@ -27,6 +27,8 @@ class OceanAsyncClient(httpx.AsyncClient):
         self._transport_kwargs = transport_kwargs
         self._transport_class = transport_class
         self._retry_config = retry_config
+        if "verify" not in kwargs:
+            kwargs["verify"] = get_ssl_context(SSLClientType.THIRD_PARTY)
         super().__init__(**kwargs)
 
     def _wrap_with_ip_blocker_if_needed(
