@@ -449,7 +449,7 @@ class ExecutionManager:
         executor: AbstractExecutor,
         runs: list[ActionRun | WorkflowNodeRun],
         timeout_seconds: float,
-    ) -> list | None:
+    ) -> list[StaleRunCloseDecision] | None:
         async with self._stale_inspection_semaphore:
             try:
                 decisions = await asyncio.wait_for(

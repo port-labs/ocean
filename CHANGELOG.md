@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.42.9 (2026-05-25)
+
+### Features
+
+- Added stale run sweep mechanism to `ExecutionManager`: background task that periodically fetches IN_PROGRESS action runs and workflow-node runs inactive beyond a configurable threshold, delegates closure decisions to opt-in executors via `inspect_stale_runs`, and applies adaptive fetch-limit backpressure on sweep overruns
+
 ## 0.42.8 (2026-05-21)
 
 ### Improvements
