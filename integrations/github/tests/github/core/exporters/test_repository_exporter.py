@@ -447,7 +447,6 @@ class TestRestRepositoryExporter:
             assert result["custom_properties"] == {}
 
 
-
 def test_normalized_relations_from_included_relations_alias() -> None:
     selector = GithubRepositorySelector.parse_obj(
         {
