@@ -66,3 +66,83 @@ SSL_CERT_FILE=/path/to/cacert.pem
 These variables provide fine-grained control over SSL/TLS configurations in environments where default settings are not sufficient or need customization for specific requirements.
 
 For more information take a look at the HTTPX [SSL configuration documentation](https://www.python-httpx.org/environment_variables/#sslkeylogfile).
+
+## SSL certificate validation
+
+Ocean framework provides flexibility in handling SSL certificate verification through environment variables. This is particularly useful when working with Python 3.13+ strict X.509 certificate verification or when you need to disable SSL verification for development or testing purposes.
+
+The framework allows separate SSL configuration for Port API connections and third-party integration connections.
+
+### Environment Variables
+
+#### Port API Connections
+
+The following environment variables configure SSL verification for connections to Port's API:
+
+- `OCEAN__NO_STRICT_VERIFY_SSL`: Disable strict X.509 verification introduced in Python 3.13
+  - Values: `false` (default) or `true`
+  - Example: `OCEAN__NO_STRICT_VERIFY_SSL=true`
+  - Use this if you encounter certificate validation issues with Port's API in Python 3.13
+
+- `OCEAN__VERIFY_SSL`: Enable or disable SSL certificate verification completely
+  - Values: `true` (default) or `false`
+  - Example: `OCEAN__VERIFY_SSL=false`
+  - Warning: Disabling this is not recommended for production use
+
+#### Third-Party Integration Connections
+
+These environment variables configure SSL verification for connections to third-party services:
+
+- `OCEAN__THIRD_PARTY_NO_STRICT_VERIFY_SSL`: Disable strict X.509 verification for third-party connections
+  - Values: `false` (default) or `true`
+  - Example: `OCEAN__THIRD_PARTY_NO_STRICT_VERIFY_SSL=true`
+  - Use this if you encounter certificate validation issues with third-party services in Python 3.13
+
+- `OCEAN__THIRD_PARTY_VERIFY_SSL`: Enable or disable SSL verification for third-party connections
+  - Values: `true` (default) or `false`
+  - Example: `OCEAN__THIRD_PARTY_VERIFY_SSL=false`
+  - Warning: Disabling this is not recommended for production use
+
+### Usage Examples
+
+#### Configure Port API SSL Verification
+
+```bash
+# Disable strict X.509 verification for Port API
+export OCEAN__NO_STRICT_VERIFY_SSL=true
+
+# Disable all SSL verification for Port API (Not Recommended)
+export OCEAN__VERIFY_SSL=false
+```
+
+#### Configure Third-Party SSL Verification
+
+```bash
+# Disable strict X.509 verification for third-party services
+export OCEAN__THIRD_PARTY_NO_STRICT_VERIFY_SSL=true
+
+# Disable all SSL verification for third-party services (Not Recommended)
+export OCEAN__THIRD_PARTY_VERIFY_SSL=false
+```
+
+### Security Considerations
+
+- Disabling SSL verification (`*_VERIFY_SSL=false`) is not recommended for production environments as it makes your connections vulnerable to man-in-the-middle attacks.
+- Disabling strict X.509 verification (`*_NO_STRICT_VERIFY_SSL=true`) should only be used when:
+  1. You're encountering certificate validation issues due to the stricter verification
+  2. You've verified that your certificates are otherwise valid and trusted
+- Consider configuring SSL verification separately for Port API and third-party services based on your security requirements
+
+### Troubleshooting
+
+If you encounter SSL verification errors:
+
+1. First, ensure your system's CA certificates are up to date
+2. Identify whether the issue is with Port's API or third-party services
+3. If using Python 3.13+ and encountering new certificate errors:
+   - For Port API issues: Try setting `OCEAN__NO_STRICT_VERIFY_SSL=true`
+   - For third-party service issues: Try setting `OCEAN__THIRD_PARTY_NO_STRICT_VERIFY_SSL=true`
+4. For development/testing only, you can temporarily disable verification:
+   - For Port API: Set `OCEAN__VERIFY_SSL=false`
+   - For third-party services: Set `OCEAN__THIRD_PARTY_VERIFY_SSL=false`
+5. Check the logs for any SSL-related warnings or errors
