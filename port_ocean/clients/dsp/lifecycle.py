@@ -6,7 +6,7 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.version import __integration_version__, __version__
-from port_ocean.clients.core_client import OceanHttpClient
+from port_ocean.clients.dsp.client import OceanHttpClient
 
 
 class GranularityType(Enum):

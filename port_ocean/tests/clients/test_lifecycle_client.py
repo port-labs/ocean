@@ -199,7 +199,7 @@ class TestNotifyResyncAborted:
         error_response.text = "internal error"
         mock_post.return_value = error_response
 
-        with patch("port_ocean.clients.core_client.logger") as mock_logger:
+        with patch("port_ocean.clients.dsp.client.logger") as mock_logger:
             await lifecycle_client.notify_resync_aborted(
                 resync_id="r1", integration_id="i1", integration_type="github"
             )
@@ -217,7 +217,7 @@ class TestNotifyResyncAborted:
         error_response.text = "x" * 1000
         mock_post.return_value = error_response
 
-        with patch("port_ocean.clients.core_client.logger") as mock_logger:
+        with patch("port_ocean.clients.dsp.client.logger") as mock_logger:
             await lifecycle_client.notify_resync_aborted(
                 resync_id="r1", integration_id="i1", integration_type="github"
             )
