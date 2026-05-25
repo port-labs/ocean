@@ -6,7 +6,7 @@ import pytest
 from azure_devops.client.auth import (
     ACCOUNT_MODE_MULTIPLE,
     ACCOUNT_MODE_SINGLE,
-    ADO_SCOPE,
+    AZURE_DEVOPS_API_SCOPE,
     PatAuthProvider,
     ServicePrincipalAuthProvider,
     build_auth_provider,
@@ -32,7 +32,7 @@ async def test_sp_auth_provider_returns_bearer_header() -> None:
     headers = await provider.get_auth_headers()
 
     assert headers == {"Authorization": "Bearer fake-bearer-token"}
-    mock_credential.get_token.assert_called_once_with(ADO_SCOPE)
+    mock_credential.get_token.assert_called_once_with(AZURE_DEVOPS_API_SCOPE)
 
 
 def test_build_auth_provider_single_account_mode() -> None:
