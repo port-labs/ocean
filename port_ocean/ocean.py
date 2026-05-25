@@ -121,9 +121,6 @@ class Ocean:
         signal_handler.register(self._stop_status_heartbeat, priority=90)
 
     def _warn_non_default_ssl_settings(self) -> None:
-        security_doc = (
-            "See Ocean advanced configuration docs for security implications."
-        )
         for label, client_ssl in (
             ("Port API", self.config.ssl.port),
             ("Third-party", self.config.ssl.third_party),
@@ -134,10 +131,7 @@ class Ocean:
                 description = "x509.strict=false"
             else:
                 continue
-            logger.warning(
-                f"{label} SSL settings are non-default ({description}). "
-                f"{security_doc}"
-            )
+            logger.warning(f"{label} SSL settings are non-default ({description}). ")
 
     async def _report_resync_aborted(self) -> None:
         """
