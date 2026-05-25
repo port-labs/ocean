@@ -209,8 +209,13 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for project in projects_batch
         }
 
+        params = (
+            selector.api_query_params.generate_query_params()
+            if selector.api_query_params
+            else None
+        )
         async for pipelines_batch in client.get_projects_resource(
-            projects_batch, "pipelines"
+            projects_batch, "pipelines", params=params
         ):
             if pipelines_batch:
                 enriched_pipelines = enrich_resources_with_project(
@@ -230,6 +235,12 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(JobResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
 
+    pipeline_params = (
+        selector.pipeline_query_params.generate_query_params()
+        if selector.pipeline_query_params
+        else None
+    )
+
     async for projects_batch in client.get_projects(
         params=build_project_params(
             include_only_active_projects=include_only_active_projects
@@ -238,7 +249,9 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         include_languages=False,
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
-        async for jobs_batch in client.get_pipeline_jobs(projects_batch):
+        async for jobs_batch in client.get_pipeline_jobs(
+            projects_batch, pipeline_params=pipeline_params
+        ):
             yield jobs_batch
 
 
@@ -462,6 +475,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         enriched_batch = await _enrich_and_yield(files_batch)
         if enriched_batch:
             found_any_files = True
+            print(enriched_batch)
             yield enriched_batch
 
     if not found_any_files and not repositories:
