@@ -147,9 +147,7 @@ async def _consume_iterator(
     except Exception as exc:
         error = exc
 
-        logger.exception(
-            f"{context} iterator {index} failed; continuing remaining"
-        )
+        logger.exception(f"{context} iterator {index} failed; continuing remaining")
 
     finally:
         if is_closing.is_set():
