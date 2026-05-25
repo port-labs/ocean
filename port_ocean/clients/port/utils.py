@@ -8,8 +8,9 @@ from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.clients.port.retry_transport import TokenRetryTransport
+from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
-from port_ocean.helpers.ssl import resolve_verify_param_for_ocean_role
+from port_ocean.helpers.ssl import resolve_verify_param
 
 if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
@@ -50,7 +51,7 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
             },
             timeout=PORT_HTTPX_TIMEOUT,
             limits=PORT_HTTPX_LIMITS,
-            verify=resolve_verify_param_for_ocean_role("port"),
+            verify=resolve_verify_param(ocean.config.ssl.port),
         )
         _http_client.push(client)
 
