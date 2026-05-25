@@ -4,8 +4,8 @@ import httpx
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
-from port_ocean.helpers.http_client_factory import create_third_party_http_client
 from port_ocean.helpers.retry import RetryConfig
+from port_ocean.helpers.async_client import OceanAsyncClient
 from gitlab.clients.auth_client import AuthClient
 from gitlab.clients.rate_limiter import GitLabRateLimiter, GitLabRateLimiterConfig
 
@@ -15,7 +15,7 @@ MAX_BACKOFF_WAIT_IN_SECONDS = 1800
 class HTTPBaseClient:
     def __init__(self, base_url: str, token: str, endpoint: str):
         self.token = token
-        self._client = create_third_party_http_client(
+        self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 max_backoff_wait=MAX_BACKOFF_WAIT_IN_SECONDS,
                 additional_retry_status_codes=[500],
