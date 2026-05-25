@@ -109,6 +109,10 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         gt=0,
     )
     client_timeout: int = 60
+    port_verify_ssl: bool = True
+    port_disable_strict_ssl_verification: bool = False
+    third_party_verify_ssl: bool = True
+    third_party_disable_strict_ssl_verification: bool = False
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
     oauth_access_token_file_path: str | None = None
