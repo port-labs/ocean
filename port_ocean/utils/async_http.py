@@ -2,7 +2,7 @@ import httpx
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.context.ocean import ocean
-from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.http_client_factory import create_third_party_http_client
 from port_ocean.helpers.retry import RetryTransport
 
 _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
@@ -11,7 +11,7 @@ _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 def _get_http_client_context() -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
-        client = OceanAsyncClient(
+        client = create_third_party_http_client(
             RetryTransport,
             timeout=ocean.config.client_timeout,
         )
