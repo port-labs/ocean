@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.19-beta (2026-05-25)
+## 2.2.20-beta (2026-05-25)
 
 
 ### Improvements
 
 - Added explicit Literal kind definitions per AWS resource kind
+
+
+## 2.2.19-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
 
 
 ## 2.2.18-beta (2026-05-24)
