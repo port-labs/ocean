@@ -148,7 +148,7 @@ async def _consume_iterator(
         error = exc
 
         logger.exception(
-            f"{context} iterator {index} failed; continuing remaining siblings"
+            f"{context} iterator {index} failed; continuing remaining"
         )
 
     finally:
