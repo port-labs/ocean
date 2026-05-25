@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.18-beta (2026-05-24)
+## 2.2.19-beta (2026-05-25)
 
 
 ### Features
 
 - Added support for AWS::RDS::DBCluster resource kind, enabling ingestion of Aurora and multi-AZ RDS cluster entities into the Port catalog with attributes such as cluster members, engine mode, writer/reader endpoints, availability zones, and encryption settings.
+
+
+## 2.2.18-beta (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
 
 
 ## 2.2.17-beta (2026-05-21)
