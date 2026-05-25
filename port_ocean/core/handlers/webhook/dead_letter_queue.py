@@ -6,7 +6,7 @@ import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from loguru import logger
 
@@ -29,11 +29,10 @@ def _emit_metric(name: str, labels: List[str], value: float, op: str = "inc") ->
     try:
         from port_ocean.context.ocean import ocean
 
-        result = (
-            ocean.metrics.set_metric(name, labels, value)
-            if op == "set"
-            else ocean.metrics.inc_metric(name, labels, value)
-        )
+        if op == "set":
+            result = cast(Any, ocean.metrics.set_metric(name, labels, value))
+        else:
+            result = cast(Any, ocean.metrics.inc_metric(name, labels, value))
         if asyncio.iscoroutine(result):
             result.close()
     except Exception:
