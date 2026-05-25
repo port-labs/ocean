@@ -56,6 +56,7 @@ class Ocean:
             _integration_config_model=config_factory,
             **(config_override or {}),
         )
+        self._warn_non_default_ssl_settings()
         # add the integration sensitive configuration to the sensitive patterns to mask out
         sensitive_log_filter.hide_sensitive_strings(
             *self.config.get_sensitive_fields_data()
@@ -118,6 +119,19 @@ class Ocean:
 
         signal_handler.register(self._report_resync_aborted, priority=100)
         signal_handler.register(self._stop_status_heartbeat, priority=90)
+
+    def _warn_non_default_ssl_settings(self) -> None:
+        for label, client_ssl in (
+            ("Port API", self.config.ssl.port),
+            ("Third-party", self.config.ssl.third_party),
+        ):
+            if not client_ssl.verify:
+                description = "verify=false"
+            elif not client_ssl.x509.strict:
+                description = "x509.strict=false"
+            else:
+                continue
+            logger.warning(f"{label} SSL settings are non-default ({description}). ")
 
     async def _report_resync_aborted(self) -> None:
         """
