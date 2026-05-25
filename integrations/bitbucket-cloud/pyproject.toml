@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bitbucket-cloud"
-version = "0.5.35"
+version = "0.5.36"
 description = "This integration ingest data from bitbucket"
 authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
 
