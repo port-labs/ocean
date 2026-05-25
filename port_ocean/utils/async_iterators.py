@@ -1,6 +1,24 @@
+import asyncio
 import typing
+from dataclasses import dataclass
 
 import aiostream
+from loguru import logger
+
+CANCELLED_TASK_CLEANUP_TIMEOUT = 10
+
+T = typing.TypeVar("T")
+
+
+@dataclass(slots=True)
+class _IteratorItem(typing.Generic[T]):
+    item: T
+
+
+@dataclass(slots=True)
+class _IteratorFinished:
+    error: Exception | None = None
+
 
 if typing.TYPE_CHECKING:
     from asyncio import Semaphore
@@ -107,3 +125,110 @@ async def semaphore_async_iterator(
     async with semaphore:
         async for result in function():
             yield result
+
+
+async def _consume_iterator(
+    *,
+    index: int,
+    iterator: typing.AsyncIterable[T],
+    queue: asyncio.Queue[_IteratorItem[T] | _IteratorFinished],
+    is_closing: asyncio.Event,
+    context: str,
+) -> None:
+    error: Exception | None = None
+
+    try:
+        async for item in iterator:
+            await queue.put(_IteratorItem(item))
+
+    except asyncio.CancelledError:
+        raise
+
+    except Exception as exc:
+        error = exc
+
+        logger.exception(
+            f"{context} iterator {index} failed; continuing remaining"
+        )
+
+    finally:
+        if is_closing.is_set():
+            return
+
+        await queue.put(_IteratorFinished(error=error))
+
+
+async def stream_independent_async_iterators(
+    *iterators: typing.AsyncIterable[T], context: str
+) -> typing.AsyncGenerator[T, None]:
+    """
+    Stream multiple async iterators concurrently while deferring failures.
+
+    Characteristics:
+    - Items are yielded as they arrive.
+    - Ordering is nondeterministic.
+    - One iterator failing does not stop others.
+    - Errors are raised as an ExceptionGroup after surviving iterators finish.
+    - Errors are only surfaced if the stream is fully consumed.
+    """
+    if not iterators:
+        return
+
+    queue: asyncio.Queue[_IteratorItem[T] | _IteratorFinished] = asyncio.Queue(
+        maxsize=max(len(iterators) * 2, 32)
+    )
+
+    errors: list[Exception] = []
+    is_closing = asyncio.Event()
+
+    tasks = [
+        asyncio.create_task(
+            _consume_iterator(
+                index=index,
+                iterator=iterator,
+                queue=queue,
+                is_closing=is_closing,
+                context=context,
+            )
+        )
+        for index, iterator in enumerate(iterators)
+    ]
+
+    try:
+        remaining = len(tasks)
+        while remaining:
+            message = await queue.get()
+
+            if isinstance(message, _IteratorFinished):
+                remaining -= 1
+
+                if message.error is not None:
+                    errors.append(message.error)
+            else:
+                yield message.item
+
+    finally:
+        is_closing.set()
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+
+        done, pending = await asyncio.wait(
+            tasks,
+            timeout=CANCELLED_TASK_CLEANUP_TIMEOUT,
+        )
+
+        await asyncio.gather(*done, return_exceptions=True)
+
+        if pending:
+            logger.warning(
+                f"{context} cleanup timed out after "
+                f"{CANCELLED_TASK_CLEANUP_TIMEOUT} seconds while waiting "
+                f"for {len(pending)} cancelled iterator task(s)"
+            )
+
+    if errors:
+        raise ExceptionGroup(
+            f"{context} failed with {len(errors)} error(s)",
+            errors,
+        )
