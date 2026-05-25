@@ -168,6 +168,34 @@ class AWSECRRepositoryResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSECSTaskDefinitionResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::ECS::TaskDefinition"] = Field(
+        title="AWS ECS Task Definition",
+        description="AWS ECS Task Definition resource kind.",
+    )
+
+
+class AWSMSKClusterResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::MSK::Cluster"] = Field(
+        title="AWS MSK Cluster",
+        description="AWS MSK Cluster resource kind.",
+    )
+
+
+class AWSElastiCacheClusterResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::ElastiCache::Cluster"] = Field(
+        title="AWS ElastiCache Cluster",
+        description="AWS ElastiCache Cluster resource kind.",
+    )
+
+
+class AWSEC2VolumeResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::EC2::Volume"] = Field(
+        title="AWS EC2 Volume",
+        description="AWS EC2 Volume resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -179,8 +207,12 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSEKSClusterResourceConfig
         | AWSLambdaFunctionResourceConfig
         | AWSECSServiceResourceConfig
+        | AWSECSTaskDefinitionResourceConfig
         | AWSSQSQueueResourceConfig
         | AWSECRRepositoryResourceConfig
+        | AWSMSKClusterResourceConfig
+        | AWSElastiCacheClusterResourceConfig
+        | AWSEC2VolumeResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
