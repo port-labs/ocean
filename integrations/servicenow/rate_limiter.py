@@ -42,26 +42,33 @@ class ServiceNowRateLimiter:
         return 0.0
 
     async def __aenter__(self) -> "ServiceNowRateLimiter":
+        wait_time = 0.0
+
         async with self._lock:
             if self._reset_time is not None and time.time() >= self._reset_time:
                 self._request_count = 0
                 self._reset_time = None
+
             if (
                 self._limit is not None
                 and self._request_count >= self._limit
                 and self._reset_time is not None
             ):
                 wait_time = self.seconds_until_reset
-                if wait_time > 0:
-                    logger.info(
-                        f"Rate limit: {self._request_count}/{self._limit} requests used, "
-                        f"waiting {wait_time:.1f}s until window resets"
-                    )
-                    await asyncio.sleep(wait_time)
-                self._request_count = 0
-                self._reset_time = None
 
-            self._request_count += 1
+            if wait_time <= 0:
+                self._request_count += 1
+
+        if wait_time > 0:
+            logger.info(
+                f"Rate limit: {self._request_count}/{self._limit} requests used, "
+                f"waiting {wait_time:.1f}s until window resets"
+            )
+            await asyncio.sleep(wait_time)
+
+            async with self._lock:
+                self._request_count = 1
+                self._reset_time = None
 
         return self
 
@@ -83,7 +90,11 @@ class ServiceNowRateLimiter:
 
                 if retry_after:
                     wait_seconds = int(retry_after)
-                    self._reset_time = time.time() + wait_seconds
+                    retry_after_reset = time.time() + wait_seconds
+                    if self._reset_time is None:
+                        self._reset_time = retry_after_reset
+                    else:
+                        self._reset_time = max(self._reset_time, retry_after_reset)
                     logger.info(
                         f"Rate limit 429 received: Retry-After {wait_seconds}s, "
                         f"limit {self._limit} req/hr"
