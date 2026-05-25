@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Applied independent resync streaming to pull request syncs so one failed stream does not block the remaining streams, while still surfacing deferred errors to prevent unsafe reconciliation deletes.
 
 
+## 5.5.6 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
 ## 5.5.5 (2026-05-24)
 
 
