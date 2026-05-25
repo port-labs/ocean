@@ -16,6 +16,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Wired into Port API client, shared `http_async_client`.
   - Startup warnings when non-default SSL settings are used.
 
+## 0.42.11 (2026-05-25)
+
+### Improvements
+
+-  Lifecycle use backoff and handling exception
+
 ## 0.42.10 (2026-05-25)
 
 ### Improvements
