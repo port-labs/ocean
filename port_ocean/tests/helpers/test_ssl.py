@@ -6,7 +6,11 @@ from port_ocean.config.settings import (
     SslClientSettings,
     SslX509Settings,
 )
-from port_ocean.helpers.ssl import resolve_verify_param
+from port_ocean.helpers.ssl import (
+    OceanSslRole,
+    resolve_verify_param,
+    resolve_verify_param_for_ocean_role,
+)
 
 
 @pytest.mark.parametrize(
@@ -31,6 +35,13 @@ def test_resolve_verify_param_x509_non_strict_returns_ssl_context() -> None:
     assert result.check_hostname is True
     if hasattr(ssl, "VERIFY_X509_STRICT"):
         assert not result.verify_flags & ssl.VERIFY_X509_STRICT
+
+
+@pytest.mark.parametrize("role", ["port", "third_party"])
+def test_resolve_verify_param_for_ocean_role_without_context_returns_true(
+    role: OceanSslRole,
+) -> None:
+    assert resolve_verify_param_for_ocean_role(role) is True
 
 
 def test_integration_configuration_reads_structured_ssl_env_vars(
