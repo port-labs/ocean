@@ -98,6 +98,40 @@ class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
     workers_count: int = Field(default=1)
 
 
+class WebhookDeadLetterQueueSettings(BaseOceanModel, extra=Extra.allow):
+    """Disk-backed DLQ for failed webhook events.
+
+    Not safe for multiple OS processes sharing the same storage_path.
+    Ocean enforces single-process mode on macOS and SaaS;
+    Linux non-SaaS deployments should disable multi_process mode or
+    use a unique storage_path per process.
+
+    The default storage_path lives under /tmp/ which is often tmpfs in
+    containerized deployments — DLQ contents will not survive pod restarts.
+    Point storage_path at a persistent volume mount if cross-restart
+    durability is required.
+    """
+
+    enabled: bool = Field(default=False)
+    storage_path: str = Field(default="/tmp/ocean/.ocean_dlq")
+    max_age_seconds: float = Field(default=3600.0, gt=0)
+    initial_backoff_seconds: float = Field(default=30.0, gt=0)
+    max_backoff_seconds: float = Field(default=1800.0, gt=0)
+    backoff_multiplier: float = Field(default=2.0, gt=1)
+    max_entries: int = Field(default=1000, gt=0)
+
+    @root_validator
+    def _validate_backoff_window(cls, values: dict[str, Any]) -> dict[str, Any]:
+        initial = values.get("initial_backoff_seconds")
+        max_backoff = values.get("max_backoff_seconds")
+        max_age = values.get("max_age_seconds")
+        if initial is not None and max_backoff is not None and max_backoff < initial:
+            raise ValueError("max_backoff_seconds must be >= initial_backoff_seconds")
+        if initial is not None and max_age is not None and max_age <= initial:
+            raise ValueError("max_age_seconds must be > initial_backoff_seconds")
+        return values
+
+
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     _integration_config_model: BaseModel | None = None
 
@@ -154,6 +188,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
     actions_processor: ActionsProcessorSettings = Field(
         default_factory=lambda: ActionsProcessorSettings()
+    )
+    webhook_dlq: WebhookDeadLetterQueueSettings = Field(
+        default_factory=lambda: WebhookDeadLetterQueueSettings()
     )
 
     @validator("process_execution_mode")

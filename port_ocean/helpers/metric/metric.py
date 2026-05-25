@@ -66,6 +66,14 @@ class MetricType:
     RESPONSE_SIZE_AVG_NAME = "response_size_avg_bytes"
     RESPONSE_SIZE_MEDIAN_NAME = "response_size_median_bytes"
 
+    # Webhook dead-letter queue
+    DLQ_ENTRIES_ADDED_NAME = "webhook_dlq_entries_added"
+    DLQ_ENTRIES_DISPOSED_NAME = "webhook_dlq_entries_disposed"
+    DLQ_ENTRIES_EVICTED_NAME = "webhook_dlq_entries_evicted"
+    DLQ_ENTRIES_REPLAYED_NAME = "webhook_dlq_entries_replayed"
+    DLQ_ENTRIES_COMPLETED_NAME = "webhook_dlq_entries_completed"
+    DLQ_SIZE_NAME = "webhook_dlq_size"
+
 
 class SyncState:
     SYNCING = "syncing"
@@ -166,6 +174,36 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
         MetricType.RESPONSE_SIZE_MEDIAN_NAME,
         "Median size of HTTP responses received during kind processing",
         ["kind"],
+    ),
+    MetricType.DLQ_ENTRIES_ADDED_NAME: (
+        MetricType.DLQ_ENTRIES_ADDED_NAME,
+        "Webhook events added to the dead-letter queue",
+        ["webhook_path"],
+    ),
+    MetricType.DLQ_ENTRIES_DISPOSED_NAME: (
+        MetricType.DLQ_ENTRIES_DISPOSED_NAME,
+        "DLQ entries disposed for exceeding max_age",
+        ["webhook_path"],
+    ),
+    MetricType.DLQ_ENTRIES_EVICTED_NAME: (
+        MetricType.DLQ_ENTRIES_EVICTED_NAME,
+        "DLQ entries evicted to satisfy max_entries cap",
+        ["webhook_path"],
+    ),
+    MetricType.DLQ_ENTRIES_REPLAYED_NAME: (
+        MetricType.DLQ_ENTRIES_REPLAYED_NAME,
+        "DLQ entries dispensed to a worker for replay",
+        ["webhook_path"],
+    ),
+    MetricType.DLQ_ENTRIES_COMPLETED_NAME: (
+        MetricType.DLQ_ENTRIES_COMPLETED_NAME,
+        "DLQ entries that completed successfully on replay",
+        ["webhook_path"],
+    ),
+    MetricType.DLQ_SIZE_NAME: (
+        MetricType.DLQ_SIZE_NAME,
+        "Current number of entries in the dead-letter queue",
+        ["webhook_path"],
     ),
 }
 

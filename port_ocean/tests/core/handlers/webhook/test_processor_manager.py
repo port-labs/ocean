@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -40,9 +41,11 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.models import Entity
 from port_ocean.exceptions.webhook_processor import (
+    RateLimitError,
     RetryableError,
     WebhookEventNotSupportedError,
 )
+from port_ocean.config.settings import WebhookDeadLetterQueueSettings
 from port_ocean.utils.signal import SignalHandler
 
 
@@ -1761,6 +1764,146 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
 
     assert len(processed_events) == 1
     assert mock_upsert.call_count == 1
+    mock_delete.assert_not_called()
+
+    await mock_context.app.webhook_manager.shutdown()
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.delete"
+)
+@patch(
+    "port_ocean.core.handlers.entities_state_applier.port.applier.HttpEntitiesStateApplier.upsert"
+)
+async def test_integrationTest_rateLimitFailure_replayedFromDLQ_eventuallyUpserted(
+    mock_upsert: AsyncMock,
+    mock_delete: AsyncMock,
+    mock_context: PortOceanContext,
+    mock_port_app_config: PortAppConfig,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """End-to-end: RateLimitError on first attempt lands in DLQ; backoff elapses; worker replays; success."""
+
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.handler.ocean", mock_context
+    )
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.live_events.ocean", mock_context
+    )
+    monkeypatch.setattr(
+        "port_ocean.core.integrations.mixins.live_events.is_lakehouse_data_enabled",
+        AsyncMock(return_value=False),
+    )
+
+    mock_upsert.return_value = [entity]
+
+    attempts = {"count": 0}
+    first_failed = asyncio.Event()
+    replay_succeeded = asyncio.Event()
+
+    class FlakyRateLimitedProcessor(AbstractWebhookProcessor):
+        async def authenticate(
+            self, payload: Dict[str, Any], headers: Dict[str, str]
+        ) -> bool:
+            return True
+
+        async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+            return True
+
+        async def handle_event(
+            self, payload: EventPayload, resource: ResourceConfig
+        ) -> WebhookEventRawResults:
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                first_failed.set()
+                raise RateLimitError("upstream rate limit, retry later")
+            replay_succeeded.set()
+            return WebhookEventRawResults(
+                updated_raw_results=[
+                    {
+                        "name": "repo-one",
+                        "links": {"html": {"href": "https://example.com/repo-one"}},
+                        "main_branch": "main",
+                    }
+                ],
+                deleted_raw_results=[],
+            )
+
+        async def should_process_event(self, event: WebhookEvent) -> bool:
+            return True
+
+        async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
+            return ["repository"]
+
+    monkeypatch.setattr(
+        HandlerMixin,
+        "port_app_config_handler",
+        AsyncMock(return_value=mock_port_app_config),
+    )
+    monkeypatch.setattr(EventContext, "port_app_config", mock_port_app_config)
+
+    test_path = "/dlq-webhook-test"
+    mock_context.app.integration = BaseIntegration(ocean)
+    await mock_context.app.integration.initialize_handlers()
+    mock_context.app.integration.context.config.webhook_dlq = (
+        WebhookDeadLetterQueueSettings(
+            enabled=True,
+            storage_path=str(tmp_path),
+            initial_backoff_seconds=0.05,
+            max_backoff_seconds=1.0,
+            max_age_seconds=10.0,
+            backoff_multiplier=2.0,
+            max_entries=10,
+        )
+    )
+    mock_context.app.webhook_manager = LiveEventsProcessorManager(
+        mock_context.app.integration_router,
+        SignalHandler(),
+        3,
+        3,
+    )
+    mock_context.app.webhook_manager.register_processor(
+        test_path, FlakyRateLimitedProcessor
+    )
+    await mock_context.app.webhook_manager.start_processing_event_messages()
+    mock_context.app.fast_api_app.include_router(
+        mock_context.app.webhook_manager._router
+    )
+    client = TestClient(mock_context.app.fast_api_app)
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request"):
+        response = client.post(
+            test_path, json={"x": 1}, headers={"Content-Type": "application/json"}
+        )
+
+    assert response.status_code == 200
+
+    try:
+        await asyncio.wait_for(first_failed.wait(), timeout=5.0)
+    except asyncio.TimeoutError:
+        pytest.fail("First processing attempt never ran")
+
+    dlq = mock_context.app.webhook_manager._dlqs[test_path]
+    for _ in range(100):
+        if await dlq.size() == 1:
+            break
+        await asyncio.sleep(0.02)
+    assert await dlq.size() == 1, "Expected event to land in DLQ after RateLimitError"
+
+    try:
+        await asyncio.wait_for(replay_succeeded.wait(), timeout=5.0)
+    except asyncio.TimeoutError:
+        pytest.fail("DLQ replay never ran")
+
+    for _ in range(100):
+        if await dlq.size() == 0:
+            break
+        await asyncio.sleep(0.02)
+    assert await dlq.size() == 0, "DLQ should be empty after successful replay"
+    assert attempts["count"] == 2
+    mock_upsert.assert_called_once()
     mock_delete.assert_not_called()
 
     await mock_context.app.webhook_manager.shutdown()

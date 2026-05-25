@@ -1,5 +1,5 @@
 import copy
-from typing import Dict, Tuple, Type, Set, List
+from typing import Dict, Optional, Tuple, Type, Set, List
 
 from fastapi import APIRouter, Request
 from loguru import logger
@@ -19,6 +19,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
     LiveEventTimestamp,
 )
+from port_ocean.core.handlers.webhook.dead_letter_queue import (
+    DiskBackedDeadLetterQueue,
+    DLQEntry,
+)
+from port_ocean.config.settings import WebhookDeadLetterQueueSettings
+from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.context.event import event
 from port_ocean.log.sensetive import sensitive_log_filter
 
@@ -59,7 +65,43 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         self._event_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
+        self._dlqs: Dict[str, DiskBackedDeadLetterQueue] = {}
+        self._pending_get_tasks: Dict[Tuple[str, int], asyncio.Task[WebhookEvent]] = {}
         signal_handler.register(self.shutdown)
+
+    def _dlq_settings(self) -> Optional[WebhookDeadLetterQueueSettings]:
+        dlq = ocean.integration.context.config.webhook_dlq
+        return dlq if dlq.enabled else None
+
+    def _ensure_dlq(self, path: str) -> Optional[DiskBackedDeadLetterQueue]:
+        dlq = self._dlqs.get(path)
+        if dlq is not None:
+            return dlq
+        settings = self._dlq_settings()
+        if settings is None:
+            return None
+        if (
+            ocean.integration.context.config.process_execution_mode
+            == ProcessExecutionMode.multi_process
+        ):
+            logger.warning(
+                "Webhook DLQ is enabled with multi_process execution mode; "
+                "separate processes sharing the same storage_path will collide. "
+                "Use a process-unique storage_path or switch to single_process.",
+                webhook_path=path,
+                storage_path=settings.storage_path,
+            )
+        dlq = DiskBackedDeadLetterQueue(
+            path=path,
+            storage_path=settings.storage_path,
+            max_age_seconds=settings.max_age_seconds,
+            initial_backoff_seconds=settings.initial_backoff_seconds,
+            max_backoff_seconds=settings.max_backoff_seconds,
+            backoff_multiplier=settings.backoff_multiplier,
+            max_entries=settings.max_entries,
+        )
+        self._dlqs[path] = dlq
+        return dlq
 
     async def start_processing_event_messages(self) -> None:
         """Start processing events for all registered paths with N workers each."""
@@ -68,25 +110,74 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         config = ocean.integration.context.config
 
         for path in self._event_queues.keys():
+            self._ensure_dlq(path)
             for worker_id in range(0, config.event_workers_count):
                 task = loop.create_task(self._process_webhook_events(path, worker_id))
                 self._event_processor_tasks.add(task)
                 task.add_done_callback(self._event_processor_tasks.discard)
+
+    async def _next_event(
+        self, path: str, worker_id: int
+    ) -> Tuple[WebhookEvent, Optional[DLQEntry]]:
+        """Return the next event to process. Ready DLQ replays take priority over the main queue."""
+        queue = self._event_queues[path]
+        key = (path, worker_id)
+        while True:
+            dlq = self._dlqs.get(path)
+            if dlq is not None:
+                ready = await dlq.try_pop_ready()
+                if ready is not None:
+                    return ready.event, ready
+
+            # If a prior wait_for timed out while get_task already completed,
+            # we MUST consume its result here — asyncio.Queue.get() doesn't
+            # undo on cancel, so dropping it would lose the event.
+            get_task = self._pending_get_tasks.get(key)
+            if get_task is None or get_task.done():
+                if get_task is not None and get_task.done():
+                    try:
+                        event_obj = get_task.result()
+                        self._pending_get_tasks.pop(key, None)
+                        return event_obj, None
+                    except BaseException:
+                        self._pending_get_tasks.pop(key, None)
+                get_task = asyncio.ensure_future(queue.get())
+                self._pending_get_tasks[key] = get_task
+
+            wait_seconds = (
+                await dlq.seconds_until_next_ready() if dlq is not None else None
+            )
+
+            if wait_seconds is None:
+                event_obj = await asyncio.shield(get_task)
+                self._pending_get_tasks.pop(key, None)
+                return event_obj, None
+
+            try:
+                event_obj = await asyncio.wait_for(
+                    asyncio.shield(get_task), timeout=max(wait_seconds, 0.001)
+                )
+                self._pending_get_tasks.pop(key, None)
+                return event_obj, None
+            except asyncio.TimeoutError:
+                continue
 
     async def _process_webhook_events(self, path: str, worker_id: int) -> None:
         """Process webhook events from the queue for a given path."""
         queue = self._event_queues[path]
         while True:
             event = None
+            dlq_entry: Optional[DLQEntry] = None
             matching_processors: List[
                 Tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]
             ] = []
             try:
-                event = await queue.get()
+                event, dlq_entry = await self._next_event(path, worker_id)
                 with logger.contextualize(
                     worker=worker_id,
                     webhook_path=path,
                     trace_id=event.trace_id,
+                    dlq_replay=dlq_entry is not None,
                 ):
                     async with event_context(
                         EventType.HTTP_REQUEST,
@@ -112,12 +203,20 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
                         successful_results: List[WebhookEventRawResults] = []
                         failed_exceptions: List[Exception] = []
+                        dlq_eligible_error: Optional[Exception] = None
 
-                        for result in processing_results:
+                        for (_, proc, _), result in zip(
+                            matching_processors, processing_results
+                        ):
                             if isinstance(result, WebhookEventRawResults):
                                 successful_results.append(result)
                             elif isinstance(result, Exception):
                                 failed_exceptions.append(result)
+                                if (
+                                    dlq_eligible_error is None
+                                    and proc.should_dead_letter(result)
+                                ):
+                                    dlq_eligible_error = result
 
                         if successful_results:
                             logger.info(
@@ -134,11 +233,23 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
                         await self.sync_raw_results(successful_results)
 
+                        await self._handle_dlq_outcome(
+                            path,
+                            event,
+                            dlq_entry,
+                            dlq_eligible_error,
+                            bool(failed_exceptions),
+                        )
+
             except asyncio.CancelledError:
                 logger.info(f"Worker {worker_id} for {path} shutting down")
                 for _, proc, _ in matching_processors:
                     await proc.cancel()
                     self._timestamp_event_error(proc.event)
+                if dlq_entry is not None:
+                    dlq = self._dlqs.get(path)
+                    if dlq is not None:
+                        await dlq.release_in_flight(dlq_entry.trace_id)
                 break
             except Exception as e:
                 logger.exception(
@@ -146,15 +257,51 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 )
                 for _, proc, _ in matching_processors:
                     self._timestamp_event_error(proc.event)
+                if dlq_entry is not None:
+                    dlq = self._dlqs.get(path)
+                    if dlq is not None:
+                        await dlq.release_in_flight(dlq_entry.trace_id)
             finally:
                 try:
-                    if event is not None:
+                    if event is not None and dlq_entry is None:
                         await queue.commit()
 
                 except Exception as e:
                     logger.exception(
                         f"Unexpected error in queue commit in worker {worker_id} for {path}: {e}"
                     )
+
+    async def _handle_dlq_outcome(
+        self,
+        path: str,
+        event: WebhookEvent,
+        dlq_entry: Optional[DLQEntry],
+        dlq_eligible_error: Optional[Exception],
+        any_failure: bool,
+    ) -> None:
+        dlq = self._dlqs.get(path)
+        if dlq is None:
+            return
+        try:
+            if dlq_entry is not None:
+                if any_failure:
+                    err = dlq_eligible_error or Exception("DLQ replay failed")
+                    await dlq.add(event, f"{type(err).__name__}: {err}")
+                else:
+                    await dlq.mark_succeeded(dlq_entry.trace_id)
+                return
+            if dlq_eligible_error is not None:
+                await dlq.add(
+                    event,
+                    f"{type(dlq_eligible_error).__name__}: {dlq_eligible_error}",
+                )
+        except Exception as e:
+            logger.exception(
+                "DLQ outcome handling failed",
+                webhook_path=path,
+                trace_id=event.trace_id,
+                error=str(e),
+            )
 
     async def _extract_matching_processors(
         self, webhook_event: WebhookEvent, path: str
@@ -330,6 +477,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             self._processors_classes[path] = []
             self._event_queues[path] = LocalQueue()
             self._register_route(path)
+            if self._event_processor_tasks:
+                self._ensure_dlq(path)
 
         self._processors_classes[path].append(processor)
 
@@ -389,6 +538,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     async def shutdown(self) -> None:
         """Gracefully shutdown all queue processors"""
         logger.warning("Shutting down webhook processor manager")
+
+        for task in self._pending_get_tasks.values():
+            task.cancel()
+        self._pending_get_tasks.clear()
 
         try:
             await asyncio.wait_for(

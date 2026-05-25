@@ -80,15 +80,25 @@ class WebhookEvent(LiveEvent):
     @classmethod
     def from_dict(cls: Type["WebhookEvent"], data: Dict[str, Any]) -> "WebhookEvent":
         created_at = None
-        if "created_at" in data:
+        if data.get("created_at"):
             created_at = datetime.fromisoformat(data["created_at"])
         return cls(
             trace_id=data["trace_id"],
             payload=data["payload"],
             headers=data["headers"],
             original_request=None,
+            group_id=data.get("group_id"),
             created_at=created_at,
         )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "trace_id": self.trace_id,
+            "payload": self.payload,
+            "headers": self.headers,
+            "group_id": self.group_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
 
     def clone(self) -> "WebhookEvent":
         return WebhookEvent(
@@ -96,6 +106,7 @@ class WebhookEvent(LiveEvent):
             payload=self.payload,
             headers=self.headers,
             original_request=self._original_request,
+            group_id=self.group_id,
             created_at=self.created_at,
         )
 

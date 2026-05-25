@@ -3,7 +3,10 @@ from enum import StrEnum
 from loguru import logger
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.exceptions.webhook_processor import RetryableError
+from port_ocean.exceptions.webhook_processor import (
+    DeadLetterableError,
+    RetryableError,
+)
 
 from .webhook_event import (
     WebhookEvent,
@@ -86,6 +89,10 @@ class AbstractWebhookProcessor(ABC):
         Override to customize retry behavior
         """
         return isinstance(error, RetryableError)
+
+    def should_dead_letter(self, error: Exception) -> bool:
+        """Whether the error should send the event to the DLQ. Override to broaden criteria."""
+        return isinstance(error, DeadLetterableError)
 
     def calculate_retry_delay(self) -> float:
         """
