@@ -202,14 +202,14 @@ class TestDbClusterProperties:
         assert properties.StorageType is None
         assert properties.DBSubnetGroup is None
 
-    def test_extra_fields_are_ignored(self) -> None:
-        """Test that unknown fields from the AWS API are silently ignored."""
+    def test_extra_fields_are_allowed(self) -> None:
+        """Test that unknown fields from the AWS API are stored (extra='allow')."""
         properties = DbClusterProperties(
             DBClusterIdentifier="cluster-extra",
             UnknownField="ignored",  # type: ignore[call-arg]
         )
         assert properties.DBClusterIdentifier == "cluster-extra"
-        assert not hasattr(properties, "UnknownField")
+        assert hasattr(properties, "UnknownField")
 
 
 class TestDbCluster:
