@@ -14,6 +14,7 @@ configurations:
     required: false
     type: string
     enum: ["Single Account", "Multiple Accounts"]
+    format: "tabSwitcher"
     default: "Single Account"
   - name: organizationUrl
     description: The URL of your Azure DevOps organization (e.g., "https://dev.azure.com/{your-organization}"). To find your organization URL, refer to the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http">Azure DevOps documentation</a>.
