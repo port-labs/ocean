@@ -73,4 +73,4 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_start()
 async def on_start() -> None:
-    logger.info("Starting azure multi subscription integrations")
+    logger.info("Starting azure multi subscription integration")
