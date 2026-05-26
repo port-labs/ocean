@@ -1,6 +1,7 @@
 import asyncio
 import copy
-from typing import Any, AsyncGenerator, Dict, TYPE_CHECKING, Optional, cast, ClassVar
+from itertools import batched
+from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import parse_github_options, get_repository_metadata
@@ -76,31 +77,18 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Enriching repositories with {list(included_relations.keys())}"
             )
 
-            async for enriched_batch in self._enrich_in_batches(
-                repos, included_relations, organization
-            ):
-                yield enriched_batch
-
-    async def _enrich_in_batches(
-        self,
-        repos: list[dict[str, Any]],
-        included_relations: dict[str, dict[str, Any]],
-        organization: str,
-    ) -> AsyncGenerator[list[RAW_ITEM], None]:
-        """Enrich repositories in batches to limit concurrency."""
-        for i in range(0, len(repos), ENRICHMENT_BATCH_SIZE):
-            batch = repos[i : i + ENRICHMENT_BATCH_SIZE]
-            enriched = await asyncio.gather(
-                *[
-                    self.enrich_repository_with_selected_relationships(
-                        copy.deepcopy(repo),
-                        included_relations,
-                        organization,
-                    )
-                    for repo in batch
-                ]
-            )
-            yield enriched
+            for batch in batched(repos, ENRICHMENT_BATCH_SIZE):
+                enriched = await asyncio.gather(
+                    *[
+                        self.enrich_repository_with_selected_relationships(
+                            copy.deepcopy(repo),
+                            included_relations,
+                            organization,
+                        )
+                        for repo in batch
+                    ]
+                )
+                yield enriched
 
     @cache_iterator_result()
     async def _fetch_repositories(
