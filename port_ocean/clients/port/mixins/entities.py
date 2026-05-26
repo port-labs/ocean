@@ -521,7 +521,7 @@ class EntityClientMixin:
         )
 
     async def _search_entities_by_datasource_paginated(
-        self, user_agent_type: UserAgentType
+        self, user_agent_type: UserAgentType, before: str | None = None
     ) -> list[Entity]:
         datasource_prefix = f"port-ocean/{self.auth.integration_type}/"
         datasource_suffix = (
@@ -538,6 +538,9 @@ class EntityClientMixin:
                 "datasource_prefix": datasource_prefix,
                 "datasource_suffix": datasource_suffix,
             }
+
+            if before:
+                request_body["before"] = before
 
             if next_from:
                 request_body["from"] = next_from
@@ -565,38 +568,32 @@ class EntityClientMixin:
         query: dict[Any, Any],
         parameters_to_include: list[str] | None,
     ) -> list[Entity]:
-        default_query = {
-            "combinator": "and",
-            "rules": [
-                {
-                    "property": "$datasource",
-                    "operator": "contains",
-                    "value": f"port-ocean/{self.auth.integration_type}/",
-                },
-                {
-                    "property": "$datasource",
-                    "operator": "contains",
-                    "value": f"/{self.auth.integration_identifier}/{user_agent_type.value}",
-                },
-            ],
-        }
+        # search-by-query supports reconciliation updatedAt filtering by passing
+        # the rule's "from" value as datasource endpoint's "before" field.
+        _ = parameters_to_include
 
-        if query.get("rules"):
-            query["rules"].extend(default_query["rules"])
+        updated_at_before: str | None = None
+        for rule in query.get("rules", []):
+            if rule.get("property") != "$updatedAt":
+                continue
 
-        response = await self.client.post(
-            f"{self.auth.api_url}/entities/search",
-            json=query,
-            headers=await self.auth.headers(user_agent_type),
-            params={
-                "exclude_calculated_properties": "true",
-                "include": parameters_to_include or ["blueprint", "identifier"],
-            },
-            extensions={"retryable": True},
+            value = rule.get("value")
+            if isinstance(value, dict):
+                if isinstance(value.get("from"), str):
+                    updated_at_before = value["from"]
+                    break
+                if isinstance(value.get("before"), str):
+                    updated_at_before = value["before"]
+                    break
+
+            if isinstance(value, str):
+                updated_at_before = value
+                break
+
+        return await self._search_entities_by_datasource_paginated(
+            user_agent_type=user_agent_type,
+            before=updated_at_before,
         )
-
-        handle_port_status_code(response)
-        return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
     async def search_batch_entities(
         self, user_agent_type: UserAgentType, entities_to_search: list[Entity]
