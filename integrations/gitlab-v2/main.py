@@ -475,7 +475,6 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         enriched_batch = await _enrich_and_yield(files_batch)
         if enriched_batch:
             found_any_files = True
-            print(enriched_batch)
             yield enriched_batch
 
     if not found_any_files and not repositories:
