@@ -93,7 +93,7 @@ class TestAccountProperties:
         assert props.Id == "111111111111"
         assert props.State == "ACTIVE"
         assert hasattr(props, "UnknownFutureField")
-        assert props.UnknownFutureField == "some-value"  # type: ignore[attr-defined]
+        assert props.UnknownFutureField == "some-value"
 
 
 class TestAccountModel:
