@@ -1,7 +1,7 @@
 import asyncio
 import copy
-from itertools import batched
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
+from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import parse_github_options, get_repository_metadata
