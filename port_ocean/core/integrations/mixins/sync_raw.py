@@ -10,7 +10,7 @@ import multiprocessing
 import httpx
 import json
 from loguru import logger
-from port_ocean.clients.lifecycle import GranularityType
+from port_ocean.clients.dsp.lifecycle import GranularityType
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.metric_resource import metric_resource_context
