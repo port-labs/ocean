@@ -1,5 +1,4 @@
 from loguru import logger
-from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
 )
@@ -39,10 +38,10 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         except (KeyError, ValueError):
             return False
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        client = AzureDevopsClient.create_from_ocean_config()
+        client = self._get_client_for_webhook(payload)
         resource = payload["resource"]
         work_item_id = resource["id"]
         project_id = payload["resourceContainers"]["project"]["id"]
