@@ -554,6 +554,7 @@ class TestRestRepositoryExporter:
                 total_enriched = sum(len(b) for b in batches)
                 assert total_enriched == total_repos
 
+
 def test_normalized_relations_from_included_relations_alias() -> None:
     selector = GithubRepositorySelector.parse_obj(
         {
