@@ -1,20 +1,21 @@
-from typing import Any, Type
+from typing import Any, AsyncGenerator, Dict, List, Type
 
 import httpx
 from loguru import logger
-from port_ocean.context.ocean import ocean
 
+from port_ocean.context.ocean import ocean
 from port_ocean.helpers.ip_blocker import IPBlockerTransport
-from port_ocean.helpers.retry import RetryTransport, RetryConfig
+from port_ocean.helpers.retry import RetryConfig, RetryTransport
+from port_ocean.helpers.ssl import resolve_verify_param
 from port_ocean.helpers.stream import Stream
-from typing import AsyncGenerator, List, Dict
 
 
 class OceanAsyncClient(httpx.AsyncClient):
     """
-    This class is a wrapper around httpx.AsyncClient that uses a custom transport class.
-    This is done to allow passing our custom transport class to the AsyncClient constructor while still allowing
-    all the default AsyncClient behavior that is changed when passing a custom transport instance.
+    Wrapper around httpx.AsyncClient with Ocean retry transport and SaaS IP blocking.
+
+    When ``verify`` is not passed, uses ``ocean.config.ssl.third_party`` (``OCEAN__SSL__THIRD_PARTY__*``).
+    Pass ``verify`` explicitly to override (e.g. Port API uses ``ssl.port``).
     """
 
     def __init__(
@@ -27,6 +28,8 @@ class OceanAsyncClient(httpx.AsyncClient):
         self._transport_kwargs = transport_kwargs
         self._transport_class = transport_class
         self._retry_config = retry_config
+        if "verify" not in kwargs:
+            kwargs["verify"] = resolve_verify_param(ocean.config.ssl.third_party)
         super().__init__(**kwargs)
 
     def _wrap_with_ip_blocker_if_needed(
