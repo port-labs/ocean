@@ -24,6 +24,8 @@ REQUIRED_PAYLOAD_FIELDS = ("eventType", "publisherId", "resource")
 RESOURCE_CONTAINERS_KEY = "resourceContainers"
 ACCOUNT_BASE_URL_PATH = ("account", "baseUrl")
 COLLECTION_BASE_URL_PATH = ("collection", "baseUrl")
+ORG_URL_QUERY_PARAM = "org"
+ORIGINAL_REQUEST_ATTR = "_original_request"
 
 
 def _enrich_items(
@@ -59,8 +61,14 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
     def _extract_org_url_from_payload(self, payload: EventPayload) -> Optional[str]:
         """Extract the organization base URL from a webhook payload.
 
-        Reads ``resourceContainers.account.baseUrl`` with
-        ``resourceContainers.collection.baseUrl`` as fallback.
+        Primary source: ``resourceContainers.account.baseUrl`` (or
+        ``collection.baseUrl`` as a TFS/on-premise fallback).
+
+        Secondary source: the ``?org=`` query parameter embedded in the
+        webhook endpoint URL at registration time.  Some ADO event types
+        (e.g. Advanced Security alerts) omit ``baseUrl`` from
+        ``resourceContainers``, so the query param is the only reliable
+        signal for those events.
         """
         containers = payload.get(RESOURCE_CONTAINERS_KEY, {})
         account_key, base_url_key = ACCOUNT_BASE_URL_PATH
@@ -68,6 +76,12 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
         url = containers.get(account_key, {}).get(base_url_key) or containers.get(
             collection_key, {}
         ).get(base_url_key)
+
+        if not url:
+            request = getattr(self.event, ORIGINAL_REQUEST_ATTR, None)
+            if request is not None:
+                url = request.query_params.get(ORG_URL_QUERY_PARAM)
+
         return url.rstrip("/") if url else None
 
     def _get_client_for_webhook(self, payload: EventPayload) -> AzureDevopsClient:

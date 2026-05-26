@@ -2,6 +2,7 @@ from azure_devops.webhooks.events import AdvancedSecurityAlertEvents
 import asyncio
 import functools
 import json
+from urllib.parse import quote
 import httpx
 from collections import defaultdict
 from itertools import batched
@@ -1833,7 +1834,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
         for sub in webhook_subs:
             sub.set_webhook_details(
-                url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
+                url=f"{base_url}{WEBHOOK_URL_SUFFIX}?org={quote(self._organization_base_url, safe='')}",
                 auth_username=auth_username,
                 webhook_secret=webhook_secret,
                 project_id=project_id,
