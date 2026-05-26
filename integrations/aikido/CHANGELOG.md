@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.154-beta (2026-05-26)
+## 0.1.155-beta (2026-05-26)
 
 
 ### Improvements
 
 - Expanded the `scopeToTeam` selector description to align with Port documentation.
+
+
+## 0.1.154-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
 
 
 ## 0.1.153-beta (2026-05-25)
