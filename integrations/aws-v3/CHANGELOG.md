@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.2.24-beta (2026-05-26)
+
+
+### Bug Fixes
+
+- Added `State` field to `AccountProperties` and changed `extra` to `allow` so AWS Organizations accounts are ingested correctly when the new `State` field (introduced Sept 2025) is present alongside the deprecated `Status` field
+
+
+## 2.2.23-beta (2026-05-26)
+
+
+### Bug Fixes
+
+- Fixed ARN validation in Organizations strategy to support AWS GovCloud (`arn:aws-us-gov:iam::`) and China (`arn:aws-cn:iam::`) partitions, which were previously rejected by a hardcoded commercial-partition prefix check. Also fixed role ARN construction to preserve the correct partition when building member account role ARNs.
+
+
+## 2.2.22-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
 ## 2.2.21-beta (2026-05-25)
 
 
