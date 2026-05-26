@@ -41,7 +41,7 @@ description = "Integration to bring information from Jira into Port"
 authors = ["Name Surname <name@domain.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.13"
 port_ocean = {version = "^0.24.8", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]

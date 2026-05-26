@@ -81,7 +81,7 @@ The workflow consists of several jobs that run in sequence:
 - Checks if the tag already exists
 
 ### 2. Publish Core RC
-- Sets up Python 3.12
+- Sets up Python 3.13
 - Checks if the package already exists on PyPI (skips if it does)
 - Updates `pyproject.toml` with the RC version
 - Builds the package using `make install && make build`
