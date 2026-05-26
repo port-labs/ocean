@@ -84,7 +84,7 @@ class TestAccountProperties:
         assert props.Status == "ACTIVE"
         assert props.State == "ACTIVE"
 
-    def test_extra_fields_are_ignored(self) -> None:
+    def test_extra_fields_are_allowed(self) -> None:
         props = AccountProperties(
             Id="111111111111",
             State="ACTIVE",
@@ -92,7 +92,8 @@ class TestAccountProperties:
         )
         assert props.Id == "111111111111"
         assert props.State == "ACTIVE"
-        assert not hasattr(props, "UnknownFutureField")
+        assert hasattr(props, "UnknownFutureField")
+        assert props.UnknownFutureField == "some-value"  # type: ignore[attr-defined]
 
 
 class TestAccountModel:
