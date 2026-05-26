@@ -17,7 +17,7 @@ class AccountProperties(BaseModel):
     JoinedMethod: Optional[str] = None
 
     class Config:
-        extra = "ignore"
+        extra = "allow"
         populate_by_name = True
 
 
