@@ -85,10 +85,10 @@ jobs:
     needs: validate-inputs
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Python 3.12
+      - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
       - name: Checkout source branch
         uses: actions/checkout@v5
@@ -319,10 +319,10 @@ jobs:
         with:
           ref: ${{ inputs.source_branch || github.ref_name }}
 
-      - name: Set up Python 3.12
+      - name: Set up Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
       - name: Install Poetry
         run: pip install poetry
