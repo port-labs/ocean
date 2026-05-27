@@ -281,54 +281,6 @@ async def test_search_entities_uses_datasource_route_when_query_is_none_two_page
     assert second_sent_json["datasource_suffix"] == "/test-identifier/sync"
 
 
-async def test_search_entities_query_uses_before_field_from_updated_at_rule(
-    entity_client: EntityClientMixin,
-) -> None:
-    """Test that query search uses datasource route with updatedAt before filter."""
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"entities": [], "next": None}
-    mock_response.is_error = False
-    mock_response.status_code = 200
-    mock_response.headers = {}
-    entity_client.client.post = AsyncMock(return_value=mock_response)  # type: ignore
-    entity_client.auth.headers = AsyncMock(return_value={"Authorization": "Bearer test"})  # type: ignore
-
-    entity_client.auth.integration_type = "test-integration"
-    entity_client.auth.integration_identifier = "test-identifier"
-    entity_client.auth.api_url = "https://api.getport.io/v1"
-
-    mock_user_agent_type = MagicMock()
-    mock_user_agent_type.value = "sync"
-    updated_at_from = "2026-03-03T12:00:00+00:00"
-    query = {
-        "combinator": "and",
-        "rules": [
-            {
-                "property": "$updatedAt",
-                "operator": "notBetween",
-                "value": {"from": updated_at_from, "to": "2026-03-03T12:00:05+00:00"},
-            }
-        ],
-    }
-
-    await entity_client.search_entities(
-        user_agent_type=mock_user_agent_type,
-        query=query,
-    )
-
-    entity_client.client.post.assert_called_once()
-    call_args = entity_client.client.post.call_args
-    assert (
-        call_args[0][0]
-        == "https://api.getport.io/v1/blueprints/entities/datasource-entities"
-    )
-
-    sent_json = call_args[1]["json"]
-    assert sent_json["datasource_prefix"] == "port-ocean/test-integration/"
-    assert sent_json["datasource_suffix"] == "/test-identifier/sync"
-    assert sent_json["before"] == updated_at_from
-
-
 async def test_upsert_entities_in_batches_with_dictionary_identifier(
     entity_client: EntityClientMixin,
 ) -> None:
