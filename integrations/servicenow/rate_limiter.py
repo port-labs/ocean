@@ -42,35 +42,30 @@ class ServiceNowRateLimiter:
         return 0.0
 
     async def __aenter__(self) -> "ServiceNowRateLimiter":
-        wait_time = 0.0
+        while True:
+            wait_time = 0.0
 
-        async with self._lock:
-            if self._reset_time is not None and time.time() >= self._reset_time:
-                self._request_count = 0
-                self._reset_time = None
+            async with self._lock:
+                if self._reset_time is not None and time.time() >= self._reset_time:
+                    self._request_count = 0
+                    self._reset_time = None
 
-            if (
-                self._limit is not None
-                and self._request_count >= self._limit
-                and self._reset_time is not None
-            ):
-                wait_time = self.seconds_until_reset
+                if (
+                    self._limit is not None
+                    and self._request_count >= self._limit
+                    and self._reset_time is not None
+                ):
+                    wait_time = self.seconds_until_reset
 
-            if wait_time <= 0:
-                self._request_count += 1
+                if wait_time <= 0:
+                    self._request_count += 1
+                    return self
 
-        if wait_time > 0:
             logger.info(
                 f"Rate limit: {self._request_count}/{self._limit} requests used, "
                 f"waiting {wait_time:.1f}s until window resets"
             )
             await asyncio.sleep(wait_time)
-
-            async with self._lock:
-                self._request_count = 1
-                self._reset_time = None
-
-        return self
 
     async def __aexit__(self, *args: object) -> None:
         pass
