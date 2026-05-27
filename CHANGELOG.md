@@ -11,6 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Fixed resync reconciliation to fetch datasource entities before the resync start time using the datasource pagination endpoint.
+
 ## 0.43.1 (2026-05-26)
 
 ### Improvements
