@@ -510,9 +510,12 @@ class EntityClientMixin:
         user_agent_type: UserAgentType,
         query: dict[Any, Any] | None = None,
         parameters_to_include: list[str] | None = None,
+        before: str | None = None,
     ) -> list[Entity]:
         if query is None:
-            return await self._search_entities_by_datasource_paginated(user_agent_type)
+            return await self._search_entities_by_datasource_paginated(
+                user_agent_type, before=before
+            )
 
         return await self._search_entities_by_query(
             user_agent_type=user_agent_type,
@@ -521,7 +524,7 @@ class EntityClientMixin:
         )
 
     async def _search_entities_by_datasource_paginated(
-        self, user_agent_type: UserAgentType
+        self, user_agent_type: UserAgentType, before: str | None = None
     ) -> list[Entity]:
         datasource_prefix = f"port-ocean/{self.auth.integration_type}/"
         datasource_suffix = (
@@ -538,6 +541,9 @@ class EntityClientMixin:
                 "datasource_prefix": datasource_prefix,
                 "datasource_suffix": datasource_suffix,
             }
+
+            if before:
+                request_body["before"] = before
 
             if next_from:
                 request_body["from"] = next_from

@@ -1006,31 +1006,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resync_start_time: datetime | None = event.attributes.get(
                 "resync_start_time"
             )
-            query: dict[Any, Any] | None = None
             if not (resync_start_time and isinstance(resync_start_time, datetime)):
                 logger.warning(
                     "Resync start time is not set, fetching all entities from Port with no updatedAt filter"
                 )
+                before: str | None = None
             else:
-                query = {
-                    "combinator": "and",
-                    "rules": [
-                        {
-                            "property": "$updatedAt",
-                            "operator": "notBetween",
-                            "value": {
-                                "from": resync_start_time.isoformat(),
-                                "to": datetime.now(timezone.utc).isoformat(),
-                            },
-                        },
-                    ],
-                }
+                before = resync_start_time.isoformat()
             logger.info(
                 "Fetching current entity state from Port",
                 entities_synced=len(generated_entities),
             )
             entities_at_port = await ocean.port_client.search_entities(
-                user_agent_type, query
+                user_agent_type, before=before
             )
             entities_to_delete = max(0, len(entities_at_port) - len(generated_entities))
             logger.info(
