@@ -368,10 +368,30 @@ class AzureDevopsClient(HTTPBaseClient):
         users_url = (
             self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
         )
-        async for users in self._get_paginated_by_top_and_continuation_token(
-            users_url, data_key="items", additional_params=additional_params or {}
-        ):
-            yield users
+        params = dict   (additional_params or {})
+        api_version = params.get("api-version", "")
+
+        if self._is_legacy_user_entitlements_version(api_version):
+            async for users in self._get_paginated_by_top_and_skip(
+                users_url,
+                params=params,
+                top_param="top",
+                skip_param="skip",
+            ):
+                yield users
+        else:
+            async for users in self._get_paginated_by_top_and_continuation_token(
+                users_url, data_key="items", additional_params=params
+            ):
+                yield users
+
+    @staticmethod
+    def _is_legacy_user_entitlements_version(api_version: str) -> bool:
+        """Versions before 7.x use top/skip pagination and 'value' data key."""
+        if not api_version:
+            return False
+        major = api_version.split(".")[0]
+        return major.isdigit() and int(major) < 7
 
     async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate all security groups in the organization."""

@@ -304,16 +304,24 @@ class AzureDevopsUserSelector(Selector):
         title="Include Fields",
         description="List of additional properties to include in user entitlements.",
     )
+    api_version: Optional[Literal["4.1-preview.1"]] = Field(
+        default=None,
+        alias="apiVersion",
+        title="API Version",
+        description="API version for the User Entitlements endpoint. Override if your organization requires a specific version. Will use the default version if not provided.",
+    )
 
     def to_params(self) -> dict[str, str]:
         data = self.dict(
             by_alias=True,
             exclude_none=True,
-            exclude={"query"},
+            exclude={"query", "api_version"},
         )
         if "includeFields" in data:
             data["select"] = ",".join(data["includeFields"])
             del data["includeFields"]
+        if self.api_version:
+            data["api-version"] = self.api_version
         return data
 
 
