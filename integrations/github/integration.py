@@ -45,7 +45,11 @@ class RepoSearchSelector(Selector):
     repo_search: Optional[RepoSearchParams] = Field(
         title="Repositories",
         alias="repoSearch",
-        description="Ingest specific repositories using <a target='_blank' href='https://docs.github.com/en/search-github/searching-on-github/searching-for-repositories'>Github repository search API</a>",
+        description=(
+            "Filter which repositories are ingested using GitHub's repository search API. "
+            "<b>Read the limitations before using this selector:</b> "
+            "<a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/capabilities/#repository-search-limitations'>Port docs</a>."
+        ),
         default=None,
     )
 
