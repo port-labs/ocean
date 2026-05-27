@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
@@ -59,8 +60,32 @@ def create_closed_pull_request_search_criteria(
     ]
 
 
+ORG_URL_FIELD = "__organizationUrl"
+ORG_NAME_FIELD = "__organizationName"
+
+
 def extract_branch_name_from_ref(ref: str) -> str:
     return "/".join(ref.split("/")[2:])
+
+
+def extract_org_name_from_url(url: str) -> str:
+    """Derive the Azure DevOps organization name from any supported URL form.
+
+    Supports:
+      - https://dev.azure.com/{org}[/...]
+      - https://{org}.visualstudio.com[/...]
+    """
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+
+    if host == "dev.azure.com" or host.endswith(".dev.azure.com"):
+        parts = parsed.path.strip("/").split("/")
+        return parts[0] if parts and parts[0] else url
+
+    if host.endswith(".visualstudio.com"):
+        return host.split(".visualstudio.com")[0]
+
+    return url
 
 
 class RepositoryBranchMapping(BaseModel):

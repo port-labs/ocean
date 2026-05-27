@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.122-beta (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 0.2.121-beta (2026-05-26)
+
+
+### Bug Fixes
+
+- Fix selector and kind propagation
+
+
 ## 0.2.120-beta (2026-05-25)
 
 
