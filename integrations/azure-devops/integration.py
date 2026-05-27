@@ -304,7 +304,7 @@ class AzureDevopsUserSelector(Selector):
         title="Include Fields",
         description="List of additional properties to include in user entitlements.",
     )
-    api_version: Optional[Literal["4.1-preview.1"]] = Field(
+    api_version: Optional[str] = Field(
         default=None,
         alias="apiVersion",
         title="API Version",
