@@ -3,6 +3,7 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from github.core.exporters.repository_exporter import (
+    ENRICHMENT_BATCH_SIZE,
     RestRepositoryExporter,
 )
 from pydantic import ValidationError
@@ -445,6 +446,113 @@ class TestRestRepositoryExporter:
             )
 
             assert result["custom_properties"] == {}
+
+    async def test_enrichment_batches_at_most_batch_size_repos(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """When exactly ENRICHMENT_BATCH_SIZE repos are returned, they should
+        all be enriched in a single gather call of that size."""
+        repos = [
+            {"id": i, "name": f"repo{i}", "full_name": f"test-org/repo{i}"}
+            for i in range(ENRICHMENT_BATCH_SIZE)
+        ]
+
+        gather_call_sizes: list[int] = []
+        original_gather = __import__("asyncio").gather
+
+        async def tracking_gather(*coros_or_futures: Any) -> Any:
+            gather_call_sizes.append(len(coros_or_futures))
+            return await original_gather(*coros_or_futures)
+
+        async def mock_paginated_request(
+            url: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            if "collaborators" in url:
+                yield TEST_COLLABORATORS
+            else:
+                yield repos
+
+        with (
+            patch.object(
+                rest_client,
+                "send_paginated_request",
+                side_effect=mock_paginated_request,
+            ),
+            patch("asyncio.gather", side_effect=tracking_gather),
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    included_relations={"collaborators": {"include": True}},
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                batches: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(batches) == 1
+                assert len(batches[0]) == ENRICHMENT_BATCH_SIZE
+                assert gather_call_sizes == [ENRICHMENT_BATCH_SIZE]
+
+    async def test_enrichment_splits_when_exceeding_batch_size(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        """When more than ENRICHMENT_BATCH_SIZE repos are returned, they should
+        be split into multiple gather calls of at most ENRICHMENT_BATCH_SIZE."""
+        total_repos = ENRICHMENT_BATCH_SIZE + 5
+        repos = [
+            {"id": i, "name": f"repo{i}", "full_name": f"test-org/repo{i}"}
+            for i in range(total_repos)
+        ]
+
+        gather_call_sizes: list[int] = []
+        original_gather = __import__("asyncio").gather
+
+        async def tracking_gather(*coros_or_futures: Any) -> Any:
+            gather_call_sizes.append(len(coros_or_futures))
+            return await original_gather(*coros_or_futures)
+
+        async def mock_paginated_request(
+            url: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            if "collaborators" in url:
+                yield TEST_COLLABORATORS
+            else:
+                yield repos
+
+        with (
+            patch.object(
+                rest_client,
+                "send_paginated_request",
+                side_effect=mock_paginated_request,
+            ),
+            patch("asyncio.gather", side_effect=tracking_gather),
+        ):
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                    included_relations={"collaborators": {"include": True}},
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                batches: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(batches) == 2
+                assert len(batches[0]) == ENRICHMENT_BATCH_SIZE
+                assert len(batches[1]) == 5
+
+                assert all(size <= ENRICHMENT_BATCH_SIZE for size in gather_call_sizes)
+                assert gather_call_sizes == [ENRICHMENT_BATCH_SIZE, 5]
+
+                total_enriched = sum(len(b) for b in batches)
+                assert total_enriched == total_repos
 
 
 def test_normalized_relations_from_included_relations_alias() -> None:
