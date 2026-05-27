@@ -7,12 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.18-beta (2026-05-24)
+## 2.2.25-beta (2026-05-27)
 
 
 ### Bug Fixes
 
 - Fixed silent index-shift in concurrent action result merging that caused enrichment data (tags, encryption, etc.) to be applied to the wrong AWS resource when one resource's API call returned a recoverable error. All recoverable-skip paths in S3, SQS, RDS, Lambda, Organizations, and the shared `execute_concurrent_aws_operations` helper (used by ECR, ECS, EC2) now preserve list alignment via an empty placeholder.
+
+
+## 2.2.24-beta (2026-05-26)
+
+
+### Bug Fixes
+
+- Added `State` field to `AccountProperties` and changed `extra` to `allow` so AWS Organizations accounts are ingested correctly when the new `State` field (introduced Sept 2025) is present alongside the deprecated `Status` field
+
+
+## 2.2.23-beta (2026-05-26)
+
+
+### Bug Fixes
+
+- Fixed ARN validation in Organizations strategy to support AWS GovCloud (`arn:aws-us-gov:iam::`) and China (`arn:aws-cn:iam::`) partitions, which were previously rejected by a hardcoded commercial-partition prefix check. Also fixed role ARN construction to preserve the correct partition when building member account role ARNs.
+
+
+## 2.2.22-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 2.2.21-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 2.2.20-beta (2026-05-25)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions per AWS resource kind
+
+
+## 2.2.19-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 2.2.18-beta (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
 
 
 ## 2.2.17-beta (2026-05-21)

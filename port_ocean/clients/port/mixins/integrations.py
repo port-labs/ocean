@@ -77,12 +77,11 @@ class IntegrationClientMixin:
         logger.info(f"Fetching integration with id: {self.integration_identifier}")
         request_kwargs: dict[str, Any] = {
             "headers": await self.auth.headers(),
-        }
-        if is_polling:
-            request_kwargs["params"] = {
+            "params": {
                 "oceanCoreVersion": ocean_core_version,
-                "isPolling": "true",
-            }
+                "isPolling": "true" if is_polling else "false",
+            },
+        }
         response = await self.client.get(
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
             **request_kwargs,

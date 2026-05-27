@@ -3,6 +3,7 @@ from jira.overrides import (
     JiraPortAppConfig,
     JiraBoardResourceConfig,
     JiraBoardSelector,
+    JiraEpicResourceConfig,
     JiraWorklogResourceConfig,
     JiraWorklogSelector,
 )
@@ -49,6 +50,21 @@ WORKLOG_MAPPING = {
             },
         }
     }
+}
+
+
+EPIC_MAPPING = {
+    "identifier": ".id | tostring",
+    "title": ".name // .key",
+    "blueprint": '"jiraEpic"',
+    "properties": {
+        "summary": ".summary",
+        "done": ".done",
+        "name": ".name // .key",
+    },
+    "relations": {
+        "board": ".__boardId",
+    },
 }
 
 
@@ -425,3 +441,132 @@ def test_jira_worklog_resource_config_is_distinct_from_board_config() -> None:
     assert len(config.resources) == 2
     assert isinstance(config.resources[0], JiraBoardResourceConfig)
     assert isinstance(config.resources[1], JiraWorklogResourceConfig)
+
+
+def test_epic_selector_accepts_incomplete_status() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "epic",
+                    "selector": {"query": "true", "status": ["incomplete"]},
+                    "port": {"entity": {"mappings": EPIC_MAPPING}},
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraEpicResourceConfig)
+    assert config.resources[0].selector.status == ["incomplete"]
+
+
+def test_epic_selector_accepts_complete_status() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "epic",
+                    "selector": {"query": "true", "status": ["complete"]},
+                    "port": {"entity": {"mappings": EPIC_MAPPING}},
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraEpicResourceConfig)
+    assert config.resources[0].selector.status == ["complete"]
+
+
+def test_epic_selector_accepts_none_to_fetch_all_epics() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "epic",
+                    "selector": {"query": "true"},
+                    "port": {"entity": {"mappings": EPIC_MAPPING}},
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraEpicResourceConfig)
+    # omitting status entirely fetches all epics
+    assert config.resources[0].selector.status == ["incomplete"]
+
+
+def test_epic_selector_defaults_to_incomplete_status() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "epic",
+                    "selector": {"query": "true"},
+                    "port": {"entity": {"mappings": EPIC_MAPPING}},
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraEpicResourceConfig)
+    assert config.resources[0].selector.status == ["incomplete"]
+
+
+def test_epic_selector_accepts_both_statuses() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "epic",
+                    "selector": {"query": "true", "status": ["complete", "incomplete"]},
+                    "port": {"entity": {"mappings": EPIC_MAPPING}},
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraEpicResourceConfig)
+    selector = config.resources[0].selector
+    assert selector.status is not None
+    assert set(selector.status) == {"complete", "incomplete"}
+
+
+def test_epic_selector_accepts_none_status_to_fetch_all() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "epic",
+                    "selector": {"query": "true", "status": None},
+                    "port": {"entity": {"mappings": EPIC_MAPPING}},
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraEpicResourceConfig)
+    assert config.resources[0].selector.status is None
+
+
+def test_epic_selector_rejects_invalid_status_value() -> None:
+    with pytest.raises(Exception):
+        JiraPortAppConfig.parse_obj(
+            {
+                "resources": [
+                    {
+                        "kind": "epic",
+                        "selector": {"query": "true", "status": ["invalid_value"]},
+                        "port": {"entity": {"mappings": EPIC_MAPPING}},
+                    }
+                ]
+            }
+        )
+
+
+def test_epic_selector_rejects_non_list_status() -> None:
+    with pytest.raises(Exception):
+        JiraPortAppConfig.parse_obj(
+            {
+                "resources": [
+                    {
+                        "kind": "epic",
+                        "selector": {"query": "true", "status": "incomplete"},
+                        "port": {"entity": {"mappings": EPIC_MAPPING}},
+                    }
+                ]
+            }
+        )
