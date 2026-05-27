@@ -48,7 +48,7 @@ class RepoSearchSelector(Selector):
         description=(
             "Filter which repositories are ingested using GitHub's repository search API. "
             "<b>Read the limitations before using this selector:</b> "
-            "<a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/capabilities/#repository-search-limitations'>Port docs</a>."
+            "<a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/capabilities/#limitations-1'>Port docs</a>."
         ),
         default=None,
     )
