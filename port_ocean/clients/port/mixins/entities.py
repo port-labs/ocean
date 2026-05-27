@@ -542,7 +542,7 @@ class EntityClientMixin:
                 "datasource_suffix": datasource_suffix,
             }
 
-            if before:
+            if before is not None:
                 request_body["before"] = before
 
             if next_from:
