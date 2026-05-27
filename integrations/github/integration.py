@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import Request
 from loguru import logger
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, root_validator
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -62,12 +62,112 @@ class IncludedFilesConfig(BaseModel):
         extra = "forbid"
 
 
+class GitHubCollaboratorRelationshipSelector(BaseModel):
+    affiliation: Literal["all", "direct", "outside"] = Field(
+        title="Affiliation",
+        default="all",
+        description="Filter collaborators by affiliation (all, direct, outside).",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GitHubRepositoryRelationSelector(BaseModel):
+    collaborators: Optional[GitHubCollaboratorRelationshipSelector] = Field(
+        title="Collaborators",
+        description="Fetch collaborators of the repository.",
+        default=None,
+    )
+    teams: bool = Field(
+        title="Include Teams",
+        default=False,
+        description="Include teams with access to the repository.",
+    )
+    sbom: bool = Field(
+        title="Include SBOM",
+        default=False,
+        description="Include SBOM for the repository.",
+    )
+    custom_properties: bool = Field(
+        title="Include Custom Properties",
+        alias="customProperties",
+        default=False,
+        description="Include organization custom property values for the repository.",
+    )
+    pages: bool = Field(
+        title="Include GitHub Pages",
+        default=False,
+        description="Include GitHub Pages configuration for the repository.",
+    )
+
+    class Config:
+        extra = "forbid"
+
+    def get_relations_dict(self) -> dict[str, dict[str, Any]]:
+        result = {}
+
+        if self.collaborators:
+            result["collaborators"] = {"include": True, **self.collaborators.dict()}
+
+        if self.teams:
+            result["teams"] = {"include": self.teams}
+
+        if self.sbom:
+            result["sbom"] = {"include": self.sbom}
+
+        if self.custom_properties:
+            result["custom_properties"] = {"include": self.custom_properties}
+
+        if self.pages:
+            result["pages"] = {"include": self.pages}
+
+        return result
+
+
 class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
+    class Config:
+        schema_extra = {
+            "extra": {
+                "ui_schema": {
+                    "mutuallyExclusiveSelectorGroups": [
+                        {"legacyKey": "include", "newKey": "includedRelations"}
+                    ]
+                }
+            }
+        }
+
     include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
         title="Additional Repository Data",
         description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
         default_factory=list,
     )
+    included_relations: Optional[GitHubRepositoryRelationSelector] = Field(
+        alias="includedRelations",
+        title="Additional Repository Data",
+        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples/#repositories-with-multiple-relationships'>teams, collaborators, sbom, custom properties and pages</a>",
+        default=None,
+    )
+
+    @property
+    def normalized_relations(self) -> dict[str, dict[str, Any]]:
+        if self.included_relations:
+            return self.included_relations.get_relations_dict()
+
+        if self.include:
+            return {item: {"include": True} for item in self.include}
+
+        return {}
+
+    @root_validator(pre=True)
+    def validate_include_and_included_relations(
+        cls, values: dict[str, Any]
+    ) -> dict[str, Any]:
+        if values.get("include") and values.get("includedRelations"):
+            raise ValueError(
+                "You cannot supply both 'include' and 'includedRelations' at the same time."
+            )
+        return values
 
 
 class GithubRepositoryConfig(ResourceConfig):
@@ -177,10 +277,31 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
+class IncludeSAMLEmailSelector(Selector):
+    include_saml_email: bool = Field(
+        title="Include SAML email",
+        alias="includeSAMLEmail",
+        default=False,
+        description=(
+            "When enabled, the integration will enrich exported GitHub users with "
+            "`__SAMLEmail` populated from the organization's SAML external identity (nameId). "
+            "If no SAML identity is found for a user, `__SAMLEmail` will be null."
+        ),
+    )
+
+
+class GithubUserSelector(IncludeSAMLEmailSelector):
+    pass
+
+
 class GithubUserConfig(ResourceConfig):
     kind: Literal[ObjectKind.USER] = Field(
         title="Github User",
         description="Github user resource kind.",
+    )
+    selector: GithubUserSelector = Field(
+        title="User selector",
+        description="Selector for the user resource.",
     )
 
 
@@ -227,6 +348,17 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "When the api selector is set to graphql and this option is enabled, each pull request is enriched with the "
             "first commit on the branch (OID and committed timestamp in UTC). Use this to measure "
             "lead time from the initial commit through review and merge."
+            "This option will be ignored if the api selector is set to rest."
+        ),
+    )
+    exclude_graphql_fields: list[str] = Field(
+        title="Exclude GraphQL Fields",
+        alias="excludeGraphqlFields",
+        default_factory=list,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, fields specified in this list will be omitted from the query. "
+            "This is useful as a workaround for GitHub GraphQL instability or to reduce rate limit cost. "
+            "This option will be ignored if the api selector is set to rest."
         ),
     )
 
@@ -234,14 +366,6 @@ class GithubPullRequestSelector(RepoSearchSelector):
     def updated_after(self) -> datetime:
         """Convert the since days to a timezone-aware datetime object."""
         return datetime.now(timezone.utc) - timedelta(days=self.since)
-
-    @validator("enrich_with_first_commit")
-    def validate_enrich_with_first_commit(cls, v: bool) -> bool:
-        if v and cls.api != "graphql":
-            raise ValueError(
-                "Enrich with first commit is only supported with GraphQL API."
-            )
-        return v
 
 
 class GithubPullRequestConfig(ResourceConfig):
@@ -284,7 +408,7 @@ class GithubIssueConfig(ResourceConfig):
     )
 
 
-class GithubTeamSector(Selector):
+class GithubTeamSelector(IncludeSAMLEmailSelector):
     members: bool = Field(
         title="Include Members",
         default=True,
@@ -293,7 +417,7 @@ class GithubTeamSector(Selector):
 
 
 class GithubTeamConfig(ResourceConfig):
-    selector: GithubTeamSector = Field(
+    selector: GithubTeamSelector = Field(
         title="Team selector",
         description="Selector for the team resource.",
     )
@@ -481,12 +605,10 @@ class GithubBranchSelector(RepoSearchSelector):
     )
 
 
-class GithubCollaboratorSelector(RepoSearchSelector):
-    affiliation: Literal["all", "direct", "outside"] = Field(
-        title="Affiliation",
-        default="all",
-        description="Filter collaborators by affiliation (all, direct, outside).",
-    )
+class GithubCollaboratorSelector(
+    RepoSearchSelector, GitHubCollaboratorRelationshipSelector
+):
+    pass
 
 
 class GithubBranchConfig(ResourceConfig):

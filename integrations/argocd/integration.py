@@ -1,5 +1,6 @@
 from typing import Any, Optional, Literal
-from misc import ResourceKindsWithSpecialHandling
+
+from misc import ObjectKind, ResourceKindsWithSpecialHandling
 
 from pydantic import BaseModel, Field
 
@@ -15,26 +16,34 @@ from port_ocean.core.integrations.base import BaseIntegration
 class ApplicationQueryParams(BaseModel):
     selector: Optional[str] = Field(
         default=None,
-        description="Selector to filter applications by kubernetes labels",
+        title="Kubernetes labels",
+        description=(
+            "Passes through to the Argo CD Applications API as a Kubernetes label selector. "
+            "Use multiple selectors as a comma-separated list (e.g. `env=prod,tier=web`)."
+        ),
         alias="selector",
     )
     app_namespace: Optional[str] = Field(
         default=None,
+        title="Application Namespace",
         description="Namespace to filter applications by",
         alias="appNamespace",
     )
     projects: Optional[list[str]] = Field(
         default=None,
+        title="Projects",
         description="Projects to filter applications by",
         alias="projects",
     )
     resource_version: Optional[str] = Field(
         default=None,
+        title="Resource Version",
         description="Resource version to filter applications by",
         alias="resourceVersion",
     )
     repo: Optional[str] = Field(
         default=None,
+        title="Repository",
         description="Repository to filter applications by",
         alias="repo",
     )
@@ -48,7 +57,8 @@ class ApplicationSelector(Selector):
     query_params: Optional[ApplicationQueryParams] = Field(
         default=None,
         alias="queryParams",
-        description="API query parameters to filter applications",
+        title="Application Query Params",
+        description="API query parameters to filter applications by",
     )
 
 
@@ -67,7 +77,8 @@ class ManagedResourceSelector(Selector):
     app_filters: Optional[ApplicationQueryParams] = Field(
         default=None,
         alias="appFilters",
-        description="API query parameters to filter applications",
+        title="Application Query Params",
+        description="API query parameters to filter applications by",
     )
 
 
@@ -82,10 +93,45 @@ class ManagedResourceResourceConfig(ResourceConfig):
     )
 
 
+class ProjectResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.PROJECT] = Field(
+        title="Argo CD Project",
+        description="Argo CD project resource kind.",
+    )
+
+
+class ClusterResourceConfig(ResourceConfig):
+    kind: Literal[ResourceKindsWithSpecialHandling.CLUSTER] = Field(
+        title="Argo CD Cluster",
+        description="Argo CD cluster resource kind.",
+    )
+
+
+class DeploymentHistoryResourceConfig(ResourceConfig):
+    kind: Literal[ResourceKindsWithSpecialHandling.DEPLOYMENT_HISTORY] = Field(
+        title="Argo CD Deployment History",
+        description="Argo CD deployment history resource kind.",
+    )
+
+
+class KubernetesResourceResourceConfig(ResourceConfig):
+    kind: Literal[ResourceKindsWithSpecialHandling.KUBERNETES_RESOURCE] = Field(
+        title="Argo CD Kubernetes Resource",
+        description="Argo CD kubernetes resource kind.",
+    )
+
+
 class ArgocdPortAppConfig(PortAppConfig):
     resources: list[
-        ApplicationResourceConfig | ManagedResourceResourceConfig | ResourceConfig
-    ] = Field(default_factory=list)
+        ApplicationResourceConfig
+        | ManagedResourceResourceConfig
+        | ProjectResourceConfig
+        | ClusterResourceConfig
+        | DeploymentHistoryResourceConfig
+        | KubernetesResourceResourceConfig
+    ] = Field(
+        default_factory=list,
+    )  # type: ignore[assignment]
 
 
 class ArgocdIntegration(BaseIntegration):

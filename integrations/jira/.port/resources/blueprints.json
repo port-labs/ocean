@@ -37,10 +37,7 @@
           "title": "Team Type",
           "type": "string",
           "description": "Type of team (e.g., MEMBER_INVITE)",
-          "enum": [
-            "MEMBER_INVITE",
-            "OPEN"
-          ]
+          "enum": ["MEMBER_INVITE", "OPEN"]
         },
         "description": {
           "title": "Description",

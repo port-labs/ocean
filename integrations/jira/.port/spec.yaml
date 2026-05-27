@@ -2,6 +2,7 @@ title: Jira
 description: Jira integration for Port Ocean
 icon: Jira
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/jira
+formMappingEnabled: true
 features:
   - type: exporter
     section: Project management
@@ -11,6 +12,8 @@ features:
       - kind: team
       - kind: user
       - kind: release
+      - kind: board
+      - kind: worklog
 configurations:
   - name: appHost
     required: false

@@ -2,6 +2,12 @@ import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from typing import Any, Dict, List, Generator
 from snyk.client import SnykClient
+from snyk.overrides import (
+    SnykPolicyAPIQueryParams,
+    SnykProjectAPIQueryParams,
+    SnykVulnerabilityAPIQueryParams,
+    SnykTargetAPIQueryParams,
+)
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.context.event import EventContext
@@ -15,6 +21,8 @@ MOCK_PROJECT_ID = "12345"
 MOCK_ISSUES = [{"id": "issue1"}, {"id": "issue2"}]
 MOCK_ORG_URL = "https://your_organization_url.com"
 MOCK_PERSONAL_ACCESS_TOKEN = "personal_access_token"
+
+MOCK_ORG = {"id": "test-org-id", "name": "Test Org"}
 
 
 # Port Ocean Mocks
@@ -103,9 +111,7 @@ async def test_get_paginated_resources(
                     "next": "/rest/page2?version=2024-06-21&meta.latest_issue_counts=true&expand=target&limit=50&starting_after=v1.eyJpZCI6ODI3MzI3NjR9"
                 },
             }
-        elif url and url.endswith(
-            "/rest/page2?version=2024-06-21&meta.latest_issue_counts=true&expand=target&limit=50&starting_after=v1.eyJpZCI6ODI3MzI3NjR9"
-        ):
+        elif url and "/rest/page2" in url:
             return {"data": [{"id": "item2"}], "links": {"next": ""}}
         return {}
 
@@ -121,6 +127,128 @@ async def test_get_paginated_resources(
             resources.extend(resource_batch)
 
         assert resources == [{"id": "item1"}, {"id": "item2"}]
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_issues_with_project_params_fetches_issues_per_project(
+    snyk_client: SnykClient, mock_event_context: MagicMock
+) -> None:
+    """project_params routes fetching through matching projects, not the org-level endpoint."""
+    mock_org = {"id": "org-1"}
+    mock_project = {"id": "proj-1", "type": "npm"}
+    mock_issues = [{"id": "issue-1"}, {"id": "issue-2"}]
+    project_params = SnykProjectAPIQueryParams(origins=["github"])
+
+    captured_api_params: list[Any] = []
+
+    async def mock_get_paginated_projects(
+        org: dict[str, Any], api_params: Any = None, enrich_with_org: bool = True
+    ) -> Any:
+        captured_api_params.append(api_params)
+        yield [mock_project]
+
+    async def mock_get_project_vulnerabilities(
+        org_id: str, project: dict[str, Any], query_params: dict[str, Any]
+    ) -> Any:
+        yield mock_issues
+
+    with (
+        patch.object(
+            snyk_client, "get_paginated_projects", new=mock_get_paginated_projects
+        ),
+        patch.object(
+            snyk_client,
+            "get_project_vulnerabilities",
+            new=mock_get_project_vulnerabilities,
+        ),
+    ):
+        results = []
+        async for batch in snyk_client.get_paginated_issues(
+            org=mock_org, project_params=project_params
+        ):
+            results.extend(batch)
+
+    assert len(results) == 2
+    assert all(r["__organization"] == mock_org for r in results)
+    assert len(captured_api_params) == 1
+    assert captured_api_params[0] == project_params
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_issues_merges_api_params_with_base_version(
+    snyk_client: SnykClient, mock_event_context: MagicMock
+) -> None:
+    """api_params are merged with the base version param before being forwarded to get_project_vulnerabilities."""
+    mock_org = {"id": "org-1"}
+    mock_project = {"id": "proj-1", "type": "npm"}
+    api_params = SnykVulnerabilityAPIQueryParams(status=["open"])
+    project_params = SnykProjectAPIQueryParams()
+
+    captured_query_params: list[dict[str, Any]] = []
+
+    async def mock_get_paginated_projects(
+        org: dict[str, Any], api_params: Any = None, enrich_with_org: bool = True
+    ) -> Any:
+        yield [mock_project]
+
+    async def mock_get_project_vulnerabilities(
+        org_id: str, project: dict[str, Any], query_params: dict[str, Any]
+    ) -> Any:
+        captured_query_params.append(query_params)
+        yield []
+
+    with (
+        patch.object(
+            snyk_client, "get_paginated_projects", new=mock_get_paginated_projects
+        ),
+        patch.object(
+            snyk_client,
+            "get_project_vulnerabilities",
+            new=mock_get_project_vulnerabilities,
+        ),
+    ):
+        async for _ in snyk_client.get_paginated_issues(
+            org=mock_org, project_params=project_params, api_params=api_params
+        ):
+            pass
+
+    assert len(captured_query_params) == 1
+    params = captured_query_params[0]
+    assert params["version"] == snyk_client.snyk_api_version
+    assert params["status"] == ["open"]
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_issues_without_project_params_uses_org_endpoint(
+    snyk_client: SnykClient, mock_event_context: MagicMock
+) -> None:
+    """Without project_params or attach_project, issues are fetched directly from the org issues endpoint."""
+    mock_org = {"id": "org-1"}
+    mock_issues = [{"id": "issue-1"}]
+    expected_url = f"/orgs/{mock_org['id']}/issues"
+
+    captured_urls: list[str] = []
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        captured_urls.append(url_path)
+        yield mock_issues
+
+    with (
+        patch.object(
+            snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+        ),
+        patch.object(snyk_client, "get_paginated_projects") as mock_get_projects,
+    ):
+        results = []
+        async for batch in snyk_client.get_paginated_issues(org=mock_org):
+            results.extend(batch)
+
+    assert captured_urls == [expected_url]
+    assert len(results) == 1
+    assert results[0]["__organization"] == mock_org
+    mock_get_projects.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -170,3 +298,174 @@ async def test_get_single_target_by_project_id_should_gracefully_handle_missing_
             mock_org, mocked_project_id, attach_project_data=False
         )
         assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_policies_fetches_from_correct_url(
+    snyk_client: SnykClient,
+) -> None:
+    mock_org = {"id": "org-1"}
+    captured_urls: list[str] = []
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        captured_urls.append(url_path)
+        yield []
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        async for _ in snyk_client.get_paginated_policies(org=mock_org):
+            pass
+
+    assert captured_urls == ["/orgs/org-1/policies"]
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_policies_enriches_results_with_org(
+    snyk_client: SnykClient,
+) -> None:
+    mock_org = {"id": "org-1"}
+    mock_policies = [{"id": "policy-1"}, {"id": "policy-2"}]
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        yield mock_policies
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        results: list[dict[str, Any]] = []
+        async for batch in snyk_client.get_paginated_policies(org=mock_org):
+            results.extend(batch)
+
+    assert len(results) == 2
+    assert all(r["__organization"] == mock_org for r in results)
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_policies_without_api_params_uses_only_version(
+    snyk_client: SnykClient,
+) -> None:
+    mock_org = {"id": "org-1"}
+    captured_query_params: list[dict[str, Any]] = []
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        captured_query_params.append(query_params or {})
+        yield []
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        async for _ in snyk_client.get_paginated_policies(org=mock_org):
+            pass
+
+    assert len(captured_query_params) == 1
+    assert captured_query_params[0] == {"version": snyk_client.snyk_api_version}
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_policies_merges_api_params_with_version(
+    snyk_client: SnykClient,
+) -> None:
+    mock_org = {"id": "org-1"}
+    api_params = SnykPolicyAPIQueryParams(search="wont-fix", review=["pending"])
+    captured_query_params: list[dict[str, Any]] = []
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        captured_query_params.append(query_params or {})
+        yield []
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        async for _ in snyk_client.get_paginated_policies(
+            org=mock_org, api_params=api_params
+        ):
+            pass
+
+    assert len(captured_query_params) == 1
+    params = captured_query_params[0]
+    assert params["version"] == snyk_client.snyk_api_version
+    assert params["search"] == "wont-fix"
+    assert params["review"] == ["pending"]
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_policies_yields_multiple_pages(
+    snyk_client: SnykClient,
+) -> None:
+    mock_org = {"id": "org-1"}
+    pages = [[{"id": "policy-1"}], [{"id": "policy-2"}, {"id": "policy-3"}]]
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        for page in pages:
+            yield page
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in snyk_client.get_paginated_policies(org=mock_org):
+            batches.append(batch)
+
+    assert len(batches) == 2
+    assert [r["id"] for r in batches[0]] == ["policy-1"]
+    assert [r["id"] for r in batches[1]] == ["policy-2", "policy-3"]
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_targets_without_api_params_only_sends_version(
+    snyk_client: SnykClient,
+) -> None:
+    captured_query_params: list[dict[str, Any]] = []
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        captured_query_params.append(query_params or {})
+        yield []
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        async for _ in snyk_client.get_paginated_targets(
+            org=MOCK_ORG, attach_project_data=False, api_params=None
+        ):
+            pass
+
+    assert len(captured_query_params) == 1
+    assert captured_query_params[0] == {"version": snyk_client.snyk_api_version}
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_targets_respects_explicit_exclude_empty_true(
+    snyk_client: SnykClient,
+) -> None:
+    captured_query_params: list[dict[str, Any]] = []
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        captured_query_params.append(query_params or {})
+        yield []
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        api_params = SnykTargetAPIQueryParams(exclude_empty=True)
+        async for _ in snyk_client.get_paginated_targets(
+            org=MOCK_ORG, attach_project_data=False, api_params=api_params
+        ):
+            pass
+
+    assert len(captured_query_params) == 1
+    assert captured_query_params[0]["exclude_empty"] is True

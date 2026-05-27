@@ -7,3 +7,6 @@ class Kinds(StrEnum):
     USER = "user"
     TEAM = "team"
     RELEASE = "release"
+    BOARD = "board"
+    EPIC = "epic"
+    WORKLOG = "worklog"

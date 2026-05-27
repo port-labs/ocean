@@ -8,9 +8,11 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleTeamOptions, ListTeamOptions
 from github.helpers.gql_queries import (
     FETCH_TEAM_WITH_MEMBERS_GQL,
-    LIST_TEAM_MEMBERS_GQL,
 )
-from github.helpers.utils import enrich_members_with_saml_email
+from github.helpers.utils import (
+    enrich_members_with_saml_email,
+    enrich_with_organization,
+)
 
 
 class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]):
@@ -19,6 +21,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
     ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
+        include_saml_email = bool(options["include_saml_email"])
         organization = options["organization"]
         slug = options["slug"]
         variables = {
@@ -40,11 +43,17 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             return None
 
         data = response["data"]
-        team = data["organization"]["team"]
+        team = data.get("organization", {}).get("team")
+        if not team:
+            logger.warning(
+                f"Team with team slug: {slug} is null in GraphQL response for organization {organization}. It may be an enterprise team."
+            )
+            return None
 
         members_data = team["members"]
         member_nodes = members_data["nodes"]
         member_page_info = members_data["pageInfo"]
+        team["__graphql_privacy"] = team["privacy"]
 
         if member_page_info.get("hasNextPage"):
             all_member_nodes_for_team = await self.get_paginated_members(
@@ -59,54 +68,18 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
         del team["members"]["pageInfo"]
 
         await enrich_members_with_saml_email(
-            self.client, organization, team["members"]["nodes"]
+            self.client, organization, team["members"]["nodes"], include_saml_email
         )
 
-        return team
+        return enrich_with_organization(team, organization)
 
-    async def get_paginated_resources[
+    def get_paginated_resources[
         ExporterOptionT: ListTeamOptions
     ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        organization = options["organization"]
-        variables = {
-            "organization": organization,
-            "__path": "organization.teams",
-            "memberFirst": self.MEMBER_PAGE_SIZE,
-        }
-
-        teams_buffer = []
-        async for teams_page_data in self.client.send_paginated_request(
-            LIST_TEAM_MEMBERS_GQL, params=variables
-        ):
-            for team in teams_page_data:
-                members_data = team["members"]
-                member_nodes = members_data["nodes"]
-                member_page_info = members_data["pageInfo"]
-
-                if member_page_info.get("hasNextPage"):
-                    all_member_nodes_for_team = await self.get_paginated_members(
-                        organization=organization,
-                        team_slug=team["slug"],
-                        initial_members_page_info=member_page_info,
-                        initial_member_nodes=member_nodes,
-                        member_page_size=self.MEMBER_PAGE_SIZE,
-                    )
-                    team["members"]["nodes"] = all_member_nodes_for_team
-
-                del team["members"]["pageInfo"]
-
-                await enrich_members_with_saml_email(
-                    self.client, organization, team["members"]["nodes"]
-                )
-
-                teams_buffer.append(team)
-
-                if len(teams_buffer) >= 10:
-                    yield teams_buffer
-                    teams_buffer = []
-
-        if teams_buffer:
-            yield teams_buffer
+        raise NotImplementedError(
+            "GraphQL team pagination is retired. Use RestTeamExporter.get_paginated_resources "
+            "and GraphQLTeamWithMembersExporter._enrich_team_with_extras for member enrichment."
+        )
 
     async def get_paginated_members(
         self,
@@ -153,7 +126,13 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
                 )
                 break
 
-            team_data = response["data"]["organization"]["team"]
+            organization_data = (response.get("data") or {}).get("organization")
+            team_data = (organization_data or {}).get("team")
+            if not team_data:
+                logger.warning(
+                    f"Team '{team_slug}' missing in GraphQL response while paginating members, stopping pagination"
+                )
+                break
 
             new_members_data = team_data["members"]
             all_member_nodes.extend(new_members_data["nodes"])
@@ -163,3 +142,22 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             f"Successfully fetched {len(all_member_nodes)} members for team '{team_slug}'"
         )
         return all_member_nodes
+
+    async def _enrich_team_with_extras(
+        self,
+        teams: list[dict[str, Any]],
+        options: ListTeamOptions,
+    ) -> list[dict[str, Any]]:
+        for team in teams:
+            team_extras = await self.get_resource(
+                SingleTeamOptions(
+                    slug=team["slug"],
+                    organization=options["organization"],
+                    include_saml_email=options["include_saml_email"],
+                )
+            )
+            if not team_extras:
+                continue
+
+            team.update({k: v for k, v in team_extras.items() if k not in team})
+        return teams

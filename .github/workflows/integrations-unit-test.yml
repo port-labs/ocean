@@ -1,4 +1,4 @@
-name: Integrations Test
+name: Integrations Unit Test
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
 jobs:
   detect-changes:
     uses: ./.github/workflows/detect-changes-matrix.yml
-  test:
+  unit-test:
     name: ${{ format('🚢 {0}', matrix.folder) }}
     needs: detect-changes
     runs-on: ubuntu-latest

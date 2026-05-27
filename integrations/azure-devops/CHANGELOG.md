@@ -7,6 +7,296 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.8.48 (2026-05-26)
+
+
+### Features
+
+- Added multi-organization (Multiple Accounts) support via Entra ID service principal, allowing a single integration to sync across multiple Azure DevOps organizations
+- Webhook events are now routed to the correct per-org client; events from unknown organizations are dropped instead of falling back to the wrong org
+
+
+## 0.8.47 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 0.8.46 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 0.8.45 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 0.8.44 (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 0.8.43 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 0.8.42 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 0.8.41 (2026-05-20)
+
+
+### Bug Fixes
+
+- Fixed file resyncs aborting on transient `503` responses from the `itemsbatch` endpoint by opting the request into the retry path.
+
+
+## 0.8.40 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 0.8.39 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 0.8.38 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 0.8.37 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 0.8.36 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 0.8.35 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 0.8.34 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 0.8.33 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 0.8.32 (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+## 0.8.31 (2026-05-11)
+
+
+### Bug Fixes
+
+- Fixed missing code coverage data on `test-run` entities by passing the required `api-version` parameter to the `test/codecoverage` endpoint
+
+
+## 0.8.30 (2026-05-10)
+
+
+### Features
+
+- Added `includeFields` selector field to the user kind, allowing enrichment of user entitlements
+
+
+## 0.8.29 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 0.8.28 (2026-05-03)
+
+
+### Features
+
+- Added `release-definition` kind for classic release pipeline definitions
+- Added configurable selector on the `release` kind with expand, status, tag, source branch, and date filters
+
+
+## 0.8.27 (2026-05-03)
+
+
+### Features
+
+- Added live event support for the `test-run` kind by piggybacking on pipeline run state change events
+
+
+## 0.8.26 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 0.8.25 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.8.24 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.8.23 (2026-04-24)
+
+
+### Improvements
+
+- Added concurrency support for repository fetching across projects
+
+
+## 0.8.22 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.8.21 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.8.20 (2026-04-21)
+
+
+### Improvements
+
+- Added default WIQL filter to work-item port-app-config to exclude closed/done/removed items
+
+
+## 0.8.19 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.8.18 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.8.17 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.8.16 (2026-04-16)
+
+
+### Features
+
+- Added live event support for releases and release deployments via ADO service hooks (release created, abandoned, deployment started, deployment completed)
+
+
+## 0.8.15 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.8.14 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.8.13 (2026-04-15)
+
+
+### Improvements
+
+- Enhanced repository-policy and test-run fetching with concurrency support
+
+
 ## 0.8.12 (2026-04-12)
 
 

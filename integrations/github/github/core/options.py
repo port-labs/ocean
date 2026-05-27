@@ -19,7 +19,7 @@ class SingleOrganizationOptions(TypedDict):
 
 class SingleRepositoryOptions(SingleOrganizationOptions):
     name: str
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class ListRepositoryOptions(SingleOrganizationOptions):
@@ -28,7 +28,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     type: str
     organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
-    included_relationships: NotRequired[Optional[list[str]]]
+    included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -43,6 +43,7 @@ class SinglePullRequestOptions(RepositoryIdentifier):
 
     pr_number: Required[int]
     enrich_with_first_commit: NotRequired[bool]
+    exclude_graphql_fields: NotRequired[list[str]]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -52,10 +53,18 @@ class ListPullRequestOptions(RepositoryIdentifier):
     max_results: Required[int]
     updated_after: Required[datetime]
     enrich_with_first_commit: NotRequired[bool]
+    exclude_graphql_fields: NotRequired[list[str]]
 
 
 class PullRequestGraphQLOptions(BaseModel):
     enrich_with_first_commit: bool = Field(default=False)
+    exclude_graphql_fields: list[str] = Field(
+        default_factory=list,
+        description=(
+            "List of PullRequest GraphQL fields to omit from the query. "
+            "Useful as a workaround for GitHub GraphQL instability around certain fields."
+        ),
+    )
 
 
 class SingleIssueOptions(RepositoryIdentifier):
@@ -71,21 +80,23 @@ class ListIssueOptions(RepositoryIdentifier):
     labels: NotRequired[Optional[str]]
 
 
-class SingleUserOptions(SingleOrganizationOptions):
+class BaseUserOptions(SingleOrganizationOptions):
+    include_saml_email: NotRequired[bool]
+
+
+class SingleUserOptions(BaseUserOptions):
     login: Required[str]
 
 
-class ListUserOptions(SingleOrganizationOptions):
+class ListUserOptions(BaseUserOptions):
     """Options for listing users."""
 
-    pass
 
-
-class SingleTeamOptions(SingleOrganizationOptions):
+class SingleTeamOptions(BaseUserOptions):
     slug: Required[str]
 
 
-class ListTeamOptions(SingleOrganizationOptions):
+class ListTeamOptions(BaseUserOptions):
     """Options for listing teams."""
 
 

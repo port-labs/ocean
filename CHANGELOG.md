@@ -6,6 +6,169 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.43.1 (2026-05-26)
+
+### Improvements
+
+- Added earlywarning.io to the trusted subdomains list in the IP blocker to fix hostname rewriting for hosted custom integrations
+
+## 0.43.0 (2026-05-25)
+
+### Improvements
+
+- Added SSL verification settings to Ocean core and integrations
+  - New config: `ssl.port` and `ssl.third_party`, each with `verify` (bool) and `x509.strict` (bool).
+  - New helpers: `resolve_verify_param()`, `create_third_party_http_client()`.
+  - Wired into Port API client, shared `http_async_client`.
+  - Startup warnings when non-default SSL settings are used.
+
+## 0.42.11 (2026-05-25)
+
+### Improvements
+
+-  Lifecycle use backoff and handling exception
+
+## 0.42.10 (2026-05-25)
+
+### Improvements
+
+- Added a shared async iterator utility for streaming independent iterators while deferring failures until surviving iterators finish.
+
+## 0.42.9 (2026-05-24)
+
+### Bug Fixes
+
+- Fixed polling resync-request detection so stale manual resync requests are not replayed after the first regular polling resync.
+
+## 0.42.8 (2026-05-21)
+
+### Improvements
+
+- Added missing values to lifecycle API
+
+## 0.42.7 (2026-05-19)
+
+### Features
+
+- Remove lifecycle url from settings
+
+## 0.42.6 (2026-05-19)
+
+### Features
+
+- Send all granularities to lifecycle-api
+
+## 0.42.5 (2026-05-19)
+
+### Features
+
+- Kafka event listener: while consuming the legacy `{org_id}.change.log` topic, also process manual resync request messages (`action: RESYNC` with matching `context.integrationId`) in addition to integration changelog events.
+
+
+## 0.42.4 (2026-05-17)
+
+### Features
+
+- Polling event listener: when the organization feature flag `OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED` is present, Ocean polls the integration resync-request endpoint when the integration document’s `updatedAt` is unchanged, and runs a resync when the request’s `updatedAt` is newer than the last stored watermark.
+
+
+## 0.42.3 (2026-05-17)
+
+### Bug fixes
+
+- Fix raw data dispatching with items to parse.
+
+
+## 0.42.2 (2026-05-17)
+
+### Improvements
+
+- Fixed outbound requests to Code Rabbit dropping hostname-based routing by adding coderabbit.ai to the trusted subdomains list in the IP blocker
+
+## 0.42.1 (2026-05-14)
+
+### Improvements
+
+- Added lifecycle client and shutdown aborted notifications.
+
+## 0.42.0 (2026-05-13)
+
+### Vulnerabilities
+
+- Fixed vulnerabilities for Ocean core and docs
+
+## 0.41.9 (2026-05-13)
+
+### Improvements
+
+- Fixed outbound requests to SentinelOne and Anthropic dropping hostname-based routing by adding sentinelone.net to the trusted subdomains list in the IP blocker
+
+## 0.41.8 (2026-05-12)
+
+### Improvements
+
+- Kafka event listener: when the organization feature flag `OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED` is enabled, the consumer subscribes to `{org_id}.integration.resync.requests` instead of `{org_id}.change.log`. If feature flags cannot be fetched, behavior falls back to the change log topic.
+
+## 0.41.7 (2026-05-07)
+
+### Improvements
+
+- Serialize Port app config mappings to JSON-safe types in resync logs.
+
+## 0.41.6 (2026-04-30)
+
+### Improvements
+
+- When using the polling event listener, requests to Port to fetch the current integration now include `oceanCoreVersion` and `isPolling=true` query parameters. Other callers of the same API are unchanged.
+
+## 0.41.5 (2026-04-27)
+
+### Bug fixes
+
+- Fixed raw examples ingestion for resources using `itemsToParse`: examples are now sent from the original extracted payload before `itemsToParse` expansion/top-level transform, so arrays and parent fields are preserved in Port examples.
+
+## 0.41.4 (2026-04-23)
+
+### Bug fixes
+
+- Fixed the `once` event listener on non-SaaS runtimes so that when a resync fails, integration resync state and sync metrics are reported as failed instead of incorrectly completed.
+
+## 0.41.3 (2026-04-22)
+
+### Bug fixes
+
+- Add support for path prefix in health routes
+
+
+## 0.41.2 (2026-04-21)
+
+### Bug Fixes
+
+- Ocean CLI would now be able to create private integrations with working docker file (all the required scripts are now added to the scaffold)
+
+## 0.41.1 (2026-04-20)
+
+### Fixes
+
+- Fixed integration tests to run single process as default to avoid issues with multiprocessing.
+
+## 0.41.0 (2026-04-20)
+
+### Improvements
+
+- Implemented health routes for liveness and readiness to deprecate the current /docs usage
+
+## 0.40.7 (2026-04-15)
+
+### Improvements
+
+- Port app config JSON Schema export (`port-app-config` CLI JSON output) now sets `additionalProperties: false` on selector definitions by patching the exported schema in the CLI, so exported schemas reject unknown selector fields without changing runtime integration models.
+
+## 0.40.6 (2026-04-15)
+
+### Improvements
+
+- Send event_type and resync_start_time to Lakehouse API for better event tracking and audit trail.
 
 ## 0.40.5 (2026-04-09)
 
@@ -77,7 +240,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Added `x-ratelimit-reset` to the list of retry-after headers checked by the Port HTTP transport, so that when Ocean receives a 429 from the Port API it waits until the rate-limit window resets instead of falling back to exponential backoff
-
 
 ## 0.38.24 (2026-03-25)
 
