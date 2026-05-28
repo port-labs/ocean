@@ -1,4 +1,3 @@
-import asyncio
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
@@ -11,6 +10,12 @@ if TYPE_CHECKING:
 
 
 class TokenRetryTransport(RetryTransport):
+    """Retry transport for the Port API client (async httpx only).
+
+    Token refresh on 401 is implemented in ``before_retry_async``; the sync retry
+    path does not refresh tokens because ``PortClient`` uses ``httpx.AsyncClient``.
+    """
+
     def __init__(self, port_client: "PortClient", **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.port_client = port_client
@@ -53,19 +58,6 @@ class TokenRetryTransport(RetryTransport):
             return await self._refresh_request_authorization(request)
         return None
 
-    def _before_retry(
-        self,
-        request: httpx.Request,
-        response: httpx.Response | None,
-        sleep_time: float,
-        attempt: int,
-    ) -> httpx.Request | None:
-        if response is not None and self.is_token_error(response):
-            return asyncio.get_running_loop().run_until_complete(
-                self._refresh_request_authorization(request)
-            )
-        return None
-
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         if self.is_token_error(response):
             if self._logger:
@@ -74,12 +66,3 @@ class TokenRetryTransport(RetryTransport):
                 )
             return True
         return await super()._should_retry_async(response)
-
-    def _should_retry(self, response: httpx.Response) -> bool:
-        if self.is_token_error(response):
-            if self._logger:
-                self._logger.info(
-                    "Got unauthorized response, trying to refresh token before retrying"
-                )
-            return True
-        return super()._should_retry(response)
