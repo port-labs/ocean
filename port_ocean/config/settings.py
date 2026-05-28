@@ -1,7 +1,14 @@
 import platform
 from typing import Any, Literal, Optional, Type
 
-from pydantic import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
+from pydantic import (
+    AnyHttpUrl,
+    Extra,
+    Field,
+    parse_obj_as,
+    parse_raw_as,
+    model_validator,
+)
 from pydantic.class_validators import root_validator, validator
 from pydantic.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
 from pydantic.main import BaseModel
@@ -72,6 +79,14 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
     ingest_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://ingest.getport.io")
+
+    @model_validator(mode="after")
+    def validate_ingest_url(self) -> "PortSettings":
+        # Check if 'us' is a substring of the base_url
+        if "us.getport.io" in self.base_url.lower():
+            self.ingest_url = "https://ingest.us.getport.io"
+
+        return self
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
