@@ -81,9 +81,14 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
 
     @root_validator
     def validate_ingest_url(cls, values):
-        # Check if 'us' is a substring of the base_url
-        base_url = values.get("base_url", "")
-        if "us.getport.io" in base_url.lower():
+        base_url = values.get("base_url")
+        host = ""
+        if base_url:
+            host = getattr(base_url, "host", "") or ""
+            if not host:
+                host = parse_obj_as(AnyHttpUrl, str(base_url)).host or ""
+
+        if host.lower() == "us.getport.io":
             values["ingest_url"] = "https://ingest.us.getport.io"
 
         return values
