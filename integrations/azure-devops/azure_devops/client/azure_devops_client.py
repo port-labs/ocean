@@ -390,8 +390,12 @@ class AzureDevopsClient(HTTPBaseClient):
         """Versions before 7.x use top/skip pagination and 'value' data key."""
         if not api_version:
             return False
-        major = api_version.split(".")[0]
-        return major.isdigit() and int(major) < 7
+        try:
+            major = api_version.split(".")[0]
+            return major.isdigit() and int(major) < 7
+        except Exception:
+            logger.warning(f"Failed to parse API version {api_version}, assuming legacy version")
+            return True
 
     async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate all security groups in the organization."""
