@@ -80,8 +80,8 @@ class LifecycleClient(OceanResyncHttpClient):
 
     def __init__(
         self,
+        auth: PortAuthentication,
         integration_identifier: str | None = None,
-        auth: PortAuthentication | None = None,
         base_url: str | None = None,
     ) -> None:
         self.integration_identifier = integration_identifier
