@@ -656,3 +656,48 @@ class TestRetryBehavior:
             )
         assert inner.handle_async_request.await_count == max_attempts + 1
         mock_logger.warning.assert_called_once()
+
+
+class TestDynamicIngestUrl:
+    @pytest.mark.asyncio
+    async def test_get_log_attributes(self, mock_auth: MagicMock) -> None:
+        client = LifecycleClient(integration_identifier="test-int", auth=mock_auth)
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.json = MagicMock(
+            return_value={
+                "integration": {
+                    "logAttributes": {"ingestUrl": "https://ingest.port.io"}
+                }
+            }
+        )
+
+        with patch.object(
+            client, "get", new=AsyncMock(return_value=mock_response)
+        ) as mock_get:
+            log_attrs = await client.get_log_attributes()
+            assert log_attrs == {"ingestUrl": "https://ingest.port.io"}
+            mock_get.assert_called_once_with(
+                f"{mock_auth.api_url}/integration/test-int",
+                headers={"Authorization": "Bearer test-token"},
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_lifecycle_base_url_dynamic(self, mock_auth: MagicMock) -> None:
+        client = LifecycleClient(integration_identifier="test-int", auth=mock_auth)
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.json = MagicMock(
+            return_value={
+                "integration": {
+                    "logAttributes": {"ingestUrl": "https://ingest.port.io/"}
+                }
+            }
+        )
+
+        with patch.object(client, "get", new=AsyncMock(return_value=mock_response)):
+            base_url = await client.get_lifecycle_base_url()
+            assert base_url == "https://ingest.port.io"
+            # verify cache works
+            base_url_cached = await client.get_lifecycle_base_url()
+            assert base_url_cached == "https://ingest.port.io"
