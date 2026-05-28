@@ -13,7 +13,7 @@ from azure_devops.client.rate_limiter import (
     LIMIT_RETRY_AFTER_HEADER,
 )
 
-PAGE_SIZE = 50
+PAGE_SIZE = 1
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 CONTINUATION_TOKEN_KEY = "continuationToken"
 MAX_TIMEMOUT_RETRIES = 3
@@ -152,7 +152,7 @@ class HTTPBaseClient:
                 break
             if max_results:
                 params[top_param] = min(PAGE_SIZE, max_results - total_items_fetched)
-
+                logger.info(f"DEBUG: Fetching {params[top_param]} items from {url} with params: {params}")
             try:
                 response = await self.send_request("GET", url, params=params)
                 if not response:
