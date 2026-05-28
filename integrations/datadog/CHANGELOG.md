@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.153 (2026-05-28)
+
+
+### Bug Fixes
+
+- Retry Datadog API 500 and 512 responses during deep pagination (monitors, SLOs, and other list endpoints)
+- Fix metrics query rate-limit handling to re-request after waiting when approaching quota
+
+
 ## 0.3.152 (2026-05-28)
 
 
