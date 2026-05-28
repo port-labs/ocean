@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "amplication"
-version = "0.2.26"
+version = "0.2.27"
 description = "Allowing Amplication users to integrate with Port"
 authors = ["Itai Nathaniel <itai@amplication.com>"]
 
