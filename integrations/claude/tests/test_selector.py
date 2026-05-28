@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from integration import ClaudeCodeAnalyticsSelector
+from integration import ClaudeUserActivitySelector
 
 
 # ---------------------------------------------------------------------------
@@ -10,13 +10,13 @@ from integration import ClaudeCodeAnalyticsSelector
 
 
 def test_selector_accepts_time_frame_only() -> None:
-    sel = ClaudeCodeAnalyticsSelector(query="true", timeFrame=30)
+    sel = ClaudeUserActivitySelector(query="true", timeFrame=30)
     assert sel.time_frame == 30
     assert sel.starting_date is None
 
 
 def test_selector_accepts_starting_date_only() -> None:
-    sel = ClaudeCodeAnalyticsSelector(query="true", startingDate="2026-01-01")
+    sel = ClaudeUserActivitySelector(query="true", startingDate="2026-01-01")
     assert sel.starting_date == "2026-01-01"
     assert sel.time_frame is None
 
@@ -28,14 +28,14 @@ def test_selector_accepts_starting_date_only() -> None:
 
 def test_selector_rejects_neither_field() -> None:
     with pytest.raises(ValidationError, match="Either 'startingDate' or 'timeFrame'"):
-        ClaudeCodeAnalyticsSelector(query="true")
+        ClaudeUserActivitySelector(query="true")
 
 
 def test_selector_rejects_both_fields() -> None:
     with pytest.raises(
         ValidationError, match="'startingDate' and 'timeFrame' are mutually exclusive"
     ):
-        ClaudeCodeAnalyticsSelector(
+        ClaudeUserActivitySelector(
             query="true", startingDate="2026-01-01", timeFrame=30
         )
 
@@ -47,4 +47,4 @@ def test_selector_rejects_both_fields() -> None:
 
 def test_selector_rejects_non_positive_time_frame() -> None:
     with pytest.raises(ValidationError):
-        ClaudeCodeAnalyticsSelector(query="true", timeFrame=0)
+        ClaudeUserActivitySelector(query="true", timeFrame=0)

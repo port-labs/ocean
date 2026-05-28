@@ -9,7 +9,7 @@ class ClaudeCostExporter(AbstractClaudeExporter):
     async def get_paginated_resources(
         self, options: ListClaudeCostReportOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        params = {
+        params: dict = {
             "starting_at": options["starting_at"],
             "limit": options["limit"],
         }
@@ -17,6 +17,10 @@ class ClaudeCostExporter(AbstractClaudeExporter):
         bucket_width = options.get("bucket_width")
         if bucket_width:
             params["bucket_width"] = bucket_width
+
+        group_by = options.get("group_by", [])
+        if group_by:
+            params["group_by[]"] = group_by
 
         async for batch in self.client.get_cost_report(params):
             logger.debug(f"Fetched cost batch with {len(batch)} records")

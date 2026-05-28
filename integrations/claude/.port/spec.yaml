@@ -10,7 +10,10 @@ features:
     resources:
       - kind: claude-usage-record
       - kind: claude-cost-record
-      - kind: claude-code-analytics
+      - kind: claude-user-activity
+      - kind: claude-activity-summary
+      - kind: claude-user-usage-report
+      - kind: claude-user-cost-report
 saas:
   enabled: true
 configurations:
@@ -18,16 +21,13 @@ configurations:
     type: string
     required: true
     sensitive: true
-    description: The Anthropic API key to authenticate with the Anthropic API. Refer <a href="https://platform.claude.com/docs/en/api/overview#prerequisites" target="_blank">Anthropic documentation</a> on how to create one.
-  - name: anthropicVersion
-    type: string
-    required: false
-    sensitive: false
-    default: "2023-06-01"
-    description: The version of the Anthropic API to use. If not specified, the default will be "2023-06-01".
+    description: >
+      The Anthropic analytics API key used to authenticate with the Enterprise Analytics API.
+      Create one at <a href="https://claude.ai/analytics/api-keys" target="_blank">claude.ai/analytics/api-keys</a>
+      (Primary Owner access required). The key must have the <code>read:analytics</code> scope.
   - name: anthropicApiHost
     type: url
     required: false
     sensitive: false
     default: https://api.anthropic.com
-    description: The host of the Anthropic api instance. If not specified, the default will be https://api.anthropic.com.
+    description: The host of the Anthropic API instance. If not specified, the default will be https://api.anthropic.com.
