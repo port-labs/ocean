@@ -807,20 +807,10 @@ class JiraClient(OAuthClient):
                 yield backlogs
             return
 
-        try:
-            async for backlogs in self._fetch_backlog_from_software_api(
-                board_id, query_params
-            ):
-                yield backlogs
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 400:
-                logger.warning(
-                    f"Board {board_id} returned 400, skipping. "
-                    f"Possible causes: board type does not support backlog (e.g. Kanban or backlog disabled), "
-                    f"or the JQL filter is invalid."
-                )
-                return
-            raise
+        async for backlogs in self._fetch_backlog_from_software_api(
+            board_id, query_params
+        ):
+            yield backlogs
 
     async def get_paginated_epics_for_board(
         self,
