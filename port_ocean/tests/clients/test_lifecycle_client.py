@@ -714,7 +714,7 @@ class TestDynamicIngestUrl:
             patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger,
         ):
             log_attrs = await client.get_log_attributes()
-            assert log_attrs == {}
+            assert log_attrs is None
             mock_logger.error.assert_called_once()
 
     @pytest.mark.asyncio

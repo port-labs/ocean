@@ -89,7 +89,7 @@ class LifecycleClient(OceanResyncHttpClient):
         self._log_attributes: LogAttributes | None = None
         super().__init__(auth=auth)
 
-    async def get_log_attributes(self) -> LogAttributes:
+    async def get_log_attributes(self) -> LogAttributes | None:
         if self._log_attributes is None:
             try:
                 headers = await self._lifecycle_auth.headers()
@@ -99,23 +99,29 @@ class LifecycleClient(OceanResyncHttpClient):
                 )
                 handle_port_status_code(response)
                 integration = response.json().get("integration", {})
-                self._log_attributes = integration.get("logAttributes", {})
+                log_attributes: LogAttributes | None = integration.get("logAttributes")
+                if log_attributes:
+                    self._log_attributes = log_attributes
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
                 logger.error(f"Failed to get log attributes from Port API: {exc}")
-                self._log_attributes = {}
+                self._log_attributes = None
         return self._log_attributes
 
     async def get_lifecycle_base_url(self) -> str:
         if self._lifecycle_base_url is None:
             try:
                 log_attributes = await self.get_log_attributes()
-                ingest_url = log_attributes.get("ingestUrl")
-                if ingest_url:
-                    self._lifecycle_base_url = ingest_url.rstrip("/")
+                if log_attributes:
+                    ingest_url = log_attributes.get("ingestUrl")
+                    if ingest_url:
+                        self._lifecycle_base_url = ingest_url.rstrip("/")
+                    else:
+                        logger.warning("ingestUrl not found in log attributes")
+                        self._lifecycle_base_url = ""
                 else:
-                    logger.warning("ingestUrl not found in log attributes")
+                    logger.error("No log attributes available")
                     self._lifecycle_base_url = ""
             except asyncio.CancelledError:
                 raise
