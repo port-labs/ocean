@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.13 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 5.5.12 (2026-05-27)
+
+
+### Bug Fixes
+
+- Fixed OOM crashes during repository enrichment by sub-batching calls to process at most 10 repositories concurrently and preventing cache pollution from enriched data
+
+
+## 5.5.11 (2026-05-27)
+
+
+### Improvements
+
+- Point `repoSearch` selector description to Port docs limitations instead of duplicating GitHub Search API constraints in the UI.
+
+
+## 5.5.10 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
 ## 5.5.9 (2026-05-25)
 
 

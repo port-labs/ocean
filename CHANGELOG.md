@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.43.2 (2026-05-27)
+
+### Bug Fixes
+
+- Fixed resync reconciliation to fetch datasource entities before the resync start time using the datasource pagination endpoint.
+
+## 0.43.1 (2026-05-26)
+
+### Improvements
+
+- Added earlywarning.io to the trusted subdomains list in the IP blocker to fix hostname rewriting for hosted custom integrations
+
 ## 0.43.0 (2026-05-25)
 
 ### Improvements
