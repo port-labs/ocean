@@ -376,9 +376,9 @@ jobs:
             RC_VERSION="${{ needs.validate-inputs.outputs.version }}"
             IMAGE_RC_TAG="rc-$RC_VERSION"
           else
-            # Integration-only RC: tag uses integration version (e.g. rc-0.3.152-rc1)
+            # Integration-only RC: tag uses integration version (e.g. 0.3.152-rc1)
             RC_VERSION="${version}-rc${RC_NUMBER}"
-            IMAGE_RC_TAG="rc-$RC_VERSION"
+            IMAGE_RC_TAG="$RC_VERSION"
           fi
 
           tags="ghcr.io/port-labs/port-ocean-$type:$IMAGE_RC_TAG"
@@ -501,7 +501,7 @@ jobs:
               if [[ "$CORE_CHANGED" == "true" ]]; then
                 image_rc_tag="rc-${CORE_RC_VERSION}"
               else
-                image_rc_tag="rc-${version}-rc${RC_NUMBER}"
+                image_rc_tag="${version}-rc${RC_NUMBER}"
               fi
 
               echo "- \`ghcr.io/port-labs/port-ocean-${type}:${image_rc_tag}\`" >> $GITHUB_STEP_SUMMARY
