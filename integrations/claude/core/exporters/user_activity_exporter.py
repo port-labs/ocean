@@ -14,6 +14,9 @@ class ClaudeUserActivityExporter(AbstractClaudeExporter):
             "limit": options["limit"],
         }
 
+        date = options["date"]
         async for batch in self.client.get_user_activity(params):
             logger.debug(f"Fetched user activity batch with {len(batch)} records")
-            yield batch
+            # Inject the query date so the Port mapping can build unique identifiers.
+            # The /users endpoint does not include the date in each record.
+            yield [{**record, "__date": date} for record in batch]

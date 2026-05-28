@@ -287,63 +287,6 @@
     "relations": {}
   },
   {
-    "identifier": "claude_workspace_usage",
-    "description": "Usage metrics broken down by workspace",
-    "title": "Claude AI Workspace Usage",
-    "icon": "Claude",
-    "schema": {
-      "properties": {
-        "record_date": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Record Date (UTC)"
-        },
-        "workspace_id": {
-          "type": "string",
-          "title": "Workspace ID"
-        },
-        "uncached_input_tokens": {
-          "type": "number",
-          "title": "Uncached Input Tokens"
-        },
-        "output_tokens": {
-          "type": "number",
-          "title": "Output Tokens"
-        },
-        "cache_read_input_tokens": {
-          "type": "number",
-          "title": "Cache Read Input Tokens"
-        },
-        "cache_creation_5m_tokens": {
-          "type": "number",
-          "title": "Cache Creation (5min) Tokens"
-        },
-        "cache_creation_1h_tokens": {
-          "type": "number",
-          "title": "Cache Creation (1hr) Tokens"
-        },
-        "web_search_requests": {
-          "type": "number",
-          "title": "Web Search Requests"
-        }
-      },
-      "required": [
-        "record_date",
-        "workspace_id"
-      ]
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {
-      "total_tokens": {
-        "title": "Total Tokens",
-        "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens + .properties.output_tokens",
-        "type": "number"
-      }
-    },
-    "aggregationProperties": {},
-    "relations": {}
-  },
-  {
     "identifier": "claude_model_usage",
     "description": "Usage metrics broken down by Claude model type",
     "title": "Claude AI Model Usage",
