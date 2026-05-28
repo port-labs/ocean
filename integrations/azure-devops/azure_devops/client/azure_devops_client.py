@@ -368,7 +368,7 @@ class AzureDevopsClient(HTTPBaseClient):
         users_url = (
             self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
         )
-        params = dict   (additional_params or {})
+        params = dict(additional_params or {})
         api_version = params.get("api-version", "")
 
         if self._is_legacy_user_entitlements_version(api_version):
