@@ -30,9 +30,8 @@ class TokenRetryTransport(RetryTransport):
     async def _refresh_request_authorization(
         self, request: httpx.Request
     ) -> httpx.Request:
-        authorization = await self.port_client.auth.refresh_token()
         headers = request.headers.copy()
-        headers["Authorization"] = authorization
+        headers["Authorization"] = await self.port_client.auth.refresh_token()
         return httpx.Request(
             method=request.method,
             url=request.url,
