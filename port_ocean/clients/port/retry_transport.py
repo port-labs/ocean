@@ -31,13 +31,7 @@ class TokenRetryTransport(RetryTransport):
         self, request: httpx.Request
     ) -> httpx.Request:
         authorization = await self.port_client.auth.refresh_token()
-        headers = httpx.Headers(
-            [
-                (key, value)
-                for key, value in request.headers.items()
-                if key.lower() != "authorization"
-            ]
-        )
+        headers = request.headers.copy()
         headers["Authorization"] = authorization
         return httpx.Request(
             method=request.method,
