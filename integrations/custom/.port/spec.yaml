@@ -142,6 +142,16 @@ configurations:
           in: ["offset", "page", "cursor"]
         then:
           required: false
+  - name: lastPagePath
+    required: false
+    type: string
+    description: "Dot-notation path to a boolean field where truthy means 'this is the last page' (e.g., Spring Data REST 'data.last'). Inverted semantics vs hasMorePath. If both are set, hasMorePath takes precedence."
+    dependencies:
+      - on: paginationType
+        when:
+          equals: page
+        then:
+          required: false
   - name: nextLinkPath
     required: false
     type: string
