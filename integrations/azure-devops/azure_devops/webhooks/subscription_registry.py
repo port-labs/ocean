@@ -7,8 +7,6 @@ a webhook event belongs to — without parsing URLs from the payload.
 
 from typing import Optional
 
-from loguru import logger
-
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 
 _registry: dict[str, AzureDevopsClient] = {}

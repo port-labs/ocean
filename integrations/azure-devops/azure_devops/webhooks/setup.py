@@ -57,9 +57,7 @@ async def setup_webhooks_for_all_orgs() -> None:
                 )
 
             subscription_registry.register_many(sub_ids, client)
-            logger.info(
-                f"Registered {len(sub_ids)} subscription(s) for org {org_url}"
-            )
+            logger.info(f"Registered {len(sub_ids)} subscription(s) for org {org_url}")
 
         except Exception as e:
             if is_multi_org:
