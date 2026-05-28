@@ -1415,14 +1415,23 @@ class AzureDevopsClient(HTTPBaseClient):
                 for board in boards
             ]
 
-    async def generate_subscriptions_webhook_events(self) -> list[WebhookSubscription]:
+    async def generate_subscriptions_webhook_events(
+        self,
+        publisher_id: Optional[str] = None,
+        event_type: Optional[str] = None,
+    ) -> list[WebhookSubscription]:
         headers = {"Content-Type": "application/json"}
+        params: dict[str, str] = {}
+        if publisher_id:
+            params["publisherId"] = publisher_id
+        if event_type:
+            params["eventType"] = event_type
         try:
             get_subscriptions_url = (
                 f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
             )
             response = await self.send_request(
-                "GET", get_subscriptions_url, headers=headers
+                "GET", get_subscriptions_url, headers=headers, params=params
             )
             if not response:
                 return []
@@ -1434,6 +1443,25 @@ class AzureDevopsClient(HTTPBaseClient):
         return [
             WebhookSubscription(**subscription) for subscription in subscriptions_raw
         ]
+
+    async def get_filtered_webhook_subscriptions(
+        self,
+    ) -> list[WebhookSubscription]:
+        unique_filters = {
+            (sub.publisherId, sub.eventType)
+            for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
+        }
+
+        results = await asyncio.gather(
+            *[
+                self.generate_subscriptions_webhook_events(
+                    publisher_id=publisher_id, event_type=event_type
+                )
+                for publisher_id, event_type in unique_filters
+            ]
+        )
+
+        return [sub for batch in results for sub in batch]
 
     async def create_subscription(
         self,
@@ -1822,10 +1850,12 @@ class AzureDevopsClient(HTTPBaseClient):
         base_url: str,
         project_id: Optional[str] = None,
         webhook_secret: Optional[str] = None,
+        existing_subscriptions: Optional[list[WebhookSubscription]] = None,
     ) -> None:
         auth_username = self.webhook_auth_username
 
-        existing_subscriptions = await self.generate_subscriptions_webhook_events()
+        if existing_subscriptions is None:
+            existing_subscriptions = await self.get_filtered_webhook_subscriptions()
 
         subs_to_create = []
         subs_to_delete = []
