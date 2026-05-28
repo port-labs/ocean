@@ -91,20 +91,37 @@ class LifecycleClient(OceanResyncHttpClient):
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:
-            headers = await self._lifecycle_auth.headers()
-            response = await self.get(
-                f"{self._lifecycle_auth.api_url}/integration/{self.integration_identifier}",
-                headers=headers,
-            )
-            handle_port_status_code(response)
-            integration = response.json().get("integration", {})
-            self._log_attributes = integration.get("logAttributes", {})
+            try:
+                headers = await self._lifecycle_auth.headers()
+                response = await self.get(
+                    f"{self._lifecycle_auth.api_url}/integration/{self.integration_identifier}",
+                    headers=headers,
+                )
+                handle_port_status_code(response)
+                integration = response.json().get("integration", {})
+                self._log_attributes = integration.get("logAttributes", {})
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                logger.error(f"Failed to get log attributes from Port API: {exc}")
+                self._log_attributes = {}
         return self._log_attributes
 
     async def get_lifecycle_base_url(self) -> str:
         if self._lifecycle_base_url is None:
-            log_attributes = await self.get_log_attributes()
-            self._lifecycle_base_url = log_attributes["ingestUrl"].rstrip("/")
+            try:
+                log_attributes = await self.get_log_attributes()
+                ingest_url = log_attributes.get("ingestUrl")
+                if ingest_url:
+                    self._lifecycle_base_url = ingest_url.rstrip("/")
+                else:
+                    logger.warning("ingestUrl not found in log attributes")
+                    self._lifecycle_base_url = ""
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                logger.error(f"Failed to infer lifecycle base URL: {exc}")
+                self._lifecycle_base_url = ""
         return self._lifecycle_base_url
 
     def _build_body(self, status: str, **extra: Any) -> dict[str, Any]:

@@ -701,3 +701,33 @@ class TestDynamicIngestUrl:
             # verify cache works
             base_url_cached = await client.get_lifecycle_base_url()
             assert base_url_cached == "https://ingest.port.io"
+
+    @pytest.mark.asyncio
+    async def test_get_log_attributes_error_handling(
+        self, mock_auth: MagicMock
+    ) -> None:
+        client = LifecycleClient(integration_identifier="test-int", auth=mock_auth)
+        with (
+            patch.object(
+                client, "get", new=AsyncMock(side_effect=httpx.HTTPError("API error"))
+            ),
+            patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger,
+        ):
+            log_attrs = await client.get_log_attributes()
+            assert log_attrs == {}
+            mock_logger.error.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_lifecycle_base_url_error_handling(
+        self, mock_auth: MagicMock
+    ) -> None:
+        client = LifecycleClient(integration_identifier="test-int", auth=mock_auth)
+        with (
+            patch.object(
+                client, "get", new=AsyncMock(side_effect=Exception("Parsing error"))
+            ),
+            patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger,
+        ):
+            base_url = await client.get_lifecycle_base_url()
+            assert base_url == ""
+            mock_logger.error.assert_called()
