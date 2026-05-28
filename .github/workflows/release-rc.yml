@@ -2,8 +2,13 @@ name: Release RC
 on:
   workflow_dispatch:
     inputs:
+      source_branch:
+        description: 'Source branch containing core changes (defaults to the branch workflow is run from)'
+        required: false
+        type: string
+        default: ''
       rc_number:
-        description: 'RC number (positive integer, e.g. 1 produces -rc1)'
+        description: 'RC number (e.g., 1 for -rc1)'
         required: true
         type: number
         default: 1
@@ -28,67 +33,45 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.validate.outputs.version }}
-      core_changed: ${{ steps.changed-files.outputs.any_changed }}
     steps:
-      - name: Validate RC number
-        run: |
-          RC_NUMBER=${{ inputs.rc_number }}
-          if (( RC_NUMBER <= 0 )); then
-            echo "::error::RC number must be greater than 0 (got: ${RC_NUMBER})"
-            exit 1
-          fi
-
-      - name: Check out branch
+      - name: Check out source branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref_name }}
-          fetch-depth: 0
-
-      - name: Resolve merge-base with main
-        id: merge-base
-        run: |
-          git fetch origin main
-          echo "sha=$(git merge-base HEAD origin/main)" >> $GITHUB_OUTPUT
-
-      - name: Detect core changes in port_ocean
-        id: changed-files
-        uses: tj-actions/changed-files@v46
-        with:
-          base_sha: ${{ steps.merge-base.outputs.sha }}
-          files: |
-            port_ocean/**
-
-      - name: Log core change detection result
-        run: |
-          if [[ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]]; then
-            echo "::notice::Changes detected in port_ocean/ — will publish core RC to PyPI and create GitHub release"
-          else
-            echo "::notice::No changes in port_ocean/ since merge-base with main — skipping core PyPI publish and GitHub release"
-          fi
+          ref: ${{ inputs.source_branch || github.ref_name }}
+          fetch-depth: 1
 
       - name: Log dry run mode
         if: inputs.dry_run
         run: |
           echo "::notice::🧪 DRY RUN MODE - No artifacts will be published"
 
-      - name: Validate core version format and pyproject.toml
+      - name: Validate version format and pyproject.toml
         id: validate
-        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           RC_NUMBER="${{ inputs.rc_number }}"
+
+          # Validate RC number is a positive integer
+          if [[ ! "$RC_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::Invalid RC number. Expected a positive integer (e.g., 1, 2, 3)"
+            exit 1
+          fi
+
+          # Get base version from pyproject.toml
           BASE_VERSION=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
 
+          # Validate base version format (X.Y.Z)
           if [[ ! "$BASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Invalid version format in pyproject.toml ($BASE_VERSION). Expected: X.Y.Z"
             exit 1
           fi
 
+          # Construct full RC version
           VERSION="${BASE_VERSION}-rc${RC_NUMBER}"
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Core version validation passed: $VERSION (base: $BASE_VERSION, rc: $RC_NUMBER)"
+          echo "Version validation passed: $VERSION (base: $BASE_VERSION, rc: $RC_NUMBER)"
 
       - name: Check tag status
-        if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           VERSION="${{ steps.validate.outputs.version }}"
           if git ls-remote --tags origin | grep -q "refs/tags/v${VERSION}$"; then
@@ -100,7 +83,6 @@ jobs:
   publish-core-rc:
     name: Publish RC core to PyPI
     needs: validate-inputs
-    if: needs.validate-inputs.outputs.core_changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.12
@@ -108,10 +90,10 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Check out branch
+      - name: Checkout source branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ inputs.source_branch || github.ref_name }}
 
       - name: Check if package already exists on PyPI
         id: check-pypi
@@ -188,15 +170,14 @@ jobs:
   tag-source-branch:
     name: Tag source branch and create release
     needs: [validate-inputs, publish-core-rc]
-    if: needs.validate-inputs.outputs.core_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Check out branch
+      - name: Checkout source branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ inputs.source_branch || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
@@ -248,14 +229,14 @@ jobs:
   prepare-matrix:
     name: Prepare integration matrix
     runs-on: ubuntu-latest
-    needs: validate-inputs
+    needs: publish-core-rc
     outputs:
       matrix: ${{ steps.prepare-matrix.outputs.INTEGRATIONS_MATRIX }}
     steps:
-      - name: Check out branch
+      - name: Check out source branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ inputs.source_branch || github.ref_name }}
 
       - name: Prepare matrix of integrations
         id: prepare-matrix
@@ -322,7 +303,7 @@ jobs:
   build-rc-integrations:
     name: Build RC integration images
     runs-on: ubuntu-latest
-    needs: [validate-inputs, prepare-matrix]
+    needs: [validate-inputs, prepare-matrix, publish-core-rc]
     if: needs.prepare-matrix.outputs.matrix != '[]'
     permissions:
       packages: write
@@ -333,10 +314,10 @@ jobs:
       matrix:
         integration: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     steps:
-      - name: Check out branch
+      - name: Check out source branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ inputs.source_branch || github.ref_name }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -368,28 +349,14 @@ jobs:
           fi
           echo "dockerfile_path=$dockerfile_path" >> $GITHUB_OUTPUT
 
-          CORE_CHANGED="${{ needs.validate-inputs.outputs.core_changed }}"
-          RC_NUMBER="${{ inputs.rc_number }}"
-
-          if [[ "$CORE_CHANGED" == "true" ]]; then
-            # RC tag tied to core RC version (e.g. rc-0.43.2-rc1)
-            RC_VERSION="${{ needs.validate-inputs.outputs.version }}"
-            IMAGE_RC_TAG="rc-$RC_VERSION"
-          else
-            # Integration-only RC: tag uses integration version (e.g. rc-0.3.152-rc1)
-            RC_VERSION="${version}-rc${RC_NUMBER}"
-            IMAGE_RC_TAG="rc-$RC_VERSION"
-          fi
-
-          tags="ghcr.io/port-labs/port-ocean-$type:$IMAGE_RC_TAG"
+          # RC tag format: rc-{rc_version}
+          RC_VERSION="${{ needs.validate-inputs.outputs.version }}"
+          tags="ghcr.io/port-labs/port-ocean-$type:rc-$RC_VERSION"
           echo "tags=$tags" >> $GITHUB_OUTPUT
-          echo "image_rc_tag=$IMAGE_RC_TAG" >> $GITHUB_OUTPUT
-          echo "rc_version=$RC_VERSION" >> $GITHUB_OUTPUT
 
-          echo "Building $type with RC tag: $IMAGE_RC_TAG"
+          echo "Building $type with RC tag: rc-$RC_VERSION"
 
       - name: Update integration to use RC version
-        if: needs.validate-inputs.outputs.core_changed == 'true'
         run: |
           RC_VERSION="${{ needs.validate-inputs.outputs.version }}"
           INTEGRATION_DIR="${{ steps.prepare_tags.outputs.context_dir }}"
@@ -409,7 +376,7 @@ jobs:
           grep -E "^version|port_ocean" "$PYPROJECT_FILE"
 
       - name: Regenerate poetry.lock with RC core
-        if: inputs.dry_run != true && needs.validate-inputs.outputs.core_changed == 'true'
+        if: inputs.dry_run != true
         run: |
           cd ${{ steps.prepare_tags.outputs.context_dir }}
           echo "Regenerating poetry.lock for ${{ steps.prepare_tags.outputs.type }}..."
@@ -432,7 +399,7 @@ jobs:
           tags: ${{ steps.prepare_tags.outputs.tags }}
           build-args: |
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
-            INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.rc_version }}
+            INTEGRATION_VERSION=${{ needs.validate-inputs.outputs.version }}
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
 
@@ -443,7 +410,7 @@ jobs:
           echo "Image: ${{ steps.prepare_tags.outputs.tags }}"
           echo "Dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}"
           echo "Build context: ${{ steps.prepare_tags.outputs.context_dir }}"
-          echo "Integration version: ${{ steps.prepare_tags.outputs.rc_version }}"
+          echo "Integration version: ${{ needs.validate-inputs.outputs.version }}"
 
   summary:
     name: RC Release Summary
@@ -462,11 +429,8 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
 
-          echo "**Core Changed (port_ocean/):** ${{ needs.validate-inputs.outputs.core_changed }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          if [[ "${{ needs.validate-inputs.outputs.core_changed }}" == "true" ]]; then
-            echo "**Core RC Version:** ${{ needs.validate-inputs.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "**Version:** ${{ needs.validate-inputs.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Source Branch:** ${{ inputs.source_branch || github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           if [[ -n "${{ inputs.integration_filter }}" ]]; then
             echo "**Integration Filter:** ${{ inputs.integration_filter }}" >> $GITHUB_STEP_SUMMARY
           else
@@ -483,26 +447,14 @@ jobs:
           echo "| Build RC Integrations | ${{ needs.build-rc-integrations.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          CORE_CHANGED="${{ needs.validate-inputs.outputs.core_changed }}"
-
-          if [[ "${{ inputs.dry_run }}" != "true" && ("$CORE_CHANGED" == "true" && "${{ needs.publish-core-rc.result }}" == "success" || "$CORE_CHANGED" != "true" && "${{ needs.build-rc-integrations.result }}" == "success") ]]; then
+          if [[ "${{ inputs.dry_run }}" != "true" && "${{ needs.publish-core-rc.result }}" == "success" ]]; then
             echo "### Published Artifacts" >> $GITHUB_STEP_SUMMARY
-            if [[ "$CORE_CHANGED" == "true" ]]; then
-              echo "- **PyPI:** \`pip install port-ocean==${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-              echo "- **GitHub Release:** [v${{ needs.validate-inputs.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate-inputs.outputs.version }})" >> $GITHUB_STEP_SUMMARY
-              echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "- **PyPI / GitHub Release:** Skipped (no \`port_ocean/\` changes on branch)" >> $GITHUB_STEP_SUMMARY
-              echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-{integration-version}-rc${{ inputs.rc_number }}\`" >> $GITHUB_STEP_SUMMARY
-            fi
+            echo "- **PyPI:** \`pip install port-ocean==${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **GitHub Release:** [v${{ needs.validate-inputs.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate-inputs.outputs.version }})" >> $GITHUB_STEP_SUMMARY
           elif [[ "${{ inputs.dry_run }}" == "true" ]]; then
             echo "### Would Have Published (Dry Run)" >> $GITHUB_STEP_SUMMARY
-            if [[ "$CORE_CHANGED" == "true" ]]; then
-              echo "- **PyPI:** \`pip install port-ocean==${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-              echo "- **GitHub Release:** v${{ needs.validate-inputs.outputs.version }} (pre-release)" >> $GITHUB_STEP_SUMMARY
-              echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "- **PyPI / GitHub Release:** Skipped (no \`port_ocean/\` changes on branch)" >> $GITHUB_STEP_SUMMARY
-              echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-{integration-version}-rc${{ inputs.rc_number }}\`" >> $GITHUB_STEP_SUMMARY
-            fi
+            echo "- **PyPI:** \`pip install port-ocean==${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **GitHub Release:** v${{ needs.validate-inputs.outputs.version }} (pre-release)" >> $GITHUB_STEP_SUMMARY
           fi
