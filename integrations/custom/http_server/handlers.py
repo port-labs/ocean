@@ -38,7 +38,7 @@ def _dict_response_has_next(
         if value is not None:
             return bool(value)
 
-    if last_page_path and not has_more_path:
+    if last_page_path:
         value = get_nested_value(response_data, last_page_path)
         if value is not None:
             return not bool(value)

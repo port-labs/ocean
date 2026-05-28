@@ -220,6 +220,7 @@ interface:
         - startPage
         - cursorPath
         - hasMorePath
+        - lastPagePath
         - nextLinkPath
         - headerLinkRel
         - timeout
