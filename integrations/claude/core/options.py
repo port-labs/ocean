@@ -1,15 +1,21 @@
 from typing import Literal, NotRequired, Required, TypedDict
 
 ClaudeUsageGroupBy = Literal[
-    "api_key_id",
-    "workspace_id",
+    "product",
+    "model",
     "context_window",
     "speed",
     "inference_geo",
-    "account_id",
-    "service_account_id",
+]
+
+ClaudeCostGroupBy = Literal[
+    "product",
     "model",
-    "service_tier",
+    "context_window",
+    "speed",
+    "inference_geo",
+    "cost_type",
+    "token_type",
 ]
 
 
@@ -25,8 +31,28 @@ class ListClaudeUsageReportOptions(ClaudeBaseReportOptions):
 
 class ListClaudeCostReportOptions(ClaudeBaseReportOptions):
     bucket_width: NotRequired[Literal["1d"]]
+    group_by: NotRequired[list[ClaudeCostGroupBy]]
 
 
-class ListClaudeCodeAnalyticsOptions(TypedDict):
-    starting_at: Required[str]
+class ListClaudeUserActivityOptions(TypedDict):
+    date: Required[str]
     limit: Required[int]
+
+
+class ListClaudeActivitySummaryOptions(TypedDict):
+    starting_date: Required[str]
+    ending_date: NotRequired[str]
+
+
+class ListClaudeUserUsageReportOptions(ClaudeBaseReportOptions):
+    ending_at: NotRequired[str]
+    group_by: NotRequired[list[ClaudeUsageGroupBy]]
+    order_by: NotRequired[
+        Literal["total_tokens", "output_tokens", "uncached_input_tokens"]
+    ]
+
+
+class ListClaudeUserCostReportOptions(ClaudeBaseReportOptions):
+    ending_at: NotRequired[str]
+    group_by: NotRequired[list[ClaudeCostGroupBy]]
+    order_by: NotRequired[Literal["amount", "list_amount"]]

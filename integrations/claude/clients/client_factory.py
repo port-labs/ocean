@@ -16,6 +16,5 @@ def create_claude_client() -> ClaudeClient:
     _claude_client = ClaudeClient(
         api_host=integration_config["anthropic_api_host"],
         api_key=integration_config["anthropic_api_key"],
-        anthropic_version=integration_config["anthropic_version"],
     )
     return _claude_client

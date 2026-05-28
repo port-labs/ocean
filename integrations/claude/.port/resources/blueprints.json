@@ -1,7 +1,7 @@
 [
   {
     "identifier": "claude_usage_record",
-    "description": "Daily Claude AI API usage metrics",
+    "description": "Daily Claude AI API token usage metrics",
     "title": "Claude AI Usage Record",
     "icon": "Claude",
     "schema": {
@@ -72,7 +72,11 @@
         },
         "amount": {
           "type": "number",
-          "title": "Cost Amount"
+          "title": "Cost Amount (post-discount, fractional cents)"
+        },
+        "list_amount": {
+          "type": "number",
+          "title": "List Amount (pre-discount, fractional cents)"
         },
         "currency": {
           "type": "string",
@@ -89,59 +93,196 @@
     "relations": {}
   },
   {
-    "identifier": "claude_workspace_usage",
-    "description": "Usage metrics broken down by workspace",
-    "title": "Claude AI Workspace Usage",
+    "identifier": "claude_user_activity",
+    "description": "Daily per-user Claude activity including Claude Code metrics (lines of code, sessions, commits)",
+    "title": "Claude User Activity",
     "icon": "Claude",
     "schema": {
       "properties": {
-        "record_date": {
+        "date": {
           "type": "string",
-          "format": "date-time",
-          "title": "Record Date (UTC)"
+          "format": "date",
+          "title": "Date"
         },
-        "workspace_id": {
+        "user_email": {
           "type": "string",
-          "title": "Workspace ID"
+          "title": "User Email"
+        },
+        "lines_added": {
+          "type": "number",
+          "title": "Lines Added"
+        },
+        "lines_removed": {
+          "type": "number",
+          "title": "Lines Removed"
+        },
+        "num_sessions": {
+          "type": "number",
+          "title": "Sessions"
+        },
+        "commits": {
+          "type": "number",
+          "title": "Commits by Claude Code"
+        },
+        "pull_requests": {
+          "type": "number",
+          "title": "Pull Requests by Claude Code"
+        },
+        "edit_tool_accepted": {
+          "type": "number",
+          "title": "Edit Tool Accepted"
+        },
+        "edit_tool_rejected": {
+          "type": "number",
+          "title": "Edit Tool Rejected"
+        },
+        "write_tool_accepted": {
+          "type": "number",
+          "title": "Write Tool Accepted"
+        },
+        "write_tool_rejected": {
+          "type": "number",
+          "title": "Write Tool Rejected"
+        },
+        "message_count": {
+          "type": "number",
+          "title": "Messages Sent"
+        }
+      },
+      "required": [
+        "date"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "total_lines_changed": {
+        "title": "Total Lines Changed",
+        "calculation": ".properties.lines_added + .properties.lines_removed",
+        "type": "number"
+      },
+      "edit_acceptance_rate": {
+        "title": "Edit Acceptance Rate (%)",
+        "calculation": "if (.properties.edit_tool_accepted + .properties.edit_tool_rejected) > 0 then (.properties.edit_tool_accepted / (.properties.edit_tool_accepted + .properties.edit_tool_rejected)) * 100 else 0 end",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "claude_activity_summary",
+    "description": "Organisation-level Claude engagement summary (DAU, WAU, MAU, seat allocation)",
+    "title": "Claude Activity Summary",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "starting_date": {
+          "type": "string",
+          "format": "date",
+          "title": "Period Start Date"
+        },
+        "ending_date": {
+          "type": "string",
+          "format": "date",
+          "title": "Period End Date"
+        },
+        "daily_active_users": {
+          "type": "number",
+          "title": "Daily Active Users"
+        },
+        "weekly_active_users": {
+          "type": "number",
+          "title": "Weekly Active Users"
+        },
+        "monthly_active_users": {
+          "type": "number",
+          "title": "Monthly Active Users"
+        },
+        "total_seats": {
+          "type": "number",
+          "title": "Total Seats"
+        }
+      },
+      "required": [
+        "starting_date"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "claude_user_usage_report",
+    "description": "Per-user Claude API token consumption ranked by usage",
+    "title": "Claude User Usage Report",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "user_email": {
+          "type": "string",
+          "title": "User Email"
         },
         "uncached_input_tokens": {
           "type": "number",
           "title": "Uncached Input Tokens"
         },
-        "output_tokens": {
-          "type": "number",
-          "title": "Output Tokens"
-        },
         "cache_read_input_tokens": {
           "type": "number",
           "title": "Cache Read Input Tokens"
         },
-        "cache_creation_5m_tokens": {
+        "cache_creation_tokens": {
           "type": "number",
-          "title": "Cache Creation (5min) Tokens"
+          "title": "Cache Creation Tokens"
         },
-        "cache_creation_1h_tokens": {
+        "output_tokens": {
           "type": "number",
-          "title": "Cache Creation (1hr) Tokens"
+          "title": "Output Tokens"
+        },
+        "total_tokens": {
+          "type": "number",
+          "title": "Total Tokens"
         },
         "web_search_requests": {
           "type": "number",
           "title": "Web Search Requests"
+        },
+        "request_count": {
+          "type": "number",
+          "title": "Request Count"
         }
       },
-      "required": [
-        "record_date",
-        "workspace_id"
-      ]
+      "required": []
     },
     "mirrorProperties": {},
-    "calculationProperties": {
-      "total_tokens": {
-        "title": "Total Tokens",
-        "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens + .properties.output_tokens",
-        "type": "number"
-      }
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "claude_user_cost_report",
+    "description": "Per-user Claude API cost ranked by spend",
+    "title": "Claude User Cost Report",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "user_email": {
+          "type": "string",
+          "title": "User Email"
+        },
+        "amount": {
+          "type": "number",
+          "title": "Cost Amount (post-discount, fractional cents)"
+        },
+        "list_amount": {
+          "type": "number",
+          "title": "List Amount (pre-discount, fractional cents)"
+        }
+      },
+      "required": []
     },
+    "mirrorProperties": {},
+    "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {}
   },
@@ -196,96 +337,6 @@
       "total_tokens": {
         "title": "Total Tokens",
         "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens + .properties.output_tokens",
-        "type": "number"
-      }
-    },
-    "aggregationProperties": {},
-    "relations": {}
-  },
-  {
-    "identifier": "claude_code_analytics",
-    "description": "Daily Claude Code usage metrics including sessions, lines of code, commits, and PRs",
-    "title": "Claude Code Analytics",
-    "icon": "Claude",
-    "schema": {
-      "properties": {
-        "record_date": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Record Date (UTC)"
-        },
-        "organization_id": {
-          "type": "string",
-          "title": "Organization ID"
-        },
-        "actor_type": {
-          "type": "string",
-          "title": "Actor Type"
-        },
-        "actor_name": {
-          "type": "string",
-          "title": "Actor Name"
-        },
-        "terminal_type": {
-          "type": "string",
-          "title": "Terminal Type"
-        },
-        "num_sessions": {
-          "type": "number",
-          "title": "Sessions"
-        },
-        "lines_added": {
-          "type": "number",
-          "title": "Lines Added"
-        },
-        "lines_removed": {
-          "type": "number",
-          "title": "Lines Removed"
-        },
-        "commits": {
-          "type": "number",
-          "title": "Commits by Claude Code"
-        },
-        "pull_requests": {
-          "type": "number",
-          "title": "Pull Requests by Claude Code"
-        },
-        "edit_tool_accepted": {
-          "type": "number",
-          "title": "Edit Tool Accepted"
-        },
-        "edit_tool_rejected": {
-          "type": "number",
-          "title": "Edit Tool Rejected"
-        },
-        "write_tool_accepted": {
-          "type": "number",
-          "title": "Write Tool Accepted"
-        },
-        "write_tool_rejected": {
-          "type": "number",
-          "title": "Write Tool Rejected"
-        },
-        "model_breakdown": {
-          "type": "array",
-          "title": "Model Breakdown"
-        }
-      },
-      "required": [
-        "record_date",
-        "organization_id"
-      ]
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {
-      "total_lines_changed": {
-        "title": "Total Lines Changed",
-        "calculation": ".properties.lines_added + .properties.lines_removed",
-        "type": "number"
-      },
-      "edit_acceptance_rate": {
-        "title": "Edit Acceptance Rate",
-        "calculation": "if (.properties.edit_tool_accepted + .properties.edit_tool_rejected) > 0 then (.properties.edit_tool_accepted / (.properties.edit_tool_accepted + .properties.edit_tool_rejected)) * 100 else 0 end",
         "type": "number"
       }
     },

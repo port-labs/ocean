@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2026-05-28)
+
+
+### Breaking Changes
+
+- Migrated from Anthropic Admin API to the new Enterprise Analytics API (`/v1/organizations/analytics/`). The `anthropicVersion` configuration option has been removed; the API key must now be an analytics API key with `read:analytics` scope, created at `claude.ai/analytics/api-keys`.
+- Replaced `claude-code-analytics` kind (backed by the deprecated `/v1/organizations/usage_report/claude_code` endpoint) with `claude-user-activity` (backed by `GET /v1/organizations/analytics/users`). The selector fields (`startingDate`/`timeFrame`) are unchanged.
+- Updated `claude-usage-record` groupBy options: removed `api_key_id`, `workspace_id`, `account_id`, `service_account_id`, `service_tier`; added `product`.
+
+
+### Improvements
+
+- Added `list_amount` field to `claude-cost-record` blueprint (pre-discount cost in fractional cents).
+- Added groupBy support to `claude-cost-record` (`cost_type`, `token_type`, `product`, `model`, `context_window`, `speed`, `inference_geo`).
+- Added four new kinds backed by new Enterprise Analytics API endpoints:
+  - `claude-user-activity` — per-user daily engagement including Claude Code metrics (lines added/removed, sessions, commits, PRs, tool acceptance). Selector fields (`startingDate`/`timeFrame`) are the same as the retired `claude-code-analytics` kind.
+  - `claude-activity-summary` — organisation-level DAU/WAU/MAU and seat allocation.
+  - `claude-user-usage-report` — per-user token consumption ranking with model/product breakdown.
+  - `claude-user-cost-report` — per-user cost ranking (discounted and list price).
+
+
 ## 0.1.19 (2026-05-28)
 
 

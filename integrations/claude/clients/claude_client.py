@@ -9,12 +9,11 @@ from port_ocean.utils import http_async_client
 
 
 class ClaudeClient:
-    def __init__(self, api_host: str, api_key: str, anthropic_version: str) -> None:
+    def __init__(self, api_host: str, api_key: str) -> None:
         self._client = http_async_client
         self._base_url = api_host.rstrip("/")
         self._headers = {
             "x-api-key": api_key,
-            "anthropic-version": anthropic_version,
             "content-type": "application/json",
         }
 
@@ -22,9 +21,9 @@ class ClaudeClient:
         self,
         params: dict[str, Any],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Yields pages of usage report message records."""
+        """Yields pages of token usage records."""
         async for page in self._paginate(
-            "/v1/organizations/usage_report/messages", params
+            "/v1/organizations/analytics/usage_report", params
         ):
             yield page
 
@@ -33,20 +32,76 @@ class ClaudeClient:
         params: dict[str, Any],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Yields pages of cost report records."""
-        async for page in self._paginate("/v1/organizations/cost_report", params):
+        async for page in self._paginate(
+            "/v1/organizations/analytics/cost_report", params
+        ):
             yield page
 
-    async def get_claude_code_report(
+    async def get_user_activity(
         self,
         params: dict[str, Any],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Yields pages of Claude Code analytics records.
+        """Yields pages of per-user activity records for a single day.
 
-        Soft-fails (yields nothing) when Claude Code is not enabled for the
-        organisation (HTTP 403), rather than crashing the resync.
+        Soft-fails (yields nothing) when the endpoint is not available (HTTP 403).
         """
         async for page in self._paginate(
-            "/v1/organizations/usage_report/claude_code",
+            "/v1/organizations/analytics/users",
+            params,
+            soft_fail_statuses={403},
+        ):
+            yield page
+
+    async def get_activity_summary(
+        self,
+        params: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Returns activity summary records for a date range (non-paginated endpoint).
+
+        Soft-fails (returns empty list) when the endpoint is not available (HTTP 403).
+        """
+        response = await self._send_request(
+            "/v1/organizations/analytics/summaries",
+            params,
+            soft_fail_statuses={403},
+        )
+        if response is None:
+            return []
+        payload = response.json()
+        if isinstance(payload, list):
+            return payload
+        if isinstance(payload, dict):
+            data = payload.get("data")
+            if isinstance(data, list):
+                return data
+            return [payload]
+        return []
+
+    async def get_user_usage_report(
+        self,
+        params: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yields pages of per-user token consumption records.
+
+        Soft-fails (yields nothing) when the endpoint is not available (HTTP 403).
+        """
+        async for page in self._paginate(
+            "/v1/organizations/analytics/user_usage_report",
+            params,
+            soft_fail_statuses={403},
+        ):
+            yield page
+
+    async def get_user_cost_report(
+        self,
+        params: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yields pages of per-user cost records.
+
+        Soft-fails (yields nothing) when the endpoint is not available (HTTP 403).
+        """
+        async for page in self._paginate(
+            "/v1/organizations/analytics/user_cost_report",
             params,
             soft_fail_statuses={403},
         ):
@@ -90,7 +145,6 @@ class ClaudeClient:
             if records:
                 yield records
 
-            # Follow the next page if one is present
             next_page = payload.get("next_page")
             has_more = payload.get("has_more", False)
 
@@ -124,8 +178,7 @@ class ClaudeClient:
             if soft_fail_statuses and status_code in soft_fail_statuses:
                 logger.warning(
                     f"Received HTTP {status_code} for {url}. "
-                    "This endpoint may not be available for your organisation "
-                    "(e.g. Claude Code not enabled). Skipping."
+                    "This endpoint may not be available for your organisation. Skipping."
                 )
                 return None
 
