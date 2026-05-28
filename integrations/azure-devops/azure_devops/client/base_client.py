@@ -152,7 +152,6 @@ class HTTPBaseClient:
                 break
             if max_results:
                 params[top_param] = min(PAGE_SIZE, max_results - total_items_fetched)
-                logger.info(f"DEBUG: Fetching {params[top_param]} items from {url} with params: {params}")
             try:
                 response = await self.send_request("GET", url, params=params)
                 if not response:
