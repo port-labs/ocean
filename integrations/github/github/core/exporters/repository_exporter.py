@@ -1,5 +1,7 @@
 import asyncio
+import copy
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
+from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import parse_github_options, get_repository_metadata
@@ -15,6 +17,8 @@ from github.clients.http.rest_client import GithubRestClient
 
 if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
+
+ENRICHMENT_BATCH_SIZE = 10
 
 
 class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
@@ -66,22 +70,25 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         ):
             if not included_relations:
                 yield repos
-            else:
-                included_relations = cast(dict[str, dict[str, Any]], included_relations)
-                logger.info(
-                    f"Enriching repositories with {list(included_relations.keys())}"
-                )
-                batch = await asyncio.gather(
+                continue
+
+            included_relations = cast(dict[str, dict[str, Any]], included_relations)
+            logger.info(
+                f"Enriching repositories with {list(included_relations.keys())}"
+            )
+
+            for batch in batched(repos, ENRICHMENT_BATCH_SIZE):
+                enriched = await asyncio.gather(
                     *[
                         self.enrich_repository_with_selected_relationships(
-                            repo,
+                            copy.deepcopy(repo),
                             included_relations,
                             organization,
                         )
-                        for repo in repos
+                        for repo in batch
                     ]
                 )
-                yield batch
+                yield enriched
 
     @cache_iterator_result()
     async def _fetch_repositories(
