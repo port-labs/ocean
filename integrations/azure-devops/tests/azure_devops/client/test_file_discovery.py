@@ -3,13 +3,16 @@
 from typing import Any, AsyncGenerator
 
 import pytest
+from port_ocean.context.ocean import PortOceanContext
 
 from azure_devops.client.auth import PatAuthProvider
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 
 
 @pytest.mark.asyncio
-async def test_generate_files_does_not_stop_after_empty_project() -> None:
+async def test_generate_files_does_not_stop_after_empty_project(
+    mock_context: PortOceanContext,
+) -> None:
     """Regression test for PORT-17439.
 
     When generate_repositories yields an empty batch (a project with no repos),

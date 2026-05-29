@@ -222,13 +222,20 @@ async def test_pipeline_run_handle_event_project_built_from_payload_without_name
     mock_client.get_single_project = AsyncMock()
     mock_client.get_pipeline = AsyncMock(return_value={"id": "pipeline-789"})
     mock_client.annotate_runs = MagicMock()
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "run": {"id": "run-456"},
             "pipeline": {"id": "pipeline-789"},
@@ -284,6 +291,7 @@ async def test_pipeline_run_handle_event_project_not_found(
     mock_client = MagicMock()
     mock_client.get_pipeline_run = AsyncMock(return_value={"id": "run-456"})
     mock_client.get_single_project = AsyncMock(return_value=None)
+    mock_client.get_pipeline = AsyncMock(return_value=None)
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client

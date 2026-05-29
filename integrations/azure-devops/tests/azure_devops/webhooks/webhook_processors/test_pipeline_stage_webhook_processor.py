@@ -130,6 +130,7 @@ async def test_pipeline_stage_handle_event_project_built_from_payload_without_na
     dict with name=None to get_pipeline_stage."""
     mock_client = MagicMock()
     mock_client.get_single_project = AsyncMock(return_value=None)
+    mock_client.get_pipeline_stage = AsyncMock(return_value={"id": "stage-789"})
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
