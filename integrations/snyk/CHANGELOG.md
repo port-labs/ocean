@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.5.0 (2026-04-22)
+## 0.5.1 (2026-05-13)
+
+
+### Improvements
+
+- Add a selector to allow enriching vulnerabilities with ignore details
+
+
+## 0.5.0 (2026-05-13)
 
 
 ### Improvements
