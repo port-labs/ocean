@@ -8,6 +8,7 @@ from mend.auth.activation_key import (
     decode_activation_key,
     derive_base_url,
 )
+from mend.exceptions import MendAuthenticationError
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -37,20 +38,22 @@ def _make_activation_key(payload: dict[str, Any]) -> str:
 class TestDecodeActivationKey:
     def test_decodes_full_payload(self) -> None:
         payload = {
-            "email": "user@example.com",
+            "integratorEmail": "user@example.com",
             "userKey": "abc123",
             "wsEnvUrl": "https://saas.mend.io",
             "orgUuid": "org-uuid-001",
         }
         key = _make_activation_key(payload)
         result = decode_activation_key(key)
-        assert result["email"] == "user@example.com"
+        assert result["integratorEmail"] == "user@example.com"
         assert result["userKey"] == "abc123"
         assert result["wsEnvUrl"] == "https://saas.mend.io"
         assert result["orgUuid"] == "org-uuid-001"
 
     def test_raises_on_bad_base64(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(
+            MendAuthenticationError, match="Provide a valid Mend Activation key"
+        ):
             decode_activation_key("not!!!valid")
 
     def test_raises_on_non_jwt_content(self) -> None:
@@ -59,8 +62,16 @@ class TestDecodeActivationKey:
         b64 = base64.b64encode(raw.encode()).decode()
         reversed_b64 = b64[::-1]
         bad_key = "".join(chr(ord(c) + _CAESAR_OFFSET) for c in reversed_b64)
-        with pytest.raises(Exception):
+        with pytest.raises(
+            MendAuthenticationError, match="Provide a valid Mend Activation key"
+        ):
             decode_activation_key(bad_key)
+
+    def test_raises_on_empty_input(self) -> None:
+        with pytest.raises(
+            MendAuthenticationError, match="Provide a valid Mend Activation key"
+        ):
+            decode_activation_key("")
 
 
 # ── derive_base_url ───────────────────────────────────────────────────────────

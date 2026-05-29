@@ -2,8 +2,12 @@ import base64
 from urllib.parse import urlparse
 from typing import Any
 import jwt
+from loguru import logger
+
+from mend.exceptions import MendAuthenticationError
 
 _CAESAR_OFFSET = 4
+_INVALID_KEY_MESSAGE = ("Provide a valid Mend Activation key.")
 
 
 def _caesar_cipher_decrypt(activation_key: str) -> str:
@@ -13,8 +17,14 @@ def _caesar_cipher_decrypt(activation_key: str) -> str:
 
 
 def decode_activation_key(activation_key: str) -> dict[str, Any]:
-    license_key = _caesar_cipher_decrypt(activation_key)
-    return jwt.decode(license_key, options={"verify_signature": False})
+    if not isinstance(activation_key, str) or not activation_key:
+        raise MendAuthenticationError(_INVALID_KEY_MESSAGE)
+    try:
+        license_key = _caesar_cipher_decrypt(activation_key)
+        return jwt.decode(license_key, options={"verify_signature": False})
+    except (ValueError, TypeError, jwt.PyJWTError) as e:
+        logger.debug(f"Failed to decode Mend activation key: {type(e).__name__}: {e}")
+        raise MendAuthenticationError(_INVALID_KEY_MESSAGE) from e
 
 
 def derive_base_url(ws_env_url: str) -> str:

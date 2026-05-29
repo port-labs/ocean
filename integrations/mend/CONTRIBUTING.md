@@ -42,12 +42,12 @@ make test           # pytest
 
 ## How the integration works
 
-- **Auth** — the activation key is a base64-encoded JWT containing `email`, `userKey`, `wsEnvUrl`, and `orgUuid`. The authenticator decodes it, calls `/api/v3.0/login` to get a refresh token, then `/api/v3.0/login/accessToken` to get a JWT used as a Bearer token. Tokens are held in process memory and refreshed on TTL expiry or on the first 401 response.
+- **Auth** — the activation key is a base64-encoded JWT containing `integratorEmail`, `userKey`, `wsEnvUrl`, and `orgUuid`. The authenticator decodes it, calls `/api/v3.0/login` to get a refresh token, then `/api/v3.0/login/accessToken` to get a JWT used as a Bearer token. Tokens are held in process memory and refreshed on TTL expiry or on the first 401 response.
 - **Resync flow** — two kinds:
   - `mend-project` — paginates `/api/v3.0/orgs/{orgUuid}/projects/summaries` (POST).
   - `sca-finding` — for each project, paginates `/api/v3.0/projects/{projectUuid}/dependencies/findings/security`.
-- **Delta sync** — `on_security_finding_resync` skips projects whose `lastScanTime` / `creationDate` did not change since the last successful sync. The marker is process-local (resets on restart).
-- **Forced full sync** — `OCEAN__INTEGRATION__CONFIG__FULL_SYNC_INTERVAL_MINUTES` (default `720`) periodically bypasses the delta marker so finding-only changes (status updates, suppressions) are picked up. Set to `0` to make every poll a full sync.
+- **Delta sync** — `on_security_finding_resync` skips projects whose `lastScanTime` / `creationDate` did not change since the last successful sync. The marker is process-local (resets on restart) and is **only advanced after the resync iterates every project without raising**. If a run fails partway through (network error, Mend 5xx, etc.), the marker is left untouched so the next run re-fetches the missed projects rather than leaving silent gaps.
+- **Forced full sync** — `OCEAN__INTEGRATION__CONFIG__FULL_SYNC_INTERVAL_MINUTES` (default `720`) periodically bypasses the delta marker so finding-only changes (status updates, suppressions) are picked up. Set to `0` to make every poll a full sync. The full-sync marker follows the same all-or-nothing rule: a failed full sync does not push the next forced-full window forward.
 - **Project list caching** — `MendProjectExporter.get_paginated_resources` is wrapped with `@cache_iterator_result()`, so the project list is fetched from Mend at most once per resync event even though both kinds read it.
 
 ## Gotchas

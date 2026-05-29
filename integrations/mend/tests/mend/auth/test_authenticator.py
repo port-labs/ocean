@@ -92,6 +92,86 @@ class TestMendAuthenticator:
             assert ttl == 3600
 
     @pytest.mark.asyncio
+    async def test_fetch_refresh_token_missing_response_object(
+        self, authenticator: MendAuthenticator
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"unexpected": "shape"}
+        mock_response.raise_for_status.return_value = None
+
+        with patch("mend.auth.authenticator.http_async_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            with pytest.raises(MendAuthenticationError, match="missing 'response'"):
+                await authenticator._fetch_refresh_token()
+
+    @pytest.mark.asyncio
+    async def test_fetch_refresh_token_missing_refresh_token(
+        self, authenticator: MendAuthenticator
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"response": {"refreshToken": ""}}
+        mock_response.raise_for_status.return_value = None
+
+        with patch("mend.auth.authenticator.http_async_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            with pytest.raises(MendAuthenticationError, match="refreshToken"):
+                await authenticator._fetch_refresh_token()
+
+    @pytest.mark.asyncio
+    async def test_fetch_refresh_token_non_object_body(
+        self, authenticator: MendAuthenticator
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.json.return_value = ["not", "an", "object"]
+        mock_response.raise_for_status.return_value = None
+
+        with patch("mend.auth.authenticator.http_async_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            with pytest.raises(MendAuthenticationError, match="not a JSON object"):
+                await authenticator._fetch_refresh_token()
+
+    @pytest.mark.asyncio
+    async def test_fetch_refresh_token_invalid_json(
+        self, authenticator: MendAuthenticator
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.json.side_effect = ValueError("invalid JSON")
+        mock_response.raise_for_status.return_value = None
+
+        with patch("mend.auth.authenticator.http_async_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            with pytest.raises(MendAuthenticationError, match="Failed to parse"):
+                await authenticator._fetch_refresh_token()
+
+    @pytest.mark.asyncio
+    async def test_fetch_jwt_token_missing_jwt_token(
+        self, authenticator: MendAuthenticator
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"response": {"tokenTTL": 1800}}
+        mock_response.raise_for_status.return_value = None
+
+        with patch("mend.auth.authenticator.http_async_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            with pytest.raises(MendAuthenticationError, match="jwtToken"):
+                await authenticator._fetch_jwt_token("refresh-token")
+
+    @pytest.mark.asyncio
+    async def test_fetch_jwt_token_non_numeric_ttl(
+        self, authenticator: MendAuthenticator
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "response": {"jwtToken": "test-jwt", "tokenTTL": "not-a-number"}
+        }
+        mock_response.raise_for_status.return_value = None
+
+        with patch("mend.auth.authenticator.http_async_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            with pytest.raises(MendAuthenticationError, match="Failed to parse"):
+                await authenticator._fetch_jwt_token("refresh-token")
+
+    @pytest.mark.asyncio
     async def test_authenticate_full_flow(
         self, authenticator: MendAuthenticator
     ) -> None:

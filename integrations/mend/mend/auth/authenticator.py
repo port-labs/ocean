@@ -46,14 +46,31 @@ class MendAuthenticator:
                 headers={"Content-Type": "application/json"},
             )
             response.raise_for_status()
-            data: dict[str, object] = response.json()
-            resp = data.get("response", {})
-            if not isinstance(resp, dict):
-                raise MendAuthenticationError("Unexpected login response format")
-            return str(resp["refreshToken"])
         except httpx.HTTPStatusError as e:
             raise MendAuthenticationError(
                 f"Mend login failed ({e.response.status_code}): {e.response.text}"
+            ) from e
+
+        try:
+            data = response.json()
+            if not isinstance(data, dict):
+                raise MendAuthenticationError(
+                    "Mend login response body is not a JSON object"
+                )
+            resp = data.get("response")
+            if not isinstance(resp, dict):
+                raise MendAuthenticationError(
+                    "Mend login response missing 'response' object"
+                )
+            refresh_token = resp.get("refreshToken")
+            if not isinstance(refresh_token, str) or not refresh_token:
+                raise MendAuthenticationError(
+                    "Mend login response missing or empty 'refreshToken'"
+                )
+            return refresh_token
+        except (KeyError, TypeError, ValueError) as e:
+            raise MendAuthenticationError(
+                f"Failed to parse Mend login response: {e}"
             ) from e
 
     async def _fetch_jwt_token(self, refresh_token: str) -> tuple[str, int]:
@@ -68,16 +85,32 @@ class MendAuthenticator:
                 },
             )
             response.raise_for_status()
-            data: dict[str, object] = response.json()
-            resp = data.get("response", {})
-            if not isinstance(resp, dict):
-                raise MendAuthenticationError("Unexpected accessToken response format")
-            jwt_token = str(resp["jwtToken"])
-            token_ttl = int(resp.get("tokenTTL", 3600))
-            return jwt_token, token_ttl
         except httpx.HTTPStatusError as e:
             raise MendAuthenticationError(
                 f"Mend accessToken fetch failed ({e.response.status_code}): {e.response.text}"
+            ) from e
+
+        try:
+            data = response.json()
+            if not isinstance(data, dict):
+                raise MendAuthenticationError(
+                    "Mend accessToken response body is not a JSON object"
+                )
+            resp = data.get("response")
+            if not isinstance(resp, dict):
+                raise MendAuthenticationError(
+                    "Mend accessToken response missing 'response' object"
+                )
+            jwt_token = resp.get("jwtToken")
+            if not isinstance(jwt_token, str) or not jwt_token:
+                raise MendAuthenticationError(
+                    "Mend accessToken response missing or empty 'jwtToken'"
+                )
+            token_ttl = int(resp.get("tokenTTL", 3600))
+            return jwt_token, token_ttl
+        except (KeyError, TypeError, ValueError) as e:
+            raise MendAuthenticationError(
+                f"Failed to parse Mend accessToken response: {e}"
             ) from e
 
     async def _authenticate(self) -> None:
@@ -87,7 +120,7 @@ class MendAuthenticator:
         jwt_token, token_ttl = await self._fetch_jwt_token(refresh_token)
         self._jwt_token = jwt_token
         self._token_expires_at = time.time() + token_ttl
-        logger.info(f"Mend authentication succeeded, token TTL: {token_ttl} ms")
+        logger.info(f"Mend authentication succeeded, token TTL: {token_ttl} seconds")
 
     async def _get_jwt_token(self) -> str:
         if not self._jwt_token or self.is_token_expired:

@@ -46,7 +46,9 @@ async def on_security_finding_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(MendScaResourceConfig, event.resource_config).selector
 
     # Record start time before any API calls so findings modified during this
-    # sync window are picked up on the next run.
+    # sync window are picked up on the next run. Only persisted as the new
+    # marker if the resync completes without raising — partial failure must
+    # not advance the cursor, otherwise the skipped projects would be lost.
     sync_started_at = datetime.now(timezone.utc)
 
     full_sync_interval_minutes = int(
@@ -80,24 +82,22 @@ async def on_security_finding_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         project_options, since=last_sync_time
     )
 
-    try:
-        for project in changed_projects:
-            vuln_options = ListScaVulnerabilityOptions(
-                project_uuid=project["uuid"],
-                project_name=project.get("name", ""),
-                severity=selector.severity,
-            )
-            async for finding_batch in vuln_exporter.get_paginated_resources(
-                vuln_options
-            ):
-                yield finding_batch
-    finally:
-        # Persist the marker even if an error occurs mid-sync so the next run
-        # still advances from the last known good point rather than doing a
-        # full scan from scratch.
-        await set_last_sync_time(sync_started_at)
-        if full_sync_due:
-            await set_last_full_sync_time(sync_started_at)
+    for project in changed_projects:
+        vuln_options = ListScaVulnerabilityOptions(
+            project_uuid=project["uuid"],
+            project_name=project.get("name", ""),
+            severity=selector.severity,
+        )
+        async for finding_batch in vuln_exporter.get_paginated_resources(vuln_options):
+            yield finding_batch
+
+    # Markers are advanced only after every project has been fully processed.
+    # If anything above raises (or the consumer cancels via GeneratorExit),
+    # control skips these updates and the next run re-fetches from the
+    # previous marker — no silent gaps.
+    await set_last_sync_time(sync_started_at)
+    if full_sync_due:
+        await set_last_full_sync_time(sync_started_at)
 
 
 @ocean.on_start()
