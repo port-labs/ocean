@@ -7,10 +7,8 @@ import httpx
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
-from port_ocean.helpers.ssl import resolve_verify_param
 from port_ocean.version import __integration_version__, __version__
 
 EU_PORT_API_BASE = "https://api.getport.io"
@@ -46,7 +44,6 @@ class OceanResyncHttpClient(OceanAsyncClient):
         self._lifecycle_auth = auth
         super().__init__(
             timeout=timeout,
-            verify=resolve_verify_param(ocean.config.ssl.port),
             retry_config=RetryConfig(
                 retryable_methods=[
                     "POST",
