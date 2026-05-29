@@ -411,8 +411,8 @@ class GitLabClient:
     async def get_pipeline_jobs(
         self,
         project_batch: list[dict[str, Any]],
-        pipeline_params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
+        pipeline_params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch jobs for each project in the batch, limited to first page (<=100 jobs per pipeline)."""
 
