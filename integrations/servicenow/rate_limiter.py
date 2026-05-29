@@ -42,30 +42,29 @@ class ServiceNowRateLimiter:
         return 0.0
 
     async def __aenter__(self) -> "ServiceNowRateLimiter":
-        while True:
-            wait_time = 0.0
+        async with self._lock:
+            if self._reset_time is not None and time.time() >= self._reset_time:
+                self._request_count = 0
+                self._reset_time = None
 
-            async with self._lock:
-                if self._reset_time is not None and time.time() >= self._reset_time:
-                    self._request_count = 0
-                    self._reset_time = None
+            if (
+                self._limit is not None
+                and self._request_count >= self._limit
+                and self._reset_time is not None
+            ):
+                wait_time = self.seconds_until_reset
+                if wait_time > 0:
+                    logger.info(
+                        f"Rate limit: {self._request_count}/{self._limit} requests used, "
+                        f"waiting {wait_time:.1f}s until window resets"
+                    )
+                    await asyncio.sleep(wait_time)
+                self._request_count = 0
+                self._reset_time = None
 
-                if (
-                    self._limit is not None
-                    and self._request_count >= self._limit
-                    and self._reset_time is not None
-                ):
-                    wait_time = self.seconds_until_reset
+            self._request_count += 1
 
-                if wait_time <= 0:
-                    self._request_count += 1
-                    return self
-
-            logger.info(
-                f"Rate limit: {self._request_count}/{self._limit} requests used, "
-                f"waiting {wait_time:.1f}s until window resets"
-            )
-            await asyncio.sleep(wait_time)
+        return self
 
     async def __aexit__(self, *args: object) -> None:
         pass
@@ -81,7 +80,9 @@ class ServiceNowRateLimiter:
                     self._limit = int(limit_header)
 
                 if reset_header:
-                    self._reset_time = float(reset_header)
+                    reset_time = float(reset_header)
+                    if reset_time > time.time():
+                        self._reset_time = reset_time
 
                 if retry_after:
                     wait_seconds = int(retry_after)

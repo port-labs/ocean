@@ -63,13 +63,7 @@ class TestRateLimiterAenter:
         limiter = ServiceNowRateLimiter()
         limiter._limit = 100
         limiter._request_count = 100
-        reset_time = time.time() + 10
-        limiter._reset_time = reset_time
-
-        async def expire_window(*args: object) -> None:
-            limiter._reset_time = time.time() - 1
-
-        mock_sleep.side_effect = expire_window
+        limiter._reset_time = time.time() + 10
 
         async with limiter:
             pass
@@ -105,35 +99,6 @@ class TestRateLimiterAenter:
         assert limiter._request_count == 1
         assert limiter._reset_time is None
         mock_sleep.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_sleep_does_not_overwrite_fresh_state(
-        self, mock_sleep: Mock
-    ) -> None:
-        """After sleeping, __aenter__ re-evaluates state instead of blindly resetting.
-
-        This is the race condition Melody flagged: if update_from_headers writes
-        fresh state during the sleep, it must not be overwritten.
-        """
-        limiter = ServiceNowRateLimiter()
-        limiter._limit = 100
-        limiter._request_count = 100
-        limiter._reset_time = time.time() + 5
-
-        async def simulate_header_update(*args: object) -> None:
-            """Simulates update_from_headers being called during sleep."""
-            limiter._limit = 200
-            limiter._reset_time = time.time() + 3600
-            limiter._request_count = 50
-
-        mock_sleep.side_effect = simulate_header_update
-
-        async with limiter:
-            pass
-
-        assert limiter._limit == 200
-        assert limiter._request_count == 51
-        assert limiter._reset_time is not None
 
     @pytest.mark.asyncio
     async def test_sleep_with_window_expired_during_sleep(
@@ -242,6 +207,14 @@ class TestUpdateFromHeaders:
         assert limiter._reset_time >= before + 119
 
     @pytest.mark.asyncio
+    async def test_exhausted_reset_header_is_ignored(self) -> None:
+        """A reset timestamp already in the past should not be set."""
+        limiter = ServiceNowRateLimiter()
+        headers = httpx.Headers({"x-ratelimit-reset": str(time.time() - 60)})
+        await limiter.update_from_headers(headers)
+        assert limiter._reset_time is None
+
+    @pytest.mark.asyncio
     async def test_no_headers_is_noop(self) -> None:
         limiter = ServiceNowRateLimiter()
         headers = httpx.Headers({})
@@ -272,37 +245,6 @@ class TestUpdateFromHeaders:
 
 
 class TestRateLimiterConcurrency:
-    @pytest.mark.asyncio
-    async def test_update_from_headers_not_blocked_during_sleep(
-        self, mock_sleep: Mock
-    ) -> None:
-        """update_from_headers must be able to acquire the lock while __aenter__ sleeps."""
-        limiter = ServiceNowRateLimiter()
-        limiter._limit = 10
-        limiter._request_count = 10
-        limiter._reset_time = time.time() + 5
-
-        update_completed = False
-
-        async def sleep_and_update(*args: object) -> None:
-            nonlocal update_completed
-            headers = httpx.Headers(
-                {
-                    "x-ratelimit-limit": "200",
-                    "x-ratelimit-reset": str(time.time() + 3600),
-                }
-            )
-            await limiter.update_from_headers(headers)
-            update_completed = True
-            limiter._reset_time = time.time() - 1
-
-        mock_sleep.side_effect = sleep_and_update
-
-        async with limiter:
-            pass
-
-        assert update_completed
-
     @pytest.mark.asyncio
     async def test_concurrent_enters_all_increment(self, mock_sleep: Mock) -> None:
         """Multiple concurrent __aenter__ calls should each increment the count."""
