@@ -12,11 +12,10 @@ from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
 from snyk.overrides import (
     SnykProjectAPIQueryParams,
-    SnykTargetAPIQueryParams,
     SnykPolicyAPIQueryParams,
     SnykVulnerabilityAPIQueryParams,
 )
-from snyk.utils import enrich_batch_with_data, parse_next_page_params
+from snyk.utils import enrich_batch_with_data
 
 
 class CacheKeys(StrEnum):
@@ -64,7 +63,7 @@ class SnykClient:
         self.http_client = OceanAsyncClient(retry_config=retry_config)
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
-        self.snyk_api_version = "2026-03-25"
+        self.snyk_api_version = "2024-10-15"
         self.rate_limiter = rate_limiter
         self.semaphore = asyncio.BoundedSemaphore(CONCURRENT_REQUESTS)
 

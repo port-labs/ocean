@@ -1,3 +1,4 @@
+from dataclasses import field
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
@@ -169,13 +170,11 @@ class SnykPolicyAPIQueryParams(GenerateQueryParamMixin):
         default=None,
         title="Expires Before",
         description="Select only policies with an expiry strictly before the given time. e.g 2024-03-16T00:00:00Z",
-        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
     )
     expires_after: Optional[str] = Field(
         default=None,
         title="Expires After",
         description="Select only policies with an expiry strictly past the given time. e.g 2024-03-16T00:00:00Z",
-        regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
     )
     expires_never: Optional[bool] = Field(
         default=None,
@@ -338,9 +337,7 @@ class SnykPortAppConfig(PortAppConfig):
         | VulnerabilityResourceConfig
         | IssueResourceConfig
         | PolicyResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore[assignment]
+    ] = Field(default_factory=list)  # type: ignore[assignment]
 
 
 class SnykIntegration(BaseIntegration):
