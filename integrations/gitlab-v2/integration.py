@@ -83,10 +83,29 @@ class PipelineQueryParams(QueryParamMixin):
         title="Status",
         description="Return only pipelines currently in the given execution status.",
     )
-    source: str | None = Field(
+    source: (
+        Literal[
+            "push",
+            "schedule",
+            "web",
+            "merge_request_event",
+            "api",
+            "chat",
+            "external",
+            "external_pull_request_event",
+            "ondemand_dast_scan",
+            "ondemand_dast_validation",
+            "parent_pipeline",
+            "pipeline",
+            "security_orchestration_policy",
+            "trigger",
+            "webide",
+        ]
+        | None
+    ) = Field(
         default=None,
         title="Source",
-        description="Return only pipelines triggered by the given source (e.g. push, schedule, web, merge_request_event, api).",
+        description="Return only pipelines triggered by the given source.",
     )
     ref: str | None = Field(
         default=None,
