@@ -29,6 +29,7 @@ from github.clients.utils import (
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
+from github.core.exporters.branch_rule_exporter import RestBranchRuleExporter
 from github.core.exporters.deployment_exporter import RestDeploymentExporter
 from github.core.exporters.deployment_status_exporter import (
     RestDeploymentStatusExporter,
@@ -62,6 +63,7 @@ from github.core.exporters.organization_exporter import RestOrganizationExporter
 
 from github.core.options import (
     ListBranchOptions,
+    ListBranchRuleOptions,
     ListDeploymentsOptions,
     ListDeploymentStatusesOptions,
     ListEnvironmentsOptions,
@@ -101,6 +103,7 @@ from integration import (
     GithubTeamConfig,
     GithubFileResourceConfig,
     GithubBranchConfig,
+    GithubBranchRuleConfig,
     GithubSecretScanningAlertConfig,
     GithubDeploymentConfig,
     GithubDeploymentStatusConfig,
@@ -645,6 +648,58 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 if tasks:
                     async for branches in stream_async_iterators_tasks(*tasks):
                         yield branches
+
+
+@ocean.on_resync(ObjectKind.BRANCH_RULE)
+async def resync_branch_rules(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all branch rules in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
+    branch_rule_exporter = RestBranchRuleExporter(rest_client)
+
+    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
+    selector = cast(GithubBranchRuleConfig, event.resource_config).selector
+
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations()
+    ):
+        for org in organizations:
+            org_name = org["login"]
+            repo_options = ListRepositoryOptions(
+                organization=org_name,
+                organization_type=org["type"],
+                type=port_app_config.repository_type,
+                search_params=selector.repo_search,
+            )
+
+            async for repositories in repository_exporter.get_paginated_resources(
+                repo_options
+            ):
+                tasks = []
+                for repo in repositories:
+                    tasks.append(
+                        branch_rule_exporter.get_paginated_resources(
+                            ListBranchRuleOptions(
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                branch_names=selector.branch_names,
+                                default_branch_only=selector.default_branch_only,
+                                repo=repo,
+                            )
+                        )
+                    )
+
+                    if len(tasks) == MAX_CONCURRENT_REPOS:
+                        async for rules in stream_async_iterators_tasks(*tasks):
+                            yield rules
+                        tasks.clear()
+
+                if tasks:
+                    async for rules in stream_async_iterators_tasks(*tasks):
+                        yield rules
 
 
 @ocean.on_resync(ObjectKind.ENVIRONMENT)

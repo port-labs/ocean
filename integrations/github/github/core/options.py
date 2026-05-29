@@ -272,6 +272,19 @@ class ListCollaboratorOptions(RepositoryIdentifier):
     affiliation: Required[str]
 
 
+class SingleBranchRuleOptions(RepositoryIdentifier):
+    """Options for fetching branch rules for a single branch."""
+
+    branch_name: Required[str]
+
+
+class ListBranchRuleOptions(RepositoryIdentifier):
+    """Options for listing branch rules."""
+
+    branch_names: NotRequired[Optional[list[str]]]
+    default_branch_only: NotRequired[bool]
+
+
 class BaseSecretScanningAlertOptions(RepositoryIdentifier):
     """Base options for secret scanning alerts."""
 

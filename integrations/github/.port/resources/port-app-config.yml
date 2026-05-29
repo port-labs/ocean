@@ -77,3 +77,23 @@ resources:
                 (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
           relations:
             repository: .__repository
+  - kind: branch-rule
+    selector:
+      query: 'true'
+      defaultBranchOnly: true
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .__organization + "/" + .__repository + "/" + .__branch + "/" + (.ruleset_id|tostring) + "/" + .type
+          title: .type + " (" + .ruleset_source + ")"
+          blueprint: '"githubBranchRule"'
+          properties:
+            ruleType: .type
+            rulesetSource: .ruleset_source
+            rulesetSourceType: .ruleset_source_type
+            rulesetId: .ruleset_id
+            parameters: .parameters
+            branch: .__branch
+          relations:
+            repository: .__repository

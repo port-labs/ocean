@@ -1,0 +1,34 @@
+{
+  "type": "pull_request",
+  "parameters": {
+    "required_approving_review_count": 2,
+    "dismiss_stale_reviews_on_push": true,
+    "required_reviewers": [],
+    "require_code_owner_review": true,
+    "require_last_push_approval": false,
+    "required_review_thread_resolution": false,
+    "allowed_merge_methods": [
+      "merge"
+    ]
+  },
+  "ruleset_source_type": "Repository",
+  "ruleset_source": "codaqui/institucional",
+  "ruleset_id": 3141418,
+  "__branch": "main",
+  "__repository": "institucional",
+  "__repository_object": {
+    "id": 463401014,
+    "name": "institucional",
+    "full_name": "codaqui/institucional",
+    "private": false,
+    "owner": {
+      "login": "codaqui",
+      "id": 104939806,
+      "type": "Organization"
+    },
+    "html_url": "https://github.com/codaqui/institucional",
+    "default_branch": "main",
+    "visibility": "public"
+  },
+  "__organization": "codaqui"
+}

@@ -626,6 +626,32 @@ class GithubBranchConfig(ResourceConfig):
     )
 
 
+class GithubBranchRuleSelector(RepoSearchSelector):
+    branch_names: List[str] = Field(
+        title="Branch Names",
+        default_factory=list,
+        alias="branchNames",
+        description="Branches to fetch rules for (e.g. ['main', 'develop']). If empty, all branches are checked.",
+    )
+    default_branch_only: bool = Field(
+        title="Default Branch Only",
+        default=True,
+        alias="defaultBranchOnly",
+        description="Only fetch rules for the repository's default branch; overrides branchNames if set.",
+    )
+
+
+class GithubBranchRuleConfig(ResourceConfig):
+    kind: Literal[ObjectKind.BRANCH_RULE] = Field(
+        title="Github Branch Rule",
+        description="Github branch rule resource kind.",
+    )
+    selector: GithubBranchRuleSelector = Field(
+        title="Branch rule selector",
+        description="Selector for the branch rule resource.",
+    )
+
+
 class GithubOrganizationConfig(ResourceConfig):
     kind: Literal[ObjectKind.ORGANIZATION] = Field(
         title="Github Organization",
@@ -738,6 +764,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubTeamConfig
         | GithubFileResourceConfig
         | GithubBranchConfig
+        | GithubBranchRuleConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig
         | GithubOrganizationConfig
