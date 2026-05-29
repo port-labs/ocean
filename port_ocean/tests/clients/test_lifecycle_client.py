@@ -593,8 +593,7 @@ class TestResolveLifecycleIngestUrl:
             auth=MagicMock(),
         )
         assert (
-            client._resync_url("r1")
-            == "https://ingest.us.getport.io/v1/lifecycle/r1"
+            client._resync_url("r1") == "https://ingest.us.getport.io/v1/lifecycle/r1"
         )
         assert (
             client._granular_url("e1", GranularityType.KIND)
