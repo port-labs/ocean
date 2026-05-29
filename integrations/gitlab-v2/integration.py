@@ -29,12 +29,6 @@ ISO_8601_DATETIME_REGEX = (
 )
 
 
-class QueryParamMixin(BaseModel):
-    def generate_query_params(self) -> dict[str, Any]:
-        params = self.dict(exclude_none=True, exclude_unset=True)
-        return params
-
-
 class SearchQuery(BaseModel):
     """A search query to execute against a GitLab project during enrichment."""
 
@@ -51,8 +45,6 @@ class SearchQuery(BaseModel):
 
 
 class PipelineQueryParams(BaseModel):
-    def generate_query_params(self) -> dict[str, Any]:
-        return self.dict(exclude_none=True, exclude_unset=True)
     """Gitlab API query params that filters returned pipelines"""
 
     name: str | None = Field(
@@ -144,6 +136,9 @@ class PipelineQueryParams(BaseModel):
         description="Return only pipelines updated before this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
         regex=ISO_8601_DATETIME_REGEX,
     )
+
+    def generate_query_params(self) -> dict[str, Any]:
+        return self.dict(exclude_none=True, exclude_unset=True)
 
 
 class GroupSelector(Selector):
