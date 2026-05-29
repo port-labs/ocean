@@ -6,6 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.43.3 (2026-05-27)
+
+### Improvements
+
+- Dynamically infer the ingest_url
+
+## 0.43.2 (2026-05-27)
+
+### Bug Fixes
+
+- Fixed resync reconciliation to fetch datasource entities before the resync start time using the datasource pagination endpoint.
+
+## 0.43.1 (2026-05-26)
+
+### Improvements
+
+- Added earlywarning.io to the trusted subdomains list in the IP blocker to fix hostname rewriting for hosted custom integrations
+
+## 0.43.0 (2026-05-25)
+
+### Improvements
+
+- Added SSL verification settings to Ocean core and integrations
+  - New config: `ssl.port` and `ssl.third_party`, each with `verify` (bool) and `x509.strict` (bool).
+  - New helpers: `resolve_verify_param()`, `create_third_party_http_client()`.
+  - Wired into Port API client, shared `http_async_client`.
+  - Startup warnings when non-default SSL settings are used.
+
+## 0.42.11 (2026-05-25)
+
+### Improvements
+
+-  Lifecycle use backoff and handling exception
+
+## 0.42.10 (2026-05-25)
+
+### Improvements
+
+- Added a shared async iterator utility for streaming independent iterators while deferring failures until surviving iterators finish.
+
 ## 0.42.9 (2026-05-24)
 
 ### Bug Fixes

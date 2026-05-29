@@ -19,6 +19,8 @@ from github.helpers.gql_queries import (
     generate_pull_request_details_gql,
 )
 from github.core.exporters.pull_request_exporter.utils import filter_prs_by_updated_at
+from integration import GithubPullRequestSelector
+
 
 TEST_PULL_REQUESTS = [
     {
@@ -984,3 +986,15 @@ def test_filter_prs_by_updated_at_skips_items_missing_updated_at() -> None:
         prs, "updatedAt", datetime(2025, 8, 1, 0, 0, 0, tzinfo=UTC)
     )
     assert [pr["id"] for pr in filtered] == [1]
+
+
+def test_pull_request_selector_accepts_exclude_graphql_fields_alias() -> None:
+    selector = GithubPullRequestSelector.parse_obj(
+        {
+            "query": "true",
+            "api": "graphql",
+            "excludeGraphqlFields": ["additions", "author", "somethingElse"],
+        }
+    )
+
+    assert selector.exclude_graphql_fields == ["additions", "author", "somethingElse"]
