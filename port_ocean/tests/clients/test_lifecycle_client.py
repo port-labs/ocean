@@ -587,6 +587,12 @@ class TestResolveLifecycleIngestUrl:
             assert result == "https://ingest.getport.io"
             mock_logger.warning.assert_called_once()
 
+    def test_local_api_base_url_maps_to_ingest_localhost(self) -> None:
+        assert (
+            resolve_lifecycle_ingest_url("http://api.localhost:9080")
+            == "http://ingest.localhost:9080"
+        )
+
     def test_resolver_wires_through_lifecycle_client(self) -> None:
         client = LifecycleClient(
             base_url=resolve_lifecycle_ingest_url("https://api.us.getport.io"),
