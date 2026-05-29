@@ -196,6 +196,11 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(PipelineResourceConfig, event.resource_config).selector
     include_only_active_projects = selector.include_only_active_projects
 
+    params = (
+        selector.api_query_params.generate_query_params()
+        if selector.api_query_params
+        else None
+    )
     async for projects_batch in client.get_projects(
         params=build_project_params(
             include_only_active_projects=include_only_active_projects
@@ -209,11 +214,6 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for project in projects_batch
         }
 
-        params = (
-            selector.api_query_params.generate_query_params()
-            if selector.api_query_params
-            else None
-        )
         async for pipelines_batch in client.get_projects_resource(
             projects_batch, "pipelines", params=params
         ):
