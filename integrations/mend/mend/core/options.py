@@ -13,7 +13,7 @@ class ListScaVulnerabilityOptions(TypedDict):
     project_uuid: Required[str]
     project_name: NotRequired[str]
     severity: NotRequired[
-        Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
+        Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW"]]]
     ]
 
 
