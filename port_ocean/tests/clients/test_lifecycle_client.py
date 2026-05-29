@@ -593,6 +593,25 @@ class TestResolveLifecycleIngestUrl:
             == "http://ingest.localhost:9080"
         )
 
+    def test_local_api_base_url_with_trailing_slash(self) -> None:
+        assert (
+            resolve_lifecycle_ingest_url("http://api.localhost:9080/")
+            == "http://ingest.localhost:9080"
+        )
+
+    def test_local_resolver_wires_through_lifecycle_client(self) -> None:
+        client = LifecycleClient(
+            base_url=resolve_lifecycle_ingest_url("http://api.localhost:9080"),
+            auth=MagicMock(),
+        )
+        assert (
+            client._resync_url("r1") == "http://ingest.localhost:9080/v1/lifecycle/r1"
+        )
+        assert (
+            client._granular_url("e1", GranularityType.KIND)
+            == "http://ingest.localhost:9080/v1/lifecycle/e1/kind"
+        )
+
     def test_resolver_wires_through_lifecycle_client(self) -> None:
         client = LifecycleClient(
             base_url=resolve_lifecycle_ingest_url("https://api.us.getport.io"),
