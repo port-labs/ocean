@@ -50,7 +50,9 @@ class SearchQuery(BaseModel):
     )
 
 
-class PipelineQueryParams(QueryParamMixin):
+class PipelineQueryParams(BaseModel):
+    def generate_query_params(self) -> dict[str, Any]:
+        return self.dict(exclude_none=True, exclude_unset=True)
     """Gitlab API query params that filters returned pipelines"""
 
     name: str | None = Field(
