@@ -421,7 +421,11 @@ class GitLabClient:
         tasks = [
             semaphore_async_iterator(
                 semaphore,
-                partial(self._get_pipeline_jobs, project["id"], pipeline_params),
+                partial(
+                    self._get_pipeline_jobs,
+                    project["id"],
+                    dict(pipeline_params) if pipeline_params else None,
+                ),
             )
             for project in project_batch
         ]
