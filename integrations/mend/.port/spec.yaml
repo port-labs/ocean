@@ -1,0 +1,20 @@
+title: Mend.io
+description: Mend SCA integration for Port Ocean
+icon: Mend
+features:
+  - type: exporter
+    section: Code Quality & Security
+    resources:
+      - kind: mend-project
+      - kind: sca-finding
+configurations:
+  - name: mendActivationKey
+    required: true
+    type: string
+    sensitive: true
+    description: Provide the Mend.io Activation key for the Port Integration.
+  - name: fullSyncIntervalMinutes
+    required: false
+    type: integer
+    default: 720
+    description: Interval in minutes between forced full resyncs. Between forced full resyncs, the integration only fetches findings whose project changed since the last sync. A forced full resync bypasses that delta filter so findings updated independently of their project (status changes, suppressions, etc.) are picked up. Set 0 to always perform a full resync.
