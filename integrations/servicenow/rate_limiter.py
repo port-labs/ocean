@@ -76,13 +76,17 @@ class ServiceNowRateLimiter:
                 reset_header = headers.get(LIMIT_RESET_HEADER)
                 retry_after = headers.get(RETRY_AFTER_HEADER)
 
-                if limit_header:
-                    self._limit = int(limit_header)
-
                 if reset_header:
                     reset_time = float(reset_header)
-                    if reset_time > time.time():
-                        self._reset_time = reset_time
+                    if reset_time <= max(time.time(), self._reset_time or 0.0):
+                        return
+                    self._reset_time = reset_time
+                    if limit_header:
+                        self._limit = int(limit_header)
+                    logger.debug(
+                        f"Rate limit status - {self._request_count}/{self._limit} requests, "
+                        f"resets in {self.seconds_until_reset:.1f}s"
+                    )
 
                 if retry_after:
                     wait_seconds = int(retry_after)
@@ -94,12 +98,6 @@ class ServiceNowRateLimiter:
                     logger.info(
                         f"Rate limit 429 received: Retry-After {wait_seconds}s, "
                         f"limit {self._limit} req/hr"
-                    )
-
-                if limit_header or reset_header:
-                    logger.debug(
-                        f"Rate limit status - {self._request_count}/{self._limit} requests, "
-                        f"resets in {self.seconds_until_reset:.1f}s"
                     )
 
             except (ValueError, TypeError) as e:

@@ -140,11 +140,12 @@ class TestRateLimiterAenter:
 
 class TestUpdateFromHeaders:
     @pytest.mark.asyncio
-    async def test_parses_limit_header(self) -> None:
+    async def test_limit_header_without_reset_is_ignored(self) -> None:
+        """Limit alone cannot be trusted without a valid reset header."""
         limiter = ServiceNowRateLimiter()
         headers = httpx.Headers({"x-ratelimit-limit": "500"})
         await limiter.update_from_headers(headers)
-        assert limiter._limit == 500
+        assert limiter._limit is None
 
     @pytest.mark.asyncio
     async def test_parses_reset_header(self) -> None:
@@ -207,12 +208,29 @@ class TestUpdateFromHeaders:
         assert limiter._reset_time >= before + 119
 
     @pytest.mark.asyncio
-    async def test_exhausted_reset_header_is_ignored(self) -> None:
-        """A reset timestamp already in the past should not be set."""
+    async def test_exhausted_reset_header_skips_entire_update(self) -> None:
+        """A stale reset timestamp means the whole response is invalid — limit also ignored."""
         limiter = ServiceNowRateLimiter()
-        headers = httpx.Headers({"x-ratelimit-reset": str(time.time() - 60)})
+        headers = httpx.Headers(
+            {"x-ratelimit-limit": "500", "x-ratelimit-reset": str(time.time() - 60)}
+        )
         await limiter.update_from_headers(headers)
         assert limiter._reset_time is None
+        assert limiter._limit is None
+
+    @pytest.mark.asyncio
+    async def test_reset_header_not_newer_than_existing_is_ignored(self) -> None:
+        """A reset_time not later than the existing reset carries no new information."""
+        limiter = ServiceNowRateLimiter()
+        limiter._reset_time = time.time() + 7200
+        limiter._limit = 100
+        headers = httpx.Headers(
+            {"x-ratelimit-limit": "200", "x-ratelimit-reset": str(time.time() + 3600)}
+        )
+        await limiter.update_from_headers(headers)
+        assert limiter._limit == 100
+        assert limiter._reset_time is not None
+        assert limiter._reset_time >= time.time() + 7100
 
     @pytest.mark.asyncio
     async def test_no_headers_is_noop(self) -> None:
@@ -223,11 +241,11 @@ class TestUpdateFromHeaders:
         assert limiter._reset_time is None
 
     @pytest.mark.asyncio
-    async def test_invalid_header_values_logged_not_raised(self) -> None:
+    async def test_invalid_reset_header_value_logged_not_raised(self) -> None:
         limiter = ServiceNowRateLimiter()
-        headers = httpx.Headers({"x-ratelimit-limit": "not-a-number"})
+        headers = httpx.Headers({"x-ratelimit-reset": "not-a-number"})
         await limiter.update_from_headers(headers)
-        assert limiter._limit is None
+        assert limiter._reset_time is None
 
     @pytest.mark.asyncio
     async def test_does_not_reset_request_count(self) -> None:
