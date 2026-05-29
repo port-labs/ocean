@@ -381,7 +381,7 @@ class GitLabClient:
                     self.rest.get_paginated_project_resource,
                     str(project["id"]),
                     resource_type,
-                    params=params,
+                    params=dict(params) if params else None,
                 ),
             )
             for project in projects_batch
