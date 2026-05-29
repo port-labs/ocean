@@ -370,8 +370,8 @@ class GitLabClient:
         self,
         projects_batch: list[dict[str, Any]],
         resource_type: str,
-        params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         semaphore = asyncio.Semaphore(max_concurrent)
         tasks = [
