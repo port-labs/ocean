@@ -816,7 +816,9 @@ class JiraClient(OAuthClient):
             if e.response.status_code == 400:
                 try:
                     error_messages = e.response.json().get("errorMessages", [])
-                    detail = "; ".join(error_messages) if error_messages else "no details"
+                    detail = (
+                        "; ".join(error_messages) if error_messages else "no details"
+                    )
                 except Exception:
                     detail = "no details"
                 logger.warning(
