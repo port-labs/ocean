@@ -15,7 +15,7 @@ from snyk.overrides import (
     SnykPolicyAPIQueryParams,
     SnykVulnerabilityAPIQueryParams,
 )
-from snyk.utils import enrich_batch_with_data
+from snyk.utils import enrich_batch_with_data, parse_next_page_params
 
 
 class CacheKeys(StrEnum):
