@@ -807,10 +807,23 @@ class JiraClient(OAuthClient):
                 yield backlogs
             return
 
-        async for backlogs in self._fetch_backlog_from_software_api(
-            board_id, query_params
-        ):
-            yield backlogs
+        try:
+            async for backlogs in self._fetch_backlog_from_software_api(
+                board_id, query_params
+            ):
+                yield backlogs
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 400:
+                try:
+                    error_messages = e.response.json().get("errorMessages", [])
+                    detail = "; ".join(error_messages) if error_messages else "no details"
+                except Exception:
+                    detail = "no details"
+                logger.warning(
+                    f"Board {board_id} returned 400, skipping.\nDetails: {detail}"
+                )
+                return
+            raise
 
     async def get_paginated_epics_for_board(
         self,
