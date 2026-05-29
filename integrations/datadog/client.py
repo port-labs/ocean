@@ -8,8 +8,11 @@ from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
 
 import httpx
+from http import HTTPStatus
 from loguru import logger
-from port_ocean.utils import http_async_client
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
 from port_ocean.utils.queue_utils import process_in_queue
 
 from utils import generate_time_windows_from_interval_days
@@ -27,6 +30,22 @@ SERVICE_KEY = "__service"
 QUERY_ID_KEY = "__query_id"
 QUERY_KEY = "__query"
 ENV_KEY = "__env"
+DATADOG_UNKNOWN_STATUS_CODE = 512
+
+
+def _create_datadog_retry_config() -> RetryConfig:
+    """Retry transient Datadog API failures, including undocumented 512 responses at deep pagination."""
+    return RetryConfig(
+        retry_after_headers=["X-RateLimit-Reset", "Retry-After"],
+        additional_retry_status_codes=[
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            DATADOG_UNKNOWN_STATUS_CODE,
+        ],
+        ignore_retry_after_status_codes=[
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            DATADOG_UNKNOWN_STATUS_CODE,
+        ],
+    )
 
 
 def embed_credentials_in_url(url: str, username: str, token: str) -> str:
@@ -80,7 +99,10 @@ class DatadogClient:
         self.dd_api_key = api_key
         self.dd_app_key = app_key
         self.access_token = access_token
-        self.http_client = http_async_client
+        self.http_client = OceanAsyncClient(
+            retry_config=_create_datadog_retry_config(),
+            timeout=ocean.config.client_timeout,
+        )
 
         # These are created to limit the concurrent requests we are making to specific routes.
         # The limits provided to each semaphore were pre-determined by the headers sent for each one of the routes.
@@ -106,6 +128,19 @@ class DatadogClient:
             "Content-Type": "application/json",
         }
 
+    def _log_rate_limit_context(
+        self, url: str, method: str, response: httpx.Response
+    ) -> None:
+        if response.status_code != http.HTTPStatus.TOO_MANY_REQUESTS:
+            return
+
+        logger.bind(
+            remaining=response.headers.get("X-RateLimit-Remaining"),
+            reset=response.headers.get("X-RateLimit-Reset"),
+            method=method,
+            url=url,
+        ).warning(f"Datadog rate limit hit — {method} {url}")
+
     async def _send_api_request(
         self,
         url: str,
@@ -122,6 +157,7 @@ class DatadogClient:
             params=params,
             json=json_data,
         )
+        self._log_rate_limit_context(url, method, response)
         response.raise_for_status()
         return response.json()
 
@@ -145,14 +181,24 @@ class DatadogClient:
                     params=params,
                     json=json_data,
                 )
+
+            self._log_rate_limit_context(url, method, response)
+            response.raise_for_status()
+
             try:
                 rate_limit_remaining = int(
                     response.headers.get("X-RateLimit-Remaining", 0)
                 )
                 if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
-                    datadog_wait_time_in_seconds = int(
-                        response.headers.get("X-RateLimit-Reset")
-                    )
+                    rate_limit_reset = response.headers.get("X-RateLimit-Reset")
+                    if rate_limit_reset is None:
+                        logger.warning(
+                            f"Approaching rate limit but X-RateLimit-Reset header missing for url {url}"
+                        )
+                        await asyncio.sleep(DEFAULT_SLEEP_TIME)
+                        continue
+
+                    datadog_wait_time_in_seconds = int(rate_limit_reset)
                     wait_time = max(datadog_wait_time_in_seconds, DEFAULT_SLEEP_TIME)
 
                     logger.info(
@@ -160,13 +206,15 @@ class DatadogClient:
                         f"URL: {url}, Remaining: {rate_limit_remaining} "
                     )
                     await asyncio.sleep(wait_time)
-            except KeyError as e:
+                    continue
+            except ValueError as e:
                 logger.warning(
-                    f"Rate limit headers not found in response: {str(e)} for url {url}"
+                    f"Invalid rate limit header value for url {url}: {str(e)}"
                 )
             except Exception as e:
                 logger.error(f"Error while making request to url: {url} - {str(e)}")
                 raise
+
             return response.json()
 
     async def get_team_members(

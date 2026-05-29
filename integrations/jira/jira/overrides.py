@@ -125,6 +125,46 @@ class JiraBoardResourceConfig(ResourceConfig):
     )
 
 
+class JiraEpicAPIQueryParams(BaseModel):
+    done: Literal["true", "false"] | None = Field(
+        default=None,
+        title="Done",
+        description="Filter epics by completion status. 'true' returns only completed epics, 'false' returns only incomplete epics. Omit to return all epics.",
+    )
+
+
+class JiraEpicSelector(Selector):
+    status: list[Literal["incomplete", "complete"]] | None = Field(
+        default=["incomplete"],
+        title="Epic Status",
+        description=(
+            "Filter epics by status. Accepts 'complete', 'incomplete', or both. "
+            "Omit to fetch all epics regardless of status. "
+            "Example: ['incomplete'] fetches only incomplete epics."
+        ),
+    )
+
+    @property
+    def api_query_params(self) -> JiraEpicAPIQueryParams | None:
+        if not self.status or len(self.status) != 1:
+            return None
+        done: Literal["true", "false"] = (
+            "true" if self.status[0] == "complete" else "false"
+        )
+        return JiraEpicAPIQueryParams(done=done)
+
+
+class JiraEpicResourceConfig(ResourceConfig):
+    kind: Literal["epic"] = Field(
+        title="Jira Epic",
+        description="Jira epic resource kind.",
+    )
+    selector: JiraEpicSelector = Field(
+        title="Epic Selector",
+        description="Selector for Jira epic resources.",
+    )
+
+
 class JiraWorklogAPIQueryParams(BaseModel):
     class Config:
         allow_population_by_field_name = True
@@ -190,6 +230,7 @@ class JiraPortAppConfig(PortAppConfig):
         | JiraUserResourceConfig
         | JiraReleaseResourceConfig
         | JiraBoardResourceConfig
+        | JiraEpicResourceConfig
         | JiraWorklogResourceConfig
     ] = Field(
         default_factory=list

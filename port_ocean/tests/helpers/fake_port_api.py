@@ -60,6 +60,11 @@ async def search_entities() -> Dict[str, Any]:
     return {"ok": True, "entities": []}
 
 
+@app.router.post("/v1/blueprints/entities/datasource-entities")
+async def datasource_entities() -> Dict[str, Any]:
+    return {"ok": True, "entities": [], "next": None}
+
+
 @app.router.get("/v1/integration/{integration_id}")
 @app.router.patch("/v1/integration/{integration_id}")
 @app.router.patch("/v1/integration/{integration_id}/resync-state")
