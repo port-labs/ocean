@@ -5,14 +5,24 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from port_ocean.clients.dsp.lifecycle import GranularityType, LifecycleClient
+from port_ocean.clients.dsp.lifecycle import (
+    GranularityType,
+    LifecycleClient,
+    resolve_lifecycle_ingest_url,
+)
+from port_ocean.config.settings import SslClientSettings
 from port_ocean.helpers.retry import RetryTransport
 
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> Generator[MagicMock, None, None]:
-    with patch("port_ocean.helpers.async_client.ocean") as mock_ocean:
-        mock_ocean.app.is_saas = MagicMock(return_value=False)
+    mock_ocean = MagicMock()
+    mock_ocean.app.is_saas = MagicMock(return_value=False)
+    mock_ocean.config.ssl.port = SslClientSettings()
+    with (
+        patch("port_ocean.helpers.async_client.ocean", new=mock_ocean),
+        patch("port_ocean.clients.dsp.lifecycle.ocean", new=mock_ocean),
+    ):
         yield mock_ocean
 
 
@@ -658,76 +668,21 @@ class TestRetryBehavior:
         mock_logger.warning.assert_called_once()
 
 
-class TestDynamicIngestUrl:
-    @pytest.mark.asyncio
-    async def test_get_log_attributes(self, mock_auth: MagicMock) -> None:
-        client = LifecycleClient(integration_identifier="test-int", auth=mock_auth)
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.status_code = 200
-        mock_response.json = MagicMock(
-            return_value={
-                "integration": {
-                    "logAttributes": {"ingestUrl": "https://ingest.port.io"}
-                }
-            }
+class TestResolveLifecycleIngestUrl:
+    def test_eu_base_url(self) -> None:
+        assert (
+            resolve_lifecycle_ingest_url("https://api.getport.io")
+            == "https://ingest.getport.io"
         )
 
-        with patch.object(
-            client, "get", new=AsyncMock(return_value=mock_response)
-        ) as mock_get:
-            log_attrs = await client.get_log_attributes()
-            assert log_attrs == {"ingestUrl": "https://ingest.port.io"}
-            mock_get.assert_called_once_with(
-                f"{mock_auth.api_url}/integration/test-int",
-                headers={"Authorization": "Bearer test-token"},
-            )
-
-    @pytest.mark.asyncio
-    async def test_get_lifecycle_base_url_dynamic(self, mock_auth: MagicMock) -> None:
-        client = LifecycleClient(integration_identifier="test-int", auth=mock_auth)
-        mock_response = MagicMock(spec=httpx.Response)
-        mock_response.status_code = 200
-        mock_response.json = MagicMock(
-            return_value={
-                "integration": {
-                    "logAttributes": {"ingestUrl": "https://ingest.port.io/"}
-                }
-            }
+    def test_us_base_url(self) -> None:
+        assert (
+            resolve_lifecycle_ingest_url("https://api.us.getport.io")
+            == "https://ingest.us.getport.io"
         )
 
-        with patch.object(client, "get", new=AsyncMock(return_value=mock_response)):
-            base_url = await client.get_lifecycle_base_url()
-            assert base_url == "https://ingest.port.io"
-            # verify cache works
-            base_url_cached = await client.get_lifecycle_base_url()
-            assert base_url_cached == "https://ingest.port.io"
-
-    @pytest.mark.asyncio
-    async def test_get_log_attributes_error_handling(
-        self, mock_auth: MagicMock
-    ) -> None:
-        client = LifecycleClient(integration_identifier="test-int", auth=mock_auth)
-        with (
-            patch.object(
-                client, "get", new=AsyncMock(side_effect=httpx.HTTPError("API error"))
-            ),
-            patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger,
-        ):
-            log_attrs = await client.get_log_attributes()
-            assert log_attrs is None
-            mock_logger.error.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_get_lifecycle_base_url_error_handling(
-        self, mock_auth: MagicMock
-    ) -> None:
-        client = LifecycleClient(integration_identifier="test-int", auth=mock_auth)
-        with (
-            patch.object(
-                client, "get", new=AsyncMock(side_effect=Exception("Parsing error"))
-            ),
-            patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger,
-        ):
-            base_url = await client.get_lifecycle_base_url()
-            assert base_url == ""
-            mock_logger.error.assert_called()
+    def test_unknown_url_defaults_to_eu_with_warning(self) -> None:
+        with patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger:
+            result = resolve_lifecycle_ingest_url("https://api.custom.example.com")
+            assert result == "https://ingest.getport.io"
+            mock_logger.warning.assert_called_once()
