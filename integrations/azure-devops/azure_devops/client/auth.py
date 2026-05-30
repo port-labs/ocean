@@ -1,9 +1,7 @@
 import base64
 import os
-import time
 from typing import Any, Protocol
 
-from azure.core.credentials import AccessToken
 from azure.core.credentials_async import AsyncTokenCredential
 from azure.identity.aio import DefaultAzureCredential
 
@@ -41,20 +39,6 @@ class ServicePrincipalAuthProvider:
         return {"Authorization": f"Bearer {token}"}
 
 
-class _MockLocalCredential:
-    """Returns a hardcoded fake Bearer token for local dev.
-
-    The mock ADO server accepts any token, so no real OAuth exchange is needed.
-    Both azure-identity and msal enforce HTTPS on the authority URL, so bypassing
-    them entirely is the only option for HTTP localhost endpoints.
-
-    Only instantiated when AZURE_AUTHORITY_HOST points to localhost — never in production.
-    """
-
-    async def get_token(self, *scopes: str, **_: Any) -> AccessToken:
-        return AccessToken("mock-local-bearer-token", int(time.time()) + 3600)
-
-
 def build_auth_provider(config: dict[str, Any]) -> AuthProvider:
     account_mode = config.get("account_mode", ACCOUNT_MODE_SINGLE)
 
@@ -68,15 +52,6 @@ def build_auth_provider(config: dict[str, Any]) -> AuthProvider:
         os.environ["AZURE_TENANT_ID"] = config["tenant_id"]
         os.environ["AZURE_CLIENT_ID"] = config["client_id"]
         os.environ["AZURE_CLIENT_SECRET"] = config["client_secret"]
-
-        authority_host = os.environ.get("AZURE_AUTHORITY_HOST", "")
-        if "localhost" in authority_host or "127.0.0.1" in authority_host:
-            # Local dev only: both azure-identity and msal enforce HTTPS on the
-            # authority URL, so we bypass OAuth entirely and return a hardcoded
-            # fake token. The mock ADO server accepts any Bearer token.
-            # This path is never reached in production.
-            return ServicePrincipalAuthProvider(_MockLocalCredential())
-
         return ServicePrincipalAuthProvider(DefaultAzureCredential())
 
     if account_mode == ACCOUNT_MODE_SINGLE:
