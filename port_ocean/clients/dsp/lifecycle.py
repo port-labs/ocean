@@ -11,9 +11,36 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.version import __integration_version__, __version__
 
+EU_PORT_API_BASE = "https://api.getport.io"
+US_PORT_API_BASE = "https://api.us.getport.io"
+EU_LIFECYCLE_INGEST_URL = "https://ingest.getport.io"
+US_LIFECYCLE_INGEST_URL = "https://ingest.us.getport.io"
+
+LOCAL_PORT_API_BASE = "http://api.localhost:9080"
+LOCAL_LIFECYCLE_INGEST_URL = "http://ingest.localhost:9080"
+
+_PORT_API_TO_LIFECYCLE_INGEST: dict[str, str] = {
+    EU_PORT_API_BASE: EU_LIFECYCLE_INGEST_URL,
+    US_PORT_API_BASE: US_LIFECYCLE_INGEST_URL,
+    LOCAL_PORT_API_BASE: LOCAL_LIFECYCLE_INGEST_URL,
+}
+
 
 def _truncate(text: str, max_len: int = 256) -> str:
     return text if len(text) <= max_len else text[:max_len] + "…"
+
+
+def resolve_lifecycle_ingest_url(port_api_base_url: str) -> str:
+    normalized = port_api_base_url.rstrip("/")
+    if normalized in _PORT_API_TO_LIFECYCLE_INGEST:
+        return _PORT_API_TO_LIFECYCLE_INGEST[normalized]
+    if "api.localhost" in normalized:
+        return LOCAL_LIFECYCLE_INGEST_URL
+    logger.warning(
+        f"Unrecognised Port API base URL {port_api_base_url!r}; "
+        f"defaulting lifecycle ingest URL to {EU_LIFECYCLE_INGEST_URL}"
+    )
+    return EU_LIFECYCLE_INGEST_URL
 
 
 class OceanResyncHttpClient(OceanAsyncClient):
