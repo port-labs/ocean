@@ -16,6 +16,8 @@ from aws.core.exporters.eks.cluster.exporter import EksClusterExporter
 from aws.core.exporters.eks.cluster.models import PaginatedEksClusterRequest
 from aws.core.exporters.rds.db_instance.exporter import RdsDbInstanceExporter
 from aws.core.exporters.rds.db_instance.models import PaginatedDbInstanceRequest
+from aws.core.exporters.rds.db_cluster.exporter import RdsDbClusterExporter
+from aws.core.exporters.rds.db_cluster.models import PaginatedDbClusterRequest
 from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
 from aws.core.exporters.ecs.service.models import PaginatedServiceRequest
 from aws.core.exporters.ecs.task_definition.exporter import EcsTaskDefinitionExporter
@@ -30,6 +32,8 @@ from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.exporters.ecr import EcrRepositoryExporter
 from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
+from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
+from aws.core.exporters.memorydb.user.models import PaginatedMemoryDbUserRequest
 from aws.core.exporters.msk import MskClusterExporter
 from aws.core.exporters.msk.cluster.models import PaginatedMskClusterRequest
 from aws.core.exporters.elasticache import ElastiCacheClusterExporter
@@ -98,6 +102,15 @@ async def resync_eks_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_rds_db_instance(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, RdsDbInstanceExporter, PaginatedDbInstanceRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.RDS_DB_CLUSTER)
+async def resync_rds_db_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, RdsDbClusterExporter, PaginatedDbClusterRequest, regional=True
     )
     async for batch in service:
         yield batch
@@ -197,6 +210,15 @@ async def resync_sqs_queue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ecr_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EcrRepositoryExporter, PaginatedRepositoryRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.MEMORYDB_USER)
+async def resync_memorydb_user(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, MemoryDbUserExporter, PaginatedMemoryDbUserRequest, regional=True
     )
     async for batch in service:
         yield batch

@@ -136,6 +136,9 @@ async def get_integration(integration_id: str) -> Dict[str, Any]:
                 "ingestId": "DOHSAIDHOMER",
                 "ingestUrl": "http://localhost:5555/logs/integration/DOHSAIDHOMER",
             },
+            "ingestAttributes": {
+                "ingestUrl": "http://localhost:5555/ingest/integration/DOHSAIDHOMER",
+            },
         },
     }
 

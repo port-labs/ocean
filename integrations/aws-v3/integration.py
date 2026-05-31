@@ -133,6 +133,13 @@ class AWSRDSDBInstanceResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSRDSDBClusterResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::RDS::DBCluster"] = Field(
+        title="AWS RDS DB Cluster",
+        description="AWS RDS DB Cluster resource kind.",
+    )
+
+
 class AWSEKSClusterResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::EKS::Cluster"] = Field(
         title="AWS EKS Cluster",
@@ -189,6 +196,13 @@ class AWSElastiCacheClusterResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSMemoryDbUserResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::MemoryDB::User"] = Field(
+        title="AWS MemoryDB User",
+        description="AWS MemoryDB User resource kind.",
+    )
+
+
 class AWSEC2VolumeResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::EC2::Volume"] = Field(
         title="AWS EC2 Volume",
@@ -204,6 +218,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSOrganizationsAccountResourceConfig
         | AWSAccountInfoResourceConfig
         | AWSRDSDBInstanceResourceConfig
+        | AWSRDSDBClusterResourceConfig
         | AWSEKSClusterResourceConfig
         | AWSLambdaFunctionResourceConfig
         | AWSECSServiceResourceConfig
@@ -212,6 +227,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSECRRepositoryResourceConfig
         | AWSMSKClusterResourceConfig
         | AWSElastiCacheClusterResourceConfig
+        | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
     ] = Field(
         default_factory=list,
