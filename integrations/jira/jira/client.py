@@ -816,15 +816,17 @@ class JiraClient(OAuthClient):
             if e.response.status_code == 400:
                 try:
                     error_messages = e.response.json().get("errorMessages", [])
-                    detail = (
-                        "; ".join(error_messages) if error_messages else "no details"
-                    )
                 except Exception:
-                    detail = "no details"
-                logger.warning(
-                    f"Board {board_id} returned 400, skipping.\nDetails: {detail}"
-                )
-                return
+                    raise e
+                if any(
+                    "Backlogs are not supported on this board" in msg
+                    for msg in error_messages
+                ):
+                    logger.warning(
+                        f"Board {board_id} does not support backlog, skipping. "
+                        f"Details: {'; '.join(error_messages)}"
+                    )
+                    return
             raise
 
     async def get_paginated_epics_for_board(
