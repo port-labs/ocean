@@ -14,6 +14,7 @@ features:
       - kind: AWS::ECS::TaskDefinition
       - kind: AWS::ECR::Repository
       - kind: AWS::MemoryDB::User
+      - kind: AWS::RDS::DBCluster
       - kind: AWS::MSK::Cluster
       - kind: AWS::EC2::Volume
 configurations:

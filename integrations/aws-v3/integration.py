@@ -133,6 +133,13 @@ class AWSRDSDBInstanceResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSRDSDBClusterResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::RDS::DBCluster"] = Field(
+        title="AWS RDS DB Cluster",
+        description="AWS RDS DB Cluster resource kind.",
+    )
+
+
 class AWSEKSClusterResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::EKS::Cluster"] = Field(
         title="AWS EKS Cluster",
@@ -211,6 +218,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSOrganizationsAccountResourceConfig
         | AWSAccountInfoResourceConfig
         | AWSRDSDBInstanceResourceConfig
+        | AWSRDSDBClusterResourceConfig
         | AWSEKSClusterResourceConfig
         | AWSLambdaFunctionResourceConfig
         | AWSECSServiceResourceConfig
