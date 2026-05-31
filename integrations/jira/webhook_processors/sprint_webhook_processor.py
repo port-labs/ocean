@@ -1,4 +1,5 @@
 from loguru import logger
+import httpx
 
 from initialize_client import get_or_create_jira_client
 from kinds import Kinds
@@ -6,6 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
+from jira.client import SPRINT_WEBHOOK_EVENTS
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
@@ -16,7 +18,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 class SprintWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("webhookEvent", "").startswith("sprint_")
+        return event.payload.get("webhookEvent") in SPRINT_WEBHOOK_EVENTS
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kinds.SPRINT]
@@ -46,16 +48,20 @@ class SprintWebhookProcessor(AbstractWebhookProcessor):
 
         client = get_or_create_jira_client()
         logger.debug(f"Fetching sprint with id: {sprint_id}")
-        item = await client.get_single_sprint(sprint_id=sprint_id)
 
-        if not item:
-            logger.warning(
-                f"Sprint {sprint_id} could not be retrieved after {webhook_event} event"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
+        try:
+            item = await client.get_single_sprint(sprint_id=sprint_id)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(
+                    f"Sprint {sprint_id} not found after {webhook_event} event — "
+                    f"sprint was likely deleted before processing completed"
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[],
+                    deleted_raw_results=[sprint],
+                )
+            raise
 
         logger.debug(f"Retrieved sprint {sprint_id}")
         return WebhookEventRawResults(
