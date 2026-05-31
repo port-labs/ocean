@@ -37,8 +37,10 @@ def lakehouse_integration_client(monkeypatch: Any) -> IntegrationClientMixin:
         auth=auth,
         client=client,
     )
-    integration_client.get_ingest_attributes = AsyncMock(
-        return_value={"ingestUrl": TEST_INGEST_URL}
+    monkeypatch.setattr(
+        integration_client,
+        "get_ingest_attributes",
+        AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
     )
 
     return integration_client

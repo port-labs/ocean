@@ -11,6 +11,8 @@ from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.core.models import LakehouseEventType, LakehouseOperation
 from port_ocean.tests.helpers.lakehouse_batch import make_single_entry_lakehouse_batch
 
+TEST_INGEST_URL = "https://test.example.com"
+
 
 class TestLakehouseEventTypeEnum:
     """Test suite for LakehouseEventType enum"""
@@ -109,9 +111,6 @@ class TestPostIntegrationRawDataInputValidation:
             auth=mock_auth,
             client=mock_client,
         )
-        mixin.get_ingest_attributes = AsyncMock(
-            return_value={"ingestUrl": "https://test.example.com"}
-        )
 
         past_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
@@ -124,8 +123,15 @@ class TestPostIntegrationRawDataInputValidation:
             event_type=LakehouseEventType.RESYNC,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
@@ -168,9 +174,6 @@ class TestPostIntegrationRawDataInputValidation:
             auth=mock_auth,
             client=mock_client,
         )
-        mixin.get_ingest_attributes = AsyncMock(
-            return_value={"ingestUrl": "https://test.example.com"}
-        )
 
         # Timezone-naive datetime in the past (no tzinfo)
         # This tests that the code properly handles naive datetimes
@@ -185,8 +188,15 @@ class TestPostIntegrationRawDataInputValidation:
             event_type=LakehouseEventType.RESYNC,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
@@ -209,9 +219,6 @@ class TestPostIntegrationRawDataRequestBody:
             auth=mock_auth,
             client=mock_client,
         )
-        mixin.get_ingest_attributes = AsyncMock(
-            return_value={"ingestUrl": "https://test.example.com"}
-        )
 
         resync_time = datetime(2024, 3, 29, 10, 0, 0, tzinfo=timezone.utc)
         raw_data = [{"name": "test-repo", "stars": 100}]
@@ -227,8 +234,15 @@ class TestPostIntegrationRawDataRequestBody:
             extraction_timestamp=fixed_ts,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("resync-abc-123", event)
 
@@ -265,9 +279,6 @@ class TestPostIntegrationRawDataRequestBody:
             auth=mock_auth,
             client=mock_client,
         )
-        mixin.get_ingest_attributes = AsyncMock(
-            return_value={"ingestUrl": "https://test.example.com"}
-        )
 
         webhook_time = datetime(2024, 3, 29, 10, 30, 0, tzinfo=timezone.utc)
         raw_data = [{"name": "updated-repo", "stars": 150}]
@@ -283,8 +294,15 @@ class TestPostIntegrationRawDataRequestBody:
             extraction_timestamp=fixed_ts,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("webhook-xyz-789", event)
 
@@ -320,9 +338,6 @@ class TestPostIntegrationRawDataRequestBody:
             auth=mock_auth,
             client=mock_client,
         )
-        mixin.get_ingest_attributes = AsyncMock(
-            return_value={"ingestUrl": "https://test.example.com"}
-        )
 
         raw_data = [{"name": "test-repo"}]
 
@@ -332,8 +347,15 @@ class TestPostIntegrationRawDataRequestBody:
             index=0,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("test-sync-123", event)
 
@@ -507,9 +529,6 @@ class TestBackwardCompatibility:
             auth=mock_auth,
             client=mock_client,
         )
-        mixin.get_ingest_attributes = AsyncMock(
-            return_value={"ingestUrl": "https://test.example.com"}
-        )
 
         event = make_single_entry_lakehouse_batch(
             [{"test": "data"}],
@@ -518,8 +537,15 @@ class TestBackwardCompatibility:
             operation=LakehouseOperation.UPSERT,
         )
 
-        with patch(
-            "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+        with (
+            patch(
+                "port_ocean.clients.port.mixins.integrations.handle_port_status_code"
+            ),
+            patch.object(
+                mixin,
+                "get_ingest_attributes",
+                AsyncMock(return_value={"ingestUrl": TEST_INGEST_URL}),
+            ),
         ):
             await mixin.post_integration_raw_data_batch("sync-123", event)
 
