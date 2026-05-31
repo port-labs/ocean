@@ -8,7 +8,16 @@ from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
 
 
 @pytest.fixture
-def branch_webhook_processor(event: WebhookEvent) -> BranchWebhookProcessor:
+def branch_webhook_processor(
+    event: WebhookEvent, monkeypatch: pytest.MonkeyPatch
+) -> BranchWebhookProcessor:
+    _mgr = MagicMock()
+    _mgr.get_client_for_org.return_value = MagicMock()
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.base_processor"
+        ".AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
+    )
     return BranchWebhookProcessor(event)
 
 
@@ -37,6 +46,7 @@ async def test_validate_payload(
             "repository": {"id": "repo1"},
             "refUpdates": [{"name": "refs/heads/main", "newObjectId": "abc"}],
         },
+        "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
     }
     assert await branch_webhook_processor.validate_payload(valid) is True
     assert await branch_webhook_processor.validate_payload({"resource": {}}) is False
@@ -65,6 +75,7 @@ async def test_handle_event_update_and_delete(
                 {"name": "refs/tags/v1.0", "oldObjectId": "t", "newObjectId": "t2"},
             ],
         },
+        "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
     }
     result = await branch_webhook_processor.handle_event(
         payload, resource_config=MagicMock()
@@ -104,6 +115,7 @@ async def test_handle_event_repository_with_no_matching_branches(
             },
             "refUpdates": [],  # Empty ref updates
         },
+        "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
     }
 
     result = await branch_webhook_processor.handle_event(
@@ -136,6 +148,7 @@ async def test_handle_event_no_branch_refs(
                 },
             ],
         },
+        "resourceContainers": {"account": {"baseUrl": "https://dev.azure.com/test/"}},
     }
 
     result = await branch_webhook_processor.handle_event(

@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.43.7 (2026-05-31)
+
+### Bug Fixes
+
+- Remove ingest_url from the configuration
+
+## 0.43.6 (2026-05-31)
+
+### Bug Fixes
+
+- Fixed Port API 401 handling during resync: refresh the access token and apply it to the retried request when Port rejects an expired JWT before the local cache marks it expired.
+
+## 0.43.5 (2026-05-29)
+
+### Bug Fixes
+
+- Fixed DSP lifecycle URL: derive ingest host Port API.
+
+## 0.43.4 (2026-05-29)
+
+### Bug Fixes
+
+- Fixed DSP lifecycle URL: derive ingest host from `OCEAN__PORT__BASE_URL` (EU/US static map) at construction time. Removes the runtime Port API fetch introduced in 0.43.3 and the resulting 404 on `/v1/lifecycle` paths.
+
+## 0.43.3 (2026-05-27)
+
+### Improvements
+
+- Dynamically infer the ingest_url
+
+## 0.43.2 (2026-05-27)
+
+### Bug Fixes
+
+- Fixed resync reconciliation to fetch datasource entities before the resync start time using the datasource pagination endpoint.
+
+## 0.43.1 (2026-05-26)
+
+### Improvements
+
+- Added earlywarning.io to the trusted subdomains list in the IP blocker to fix hostname rewriting for hosted custom integrations
+
 ## 0.43.0 (2026-05-25)
 
 ### Improvements

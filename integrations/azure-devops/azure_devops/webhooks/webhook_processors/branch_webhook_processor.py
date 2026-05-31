@@ -38,7 +38,7 @@ class BranchWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             and repository.get("id") is not None
         )
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         resource = payload["resource"]
