@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from aws.core.exporters.codebuild.project.exporter import CodeBuildProjectExporter
 from aws.core.exporters.codebuild.project.models import (
     SingleCodeBuildProjectRequest,
