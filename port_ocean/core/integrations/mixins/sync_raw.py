@@ -22,6 +22,7 @@ from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
 from port_ocean.core.integrations.mixins.lakehouse_buffer import LakehouseBuffer
 from port_ocean.core.integrations.mixins.utils import (
     ProcessWrapper,
+    build_lakehouse_data_entry,
     clear_http_client_context,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
@@ -32,7 +33,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, LakehouseDataEntry, LakehouseDataEntryMetadata, ProcessExecutionMode, LakehouseEventType, LakehouseOperation
+from port_ocean.core.models import Entity, LakehouseDataEntryMetadata, ProcessExecutionMode, LakehouseEventType, LakehouseOperation
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -464,7 +465,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if raw_results:
             if lakehouse_data_enabled and buffer:
                 metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
-                lakehouse_data_entry = LakehouseDataEntry(request={}, response={}, metadata=metadata, items=raw_results)
+                lakehouse_data_entry = build_lakehouse_data_entry(
+                    items=raw_results,
+                    metadata=metadata,
+                    export_env_variables=resource_config.selector.export_env_variables,
+                )
                 await buffer.add(lakehouse_data_entry)
             batch_index += 1
             number_of_raw_results += len(raw_results)
@@ -491,7 +496,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     batch_index += 1
                     if lakehouse_data_enabled and buffer:
                         metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
-                        lakehouse_data_entry = LakehouseDataEntry(request={}, response={}, metadata=metadata, items=items)
+                        lakehouse_data_entry = build_lakehouse_data_entry(
+                            items=items,
+                            metadata=metadata,
+                            export_env_variables=resource_config.selector.export_env_variables,
+                        )
                         await buffer.add(lakehouse_data_entry)
                     number_of_raw_results += len(items)
 
