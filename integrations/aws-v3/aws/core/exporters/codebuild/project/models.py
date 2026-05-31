@@ -16,7 +16,7 @@ class ProjectArtifacts(BaseModel):
     bucketOwnerAccess: Optional[str] = None
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
@@ -31,7 +31,7 @@ class ProjectEnvironment(BaseModel):
     imagePullCredentialsType: Optional[str] = None
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
@@ -48,7 +48,7 @@ class ProjectSource(BaseModel):
     sourceIdentifier: Optional[str] = None
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
@@ -58,7 +58,7 @@ class ProjectVpcConfig(BaseModel):
     securityGroupIds: Optional[List[str]] = Field(default_factory=list)
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
@@ -93,7 +93,7 @@ class ProjectProperties(BaseModel):
     webhook: Optional[Dict[str, Any]] = None
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
