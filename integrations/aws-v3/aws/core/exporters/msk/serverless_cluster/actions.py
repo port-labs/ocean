@@ -1,0 +1,14 @@
+from typing import Any, Type
+from aws.core.interfaces.action import Action, ActionMap
+
+
+class ListMskServerlessClustersAction(Action):
+    """Pass-through: list_clusters_v2 returns full ClusterInfo objects."""
+
+    async def _execute(self, clusters: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return clusters
+
+
+class MskServerlessClusterActionsMap(ActionMap):
+    defaults: list[Type[Action]] = [ListMskServerlessClustersAction]
+    options: list[Type[Action]] = []

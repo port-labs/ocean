@@ -3,9 +3,11 @@ from jira.overrides import (
     JiraPortAppConfig,
     JiraBoardResourceConfig,
     JiraBoardSelector,
-    JiraEpicResourceConfig,
+    JiraBacklogResourceConfig,
+    JiraBacklogSelector,
     JiraWorklogResourceConfig,
     JiraWorklogSelector,
+    JiraEpicResourceConfig,
 )
 
 
@@ -24,6 +26,26 @@ BOARD_MAPPING = {
             },
             "relations": {
                 "project": ".location.projectKey",
+            },
+        }
+    }
+}
+
+BACKLOG_MAPPING = {
+    "entity": {
+        "mappings": {
+            "identifier": ".id | tostring",
+            "title": ".fields.summary",
+            "blueprint": '"jiraIssue"',
+            "properties": {
+                "status": ".fields.status.name",
+                "priority": ".fields.priority.name",
+                "assignee": ".fields.assignee.accountId",
+                "created": ".fields.created",
+                "updated": ".fields.updated",
+            },
+            "relations": {
+                "board": ".__boardId | tostring",
             },
         }
     }
@@ -570,3 +592,115 @@ def test_epic_selector_rejects_non_list_status() -> None:
                 ]
             }
         )
+
+
+def test_jira_backlog_resource_config_parses_correctly() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "backlog",
+                    "selector": {"query": "true"},
+                    "port": BACKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert len(config.resources) == 1
+    assert isinstance(config.resources[0], JiraBacklogResourceConfig)
+    assert config.resources[0].kind == "backlog"
+
+
+def test_jira_backlog_selector_defaults() -> None:
+    """Defaults define out-of-box behavior — locking them down prevents silent
+    behavior shifts from future changes to the schema."""
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "backlog",
+                    "selector": {"query": "true"},
+                    "port": BACKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraBacklogResourceConfig)
+    selector = config.resources[0].selector
+    assert isinstance(selector, JiraBacklogSelector)
+    assert selector.jql == "updated >= -1w OR statusCategory != Done"
+    assert selector.fields is None
+    assert selector.use_software_api is True
+
+
+def test_jira_backlog_selector_accepts_custom_jql() -> None:
+    selector = JiraBacklogSelector.parse_obj(
+        {"query": "true", "jql": "project = PORT AND priority = High"}
+    )
+    assert selector.jql == "project = PORT AND priority = High"
+
+
+def test_jira_backlog_selector_accepts_empty_jql_string() -> None:
+    """Empty JQL is intentional — the field description states it fetches all
+    backlog issues. The client passes JQL through verbatim, so customers can
+    opt out of the default filter by setting jql to ''."""
+    selector = JiraBacklogSelector.parse_obj({"query": "true", "jql": ""})
+    assert selector.jql == ""
+
+
+def test_jira_backlog_selector_accepts_fields_list() -> None:
+    selector = JiraBacklogSelector.parse_obj(
+        {
+            "query": "true",
+            "fields": ["id", "key", "summary", "status", "assignee"],
+        }
+    )
+    assert selector.fields == ["id", "key", "summary", "status", "assignee"]
+
+
+def test_jira_backlog_selector_accepts_empty_fields_list() -> None:
+    """An empty list is distinct from None — it's explicit 'no fields',
+    which the API will accept and return minimal payloads for."""
+    selector = JiraBacklogSelector.parse_obj({"query": "true", "fields": []})
+    assert selector.fields == []
+
+
+def test_jira_backlog_selector_explicit_none_fields() -> None:
+    selector = JiraBacklogSelector.parse_obj({"query": "true", "fields": None})
+    assert selector.fields is None
+
+
+def test_jira_backlog_selector_use_software_api_explicit_true() -> None:
+    selector = JiraBacklogSelector.parse_obj({"query": "true", "useSoftwareApi": True})
+    assert selector.use_software_api is True
+
+
+def test_jira_backlog_selector_use_software_api_explicit_false() -> None:
+    """Customers opt out of the new endpoint by setting useSoftwareApi to false,
+    keeping them on the legacy agile/1.0 path until the November 2026 cutoff."""
+    selector = JiraBacklogSelector.parse_obj({"query": "true", "useSoftwareApi": False})
+    assert selector.use_software_api is False
+
+
+def test_jira_backlog_selector_all_fields_combined() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "backlog",
+                    "selector": {
+                        "query": "true",
+                        "jql": "project = PORT",
+                        "fields": ["id", "key", "summary"],
+                        "useSoftwareApi": False,
+                    },
+                    "port": BACKLOG_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraBacklogResourceConfig)
+    selector = config.resources[0].selector
+    assert selector.jql == "project = PORT"
+    assert selector.fields == ["id", "key", "summary"]
+    assert selector.use_software_api is False
