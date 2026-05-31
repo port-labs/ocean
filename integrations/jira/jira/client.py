@@ -830,7 +830,7 @@ class JiraClient(OAuthClient):
             "GET",
             f"{agile_url}/sprint/{sprint_id}",
         )
-      
+
     async def get_paginated_backlog_for_board(
         self,
         board_id: int,

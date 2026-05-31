@@ -493,8 +493,8 @@ class TestJiraSprintSelector:
         )
         assert len(config.resources) == 1
         assert isinstance(config.resources[0], JiraSprintResourceConfig)
-        
-        
+
+
 def test_jira_worklog_resource_config_parses_correctly() -> None:
     config = JiraPortAppConfig.parse_obj(
         {

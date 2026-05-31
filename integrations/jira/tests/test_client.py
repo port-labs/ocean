@@ -1543,7 +1543,8 @@ async def test_enrich_board_with_projects_returns_empty_list_when_board_has_no_i
 
     assert enriched["__projectKeys"] == []
     mock_request.assert_not_called()
-    
+
+
 @pytest.mark.asyncio
 async def test_get_paginated_sprints_for_board_returns_active_sprints_by_default(
     mock_jira_client: JiraClient,
@@ -1944,6 +1945,7 @@ async def test_get_paginated_sprints_fan_out_skips_failing_boards_and_continues(
 
         expected_successful_boards = board_count - len(failing_board_ids)
         assert len(all_sprints) == expected_successful_boards
+
 
 @pytest.mark.asyncio
 async def test_backlog_passes_jql_and_fields_through_to_api(
@@ -2593,4 +2595,3 @@ class TestGetPaginatedEpicsFanOut:
 
             assert mock_request.call_count == board_count
             assert len(all_epics) == board_count * epics_per_board
-           

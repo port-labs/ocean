@@ -124,7 +124,7 @@ class JiraBoardResourceConfig(ResourceConfig):
         description="Selector for Jira board resources.",
     )
 
-      
+
 class JiraSprintSelector(Selector):
     sprint_state: list[Literal["active", "closed", "future"]] | None = Field(
         alias="sprintState",
@@ -161,7 +161,7 @@ class JiraSprintSelector(Selector):
             )
         return value
 
-      
+
 class JiraSprintResourceConfig(ResourceConfig):
     kind: Literal["sprint"] = Field(
         title="Jira Sprint",
@@ -171,8 +171,8 @@ class JiraSprintResourceConfig(ResourceConfig):
         title="Sprint Selector",
         description="Selector for Jira sprint resources.",
     )
-     
-      
+
+
 class JiraBacklogSelector(Selector):
     jql: str | None = Field(
         default="updated >= -1w OR statusCategory != Done",
