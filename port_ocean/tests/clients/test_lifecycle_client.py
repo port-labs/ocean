@@ -8,9 +8,9 @@ import pytest
 from port_ocean.clients.dsp.lifecycle import (
     GranularityType,
     LifecycleClient,
-    resolve_lifecycle_ingest_url,
 )
 from port_ocean.helpers.retry import RetryTransport
+from port_ocean.version import __version__
 
 
 @pytest.fixture(autouse=True)
@@ -36,51 +36,77 @@ def mock_post() -> AsyncMock:
     return AsyncMock(return_value=response)
 
 
+TEST_LIFECYCLE_INGEST_URL = "http://localhost:3017/v1/lifecycle"
+
+
+def _patch_lifecycle_ingest_url(
+    client: LifecycleClient, ingest_url: str = TEST_LIFECYCLE_INGEST_URL
+) -> None:
+    client.get_lifecycle_attributes = AsyncMock(  # type: ignore[method-assign]
+        return_value={"ingestUrl": ingest_url}
+    )
+
+
 @pytest.fixture
 def lifecycle_client(
-    mock_auth: MagicMock, mock_post: AsyncMock, monkeypatch: pytest.MonkeyPatch
+    mock_auth: MagicMock,
+    mock_post: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> LifecycleClient:
-    client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+    client = LifecycleClient(auth=mock_auth)
+    _patch_lifecycle_ingest_url(client)
     monkeypatch.setattr(client, "_raw_post", mock_post)
     return client
 
 
 class TestResyncUrl:
-    def test_resync_url(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=MagicMock())
-        assert client._resync_url("r1") == "http://localhost:3017/v1/lifecycle/r1"
+    @pytest.mark.asyncio
+    async def test_resync_url(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client)
+        assert await client._resync_url("r1") == "http://localhost:3017/v1/lifecycle/r1"
 
-    def test_trailing_slash_stripped(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017/", auth=MagicMock())
-        assert client._resync_url("r1") == "http://localhost:3017/v1/lifecycle/r1"
+    @pytest.mark.asyncio
+    async def test_trailing_slash_stripped(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client, "http://localhost:3017/v1/lifecycle/")
+        assert await client._resync_url("r1") == "http://localhost:3017/v1/lifecycle/r1"
 
 
 class TestGranularUrl:
-    def test_kind(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=MagicMock())
+    @pytest.mark.asyncio
+    async def test_kind(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client)
         assert (
-            client._granular_url("r1", GranularityType.KIND)
+            await client._granular_url("r1", GranularityType.KIND)
             == "http://localhost:3017/v1/lifecycle/r1/kind"
         )
 
-    def test_batch(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=MagicMock())
+    @pytest.mark.asyncio
+    async def test_batch(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client)
         assert (
-            client._granular_url("r1", GranularityType.BATCH)
+            await client._granular_url("r1", GranularityType.BATCH)
             == "http://localhost:3017/v1/lifecycle/r1/batch"
         )
 
-    def test_live_event(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=MagicMock())
+    @pytest.mark.asyncio
+    async def test_live_event(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client)
         assert (
-            client._granular_url("le1", GranularityType.LIVE_EVENT)
+            await client._granular_url("le1", GranularityType.LIVE_EVENT)
             == "http://localhost:3017/v1/lifecycle/le1/live_event"
         )
 
-    def test_reconciliation(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=MagicMock())
+    @pytest.mark.asyncio
+    async def test_reconciliation(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client)
         assert (
-            client._granular_url("r1", GranularityType.RECONCILIATION)
+            await client._granular_url("r1", GranularityType.RECONCILIATION)
             == "http://localhost:3017/v1/lifecycle/r1/reconciliation"
         )
 
@@ -512,7 +538,8 @@ class TestRetryBehavior:
 
     @pytest.mark.asyncio
     async def test_post_retried_on_503(self, mock_auth: MagicMock) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+        client = LifecycleClient(auth=mock_auth)
+        _patch_lifecycle_ingest_url(client)
         transport = self._transport(client)
         inner = self._inner_transport(transport)
         inner.handle_async_request = AsyncMock(  # type: ignore[method-assign]
@@ -529,7 +556,8 @@ class TestRetryBehavior:
 
     @pytest.mark.asyncio
     async def test_post_retried_on_connect_error(self, mock_auth: MagicMock) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+        client = LifecycleClient(auth=mock_auth)
+        _patch_lifecycle_ingest_url(client)
         transport = self._transport(client)
         inner = self._inner_transport(transport)
         inner.handle_async_request = AsyncMock(  # type: ignore[method-assign]
@@ -548,7 +576,8 @@ class TestRetryBehavior:
     async def test_logs_warning_when_all_retries_exhausted(
         self, mock_auth: MagicMock
     ) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+        client = LifecycleClient(auth=mock_auth)
+        _patch_lifecycle_ingest_url(client)
         transport = self._transport(client)
         inner = self._inner_transport(transport)
         max_attempts = 3
@@ -568,59 +597,45 @@ class TestRetryBehavior:
         mock_logger.warning.assert_called_once()
 
 
-class TestResolveLifecycleIngestUrl:
-    def test_eu_base_url(self) -> None:
-        assert (
-            resolve_lifecycle_ingest_url("https://api.getport.io")
-            == "https://ingest.getport.io"
+class TestGetLifecycleAttributes:
+    @pytest.mark.asyncio
+    async def test_fetches_and_caches_lifecycle_attributes(self) -> None:
+        auth = MagicMock()
+        auth.integration_identifier = "integration-1"
+        auth.api_url = "https://api.example.com/v1"
+        auth.headers = AsyncMock(return_value={"Authorization": "Bearer token"})
+        auth.client = MagicMock()
+        auth.client.get = AsyncMock(
+            return_value=MagicMock(
+                is_error=False,
+                status_code=200,
+                json=MagicMock(
+                    return_value={
+                        "integration": {
+                            "lifecycleAttributes": {
+                                "ingestUrl": "https://ingest.example.com/v1/lifecycle"
+                            }
+                        }
+                    }
+                ),
+            )
         )
 
-    def test_us_base_url(self) -> None:
-        assert (
-            resolve_lifecycle_ingest_url("https://api.us.getport.io")
-            == "https://ingest.us.getport.io"
-        )
+        client = LifecycleClient(auth=auth)
 
-    def test_unknown_url_defaults_to_eu_with_warning(self) -> None:
-        with patch("port_ocean.clients.dsp.lifecycle.logger") as mock_logger:
-            result = resolve_lifecycle_ingest_url("https://api.custom.example.com")
-            assert result == "https://ingest.getport.io"
-            mock_logger.warning.assert_called_once()
+        with patch(
+            "port_ocean.clients.dsp.lifecycle.handle_port_status_code"
+        ) as mock_handle:
+            result = await client.get_lifecycle_attributes()
 
-    def test_local_api_base_url_maps_to_ingest_localhost(self) -> None:
-        assert (
-            resolve_lifecycle_ingest_url("http://api.localhost:9080")
-            == "http://ingest.localhost:9080"
+        assert result == {"ingestUrl": "https://ingest.example.com/v1/lifecycle"}
+        auth.client.get.assert_called_once_with(
+            "https://api.example.com/v1/integration/integration-1",
+            headers={"Authorization": "Bearer token"},
+            params={"oceanCoreVersion": __version__, "isPolling": "false"},
         )
+        mock_handle.assert_called_once()
 
-    def test_local_api_base_url_with_trailing_slash(self) -> None:
-        assert (
-            resolve_lifecycle_ingest_url("http://api.localhost:9080/")
-            == "http://ingest.localhost:9080"
-        )
-
-    def test_local_resolver_wires_through_lifecycle_client(self) -> None:
-        client = LifecycleClient(
-            base_url=resolve_lifecycle_ingest_url("http://api.localhost:9080"),
-            auth=MagicMock(),
-        )
-        assert (
-            client._resync_url("r1") == "http://ingest.localhost:9080/v1/lifecycle/r1"
-        )
-        assert (
-            client._granular_url("e1", GranularityType.KIND)
-            == "http://ingest.localhost:9080/v1/lifecycle/e1/kind"
-        )
-
-    def test_resolver_wires_through_lifecycle_client(self) -> None:
-        client = LifecycleClient(
-            base_url=resolve_lifecycle_ingest_url("https://api.us.getport.io"),
-            auth=MagicMock(),
-        )
-        assert (
-            client._resync_url("r1") == "https://ingest.us.getport.io/v1/lifecycle/r1"
-        )
-        assert (
-            client._granular_url("e1", GranularityType.KIND)
-            == "https://ingest.us.getport.io/v1/lifecycle/e1/kind"
-        )
+        result_again = await client.get_lifecycle_attributes()
+        assert result_again == {"ingestUrl": "https://ingest.example.com/v1/lifecycle"}
+        auth.client.get.assert_called_once()
