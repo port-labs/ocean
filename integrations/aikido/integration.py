@@ -65,10 +65,23 @@ class IssueResourceConfig(ResourceConfig):
     )
 
 
+class IssueGroupSelector(Selector):
+    scope_to_team: bool = Field(
+        default=False,
+        alias="scopeToTeam",
+        title="Scope To Team",
+        description="Whether to fetch issue groups scoped per active team. When true, each issue group is enriched with <code>__team_id</code> and <code>__team_name</code> fields, which can be used to populate the <code>aikidoTeam</code> relation on the <code>aikidoIssueGroup</code> blueprint.",
+    )
+
+
 class IssueGroupResourceConfig(ResourceConfig):
     kind: Literal["issue_groups"] = Field(
         title="Aikido Issue Group",
         description="Aikido issue group resource kind.",
+    )
+    selector: IssueGroupSelector = Field(
+        title="Issue Group Selector",
+        description="Selector for the Aikido issue group resource.",
     )
 
 

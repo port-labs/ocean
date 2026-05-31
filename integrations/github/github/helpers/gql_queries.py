@@ -185,131 +185,168 @@ commits(first: 1) {
 
 
 def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
-    return f"""
-  url
-  id
-  fullDatabaseId
-  number
-  state
-  locked
-  title
-  body
-  createdAt
-  updatedAt
-  closedAt
-  mergedAt
-  isDraft
-  headRefName
-  baseRefName
-  mergeable
-  mergeStateStatus
-  reviewDecision
-  authorAssociation
-  activeLockReason
-  merged
-  permalink
-  canBeRebased
-  closed
-  maintainerCanModify
-  lastEditedAt
+    required_fields = [
+        ("url", "url"),
+        ("id", "id"),
+        ("fullDatabaseId", "fullDatabaseId"),
+        ("number", "number"),
+        ("title", "title"),
+    ]
 
-  additions
-  deletions
-  changedFiles
-
-  headRefOid
-  headRef {{
-    name
-    target {{
-      ... on Commit {{
-        oid
-      }}
-    }}
-  }}
-
-  baseRef {{
-    name
-    target {{
-      ... on Commit {{
-        oid
-      }}
-    }}
-  }}
-
-  author {{
-    login
-    avatarUrl
-    url
-    __typename
-  }}
-
-  mergedBy {{
-    login
-    avatarUrl
-    url
-    __typename
-  }}
-
-  mergeCommit {{
-    oid
-  }}
-
-  potentialMergeCommit {{
-    oid
-  }}
-
-  assignees(first: 10) {{
-    nodes {{
-      login
-      avatarUrl
-    }}
-  }}
-
-  reviewRequests(first: 10) {{
-    nodes {{
-      requestedReviewer {{
+    optional_fields = [
+        ("state", "state"),
+        ("locked", "locked"),
+        ("body", "body"),
+        ("createdAt", "createdAt"),
+        ("updatedAt", "updatedAt"),
+        ("closedAt", "closedAt"),
+        ("mergedAt", "mergedAt"),
+        ("isDraft", "isDraft"),
+        ("headRefName", "headRefName"),
+        ("baseRefName", "baseRefName"),
+        ("mergeable", "mergeable"),
+        ("mergeStateStatus", "mergeStateStatus"),
+        ("reviewDecision", "reviewDecision"),
+        ("authorAssociation", "authorAssociation"),
+        ("activeLockReason", "activeLockReason"),
+        ("merged", "merged"),
+        ("permalink", "permalink"),
+        ("canBeRebased", "canBeRebased"),
+        ("closed", "closed"),
+        ("maintainerCanModify", "maintainerCanModify"),
+        ("lastEditedAt", "lastEditedAt"),
+        ("additions", "additions"),
+        ("deletions", "deletions"),
+        ("changedFiles", "changedFiles"),
+        ("headRefOid", "headRefOid"),
+        (
+            "headRef",
+            """headRef {
+        name
+        target {
+          ... on Commit {
+            oid
+          }
+        }
+      }""",
+        ),
+        (
+            "baseRef",
+            """baseRef {
+        name
+        target {
+          ... on Commit {
+            oid
+          }
+        }
+      }""",
+        ),
+        (
+            "author",
+            """author {
+        login
+        avatarUrl
+        url
         __typename
-        ... on User {{
+      }""",
+        ),
+        (
+            "mergedBy",
+            """mergedBy {
+        login
+        avatarUrl
+        url
+        __typename
+      }""",
+        ),
+        ("mergeCommit", "mergeCommit { oid }"),
+        ("potentialMergeCommit", "potentialMergeCommit { oid }"),
+        (
+            "assignees",
+            """assignees(first: 10) {
+        nodes {
           login
           avatarUrl
-        }}
-        ... on Team {{
+          url
+          __typename
+        }
+      }""",
+        ),
+        (
+            "reviewRequests",
+            """reviewRequests(first: 10) {
+        nodes {
+          requestedReviewer {
+            __typename
+            ... on User {
+              login
+              avatarUrl
+              url
+              __typename
+            }
+            ... on Team {
+              name
+              slug
+            }
+          }
+        }
+      }""",
+        ),
+        (
+            "labels",
+            """labels(first: 10) {
+        nodes {
+          id
+          url
           name
-          slug
-        }}
-      }}
-    }}
-  }}
+          color
+          isDefault
+          description
+        }
+      }""",
+        ),
+        (
+            "milestone",
+            """milestone {
+        number
+        title
+        description
+        dueOn
+        url
+      }""",
+        ),
+        ("comments", "comments { totalCount }"),
+        ("reviewThreads", "reviewThreads { totalCount }"),
+        (
+            "commits",
+            (
+                PR_COMMITS_WITH_FIRST
+                if options.enrich_with_first_commit
+                else PR_COMMITS_TOTAL_ONLY
+            ),
+        ),
+        (
+            "autoMergeRequest",
+            """autoMergeRequest {
+        enabledAt
+        mergeMethod
+        commitHeadline
+        commitBody
+      }""",
+        ),
+    ]
 
-  labels(first: 10) {{
-    nodes {{
-      id
-      url
-      name
-      color
-      isDefault
-      description
-    }}
-  }}
+    excluded = set(options.exclude_graphql_fields)
+    filtered_optional_fields = [
+        body for name, body in optional_fields if name not in excluded
+    ]
 
-  milestone {{
-    number
-    title
-    description
-    dueOn
-    url
-  }}
-
-  comments {{ totalCount }}
-  reviewThreads {{ totalCount }}
-  {PR_COMMITS_WITH_FIRST if options.enrich_with_first_commit else PR_COMMITS_TOTAL_ONLY}
-  autoMergeRequest {{
-    enabledAt
-    mergeMethod
-    commitHeadline
-    commitBody
-  }}
-"""
+    return "\n".join(
+        [
+            *(body for _, body in required_fields),
+            *filtered_optional_fields,
+        ]
+    )
 
 
 def generate_list_pull_requests_gql(options: PullRequestGraphQLOptions) -> str:
@@ -343,7 +380,6 @@ query ListPullRequests(
 
 def generate_pull_request_details_gql(options: PullRequestGraphQLOptions) -> str:
     return f"""
-{PAGE_INFO_FRAGMENT}
 query PullRequestDetails(
   $organization: String!,
   $repo: String!,

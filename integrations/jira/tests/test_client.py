@@ -1,4 +1,7 @@
 from typing import Any, cast
+from jira.overrides import JiraEpicAPIQueryParams
+
+from jira.overrides import JiraWorklogAPIQueryParams
 import asyncio
 import httpx
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -118,6 +121,113 @@ MOCK_SPRINT_FUTURE = {
     "endDate": None,
     "completeDate": None,
     "goal": None,
+}
+
+MOCK_WORKLOG = {
+    "self": "https://example.atlassian.net/rest/api/3/issue/10001/worklog/10100",
+    "author": {
+        "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Atest-account-id",
+        "accountId": "712020:test-account-id",
+        "emailAddress": "test.user@example.com",
+        "avatarUrls": {
+            "48x48": "https://example.atlassian.net/avatar/48x48.png",
+            "24x24": "https://example.atlassian.net/avatar/24x24.png",
+            "16x16": "https://example.atlassian.net/avatar/16x16.png",
+            "32x32": "https://example.atlassian.net/avatar/32x32.png",
+        },
+        "displayName": "Test User",
+        "active": True,
+        "timeZone": "UTC",
+        "accountType": "atlassian",
+    },
+    "updateAuthor": {
+        "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Atest-account-id",
+        "accountId": "712020:test-account-id",
+        "emailAddress": "test.user@example.com",
+        "avatarUrls": {
+            "48x48": "https://example.atlassian.net/avatar/48x48.png",
+            "24x24": "https://example.atlassian.net/avatar/24x24.png",
+            "16x16": "https://example.atlassian.net/avatar/16x16.png",
+            "32x32": "https://example.atlassian.net/avatar/32x32.png",
+        },
+        "displayName": "Test User",
+        "active": True,
+        "timeZone": "UTC",
+        "accountType": "atlassian",
+    },
+    "comment": {"type": "doc", "version": 1, "content": []},
+    "created": "2024-01-15T10:00:00.000+0000",
+    "updated": "2024-01-15T10:00:00.000+0000",
+    "started": "2024-01-15T09:00:00.000+0000",
+    "timeSpent": "1d",
+    "timeSpentSeconds": 28800,
+    "id": "10100",
+    "issueId": "10001",
+}
+
+MOCK_WORKLOG_API_RESPONSE = {
+    "startAt": 0,
+    "maxResults": 5000,
+    "total": 1,
+    "worklogs": [MOCK_WORKLOG],
+}
+
+MOCK_WORKLOG_API_RESPONSE_EMPTY = {
+    "startAt": 0,
+    "maxResults": 5000,
+    "total": 0,
+    "worklogs": [],
+}
+
+MOCK_WORKLOG_API_RESPONSE_PAGE_1 = {
+    "startAt": 0,
+    "maxResults": 5000,
+    "total": 2,
+    "worklogs": [MOCK_WORKLOG],
+}
+
+MOCK_WORKLOG_API_RESPONSE_PAGE_2 = {
+    "startAt": 1,
+    "maxResults": 5000,
+    "total": 2,
+    "worklogs": [{**MOCK_WORKLOG, "id": "10101", "issueId": "10001"}],
+}
+
+MOCK_ISSUE_WITH_KEY = {
+    "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+    "id": "10001",
+    "self": "https://example.atlassian.net/rest/api/3/issue/10001",
+    "key": "TEST-1",
+}
+
+
+MOCK_EPIC = {
+    "id": 17022,
+    "key": "PORT-6459",
+    "self": "https://exampleorg.atlassian.com/ex/jira/6b3f4333-0ca8-4ac7-b3de-4656affa5931/rest/agile/1.0/epic/17022",
+    "name": "Frontend Infra",
+    "summary": "Frontend Infra improvements",
+    "color": {"key": "color_6"},
+    "issueColor": {"key": "green"},
+    "done": False,
+}
+
+MOCK_EPIC_WITH_EMPTY_NAME = {
+    **MOCK_EPIC,
+    "id": 17023,
+    "key": "PORT-6460",
+    "name": "",
+    "summary": "No Epic",
+    "done": False,
+}
+
+MOCK_EPIC_DONE = {
+    **MOCK_EPIC,
+    "id": 10039,
+    "key": "PORT-40",
+    "name": "MVP",
+    "summary": "MVP",
+    "done": True,
 }
 
 
@@ -1433,8 +1543,7 @@ async def test_enrich_board_with_projects_returns_empty_list_when_board_has_no_i
 
     assert enriched["__projectKeys"] == []
     mock_request.assert_not_called()
-
-
+    
 @pytest.mark.asyncio
 async def test_get_paginated_sprints_for_board_returns_active_sprints_by_default(
     mock_jira_client: JiraClient,
@@ -1835,3 +1944,653 @@ async def test_get_paginated_sprints_fan_out_skips_failing_boards_and_continues(
 
         expected_successful_boards = board_count - len(failing_board_ids)
         assert len(all_sprints) == expected_successful_boards
+
+@pytest.mark.asyncio
+async def test_backlog_passes_jql_and_fields_through_to_api(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Selector inputs (jql, fields, max_results) must reach the API params."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"isLast": True, "issues": []}
+
+        async for _ in mock_jira_client.get_paginated_backlog_for_board(
+            board_id=1,
+            jql="statusCategory != Done",
+            fields=["summary", "status", "assignee"],
+        ):
+            pass
+
+        sent_params = mock_request.call_args.kwargs["params"]
+        assert sent_params["jql"] == "statusCategory != Done"
+        assert sent_params["fields"] == "summary,status,assignee"
+
+
+@pytest.mark.asyncio
+async def test_backlog_defaults_to_software_endpoint(
+    mock_jira_client: JiraClient,
+) -> None:
+    """With use_software_api defaulting to True, calls must hit software/1.0 with token pagination."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "issues": [{"id": "10001", "key": "PORT-1"}],
+            "isLast": True,
+        }
+
+        batches = []
+        async for batch in mock_jira_client.get_paginated_backlog_for_board(board_id=1):
+            batches.append(batch)
+
+        call_url = mock_request.call_args.args[1]
+        assert "/software/1.0/board/1/backlog" in call_url
+        assert batches[0][0]["__boardId"] == 1
+
+
+@pytest.mark.asyncio
+async def test_backlog_use_software_api_false_routes_to_agile(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Opt-out path: use_software_api=False routes to the deprecated agile endpoint."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "isLast": True,
+            "issues": [{"id": "10001", "key": "PORT-1"}],
+        }
+
+        batches = []
+        async for batch in mock_jira_client.get_paginated_backlog_for_board(
+            board_id=1, use_software_api=False
+        ):
+            batches.append(batch)
+
+        call_url = mock_request.call_args.args[1]
+        assert "/agile/" in call_url
+        assert batches[0][0]["__boardId"] == 1
+
+
+async def test_get_paginated_worklogs_for_issue_enriches_worklog_with_issue_key(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE
+
+        worklogs: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            worklogs.extend(batch)
+
+        assert len(worklogs) == 1
+        assert worklogs[0]["__issueKey"] == "TEST-1"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_preserves_all_original_fields(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE
+
+        worklogs: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            worklogs.extend(batch)
+
+        worklog = worklogs[0]
+        assert worklog["id"] == "10100"
+        assert worklog["issueId"] == "10001"
+        assert worklog["timeSpent"] == "1d"
+        assert worklog["timeSpentSeconds"] == 28800
+        assert worklog["started"] == "2024-01-15T09:00:00.000+0000"
+        assert worklog["created"] == "2024-01-15T10:00:00.000+0000"
+        assert worklog["updated"] == "2024-01-15T10:00:00.000+0000"
+        assert worklog["author"]["accountId"] == "712020:test-account-id"
+        assert worklog["author"]["displayName"] == "Test User"
+        assert worklog["author"]["emailAddress"] == "test.user@example.com"
+        assert worklog["author"]["timeZone"] == "UTC"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_calls_correct_url(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            pass
+
+        called_url = mock_request.call_args[0][1]
+        assert called_url == f"{mock_jira_client.api_url}/issue/TEST-1/worklog"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_sends_started_after_when_provided(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1",
+            api_params=JiraWorklogAPIQueryParams(started_after=1700000000000),
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert sent_params["startedAfter"] == 1700000000000
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_sends_started_before_when_provided(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1",
+            api_params=JiraWorklogAPIQueryParams(started_before=1800000000000),
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert sent_params["startedBefore"] == 1800000000000
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_omits_started_after_when_none(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1", api_params=None
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert "startedAfter" not in sent_params
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_omits_started_before_when_none(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1", api_params=None
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert "startedBefore" not in sent_params
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_sends_expand_when_provided(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1",
+            api_params=JiraWorklogAPIQueryParams(expand="properties"),
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert sent_params["expand"] == "properties"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_omits_expand_when_none(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue(
+            "TEST-1", api_params=None
+        ):
+            pass
+
+        sent_params = mock_request.call_args[1]["params"]
+        assert "expand" not in sent_params
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_paginates_across_multiple_pages(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            MOCK_WORKLOG_API_RESPONSE_PAGE_1,
+            MOCK_WORKLOG_API_RESPONSE_PAGE_2,
+        ]
+
+        worklogs: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            worklogs.extend(batch)
+
+        assert len(worklogs) == 2
+        assert mock_request.call_count == 2
+        assert worklogs[0]["id"] == "10100"
+        assert worklogs[1]["id"] == "10101"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_second_page_uses_correct_start_at(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            MOCK_WORKLOG_API_RESPONSE_PAGE_1,
+            MOCK_WORKLOG_API_RESPONSE_PAGE_2,
+        ]
+
+        async for _ in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            pass
+
+        second_call_params = mock_request.call_args_list[1][1]["params"]
+        assert second_call_params["startAt"] == 1
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_returns_empty_for_issue_with_no_worklogs(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = MOCK_WORKLOG_API_RESPONSE_EMPTY
+
+        worklogs: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            worklogs.extend(batch)
+
+        assert worklogs == []
+        assert mock_request.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_worklogs_for_issue_all_worklogs_carry_correct_issue_key(
+    mock_jira_client: JiraClient,
+) -> None:
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [
+            MOCK_WORKLOG_API_RESPONSE_PAGE_1,
+            MOCK_WORKLOG_API_RESPONSE_PAGE_2,
+        ]
+
+        worklogs: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_worklogs_for_issue("TEST-1"):
+            worklogs.extend(batch)
+
+        assert all(worklog["__issueKey"] == "TEST-1" for worklog in worklogs)
+
+
+class TestGetPaginatedEpicsForBoard:
+    @pytest.mark.asyncio
+    async def test_fetches_incomplete_epics_by_default_using_done_false_param(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        """Default done='false' must send done=false to API —
+        protects large instances from pulling full epic history on first install."""
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = {
+                "isLast": True,
+                "values": [MOCK_EPIC],
+            }
+
+            batches: list[list[dict[str, Any]]] = []
+            async for batch in mock_jira_client.get_paginated_epics_for_board(
+                board_id=1,
+                api_params=JiraEpicAPIQueryParams(done="false"),
+            ):
+                batches.append(batch)
+
+            call_params = (
+                mock_request.call_args[1].get("params") or mock_request.call_args[0][2]
+            )
+            assert call_params.get("done") == "false"
+            assert len(batches) == 1
+            assert batches[0][0]["id"] == 17022
+
+    @pytest.mark.asyncio
+    async def test_fetches_completed_epics_when_done_is_true(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = {
+                "isLast": True,
+                "values": [MOCK_EPIC_DONE],
+            }
+
+            batches: list[list[dict[str, Any]]] = []
+            async for batch in mock_jira_client.get_paginated_epics_for_board(
+                board_id=1,
+                api_params=JiraEpicAPIQueryParams(done="true"),
+            ):
+                batches.append(batch)
+
+            call_params = (
+                mock_request.call_args[1].get("params") or mock_request.call_args[0][2]
+            )
+            assert call_params.get("done") == "true"
+            assert batches[0][0]["done"] is True
+
+    @pytest.mark.asyncio
+    async def test_omits_done_param_when_none_to_fetch_all_epics(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        """None done value must not send done param to API —
+        fetches both complete and incomplete epics."""
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = {
+                "isLast": True,
+                "values": [MOCK_EPIC, MOCK_EPIC_DONE],
+            }
+
+            batches: list[list[dict[str, Any]]] = []
+            async for batch in mock_jira_client.get_paginated_epics_for_board(
+                board_id=1,
+                api_params=None,
+            ):
+                batches.append(batch)
+
+            call_params = (
+                mock_request.call_args[1].get("params") or mock_request.call_args[0][2]
+            )
+            assert "done" not in call_params
+            assert len(batches[0]) == 2
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_when_board_has_no_epics(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = {
+                "isLast": True,
+                "values": [],
+            }
+
+            batches: list[list[dict[str, Any]]] = []
+            async for batch in mock_jira_client.get_paginated_epics_for_board(
+                board_id=1,
+                api_params=JiraEpicAPIQueryParams(done="false"),
+            ):
+                batches.append(batch)
+
+            assert len(batches) == 0
+            assert mock_request.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_paginates_across_multiple_pages_until_is_last_true(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        page_1 = {
+            "startAt": 0,
+            "maxResults": 1,
+            "isLast": False,
+            "values": [MOCK_EPIC],
+        }
+        page_2 = {
+            "startAt": 1,
+            "maxResults": 1,
+            "isLast": True,
+            "values": [MOCK_EPIC_WITH_EMPTY_NAME],
+        }
+
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.side_effect = [page_1, page_2]
+
+            batches: list[list[dict[str, Any]]] = []
+            async for batch in mock_jira_client.get_paginated_epics_for_board(
+                board_id=1,
+                api_params=JiraEpicAPIQueryParams(done="false"),
+            ):
+                batches.append(batch)
+
+            assert len(batches) == 2
+            assert mock_request.call_count == 2
+            assert batches[0][0]["id"] == 17022
+            assert batches[1][0]["id"] == 17023
+
+    @pytest.mark.asyncio
+    async def test_enriches_each_epic_with_board_id_for_relation_mapping(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        """__boardId must be injected on every epic — used by the board
+        relation mapping since the API response does not include board context."""
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = {
+                "isLast": True,
+                "values": [MOCK_EPIC, MOCK_EPIC_WITH_EMPTY_NAME],
+            }
+
+            batches: list[list[dict[str, Any]]] = []
+            async for batch in mock_jira_client.get_paginated_epics_for_board(
+                board_id=7,
+                api_params=JiraEpicAPIQueryParams(done="false"),
+            ):
+                batches.append(batch)
+
+            for epic in batches[0]:
+                assert epic["__boardId"] == 7
+
+    @pytest.mark.asyncio
+    async def test_propagates_http_401_to_fail_resync_fast(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        """401 means token is invalid, must propagate immediately. Retrying per board would be pointless since all boards use the same token."""
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.side_effect = httpx.HTTPStatusError(
+                "Unauthorized",
+                request=Request(
+                    "GET",
+                    "https://example.atlassian.net/rest/agile/latest/board/99/epic",
+                ),
+                response=Response(
+                    401,
+                    request=Request("GET", "https://example.atlassian.net"),
+                ),
+            )
+
+            with pytest.raises(httpx.HTTPStatusError) as exc_info:
+                async for _ in mock_jira_client.get_paginated_epics_for_board(
+                    board_id=99,
+                    api_params=JiraEpicAPIQueryParams(done="false"),
+                ):
+                    pass
+
+            assert exc_info.value.response.status_code == 401
+
+
+class TestGetSingleEpic:
+    @pytest.mark.asyncio
+    async def test_fetches_epic_by_numeric_id(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = MOCK_EPIC
+
+            result = await mock_jira_client.get_single_epic(epic_id_or_key=17022)
+
+            assert result == MOCK_EPIC
+            call_url = mock_request.call_args[0][1]
+            assert call_url.endswith("/epic/17022")
+
+    @pytest.mark.asyncio
+    async def test_fetches_epic_by_issue_key(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = MOCK_EPIC
+
+            result = await mock_jira_client.get_single_epic(epic_id_or_key="PORT-6459")
+
+            assert result == MOCK_EPIC
+            call_url = mock_request.call_args[0][1]
+            assert call_url.endswith("/epic/PORT-6459")
+
+    @pytest.mark.asyncio
+    async def test_propagates_http_status_error_on_not_found(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.side_effect = httpx.HTTPStatusError(
+                "Not Found",
+                request=Request(
+                    "GET",
+                    "https://example.atlassian.net/rest/agile/latest/epic/99999",
+                ),
+                response=Response(
+                    404,
+                    request=Request("GET", "https://example.atlassian.net"),
+                ),
+            )
+
+            with pytest.raises(httpx.HTTPStatusError):
+                await mock_jira_client.get_single_epic(epic_id_or_key=99999)
+
+    @pytest.mark.asyncio
+    async def test_propagates_request_error_on_network_failure(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.side_effect = httpx.RequestError(
+                "Connection timeout",
+                request=Request(
+                    "GET",
+                    "https://example.atlassian.net/rest/agile/latest/epic/17022",
+                ),
+            )
+
+            with pytest.raises(httpx.RequestError):
+                await mock_jira_client.get_single_epic(epic_id_or_key=17022)
+
+
+class TestGetPaginatedEpicsFanOut:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "board_count, epics_per_board",
+        [
+            (200, 5),
+            pytest.param(500, 3, marks=pytest.mark.slow),
+            pytest.param(1000, 1, marks=pytest.mark.slow),
+            pytest.param(2000, 2, marks=pytest.mark.slow),
+            pytest.param(5000, 1, marks=pytest.mark.slow),
+        ],
+        ids=[
+            "200_boards_5_epics_each",
+            "500_boards_3_epics_each",
+            "1000_boards_1_epic_each",
+            "2000_boards_2_epics_each",
+            "5000_boards_1_epic_each",
+        ],
+    )
+    async def test_fan_out_fetches_all_epics_across_large_board_counts(
+        self,
+        mock_jira_client: JiraClient,
+        board_count: int,
+        epics_per_board: int,
+    ) -> None:
+        """Fan-out across N boards must fetch all epics — verifies correctness
+        under large board counts representative of enterprise Jira instances."""
+        board_ids: list[int] = list(range(1, board_count + 1))
+        boards: list[dict[str, Any]] = [
+            {"id": board_id, "name": f"Board {board_id}"} for board_id in board_ids
+        ]
+
+        def _build_mock_epic_page(board_id: int, epic_count: int) -> dict[str, Any]:
+            return {
+                "isLast": True,
+                "values": [
+                    {
+                        **MOCK_EPIC,
+                        "id": board_id * 1000 + i,
+                        "key": f"PORT-{board_id * 1000 + i}",
+                        "name": f"Board {board_id} Epic {i}",
+                        "__boardId": board_id,
+                    }
+                    for i in range(epic_count)
+                ],
+            }
+
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.side_effect = [
+                _build_mock_epic_page(board_id, epics_per_board)
+                for board_id in board_ids
+            ]
+
+            all_epics: list[dict[str, Any]] = []
+
+            async def collect_epics_for_board(
+                board: dict[str, Any],
+            ) -> None:
+                async for batch in mock_jira_client.get_paginated_epics_for_board(
+                    board_id=cast(int, board["id"]),
+                    api_params=JiraEpicAPIQueryParams(done="false"),
+                ):
+                    all_epics.extend(batch)
+
+            await asyncio.gather(*[collect_epics_for_board(board) for board in boards])
+
+            assert mock_request.call_count == board_count
+            assert len(all_epics) == board_count * epics_per_board
+           

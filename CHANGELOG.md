@@ -6,6 +6,157 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.43.7 (2026-05-31)
+
+### Bug Fixes
+
+- Remove ingest_url from the configuration
+
+## 0.43.6 (2026-05-31)
+
+### Bug Fixes
+
+- Fixed Port API 401 handling during resync: refresh the access token and apply it to the retried request when Port rejects an expired JWT before the local cache marks it expired.
+
+## 0.43.5 (2026-05-29)
+
+### Bug Fixes
+
+- Fixed DSP lifecycle URL: derive ingest host Port API.
+
+## 0.43.4 (2026-05-29)
+
+### Bug Fixes
+
+- Fixed DSP lifecycle URL: derive ingest host from `OCEAN__PORT__BASE_URL` (EU/US static map) at construction time. Removes the runtime Port API fetch introduced in 0.43.3 and the resulting 404 on `/v1/lifecycle` paths.
+
+## 0.43.3 (2026-05-27)
+
+### Improvements
+
+- Dynamically infer the ingest_url
+
+## 0.43.2 (2026-05-27)
+
+### Bug Fixes
+
+- Fixed resync reconciliation to fetch datasource entities before the resync start time using the datasource pagination endpoint.
+
+## 0.43.1 (2026-05-26)
+
+### Improvements
+
+- Added earlywarning.io to the trusted subdomains list in the IP blocker to fix hostname rewriting for hosted custom integrations
+
+## 0.43.0 (2026-05-25)
+
+### Improvements
+
+- Added SSL verification settings to Ocean core and integrations
+  - New config: `ssl.port` and `ssl.third_party`, each with `verify` (bool) and `x509.strict` (bool).
+  - New helpers: `resolve_verify_param()`, `create_third_party_http_client()`.
+  - Wired into Port API client, shared `http_async_client`.
+  - Startup warnings when non-default SSL settings are used.
+
+## 0.42.11 (2026-05-25)
+
+### Improvements
+
+-  Lifecycle use backoff and handling exception
+
+## 0.42.10 (2026-05-25)
+
+### Improvements
+
+- Added a shared async iterator utility for streaming independent iterators while deferring failures until surviving iterators finish.
+
+## 0.42.9 (2026-05-24)
+
+### Bug Fixes
+
+- Fixed polling resync-request detection so stale manual resync requests are not replayed after the first regular polling resync.
+
+## 0.42.8 (2026-05-21)
+
+### Improvements
+
+- Added missing values to lifecycle API
+
+## 0.42.7 (2026-05-19)
+
+### Features
+
+- Remove lifecycle url from settings
+
+## 0.42.6 (2026-05-19)
+
+### Features
+
+- Send all granularities to lifecycle-api
+
+## 0.42.5 (2026-05-19)
+
+### Features
+
+- Kafka event listener: while consuming the legacy `{org_id}.change.log` topic, also process manual resync request messages (`action: RESYNC` with matching `context.integrationId`) in addition to integration changelog events.
+
+
+## 0.42.4 (2026-05-17)
+
+### Features
+
+- Polling event listener: when the organization feature flag `OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED` is present, Ocean polls the integration resync-request endpoint when the integration document’s `updatedAt` is unchanged, and runs a resync when the request’s `updatedAt` is newer than the last stored watermark.
+
+
+## 0.42.3 (2026-05-17)
+
+### Bug fixes
+
+- Fix raw data dispatching with items to parse.
+
+
+## 0.42.2 (2026-05-17)
+
+### Improvements
+
+- Fixed outbound requests to Code Rabbit dropping hostname-based routing by adding coderabbit.ai to the trusted subdomains list in the IP blocker
+
+## 0.42.1 (2026-05-14)
+
+### Improvements
+
+- Added lifecycle client and shutdown aborted notifications.
+
+## 0.42.0 (2026-05-13)
+
+### Vulnerabilities
+
+- Fixed vulnerabilities for Ocean core and docs
+
+## 0.41.9 (2026-05-13)
+
+### Improvements
+
+- Fixed outbound requests to SentinelOne and Anthropic dropping hostname-based routing by adding sentinelone.net to the trusted subdomains list in the IP blocker
+
+## 0.41.8 (2026-05-12)
+
+### Improvements
+
+- Kafka event listener: when the organization feature flag `OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED` is enabled, the consumer subscribes to `{org_id}.integration.resync.requests` instead of `{org_id}.change.log`. If feature flags cannot be fetched, behavior falls back to the change log topic.
+
+## 0.41.7 (2026-05-07)
+
+### Improvements
+
+- Serialize Port app config mappings to JSON-safe types in resync logs.
+
+## 0.41.6 (2026-04-30)
+
+### Improvements
+
+- When using the polling event listener, requests to Port to fetch the current integration now include `oceanCoreVersion` and `isPolling=true` query parameters. Other callers of the same API are unchanged.
+
 ## 0.41.5 (2026-04-27)
 
 ### Bug fixes

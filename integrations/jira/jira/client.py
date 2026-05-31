@@ -7,6 +7,7 @@ import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
+from jira.overrides import JiraEpicAPIQueryParams, JiraWorklogAPIQueryParams
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -16,6 +17,18 @@ from .retry_transport import JiraRetryTransport
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 MAX_CONCURRENT_REQUESTS = 10
+
+WORKLOG_WEBHOOK_EVENTS = [
+    "worklog_created",
+    "worklog_updated",
+    "worklog_deleted",
+]
+SPRINT_WEBHOOK_EVENTS = [
+    "sprint_created",
+    "sprint_updated",
+    "sprint_deleted",
+    "sprint_closed",
+]
 
 WEBHOOK_EVENTS = [
     "jira:issue_created",
@@ -40,10 +53,8 @@ WEBHOOK_EVENTS = [
     "board_created",
     "board_updated",
     "board_deleted",
-    "sprint_created",
-    "sprint_updated",
-    "sprint_deleted",
-    "sprint_closed",
+    *WORKLOG_WEBHOOK_EVENTS,
+    *SPRINT_WEBHOOK_EVENTS,
 ]
 
 OAUTH2_WEBHOOK_EVENTS = [
@@ -59,10 +70,8 @@ OAUTH2_WEBHOOK_EVENTS = [
     "board_created",
     "board_updated",
     "board_deleted",
-    "sprint_created",
-    "sprint_updated",
-    "sprint_deleted",
-    "sprint_closed",
+    *WORKLOG_WEBHOOK_EVENTS,
+    *SPRINT_WEBHOOK_EVENTS,
 ]
 
 
@@ -100,6 +109,9 @@ class JiraClient(OAuthClient):
         # For OAuth, it requires a cloud ID resolved via API - set in _get_agile_api_url()
         self._agile_api_url: str | None = (
             None if self.is_oauth_enabled() else f"{self.jira_rest_url}/agile/1.0"
+        )
+        self._software_api_url: str | None = (
+            None if self.is_oauth_enabled() else f"{self.jira_rest_url}/software/1.0"
         )
 
         self._rate_limiter = JiraRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS)
@@ -141,6 +153,23 @@ class JiraClient(OAuthClient):
         )
         logger.debug(f"Resolved agile API URL: {self._agile_api_url}")
         return self._agile_api_url
+
+    async def _get_software_api_url(self) -> str:
+        """Return the ``software`` REST API base URL for the current auth scheme.
+
+        Used for endpoints migrated away from ``agile``. The ``agile`` equivalents
+        are deprecated with removal scheduled for November 1, 2026.
+        Ref: https://developer.atlassian.com/cloud/jira/software/changelog/
+        """
+        if self._software_api_url is not None:
+            return self._software_api_url
+
+        cloud_id = await self._get_cloud_id()
+        self._software_api_url = (
+            f"https://api.atlassian.com/ex/jira/{cloud_id}/rest/software/1.0"
+        )
+        logger.debug(f"Resolved software API URL: {self._software_api_url}")
+        return self._software_api_url
 
     async def _get_cloud_id(self) -> str:
         """
@@ -233,8 +262,7 @@ class JiraClient(OAuthClient):
         extract_key: str | None = None,
         initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = initial_params or {}
-        params |= self._generate_base_req_params()
+        params = {**self._generate_base_req_params(), **(initial_params or {})}
 
         start_at = 0
         while True:
@@ -323,6 +351,35 @@ class JiraClient(OAuthClient):
                 if not cursor:
                     break
 
+    async def _get_token_paginated_data(
+        self,
+        url: str,
+        extract_key: str,
+        initial_params: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Paginate Jira Software REST API endpoints using GET token-based pagination."""
+        query_params: dict[str, Any] = {**(initial_params or {})}
+        query_params.setdefault("maxResults", PAGE_SIZE)
+
+        while True:
+            response_data = await self._send_api_request(
+                "GET", url, params=query_params
+            )
+
+            items: list[dict[str, Any]] = response_data.get(extract_key, [])
+
+            if not items:
+                break
+
+            yield items
+
+            if response_data.get("isLast") or not (
+                next_page_token := response_data.get("nextPageToken")
+            ):
+                break
+
+            query_params = {**query_params, "nextPageToken": next_page_token}
+
     @staticmethod
     def _generate_base_req_params(
         maxResults: int = PAGE_SIZE, startAt: int = 0
@@ -331,6 +388,15 @@ class JiraClient(OAuthClient):
             "maxResults": maxResults,
             "startAt": startAt,
         }
+
+    @staticmethod
+    def _enrich_with_board_id(
+        entities: list[dict[str, Any]], board_id: int
+    ) -> list[dict[str, Any]]:
+        """Inject ``__boardId`` to each entity in the list for later relation mapping."""
+        return [
+            {**entity, "__boardId": board_id} for entity in entities if entity.get("id")
+        ]
 
     @staticmethod
     def _validate_existing_webhook(
@@ -424,6 +490,37 @@ class JiraClient(OAuthClient):
 
         await self._send_api_request("POST", self.webhooks_url, json=body)
         logger.info("Ocean real time reporting webhook created")
+
+    async def _fetch_backlog_from_software_api(
+        self,
+        board_id: int,
+        params: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch backlog via the ``software`` endpoint."""
+        software_url = await self._get_software_api_url()
+        url = f"{software_url}/board/{board_id}/backlog"
+        async for issue_batch in self._get_token_paginated_data(url, "issues", params):
+            yield self._enrich_with_board_id(issue_batch, board_id)
+
+    async def _fetch_backlog_from_agile_api(
+        self,
+        board_id: int,
+        params: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch backlog via the ``agile`` endpoint.
+
+        Deprecated: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/#api-rest-agile-1-0-board-boardid-backlog-get
+        Scheduled for removal: November 1, 2026.
+        """
+        logger.warning(
+            "Fetching backlog via agile API endpoint is deprecated and scheduled for removal by November 1, 2026. Set useSoftwareApi to false only if you need to force legacy behavior for specific boards that are not compatible with the software API endpoint. Please migrate to the software API endpoint as soon as possible."
+        )
+        agile_url = await self._get_agile_api_url()
+        url = f"{agile_url}/board/{board_id}/backlog"
+        async for issue_batch in self._get_agile_paginated_data(
+            url, "issues", {**params}
+        ):
+            yield self._enrich_with_board_id(issue_batch, board_id)
 
     async def create_webhooks(self, app_host: str) -> None:
         """Create webhooks if the user has permission."""
@@ -733,3 +830,130 @@ class JiraClient(OAuthClient):
             "GET",
             f"{agile_url}/sprint/{sprint_id}",
         )
+      
+    async def get_paginated_backlog_for_board(
+        self,
+        board_id: int,
+        jql: str | None = None,
+        fields: list[str] | None = None,
+        *,
+        use_software_api: bool = True,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Fetch backlog issues for a board with optional JQL filter and field selection.
+
+        Defaults to the ``software`` endpoint, the post-deprecation path for
+        backlog retrieval. Set ``use_software_api=False`` to fall back to the legacy
+        ``agile`` endpoint, which is scheduled for removal on November 1, 2026.
+        """
+        logger.info(
+            f"Fetching backlog for board {board_id}. "
+            f"use_software_api={use_software_api})"
+        )
+
+        query_params: dict[str, Any] = {}
+        if jql:
+            query_params["jql"] = jql
+        if fields is not None:
+            query_params["fields"] = ",".join(fields)
+
+        if not use_software_api:
+            async for backlogs in self._fetch_backlog_from_agile_api(
+                board_id, query_params
+            ):
+                yield backlogs
+            return
+
+        try:
+            async for backlogs in self._fetch_backlog_from_software_api(
+                board_id, query_params
+            ):
+                yield backlogs
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 400:
+                try:
+                    error_messages = e.response.json().get("errorMessages", [])
+                except Exception:
+                    raise e
+                if any(
+                    "Backlogs are not supported on this board" in msg
+                    for msg in error_messages
+                ):
+                    logger.warning(
+                        f"Board {board_id} does not support backlog, skipping. "
+                        f"Details: {'; '.join(error_messages)}"
+                    )
+                    return
+            raise
+
+    async def get_paginated_epics_for_board(
+        self,
+        board_id: int,
+        api_params: JiraEpicAPIQueryParams | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield epic batches for a board, filtered by completion status.
+
+        Epic retrieval is per-board. The done query param is optional:
+        - done='false' (default) — incomplete epics only, protects large instances
+          from pulling full epic history on first install
+        - done='true' — completed epics only
+        - done=None — omits the param entirely, fetches all epics
+
+        See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/
+        #api-rest-agile-1-0-board-boardid-epic-get
+        """
+        agile_url = await self._get_agile_api_url()
+        url = f"{agile_url}/board/{board_id}/epic"
+
+        query_params: dict[str, Any] = {}
+        if api_params and api_params.done is not None:
+            query_params["done"] = api_params.done
+
+        async for epic_batch in self._get_agile_paginated_data(
+            url=url,
+            initial_params=query_params,
+        ):
+            for epic in epic_batch:
+                epic["__boardId"] = board_id
+            yield epic_batch
+
+    async def get_single_epic(
+        self,
+        epic_id_or_key: int | str,
+    ) -> dict[str, Any]:
+        """Fetch a single epic by numeric ID or Jira issue key.
+
+        Accepts both formats per the Jira Agile API contract:
+        - Numeric ID: 17022
+        - Issue key: EXAMPLEISSUE-6459
+
+        See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-epic/
+        #api-rest-agile-1-0-epic-epicidorkey-get
+        """
+        agile_url = await self._get_agile_api_url()
+        return await self._send_api_request(
+            "GET",
+            f"{agile_url}/epic/{epic_id_or_key}",
+        )
+
+    async def get_paginated_worklogs_for_issue(
+        self,
+        issue_key: str,
+        api_params: JiraWorklogAPIQueryParams | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch worklogs for a single issue."""
+        url = f"{self.api_url}/issue/{issue_key}/worklog"
+
+        query_params: dict[str, Any] = {}
+        if api_params:
+            if api_params.started_after is not None:
+                query_params["startedAfter"] = api_params.started_after
+            if api_params.started_before is not None:
+                query_params["startedBefore"] = api_params.started_before
+            if api_params.expand:
+                query_params["expand"] = api_params.expand
+
+        async for batch in self._get_paginated_data(
+            url, "worklogs", initial_params=query_params
+        ):
+            yield [{**worklog, "__issueKey": issue_key} for worklog in batch]
