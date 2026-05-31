@@ -228,7 +228,7 @@ class IntegrationClientMixin:
         if changelog_destination is not None:
             json["changelogDestination"] = changelog_destination
         if processing_mode is not None:
-            json["processingMode"] = processing_mode
+            json["processingMode"] = processing_mode.value
 
         json["version"] = self.integration_version
 
