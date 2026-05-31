@@ -10,7 +10,7 @@ from aws.core.exporters.codebuild.project.actions import (
 @pytest.mark.asyncio
 async def test_list_projects_action():
     """Test the ListProjectsAction processes project names correctly."""
-    action = ListProjectsAction()
+    action = ListProjectsAction(MagicMock())
     
     projects = ["project1", "project2", "project3"]
     
@@ -28,9 +28,8 @@ async def test_list_projects_action():
 @pytest.mark.asyncio
 async def test_get_project_details_action():
     """Test the GetProjectDetailsAction fetches project details correctly."""
-    action = GetProjectDetailsAction()
-    action.client = AsyncMock()
-    
+    action = GetProjectDetailsAction(AsyncMock())
+
     # Mock the batch_get_projects response
     mock_response = {
         "projects": [
@@ -59,7 +58,7 @@ async def test_get_project_details_action():
     
     action.client.batch_get_projects.return_value = mock_response
     
-    resources = [{"name": "test-project"}]
+    resources = ["test-project"]
     result = await action._execute(resources)
     
     assert len(result) == 1
@@ -74,9 +73,8 @@ async def test_get_project_details_action():
 @pytest.mark.asyncio
 async def test_get_project_details_action_empty_resources():
     """Test the GetProjectDetailsAction with empty resources list."""
-    action = GetProjectDetailsAction()
-    action.client = AsyncMock()
-    
+    action = GetProjectDetailsAction(AsyncMock())
+
     result = await action._execute([])
     
     assert result == []
@@ -86,9 +84,8 @@ async def test_get_project_details_action_empty_resources():
 @pytest.mark.asyncio
 async def test_get_project_webhooks_action():
     """Test the GetProjectWebhooksAction fetches webhooks correctly."""
-    action = GetProjectWebhooksAction()
-    action.client = AsyncMock()
-    
+    action = GetProjectWebhooksAction(AsyncMock())
+
     # Mock the list_webhooks_for_project response
     mock_response = {
         "webhooks": [
@@ -102,7 +99,7 @@ async def test_get_project_webhooks_action():
     
     action.client.list_webhooks_for_project.return_value = mock_response
     
-    resources = [{"name": "test-project"}]
+    resources = ["test-project"]
     result = await action._execute(resources)
     
     assert len(result) == 1
@@ -115,9 +112,8 @@ async def test_get_project_webhooks_action():
 @pytest.mark.asyncio
 async def test_get_project_webhooks_action_resource_not_found():
     """Test the GetProjectWebhooksAction handles ResourceNotFoundException."""
-    action = GetProjectWebhooksAction()
-    action.client = AsyncMock()
-    
+    action = GetProjectWebhooksAction(AsyncMock())
+
     # Mock ClientError for ResourceNotFoundException
     error_response = {
         "Error": {
@@ -128,7 +124,7 @@ async def test_get_project_webhooks_action_resource_not_found():
     client_error = action.client.exceptions.ClientError(error_response, "ListWebhooksForProject")
     action.client.list_webhooks_for_project.side_effect = client_error
     
-    resources = [{"name": "non-existent-project"}]
+    resources = ["non-existent-project"]
     result = await action._execute(resources)
     
     assert len(result) == 1
@@ -139,9 +135,8 @@ async def test_get_project_webhooks_action_resource_not_found():
 @pytest.mark.asyncio
 async def test_get_project_webhooks_action_empty_resources():
     """Test the GetProjectWebhooksAction with empty resources list."""
-    action = GetProjectWebhooksAction()
-    action.client = AsyncMock()
-    
+    action = GetProjectWebhooksAction(AsyncMock())
+
     result = await action._execute([])
     
     assert result == []
