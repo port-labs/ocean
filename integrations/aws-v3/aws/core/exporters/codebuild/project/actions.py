@@ -7,7 +7,7 @@ import asyncio
 class ListProjectsAction(Action):
     """Processes the initial list of projects from AWS."""
 
-    async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _execute(self, resources: List[str]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         for project in resources:
             data = {
@@ -21,7 +21,7 @@ class ListProjectsAction(Action):
 class GetProjectDetailsAction(Action):
     """Fetches detailed information about CodeBuild projects."""
 
-    async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _execute(self, resources: List[str]) -> List[Dict[str, Any]]:
         if not resources:
             return []
 
@@ -30,8 +30,7 @@ class GetProjectDetailsAction(Action):
         all_results: List[Dict[str, Any]] = []
         
         for i in range(0, len(resources), batch_size):
-            batch = resources[i:i + batch_size]
-            project_names = [resource["name"] for resource in batch]
+            project_names = resources[i:i + batch_size]
             
             try:
                 response = await self.client.batch_get_projects(names=project_names)
