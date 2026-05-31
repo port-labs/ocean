@@ -195,6 +195,12 @@ class AWSEC2VolumeResourceConfig(AWSResourceConfig):
         description="AWS EC2 Volume resource kind.",
     )
 
+class AWSCodeBuildProjectResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeBuild::Project"] = Field(
+        title="AWS CodeBuild Project",
+        description="AWS CodeBuild Project resource kind.",
+    )
+
 
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
@@ -213,6 +219,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSMSKClusterResourceConfig
         | AWSElastiCacheClusterResourceConfig
         | AWSEC2VolumeResourceConfig
+        | AWSCodeBuildProjectResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
