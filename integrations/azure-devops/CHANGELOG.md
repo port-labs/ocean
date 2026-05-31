@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.9.2 (2026-05-31)
 
 
-### Bug Fixes
+### Improvements
 
-- Fixed webhook setup failure on large Azure DevOps organizations where the unfiltered `GET /_apis/hooks/subscriptions` call would time out. Subscriptions are now fetched once per organization using parallel filtered requests (one per event type), eliminating both the timeout and the per-project redundant fetching.
+- Bumped ocean version to ^0.43.8
 
 
 ## 0.9.1 (2026-05-31)

@@ -12,6 +12,7 @@ from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     LakehouseDataEntryBatch,
     LakehouseEventType,
+    ProcessingMode,
 )
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
@@ -211,6 +212,7 @@ class IntegrationClientMixin:
         port_app_config: Optional["PortAppConfig"] = None,
         actions_processing_enabled: Optional[bool] = None,
         are_port_resources_initialized: Optional[bool] = None,
+        processing_mode: ProcessingMode | None = None,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -225,6 +227,8 @@ class IntegrationClientMixin:
             json["actionsProcessingEnabled"] = actions_processing_enabled
         if changelog_destination is not None:
             json["changelogDestination"] = changelog_destination
+        if processing_mode is not None:
+            json["processingMode"] = processing_mode.value
 
         json["version"] = self.integration_version
 
@@ -373,8 +377,9 @@ class IntegrationClientMixin:
         headers = await self.auth.headers()
         ingest_attributes = await self.get_ingest_attributes()
 
-        data = [
-            {
+        data = []
+        for entry in event["data"]:
+            entry_data: dict[str, Any] = {
                 "request": entry["request"],
                 "response": entry["response"],
                 "items": entry["items"],
@@ -384,8 +389,9 @@ class IntegrationClientMixin:
                     "resourceIndex": entry["metadata"]["resource_index"],
                 },
             }
-            for entry in event["data"]
-        ]
+            if environment_data := entry.get("environment_data"):
+                entry_data["environment_data"] = environment_data
+            data.append(entry_data)
 
         body: dict[str, Any] = {
             "kind": event["kind"],
