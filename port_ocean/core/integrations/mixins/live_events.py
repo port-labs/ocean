@@ -7,7 +7,12 @@ from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from port_ocean.core.integrations.mixins.utils import handle_items_to_parse, is_dsp_mode_enabled, is_lakehouse_data_enabled
+from port_ocean.core.integrations.mixins.utils import (
+    build_lakehouse_data_entry,
+    handle_items_to_parse,
+    is_dsp_mode_enabled,
+    is_lakehouse_data_enabled,
+)
 from port_ocean.core.models import Entity, LakehouseDataEntry, LakehouseDataEntryBatch, LakehouseDataEntryMetadata, LakehouseOperation, LakehouseEventType
 from port_ocean.core.ocean_types import RAW_ITEM
 from port_ocean.context.ocean import ocean
@@ -124,28 +129,26 @@ class LiveEventsMixin(HandlerMixin):
 
                 if webhook_event_raw_result.updated_raw_results:
                     data_entries.append(
-                        LakehouseDataEntry(
-                            request={},
-                            response={},
+                        build_lakehouse_data_entry(
                             items=webhook_event_raw_result.updated_raw_results,
                             metadata=LakehouseDataEntryMetadata(
                                 operation=LakehouseOperation.UPSERT,
                                 resource_index=resource_index,
                                 extraction_timestamp=int(datetime.now().timestamp() * 1000),
                             ),
+                            export_env_variables=webhook_event_raw_result.resource.selector.export_env_variables,
                         )
                     )
                 if webhook_event_raw_result.deleted_raw_results:
                     data_entries.append(
-                        LakehouseDataEntry(
-                            request={},
-                            response={},
+                        build_lakehouse_data_entry(
                             items=webhook_event_raw_result.deleted_raw_results,
                             metadata=LakehouseDataEntryMetadata(
                                 operation=LakehouseOperation.DELETE,
                                 resource_index=resource_index,
                                 extraction_timestamp=int(datetime.now().timestamp() * 1000),
                             ),
+                            export_env_variables=webhook_event_raw_result.resource.selector.export_env_variables,
                         )
                     )
 

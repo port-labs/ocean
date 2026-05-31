@@ -16,6 +16,7 @@ from port_ocean.core.models import (
     Blueprint,
     CreatePortResourcesOrigin,
     IntegrationFeatureFlag,
+    ProcessingMode,
 )
 from port_ocean.ocean import Ocean
 
@@ -76,6 +77,7 @@ def mock_integration_config() -> IntegrationConfiguration:
     config.event_listener.get_changelog_destination_details = MagicMock(return_value={})
     config.actions_processor = MagicMock()
     config.actions_processor.enabled = False
+    config.processing_mode = ProcessingMode.ocean_core
     return config
 
 
@@ -416,6 +418,7 @@ async def test_empty_setup_integration_exists(
         "portCreateResourcesOrigin": CreatePortResourcesOrigin.Empty.value,
         "actionsProcessingEnabled": False,
         "changelogDestination": {},
+        "processingMode": ProcessingMode.ocean_core,
     }
 
     await _initialize_defaults(mock_port_app_config_class, mock_integration_config)

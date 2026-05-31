@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 from pydantic import BaseModel
 from pydantic.fields import Field
 
@@ -253,6 +253,7 @@ class LakehouseDataEntry(TypedDict):
     response: dict[str, Any]
     metadata: LakehouseDataEntryMetadata
     items: list[Any]
+    environment_data: NotRequired[dict[str, str | None]]
 
 
 class LakehouseDataEntryBatch(TypedDict):

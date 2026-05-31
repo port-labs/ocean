@@ -16,6 +16,8 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.models import ProcessingMode
 from port_ocean.core.integrations.mixins.utils import (
+    build_lakehouse_data_entry,
+    collect_export_env_variables,
     extract_jq_deletion_path_revised,
     handle_items_to_parse,
     is_dsp_mode_enabled,
@@ -23,6 +25,53 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_function_wrapper,
     resync_generator_wrapper,
 )
+from port_ocean.core.models import LakehouseOperation
+
+class TestCollectExportEnvVariables:
+    def test_returns_none_for_empty_list(self) -> None:
+        assert collect_export_env_variables([]) is None
+
+    def test_collects_requested_variables(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("FOO", "bar")
+        monkeypatch.delenv("MISSING", raising=False)
+
+        assert collect_export_env_variables(["FOO", "MISSING"]) == {
+            "FOO": "bar",
+            "MISSING": None,
+        }
+
+
+class TestBuildLakehouseDataEntry:
+    def test_includes_environment_data_when_configured(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("FOO", "bar")
+
+        entry = build_lakehouse_data_entry(
+            items=[{"id": "1"}],
+            metadata={
+                "operation": LakehouseOperation.UPSERT,
+                "resource_index": 0,
+                "extraction_timestamp": 123,
+            },
+            export_env_variables=["FOO"],
+        )
+
+        assert entry["environment_data"] == {"FOO": "bar"}
+
+    def test_omits_environment_data_when_not_configured(self) -> None:
+        entry = build_lakehouse_data_entry(
+            items=[{"id": "1"}],
+            metadata={
+                "operation": LakehouseOperation.UPSERT,
+                "resource_index": 0,
+                "extraction_timestamp": 123,
+            },
+            export_env_variables=[],
+        )
+
+        assert "environment_data" not in entry
+
 
 class TestExtractJqDeletionPathRevised:
     """Tests for extract_jq_deletion_path_revised function."""
