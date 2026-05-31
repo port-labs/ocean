@@ -394,7 +394,9 @@ class AzureDevopsClient(HTTPBaseClient):
             major = api_version.split(".")[0]
             return major.isdigit() and int(major) < 7
         except Exception:
-            logger.warning(f"Failed to parse API version {api_version}, assuming legacy version")
+            logger.warning(
+                f"Failed to parse API version {api_version}, assuming legacy version"
+            )
             return True
 
     async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:

@@ -299,7 +299,9 @@ async def test_get_paginated_by_top_and_skip_custom_param_names(
 
     mock_response_page2 = AsyncMock(spec=Response)
     mock_response_page2.status_code = 200
-    mock_response_page2.json.return_value = {"value": [{"id": idx} for idx in range(25)]}
+    mock_response_page2.json.return_value = {
+        "value": [{"id": idx} for idx in range(25)]
+    }
 
     mock_response_empty = AsyncMock(spec=Response)
     mock_response_empty.status_code = 200
