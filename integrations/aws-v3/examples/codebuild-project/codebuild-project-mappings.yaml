@@ -1,0 +1,30 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: AWS::CodeBuild::Project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.arn
+          title: .Properties.name
+          blueprint: '"codeBuildProject"'
+          properties:
+            name: .Properties.name
+            arn: .Properties.arn
+            description: .Properties.description
+            serviceRole: .Properties.serviceRole
+            timeoutInMinutes: .Properties.timeoutInMinutes
+            queuedTimeoutInMinutes: .Properties.queuedTimeoutInMinutes
+            encryptionKey: .Properties.encryptionKey
+            environment: .Properties.environment
+            source: .Properties.source
+            artifacts: .Properties.artifacts
+            created: .Properties.created
+            lastModified: .Properties.lastModified
+            projectVisibility: .Properties.projectVisibility
+            concurrentBuildLimit: .Properties.concurrentBuildLimit
+            tags: .Properties.tags
+          relations:
+            account: .__ExtraContext.AccountId
