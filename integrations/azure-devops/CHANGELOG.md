@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.2 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.9.1 (2026-05-31)
+
+
+### Improvements
+
+- Route webhook events to the correct org client via subscription ID registry instead of parsing URLs from the payload
+
+
+## 0.9.0 (2026-05-31)
+
+### Improvements
+
+- Added a configurable `apiVersion` selector field (defaults to the latest supported version) for the User Entitlements endpoint, with automatic pagination strategy selection based on the version (top/skip for legacy versions < 7.x, continuation token for 7.x+)
+
+## 0.8.54 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
 ## 0.8.53 (2026-05-31)
 
 
