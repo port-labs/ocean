@@ -5,8 +5,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from port_ocean.clients.dsp.lifecycle import GranularityType, LifecycleClient
+from port_ocean.clients.dsp.lifecycle import (
+    GranularityType,
+    LifecycleClient,
+)
 from port_ocean.helpers.retry import RetryTransport
+from port_ocean.version import __version__
 
 
 @pytest.fixture(autouse=True)
@@ -32,51 +36,77 @@ def mock_post() -> AsyncMock:
     return AsyncMock(return_value=response)
 
 
+TEST_LIFECYCLE_INGEST_URL = "http://localhost:3017/v1/lifecycle"
+
+
+def _patch_lifecycle_ingest_url(
+    client: LifecycleClient, ingest_url: str = TEST_LIFECYCLE_INGEST_URL
+) -> None:
+    client.get_lifecycle_attributes = AsyncMock(  # type: ignore[method-assign]
+        return_value={"ingestUrl": ingest_url}
+    )
+
+
 @pytest.fixture
 def lifecycle_client(
-    mock_auth: MagicMock, mock_post: AsyncMock, monkeypatch: pytest.MonkeyPatch
+    mock_auth: MagicMock,
+    mock_post: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> LifecycleClient:
-    client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+    client = LifecycleClient(auth=mock_auth)
+    _patch_lifecycle_ingest_url(client)
     monkeypatch.setattr(client, "_raw_post", mock_post)
     return client
 
 
 class TestResyncUrl:
-    def test_resync_url(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=MagicMock())
-        assert client._resync_url("r1") == "http://localhost:3017/v1/lifecycle/r1"
+    @pytest.mark.asyncio
+    async def test_resync_url(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client)
+        assert await client._resync_url("r1") == "http://localhost:3017/v1/lifecycle/r1"
 
-    def test_trailing_slash_stripped(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017/", auth=MagicMock())
-        assert client._resync_url("r1") == "http://localhost:3017/v1/lifecycle/r1"
+    @pytest.mark.asyncio
+    async def test_trailing_slash_stripped(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client, "http://localhost:3017/v1/lifecycle/")
+        assert await client._resync_url("r1") == "http://localhost:3017/v1/lifecycle/r1"
 
 
 class TestGranularUrl:
-    def test_kind(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=MagicMock())
+    @pytest.mark.asyncio
+    async def test_kind(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client)
         assert (
-            client._granular_url("r1", GranularityType.KIND)
+            await client._granular_url("r1", GranularityType.KIND)
             == "http://localhost:3017/v1/lifecycle/r1/kind"
         )
 
-    def test_batch(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=MagicMock())
+    @pytest.mark.asyncio
+    async def test_batch(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client)
         assert (
-            client._granular_url("r1", GranularityType.BATCH)
+            await client._granular_url("r1", GranularityType.BATCH)
             == "http://localhost:3017/v1/lifecycle/r1/batch"
         )
 
-    def test_live_event(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=MagicMock())
+    @pytest.mark.asyncio
+    async def test_live_event(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client)
         assert (
-            client._granular_url("le1", GranularityType.LIVE_EVENT)
+            await client._granular_url("le1", GranularityType.LIVE_EVENT)
             == "http://localhost:3017/v1/lifecycle/le1/live_event"
         )
 
-    def test_reconciliation(self) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=MagicMock())
+    @pytest.mark.asyncio
+    async def test_reconciliation(self) -> None:
+        client = LifecycleClient(auth=MagicMock())
+        _patch_lifecycle_ingest_url(client)
         assert (
-            client._granular_url("r1", GranularityType.RECONCILIATION)
+            await client._granular_url("r1", GranularityType.RECONCILIATION)
             == "http://localhost:3017/v1/lifecycle/r1/reconciliation"
         )
 
@@ -121,11 +151,15 @@ class TestNotifyResyncStarted:
     async def test_defaults_started_at(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
+        before = datetime.now(tz=timezone.utc)
         await lifecycle_client.notify_resync_started(
             resync_id="r1", integration_id="i1", integration_type="github"
         )
+        after = datetime.now(tz=timezone.utc)
+
         body = mock_post.call_args[1]["json"]
-        assert "started_at" in body
+        started_at = datetime.fromisoformat(body["started_at"])
+        assert before <= started_at <= after
 
     @pytest.mark.asyncio
     async def test_swallows_exception(
@@ -251,19 +285,6 @@ class TestNotifyGranularStarted:
         assert "event_id" not in body
 
     @pytest.mark.asyncio
-    async def test_reconciliation_uses_granular_url(
-        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
-    ) -> None:
-        await lifecycle_client.notify_started(
-            event_id="r1",
-            integration_id="i1",
-            integration_type="github",
-            granularity=GranularityType.RECONCILIATION,
-        )
-        url = mock_post.call_args[0][0]
-        assert url == "http://localhost:3017/v1/lifecycle/r1/reconciliation"
-
-    @pytest.mark.asyncio
     async def test_kind_identifier_included_when_provided(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
     ) -> None:
@@ -292,91 +313,6 @@ class TestNotifyGranularStarted:
 
 
 class TestLifecycleClientIntegration:
-    @pytest.mark.asyncio
-    async def test_notify_finished_includes_versions(
-        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
-    ) -> None:
-        await lifecycle_client.notify_resync_finished(
-            resync_id="r1", integration_id="i1", integration_type="github"
-        )
-        body = mock_post.call_args[1]["json"]
-        assert "integration_version" in body
-        assert "ocean_version" in body
-
-    @pytest.mark.asyncio
-    async def test_notify_failed_minimal_body(
-        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
-    ) -> None:
-        await lifecycle_client.notify_resync_failed(
-            resync_id="r1", integration_id="i1", integration_type="github"
-        )
-        body = mock_post.call_args[1]["json"]
-        assert body == {"status": "failed"}
-
-    @pytest.mark.asyncio
-    async def test_notify_finished_granular(
-        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
-    ) -> None:
-        await lifecycle_client.notify_finished(
-            event_id="e1",
-            integration_type="github",
-            granularity=GranularityType.BATCH,
-        )
-        url = mock_post.call_args[0][0]
-        assert url == "http://localhost:3017/v1/lifecycle/e1/batch"
-        body = mock_post.call_args[1]["json"]
-        assert body["status"] == "finished"
-        assert body["integration_type"] == "github"
-
-    @pytest.mark.asyncio
-    async def test_notify_failed_granular(
-        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
-    ) -> None:
-        await lifecycle_client.notify_failed(
-            event_id="e1",
-            granularity=GranularityType.LIVE_EVENT,
-        )
-        url = mock_post.call_args[0][0]
-        assert url == "http://localhost:3017/v1/lifecycle/e1/live_event"
-        body = mock_post.call_args[1]["json"]
-        assert body["status"] == "failed"
-
-    @pytest.mark.asyncio
-    async def test_notify_aborted_granular(
-        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
-    ) -> None:
-        await lifecycle_client.notify_aborted(
-            event_id="e1",
-            granularity=GranularityType.KIND,
-            kind_identifier="service-123",
-        )
-        url = mock_post.call_args[0][0]
-        assert url == "http://localhost:3017/v1/lifecycle/e1/kind"
-        body = mock_post.call_args[1]["json"]
-        assert body["status"] == "aborted"
-        assert body["kind_identifier"] == "service-123"
-
-    @pytest.mark.asyncio
-    async def test_base_url_normalization(self, mock_auth: MagicMock) -> None:
-        # Test with trailing slash
-        client = LifecycleClient(base_url="http://localhost:3017/", auth=mock_auth)
-        assert client._resync_url("r1") == "http://localhost:3017/v1/lifecycle/r1"
-
-    @pytest.mark.asyncio
-    async def test_started_at_defaults_to_now(
-        self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
-    ) -> None:
-        before = datetime.now(tz=timezone.utc)
-        await lifecycle_client.notify_resync_started(
-            resync_id="r1", integration_id="i1", integration_type="github"
-        )
-        after = datetime.now(tz=timezone.utc)
-
-        body = mock_post.call_args[1]["json"]
-        started_at = datetime.fromisoformat(body["started_at"])
-
-        assert before <= started_at <= after
-
     @pytest.mark.asyncio
     async def test_granular_started_at_defaults(
         self, lifecycle_client: LifecycleClient, mock_post: AsyncMock
@@ -602,7 +538,8 @@ class TestRetryBehavior:
 
     @pytest.mark.asyncio
     async def test_post_retried_on_503(self, mock_auth: MagicMock) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+        client = LifecycleClient(auth=mock_auth)
+        _patch_lifecycle_ingest_url(client)
         transport = self._transport(client)
         inner = self._inner_transport(transport)
         inner.handle_async_request = AsyncMock(  # type: ignore[method-assign]
@@ -619,7 +556,8 @@ class TestRetryBehavior:
 
     @pytest.mark.asyncio
     async def test_post_retried_on_connect_error(self, mock_auth: MagicMock) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+        client = LifecycleClient(auth=mock_auth)
+        _patch_lifecycle_ingest_url(client)
         transport = self._transport(client)
         inner = self._inner_transport(transport)
         inner.handle_async_request = AsyncMock(  # type: ignore[method-assign]
@@ -638,7 +576,8 @@ class TestRetryBehavior:
     async def test_logs_warning_when_all_retries_exhausted(
         self, mock_auth: MagicMock
     ) -> None:
-        client = LifecycleClient(base_url="http://localhost:3017", auth=mock_auth)
+        client = LifecycleClient(auth=mock_auth)
+        _patch_lifecycle_ingest_url(client)
         transport = self._transport(client)
         inner = self._inner_transport(transport)
         max_attempts = 3
@@ -656,3 +595,47 @@ class TestRetryBehavior:
             )
         assert inner.handle_async_request.await_count == max_attempts + 1
         mock_logger.warning.assert_called_once()
+
+
+class TestGetLifecycleAttributes:
+    @pytest.mark.asyncio
+    async def test_fetches_and_caches_lifecycle_attributes(self) -> None:
+        auth = MagicMock()
+        auth.integration_identifier = "integration-1"
+        auth.api_url = "https://api.example.com/v1"
+        auth.headers = AsyncMock(return_value={"Authorization": "Bearer token"})
+        auth.client = MagicMock()
+        auth.client.get = AsyncMock(
+            return_value=MagicMock(
+                is_error=False,
+                status_code=200,
+                json=MagicMock(
+                    return_value={
+                        "integration": {
+                            "lifecycleAttributes": {
+                                "ingestUrl": "https://ingest.example.com/v1/lifecycle"
+                            }
+                        }
+                    }
+                ),
+            )
+        )
+
+        client = LifecycleClient(auth=auth)
+
+        with patch(
+            "port_ocean.clients.dsp.lifecycle.handle_port_status_code"
+        ) as mock_handle:
+            result = await client.get_lifecycle_attributes()
+
+        assert result == {"ingestUrl": "https://ingest.example.com/v1/lifecycle"}
+        auth.client.get.assert_called_once_with(
+            "https://api.example.com/v1/integration/integration-1",
+            headers={"Authorization": "Bearer token"},
+            params={"oceanCoreVersion": __version__, "isPolling": "false"},
+        )
+        mock_handle.assert_called_once()
+
+        result_again = await client.get_lifecycle_attributes()
+        assert result_again == {"ingestUrl": "https://ingest.example.com/v1/lifecycle"}
+        auth.client.get.assert_called_once()
