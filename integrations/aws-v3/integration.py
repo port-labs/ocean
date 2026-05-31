@@ -189,6 +189,13 @@ class AWSMSKClusterResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSMSKServerlessClusterResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::MSK::ServerlessCluster"] = Field(
+        title="AWS MSK Serverless Cluster",
+        description="AWS MSK Serverless Cluster resource kind.",
+    )
+
+
 class AWSElastiCacheClusterResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::ElastiCache::Cluster"] = Field(
         title="AWS ElastiCache Cluster",
@@ -226,6 +233,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSSQSQueueResourceConfig
         | AWSECRRepositoryResourceConfig
         | AWSMSKClusterResourceConfig
+        | AWSMSKServerlessClusterResourceConfig
         | AWSElastiCacheClusterResourceConfig
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
