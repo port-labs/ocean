@@ -130,6 +130,7 @@ class JiraSprintSelector(Selector):
         alias="sprintState",
         default=["active"],
         title="Sprint State",
+        min_items=1,
         description=(
             "Filter sprints by state. Accepts a list of states: active, closed, future. "
             "Defaults to ['active'] for performance — closed sprints accumulate over time "
@@ -141,20 +142,13 @@ class JiraSprintSelector(Selector):
     )
 
     @validator("sprint_state", always=True)
-    def sprint_state_must_not_contain_duplicates_or_be_empty(
+    def sprint_state_must_not_contain_duplicates(
         cls, value: list[str] | None
     ) -> list[str] | None:
         if value is None:
-            return value  # NULL fetches all state
-
-        if len(value) == 0:
-            raise ValueError(
-                "sprintState must not be an empty list — "
-                "provide at least one state or set to null to fetch all states"
-            )
-
+            return value
         if len(value) != len(set(value)):
-            duplicates = sorted(set(state for state in value if value.count(state) > 1))
+            duplicates = sorted(set(s for s in value if value.count(s) > 1))
             raise ValueError(
                 f"sprintState must not contain duplicate values — "
                 f"found duplicates: {duplicates}"

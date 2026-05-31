@@ -23,11 +23,15 @@ WORKLOG_WEBHOOK_EVENTS = [
     "worklog_updated",
     "worklog_deleted",
 ]
+
+SPRINT_DELETED_EVENT = "sprint_deleted"
+SPRINT_CLOSED_EVENT = "sprint_closed"
+
 SPRINT_WEBHOOK_EVENTS = [
     "sprint_created",
     "sprint_updated",
-    "sprint_deleted",
-    "sprint_closed",
+    SPRINT_DELETED_EVENT,
+    SPRINT_CLOSED_EVENT,
 ]
 
 WEBHOOK_EVENTS = [

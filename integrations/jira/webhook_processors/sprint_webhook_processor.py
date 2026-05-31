@@ -7,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from jira.client import SPRINT_WEBHOOK_EVENTS
+from jira.client import SPRINT_DELETED_EVENT, SPRINT_WEBHOOK_EVENTS
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventHeaders,
     EventPayload,
@@ -39,7 +39,7 @@ class SprintWebhookProcessor(AbstractWebhookProcessor):
         sprint = payload["sprint"]
         sprint_id: int = sprint["id"]
 
-        if webhook_event == "sprint_deleted":
+        if webhook_event == SPRINT_DELETED_EVENT:
             logger.info(f"Sprint {sprint_id} was deleted")
             return WebhookEventRawResults(
                 updated_raw_results=[],

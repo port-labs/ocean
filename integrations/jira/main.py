@@ -147,7 +147,6 @@ async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 sprint_state=sprint_state,
             )
             for board in board_batch
-            if board.get("id") is not None
         ]
 
         async for sprint_batch in stream_async_iterators_tasks(*sprint_streams):
