@@ -25,6 +25,36 @@ _MAX_CONCURRENT_REGIONS = 10
 _MAX_CONCURRENT_ACCOUNTS = 5
 
 
+def filter_regions_for_exporter(
+    regions: List[str],
+    supported_regions: frozenset[str] | None,
+    *,
+    account_id: str,
+    kind: str,
+) -> List[str] | None:
+    """Restrict regions to those supported by the exporter.
+
+    Returns None when the account has no overlapping supported regions and
+    should be skipped.
+    """
+    if not supported_regions:
+        return regions
+
+    filtered = [r for r in regions if r in supported_regions]
+    if not filtered:
+        logger.warning(
+            f"Account {account_id} has no supported regions for {kind}, skipping"
+        )
+        return None
+    if len(filtered) < len(regions):
+        logger.info(
+            f"{kind} is not available in "
+            f"{len(regions) - len(filtered)} region(s); "
+            f"restricting to {len(filtered)} supported region(s)"
+        )
+    return filtered
+
+
 async def safe_iterate(
     ait: AsyncIterator[Any], identifier: str, kind: str
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -159,6 +189,19 @@ class ResyncAWSService:
             f"Resyncing {self.kind} for account {account['Id']} across {len(regions)} regions"
         )
         exporter = self.exporter_cls(session)
+        supported_regions: frozenset[str] | None = getattr(
+            exporter, "_supported_regions", None
+        )
+        filtered_regions = filter_regions_for_exporter(
+            regions,
+            supported_regions,
+            account_id=account["Id"],
+            kind=self.kind,
+        )
+        if filtered_regions is None:
+            return
+        regions = filtered_regions
+
         options_factory = self._create_options_factory(account["Id"])
 
         strategy: ResyncStrategy
