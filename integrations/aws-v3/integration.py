@@ -189,6 +189,13 @@ class AWSElastiCacheClusterResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSMemoryDbUserResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::MemoryDB::User"] = Field(
+        title="AWS MemoryDB User",
+        description="AWS MemoryDB User resource kind.",
+    )
+
+
 class AWSEC2VolumeResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::EC2::Volume"] = Field(
         title="AWS EC2 Volume",
@@ -212,6 +219,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSECRRepositoryResourceConfig
         | AWSMSKClusterResourceConfig
         | AWSElastiCacheClusterResourceConfig
+        | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
     ] = Field(
         default_factory=list,
