@@ -101,7 +101,6 @@ class TestPostIntegrationRawDataInputValidation:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "test"
 
         mixin = IntegrationClientMixin(
@@ -109,6 +108,9 @@ class TestPostIntegrationRawDataInputValidation:
             integration_version="1.0.0",
             auth=mock_auth,
             client=mock_client,
+        )
+        mixin.get_ingest_attributes = AsyncMock(
+            return_value={"ingestUrl": "https://test.example.com"}
         )
 
         past_time = datetime.now(timezone.utc) - timedelta(hours=1)
@@ -158,7 +160,6 @@ class TestPostIntegrationRawDataInputValidation:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "test"
 
         mixin = IntegrationClientMixin(
@@ -166,6 +167,9 @@ class TestPostIntegrationRawDataInputValidation:
             integration_version="1.0.0",
             auth=mock_auth,
             client=mock_client,
+        )
+        mixin.get_ingest_attributes = AsyncMock(
+            return_value={"ingestUrl": "https://test.example.com"}
         )
 
         # Timezone-naive datetime in the past (no tzinfo)
@@ -197,7 +201,6 @@ class TestPostIntegrationRawDataRequestBody:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={"Authorization": "Bearer test"})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "github"
 
         mixin = IntegrationClientMixin(
@@ -205,6 +208,9 @@ class TestPostIntegrationRawDataRequestBody:
             integration_version="1.0.0",
             auth=mock_auth,
             client=mock_client,
+        )
+        mixin.get_ingest_attributes = AsyncMock(
+            return_value={"ingestUrl": "https://test.example.com"}
         )
 
         resync_time = datetime(2024, 3, 29, 10, 0, 0, tzinfo=timezone.utc)
@@ -251,7 +257,6 @@ class TestPostIntegrationRawDataRequestBody:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={"Authorization": "Bearer test"})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "github"
 
         mixin = IntegrationClientMixin(
@@ -259,6 +264,9 @@ class TestPostIntegrationRawDataRequestBody:
             integration_version="1.0.0",
             auth=mock_auth,
             client=mock_client,
+        )
+        mixin.get_ingest_attributes = AsyncMock(
+            return_value={"ingestUrl": "https://test.example.com"}
         )
 
         webhook_time = datetime(2024, 3, 29, 10, 30, 0, tzinfo=timezone.utc)
@@ -304,7 +312,6 @@ class TestPostIntegrationRawDataRequestBody:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={"Authorization": "Bearer test"})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "github"
 
         mixin = IntegrationClientMixin(
@@ -312,6 +319,9 @@ class TestPostIntegrationRawDataRequestBody:
             integration_version="1.0.0",
             auth=mock_auth,
             client=mock_client,
+        )
+        mixin.get_ingest_attributes = AsyncMock(
+            return_value={"ingestUrl": "https://test.example.com"}
         )
 
         raw_data = [{"name": "test-repo"}]
@@ -489,7 +499,6 @@ class TestBackwardCompatibility:
         mock_client.post = AsyncMock(return_value=MagicMock(status_code=200))
         mock_auth = MagicMock()
         mock_auth.headers = AsyncMock(return_value={})
-        mock_auth.ingest_url = "https://test.example.com"
         mock_auth.integration_type = "test"
 
         mixin = IntegrationClientMixin(
@@ -497,6 +506,9 @@ class TestBackwardCompatibility:
             integration_version="1.0.0",
             auth=mock_auth,
             client=mock_client,
+        )
+        mixin.get_ingest_attributes = AsyncMock(
+            return_value={"ingestUrl": "https://test.example.com"}
         )
 
         event = make_single_entry_lakehouse_batch(

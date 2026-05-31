@@ -23,7 +23,6 @@ def lakehouse_integration_client(monkeypatch: Any) -> IntegrationClientMixin:
     auth = MagicMock()
     auth.headers = AsyncMock()
     auth.headers.return_value = {"Authorization": "Bearer test-token"}
-    auth.ingest_url = TEST_INGEST_URL
     auth.integration_type = "github"
 
     client = MagicMock()
@@ -37,6 +36,9 @@ def lakehouse_integration_client(monkeypatch: Any) -> IntegrationClientMixin:
         integration_version=TEST_INTEGRATION_VERSION,
         auth=auth,
         client=client,
+    )
+    integration_client.get_ingest_attributes = AsyncMock(
+        return_value={"ingestUrl": TEST_INGEST_URL}
     )
 
     return integration_client

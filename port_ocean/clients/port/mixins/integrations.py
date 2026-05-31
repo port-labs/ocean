@@ -35,6 +35,10 @@ class MetricsAttributes(TypedDict):
     ingestUrl: str
 
 
+class IngestAttributes(TypedDict):
+    ingestUrl: str
+
+
 class IntegrationClientMixin:
     def __init__(
         self,
@@ -49,6 +53,7 @@ class IntegrationClientMixin:
         self.client = client
         self._log_attributes: LogAttributes | None = None
         self._metrics_attributes: MetricsAttributes | None = None
+        self._ingest_attributes: IngestAttributes | None = None
 
     async def is_integration_provision_enabled(
         self, integration_type: str, should_raise: bool = True, should_log: bool = True
@@ -123,6 +128,12 @@ class IntegrationClientMixin:
             response = await self.get_current_integration()
             self._metrics_attributes = response["metricAttributes"]
         return self._metrics_attributes
+
+    async def get_ingest_attributes(self) -> IngestAttributes:
+        if self._ingest_attributes is None:
+            response = await self.get_current_integration()
+            self._ingest_attributes = response["ingestAttributes"]
+        return self._ingest_attributes
 
     async def poll_integration_until_default_provisioning_is_complete(
         self,
@@ -360,6 +371,7 @@ class IntegrationClientMixin:
             kind=event["kind"],
         )
         headers = await self.auth.headers()
+        ingest_attributes = await self.get_ingest_attributes()
 
         data = [
             {
@@ -392,7 +404,7 @@ class IntegrationClientMixin:
             body["eventId"] = event["event_id"]
 
         response = await self.client.post(
-            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
+            f"{ingest_attributes['ingestUrl']}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
             headers=headers,
             json=body,
         )
