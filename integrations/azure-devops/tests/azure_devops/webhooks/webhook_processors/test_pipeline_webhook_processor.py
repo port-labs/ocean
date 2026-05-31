@@ -21,6 +21,8 @@ def pipeline_processor(
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
 
     monkeypatch.setattr(
         "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
@@ -116,6 +118,8 @@ async def test_pipeline_handle_event_success_no_enrich(
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
 
     monkeypatch.setattr(
         "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
@@ -155,6 +159,8 @@ async def test_pipeline_handle_event_success_with_enrich(
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
 
     monkeypatch.setattr(
         "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
@@ -191,6 +197,8 @@ async def test_pipeline_handle_event_not_found(
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
 
     monkeypatch.setattr(
         "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
