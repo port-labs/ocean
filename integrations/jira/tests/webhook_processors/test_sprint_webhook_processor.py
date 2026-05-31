@@ -1,4 +1,6 @@
 import pytest
+import httpx
+from httpx import Request, Response
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -317,12 +319,13 @@ class TestSprintWebhookProcessorHandleEvent:
         assert result.updated_raw_results[0]["state"] == "closed"
 
     @pytest.mark.asyncio
-    async def test_sprint_not_found_after_create_returns_empty_results(
+    async def test_sprint_not_found_after_create_treats_as_delete(
         self,
         sprint_processor: SprintWebhookProcessor,
         resource_config: ResourceConfig,
     ) -> None:
-        """If get_single_sprint returns None, no update or delete should occur."""
+        """If get_single_sprint returns 404 after sprint_created, the sprint was deleted
+        before processing completed — treat as a delete event."""
         payload: dict[str, Any] = {
             "webhookEvent": "sprint_created",
             "sprint": MOCK_SPRINT,
@@ -332,10 +335,21 @@ class TestSprintWebhookProcessorHandleEvent:
             "webhook_processors.sprint_webhook_processor.get_or_create_jira_client"
         ) as mock_create_client:
             mock_client = AsyncMock()
-            mock_client.get_single_sprint = AsyncMock(return_value=None)
+            mock_client.get_single_sprint = AsyncMock(
+                side_effect=httpx.HTTPStatusError(
+                    "Not Found",
+                    request=Request(
+                        "GET",
+                        "https://example.atlassian.net/rest/agile/latest/sprint/1",
+                    ),
+                    response=Response(
+                        404, request=Request("GET", "https://example.atlassian.net")
+                    ),
+                )
+            )
             mock_create_client.return_value = mock_client
 
             result = await sprint_processor.handle_event(payload, resource_config)
 
         assert result.updated_raw_results == []
-        assert result.deleted_raw_results == []
+        assert result.deleted_raw_results == [MOCK_SPRINT]
