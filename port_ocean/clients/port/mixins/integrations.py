@@ -373,8 +373,9 @@ class IntegrationClientMixin:
         headers = await self.auth.headers()
         ingest_attributes = await self.get_ingest_attributes()
 
-        data = [
-            {
+        data = []
+        for entry in event["data"]:
+            entry_data: dict[str, Any] = {
                 "request": entry["request"],
                 "response": entry["response"],
                 "items": entry["items"],
@@ -384,8 +385,9 @@ class IntegrationClientMixin:
                     "resourceIndex": entry["metadata"]["resource_index"],
                 },
             }
-            for entry in event["data"]
-        ]
+            if environment_data := entry.get("environment_data"):
+                entry_data["environment_data"] = environment_data
+            data.append(entry_data)
 
         body: dict[str, Any] = {
             "kind": event["kind"],

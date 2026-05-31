@@ -475,3 +475,33 @@ async def test_post_integration_raw_data_batch_two_entries(
     delete_entry = body["data"][1]
     assert delete_entry["items"] == delete_items
     assert delete_entry["metadata"]["operation"] == "delete"
+
+
+async def test_post_integration_raw_data_batch_includes_environment_data(
+    lakehouse_integration_client: IntegrationClientMixin,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test post_integration_raw_data_batch includes environment_data on each entry."""
+    monkeypatch.setenv("FOO", "bar")
+    monkeypatch.delenv("MISSING", raising=False)
+
+    raw_data = [{"name": "repo-one"}]
+    sync_id = "sync-env-vars"
+    kind = "repository"
+
+    event = make_single_entry_lakehouse_batch(
+        raw_data,
+        kind=kind,
+        index=0,
+        export_env_variables=["FOO", "MISSING"],
+    )
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            sync_id, event
+        )
+
+    lakehouse_integration_client.client.post.assert_called_once()
+    body = lakehouse_integration_client.client.post.call_args[1]["json"]
+
+    assert body["data"][0]["environment_data"] == {"FOO": "bar", "MISSING": None}
