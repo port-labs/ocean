@@ -399,6 +399,43 @@ class TestOrganizationsHealthCheckMixin:
         ):
             strategy._get_organization_account_role_details()
 
+    def test_get_organization_account_role_details_govcloud_arn(
+        self, strategy: OrganizationsStrategy
+    ) -> None:
+        """Test _get_organization_account_role_details accepts GovCloud ARNs."""
+        strategy.config["account_role_arn"] = (
+            "arn:aws-us-gov:iam::123456789012:role/OrganizationAccountAccessRole"
+        )
+        strategy._organization_role_details = None
+        role_details = strategy._get_organization_account_role_details()
+        assert role_details["partition"] == "aws-us-gov"
+        assert role_details["account"] == "123456789012"
+        assert role_details["resource"] == "role/OrganizationAccountAccessRole"
+
+    def test_get_organization_account_role_details_china_arn(
+        self, strategy: OrganizationsStrategy
+    ) -> None:
+        """Test _get_organization_account_role_details accepts China ARNs."""
+        strategy.config["account_role_arn"] = (
+            "arn:aws-cn:iam::123456789012:role/OrganizationAccountAccessRole"
+        )
+        strategy._organization_role_details = None
+        role_details = strategy._get_organization_account_role_details()
+        assert role_details["partition"] == "aws-cn"
+        assert role_details["account"] == "123456789012"
+        assert role_details["resource"] == "role/OrganizationAccountAccessRole"
+
+    def test_build_role_arn_govcloud(self, strategy: OrganizationsStrategy) -> None:
+        """Test _build_role_arn preserves GovCloud partition in constructed ARN."""
+        strategy.config["account_role_arn"] = (
+            "arn:aws-us-gov:iam::123456789012:role/OrganizationAccountAccessRole"
+        )
+        strategy._organization_role_details = None
+        role_arn = strategy._build_role_arn("999999999999")
+        assert role_arn == (
+            "arn:aws-us-gov:iam::999999999999:role/OrganizationAccountAccessRole"
+        )
+
     @pytest.mark.asyncio
     async def test_get_organization_session_success(
         self, strategy: OrganizationsStrategy, mock_aiosession: AsyncMock

@@ -2,6 +2,7 @@ title: AWS Hosted by Port
 description: AWS integration for Port Ocean Hosted by Port
 icon: AWS
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3
+formMappingEnabled: true
 features:
   - type: exporter
     section: Cloud Providers
@@ -12,6 +13,7 @@ features:
       - kind: AWS::ECS::Cluster
       - kind: AWS::ECS::TaskDefinition
       - kind: AWS::ECR::Repository
+      - kind: AWS::MemoryDB::User
       - kind: AWS::RDS::DBCluster
       - kind: AWS::MSK::Cluster
       - kind: AWS::EC2::Volume

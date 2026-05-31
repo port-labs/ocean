@@ -73,6 +73,7 @@ _TRUSTED_SUBDOMAINS = (
     ".checkmarx.net",
     ".datadoghq.com",
     ".dynatrace.com",
+    ".earlywarning.io",
     ".firehydrant.io",
     ".github.com",
     ".gitlab.com",
