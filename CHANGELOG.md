@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added `exportEnvVariables` to port-app-config selectors so integrations can include explicitly requested environment variable values as `__environment_data` on each lakehouse bulk payload for DSP processing.
+- Added `exportEnvVariables` to port-app-config selectors so integrations can include explicitly requested environment variable values as `environment_data` on each lakehouse bulk payload for DSP processing.
 
 ## 0.43.7 (2026-05-31)
 
