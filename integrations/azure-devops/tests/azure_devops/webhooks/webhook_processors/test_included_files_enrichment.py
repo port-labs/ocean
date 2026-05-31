@@ -195,6 +195,8 @@ class TestAzureDevopsIncludedFilesEnrichment:
         _mgr = MagicMock()
 
         _mgr.get_client_for_org.return_value = mock_client
+        mock_client._organization_base_url = "https://dev.azure.com/test"
+        _mgr.get_clients.return_value = [mock_client]
 
         monkeypatch.setattr(
             "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
@@ -263,6 +265,8 @@ class TestAzureDevopsIncludedFilesEnrichment:
         _mgr = MagicMock()
 
         _mgr.get_client_for_org.return_value = mock_client
+        mock_client._organization_base_url = "https://dev.azure.com/test"
+        _mgr.get_clients.return_value = [mock_client]
 
         monkeypatch.setattr(
             "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
