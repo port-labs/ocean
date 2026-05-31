@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
@@ -88,8 +89,8 @@ class ProjectProperties(BaseModel):
     projectVisibility: Optional[str] = None
     publicReadOnlyAccess: Optional[bool] = None
     resourceAccessRole: Optional[str] = None
-    created: Optional[str] = None
-    lastModified: Optional[str] = None
+    created: Optional[datetime] = None
+    lastModified: Optional[datetime] = None
     webhook: Optional[Dict[str, Any]] = None
 
     class Config:
