@@ -18,9 +18,15 @@ def definition_processor(
     mock_client = MagicMock()
     mock_client.get_release = AsyncMock()
     mock_client.get_release_definition = AsyncMock()
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_definition_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
     return ReleaseDefinitionWebhookProcessor(event)
 
@@ -75,7 +81,10 @@ async def test_validate_payload_valid(
     payload = {
         "eventType": ReleaseEvents.RELEASE_CREATED,
         "publisherId": RELEASE_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "release": {"id": 42},
             "project": {"id": "project-123", "name": "TestProject"},
@@ -90,7 +99,10 @@ async def test_validate_payload_missing_resource_project(
     mock_event_context: None,
 ) -> None:
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {"release": {"id": 42}},
     }
     assert await definition_processor.validate_payload(payload) is False
@@ -102,7 +114,9 @@ async def test_validate_payload_missing_project(
     mock_event_context: None,
 ) -> None:
     payload = {
-        "resourceContainers": {},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+        },
         "resource": {"release": {"id": 42}},
     }
     assert await definition_processor.validate_payload(payload) is False
@@ -114,7 +128,10 @@ async def test_validate_payload_missing_release(
     mock_event_context: None,
 ) -> None:
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {},
     }
     assert await definition_processor.validate_payload(payload) is False
@@ -143,13 +160,22 @@ async def test_handle_event_success(
             "__project": mock_project,
         }
     )
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_definition_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "release": {"id": 42},
             "project": mock_project,
@@ -176,13 +202,22 @@ async def test_handle_event_release_not_found(
 ) -> None:
     mock_client = MagicMock()
     mock_client.get_release = AsyncMock(return_value=None)
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_definition_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "release": {"id": 42},
             "project": {"id": "project-123", "name": "TestProject"},
@@ -211,13 +246,22 @@ async def test_handle_event_definition_not_found(
         }
     )
     mock_client.get_release_definition = AsyncMock(return_value=None)
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_definition_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "release": {"id": 42},
             "project": {"id": "project-123", "name": "TestProject"},

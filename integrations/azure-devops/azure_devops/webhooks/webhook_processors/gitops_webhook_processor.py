@@ -18,7 +18,6 @@ from azure_devops.webhooks.webhook_processors.base_processor import (
 )
 from azure_devops.webhooks.events import PushEvents
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
-from azure_devops.client.azure_devops_client import AzureDevopsClient
 import typing
 from port_ocean.context.event import event as ocean_event
 
@@ -66,7 +65,7 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         except ValueError:
             return False
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         config: GitPortAppConfig = cast(
@@ -120,7 +119,7 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             repo_id = push_data["resource"]["repository"]["id"]
             old_commit = update["oldObjectId"]
             new_commit = update["newObjectId"]
-            client = AzureDevopsClient.create_from_ocean_config()
+            client = self._get_client_for_webhook(push_data)
 
             # Generate entities from new commit
             new_entities_dict = await generate_entities_from_commit_id(

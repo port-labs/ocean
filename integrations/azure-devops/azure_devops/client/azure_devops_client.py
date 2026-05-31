@@ -26,6 +26,7 @@ from azure_devops.webhooks.events import (
     ReleaseDeploymentEvents,
 )
 
+from azure_devops.client.auth import AuthProvider, build_auth_provider
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
@@ -148,10 +149,10 @@ class AzureDevopsClient(HTTPBaseClient):
     def __init__(
         self,
         organization_url: str,
-        personal_access_token: str,
+        auth_provider: AuthProvider,
         webhook_auth_username: Optional[str] = None,
     ) -> None:
-        super().__init__(personal_access_token)
+        super().__init__(auth_provider)
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username
@@ -160,20 +161,22 @@ class AzureDevopsClient(HTTPBaseClient):
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
         if cache := event.attributes.get("azure_devops_client"):
             return cache
+        auth_provider = build_auth_provider(ocean.integration_config)
         azure_devops_client = cls(
             ocean.integration_config["organization_url"].strip("/"),
-            ocean.integration_config["personal_access_token"],
-            ocean.integration_config["webhook_auth_username"],
+            auth_provider,
+            ocean.integration_config.get("webhook_auth_username"),
         )
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
 
     @classmethod
     def create_from_ocean_config_no_cache(cls) -> "AzureDevopsClient":
+        auth_provider = build_auth_provider(ocean.integration_config)
         azure_devops_client = cls(
             ocean.integration_config["organization_url"].strip("/"),
-            ocean.integration_config["personal_access_token"],
-            ocean.integration_config["webhook_auth_username"],
+            auth_provider,
+            ocean.integration_config.get("webhook_auth_username"),
         )
         return azure_devops_client
 
@@ -199,9 +202,17 @@ class AzureDevopsClient(HTTPBaseClient):
         project = response.json()
         return project
 
-    @cache_iterator_result()
     async def generate_projects(
         self, sync_default_team: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._generate_projects_cached(
+            self._organization_base_url, sync_default_team
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_projects_cached(
+        self, org_identifier: str, sync_default_team: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         sync_default_team: bool - The List projects endpoint of ADO API excludes default team of a project.
@@ -285,8 +296,14 @@ class AzureDevopsClient(HTTPBaseClient):
             "__projectId": project_id,
         }
 
-    @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._generate_teams_cached(self._organization_base_url):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_teams_cached(
+        self, org_identifier: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
         async for teams in self._get_paginated_by_top_and_skip(teams_url):
             yield teams
@@ -350,14 +367,46 @@ class AzureDevopsClient(HTTPBaseClient):
         users_url = (
             self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
         )
-        async for users in self._get_paginated_by_top_and_continuation_token(
-            users_url, data_key="items", additional_params=additional_params or {}
-        ):
-            yield users
+        params = dict(additional_params or {})
+        api_version = params.get("api-version", "")
 
-    @cache_iterator_result()
+        if self._is_legacy_user_entitlements_version(api_version):
+            async for users in self._get_paginated_by_top_and_skip(
+                users_url,
+                params=params,
+                top_param="top",
+                skip_param="skip",
+            ):
+                yield users
+        else:
+            async for users in self._get_paginated_by_top_and_continuation_token(
+                users_url, data_key="items", additional_params=params
+            ):
+                yield users
+
+    @staticmethod
+    def _is_legacy_user_entitlements_version(api_version: str) -> bool:
+        """Versions before 7.x use top/skip pagination and 'value' data key."""
+        if not api_version:
+            return False
+        try:
+            major = api_version.split(".")[0]
+            return major.isdigit() and int(major) < 7
+        except Exception:
+            logger.warning(
+                f"Failed to parse API version {api_version}, assuming legacy version"
+            )
+            return True
+
     async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate all security groups in the organization."""
+        async for batch in self._generate_groups_cached(self._organization_base_url):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_groups_cached(
+        self, org_identifier: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         groups_url = (
             self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/groups"
         )
@@ -486,9 +535,17 @@ class AzureDevopsClient(HTTPBaseClient):
         else:
             yield [repo for repo in repositories if self._repository_is_healthy(repo)]
 
-    @cache_iterator_result()
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
+    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
+        async for batch in self._generate_repositories_cached(
+            self._organization_base_url, include_disabled_repositories
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_repositories_cached(
+        self, org_identifier: str, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
@@ -892,8 +949,16 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             return []
 
-    @cache_iterator_result()
     async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._generate_environments_cached(
+            self._organization_base_url
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _generate_environments_cached(
+        self, org_identifier: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
                 environments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments"
@@ -1355,9 +1420,17 @@ class AzureDevopsClient(HTTPBaseClient):
                         continue
                     raise
 
-    @cache_iterator_result()
     async def get_boards_in_organization(
         self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._get_boards_in_organization_cached(
+            self._organization_base_url
+        ):
+            yield batch
+
+    @cache_iterator_result()
+    async def _get_boards_in_organization_cached(
+        self, org_identifier: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             yield [
@@ -1390,7 +1463,8 @@ class AzureDevopsClient(HTTPBaseClient):
     async def create_subscription(
         self,
         webhook_subscription: WebhookSubscription,
-    ) -> None:
+    ) -> Optional[str]:
+        """Create a webhook subscription and return its ID (or None on failure)."""
         headers = {"Content-Type": "application/json"}
         subscription_base_url = self._organization_base_url
         params = WEBHOOK_API_PARAMS
@@ -1413,11 +1487,13 @@ class AzureDevopsClient(HTTPBaseClient):
             data=webhook_subscription_json,
         )
         if not response:
-            return
+            return None
         response_content = response.json()
+        sub_id = response_content.get("id")
         logger.info(
-            f"Created subscription id: {response_content['id']} for eventType {response_content['eventType']}"
+            f"Created subscription id: {sub_id} for eventType {response_content.get('eventType')}"
         )
+        return sub_id
 
     async def delete_subscription(
         self, webhook_subscription: WebhookSubscription
@@ -1774,13 +1850,17 @@ class AzureDevopsClient(HTTPBaseClient):
         base_url: str,
         project_id: Optional[str] = None,
         webhook_secret: Optional[str] = None,
-    ) -> None:
+    ) -> list[str]:
+        """Create/reconcile webhook subscriptions and return all active subscription IDs."""
         auth_username = self.webhook_auth_username
 
         existing_subscriptions = await self.generate_subscriptions_webhook_events()
 
         subs_to_create = []
         subs_to_delete = []
+        # IDs of existing healthy subscriptions we keep as-is — needed for
+        # the subscription registry so incoming events can be routed.
+        kept_sub_ids: list[str] = []
 
         webhook_subs = AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
 
@@ -1794,8 +1874,11 @@ class AzureDevopsClient(HTTPBaseClient):
             existing_sub = sub.get_event_by_subscription(existing_subscriptions)
 
             if existing_sub and not existing_sub.is_enabled():
+                # Disabled subscription — recreate it.
                 subs_to_delete.append(existing_sub)
                 subs_to_create.append(sub)
+            elif existing_sub and existing_sub.id:
+                kept_sub_ids.append(existing_sub.id)
             elif not existing_sub:
                 subs_to_create.append(sub)
 
@@ -1804,17 +1887,24 @@ class AzureDevopsClient(HTTPBaseClient):
                 *[self.delete_subscription(sub) for sub in subs_to_delete]
             )
 
+        created_sub_ids: list[str] = []
         if subs_to_create:
             results = await asyncio.gather(
                 *[self.create_subscription(sub) for sub in subs_to_create],
                 return_exceptions=True,
             )
 
-            errors = [result for result in results if isinstance(result, Exception)]
-            if errors:
-                logger.error(f"Failed to create {len(errors)} webhooks:")
-                for idx, error in enumerate(errors, start=1):
-                    logger.error(f"[{idx}] {type(error).__name__}: {str(error)}")
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.error(
+                        f"Failed to create webhook: {type(result).__name__}: {result}"
+                    )
+                elif isinstance(result, str):
+                    created_sub_ids.append(result)
+
+        # Return all active subscription IDs so the caller can populate the
+        # subscription registry for webhook event routing.
+        return kept_sub_ids + created_sub_ids
 
     async def get_repository_tree(
         self,
