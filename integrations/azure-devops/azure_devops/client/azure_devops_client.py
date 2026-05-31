@@ -2,7 +2,6 @@ from azure_devops.webhooks.events import AdvancedSecurityAlertEvents
 import asyncio
 import functools
 import json
-from urllib.parse import quote
 import httpx
 from collections import defaultdict
 from itertools import batched
@@ -368,10 +367,36 @@ class AzureDevopsClient(HTTPBaseClient):
         users_url = (
             self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
         )
-        async for users in self._get_paginated_by_top_and_continuation_token(
-            users_url, data_key="items", additional_params=additional_params or {}
-        ):
-            yield users
+        params = dict(additional_params or {})
+        api_version = params.get("api-version", "")
+
+        if self._is_legacy_user_entitlements_version(api_version):
+            async for users in self._get_paginated_by_top_and_skip(
+                users_url,
+                params=params,
+                top_param="top",
+                skip_param="skip",
+            ):
+                yield users
+        else:
+            async for users in self._get_paginated_by_top_and_continuation_token(
+                users_url, data_key="items", additional_params=params
+            ):
+                yield users
+
+    @staticmethod
+    def _is_legacy_user_entitlements_version(api_version: str) -> bool:
+        """Versions before 7.x use top/skip pagination and 'value' data key."""
+        if not api_version:
+            return False
+        try:
+            major = api_version.split(".")[0]
+            return major.isdigit() and int(major) < 7
+        except Exception:
+            logger.warning(
+                f"Failed to parse API version {api_version}, assuming legacy version"
+            )
+            return True
 
     async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate all security groups in the organization."""
@@ -1438,7 +1463,8 @@ class AzureDevopsClient(HTTPBaseClient):
     async def create_subscription(
         self,
         webhook_subscription: WebhookSubscription,
-    ) -> None:
+    ) -> Optional[str]:
+        """Create a webhook subscription and return its ID (or None on failure)."""
         headers = {"Content-Type": "application/json"}
         subscription_base_url = self._organization_base_url
         params = WEBHOOK_API_PARAMS
@@ -1461,11 +1487,13 @@ class AzureDevopsClient(HTTPBaseClient):
             data=webhook_subscription_json,
         )
         if not response:
-            return
+            return None
         response_content = response.json()
+        sub_id = response_content.get("id")
         logger.info(
-            f"Created subscription id: {response_content['id']} for eventType {response_content['eventType']}"
+            f"Created subscription id: {sub_id} for eventType {response_content.get('eventType')}"
         )
+        return sub_id
 
     async def delete_subscription(
         self, webhook_subscription: WebhookSubscription
@@ -1822,19 +1850,23 @@ class AzureDevopsClient(HTTPBaseClient):
         base_url: str,
         project_id: Optional[str] = None,
         webhook_secret: Optional[str] = None,
-    ) -> None:
+    ) -> list[str]:
+        """Create/reconcile webhook subscriptions and return all active subscription IDs."""
         auth_username = self.webhook_auth_username
 
         existing_subscriptions = await self.generate_subscriptions_webhook_events()
 
         subs_to_create = []
         subs_to_delete = []
+        # IDs of existing healthy subscriptions we keep as-is — needed for
+        # the subscription registry so incoming events can be routed.
+        kept_sub_ids: list[str] = []
 
         webhook_subs = AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
 
         for sub in webhook_subs:
             sub.set_webhook_details(
-                url=f"{base_url}{WEBHOOK_URL_SUFFIX}?org={quote(self._organization_base_url, safe='')}",
+                url=f"{base_url}{WEBHOOK_URL_SUFFIX}",
                 auth_username=auth_username,
                 webhook_secret=webhook_secret,
                 project_id=project_id,
@@ -1842,8 +1874,11 @@ class AzureDevopsClient(HTTPBaseClient):
             existing_sub = sub.get_event_by_subscription(existing_subscriptions)
 
             if existing_sub and not existing_sub.is_enabled():
+                # Disabled subscription — recreate it.
                 subs_to_delete.append(existing_sub)
                 subs_to_create.append(sub)
+            elif existing_sub and existing_sub.id:
+                kept_sub_ids.append(existing_sub.id)
             elif not existing_sub:
                 subs_to_create.append(sub)
 
@@ -1852,17 +1887,24 @@ class AzureDevopsClient(HTTPBaseClient):
                 *[self.delete_subscription(sub) for sub in subs_to_delete]
             )
 
+        created_sub_ids: list[str] = []
         if subs_to_create:
             results = await asyncio.gather(
                 *[self.create_subscription(sub) for sub in subs_to_create],
                 return_exceptions=True,
             )
 
-            errors = [result for result in results if isinstance(result, Exception)]
-            if errors:
-                logger.error(f"Failed to create {len(errors)} webhooks:")
-                for idx, error in enumerate(errors, start=1):
-                    logger.error(f"[{idx}] {type(error).__name__}: {str(error)}")
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.error(
+                        f"Failed to create webhook: {type(result).__name__}: {result}"
+                    )
+                elif isinstance(result, str):
+                    created_sub_ids.append(result)
+
+        # Return all active subscription IDs so the caller can populate the
+        # subscription registry for webhook event routing.
+        return kept_sub_ids + created_sub_ids
 
     async def get_repository_tree(
         self,
