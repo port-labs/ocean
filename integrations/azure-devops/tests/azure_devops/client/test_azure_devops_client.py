@@ -1711,7 +1711,9 @@ async def test_generate_subscriptions_webhook_events_will_skip_404(
                 request=Request("GET", "https://fake_url.com"),
             )
 
-            events = await client.generate_subscriptions_webhook_events()
+            events = await client.generate_subscriptions_webhook_events(
+                publisher_id="tfs", event_type="git.push"
+            )
             assert events == []
 
 
@@ -2175,7 +2177,9 @@ async def test_generate_subscriptions_webhook_events() -> None:
         )
 
         # ACT
-        events = await client.generate_subscriptions_webhook_events()
+        events = await client.generate_subscriptions_webhook_events(
+            publisher_id="tfs", event_type="git.push"
+        )
 
         # ASSERT
         assert [event.dict() for event in events] == EXPECTED_WEBHOOK_EVENTS

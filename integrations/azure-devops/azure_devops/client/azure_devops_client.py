@@ -1442,15 +1442,14 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def generate_subscriptions_webhook_events(
         self,
-        publisher_id: Optional[str] = None,
-        event_type: Optional[str] = None,
+        publisher_id: str,
+        event_type: str,
     ) -> list[WebhookSubscription]:
         headers = {"Content-Type": "application/json"}
-        params: dict[str, str] = {}
-        if publisher_id:
-            params["publisherId"] = publisher_id
-        if event_type:
-            params["eventType"] = event_type
+        params: dict[str, str] = {
+            "publisherId": publisher_id,
+            "eventType": event_type,
+        }
         try:
             get_subscriptions_url = (
                 f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
