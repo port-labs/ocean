@@ -16,6 +16,7 @@ class ObjectKind(StrEnum):
     ECS_TASK_DEFINITION = "AWS::ECS::TaskDefinition"
     SQS_QUEUE = "AWS::SQS::Queue"
     ECR_REPOSITORY = "AWS::ECR::Repository"
+    MSK_SERVERLESS_CLUSTER = "AWS::MSK::ServerlessCluster"
     MEMORYDB_USER = "AWS::MemoryDB::User"
     MSK_CLUSTER = "AWS::MSK::Cluster"
     ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"

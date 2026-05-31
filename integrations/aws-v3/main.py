@@ -34,7 +34,10 @@ from aws.core.exporters.ecr import EcrRepositoryExporter
 from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
 from aws.core.exporters.memorydb.user.exporter import MemoryDbUserExporter
 from aws.core.exporters.memorydb.user.models import PaginatedMemoryDbUserRequest
-from aws.core.exporters.msk import MskClusterExporter
+from aws.core.exporters.msk import MskServerlessClusterExporter, MskClusterExporter
+from aws.core.exporters.msk.serverless_cluster.models import (
+    PaginatedMskServerlessClusterRequest,
+)
 from aws.core.exporters.msk.cluster.models import PaginatedMskClusterRequest
 from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
@@ -210,6 +213,18 @@ async def resync_sqs_queue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ecr_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EcrRepositoryExporter, PaginatedRepositoryRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.MSK_SERVERLESS_CLUSTER)
+async def resync_msk_serverless_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind,
+        MskServerlessClusterExporter,
+        PaginatedMskServerlessClusterRequest,
+        regional=True,
     )
     async for batch in service:
         yield batch

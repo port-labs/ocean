@@ -1,0 +1,21 @@
+resources:
+  - kind: AWS::MSK::ServerlessCluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ClusterArn
+          title: .Properties.ClusterName
+          blueprint: '"mskServerlessCluster"'
+          properties:
+            arn: .Properties.ClusterArn
+            clusterName: .Properties.ClusterName
+            state: .Properties.State
+            creationTime: .Properties.CreationTime
+            currentVersion: .Properties.CurrentVersion
+            vpcConfigs: .Properties.Serverless.VpcConfigs
+            clientAuthentication: .Properties.Serverless.ClientAuthentication
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
