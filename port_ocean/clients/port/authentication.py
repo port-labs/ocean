@@ -92,6 +92,11 @@ class PortAuthentication:
             )
         return self.last_token_object.full_token
 
+    async def refresh_token(self) -> str:
+        """Fetch a new access token, even if the cached token is not yet expired locally."""
+        self.last_token_object = None
+        return await self.token
+
     async def is_machine_user(self) -> bool:
         # Ensure self.last_token_object is populated
         await self.token

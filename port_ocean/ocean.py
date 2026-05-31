@@ -111,7 +111,6 @@ class Ocean:
             self.port_client, self.config.scheduled_resync_interval
         )
         self.lifecycle_client: LifecycleClient = LifecycleClient(
-            integration_identifier=self.config.integration.identifier,
             auth=self.port_client.auth,
         )
         self.app_initialized = False
