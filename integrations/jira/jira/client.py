@@ -793,12 +793,6 @@ class JiraClient(OAuthClient):
         contract: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/
         #api-rest-agile-1-0-board-boardid-sprint-get
         """
-        if not board_id:
-            logger.warning(
-                f"Skipping sprint fetch — board_id '{board_id}' is not a valid Jira board ID"
-            )
-            return
-
         agile_url = await self._get_agile_api_url()
         url = f"{agile_url}/board/{board_id}/sprint"
 
@@ -812,16 +806,22 @@ class JiraClient(OAuthClient):
                 initial_params=query_params,
             ):
                 yield sprint_batch
-        except httpx.HTTPStatusError as e:
-            logger.warning(
-                f"Failed to fetch sprints for board {board_id}: "
-                f"HTTP {e.response.status_code} — skipping board and continuing resync"
-            )
-        except httpx.RequestError as e:
-            logger.warning(
-                f"Network error fetching sprints for board {board_id}: "
-                f"{e} — skipping board and continuing resync"
-            )
+        except httpx.HTTPStatusError as err:
+            if err.response.status_code == 400:
+                try:
+                    error_messages = err.response.json().get("errorMessages", [])
+                except Exception:
+                    raise err
+                if any(
+                    "The board does not support sprints" in msg
+                    for msg in error_messages
+                ):
+                    logger.warning(
+                        f"Board {board_id} does not support sprints, skipping. "
+                        f"Details: {'; '.join(error_messages)}"
+                    )
+                    return
+            raise
 
     async def get_single_sprint(self, sprint_id: int) -> dict[str, Any]:
         """Fetch a single sprint by ID."""
