@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.29 (2026-06-01)
+## 0.7.30 (2026-06-01)
 
 
 ### Improvements
 
 - Add `apiQueryParams` and `pipelineQueryParams` to pipeline and jobs kinds to help filter fetched pipelines
+
+
+## 0.7.29 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
 
 
 ## 0.7.28 (2026-05-31)
