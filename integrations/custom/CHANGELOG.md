@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.40 (2026-06-01)
+
+
+### Improvements
+
+- Added `lastPagePath` config for page pagination to support inverted stop signals (e.g. Spring `data.last`)
+
+
 ## 0.6.39 (2026-05-31)
 
 
