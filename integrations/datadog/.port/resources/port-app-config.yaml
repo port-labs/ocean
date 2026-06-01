@@ -17,8 +17,6 @@ resources:
             disabled: .attributes.disabled
             verified: .attributes.verified
             createdAt: .attributes.created_at
-          relations:
-            roles: '[.relationships.roles.data[]? | .id]'
   - kind: team
     selector:
       query: 'true'
@@ -60,7 +58,6 @@ resources:
   - kind: monitor
     selector:
       query: 'true'
-      includeRestrictionPolicy: 'false'
     port:
       entity:
         mappings:
@@ -76,7 +73,6 @@ resources:
             createdBy: .creator.email
             createdAt: .created
             updatedAt: .modified
-            restrictionPolicy: .__restrictionPolicy.attributes.bindings
   - kind: service
     selector:
       query: 'true'
@@ -106,7 +102,6 @@ resources:
   - kind: slo
     selector:
       query: 'true'
-      includeRestrictionPolicy: 'false'
     port:
       entity:
         mappings:
@@ -122,7 +117,6 @@ resources:
             createdBy: .creator.email
             createdAt: .created_at | todate
             updatedAt: .modified_at | todate
-            restrictionPolicy: .__restrictionPolicy.attributes.bindings
           relations:
             monitors: .monitor_ids | map(tostring)
             services: >-
@@ -150,20 +144,6 @@ resources:
             cpu_cores: .meta.cpuCores
             agent_version: .meta.agent_version
             tags: .tags_by_source
-  - kind: role
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .attributes.name
-          blueprint: '"datadogRole"'
-          properties:
-            name: .attributes.name
-            userCount: .attributes.user_count
-            createdAt: .attributes.created_at
-            modifiedAt: .attributes.modified_at
   - kind: serviceDependency
     selector:
       query: 'true'

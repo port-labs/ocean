@@ -44,15 +44,7 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {
-      "roles": {
-        "target": "datadogRole",
-        "title": "Roles",
-        "description": "Roles assigned to this user",
-        "many": true,
-        "required": false
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "datadogTeam",
@@ -231,11 +223,6 @@
           "title": "Updated At",
           "type": "string",
           "format": "date-time"
-        },
-        "restrictionPolicy": {
-          "type": "object",
-          "title": "Restriction Policy",
-          "description": "The restriction policy bindings controlling access to this monitor"
         }
       },
       "required": []
@@ -371,11 +358,6 @@
         "createdBy": {
           "title": "Creator",
           "type": "string"
-        },
-        "restrictionPolicy": {
-          "type": "object",
-          "title": "Restriction Policy",
-          "description": "The restriction policy bindings controlling access to this SLO"
         }
       },
       "required": []
@@ -399,43 +381,6 @@
         "many": true
       }
     }
-  },
-  {
-    "identifier": "datadogRole",
-    "description": "This blueprint represents a Datadog role. Roles define permission sets that can be assigned to users and referenced in restriction policies.",
-    "title": "Datadog Role",
-    "icon": "Datadog",
-    "schema": {
-      "properties": {
-        "name": {
-          "type": "string",
-          "title": "Name",
-          "description": "The name of the role"
-        },
-        "userCount": {
-          "type": "number",
-          "title": "User Count",
-          "description": "The number of users assigned to this role"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Created At",
-          "description": "The timestamp when the role was created"
-        },
-        "modifiedAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Modified At",
-          "description": "The timestamp when the role was last modified"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
   },
   {
     "identifier": "datadogCloudResource",
