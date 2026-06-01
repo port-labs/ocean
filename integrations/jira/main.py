@@ -17,6 +17,7 @@ from jira.overrides import (
     JiraWorklogResourceConfig,
     TeamResourceConfig,
     JiraBoardResourceConfig,
+    JiraBacklogResourceConfig,
     JiraEpicResourceConfig,
 )
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
@@ -124,6 +125,31 @@ async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         logger.info(f"Received board batch with {len(board_batch)} boards")
         yield list(enriched_boards)
+
+
+@ocean.on_resync(Kinds.BACKLOG)
+async def on_resync_backlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_or_create_jira_client()
+    selector = cast(JiraBacklogResourceConfig, event.resource_config).selector
+
+    logger.info(f"Starting backlog resync with JQL filter: '{selector.jql or 'none'}'")
+
+    async for board_batch in client.get_paginated_boards():
+        boards_with_ids = [board for board in board_batch if board.get("id")]
+
+        backlog_streams = [
+            client.get_paginated_backlog_for_board(
+                board_id=board["id"],
+                jql=selector.jql,
+                fields=selector.fields,
+                use_software_api=selector.use_software_api,
+            )
+            for board in boards_with_ids
+        ]
+
+        async for issue_batch in stream_async_iterators_tasks(*backlog_streams):
+            logger.debug(f"Received backlog batch with {len(issue_batch)} issues")
+            yield issue_batch
 
 
 @ocean.on_resync(Kinds.EPIC)

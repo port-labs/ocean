@@ -6,7 +6,6 @@ from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSor
 from port_ocean.exceptions.core import OceanAbortException
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
-import builtins
 from port_ocean.ocean import Ocean
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.models import (
@@ -1255,46 +1254,28 @@ async def test_reconciliation_search_entities_uses_resync_start_time_filter(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_ocean: Ocean,
 ) -> None:
-    """Reconciliation must fetch entities from Port with updatedAt notBetween resync_start_time and now.
+    """Reconciliation must fetch entities from Port before resync_start_time.
 
     This guards against the race where live events create/update entities during a resync:
     those entities have updatedAt after resync_start_time and must be excluded from the
     delete diff so they are not incorrectly deleted.
     """
-    resync_start_time = datetime(2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc)
+
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> "FixedDatetime":
+            return cls(2026, 3, 3, 12, 0, 0, tzinfo=tz)
+
+    resync_start_time = FixedDatetime(2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc)
     mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
     mock_sync_raw_mixin.sort_and_upsert_failed_entities = AsyncMock()  # type: ignore
 
-    mock_dt = MagicMock(spec=datetime)
-    mock_dt.now.return_value = resync_start_time
-
-    def isinstance_accepts_mock_dt(
-        obj: object, type_or_tuple: type | tuple[type, ...]
-    ) -> bool:
-        if type_or_tuple is mock_dt and isinstance(obj, datetime):
-            return True
-        return builtins.isinstance(obj, type_or_tuple)
-
-    with (
-        patch("port_ocean.core.integrations.mixins.sync_raw.datetime", mock_dt),
-        patch(
-            "port_ocean.core.integrations.mixins.sync_raw.isinstance",
-            isinstance_accepts_mock_dt,
-        ),
-    ):
+    with patch("port_ocean.core.integrations.mixins.sync_raw.datetime", FixedDatetime):
         await mock_sync_raw_mixin.sync_raw_all()
 
     mock_ocean.port_client.search_entities.assert_called_once()
     call_args = mock_ocean.port_client.search_entities.call_args
-    query = call_args.args[1]
-    assert query["combinator"] == "and"
-    rules = query["rules"]
-    assert len(rules) == 1
-    rule = rules[0]
-    assert rule["property"] == "$updatedAt"
-    assert rule["operator"] == "notBetween"
-    assert rule["value"]["from"] == resync_start_time.isoformat()
-    assert "to" in rule["value"]
+    assert call_args.kwargs["before"] == resync_start_time.isoformat()
 
 
 # ---------------------------------------------------------------------------

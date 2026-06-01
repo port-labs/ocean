@@ -18,9 +18,15 @@ def pipeline_stage_processor(
     mock_client = MagicMock()
     mock_client.get_single_project = AsyncMock()
     mock_client.get_pipeline_stage = AsyncMock()
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
     return PipelineStageWebhookProcessor(event)
 
@@ -59,7 +65,10 @@ async def test_pipeline_stage_validate_payload_valid(
     valid_payload = {
         "eventType": PipelineStageEvents.PIPELINE_STAGE_STATE_CHANGED,
         "publisherId": PIPELINES_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "run": {"id": "run-456"},
             "stage": {"id": "stage-789"},
@@ -80,13 +89,22 @@ async def test_pipeline_stage_handle_event_success(
     stage = {"id": "stage-789"}
     mock_client.get_single_project = AsyncMock(return_value=project)
     mock_client.get_pipeline_stage = AsyncMock(return_value=stage)
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "run": {"id": "run-456"},
             "stage": {"id": "stage-789"},
@@ -112,13 +130,22 @@ async def test_pipeline_stage_handle_event_project_not_found(
 ) -> None:
     mock_client = MagicMock()
     mock_client.get_single_project = AsyncMock(return_value=None)
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "run": {"id": "run-456"},
             "stage": {"id": "stage-789"},
@@ -139,13 +166,22 @@ async def test_pipeline_stage_handle_event_stage_not_found(
     mock_client = MagicMock()
     mock_client.get_single_project = AsyncMock(return_value={"id": "project-123"})
     mock_client.get_pipeline_stage = AsyncMock(return_value=None)
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "run": {"id": "run-456"},
             "stage": {"id": "stage-789"},

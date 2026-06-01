@@ -17,9 +17,15 @@ def deployment_processor(
 ) -> ReleaseDeploymentWebhookProcessor:
     mock_client = MagicMock()
     mock_client.get_release_deployment = AsyncMock()
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_deployment_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
     return ReleaseDeploymentWebhookProcessor(event)
 
@@ -106,7 +112,10 @@ async def test_deployment_validate_payload_completed(
     valid_payload = {
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
         "publisherId": RELEASE_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "deployment": {
                 "release": {"id": 10},
@@ -125,7 +134,10 @@ async def test_deployment_validate_payload_started(
     valid_payload = {
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_STARTED,
         "publisherId": RELEASE_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "environment": {
                 "releaseId": 10,
@@ -144,7 +156,9 @@ async def test_deployment_validate_payload_missing_project(
     invalid_payload = {
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
         "publisherId": RELEASE_PUBLISHER_ID,
-        "resourceContainers": {},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+        },
         "resource": {
             "deployment": {
                 "release": {"id": 10},
@@ -163,7 +177,10 @@ async def test_deployment_validate_payload_missing_deployment_and_environment(
     invalid_payload = {
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
         "publisherId": RELEASE_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {},
     }
     assert await deployment_processor.validate_payload(invalid_payload) is False
@@ -177,7 +194,10 @@ async def test_deployment_validate_payload_completed_missing_release_id(
     invalid_payload = {
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
         "publisherId": RELEASE_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "deployment": {
                 "definitionEnvironmentId": 3,
@@ -195,7 +215,10 @@ async def test_deployment_validate_payload_completed_missing_definition_environm
     invalid_payload = {
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
         "publisherId": RELEASE_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "deployment": {
                 "release": {"id": 10},
@@ -213,7 +236,10 @@ async def test_deployment_validate_payload_started_missing_release_id(
     invalid_payload = {
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_STARTED,
         "publisherId": RELEASE_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "environment": {
                 "definitionEnvironmentId": 5,
@@ -231,7 +257,10 @@ async def test_deployment_validate_payload_started_missing_definition_environmen
     invalid_payload = {
         "eventType": ReleaseDeploymentEvents.DEPLOYMENT_STARTED,
         "publisherId": RELEASE_PUBLISHER_ID,
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "environment": {
                 "releaseId": 10,
@@ -251,13 +280,22 @@ async def test_deployment_handle_event_completed_success(
     mock_client.get_release_deployment = AsyncMock(
         return_value={"id": 99, "deploymentStatus": "succeeded"}
     )
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_deployment_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "deployment": {
                 "release": {"id": 10},
@@ -286,13 +324,22 @@ async def test_deployment_handle_event_started_success(
     mock_client.get_release_deployment = AsyncMock(
         return_value={"id": 99, "deploymentStatus": "inProgress"}
     )
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_deployment_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "environment": {
                 "releaseId": 10,
@@ -318,13 +365,22 @@ async def test_deployment_handle_event_not_found(
 ) -> None:
     mock_client = MagicMock()
     mock_client.get_release_deployment = AsyncMock(return_value=None)
+    _mgr = MagicMock()
+
+    _mgr.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = "https://dev.azure.com/test"
+    _mgr.get_clients.return_value = [mock_client]
+
     monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.release_deployment_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
+        "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+        lambda: _mgr,
     )
 
     payload = {
-        "resourceContainers": {"project": {"id": "project-123"}},
+        "resourceContainers": {
+            "account": {"baseUrl": "https://dev.azure.com/test/"},
+            "project": {"id": "project-123"},
+        },
         "resource": {
             "deployment": {
                 "release": {"id": 10},

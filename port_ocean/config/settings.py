@@ -1,10 +1,9 @@
 import platform
 from typing import Any, Literal, Optional, Type
 
-from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
+from pydantic import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
 from pydantic.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
-from pydantic.fields import Field
 from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
@@ -27,6 +26,22 @@ from port_ocean.utils.misc import (
 )
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
+
+
+class SslX509Settings(BaseOceanModel):
+    """X.509 verification profile applied when ``verify`` is true."""
+
+    strict: bool = True
+
+
+class SslClientSettings(BaseOceanModel):
+    verify: bool = True
+    x509: SslX509Settings = Field(default_factory=SslX509Settings)
+
+
+class SslSettings(BaseOceanModel):
+    port: SslClientSettings = Field(default_factory=SslClientSettings)
+    third_party: SslClientSettings = Field(default_factory=SslClientSettings)
 
 
 class ApplicationSettings(BaseSettings):
@@ -56,7 +71,6 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
-    ingest_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://ingest.getport.io")
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
@@ -155,6 +169,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     actions_processor: ActionsProcessorSettings = Field(
         default_factory=lambda: ActionsProcessorSettings()
     )
+    ssl: SslSettings = Field(default_factory=SslSettings)
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(

@@ -371,6 +371,7 @@ class GitLabClient:
         projects_batch: list[dict[str, Any]],
         resource_type: str,
         max_concurrent: int = 10,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         semaphore = asyncio.Semaphore(max_concurrent)
         tasks = [
@@ -380,6 +381,7 @@ class GitLabClient:
                     self.rest.get_paginated_project_resource,
                     str(project["id"]),
                     resource_type,
+                    params=dict(params) if params else None,
                 ),
             )
             for project in projects_batch
@@ -390,12 +392,11 @@ class GitLabClient:
                 yield batch
 
     async def _get_pipeline_jobs(
-        self, project_id: int | str
+        self, project_id: int | str, pipeline_params: Optional[dict[str, Any]] = None
     ) -> AsyncIterator[list[dict[str, Any]]]:
         # First get pipelines
         async for pipeline_batch in self.rest.get_paginated_project_resource(
-            str(project_id),
-            "pipelines",
+            str(project_id), "pipelines", params=pipeline_params
         ):
             # Then get jobs for each pipeline
             for pipeline in pipeline_batch:
@@ -408,7 +409,10 @@ class GitLabClient:
                     break  # only yield first page of jobs per pipeline
 
     async def get_pipeline_jobs(
-        self, project_batch: list[dict[str, Any]], max_concurrent: int = 10
+        self,
+        project_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+        pipeline_params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch jobs for each project in the batch, limited to first page (<=100 jobs per pipeline)."""
 
@@ -417,7 +421,11 @@ class GitLabClient:
         tasks = [
             semaphore_async_iterator(
                 semaphore,
-                partial(self._get_pipeline_jobs, project["id"]),
+                partial(
+                    self._get_pipeline_jobs,
+                    project["id"],
+                    dict(pipeline_params) if pipeline_params else None,
+                ),
             )
             for project in project_batch
         ]
