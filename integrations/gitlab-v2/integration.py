@@ -113,7 +113,6 @@ class PipelineQueryParams(BaseModel):
     )
     yaml_errors: bool | None = Field(
         default=None,
-        alias="yamlErrors",
         title="YAML Errors",
         description="If true, return only pipelines whose .gitlab-ci.yml configuration is invalid.",
     )
@@ -124,16 +123,26 @@ class PipelineQueryParams(BaseModel):
     )
     updated_after: str | None = Field(
         default=None,
-        alias="updatedAfter",
         title="Updated After",
         description="Return only pipelines updated after this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
         regex=ISO_8601_DATETIME_REGEX,
     )
     updated_before: str | None = Field(
         default=None,
-        alias="updatedBefore",
         title="Updated Before",
         description="Return only pipelines updated before this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    created_after: str | None = Field(
+        default=None,
+        title="Created After",
+        description="Return only pipelines created after this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    created_before: str | None = Field(
+        default=None,
+        title="Created Before",
+        description="Return only pipelines created before this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
         regex=ISO_8601_DATETIME_REGEX,
     )
 

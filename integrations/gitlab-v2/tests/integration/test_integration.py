@@ -137,8 +137,8 @@ def test_generate_query_params_includes_only_set_fields() -> None:
 def test_generate_query_params_uses_snake_case_field_names_for_aliased_fields() -> None:
     """Generated params must use the snake_case field names expected by the Gitlab API, not the camelCase aliases."""
     params = PipelineQueryParams(
-        updatedAfter="2024-01-01T00:00:00Z",
-        updatedBefore="2024-02-01T00:00:00Z",
+        updated_after="2024-01-01T00:00:00Z",
+        updated_before="2024-02-01T00:00:00Z",
     ).generate_query_params()
 
     assert params == {
