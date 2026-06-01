@@ -1,11 +1,19 @@
 from client import DatadogClient
-from port_ocean.context.ocean import ocean
+from client_manager import DatadogClientManager
 
 
 def init_client() -> DatadogClient:
-    return DatadogClient(
-        ocean.integration_config["datadog_base_url"],
-        ocean.integration_config["datadog_api_key"],
-        ocean.integration_config["datadog_application_key"],
-        ocean.integration_config["datadog_access_token"],
-    )
+    return DatadogClientManager.create_from_ocean_config().get_default_client()
+
+
+def init_client_for_org(org_id: str) -> DatadogClient:
+    """Return the client for a specific org, falling back to the default client."""
+    if not org_id:
+        return init_client()
+
+    manager = DatadogClientManager.create_from_ocean_config()
+    client = manager.get_client_for_org(org_id)
+    if client:
+        return client
+
+    return manager.get_default_client()

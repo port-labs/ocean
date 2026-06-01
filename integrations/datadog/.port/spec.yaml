@@ -50,6 +50,11 @@ configurations:
     type: string
     required: false
     sensitive: true
+  - name: datadogCredentials
+    description: "List of Datadog organization credentials for multi-org support. Each entry requires accessToken (a PAT or SAT for standalone Bearer auth). Optional fields: baseUrl (defaults to https://api.datadoghq.com), orgId (for webhook event routing), orgName, webhookSecret."
+    type: array
+    required: false
+    sensitive: true
 
 saas:
   enabled: true

@@ -9,13 +9,27 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload
 
+from client_manager import DatadogClientManager
+
 
 class _AbstractDatadogWebhookProcessor(AbstractWebhookProcessor):
 
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]
     ) -> bool:
-        webhook_secret = ocean.integration_config.get("webhook_secret")
+        org_id = payload.get("org_id", "")
+
+        webhook_secret = None
+        if org_id:
+            try:
+                manager = DatadogClientManager._build_from_config()
+                webhook_secret = manager.get_webhook_secret_for_org(str(org_id))
+            except Exception:
+                pass
+
+        if not webhook_secret:
+            webhook_secret = ocean.integration_config.get("webhook_secret")
+
         authorization = headers.get("authorization")
 
         if not webhook_secret:

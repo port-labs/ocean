@@ -1,6 +1,6 @@
 from typing import cast, Union, Any
 
-from initialize_client import init_client
+from initialize_client import init_client_for_org
 from integration import ObjectKind
 from overrides import ServiceDependencyResourceConfig, DatadogServiceDependencySelector
 from webhook_processors._abstract_webhook_processor import (
@@ -49,7 +49,7 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
             Union[ResourceConfig, ServiceDependencyResourceConfig], resource_config
         )
         selector = cast(DatadogServiceDependencySelector, config.selector)
-        dd_client = init_client()
+        dd_client = init_client_for_org(payload.get("org_id", ""))
 
         tasks = [
             dd_client.get_single_service_dependency(

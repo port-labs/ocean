@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.0 (2026-05-28)
+
+### Features
+
+- Added multi-organization support allowing a single integration instance to sync data from multiple Datadog organizations using explicit credential arrays
+
 ## 0.3.153 (2026-05-28)
 
 

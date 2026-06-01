@@ -1,4 +1,4 @@
-from initialize_client import init_client
+from initialize_client import init_client_for_org
 from webhook_processors._abstract_webhook_processor import (
     _AbstractDatadogWebhookProcessor,
 )
@@ -21,7 +21,7 @@ class MonitorWebhookProcessor(_AbstractDatadogWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        dd_client = init_client()
+        dd_client = init_client_for_org(payload.get("org_id", ""))
         monitor = await dd_client.get_single_monitor(payload["alert_id"])
 
         return WebhookEventRawResults(
