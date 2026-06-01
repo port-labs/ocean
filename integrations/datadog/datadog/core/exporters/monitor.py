@@ -2,8 +2,8 @@ import asyncio
 from itertools import batched
 from typing import Any, TypedDict
 
-from integrations.datadog.datadog.client import DatadogClient
-from integrations.datadog.datadog.core.exporters.restriction_policy import RestrictionPolicyExporter
+from datadog.client import DatadogClient
+from datadog.core.exporters.restriction_policy import RestrictionPolicyExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from datadog.core.exporters.base import PaginatedExporter, SingleResourceExporter
 

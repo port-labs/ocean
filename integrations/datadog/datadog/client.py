@@ -1,4 +1,3 @@
-import asyncio
 import http
 import json
 import re
@@ -13,12 +12,6 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
 MAX_PAGE_SIZE = 100
-
-MAXIMUM_CONCURRENT_REQUESTS_METRICS = 20
-MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
-MINIMUM_LIMIT_REMAINING = 1
-DEFAULT_SLEEP_TIME = 0.1
-FETCH_WINDOW_TIME_IN_SECONDS = 3600
 
 DATADOG_UNKNOWN_STATUS_CODE = 512
 
@@ -72,9 +65,6 @@ class DatadogClient:
             timeout=ocean.config.client_timeout,
         )
 
-        self._default_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_DEFAULT)
-        self._metrics_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_METRICS)
-
     @property
     def datadog_web_url(self) -> str:
         """Replaces 'api' with 'app' in Datadog URLs."""
@@ -125,63 +115,6 @@ class DatadogClient:
         self._log_rate_limit_context(url, method, response)
         response.raise_for_status()
         return response.json()
-
-    async def send_rate_limited_request(
-        self,
-        url: str,
-        params: Optional[dict[str, Any]] = None,
-        json_data: Optional[dict[str, Any]] = None,
-        method: str = "GET",
-        semaphore: Optional[asyncio.Semaphore] = None,
-    ) -> Any:
-        """Send request with proactive rate-limit backoff (used by metrics)."""
-        if semaphore is None:
-            semaphore = self._default_semaphore
-
-        while True:
-            async with semaphore:
-                response = await self.http_client.request(
-                    url=url,
-                    method=method,
-                    headers=await self.auth_headers,
-                    params=params,
-                    json=json_data,
-                )
-
-            self._log_rate_limit_context(url, method, response)
-            response.raise_for_status()
-
-            try:
-                rate_limit_remaining = int(
-                    response.headers.get("X-RateLimit-Remaining", 0)
-                )
-                if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
-                    rate_limit_reset = response.headers.get("X-RateLimit-Reset")
-                    if rate_limit_reset is None:
-                        logger.warning(
-                            f"Approaching rate limit but X-RateLimit-Reset header missing for url {url}"
-                        )
-                        await asyncio.sleep(DEFAULT_SLEEP_TIME)
-                        continue
-
-                    datadog_wait_time_in_seconds = int(rate_limit_reset)
-                    wait_time = max(datadog_wait_time_in_seconds, DEFAULT_SLEEP_TIME)
-
-                    logger.info(
-                        f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
-                        f"URL: {url}, Remaining: {rate_limit_remaining} "
-                    )
-                    await asyncio.sleep(wait_time)
-                    continue
-            except ValueError as e:
-                logger.warning(
-                    f"Invalid rate limit header value for url {url}: {str(e)}"
-                )
-            except Exception as e:
-                logger.error(f"Error while making request to url: {url} - {str(e)}")
-                raise
-
-            return response.json()
 
     async def create_webhooks_if_not_exists(
         self, base_url: Any, webhook_secret: Any

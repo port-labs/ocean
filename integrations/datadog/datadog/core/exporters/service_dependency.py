@@ -4,8 +4,9 @@ from typing import Any, TypedDict
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from datadog.client import FETCH_WINDOW_TIME_IN_SECONDS
 from datadog.core.exporters.base import PaginatedExporter, SingleResourceExporter
+
+FETCH_WINDOW_TIME_IN_SECONDS = 3600
 
 
 class ServiceDependencyOptions(TypedDict):

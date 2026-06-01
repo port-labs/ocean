@@ -5,6 +5,7 @@ from typing import Any, TypedDict
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+from datadog.client import DatadogClient
 from datadog.core.exporters.base import PaginatedExporter
 from datadog.core.exporters.service import ServiceExporter
 
@@ -13,6 +14,10 @@ QUERY_ID_KEY = "__query_id"
 QUERY_KEY = "__query"
 ENV_KEY = "__env"
 FETCH_WINDOW_TIME_IN_MINUTES = 10
+
+MAXIMUM_CONCURRENT_REQUESTS = 20
+MINIMUM_LIMIT_REMAINING = 1
+DEFAULT_SLEEP_TIME = 0.1
 
 
 class ServiceMetricOptions(TypedDict):
@@ -25,6 +30,60 @@ class ServiceMetricOptions(TypedDict):
 
 
 class ServiceMetricExporter(PaginatedExporter[ServiceMetricOptions]):
+    def __init__(self, client: DatadogClient) -> None:
+        super().__init__(client)
+        self._semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS)
+
+    async def _send_rate_limited_request(
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
+        method: str = "GET",
+    ) -> Any:
+        """Send request with proactive rate-limit backoff."""
+        while True:
+            async with self._semaphore:
+                response = await self.client.http_client.request(
+                    url=url,
+                    method=method,
+                    headers=await self.client.auth_headers,
+                    params=params,
+                )
+
+            self.client._log_rate_limit_context(url, method, response)
+            response.raise_for_status()
+
+            try:
+                rate_limit_remaining = int(
+                    response.headers.get("X-RateLimit-Remaining", 0)
+                )
+                if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
+                    rate_limit_reset = response.headers.get("X-RateLimit-Reset")
+                    if rate_limit_reset is None:
+                        logger.warning(
+                            f"Approaching rate limit but X-RateLimit-Reset header missing for url {url}"
+                        )
+                        await asyncio.sleep(DEFAULT_SLEEP_TIME)
+                        continue
+
+                    datadog_wait_time_in_seconds = int(rate_limit_reset)
+                    wait_time = max(datadog_wait_time_in_seconds, DEFAULT_SLEEP_TIME)
+
+                    logger.info(
+                        f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
+                        f"URL: {url}, Remaining: {rate_limit_remaining} "
+                    )
+                    await asyncio.sleep(wait_time)
+                    continue
+            except ValueError as e:
+                logger.warning(
+                    f"Invalid rate limit header value for url {url}: {str(e)}"
+                )
+            except Exception as e:
+                logger.error(f"Error while making request to url: {url} - {str(e)}")
+                raise
+
+            return response.json()
     async def get_paginated_resources(
         self, options: ServiceMetricOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -130,9 +189,7 @@ class ServiceMetricExporter(PaginatedExporter[ServiceMetricOptions]):
                 url = f"{self.client.api_url}/api/v1/query?from={start_time}&to={end_time}&query={query_with_values}"
 
                 task = asyncio.create_task(
-                    self.client.send_rate_limited_request(
-                        url, semaphore=self.client._metrics_semaphore
-                    )
+                    self._send_rate_limited_request(url)
                 )
                 tasks.append(task)
 

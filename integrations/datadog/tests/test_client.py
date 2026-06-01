@@ -9,10 +9,10 @@ import pytest
 from datadog.client import (
     DATADOG_UNKNOWN_STATUS_CODE,
     DatadogClient,
-    FETCH_WINDOW_TIME_IN_SECONDS,
     MAX_PAGE_SIZE,
     _create_datadog_retry_config,
 )
+from datadog.core.exporters.service_dependency import FETCH_WINDOW_TIME_IN_SECONDS
 from datadog.core.exporters import (
     TeamExporter,
     UserExporter,
@@ -303,6 +303,8 @@ def test_datadog_retry_config_includes_transient_status_codes() -> None:
 async def test_fetch_with_rate_limit_handling_retries_after_quota_wait(
     mock_datadog_client: DatadogClient,
 ) -> None:
+    from datadog.core.exporters.service_metric import ServiceMetricExporter
+
     low_quota_response = httpx.Response(
         200,
         json={"series": []},
@@ -316,6 +318,8 @@ async def test_fetch_with_rate_limit_handling_retries_after_quota_wait(
         request=httpx.Request("GET", "https://api.datadoghq.com/api/v1/query"),
     )
 
+    exporter = ServiceMetricExporter(mock_datadog_client)
+
     with (
         patch.object(
             mock_datadog_client.http_client,
@@ -323,9 +327,12 @@ async def test_fetch_with_rate_limit_handling_retries_after_quota_wait(
             new_callable=AsyncMock,
             side_effect=[low_quota_response, success_response],
         ) as mock_request,
-        patch("datadog.client.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch(
+            "datadog.core.exporters.service_metric.asyncio.sleep",
+            new_callable=AsyncMock,
+        ) as mock_sleep,
     ):
-        result = await mock_datadog_client.send_rate_limited_request(
+        result = await exporter._send_rate_limited_request(
             "https://api.datadoghq.com/api/v1/query"
         )
 
