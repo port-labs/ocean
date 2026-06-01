@@ -12,7 +12,7 @@ from aws.core.exporters.codebuild.project.models import (
 )
 
 
-def test_project_properties_creation():
+def test_project_properties_creation() -> None:
     """Test ProjectProperties model creation."""
     props = ProjectProperties(
         name="test-project",
@@ -25,7 +25,7 @@ def test_project_properties_creation():
     assert props.description == "Test CodeBuild project"
 
 
-def test_project_properties_default_values():
+def test_project_properties_default_values() -> None:
     """Test ProjectProperties model with default values."""
     props = ProjectProperties()
     
@@ -37,7 +37,7 @@ def test_project_properties_default_values():
     assert props.secondaryArtifacts == []
 
 
-def test_project_environment_creation():
+def test_project_environment_creation() -> None:
     """Test ProjectEnvironment model creation."""
     env = ProjectEnvironment(
         type="LINUX_CONTAINER",
@@ -53,7 +53,7 @@ def test_project_environment_creation():
     assert env.environmentVariables == []
 
 
-def test_project_source_creation():
+def test_project_source_creation() -> None:
     """Test ProjectSource model creation."""
     source = ProjectSource(
         type="GITHUB",
@@ -68,7 +68,7 @@ def test_project_source_creation():
     assert source.reportBuildStatus is True
 
 
-def test_project_artifacts_creation():
+def test_project_artifacts_creation() -> None:
     """Test ProjectArtifacts model creation."""
     artifacts = ProjectArtifacts(
         type="S3",
@@ -85,7 +85,7 @@ def test_project_artifacts_creation():
     assert artifacts.packaging == "ZIP"
 
 
-def test_project_vpc_config_creation():
+def test_project_vpc_config_creation() -> None:
     """Test ProjectVpcConfig model creation."""
     vpc_config = ProjectVpcConfig(
         vpcId="vpc-12345678",
@@ -98,7 +98,7 @@ def test_project_vpc_config_creation():
     assert vpc_config.securityGroupIds == ["sg-12345", "sg-67890"]
 
 
-def test_codebuild_project_creation():
+def test_codebuild_project_creation() -> None:
     """Test CodeBuildProject resource model creation."""
     project = CodeBuildProject()
     
@@ -106,7 +106,7 @@ def test_codebuild_project_creation():
     assert isinstance(project.Properties, ProjectProperties)
 
 
-def test_codebuild_project_with_properties():
+def test_codebuild_project_with_properties() -> None:
     """Test CodeBuildProject with custom properties."""
     props = ProjectProperties(
         name="test-project",
@@ -119,7 +119,7 @@ def test_codebuild_project_with_properties():
     assert project.Properties.arn == "arn:aws:codebuild:us-east-1:123456789012:project/test-project"
 
 
-def test_single_codebuild_project_request_creation():
+def test_single_codebuild_project_request_creation() -> None:
     """Test SingleCodeBuildProjectRequest creation."""
     request = SingleCodeBuildProjectRequest(
         region="us-east-1",
@@ -134,18 +134,18 @@ def test_single_codebuild_project_request_creation():
     assert request.include == ["GetProjectDetailsAction"]
 
 
-def test_single_codebuild_project_request_missing_project_name():
+def test_single_codebuild_project_request_missing_project_name() -> None:
     """Test SingleCodeBuildProjectRequest validation fails without project_name."""
     with pytest.raises(ValidationError) as exc_info:
         SingleCodeBuildProjectRequest(
             region="us-east-1",
             account_id="123456789012"
-        )
+        ) # type: ignore
     
     assert "project_name" in str(exc_info.value)
 
 
-def test_paginated_codebuild_project_request_creation():
+def test_paginated_codebuild_project_request_creation() -> None:
     """Test PaginatedCodeBuildProjectRequest creation."""
     request = PaginatedCodeBuildProjectRequest(
         region="us-east-1",
@@ -158,7 +158,7 @@ def test_paginated_codebuild_project_request_creation():
     assert request.include == []
 
 
-def test_paginated_codebuild_project_request_default_include():
+def test_paginated_codebuild_project_request_default_include() -> None:
     """Test PaginatedCodeBuildProjectRequest with default include."""
     request = PaginatedCodeBuildProjectRequest(
         region="us-east-1",
@@ -168,7 +168,7 @@ def test_paginated_codebuild_project_request_default_include():
     assert request.include == []
 
 
-def test_project_properties_with_complex_objects():
+def test_project_properties_with_complex_objects() -> None:
     """Test ProjectProperties with nested complex objects."""
     environment = ProjectEnvironment(
         type="LINUX_CONTAINER",
@@ -196,19 +196,22 @@ def test_project_properties_with_complex_objects():
     )
     
     assert props.name == "complex-project"
+    assert isinstance(props.environment, ProjectEnvironment)
     assert props.environment.type == "LINUX_CONTAINER"
+    assert isinstance(props.source, ProjectSource)
     assert props.source.type == "GITHUB"
+    assert isinstance(props.artifacts, ProjectArtifacts)
     assert props.artifacts.type == "NO_ARTIFACTS"
     assert props.timeoutInMinutes == 60
     assert props.concurrentBuildLimit == 5
 
 
-def test_project_properties_ignore_extra_fields():
+def test_project_properties_ignore_extra_fields() -> None:
     """Test that ProjectProperties forbids extra fields."""
     props = ProjectProperties(
         name="test-project",
         arn="arn:aws:codebuild:us-east-1:123456789012:project/test-project",
-        invalid_field="should_not_be_allowed"
+        invalid_field="should_not_be_allowed" # type: ignore
     )
 
     assert 'invalid_field' not in props.dict()

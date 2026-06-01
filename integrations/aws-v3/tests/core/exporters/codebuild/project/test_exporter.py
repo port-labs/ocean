@@ -1,3 +1,5 @@
+from typing import AsyncGenerator
+
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from aws.core.exporters.codebuild.project.exporter import CodeBuildProjectExporter
@@ -8,13 +10,13 @@ from aws.core.exporters.codebuild.project.models import (
 
 
 @pytest.fixture
-def mock_session():
+def mock_session() -> AsyncMock:
     """Create a mock session for testing."""
     return AsyncMock()
 
 
 @pytest.fixture
-def single_project_options():
+def single_project_options() -> SingleCodeBuildProjectRequest:
     """Create options for single project export."""
     return SingleCodeBuildProjectRequest(
         region="us-east-1",
@@ -25,7 +27,7 @@ def single_project_options():
 
 
 @pytest.fixture
-def paginated_options():
+def paginated_options() -> PaginatedCodeBuildProjectRequest:
     """Create options for paginated export."""
     return PaginatedCodeBuildProjectRequest(
         region="us-east-1",
@@ -35,7 +37,7 @@ def paginated_options():
 
 
 @pytest.mark.asyncio
-async def test_codebuild_project_exporter_service_name():
+async def test_codebuild_project_exporter_service_name() -> None:
     """Test that the exporter has the correct service name."""
     exporter = CodeBuildProjectExporter(AsyncMock())
     assert exporter._service_name == "codebuild"
@@ -44,7 +46,10 @@ async def test_codebuild_project_exporter_service_name():
 @pytest.mark.asyncio
 @patch("aws.core.exporters.codebuild.project.exporter.AioBaseClientProxy")
 @patch("aws.core.exporters.codebuild.project.exporter.ResourceInspector")
-async def test_get_resource(mock_inspector_class, mock_proxy_class, mock_session, single_project_options):
+async def test_get_resource(mock_inspector_class: MagicMock,
+                            mock_proxy_class: MagicMock,
+                            mock_session: AsyncMock,
+                            single_project_options: SingleCodeBuildProjectRequest) -> None:
     """Test getting a single CodeBuild project resource."""
     
     # Setup mocks
@@ -76,7 +81,10 @@ async def test_get_resource(mock_inspector_class, mock_proxy_class, mock_session
 @pytest.mark.asyncio
 @patch("aws.core.exporters.codebuild.project.exporter.AioBaseClientProxy")
 @patch("aws.core.exporters.codebuild.project.exporter.ResourceInspector")
-async def test_get_resource_empty_response(mock_inspector_class, mock_proxy_class, mock_session, single_project_options):
+async def test_get_resource_empty_response(mock_inspector_class: MagicMock,
+                                           mock_proxy_class: MagicMock,
+                                           mock_session: AsyncMock,
+                                           single_project_options: SingleCodeBuildProjectRequest) -> None:
     """Test getting a single resource with empty response."""
     
     # Setup mocks
@@ -98,7 +106,10 @@ async def test_get_resource_empty_response(mock_inspector_class, mock_proxy_clas
 @pytest.mark.asyncio
 @patch("aws.core.exporters.codebuild.project.exporter.AioBaseClientProxy")
 @patch("aws.core.exporters.codebuild.project.exporter.ResourceInspector")
-async def test_get_paginated_resources(mock_inspector_class, mock_proxy_class, mock_session, paginated_options):
+async def test_get_paginated_resources(mock_inspector_class: MagicMock,
+                                       mock_proxy_class: MagicMock,
+                                       mock_session: AsyncMock,
+                                       paginated_options: PaginatedCodeBuildProjectRequest) -> None:
     """Test getting paginated CodeBuild project resources."""
     
     # Setup mocks
@@ -108,7 +119,7 @@ async def test_get_paginated_resources(mock_inspector_class, mock_proxy_class, m
     mock_paginator = MagicMock()
     mock_proxy_instance.get_paginator = MagicMock(return_value=mock_paginator)
 
-    async def mock_paginate_generator(*args, **kwargs):
+    async def mock_paginate_generator() -> AsyncGenerator[list[str], None]:
         yield ["project1", "project2"]
         yield ["project3"]
         yield []
@@ -154,7 +165,10 @@ async def test_get_paginated_resources(mock_inspector_class, mock_proxy_class, m
 @pytest.mark.asyncio
 @patch("aws.core.exporters.codebuild.project.exporter.AioBaseClientProxy")
 @patch("aws.core.exporters.codebuild.project.exporter.ResourceInspector")
-async def test_get_paginated_resources_empty_page(mock_inspector_class, mock_proxy_class, mock_session, paginated_options):
+async def test_get_paginated_resources_empty_page(mock_inspector_class: MagicMock,
+                                                  mock_proxy_class: MagicMock,
+                                                  mock_session: AsyncMock,
+                                                  paginated_options: PaginatedCodeBuildProjectRequest) -> None:
     """Test getting paginated resources with only empty pages."""
     
     # Setup mocks
@@ -164,7 +178,7 @@ async def test_get_paginated_resources_empty_page(mock_inspector_class, mock_pro
     mock_paginator = MagicMock()
     mock_proxy_instance.get_paginator = MagicMock(return_value=mock_paginator)
 
-    async def mock_paginate_generator(*args, **kwargs):
+    async def mock_paginate_generator() -> AsyncGenerator[list[str], None]:
         yield []
         yield []
     mock_paginator.paginate = MagicMock(side_effect=mock_paginate_generator)
