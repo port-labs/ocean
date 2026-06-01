@@ -6,13 +6,19 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from client import (
+from datadog.client import (
     DATADOG_UNKNOWN_STATUS_CODE,
     DatadogClient,
     FETCH_WINDOW_TIME_IN_SECONDS,
     MAX_PAGE_SIZE,
     _create_datadog_retry_config,
 )
+from datadog.core.exporters import (
+    TeamExporter,
+    UserExporter,
+    ServiceDependencyExporter,
+)
+from datadog.core.exporters.service_dependency import ServiceDependencyOptions
 from integration import ObjectKind
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -63,12 +69,13 @@ async def test_get_teams(mock_datadog_client: DatadogClient) -> None:
     empty_response: dict[str, list[dict[str, Any]]] = {"data": []}
 
     with patch.object(
-        mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [teams_response, empty_response]
 
+        exporter = TeamExporter(mock_datadog_client)
         teams = []
-        async for team_batch in mock_datadog_client.get_teams():
+        async for team_batch in exporter.get_paginated_resources():
             teams.extend(team_batch)
 
         assert len(teams) == 2
@@ -93,12 +100,13 @@ async def test_get_teams_multiple_pages(mock_datadog_client: DatadogClient) -> N
     empty_page: dict[str, list[dict[str, Any]]] = {"data": []}
 
     with patch.object(
-        mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [first_page, second_page, third_page, empty_page]
 
+        exporter = TeamExporter(mock_datadog_client)
         teams = []
-        async for team_batch in mock_datadog_client.get_teams():
+        async for team_batch in exporter.get_paginated_resources():
             teams.extend(team_batch)
 
         assert len(teams) == 3
@@ -114,12 +122,13 @@ async def test_get_users(mock_datadog_client: DatadogClient) -> None:
     empty_response: dict[str, list[dict[str, Any]]] = {"data": []}
 
     with patch.object(
-        mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [users_response, empty_response]
 
+        exporter = UserExporter(mock_datadog_client)
         users = []
-        async for user_batch in mock_datadog_client.get_users():
+        async for user_batch in exporter.get_paginated_resources():
             users.extend(user_batch)
 
         assert len(users) == 2
@@ -144,12 +153,13 @@ async def test_get_users_multiple_pages(mock_datadog_client: DatadogClient) -> N
     empty_page: dict[str, list[dict[str, Any]]] = {"data": []}
 
     with patch.object(
-        mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [first_page, second_page, third_page, empty_page]
 
+        exporter = UserExporter(mock_datadog_client)
         users = []
-        async for user_batch in mock_datadog_client.get_users():
+        async for user_batch in exporter.get_paginated_resources():
             users.extend(user_batch)
 
         assert len(users) == 3
@@ -158,59 +168,37 @@ async def test_get_users_multiple_pages(mock_datadog_client: DatadogClient) -> N
 
 
 @pytest.mark.asyncio
-async def test_get_team_members(mock_datadog_client: DatadogClient) -> None:
+async def test_get_teams_with_members(mock_datadog_client: DatadogClient) -> None:
+    teams_response: dict[str, list[dict[str, Any]]] = {
+        "data": [{"id": "team1", "type": "team"}]
+    }
+    empty_teams: dict[str, list[dict[str, Any]]] = {"data": []}
     members_response: dict[str, list[dict[str, Any]]] = {
         "included": [{"id": "1", "type": "users"}, {"id": "2", "type": "users"}]
     }
-    empty_response: dict[str, list[dict[str, Any]]] = {"included": []}
+    empty_members: dict[str, list[dict[str, Any]]] = {"included": []}
 
     with patch.object(
-        mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = [members_response, empty_response]
+        mock_request.side_effect = [
+            teams_response,
+            members_response,
+            empty_members,
+            empty_teams,
+        ]
 
-        members = []
-        async for member_batch in mock_datadog_client.get_team_members("team1"):
-            members.extend(member_batch)
+        from datadog.core.exporters.team import TeamOptions
 
-        assert len(members) == 2
-        assert members == members_response["included"]
-        mock_request.assert_called_with(
-            f"{mock_datadog_client.api_url}/api/v2/team/team1/memberships",
-            params={"page[size]": MAX_PAGE_SIZE, "page[number]": 1},
-        )
+        exporter = TeamExporter(mock_datadog_client)
+        teams = []
+        async for team_batch in exporter.get_paginated_resources(
+            TeamOptions(include_members=True)
+        ):
+            teams.extend(team_batch)
 
-
-@pytest.mark.asyncio
-async def test_get_team_members_multiple_pages(
-    mock_datadog_client: DatadogClient,
-) -> None:
-    first_page: dict[str, list[dict[str, Any]]] = {
-        "included": [{"id": "1", "type": "users"}]
-    }
-    second_page: dict[str, list[dict[str, Any]]] = {
-        "included": [{"id": "2", "type": "users"}]
-    }
-    third_page: dict[str, list[dict[str, Any]]] = {
-        "included": [{"id": "3", "type": "users"}]
-    }
-    empty_page: dict[str, list[dict[str, Any]]] = {"included": []}
-
-    with patch.object(
-        mock_datadog_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.side_effect = [first_page, second_page, third_page, empty_page]
-
-        members = []
-        async for member_batch in mock_datadog_client.get_team_members("team1"):
-            members.extend(member_batch)
-
-        assert len(members) == 3
-        assert (
-            members
-            == first_page["included"] + second_page["included"] + third_page["included"]
-        )
-        assert mock_request.call_count == 4
+        assert len(teams) == 1
+        assert teams[0]["__members"] == members_response["included"]
 
 
 @pytest.mark.asyncio
@@ -222,7 +210,7 @@ async def test_create_webhooks_if_not_exists(
             mock_datadog_client, "_webhook_exists", new_callable=AsyncMock
         ) as mock_exists,
         patch.object(
-            mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+            mock_datadog_client, "send_api_request", new_callable=AsyncMock
         ) as mock_send,
     ):
         mock_exists.return_value = False
@@ -245,7 +233,7 @@ async def test_create_webhooks_if_exists(mock_datadog_client: DatadogClient) -> 
             mock_datadog_client, "_webhook_exists", new_callable=AsyncMock
         ) as mock_exists,
         patch.object(
-            mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+            mock_datadog_client, "send_api_request", new_callable=AsyncMock
         ) as mock_send,
     ):
         mock_exists.return_value = True
@@ -267,15 +255,18 @@ async def test_get_service_dependencies(
     }
 
     with patch.object(
-        mock_datadog_client, "_send_api_request", new_callable=AsyncMock
+        mock_datadog_client, "send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.return_value = expected_return_value
 
+        exporter = ServiceDependencyExporter(mock_datadog_client)
         dependencies: list[dict[str, Any]] = []
         end_time = int(time.time())
-        async for dependency_batch in mock_datadog_client.get_service_dependencies(
-            env=resource_config.selector.environment,
-            start_time=resource_config.selector.start_time,
+        async for dependency_batch in exporter.get_paginated_resources(
+            ServiceDependencyOptions(
+                env=resource_config.selector.environment,
+                start_time=resource_config.selector.start_time,
+            )
         ):
             dependencies.extend(dependency_batch)
         assert len(dependencies) == 4
@@ -332,9 +323,9 @@ async def test_fetch_with_rate_limit_handling_retries_after_quota_wait(
             new_callable=AsyncMock,
             side_effect=[low_quota_response, success_response],
         ) as mock_request,
-        patch("client.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        patch("datadog.client.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
     ):
-        result = await mock_datadog_client._fetch_with_rate_limit_handling(
+        result = await mock_datadog_client.send_rate_limited_request(
             "https://api.datadoghq.com/api/v1/query"
         )
 
@@ -363,13 +354,13 @@ async def test_send_api_request_logs_rate_limit_headers_on_429(
             new_callable=AsyncMock,
             return_value=rate_limit_response,
         ),
-        patch("client.logger") as mock_logger,
+        patch("datadog.client.logger") as mock_logger,
         pytest.raises(httpx.HTTPStatusError),
     ):
         mock_bound = MagicMock()
         mock_logger.bind.return_value = mock_bound
 
-        await mock_datadog_client._send_api_request(
+        await mock_datadog_client.send_api_request(
             "https://api.datadoghq.com/api/v1/monitor",
             params={"page": 556, "page_size": 100},
         )

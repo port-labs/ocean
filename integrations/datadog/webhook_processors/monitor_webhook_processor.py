@@ -9,6 +9,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from integration import ObjectKind
+from datadog.core.exporters import MonitorExporter
 
 
 class MonitorWebhookProcessor(_AbstractDatadogWebhookProcessor):
@@ -22,7 +23,8 @@ class MonitorWebhookProcessor(_AbstractDatadogWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         dd_client = init_client()
-        monitor = await dd_client.get_single_monitor(payload["alert_id"])
+        monitor_exporter = MonitorExporter(dd_client)
+        monitor = await monitor_exporter.get_resource(payload["alert_id"])
 
         return WebhookEventRawResults(
             updated_raw_results=[monitor] if monitor else [],

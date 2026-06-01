@@ -15,13 +15,15 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from loguru import logger
 import asyncio
 
+from datadog.core.exporters import ServiceDependencyExporter
+from datadog.core.exporters.service_dependency import SingleServiceDependencyOptions
+
 
 class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         """Only process events that are related to service dependencies."""
         event_type = event.payload["event_type"]
 
-        # Event types that may indicate changes in service behavior or dependencies
         service_related_events = [
             "service_check",
             "query_alert_monitor",
@@ -50,12 +52,15 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
         )
         selector = cast(DatadogServiceDependencySelector, config.selector)
         dd_client = init_client()
+        dep_exporter = ServiceDependencyExporter(dd_client)
 
         tasks = [
-            dd_client.get_single_service_dependency(
-                service_id=service_id,
-                env=selector.environment,
-                start_time=selector.start_time,
+            dep_exporter.get_resource(
+                SingleServiceDependencyOptions(
+                    service_id=service_id,
+                    env=selector.environment,
+                    start_time=selector.start_time,
+                )
             )
             for service_id in service_ids
         ]
