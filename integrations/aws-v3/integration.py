@@ -133,6 +133,13 @@ class AWSRDSDBInstanceResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSRDSDBClusterResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::RDS::DBCluster"] = Field(
+        title="AWS RDS DB Cluster",
+        description="AWS RDS DB Cluster resource kind.",
+    )
+
+
 class AWSEKSClusterResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::EKS::Cluster"] = Field(
         title="AWS EKS Cluster",
@@ -182,10 +189,24 @@ class AWSMSKClusterResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSMSKServerlessClusterResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::MSK::ServerlessCluster"] = Field(
+        title="AWS MSK Serverless Cluster",
+        description="AWS MSK Serverless Cluster resource kind.",
+    )
+
+
 class AWSElastiCacheClusterResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::ElastiCache::Cluster"] = Field(
         title="AWS ElastiCache Cluster",
         description="AWS ElastiCache Cluster resource kind.",
+    )
+
+
+class AWSMemoryDbUserResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::MemoryDB::User"] = Field(
+        title="AWS MemoryDB User",
+        description="AWS MemoryDB User resource kind.",
     )
 
 
@@ -210,6 +231,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSOrganizationsAccountResourceConfig
         | AWSAccountInfoResourceConfig
         | AWSRDSDBInstanceResourceConfig
+        | AWSRDSDBClusterResourceConfig
         | AWSEKSClusterResourceConfig
         | AWSLambdaFunctionResourceConfig
         | AWSECSServiceResourceConfig
@@ -217,7 +239,9 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSSQSQueueResourceConfig
         | AWSECRRepositoryResourceConfig
         | AWSMSKClusterResourceConfig
+        | AWSMSKServerlessClusterResourceConfig
         | AWSElastiCacheClusterResourceConfig
+        | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
         | AWSCodeBuildProjectResourceConfig
     ] = Field(

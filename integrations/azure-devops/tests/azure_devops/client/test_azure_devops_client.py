@@ -1711,7 +1711,9 @@ async def test_generate_subscriptions_webhook_events_will_skip_404(
                 request=Request("GET", "https://fake_url.com"),
             )
 
-            events = await client.generate_subscriptions_webhook_events()
+            events = await client.generate_subscriptions_webhook_events(
+                publisher_id="tfs", event_type="git.push"
+            )
             assert events == []
 
 
@@ -2175,10 +2177,63 @@ async def test_generate_subscriptions_webhook_events() -> None:
         )
 
         # ACT
-        events = await client.generate_subscriptions_webhook_events()
+        events = await client.generate_subscriptions_webhook_events(
+            publisher_id="tfs", event_type="git.push"
+        )
 
         # ASSERT
         assert [event.dict() for event in events] == EXPECTED_WEBHOOK_EVENTS
+
+
+@pytest.mark.asyncio
+async def test_generate_subscriptions_webhook_events_passes_filters() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200,
+            json={"value": [EXPECTED_WEBHOOK_EVENTS[0]]},
+        )
+
+        events = await client.generate_subscriptions_webhook_events(
+            publisher_id="tfs", event_type="workitem.created"
+        )
+
+        assert len(events) == 1
+        mock_send_request.assert_called_once_with(
+            "GET",
+            f"{MOCK_ORG_URL}/_apis/hooks/subscriptions",
+            headers={"Content-Type": "application/json"},
+            params={"publisherId": "tfs", "eventType": "workitem.created"},
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_filtered_webhook_subscriptions_calls_per_event_type() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    with patch.object(
+        client, "generate_subscriptions_webhook_events", new_callable=AsyncMock
+    ) as mock_fetch:
+        mock_fetch.return_value = []
+
+        await client.get_filtered_webhook_subscriptions()
+
+        from azure_devops.client.azure_devops_client import (
+            AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS,
+        )
+
+        expected_filters = {
+            (sub.publisherId, sub.eventType)
+            for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
+        }
+        assert mock_fetch.call_count == len(expected_filters)
+
+        actual_filters = {
+            (call.kwargs["publisher_id"], call.kwargs["event_type"])
+            for call in mock_fetch.call_args_list
+        }
+        assert actual_filters == expected_filters
 
 
 @pytest.mark.asyncio

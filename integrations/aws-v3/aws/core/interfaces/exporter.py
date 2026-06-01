@@ -16,6 +16,7 @@ class IResourceExporter(ABC):
     _service_name: SupportedServices
     _model: Type[ResourceBuilder[ResourceModel[BaseModel], Any]]
     _actions_map: Type[ActionMap]
+    _supported_regions: frozenset[str] | None = None
 
     def __init__(self, session: AioSession) -> None:
         self.session = session
