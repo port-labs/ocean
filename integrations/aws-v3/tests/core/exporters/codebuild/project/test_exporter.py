@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 from aws.core.exporters.codebuild.project.exporter import CodeBuildProjectExporter
 from aws.core.exporters.codebuild.project.models import (
     SingleCodeBuildProjectRequest,
@@ -10,8 +10,7 @@ from aws.core.exporters.codebuild.project.models import (
 @pytest.fixture
 def mock_session():
     """Create a mock session for testing."""
-    session = AsyncMock()
-    return session
+    return AsyncMock()
 
 
 @pytest.fixture
@@ -106,17 +105,14 @@ async def test_get_paginated_resources(mock_inspector_class, mock_proxy_class, m
     mock_proxy_instance = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy_instance
     
-    mock_paginator = AsyncMock()
-    mock_proxy_instance.get_paginator.return_value = mock_paginator
-    
-    # Mock paginated results
-    projects_batch_1 = ["project1", "project2"]
-    projects_batch_2 = ["project3"]
-    mock_paginator.paginate.return_value.__aiter__.return_value = [
-        projects_batch_1,
-        projects_batch_2,
-        []  # Empty batch to test handling
-    ]
+    mock_paginator = MagicMock()
+    mock_proxy_instance.get_paginator = MagicMock(return_value=mock_paginator)
+
+    async def mock_paginate_generator(*args, **kwargs):
+        yield ["project1", "project2"]
+        yield ["project3"]
+        yield []
+    mock_paginator.paginate = MagicMock(side_effect=mock_paginate_generator)
     
     mock_inspector_instance = AsyncMock()
     mock_inspector_class.return_value = mock_inspector_instance
@@ -149,7 +145,7 @@ async def test_get_paginated_resources(mock_inspector_class, mock_proxy_class, m
     assert results[1][0]["name"] == "project3"
     
     # Verify paginator was set up correctly
-    mock_proxy_instance.get_paginator.assert_called_once_with("list_projects", "names")
+    mock_proxy_instance.get_paginator.assert_called_once_with("list_projects", "projects")
     
     # Verify inspector was called for non-empty batches
     assert mock_inspector_instance.inspect.call_count == 2
@@ -165,11 +161,13 @@ async def test_get_paginated_resources_empty_page(mock_inspector_class, mock_pro
     mock_proxy_instance = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy_instance
     
-    mock_paginator = AsyncMock()
-    mock_proxy_instance.get_paginator.return_value = mock_paginator
-    
-    # Mock empty results
-    mock_paginator.paginate.return_value.__aiter__.return_value = [[], []]
+    mock_paginator = MagicMock()
+    mock_proxy_instance.get_paginator = MagicMock(return_value=mock_paginator)
+
+    async def mock_paginate_generator(*args, **kwargs):
+        yield []
+        yield []
+    mock_paginator.paginate = MagicMock(side_effect=mock_paginate_generator)
     
     mock_inspector_instance = AsyncMock()
     mock_inspector_class.return_value = mock_inspector_instance
