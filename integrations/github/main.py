@@ -398,6 +398,8 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                     repo_name=repo_name,
                                     workflow_id=workflow["id"],
                                     max_runs=100,
+                                    status=config.selector.status,
+                                    created=config.selector.created_after,
                                 )
                             )
                             for workflow in workflows

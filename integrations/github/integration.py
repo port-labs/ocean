@@ -648,12 +648,51 @@ class GithubWorkflowConfig(ResourceConfig):
     )
 
 
+class GithubWorkflowRunSelector(RepoSearchSelector):
+    status: Optional[
+        Literal[
+            "completed",
+            "action_required",
+            "cancelled",
+            "failure",
+            "neutral",
+            "skipped",
+            "stale",
+            "success",
+            "timed_out",
+            "in_progress",
+            "queued",
+            "requested",
+            "waiting",
+            "pending",
+        ]
+    ] = Field(
+        title="Status",
+        default=None,
+        description="Filter workflow runs by status or conclusion. When unset, all runs are returned.",
+    )
+    lookback_days: Optional[int] = Field(
+        title="Lookback Days",
+        alias="lookbackDays",
+        default=None,
+        ge=1,
+        description="Only fetch workflow runs created within the last N days.",
+    )
+
+    @property
+    def created_after(self) -> Optional[str]:
+        if self.lookback_days is None:
+            return None
+        cutoff = datetime.now(timezone.utc) - timedelta(days=self.lookback_days)
+        return f">={cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+
+
 class GithubWorkflowRunConfig(ResourceConfig):
     kind: Literal[ObjectKind.WORKFLOW_RUN] = Field(
         title="Github Workflow Run",
         description="Github workflow run resource kind.",
     )
-    selector: RepoSearchSelector = Field(
+    selector: GithubWorkflowRunSelector = Field(
         title="Workflow run selector",
         description="Selector for the workflow run resource.",
     )

@@ -1,12 +1,14 @@
+import re
 from typing import Any, AsyncGenerator
-import pytest
 from unittest.mock import patch
+import pytest
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.core.options import (
     ListWorkflowRunOptions,
     SingleWorkflowRunOptions,
 )
+from integration import GithubWorkflowRunSelector
 from port_ocean.context.event import event_context
 
 
@@ -96,5 +98,49 @@ async def test_get_paginated_resources(rest_client: GithubRestClient) -> None:
             ]
 
         mock_request.assert_called_once_with(
-            f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/workflows/159038/runs"
+            f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/workflows/159038/runs",
+            {},
         )
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_resources_with_filters(
+    rest_client: GithubRestClient,
+) -> None:
+    options: ListWorkflowRunOptions = {
+        "organization": "test-org",
+        "repo_name": "test",
+        "max_runs": 100,
+        "workflow_id": 159038,
+        "status": "in_progress",
+        "created": ">=2024-01-01T00:00:00Z",
+    }
+    exporter = RestWorkflowRunExporter(rest_client)
+
+    async def mock_paginated_request(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        yield TEST_DATA
+
+    with patch.object(
+        rest_client, "send_paginated_request", side_effect=mock_paginated_request
+    ) as mock_request:
+        async with event_context("test_event"):
+            [batch async for batch in exporter.get_paginated_resources(options)]
+
+        mock_request.assert_called_once_with(
+            f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/workflows/159038/runs",
+            {"status": "in_progress", "created": ">=2024-01-01T00:00:00Z"},
+        )
+
+
+def test_workflow_run_selector_created_after_none() -> None:
+    selector = GithubWorkflowRunSelector(query=".")
+    assert selector.created_after is None
+
+
+def test_workflow_run_selector_created_after_format() -> None:
+    selector = GithubWorkflowRunSelector(query=".", lookbackDays=30)
+    result = selector.created_after
+    assert result is not None
+    assert re.match(r"^>=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", result)
