@@ -18,11 +18,9 @@ class ObjectKind(StrEnum):
 
 
 class MendScaSelector(Selector):
-    severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW"]]] = (
-        Field(
-            default=None,
-            description="Filter security findings by severity level",
-        )
+    severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW"]]] = Field(
+        default=None,
+        description="Filter security findings by severity level",
     )
 
 

@@ -7,7 +7,7 @@ from loguru import logger
 from mend.exceptions import MendAuthenticationError
 
 _CAESAR_OFFSET = 4
-_INVALID_KEY_MESSAGE = ("Provide a valid Mend Activation key.")
+_INVALID_KEY_MESSAGE = "Provide a valid Mend Activation key."
 
 
 def _caesar_cipher_decrypt(activation_key: str) -> str:
