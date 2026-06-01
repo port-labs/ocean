@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.2.35-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 2.2.34-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 2.2.33-beta (2026-05-31)
+
+
+### Features
+
+- Added support for AWS::MSK::ServerlessCluster resource kind, enabling ingestion of MSK serverless clusters into the Port catalog with attributes such as cluster state, creation time, VPC configuration, client authentication, and tags.
+
+
+## 2.2.32-beta (2026-05-31)
+
+
+### Features
+
+- Added support for AWS::RDS::DBCluster resource kind, enabling ingestion of Aurora and multi-AZ RDS cluster entities into the Port catalog with attributes such as cluster members, engine mode, writer/reader endpoints, availability zones, and encryption settings.
+
+
+## 2.2.31-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 2.2.30-beta (2026-05-31)
+
+
+### Features
+
+- Added support for `AWS::MemoryDB::User` resource kind, enabling ingestion of MemoryDB users into the Port catalog with attributes such as status, access string, ACL names, authentication mode, and optional tags via `ListTagsForMemoryDbUserAction`.
+
+
 ## 2.2.29-beta (2026-05-31)
 
 

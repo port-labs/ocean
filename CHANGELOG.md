@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.43.9 (2026-05-31)
+
+### Improvements
+
+- Patch processing mode integration on initialize
+
+## 0.43.8 (2026-05-31)
+
+### Improvements
+
+- Added `exportEnvVariables` to port-app-config selectors so integrations can include explicitly requested environment variable values as `environment_data` on each lakehouse bulk payload for DSP processing.
+
+## 0.43.7 (2026-05-31)
+
+### Bug Fixes
+
+- Remove ingest_url from the configuration
+
 ## 0.43.6 (2026-05-31)
 
 ### Bug Fixes
