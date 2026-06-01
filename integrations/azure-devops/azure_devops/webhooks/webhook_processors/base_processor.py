@@ -16,27 +16,44 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.client.client_manager import AzureDevopsClientManager
 from azure_devops.misc import ORG_NAME_FIELD, ORG_URL_FIELD, extract_org_name_from_url
+from azure_devops.webhooks import subscription_registry
 
+# --- Authentication constants ---
 AUTHORIZATION_HEADER = "authorization"
 AUTH_TYPE_BASIC = "basic"
 WEBHOOK_SECRET_CONFIG_KEY = "webhook_secret"
+
+# --- Payload structure constants ---
 REQUIRED_PAYLOAD_FIELDS = ("eventType", "publisherId", "resource")
-RESOURCE_CONTAINERS_KEY = "resourceContainers"
-ACCOUNT_BASE_URL_PATH = ("account", "baseUrl")
-COLLECTION_BASE_URL_PATH = ("collection", "baseUrl")
-ORG_URL_QUERY_PARAM = "org"
-ORIGINAL_REQUEST_ATTR = "_original_request"
+SUBSCRIPTION_ID_FIELD = "subscriptionId"
+
+
+# =============================================================================
+# Module-level helpers
+# =============================================================================
 
 
 def _enrich_items(
     items: list[dict[str, Any]], org_url: str, org_name: str
 ) -> list[dict[str, Any]]:
+    """Stamp organization metadata onto each raw entity dict."""
     return [
         {**item, ORG_URL_FIELD: org_url, ORG_NAME_FIELD: org_name} for item in items
     ]
 
 
+# =============================================================================
+# Base processor
+# =============================================================================
+
+
 class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
+    _resolved_client: Optional[AzureDevopsClient] = None
+
+    # -------------------------------------------------------------------------
+    # Authentication
+    # -------------------------------------------------------------------------
+
     async def authenticate(
         self, payload: EventPayload, headers: Dict[str, str]
     ) -> bool:
@@ -52,53 +69,100 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
             _, token = decoded.split(":", 1)
         except (ValueError, UnicodeDecodeError):
             return False
+
         webhook_secret = ocean.integration_config.get(WEBHOOK_SECRET_CONFIG_KEY)
         return token == webhook_secret
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         return all(field in payload for field in REQUIRED_PAYLOAD_FIELDS)
 
-    def _extract_org_url_from_payload(self, payload: EventPayload) -> Optional[str]:
-        """Extract the organization base URL from a webhook payload.
+    # -------------------------------------------------------------------------
+    # Client resolution via subscription registry
+    # -------------------------------------------------------------------------
 
-        Primary source: ``resourceContainers.account.baseUrl`` (or
-        ``collection.baseUrl`` as a TFS/on-premise fallback).
+    def _resolve_client(self, payload: EventPayload) -> Optional[AzureDevopsClient]:
+        """Look up the client for this event using the subscription registry.
 
-        Secondary source: the ``?org=`` query parameter embedded in the
-        webhook endpoint URL at registration time.  Some ADO event types
-        (e.g. Advanced Security alerts) omit ``baseUrl`` from
-        ``resourceContainers``, so the query param is the only reliable
-        signal for those events.
+        Resolution order:
+          1. Look up payload["subscriptionId"] in the subscription registry
+          2. If not found and only one client is configured, use that one
+          3. Otherwise return None (no client available)
+
+        When the registry is empty (ONCE mode / resync / tests), step 1 is
+        skipped and we go directly to the single-client fallback.
         """
-        containers = payload.get(RESOURCE_CONTAINERS_KEY, {})
-        account_key, base_url_key = ACCOUNT_BASE_URL_PATH
-        collection_key, _ = COLLECTION_BASE_URL_PATH
-        url = containers.get(account_key, {}).get(base_url_key) or containers.get(
-            collection_key, {}
-        ).get(base_url_key)
+        sub_id = payload.get(SUBSCRIPTION_ID_FIELD)
+        if sub_id and subscription_registry.size() > 0:
+            client = subscription_registry.get_client(sub_id)
+            if client:
+                return client
 
-        if not url:
-            request = getattr(self.event, ORIGINAL_REQUEST_ATTR, None)
-            if request is not None:
-                url = request.query_params.get(ORG_URL_QUERY_PARAM)
+        # Fallback: when the registry can't resolve (e.g. test notifications with
+        # zeroed-out subscription IDs, ONCE mode where no webhooks are created, or
+        # subscriptions that pre-date the registry), use the single configured client.
+        manager = AzureDevopsClientManager.create_from_ocean_config()
+        clients = manager.get_clients()
+        if len(clients) == 1:
+            return clients[0]
 
-        return url.rstrip("/") if url else None
+        # Multi-org with unresolved subscription — caller must handle None.
+        return None
 
     def _get_client_for_webhook(self, payload: EventPayload) -> AzureDevopsClient:
-        """Resolve the per-org AzureDevopsClient for a webhook payload.
+        """Return the client resolved by handle_event for this request.
 
-        Only call this after ``handle_event`` has already validated that the
-        org URL is present and a matching client exists.
+        Only call this from _handle_webhook_event where the client is
+        guaranteed to exist (handle_event already confirmed it).
         """
-        manager = AzureDevopsClientManager.create_from_ocean_config()
-        org_url = self._extract_org_url_from_payload(payload)
-        client = manager.get_client_for_org(org_url or "")
+        if self._resolved_client is not None:
+            return self._resolved_client
+        client = self._resolve_client(payload)
         if client is None:
             raise ValueError(
-                f"No configured client for org '{org_url}'. "
+                "No client available for this webhook event. "
                 "This should have been caught in handle_event."
             )
         return client
+
+    # -------------------------------------------------------------------------
+    # Event handling (main entry point)
+    # -------------------------------------------------------------------------
+
+    async def handle_event(
+        self, payload: EventPayload, resource_config: ResourceConfig
+    ) -> WebhookEventRawResults:
+        """Route a webhook event to the appropriate handler.
+
+        Resolution:
+          1. Look up the client via subscription registry (or single-client default)
+          2. If client found: full processing with API calls
+          3. If no client: best-effort processing with raw payload only
+        """
+        client = self._resolve_client(payload)
+        # Cache so sub-processors can access via _get_client_for_webhook()
+        # without re-resolving.
+        self._resolved_client = client
+
+        if client:
+            org_url = client._organization_base_url
+            org_name = extract_org_name_from_url(org_url)
+            results = await self._handle_webhook_event(payload, resource_config)
+        else:
+            logger.warning(
+                f"No client found for subscription '{payload.get(SUBSCRIPTION_ID_FIELD)}' "
+                "— processing without API enrichment"
+            )
+            org_url = ""
+            org_name = ""
+            results = await self._handle_webhook_event_no_client(
+                payload, resource_config
+            )
+
+        return self._enrich_webhook_results(results, org_url, org_name)
+
+    # -------------------------------------------------------------------------
+    # Enrichment
+    # -------------------------------------------------------------------------
 
     def _enrich_webhook_results(
         self,
@@ -106,7 +170,9 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
         org_url: str,
         org_name: str,
     ) -> WebhookEventRawResults:
-        """Annotate updated/deleted raw results with __organizationUrl/Name."""
+        """Stamp __organizationUrl and __organizationName onto all results."""
+        if not org_url:
+            return results
         return WebhookEventRawResults(
             updated_raw_results=_enrich_items(
                 results.updated_raw_results, org_url, org_name
@@ -116,32 +182,27 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
             ),
         )
 
-    async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        empty = WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
-
-        org_url = self._extract_org_url_from_payload(payload)
-        if not org_url:
-            logger.warning(
-                "Dropping webhook event: organization URL not found in payload"
-            )
-            return empty
-
-        manager = AzureDevopsClientManager.create_from_ocean_config()
-        if not manager.get_client_for_org(org_url):
-            logger.warning(
-                f"Dropping webhook event: no configured client for org '{org_url}'"
-            )
-            return empty
-
-        org_name = extract_org_name_from_url(org_url)
-        results = await self._handle_webhook_event(payload, resource_config)
-        return self._enrich_webhook_results(results, org_url, org_name)
+    # -------------------------------------------------------------------------
+    # Subclass hooks
+    # -------------------------------------------------------------------------
 
     @abstractmethod
     async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        """Subclasses implement their event handling here."""
+        """Process the event with full API access (client is available)."""
         ...
+
+    async def _handle_webhook_event_no_client(
+        self, payload: EventPayload, resource_config: ResourceConfig
+    ) -> WebhookEventRawResults:
+        """Fallback: process the event without a client (no API calls).
+
+        Returns the raw resource from the payload as-is. Subclasses may
+        override this for event-specific logic that doesn't need a client.
+        """
+        resource = payload.get("resource", {})
+        return WebhookEventRawResults(
+            updated_raw_results=[resource],
+            deleted_raw_results=[],
+        )

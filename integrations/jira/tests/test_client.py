@@ -1495,6 +1495,73 @@ async def test_enrich_board_with_projects_returns_empty_list_when_board_has_no_i
 
 
 @pytest.mark.asyncio
+async def test_backlog_passes_jql_and_fields_through_to_api(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Selector inputs (jql, fields, max_results) must reach the API params."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"isLast": True, "issues": []}
+
+        async for _ in mock_jira_client.get_paginated_backlog_for_board(
+            board_id=1,
+            jql="statusCategory != Done",
+            fields=["summary", "status", "assignee"],
+        ):
+            pass
+
+        sent_params = mock_request.call_args.kwargs["params"]
+        assert sent_params["jql"] == "statusCategory != Done"
+        assert sent_params["fields"] == "summary,status,assignee"
+
+
+@pytest.mark.asyncio
+async def test_backlog_defaults_to_software_endpoint(
+    mock_jira_client: JiraClient,
+) -> None:
+    """With use_software_api defaulting to True, calls must hit software/1.0 with token pagination."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "issues": [{"id": "10001", "key": "PORT-1"}],
+            "isLast": True,
+        }
+
+        batches = []
+        async for batch in mock_jira_client.get_paginated_backlog_for_board(board_id=1):
+            batches.append(batch)
+
+        call_url = mock_request.call_args.args[1]
+        assert "/software/1.0/board/1/backlog" in call_url
+        assert batches[0][0]["__boardId"] == 1
+
+
+@pytest.mark.asyncio
+async def test_backlog_use_software_api_false_routes_to_agile(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Opt-out path: use_software_api=False routes to the deprecated agile endpoint."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "isLast": True,
+            "issues": [{"id": "10001", "key": "PORT-1"}],
+        }
+
+        batches = []
+        async for batch in mock_jira_client.get_paginated_backlog_for_board(
+            board_id=1, use_software_api=False
+        ):
+            batches.append(batch)
+
+        call_url = mock_request.call_args.args[1]
+        assert "/agile/" in call_url
+        assert batches[0][0]["__boardId"] == 1
+
+
 async def test_get_paginated_worklogs_for_issue_enriches_worklog_with_issue_key(
     mock_jira_client: JiraClient,
 ) -> None:

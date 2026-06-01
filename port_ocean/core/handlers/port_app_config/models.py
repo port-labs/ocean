@@ -112,6 +112,12 @@ class Selector(_FieldMetadataEnforcer):
         title="Query",
         description="JQ expression that will filter which objects of the specified kind will be ingested into Port.",
     )
+    export_env_variables: list[str] = Field(
+        alias="exportEnvVariables",
+        default_factory=list,
+        title="Export Env Variables",
+        description="Environment variable names whose values should be included in lakehouse ingest payloads for DSP processing.",
+    )
 
 
 class ResourceConfig(_FieldMetadataEnforcer):
