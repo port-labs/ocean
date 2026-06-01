@@ -28,12 +28,14 @@ from datadog.core.exporters import (
     ServiceDependencyExporter,
     RoleExporter,
 )
-from datadog.core.exporters.team import TeamOptions
-from datadog.core.exporters.monitor import MonitorListOptions
-from datadog.core.exporters.slo import SloListOptions
-from datadog.core.exporters.slo_history import SloHistoryOptions
-from datadog.core.exporters.service_metric import ServiceMetricOptions
-from datadog.core.exporters.service_dependency import ServiceDependencyOptions
+from datadog.core.exporters.team_exporter import ListTeamOptions
+from datadog.core.exporters.monitor_exporter import ListMonitorOptions
+from datadog.core.exporters.slo_exporter import ListSloOptions
+from datadog.core.exporters.slo_history_exporter import ListSloHistoryOptions
+from datadog.core.exporters.service_metric_exporter import ListServiceMetricOptions
+from datadog.core.exporters.service_dependency_exporter import (
+    ListServiceDependencyOptions,
+)
 from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
 from webhook_processors.service_dependency_webhook_processor import (
     ServiceDependencyWebhookProcessor,
@@ -47,7 +49,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     team_exporter = TeamExporter(dd_client)
 
     async for teams in team_exporter.get_paginated_resources(
-        TeamOptions(include_members=selector.include_members)
+        ListTeamOptions(include_members=selector.include_members)
     ):
         logger.info(f"Received batch with {len(teams)} teams")
         yield teams
@@ -80,7 +82,7 @@ async def on_resync_monitors(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     monitor_exporter = MonitorExporter(dd_client)
 
     async for monitors in monitor_exporter.get_paginated_resources(
-        MonitorListOptions(
+        ListMonitorOptions(
             include_restriction_policy=selector.include_restriction_policy
         )
     ):
@@ -95,7 +97,7 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     slo_exporter = SloExporter(dd_client)
 
     async for slos in slo_exporter.get_paginated_resources(
-        SloListOptions(include_restriction_policy=selector.include_restriction_policy)
+        ListSloOptions(include_restriction_policy=selector.include_restriction_policy)
     ):
         logger.info(f"Received batch with {len(slos)} slos")
         yield slos
@@ -108,7 +110,7 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     slo_history_exporter = SloHistoryExporter(dd_client)
 
     async for histories in slo_history_exporter.get_paginated_resources(
-        SloHistoryOptions(
+        ListSloHistoryOptions(
             timeframe=selector.timeframe,
             concurrency=selector.concurrency,
             period_of_time_in_months=selector.period_of_time_in_months,
@@ -137,7 +139,7 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service_metric_exporter = ServiceMetricExporter(dd_client)
 
     async for metrics in service_metric_exporter.get_paginated_resources(
-        ServiceMetricOptions(
+        ListServiceMetricOptions(
             metric_query=params.metric,
             env_tag=params.env.tag,
             env_value=params.env.value,
@@ -157,7 +159,7 @@ async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service_dependency_exporter = ServiceDependencyExporter(dd_client)
 
     async for dependencies in service_dependency_exporter.get_paginated_resources(
-        ServiceDependencyOptions(
+        ListServiceDependencyOptions(
             env=selector.environment, start_time=selector.start_time
         )
     ):

@@ -1,13 +1,14 @@
 import asyncio
 import time
-from typing import Any, TypedDict
+from typing import Any
 
 from loguru import logger
+from pydantic import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.client import DatadogClient
-from datadog.core.exporters.base import PaginatedExporter
-from datadog.core.exporters.service import ServiceExporter
+from datadog.core.exporters.base_exporter import PaginatedExporter
+from datadog.core.exporters.service_exporter import ServiceExporter
 
 SERVICE_KEY = "__service"
 QUERY_ID_KEY = "__query_id"
@@ -20,16 +21,16 @@ MINIMUM_LIMIT_REMAINING = 1
 DEFAULT_SLEEP_TIME = 0.1
 
 
-class ServiceMetricOptions(TypedDict):
+class ListServiceMetricOptions(BaseModel):
     metric_query: str
-    env_tag: str
-    env_value: str
-    service_tag: str
-    service_value: str
-    time_window_in_minutes: int
+    env_tag: str = "env"
+    env_value: str = "*"
+    service_tag: str = "service"
+    service_value: str = "*"
+    time_window_in_minutes: int = 60
 
 
-class ServiceMetricExporter(PaginatedExporter[ServiceMetricOptions]):
+class ServiceMetricExporter(PaginatedExporter[ListServiceMetricOptions]):
     def __init__(self, client: DatadogClient) -> None:
         super().__init__(client)
         self._semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS)
@@ -84,58 +85,52 @@ class ServiceMetricExporter(PaginatedExporter[ServiceMetricOptions]):
                 raise
 
             return response.json()
+
     async def get_paginated_resources(
-        self, options: ServiceMetricOptions
+        self, options: ListServiceMetricOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Fetch metrics for services and environments."""
-        metric_query = options["metric_query"]
-        env_tag = options["env_tag"]
-        env_value = options["env_value"]
-        service_tag = options["service_tag"]
-        service_value = options["service_value"]
-        time_window_in_minutes = options["time_window_in_minutes"]
-
         logger.info(
-            f"Fetching metrics for query: {metric_query} | env_tag: {env_tag}, env_value: {env_value} | "
-            f"service_tag: {service_tag}, service_value: {service_value}"
+            f"Fetching metrics for query: {options.metric_query} | env_tag: {options.env_tag}, env_value: {options.env_value} | "
+            f"service_tag: {options.service_tag}, service_value: {options.service_value}"
         )
 
         envs_to_fetch = (
-            [env_value]
-            if env_value != "*"
-            else self._get_env_tags(await self._get_tags(), env_tag)
+            [options.env_value]
+            if options.env_value != "*"
+            else self._get_env_tags(await self._get_tags(), options.env_tag)
         )
         if not envs_to_fetch:
             logger.warning(
-                f"No environments found, can't fetch metrics for metric {metric_query}"
+                f"No environments found, can't fetch metrics for metric {options.metric_query}"
             )
             return
 
         service_exporter = ServiceExporter(self.client)
 
-        if service_value == "*":
+        if options.service_value == "*":
             async for service_list in service_exporter.get_paginated_resources():
                 async for metrics in self._fetch_metrics_for_services(
-                    metric_query,
+                    options.metric_query,
                     envs_to_fetch,
                     service_list,
-                    time_window_in_minutes,
-                    env_tag,
-                    service_tag,
+                    options.time_window_in_minutes,
+                    options.env_tag,
+                    options.service_tag,
                 ):
                     yield metrics
         else:
-            result = await service_exporter.get_resource(service_value)
+            result = await service_exporter.get_resource(options.service_value)
             if not result:
                 return
             service_details: dict[str, Any] = result["data"]
             async for metrics in self._fetch_metrics_for_services(
-                metric_query,
+                options.metric_query,
                 envs_to_fetch,
                 [service_details],
-                time_window_in_minutes,
-                env_tag,
-                service_tag,
+                options.time_window_in_minutes,
+                options.env_tag,
+                options.service_tag,
             ):
                 yield metrics
 
@@ -188,9 +183,7 @@ class ServiceMetricExporter(PaginatedExporter[ServiceMetricOptions]):
 
                 url = f"{self.client.api_url}/api/v1/query?from={start_time}&to={end_time}&query={query_with_values}"
 
-                task = asyncio.create_task(
-                    self._send_rate_limited_request(url)
-                )
+                task = asyncio.create_task(self._send_rate_limited_request(url))
                 tasks.append(task)
 
             results = await asyncio.gather(*tasks)

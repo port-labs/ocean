@@ -1,23 +1,22 @@
-from typing import TypedDict
-
 from loguru import logger
+from pydantic import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from datadog.core.exporters.base import PaginatedExporter
+from datadog.core.exporters.base_exporter import PaginatedExporter
 
 
-class TeamOptions(TypedDict, total=False):
-    include_members: bool
+class ListTeamOptions(BaseModel):
+    include_members: bool = False
 
 
-class TeamExporter(PaginatedExporter[TeamOptions]):
+class TeamExporter(PaginatedExporter[ListTeamOptions]):
     async def get_paginated_resources(
-        self, options: TeamOptions | None = None
+        self, options: ListTeamOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get teams from Datadog.
         Docs: https://docs.datadoghq.com/api/latest/teams/#get-all-teams
         """
-        include_members = (options or {}).get("include_members", False)
+        include_members = options.include_members
         url = f"{self.client.api_url}/api/v2/team"
 
         async for teams in self._paginate_by_page_param(url):

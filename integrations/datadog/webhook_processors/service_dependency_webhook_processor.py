@@ -16,7 +16,9 @@ from loguru import logger
 import asyncio
 
 from datadog.core.exporters import ServiceDependencyExporter
-from datadog.core.exporters.service_dependency import SingleServiceDependencyOptions
+from datadog.core.exporters.service_dependency_exporter import (
+    GetServiceDependencyOptions,
+)
 
 
 class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
@@ -56,7 +58,7 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
 
         tasks = [
             dep_exporter.get_resource(
-                SingleServiceDependencyOptions(
+                GetServiceDependencyOptions(
                     service_id=service_id,
                     env=selector.environment,
                     start_time=selector.start_time,

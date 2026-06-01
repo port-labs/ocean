@@ -1,14 +1,15 @@
 import datetime
 import http
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional
 
 import httpx
 from loguru import logger
+from pydantic import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.queue_utils import process_in_queue
 
-from datadog.core.exporters.base import PaginatedExporter
-from datadog.core.exporters.slo import SloExporter
+from datadog.core.exporters.base_exporter import PaginatedExporter
+from datadog.core.exporters.slo_exporter import ListSloOptions, SloExporter
 from utils import (
     generate_time_windows_from_interval_days,
     get_start_of_the_day_in_seconds_x_day_back,
@@ -16,31 +17,37 @@ from utils import (
 )
 
 
-class SloHistoryOptions(TypedDict):
+class ListSloHistoryOptions(BaseModel):
     timeframe: int
     concurrency: int
     period_of_time_in_months: int
-    period_of_time_in_days: Optional[int]
+    period_of_time_in_days: Optional[int] = None
 
 
-def _resolve_start_timestamp(options: SloHistoryOptions) -> int:
-    period_of_time_in_days = options.get("period_of_time_in_days")
-    if period_of_time_in_days:
-        logger.info(f"Fetching SLO histories for {period_of_time_in_days} days back")
-        return get_start_of_the_day_in_seconds_x_day_back(period_of_time_in_days)
+def _resolve_start_timestamp(options: ListSloHistoryOptions) -> int:
+    if options.period_of_time_in_days:
+        logger.info(
+            f"Fetching SLO histories for {options.period_of_time_in_days} days back"
+        )
+        return get_start_of_the_day_in_seconds_x_day_back(
+            options.period_of_time_in_days
+        )
 
-    period_of_time_in_months = options["period_of_time_in_months"]
-    logger.info(f"Fetching SLO histories for {period_of_time_in_months} months back")
-    return get_start_of_the_month_in_seconds_x_months_back(period_of_time_in_months)
+    logger.info(
+        f"Fetching SLO histories for {options.period_of_time_in_months} months back"
+    )
+    return get_start_of_the_month_in_seconds_x_months_back(
+        options.period_of_time_in_months
+    )
 
 
-class SloHistoryExporter(PaginatedExporter[SloHistoryOptions]):
+class SloHistoryExporter(PaginatedExporter[ListSloHistoryOptions]):
     async def get_paginated_resources(
-        self, options: SloHistoryOptions
+        self, options: ListSloHistoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get SLO histories from Datadog, iterating over all SLOs and time windows."""
-        timeframe = options["timeframe"]
-        concurrency = options["concurrency"]
+        timeframe = options.timeframe
+        concurrency = options.concurrency
         start_timestamp = _resolve_start_timestamp(options)
 
         timestamps = generate_time_windows_from_interval_days(
@@ -48,7 +55,7 @@ class SloHistoryExporter(PaginatedExporter[SloHistoryOptions]):
         )
 
         slo_exporter = SloExporter(self.client)
-        async for slos in slo_exporter.get_paginated_resources():
+        async for slos in slo_exporter.get_paginated_resources(ListSloOptions()):
             for from_ts, to_ts in timestamps:
                 histories = await process_in_queue(
                     [slo["id"] for slo in slos],

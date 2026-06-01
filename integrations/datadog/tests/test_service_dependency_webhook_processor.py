@@ -10,7 +10,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from webhook_processors.service_dependency_webhook_processor import (
     ServiceDependencyWebhookProcessor,
 )
-from datadog.core.exporters.service_dependency import SingleServiceDependencyOptions
+from datadog.core.exporters.service_dependency_exporter import (
+    GetServiceDependencyOptions,
+)
 
 
 @pytest.fixture
@@ -91,7 +93,7 @@ async def test_handle_event_with_service_dependency(
         result = await processor.handle_event(test_payload, resource_config)
 
         mock_exporter.get_resource.assert_awaited_once_with(
-            SingleServiceDependencyOptions(
+            GetServiceDependencyOptions(
                 service_id="service-a",
                 env=resource_config.selector.environment,
                 start_time=resource_config.selector.start_time,

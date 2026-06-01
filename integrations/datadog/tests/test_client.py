@@ -11,15 +11,20 @@ from datadog.client import (
     DatadogClient,
     _create_datadog_retry_config,
 )
-from datadog.core.exporters.base import MAX_PAGE_SIZE
-from datadog.core.exporters.service_dependency import FETCH_WINDOW_TIME_IN_SECONDS
+from datadog.core.exporters.base_exporter import MAX_PAGE_SIZE
+from datadog.core.exporters.service_dependency_exporter import (
+    FETCH_WINDOW_TIME_IN_SECONDS,
+)
 from datadog.core.exporters import (
     TeamExporter,
     UserExporter,
     ServiceDependencyExporter,
 )
-from datadog.core.exporters.service_dependency import ServiceDependencyOptions
+from datadog.core.exporters.service_dependency_exporter import (
+    ListServiceDependencyOptions,
+)
 from integration import ObjectKind
+from datadog.core.exporters.team_exporter import ListTeamOptions
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
@@ -75,7 +80,7 @@ async def test_get_teams(mock_datadog_client: DatadogClient) -> None:
 
         exporter = TeamExporter(mock_datadog_client)
         teams = []
-        async for team_batch in exporter.get_paginated_resources():
+        async for team_batch in exporter.get_paginated_resources(ListTeamOptions()):
             teams.extend(team_batch)
 
         assert len(teams) == 2
@@ -106,7 +111,7 @@ async def test_get_teams_multiple_pages(mock_datadog_client: DatadogClient) -> N
 
         exporter = TeamExporter(mock_datadog_client)
         teams = []
-        async for team_batch in exporter.get_paginated_resources():
+        async for team_batch in exporter.get_paginated_resources(ListTeamOptions()):
             teams.extend(team_batch)
 
         assert len(teams) == 3
@@ -188,12 +193,12 @@ async def test_get_teams_with_members(mock_datadog_client: DatadogClient) -> Non
             empty_teams,
         ]
 
-        from datadog.core.exporters.team import TeamOptions
+        from datadog.core.exporters.team_exporter import ListTeamOptions
 
         exporter = TeamExporter(mock_datadog_client)
         teams = []
         async for team_batch in exporter.get_paginated_resources(
-            TeamOptions(include_members=True)
+            ListTeamOptions(include_members=True)
         ):
             teams.extend(team_batch)
 
@@ -263,7 +268,7 @@ async def test_get_service_dependencies(
         dependencies: list[dict[str, Any]] = []
         end_time = int(time.time())
         async for dependency_batch in exporter.get_paginated_resources(
-            ServiceDependencyOptions(
+            ListServiceDependencyOptions(
                 env=resource_config.selector.environment,
                 start_time=resource_config.selector.start_time,
             )
@@ -303,7 +308,7 @@ def test_datadog_retry_config_includes_transient_status_codes() -> None:
 async def test_fetch_with_rate_limit_handling_retries_after_quota_wait(
     mock_datadog_client: DatadogClient,
 ) -> None:
-    from datadog.core.exporters.service_metric import ServiceMetricExporter
+    from datadog.core.exporters.service_metric_exporter import ServiceMetricExporter
 
     low_quota_response = httpx.Response(
         200,
@@ -328,7 +333,7 @@ async def test_fetch_with_rate_limit_handling_retries_after_quota_wait(
             side_effect=[low_quota_response, success_response],
         ) as mock_request,
         patch(
-            "datadog.core.exporters.service_metric.asyncio.sleep",
+            "datadog.core.exporters.service_metric_exporter.asyncio.sleep",
             new_callable=AsyncMock,
         ) as mock_sleep,
     ):

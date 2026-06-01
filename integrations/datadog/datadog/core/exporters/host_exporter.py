@@ -1,6 +1,6 @@
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from datadog.core.exporters.base import PaginatedExporter
+from datadog.core.exporters.base_exporter import PaginatedExporter
 
 
 class HostExporter(PaginatedExporter[None]):

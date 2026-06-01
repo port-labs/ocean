@@ -2,7 +2,10 @@ from typing import Any
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from datadog.core.exporters.base import PaginatedExporter, SingleResourceExporter
+from datadog.core.exporters.base_exporter import (
+    PaginatedExporter,
+    SingleResourceExporter,
+)
 
 
 class ServiceExporter(PaginatedExporter[None], SingleResourceExporter[str]):
@@ -18,7 +21,7 @@ class ServiceExporter(PaginatedExporter[None], SingleResourceExporter[str]):
         ):
             yield batch
 
-    async def get_resource(self, service_id: str) -> dict[str, Any] | None:
+    async def get_resource(self, resource_id: str) -> dict[str, Any] | None:
         """Get a single service by ID."""
-        url = f"{self.client.api_url}/api/v2/services/definitions/{service_id}"
+        url = f"{self.client.api_url}/api/v2/services/definitions/{resource_id}"
         return await self.client.send_api_request(url)

@@ -9,6 +9,7 @@ from datadog.client import DatadogClient
 MAX_PAGE_SIZE = 100
 
 OptionsT = TypeVar("OptionsT")
+ResourceIdT = TypeVar("ResourceIdT")
 
 
 class DatadogExporter(ABC):
@@ -81,8 +82,8 @@ class PaginatedExporter(DatadogExporter, Generic[OptionsT]):
             offset += page_size
 
 
-class SingleResourceExporter(DatadogExporter, Generic[OptionsT]):
+class SingleResourceExporter(DatadogExporter, Generic[ResourceIdT]):
     """Mixin for exporters that support single resource fetching."""
 
     @abstractmethod
-    async def get_resource(self, options: OptionsT) -> dict[str, Any] | None: ...
+    async def get_resource(self, resource_id: ResourceIdT) -> dict[str, Any] | None: ...
