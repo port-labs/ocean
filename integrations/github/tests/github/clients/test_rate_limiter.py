@@ -4,6 +4,7 @@ import pytest
 import asyncio
 import gzip
 import time
+from threading import Lock
 from unittest.mock import Mock, patch
 import httpx
 
@@ -139,6 +140,37 @@ class MockGitHubClient:
             mock_response.headers = self._success_headers(remaining=remaining_override)
             await self.rate_limiter.on_response(mock_response, resource)
             return mock_response
+
+
+class TestRateLimiterRegistryForkReset:
+    def test_reset_for_fork_clears_instances(
+        self, client_config: GitHubRateLimiterConfig, github_host: str
+    ) -> None:
+        GitHubRateLimiterRegistry.get_limiter(github_host, client_config)
+        assert len(GitHubRateLimiterRegistry._instances) > 0
+
+        GitHubRateLimiterRegistry.reset_for_fork()
+
+        assert len(GitHubRateLimiterRegistry._instances) == 0
+
+    def test_reset_for_fork_reinitializes_lock(self) -> None:
+        old_lock = GitHubRateLimiterRegistry._lock
+        GitHubRateLimiterRegistry.reset_for_fork()
+        assert GitHubRateLimiterRegistry._lock is not old_lock
+        assert isinstance(GitHubRateLimiterRegistry._lock, type(Lock()))
+
+    def test_registry_functional_after_reset(
+        self, client_config: GitHubRateLimiterConfig, github_host: str
+    ) -> None:
+        limiter_before = GitHubRateLimiterRegistry.get_limiter(
+            github_host, client_config
+        )
+        GitHubRateLimiterRegistry.reset_for_fork()
+        limiter_after = GitHubRateLimiterRegistry.get_limiter(
+            github_host, client_config
+        )
+
+        assert limiter_after is not limiter_before
 
 
 class TestRateLimiter:

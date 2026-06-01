@@ -261,7 +261,6 @@ def mock_port_client(mock_http_client: MagicMock) -> PortClient:
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        MagicMock(),
     )
     mock_port_client.auth = AsyncMock()
     mock_port_client.auth.headers = AsyncMock(

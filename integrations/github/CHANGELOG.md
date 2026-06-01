@@ -7,6 +7,110 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.20 (2026-05-31)
+
+
+### Bug Fixes
+
+- Fixed asyncio event loop error when `repoManagedMapping` is enabled with multiple file resources.
+
+
+## 5.5.19 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 5.5.18 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 5.5.17 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 5.5.16 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 5.5.15 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 5.5.14 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 5.5.13 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 5.5.12 (2026-05-27)
+
+
+### Bug Fixes
+
+- Fixed OOM crashes during repository enrichment by sub-batching calls to process at most 10 repositories concurrently and preventing cache pollution from enriched data
+
+
+## 5.5.11 (2026-05-27)
+
+
+### Improvements
+
+- Point `repoSearch` selector description to Port docs limitations instead of duplicating GitHub Search API constraints in the UI.
+
+
+## 5.5.10 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 5.5.9 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 5.5.8 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
 ## 5.5.7 (2026-05-25)
 
 

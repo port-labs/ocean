@@ -10,7 +10,7 @@ import multiprocessing
 import httpx
 import json
 from loguru import logger
-from port_ocean.clients.lifecycle import GranularityType
+from port_ocean.clients.dsp.lifecycle import GranularityType
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.metric_resource import metric_resource_context
@@ -22,6 +22,7 @@ from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
 from port_ocean.core.integrations.mixins.lakehouse_buffer import LakehouseBuffer
 from port_ocean.core.integrations.mixins.utils import (
     ProcessWrapper,
+    build_lakehouse_data_entry,
     clear_http_client_context,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
@@ -32,7 +33,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, LakehouseDataEntry, LakehouseDataEntryMetadata, ProcessExecutionMode, LakehouseEventType, LakehouseOperation
+from port_ocean.core.models import Entity, LakehouseDataEntryMetadata, ProcessExecutionMode, LakehouseEventType, LakehouseOperation
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -464,7 +465,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if raw_results:
             if lakehouse_data_enabled and buffer:
                 metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
-                lakehouse_data_entry = LakehouseDataEntry(request={}, response={}, metadata=metadata, items=raw_results)
+                lakehouse_data_entry = build_lakehouse_data_entry(
+                    items=raw_results,
+                    metadata=metadata,
+                    export_env_variables=resource_config.selector.export_env_variables,
+                )
                 await buffer.add(lakehouse_data_entry)
             batch_index += 1
             number_of_raw_results += len(raw_results)
@@ -491,7 +496,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     batch_index += 1
                     if lakehouse_data_enabled and buffer:
                         metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
-                        lakehouse_data_entry = LakehouseDataEntry(request={}, response={}, metadata=metadata, items=items)
+                        lakehouse_data_entry = build_lakehouse_data_entry(
+                            items=items,
+                            metadata=metadata,
+                            export_env_variables=resource_config.selector.export_env_variables,
+                        )
                         await buffer.add(lakehouse_data_entry)
                     number_of_raw_results += len(items)
 
@@ -1006,31 +1015,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resync_start_time: datetime | None = event.attributes.get(
                 "resync_start_time"
             )
-            query: dict[Any, Any] | None = None
             if not (resync_start_time and isinstance(resync_start_time, datetime)):
                 logger.warning(
                     "Resync start time is not set, fetching all entities from Port with no updatedAt filter"
                 )
+                before: str | None = None
             else:
-                query = {
-                    "combinator": "and",
-                    "rules": [
-                        {
-                            "property": "$updatedAt",
-                            "operator": "notBetween",
-                            "value": {
-                                "from": resync_start_time.isoformat(),
-                                "to": datetime.now(timezone.utc).isoformat(),
-                            },
-                        },
-                    ],
-                }
+                before = resync_start_time.isoformat()
             logger.info(
                 "Fetching current entity state from Port",
                 entities_synced=len(generated_entities),
             )
             entities_at_port = await ocean.port_client.search_entities(
-                user_agent_type, query
+                user_agent_type, before=before
             )
             entities_to_delete = max(0, len(entities_at_port) - len(generated_entities))
             logger.info(

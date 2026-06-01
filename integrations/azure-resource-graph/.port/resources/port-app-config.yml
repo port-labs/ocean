@@ -35,7 +35,6 @@ resources:
           blueprint: '"azureResourceGroup"'
           properties:
             tags: .tags
-            type: .type
             location: .location
           relations:
             subscription: ("/subscriptions/" + .subscriptionId) | gsub(" ";"_")
