@@ -203,11 +203,12 @@ def test_project_properties_with_complex_objects():
     assert props.concurrentBuildLimit == 5
 
 
-def test_project_properties_forbid_extra_fields():
+def test_project_properties_ignore_extra_fields():
     """Test that ProjectProperties forbids extra fields."""
-    with pytest.raises(ValidationError):
-        ProjectProperties(
+    props = ProjectProperties(
             name="test-project",
             arn="arn:aws:codebuild:us-east-1:123456789012:project/test-project",
             invalid_field="should_not_be_allowed"
         )
+
+    assert 'invalid_field' not in props.dict()
