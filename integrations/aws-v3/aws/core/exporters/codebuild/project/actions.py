@@ -28,14 +28,14 @@ class GetProjectDetailsAction(Action):
         # CodeBuild supports batch requests for up to 100 projects
         batch_size = 100
         all_results: List[Dict[str, Any]] = []
-        
+
         for i in range(0, len(resources), batch_size):
-            project_names = resources[i:i + batch_size]
-            
+            project_names = resources[i : i + batch_size]
+
             try:
                 response = await self.client.batch_get_projects(names=project_names)
                 projects = response.get("projects", [])
-                
+
                 for project in projects:
                     project_data = {
                         "name": project.get("name", ""),
@@ -44,7 +44,9 @@ class GetProjectDetailsAction(Action):
                         "source": project.get("source"),
                         "secondarySources": project.get("secondarySources", []),
                         "sourceVersion": project.get("sourceVersion"),
-                        "secondarySourceVersions": project.get("secondarySourceVersions", []),
+                        "secondarySourceVersions": project.get(
+                            "secondarySourceVersions", []
+                        ),
                         "artifacts": project.get("artifacts"),
                         "secondaryArtifacts": project.get("secondaryArtifacts", []),
                         "cache": project.get("cache"),
@@ -68,13 +70,17 @@ class GetProjectDetailsAction(Action):
                         "webhook": project.get("webhook"),
                     }
                     all_results.append(project_data)
-                
-                logger.info(f"Successfully fetched details for {len(projects)} CodeBuild projects")
-                
+
+                logger.info(
+                    f"Successfully fetched details for {len(projects)} CodeBuild projects"
+                )
+
             except Exception as e:
-                logger.error(f"Error fetching details for CodeBuild projects batch: {e}")
+                logger.error(
+                    f"Error fetching details for CodeBuild projects batch: {e}"
+                )
                 continue
-        
+
         return all_results
 
 
@@ -94,7 +100,9 @@ class GetProjectWebhooksAction(Action):
         for idx, webhook_result in enumerate(results):
             if isinstance(webhook_result, Exception):
                 project_name = resources[idx].get("name", "unknown")
-                logger.error(f"Error fetching webhooks for project '{project_name}': {webhook_result}")
+                logger.error(
+                    f"Error fetching webhooks for project '{project_name}': {webhook_result}"
+                )
                 continue
             processed_results.append(cast(Dict[str, Any], webhook_result))
         return processed_results
@@ -110,13 +118,15 @@ class GetProjectWebhooksAction(Action):
             if error_code == "ResourceNotFoundException":
                 return {"webhook": []}
             else:
-                logger.error(f"Unexpected error fetching webhooks for {resource['name']}: {e}")
+                logger.error(
+                    f"Unexpected error fetching webhooks for {resource['name']}: {e}"
+                )
                 raise
 
 
 class CodeBuildProjectActionsMap(ActionMap):
     """Groups all actions for CodeBuild project resource type."""
-    
+
     defaults: List[Type[Action]] = [
         ListProjectsAction,
         GetProjectDetailsAction,

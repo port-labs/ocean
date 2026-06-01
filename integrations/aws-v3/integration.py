@@ -216,6 +216,7 @@ class AWSEC2VolumeResourceConfig(AWSResourceConfig):
         description="AWS EC2 Volume resource kind.",
     )
 
+
 class AWSCodeBuildProjectResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodeBuild::Project"] = Field(
         title="AWS CodeBuild Project",

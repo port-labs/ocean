@@ -70,7 +70,9 @@ class ProjectProperties(BaseModel):
     source: Optional[ProjectSource] = None
     secondarySources: Optional[List[ProjectSource]] = Field(default_factory=list)
     sourceVersion: Optional[str] = None
-    secondarySourceVersions: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+    secondarySourceVersions: Optional[List[Dict[str, Any]]] = Field(
+        default_factory=list
+    )
     artifacts: Optional[ProjectArtifacts] = None
     secondaryArtifacts: Optional[List[ProjectArtifacts]] = Field(default_factory=list)
     cache: Optional[Dict[str, Any]] = None
@@ -105,11 +107,13 @@ class CodeBuildProject(ResourceModel[ProjectProperties]):
 
 class SingleCodeBuildProjectRequest(ResourceRequestModel):
     """Options for exporting a single CodeBuild project."""
-    
-    project_name: str = Field(..., description="The name of the CodeBuild project to export")
+
+    project_name: str = Field(
+        ..., description="The name of the CodeBuild project to export"
+    )
 
 
 class PaginatedCodeBuildProjectRequest(ResourceRequestModel):
     """Options for exporting all CodeBuild projects in a region."""
-    
+
     pass

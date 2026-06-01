@@ -16,7 +16,9 @@ class CodeBuildProjectExporter(IResourceExporter):
     _model_cls: Type[CodeBuildProject] = CodeBuildProject
     _actions_map: Type[CodeBuildProjectActionsMap] = CodeBuildProjectActionsMap
 
-    async def get_resource(self, options: SingleCodeBuildProjectRequest) -> dict[str, Any]:
+    async def get_resource(
+        self, options: SingleCodeBuildProjectRequest
+    ) -> dict[str, Any]:
         """Fetch detailed attributes of a single CodeBuild project."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
@@ -39,7 +41,7 @@ class CodeBuildProjectExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            
+
             # Use the list_projects paginator
             paginator = proxy.get_paginator("list_projects", "projects")
 
