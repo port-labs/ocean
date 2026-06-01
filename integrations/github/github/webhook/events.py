@@ -14,7 +14,7 @@ USER_UPSERT_EVENTS = ["member_added"]
 USER_DELETE_EVENTS = ["member_removed"]
 
 WORKFLOW_UPSERT_EVENTS = ["completed", "in_progress", "requested"]
-WORKFLOW_DELETE_EVENTS: list[str] = []
+WORKFLOW_DELETE_EVENTS = []
 
 # Pull request events
 PULL_REQUEST_EVENTS = [
