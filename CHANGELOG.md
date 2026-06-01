@@ -6,11 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.43.10 (2026-05-31)
+## 0.43.10 (2026-06-01)
 
 ### Bug Fixes
 
 - Added `local_only` log routing: logs marked with `logger.bind(local_only=True)` are written to stdout only and never shipped to the integration Event log ingest.
+
+### Improvements
+
+- Skip reporting integration sync metrics to Port when DSP mode is enabled, since transform/load/reconciliation is handled externally.
 
 ## 0.43.9 (2026-05-31)
 
