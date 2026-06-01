@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Type, overload, Literal, Optional
 
 from port_ocean.context.ocean import ocean
@@ -14,6 +15,21 @@ from github.clients.auth.personal_access_token_authenticator import (
 )
 from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
 from github.helpers.exceptions import MissingCredentials
+from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
+
+
+def _reset_clients_after_fork() -> None:
+    """Clear cached clients after fork so children create fresh httpx connections
+    and asyncio primitives (Semaphore, Lock) that are bound to the parent's event loop.
+    """
+    for client in GithubClientFactory._instances.values():
+        client.authenticator._http_client = None
+    GithubClientFactory._instances.clear()
+    GitHubRateLimiterRegistry.reset_for_fork()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_clients_after_fork)
 
 
 class GitHubAuthenticatorFactory:

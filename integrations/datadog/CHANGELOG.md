@@ -7,14 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.154 (2026-06-01)
+## 0.3.161 (2026-06-02)
 
 
 ### Improvements
 
 - Moved exporter-specific logic out of the generic DatadogClient into their respective exporters (rate-limited request handling into ServiceMetricExporter, time window constant into ServiceDependencyExporter)
-- Fixed broken absolute imports in monitor and SLO exporters
-- Updated webhook processor tests to match the current exporter-based architecture
+
+
+## 0.3.160 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.3.159 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.3.158 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.3.157 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.3.156 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.3.155 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.3.154 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
 
 
 ## 0.3.153 (2026-05-28)

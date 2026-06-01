@@ -125,6 +125,50 @@ class JiraBoardResourceConfig(ResourceConfig):
     )
 
 
+class JiraBacklogSelector(Selector):
+    jql: str | None = Field(
+        default="updated >= -1w OR statusCategory != Done",
+        title="JQL Filter",
+        description=(
+            "JQL filter applied on top of the board's backlog scope. "
+            "Defaults to recently updated or incomplete issues to avoid "
+            "re-ingesting the full backlog history on every resync. "
+            "Omit entirely to fetch all backlog issues."
+        ),
+    )
+    fields: list[str] | None = Field(
+        default=None,
+        title="Fields",
+        description=(
+            "Specific issue fields to return. Omit to return all fields. "
+            "Use field projection to reduce payload size on large boards, "
+            "e.g. ['id', 'key', 'summary', 'status', 'assignee', 'priority']."
+        ),
+    )
+    use_software_api: bool = Field(
+        alias="useSoftwareApi",
+        default=True,
+        title="Use Software API",
+        description=(
+            "When true, attempts the newer rest/software/1.0 backlog endpoint first, "
+            "falling back to the legacy rest/agile/1.0 endpoint on auth failure. "
+            "The agile/1.0 endpoint is deprecated and scheduled for removal on "
+            "November 1, 2026. Set to false to force legacy behavior."
+        ),
+    )
+
+
+class JiraBacklogResourceConfig(ResourceConfig):
+    kind: Literal["backlog"] = Field(
+        title="Jira Backlog",
+        description="Jira backlog resource kind, representing the set of issues in the backlog of each board.",
+    )
+    selector: JiraBacklogSelector = Field(
+        title="Backlog Selector",
+        description="Selector for Jira backlog resources.",
+    )
+
+
 class JiraEpicAPIQueryParams(BaseModel):
     done: Literal["true", "false"] | None = Field(
         default=None,
@@ -230,6 +274,7 @@ class JiraPortAppConfig(PortAppConfig):
         | JiraUserResourceConfig
         | JiraReleaseResourceConfig
         | JiraBoardResourceConfig
+        | JiraBacklogResourceConfig
         | JiraEpicResourceConfig
         | JiraWorklogResourceConfig
     ] = Field(
