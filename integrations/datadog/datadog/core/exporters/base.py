@@ -4,7 +4,9 @@ from abc import ABC, abstractmethod
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from datadog.client import DatadogClient, MAX_PAGE_SIZE
+from datadog.client import DatadogClient
+
+MAX_PAGE_SIZE = 100
 
 OptionsT = TypeVar("OptionsT")
 

@@ -11,8 +11,6 @@ from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
-MAX_PAGE_SIZE = 100
-
 DATADOG_UNKNOWN_STATUS_CODE = 512
 
 

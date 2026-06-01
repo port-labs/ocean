@@ -3,10 +3,9 @@ import time
 from typing import Any, TypedDict
 
 from loguru import logger
-from datadog.client import MAX_PAGE_SIZE
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from datadog.core.exporters.base import PaginatedExporter, SingleResourceExporter
+from datadog.core.exporters.base import MAX_PAGE_SIZE, PaginatedExporter, SingleResourceExporter
 
 FETCH_WINDOW_TIME_IN_SECONDS = 3600
 

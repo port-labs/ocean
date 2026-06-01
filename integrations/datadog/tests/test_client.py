@@ -9,9 +9,9 @@ import pytest
 from datadog.client import (
     DATADOG_UNKNOWN_STATUS_CODE,
     DatadogClient,
-    MAX_PAGE_SIZE,
     _create_datadog_retry_config,
 )
+from datadog.core.exporters.base import MAX_PAGE_SIZE
 from datadog.core.exporters.service_dependency import FETCH_WINDOW_TIME_IN_SECONDS
 from datadog.core.exporters import (
     TeamExporter,
