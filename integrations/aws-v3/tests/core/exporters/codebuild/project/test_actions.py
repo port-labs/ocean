@@ -1,3 +1,4 @@
+import botocore.exceptions
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from aws.core.exporters.codebuild.project.actions import (
@@ -99,7 +100,7 @@ async def test_get_project_webhooks_action():
     
     action.client.list_webhooks_for_project.return_value = mock_response
     
-    resources = ["test-project"]
+    resources = [{"name": "test-project"}]
     result = await action._execute(resources)
     
     assert len(result) == 1
@@ -112,19 +113,17 @@ async def test_get_project_webhooks_action():
 @pytest.mark.asyncio
 async def test_get_project_webhooks_action_resource_not_found():
     """Test the GetProjectWebhooksAction handles ResourceNotFoundException."""
-    action = GetProjectWebhooksAction(AsyncMock())
-
-    # Mock ClientError for ResourceNotFoundException
-    error_response = {
+    mock_client = AsyncMock()
+    mock_client.exceptions.ClientError = botocore.exceptions.ClientError
+    mock_client.list_webhooks_for_project.side_effect = botocore.exceptions.ClientError({
         "Error": {
             "Code": "ResourceNotFoundException",
-            "Message": "Project not found"
+            "Message": "Project not found",
         }
-    }
-    client_error = action.client.exceptions.ClientError(error_response, "ListWebhooksForProject")
-    action.client.list_webhooks_for_project.side_effect = client_error
-    
-    resources = ["non-existent-project"]
+    }, "ListWebhooksForProject")
+    action = GetProjectWebhooksAction(mock_client)
+
+    resources = [{"name": "non-existent-project"}]
     result = await action._execute(resources)
     
     assert len(result) == 1
