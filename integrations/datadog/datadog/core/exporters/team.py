@@ -20,7 +20,7 @@ class TeamExporter(PaginatedExporter[TeamOptions]):
         include_members = (options or {}).get("include_members", False)
         url = f"{self.client.api_url}/api/v2/team"
 
-        async for teams in self._paginate_by_page(url):
+        async for teams in self._paginate_by_page_param(url):
             if include_members:
                 for team in teams:
                     members = []
@@ -36,5 +36,5 @@ class TeamExporter(PaginatedExporter[TeamOptions]):
         """
         logger.info(f"Enriching team {team_id} with members information")
         url = f"{self.client.api_url}/api/v2/team/{team_id}/memberships"
-        async for batch in self._paginate_by_page(url, data_key="included"):
+        async for batch in self._paginate_by_page_param(url, data_key="included"):
             yield batch

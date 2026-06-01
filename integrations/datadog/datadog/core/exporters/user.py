@@ -11,5 +11,5 @@ class UserExporter(PaginatedExporter[None]):
         Docs: https://docs.datadoghq.com/api/latest/users/#list-all-users
         """
         url = f"{self.client.api_url}/api/v2/users"
-        async for batch in self._paginate_by_page(url):
+        async for batch in self._paginate_by_page_param(url):
             yield batch

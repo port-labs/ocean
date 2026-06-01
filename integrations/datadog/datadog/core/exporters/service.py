@@ -13,7 +13,7 @@ class ServiceExporter(PaginatedExporter[None], SingleResourceExporter[str]):
         Docs: https://docs.datadoghq.com/api/latest/service-definition/#get-all-service-definitions
         """
         url = f"{self.client.api_url}/api/v2/services/definitions"
-        async for batch in self._paginate_by_page(
+        async for batch in self._paginate_by_page_param(
             url, extra_params={"schema_version": "v2.2"}
         ):
             yield batch

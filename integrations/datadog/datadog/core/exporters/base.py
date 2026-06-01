@@ -24,7 +24,7 @@ class PaginatedExporter(DatadogExporter, Generic[OptionsT]):
         self, options: OptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
 
-    async def _paginate_by_page(
+    async def _paginate_by_page_param(
         self,
         url: str,
         *,
