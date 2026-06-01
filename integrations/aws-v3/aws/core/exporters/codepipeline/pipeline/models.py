@@ -9,7 +9,7 @@ class PipelineStage(BaseModel):
     blockers: List[Dict[str, Any]] = Field(default_factory=list)
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
@@ -19,7 +19,7 @@ class PipelineArtifactStore(BaseModel):
     encryptionKey: Optional[Dict[str, Any]] = None
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
@@ -40,7 +40,7 @@ class PipelineProperties(BaseModel):
     Tags: Dict[str, str] = Field(default_factory=dict)
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
