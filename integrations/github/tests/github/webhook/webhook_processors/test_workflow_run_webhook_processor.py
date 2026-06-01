@@ -5,7 +5,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.webhook.events import WORKFLOW_DELETE_EVENTS, WORKFLOW_UPSERT_EVENTS
+from github.webhook.events import WORKFLOW_UPSERT_EVENTS
 
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -52,7 +52,7 @@ class TestWorkflowRunWebhookProcessor:
         "github_event,action,result",
         [
             ("workflow_run", WORKFLOW_UPSERT_EVENTS[0], True),
-            ("workflow_run", WORKFLOW_DELETE_EVENTS[0], True),
+            ("workflow_run", "completed", True),
             ("workflow_run", "unknown_action", False),
             ("invalid", WORKFLOW_UPSERT_EVENTS[0], False),
             ("invalid", "unknown_action", False),
@@ -86,7 +86,7 @@ class TestWorkflowRunWebhookProcessor:
     @pytest.mark.parametrize(
         "action,is_deletion,expected_updated,expected_deleted",
         [
-            ("completed", True, False, True),
+            ("completed", False, True, False),
             ("in_progress", False, True, False),
             ("requested", False, True, False),
         ],
@@ -168,7 +168,7 @@ class TestWorkflowRunWebhookProcessor:
             ),
             (
                 {
-                    "action": WORKFLOW_DELETE_EVENTS[0],
+                    "action": "completed",
                     "repository": {"name": "repo2"},
                     "workflow_run": {"id": 2, "name": "test 2"},
                     "organization": {"login": "test-org"},
@@ -177,7 +177,7 @@ class TestWorkflowRunWebhookProcessor:
             ),
             (
                 {
-                    "action": WORKFLOW_DELETE_EVENTS[0],
+                    "action": "completed",
                     "repository": {"name": "repo2"},
                     "organization": {"login": "test-org"},
                 },
@@ -185,7 +185,7 @@ class TestWorkflowRunWebhookProcessor:
             ),  # missing workflow_run
             (
                 {
-                    "action": WORKFLOW_DELETE_EVENTS[0],
+                    "action": "completed",
                     "repository": {"name": "repo2"},
                     "workflow_run": {},
                     "organization": {"login": "test-org"},

@@ -13,8 +13,8 @@ REPOSITORY_DELETE_EVENTS = ["archived", "deleted"]
 USER_UPSERT_EVENTS = ["member_added"]
 USER_DELETE_EVENTS = ["member_removed"]
 
-WORKFLOW_UPSERT_EVENTS = ["in_progress", "requested"]
-WORKFLOW_DELETE_EVENTS = ["completed"]
+WORKFLOW_UPSERT_EVENTS = ["completed", "in_progress", "requested"]
+WORKFLOW_DELETE_EVENTS: list[str] = []
 
 # Pull request events
 PULL_REQUEST_EVENTS = [
