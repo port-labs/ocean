@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.22 (2026-06-01)
+
+
+### Improvements
+
+- Added `status` selector to `workflow-run` kind to filter runs by status or conclusion (e.g. `in_progress`, `success`, `failure`).
+- Added `lookbackDays` selector to `workflow-run` kind to limit resync to runs created within the last N days. .
+
+
 ## 5.5.21 (2026-06-01)
 
 
