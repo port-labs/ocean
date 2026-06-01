@@ -78,13 +78,6 @@ class PaginatedExporter(DatadogExporter, Generic[OptionsT]):
             yield items
             offset += page_size
 
-    @staticmethod
-    def _chunk_items(
-        items: list[dict[str, Any]], chunk_size: int = MAX_PAGE_SIZE
-    ) -> list[list[dict[str, Any]]]:
-        """Split a flat list into chunks for yielding as pages."""
-        return [items[i : i + chunk_size] for i in range(0, len(items), chunk_size)]
-
 
 class SingleResourceExporter(DatadogExporter, Generic[OptionsT]):
     """Mixin for exporters that support single resource fetching."""

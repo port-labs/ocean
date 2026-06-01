@@ -1,7 +1,9 @@
+from itertools import batched
 import time
 from typing import Any, TypedDict
 
 from loguru import logger
+from datadog.client import MAX_PAGE_SIZE
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.core.exporters.base import PaginatedExporter, SingleResourceExporter
@@ -49,8 +51,8 @@ class ServiceDependencyExporter(
             {"name": name, **details} for name, details in result.items()
         ]
 
-        for chunk in self._chunk_items(items):
-            yield chunk
+        for batch in batched(items, MAX_PAGE_SIZE):
+            yield batch
 
     async def get_resource(
         self, options: SingleServiceDependencyOptions
