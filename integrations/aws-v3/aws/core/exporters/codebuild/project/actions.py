@@ -8,14 +8,7 @@ class ListProjectsAction(Action):
     """Processes the initial list of projects from AWS."""
 
     async def _execute(self, resources: List[str]) -> List[Dict[str, Any]]:
-        results: List[Dict[str, Any]] = []
-        for project in resources:
-            data = {
-                "name": project,
-                "id": project,
-            }
-            results.append(data)
-        return results
+        return [{"name": project, "id": project} for project in resources]
 
 
 class GetProjectDetailsAction(Action):
@@ -37,16 +30,14 @@ class GetProjectDetailsAction(Action):
                 projects = response.get("projects", [])
 
                 for project in projects:
-                    project_data = {
+                    all_results.append({
                         "name": project.get("name", ""),
                         "arn": project.get("arn", ""),
                         "description": project.get("description"),
                         "source": project.get("source"),
                         "secondarySources": project.get("secondarySources", []),
                         "sourceVersion": project.get("sourceVersion"),
-                        "secondarySourceVersions": project.get(
-                            "secondarySourceVersions", []
-                        ),
+                        "secondarySourceVersions": project.get("secondarySourceVersions", []),
                         "artifacts": project.get("artifacts"),
                         "secondaryArtifacts": project.get("secondaryArtifacts", []),
                         "cache": project.get("cache"),
@@ -68,17 +59,11 @@ class GetProjectDetailsAction(Action):
                         "created": project.get("created"),
                         "lastModified": project.get("lastModified"),
                         "webhook": project.get("webhook"),
-                    }
-                    all_results.append(project_data)
+                    })
 
-                logger.info(
-                    f"Successfully fetched details for {len(projects)} CodeBuild projects"
-                )
-
+                logger.info(f"Successfully fetched details for {len(projects)} CodeBuild projects")
             except Exception as e:
-                logger.error(
-                    f"Error fetching details for CodeBuild projects batch: {e}"
-                )
+                logger.error(f"Error fetching details for CodeBuild projects batch: {e}")
                 continue
 
         return all_results
@@ -100,27 +85,21 @@ class GetProjectWebhooksAction(Action):
         for idx, webhook_result in enumerate(results):
             if isinstance(webhook_result, Exception):
                 project_name = resources[idx].get("name", "unknown")
-                logger.error(
-                    f"Error fetching webhooks for project '{project_name}': {webhook_result}"
-                )
+                logger.error(f"Error fetching webhooks for project '{project_name}': {webhook_result}")
                 continue
             processed_results.append(cast(Dict[str, Any], webhook_result))
         return processed_results
 
     async def _fetch_project_webhooks(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         try:
-            response = await self.client.list_webhooks_for_project(
-                projectName=resource["name"]
-            )
+            response = await self.client.list_webhooks_for_project(projectName=resource["name"])
             return {"webhook": response.get("webhooks", [])}
         except self.client.exceptions.ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
             if error_code == "ResourceNotFoundException":
                 return {"webhook": []}
             else:
-                logger.error(
-                    f"Unexpected error fetching webhooks for {resource['name']}: {e}"
-                )
+                logger.error(f"Unexpected error fetching webhooks for {resource['name']}: {e}")
                 raise
 
 
