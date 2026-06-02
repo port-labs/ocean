@@ -168,10 +168,32 @@ class HostResourceConfig(ResourceConfig):
     )
 
 
+class MonitorSelector(Selector):
+    include_restriction_policy: bool = Field(
+        alias="includeRestrictionPolicy",
+        default=False,
+        title="Include Restriction Policy",
+        description="Whether to enrich each monitor with its restriction policy, defaults to false",
+    )
+
+
 class MonitorResourceConfig(ResourceConfig):
     kind: Literal["monitor"] = Field(
         title="Datadog Monitor",
         description="Datadog monitor resource kind.",
+    )
+    selector: MonitorSelector = Field(
+        title="Monitor Selector",
+        description="Selector for the Datadog monitor resource.",
+    )
+
+
+class SLOSelector(Selector):
+    include_restriction_policy: bool = Field(
+        alias="includeRestrictionPolicy",
+        default=False,
+        title="Include Restriction Policy",
+        description="Whether to enrich each SLO with its restriction policy, defaults to false",
     )
 
 
@@ -179,6 +201,10 @@ class SLOResourceConfig(ResourceConfig):
     kind: Literal["slo"] = Field(
         title="Datadog SLO",
         description="Datadog SLO resource kind.",
+    )
+    selector: SLOSelector = Field(
+        title="SLO Selector",
+        description="Selector for the Datadog SLO resource.",
     )
 
 
@@ -196,6 +222,13 @@ class UserResourceConfig(ResourceConfig):
     )
 
 
+class RoleResourceConfig(ResourceConfig):
+    kind: Literal["role"] = Field(
+        title="Datadog Role",
+        description="Datadog role resource kind.",
+    )
+
+
 class DataDogPortAppConfig(PortAppConfig):
     resources: list[
         ServiceDependencyResourceConfig
@@ -207,6 +240,7 @@ class DataDogPortAppConfig(PortAppConfig):
         | SLOResourceConfig
         | ServiceResourceConfig
         | UserResourceConfig
+        | RoleResourceConfig
     ] = Field(
         default_factory=list,
         alias="resources",
