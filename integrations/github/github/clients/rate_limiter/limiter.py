@@ -51,6 +51,11 @@ class GitHubRateLimiter:
                 self.rate_limit_info.utilization_percentage
                 >= _RATE_LIMIT_USAGE_THRESHOLD
             )
+            if should_sleep:
+                logger.info(
+                    f"Resync rate-limit utilization hit {_RATE_LIMIT_USAGE_THRESHOLD}%; "
+                    f"pausing resync to reserve the remaining budget for webhooks."
+                )
         else:
             should_sleep = self.rate_limit_info.remaining <= 1
 
