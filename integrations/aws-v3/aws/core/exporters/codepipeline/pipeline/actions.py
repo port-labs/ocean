@@ -28,10 +28,14 @@ class GetPipelineDetailsAction(Action):
 
     async def _fetch_pipeline_details(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         pipeline_name = resource["name"]
-        
+
         try:
             # Get pipeline details
             response = await self.client.get_pipeline(name=pipeline_name)
+        except self.client.exceptions.PipelineNotFoundException:
+            logger.warning(f"Pipeline {pipeline_name} not found")
+            return {}
+        else:
             pipeline = response.get("pipeline", {})
             metadata = response.get("metadata", {})
 
@@ -40,7 +44,7 @@ class GetPipelineDetailsAction(Action):
             # Transform AWS response to our model format
             artifact_store = pipeline.get("artifactStore", {})
             artifact_stores = pipeline.get("artifactStores", {})
-            
+
             return {
                 "Name": pipeline.get("name", pipeline_name),
                 "Arn": metadata.get("pipelineArn", ""),
@@ -74,12 +78,6 @@ class GetPipelineDetailsAction(Action):
                 "Created": metadata.get("created").isoformat() if metadata.get("created") else None,
                 "Updated": metadata.get("updated").isoformat() if metadata.get("updated") else None,
             }
-        except self.client.exceptions.PipelineNotFoundException:
-            logger.warning(f"Pipeline {pipeline_name} not found")
-            return {}
-        except Exception as e:
-            logger.error(f"Error fetching pipeline details for {pipeline_name}: {e}")
-            raise
 
 
 class GetPipelineTagsAction(Action):
@@ -105,25 +103,25 @@ class GetPipelineTagsAction(Action):
 
     async def _fetch_pipeline_tags(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         pipeline_name = resource["name"]
-        
+
         try:
             # Get pipeline ARN first to fetch tags
             pipeline_response = await self.client.get_pipeline(name=pipeline_name)
             pipeline_arn = pipeline_response.get("metadata", {}).get("pipelineArn")
-            
+
             if not pipeline_arn:
                 logger.warning(f"No ARN found for pipeline {pipeline_name}")
                 return {"Tags": {}}
 
             response = await self.client.list_tags_for_resource(resourceArn=pipeline_arn)
             tags_list = response.get("tags", [])
-            
+
             # Convert tags list to dictionary
             tags_dict = {tag.get("key", ""): tag.get("value", "") for tag in tags_list}
-            
+
             logger.info(f"Successfully fetched tags for pipeline {pipeline_name}")
             return {"Tags": tags_dict}
-            
+
         except self.client.exceptions.PipelineNotFoundException:
             logger.warning(f"Pipeline {pipeline_name} not found when fetching tags")
             return {"Tags": {}}
@@ -153,7 +151,7 @@ class ListPipelinesAction(Action):
 
 class PipelineActionsMap(ActionMap):
     """Groups all actions for CodePipeline pipeline resource type."""
-    
+
     defaults: List[Type[Action]] = [
         GetPipelineDetailsAction,
         GetPipelineTagsAction,
