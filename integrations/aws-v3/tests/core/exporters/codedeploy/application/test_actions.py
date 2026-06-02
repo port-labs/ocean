@@ -23,15 +23,11 @@ class TestGetCodeDeployApplicationDetailsAction:
         return mock_client
 
     @pytest.fixture
-    def action(
-        self, mock_client: AsyncMock
-    ) -> GetCodeDeployApplicationDetailsAction:
+    def action(self, mock_client: AsyncMock) -> GetCodeDeployApplicationDetailsAction:
         """Create a GetCodeDeployApplicationDetailsAction instance for testing."""
         return GetCodeDeployApplicationDetailsAction(mock_client)
 
-    def test_inheritance(
-        self, action: GetCodeDeployApplicationDetailsAction
-    ) -> None:
+    def test_inheritance(self, action: GetCodeDeployApplicationDetailsAction) -> None:
         """Test that the action inherits from Action."""
         assert isinstance(action, Action)
 
@@ -141,9 +137,7 @@ class TestGetCodeDeployApplicationDetailsAction:
         """Test that a success log message is emitted with the right count."""
         resources = [{"applicationName": "app-1"}]
         action.client.batch_get_applications.return_value = {
-            "applicationsInfo": [
-                {"applicationName": "app-1", "applicationId": "id-1"}
-            ]
+            "applicationsInfo": [{"applicationName": "app-1", "applicationId": "id-1"}]
         }
 
         await action.execute(resources)
@@ -167,15 +161,11 @@ class TestGetCodeDeployApplicationTagsAction:
         return mock_client
 
     @pytest.fixture
-    def action(
-        self, mock_client: AsyncMock
-    ) -> GetCodeDeployApplicationTagsAction:
+    def action(self, mock_client: AsyncMock) -> GetCodeDeployApplicationTagsAction:
         """Create a GetCodeDeployApplicationTagsAction instance for testing."""
         return GetCodeDeployApplicationTagsAction(mock_client)
 
-    def test_inheritance(
-        self, action: GetCodeDeployApplicationTagsAction
-    ) -> None:
+    def test_inheritance(self, action: GetCodeDeployApplicationTagsAction) -> None:
         """Test that the action inherits from Action."""
         assert isinstance(action, Action)
 
@@ -333,10 +323,7 @@ class TestGetCodeDeployApplicationTagsAction:
         # The failure was logged
         mock_logger.error.assert_called_once()
         error_call = mock_logger.error.call_args[0][0]
-        assert (
-            "Error fetching tags for CodeDeploy application 'app-fail'"
-            in error_call
-        )
+        assert "Error fetching tags for CodeDeploy application 'app-fail'" in error_call
         assert "Access denied" in error_call
 
     @pytest.mark.asyncio
@@ -369,15 +356,11 @@ class TestListCodeDeployApplicationsAction:
         return AsyncMock()
 
     @pytest.fixture
-    def action(
-        self, mock_client: AsyncMock
-    ) -> ListCodeDeployApplicationsAction:
+    def action(self, mock_client: AsyncMock) -> ListCodeDeployApplicationsAction:
         """Create a ListCodeDeployApplicationsAction instance for testing."""
         return ListCodeDeployApplicationsAction(mock_client)
 
-    def test_inheritance(
-        self, action: ListCodeDeployApplicationsAction
-    ) -> None:
+    def test_inheritance(self, action: ListCodeDeployApplicationsAction) -> None:
         """Test that the action inherits from Action."""
         assert isinstance(action, Action)
 

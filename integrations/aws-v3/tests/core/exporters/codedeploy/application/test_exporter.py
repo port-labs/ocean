@@ -267,9 +267,7 @@ class TestCodeDeployApplicationExporter:
 
         mock_inspector = AsyncMock()
         application = CodeDeployApplication(
-            Properties=CodeDeployApplicationProperties(
-                ApplicationName="cleanup-test"
-            )
+            Properties=CodeDeployApplicationProperties(ApplicationName="cleanup-test")
         )
         mock_inspector.inspect.return_value = [application.dict(exclude_none=True)]
         mock_inspector_class.return_value = mock_inspector
