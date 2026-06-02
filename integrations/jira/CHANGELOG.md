@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.34 (2026-06-02)
+
+
+### Improvements
+
+- Added `sprint` kind to sync Jira sprints into Port using the Jira Software Cloud Agile REST API.
+
+
 ## 0.7.33 (2026-06-02)
 
 
