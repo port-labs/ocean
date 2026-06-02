@@ -20,15 +20,20 @@ class CodeDeployApplicationProperties(BaseModel):
 
 class CodeDeployApplication(ResourceModel[CodeDeployApplicationProperties]):
     Type: str = "AWS::CodeDeploy::Application"
-    Properties: CodeDeployApplicationProperties = Field(default_factory=CodeDeployApplicationProperties)
+    Properties: CodeDeployApplicationProperties = Field(
+        default_factory=CodeDeployApplicationProperties
+    )
 
 
 class SingleCodeDeployApplicationRequest(ResourceRequestModel):
     """Options for exporting a single CodeDeploy application."""
 
-    application_name: str = Field(..., description="The name of the CodeDeploy application to export")
+    application_name: str = Field(
+        ..., description="The name of the CodeDeploy application to export"
+    )
 
 
 class PaginatedCodeDeployApplicationRequest(ResourceRequestModel):
     """Options for exporting all CodeDeploy applications in a region."""
+
     pass

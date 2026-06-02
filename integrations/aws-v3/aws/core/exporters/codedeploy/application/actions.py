@@ -15,19 +15,24 @@ class GetCodeDeployApplicationDetailsAction(Action):
             applicationNames=[resource["applicationName"] for resource in resources]
         )
 
-        logger.info(f"Successfully fetched details for {len(response.get('applicationsInfo', []))} CodeDeploy applications")
+        logger.info(
+            f"Successfully fetched details for {len(response.get('applicationsInfo', []))} CodeDeploy applications"
+        )
 
-        return sorted([
-            {
-                "ApplicationName": app_info.get("applicationName", ""),
-                "ApplicationId": app_info.get("applicationId", ""),
-                "CreateTime": app_info.get("createTime"),
-                "LinkedToGitHub": app_info.get("linkedToGitHub"),
-                "GitHubAccountName": app_info.get("gitHubAccountName"),
-                "ComputePlatform": app_info.get("computePlatform"),
-            }
-            for app_info in response.get("applicationsInfo", [])
-        ], key=lambda app_info: app_info["ApplicationName"])
+        return sorted(
+            [
+                {
+                    "ApplicationName": app_info.get("applicationName", ""),
+                    "ApplicationId": app_info.get("applicationId", ""),
+                    "CreateTime": app_info.get("createTime"),
+                    "LinkedToGitHub": app_info.get("linkedToGitHub"),
+                    "GitHubAccountName": app_info.get("gitHubAccountName"),
+                    "ComputePlatform": app_info.get("computePlatform"),
+                }
+                for app_info in response.get("applicationsInfo", [])
+            ],
+            key=lambda app_info: app_info["ApplicationName"],
+        )
 
 
 class GetCodeDeployApplicationTagsAction(Action):
@@ -46,7 +51,9 @@ class GetCodeDeployApplicationTagsAction(Action):
         for idx, tag_result in enumerate(tags):
             if isinstance(tag_result, Exception):
                 app_name = resources[idx].get("applicationName", "unknown")
-                logger.error(f"Error fetching tags for CodeDeploy application '{app_name}': {tag_result}")
+                logger.error(
+                    f"Error fetching tags for CodeDeploy application '{app_name}': {tag_result}"
+                )
                 continue
             results.append(cast(Dict[str, Any], tag_result))
         return results
@@ -60,7 +67,9 @@ class GetCodeDeployApplicationTagsAction(Action):
         except self.client.exceptions.ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
             if error_code in ["ResourceNotFoundException", "InvalidParameterException"]:
-                logger.info(f"No tags found for CodeDeploy application {resource['applicationName']}")
+                logger.info(
+                    f"No tags found for CodeDeploy application {resource['applicationName']}"
+                )
                 return {"Tags": []}
             else:
                 raise
@@ -70,11 +79,14 @@ class ListCodeDeployApplicationsAction(Action):
     """Processes the initial list of CodeDeploy applications."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        return [{"ApplicationName": resource['applicationName']} for resource in resources]
+        return [
+            {"ApplicationName": resource["applicationName"]} for resource in resources
+        ]
 
 
 class CodeDeployApplicationActionsMap(ActionMap):
     """Groups all actions for CodeDeploy applications."""
+
     defaults: List[Type[Action]] = [
         GetCodeDeployApplicationDetailsAction,
         GetCodeDeployApplicationTagsAction,

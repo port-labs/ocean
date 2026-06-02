@@ -44,7 +44,9 @@ from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterR
 from aws.core.exporters.ec2.volume import EbsVolumeExporter
 from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
 from aws.core.exporters.codedeploy import CodeDeployApplicationExporter
-from aws.core.exporters.codedeploy.application.models import PaginatedCodeDeployApplicationRequest
+from aws.core.exporters.codedeploy.application.models import (
+    PaginatedCodeDeployApplicationRequest,
+)
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -271,7 +273,10 @@ async def resync_ec2_volume(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.CODEDEPLOY_APPLICATION)
 async def resync_codedeploy_application(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
-        kind, CodeDeployApplicationExporter, PaginatedCodeDeployApplicationRequest, regional=True
+        kind,
+        CodeDeployApplicationExporter,
+        PaginatedCodeDeployApplicationRequest,
+        regional=True,
     )
     async for batch in service:
         yield batch

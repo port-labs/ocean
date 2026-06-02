@@ -6,6 +6,6 @@ from aws.core.exporters.codedeploy.application.models import (
 
 __all__ = [
     "CodeDeployApplicationExporter",
-    "SingleCodeDeployApplicationRequest", 
+    "SingleCodeDeployApplicationRequest",
     "PaginatedCodeDeployApplicationRequest",
 ]

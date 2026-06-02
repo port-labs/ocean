@@ -1,6 +1,8 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.codedeploy.application.actions import CodeDeployApplicationActionsMap
+from aws.core.exporters.codedeploy.application.actions import (
+    CodeDeployApplicationActionsMap,
+)
 from aws.core.exporters.codedeploy.application.models import CodeDeployApplication
 from aws.core.exporters.codedeploy.application.models import (
     SingleCodeDeployApplicationRequest,
@@ -14,9 +16,13 @@ from aws.core.modeling.resource_inspector import ResourceInspector
 class CodeDeployApplicationExporter(IResourceExporter):
     _service_name: SupportedServices = "codedeploy"
     _model_cls: Type[CodeDeployApplication] = CodeDeployApplication
-    _actions_map: Type[CodeDeployApplicationActionsMap] = CodeDeployApplicationActionsMap
+    _actions_map: Type[CodeDeployApplicationActionsMap] = (
+        CodeDeployApplicationActionsMap
+    )
 
-    async def get_resource(self, options: SingleCodeDeployApplicationRequest) -> dict[str, Any]:
+    async def get_resource(
+        self, options: SingleCodeDeployApplicationRequest
+    ) -> dict[str, Any]:
         """Fetch detailed attributes of a single CodeDeploy application."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
@@ -46,14 +52,21 @@ class CodeDeployApplicationExporter(IResourceExporter):
             async for applications in paginator.paginate():
                 if applications:
                     # Transform application names to the expected format
-                    resources = [{"applicationName": app_name, 'accountId': options.account_id, 'region': options.region} for app_name in sorted(applications)]
+                    resources = [
+                        {
+                            "applicationName": app_name,
+                            "accountId": options.account_id,
+                            "region": options.region,
+                        }
+                        for app_name in sorted(applications)
+                    ]
                     action_result = await inspector.inspect(
                         resources,
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
                             "Region": options.region,
-                        }
+                        },
                     )
                     yield action_result
                 else:
