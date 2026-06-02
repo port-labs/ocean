@@ -14,7 +14,7 @@ class CodeDeployApplicationProperties(BaseModel):
     Tags: List[Dict[str, Any]] = Field(default_factory=list)
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         populate_by_name = True
 
 
@@ -25,7 +25,7 @@ class CodeDeployApplication(ResourceModel[CodeDeployApplicationProperties]):
 
 class SingleCodeDeployApplicationRequest(ResourceRequestModel):
     """Options for exporting a single CodeDeploy application."""
-    
+
     application_name: str = Field(..., description="The name of the CodeDeploy application to export")
 
 
