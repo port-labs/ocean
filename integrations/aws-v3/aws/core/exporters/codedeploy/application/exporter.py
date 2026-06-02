@@ -39,21 +39,21 @@ class CodeDeployApplicationExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            
+
             # Use the list_applications API to get all applications
             paginator = proxy.get_paginator("list_applications", "applications")
-            
+
             async for applications in paginator.paginate():
                 if applications:
                     # Transform application names to the expected format
-                    resources = [{"ApplicationName": app_name} for app_name in applications]
+                    resources = [{"applicationName": app_name, 'accountId': options.account_id, 'region': options.region} for app_name in applications]
                     action_result = await inspector.inspect(
                         resources,
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
                             "Region": options.region,
-                        },
+                        }
                     )
                     yield action_result
                 else:
