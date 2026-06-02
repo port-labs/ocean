@@ -24,6 +24,10 @@ from datetime import datetime, timedelta, timezone
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
 
+ISO_8601_DATETIME_REGEX = (
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$"
+)
+
 
 class SearchQuery(BaseModel):
     """A search query to execute against a GitLab project during enrichment."""
@@ -38,6 +42,112 @@ class SearchQuery(BaseModel):
     query: str = Field(
         description="The search query string (e.g. filename:port.yml)",
     )
+
+
+class PipelineQueryParams(BaseModel):
+    """Gitlab API query params that filters returned pipelines"""
+
+    name: str | None = Field(
+        default=None,
+        title="Name",
+        description="Return pipelines with the specified name.",
+    )
+    scope: Literal["running", "pending", "finished", "branches", "tags"] | None = Field(
+        default=None,
+        title="Scope",
+        description="Limit pipelines to a lifecycle stage (running, pending, finished) or to those triggered for branches or tags.",
+    )
+    status: (
+        Literal[
+            "created",
+            "waiting_for_resource",
+            "preparing",
+            "pending",
+            "running",
+            "success",
+            "failed",
+            "canceled",
+            "skipped",
+            "manual",
+            "scheduled",
+        ]
+        | None
+    ) = Field(
+        default=None,
+        title="Status",
+        description="Return only pipelines currently in the given execution status.",
+    )
+    source: (
+        Literal[
+            "push",
+            "schedule",
+            "web",
+            "merge_request_event",
+            "api",
+            "chat",
+            "external",
+            "external_pull_request_event",
+            "ondemand_dast_scan",
+            "ondemand_dast_validation",
+            "parent_pipeline",
+            "pipeline",
+            "security_orchestration_policy",
+            "trigger",
+            "webide",
+        ]
+        | None
+    ) = Field(
+        default=None,
+        title="Source",
+        description="Return only pipelines triggered by the given source.",
+    )
+    ref: str | None = Field(
+        default=None,
+        title="Ref",
+        description="Return only pipelines that ran against the given branch or tag name.",
+    )
+    sha: str | None = Field(
+        default=None,
+        title="SHA",
+        description="Return only pipelines that ran against the given commit SHA.",
+    )
+    yaml_errors: bool | None = Field(
+        default=None,
+        title="YAML Errors",
+        description="If true, return only pipelines whose .gitlab-ci.yml configuration is invalid.",
+    )
+    username: str | None = Field(
+        default=None,
+        title="Username",
+        description="Return only pipelines triggered by the user with this GitLab username.",
+    )
+    updated_after: str | None = Field(
+        default=None,
+        title="Updated After",
+        description="Return only pipelines updated after this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    updated_before: str | None = Field(
+        default=None,
+        title="Updated Before",
+        description="Return only pipelines updated before this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    created_after: str | None = Field(
+        default=None,
+        title="Created After",
+        description="Return only pipelines created after this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    created_before: str | None = Field(
+        default=None,
+        title="Created Before",
+        description="Return only pipelines created before this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+
+    def generate_query_params(self) -> dict[str, Any]:
+        return self.dict(exclude_none=True, exclude_unset=True)
 
 
 class GroupSelector(Selector):
@@ -102,6 +212,24 @@ class BranchSelector(Selector):
         alias="defaultBranchOnly",
         title="Default Branches Only",
         description="Only fetch default branches for each project",
+    )
+
+
+class PipelineSelector(ProjectSelector):
+    api_query_params: PipelineQueryParams | None = Field(
+        default=None,
+        alias="apiQueryParams",
+        title="Pipelines Query Params",
+        description="Query params for Gitlab's Pipeline's API",
+    )
+
+
+class JobsSelector(ProjectSelector):
+    pipeline_query_params: PipelineQueryParams | None = Field(
+        default=None,
+        alias="pipelineQueryParams",
+        title="Pipelines Query Params",
+        description="Query params for Gitlab's Pipeline's API",
     )
 
 
@@ -413,7 +541,7 @@ class PipelineResourceConfig(ResourceConfig):
         title="GitLab Pipeline",
         description="GitLab pipeline resource kind.",
     )
-    selector: ProjectSelector = Field(
+    selector: PipelineSelector = Field(
         title="Pipeline Selector",
         description="Selector for the GitLab pipeline resource.",
     )
@@ -424,7 +552,7 @@ class JobResourceConfig(ResourceConfig):
         title="GitLab Job",
         description="GitLab job resource kind.",
     )
-    selector: ProjectSelector = Field(
+    selector: JobsSelector = Field(
         title="Job Selector",
         description="Selector for the GitLab job resource.",
     )
