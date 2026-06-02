@@ -31,7 +31,9 @@ class LiveEventsMixin(HandlerMixin):
             await self._send_webhook_raw_data_to_lakehouse(webhook_events_raw_result)
 
         if await is_dsp_mode_enabled():
-            logger.info("DSP mode active: skipping transform and load for live events")
+            logger.bind(local_only=True).info(
+                "DSP mode active: skipping transform and load for live events"
+            )
             return
 
         entities_to_create, entities_to_delete = await self._parse_raw_event_results_to_entities(webhook_events_raw_result)
