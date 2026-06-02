@@ -51,6 +51,27 @@ def test_http_log_filter_excludes_local_only_logs() -> None:
     assert _http_log_filter(regular_record) is True  # type: ignore[arg-type]
 
 
+def test_local_only_info_never_reaches_http_sink() -> None:
+    queue: Queue[LogRecord] = Queue()
+    queue_handler = QueueHandler(queue)
+    logger_id = logger.add(
+        queue_handler,
+        level="INFO",
+        format="{message}",
+        diagnose=False,
+        enqueue=True,
+        filter=_http_log_filter,
+    )
+
+    try:
+        logger.bind(local_only=True).info("local only — must not ship")
+        logger.complete()
+    finally:
+        logger.remove(logger_id)
+
+    assert queue.empty()
+
+
 def test_local_only_warning_never_reaches_http_sink() -> None:
     # Verifies that a local_only log in isolation produces zero entries in the
     # HTTP sink queue — the message must not ship to the integration event log.
