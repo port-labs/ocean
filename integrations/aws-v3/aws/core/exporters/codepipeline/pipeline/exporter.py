@@ -18,15 +18,9 @@ class PipelineExporter(IResourceExporter):
 
     async def get_resource(self, options: SinglePipelineRequest) -> dict[str, Any]:
         """Fetch detailed attributes of a single CodePipeline pipeline."""
-        async with AioBaseClientProxy(
-            self.session, options.region, self._service_name
-        ) as proxy:
-            inspector = ResourceInspector(
-                proxy.client, self._actions_map(), lambda: self._model_cls()
-            )
-            response = await inspector.inspect(
-                [{"name": options.pipeline_name}], options.include
-            )
+        async with AioBaseClientProxy(self.session, options.region, self._service_name) as proxy:
+            inspector = ResourceInspector(proxy.client, self._actions_map(), lambda: self._model_cls())
+            response = await inspector.inspect([{"name": options.pipeline_name}], options.include)
             return response[0] if response else {}
 
     async def get_paginated_resources(
@@ -39,7 +33,7 @@ class PipelineExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            
+
             # Use the CodePipeline list_pipelines paginator
             paginator = proxy.get_paginator("list_pipelines", "pipelines")
 
