@@ -9,6 +9,7 @@ from aws.core.exporters.memorydb.user.models import (
     SingleMemoryDbUserRequest,
 )
 
+
 SAMPLE_USERS = [
     {
         "Name": "alice",
