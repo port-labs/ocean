@@ -1,0 +1,41 @@
+{
+  "Type": "AWS::CodePipeline::Stage",
+  "Properties": {
+    "Name": "Build",
+    "PipelineName": "MyPipeline",
+    "PipelineArn": "arn:aws:codepipeline:us-west-2:123456789012:pipeline/MyPipeline",
+    "Actions": [
+      {
+        "Name": "Build",
+        "ActionTypeId": {
+          "Category": "Build",
+          "Owner": "AWS",
+          "Provider": "CodeBuild",
+          "Version": "1"
+        },
+        "Configuration": {
+          "ProjectName": "MyBuildProject"
+        },
+        "InputArtifacts": [
+          {
+            "Name": "SourceOutput"
+          }
+        ],
+        "OutputArtifacts": [
+          {
+            "Name": "BuildOutput"
+          }
+        ],
+        "Region": "us-west-2",
+        "RunOrder": 1
+      }
+    ],
+    "Blockers": [],
+    "Region": "us-west-2",
+    "AccountId": "123456789012"
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-west-2"
+  }
+}

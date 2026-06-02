@@ -1,0 +1,62 @@
+{
+  "identifier": "codePipelineStage",
+  "title": "CodePipeline Stage",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "pipelineName": {
+        "type": "string",
+        "title": "Pipeline Name",
+        "description": "The name of the CodePipeline pipeline containing this stage"
+      },
+      "pipelineArn": {
+        "type": "string",
+        "title": "Pipeline ARN",
+        "description": "The Amazon Resource Name (ARN) of the pipeline"
+      },
+      "actions": {
+        "type": "array",
+        "title": "Actions",
+        "description": "List of actions in this stage",
+        "items": {
+          "type": "object"
+        }
+      },
+      "blockers": {
+        "type": "array",
+        "title": "Blockers",
+        "description": "List of stage blockers",
+        "items": {
+          "type": "object"
+        }
+      },
+      "region": {
+        "type": "string",
+        "title": "Region",
+        "description": "AWS region where the stage is located"
+      },
+      "stageExecution": {
+        "type": "object",
+        "title": "Stage Execution",
+        "description": "Latest stage execution information"
+      },
+      "inboundTransitionState": {
+        "type": "object", 
+        "title": "Inbound Transition State",
+        "description": "State of inbound transitions to this stage"
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}
