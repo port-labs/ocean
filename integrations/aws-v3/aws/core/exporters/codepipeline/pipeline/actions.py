@@ -136,8 +136,8 @@ class ListPipelinesAction(Action):
             data = {
                 "name": resource.get("name", ""),
                 "version": resource.get("version"),
-                "created": resource.get("created").isoformat() if resource.get("created") else None,
-                "updated": resource.get("updated").isoformat() if resource.get("updated") else None,
+                "created": resource["created"].isoformat() if resource.get("created") else None,
+                "updated": resource["updated"].isoformat() if resource.get("updated") else None,
             }
             results.append(data)
         return results
