@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator, Literal
 
 import httpx
 import re
@@ -22,6 +22,16 @@ WORKLOG_WEBHOOK_EVENTS = [
     "worklog_created",
     "worklog_updated",
     "worklog_deleted",
+]
+
+SPRINT_DELETED_EVENT = "sprint_deleted"
+SPRINT_CLOSED_EVENT = "sprint_closed"
+
+SPRINT_WEBHOOK_EVENTS = [
+    "sprint_created",
+    "sprint_updated",
+    SPRINT_DELETED_EVENT,
+    SPRINT_CLOSED_EVENT,
 ]
 
 WEBHOOK_EVENTS = [
@@ -48,6 +58,7 @@ WEBHOOK_EVENTS = [
     "board_updated",
     "board_deleted",
     *WORKLOG_WEBHOOK_EVENTS,
+    *SPRINT_WEBHOOK_EVENTS,
 ]
 
 OAUTH2_WEBHOOK_EVENTS = [
@@ -64,6 +75,7 @@ OAUTH2_WEBHOOK_EVENTS = [
     "board_updated",
     "board_deleted",
     *WORKLOG_WEBHOOK_EVENTS,
+    *SPRINT_WEBHOOK_EVENTS,
 ]
 
 
@@ -773,6 +785,55 @@ class JiraClient(OAuthClient):
 
         board["__projectKeys"] = project_keys
         return board
+
+    async def get_paginated_sprints_for_board(
+        self,
+        board_id: int,
+        sprint_state: list[Literal["active", "closed", "future"]] | None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield sprint batches for a board, filtered by state.
+
+        Sprint retrieval is per-board and state values are joined as a comma-separated string per the Jira Agile API
+        contract: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/
+        #api-rest-agile-1-0-board-boardid-sprint-get
+        """
+        agile_url = await self._get_agile_api_url()
+        url = f"{agile_url}/board/{board_id}/sprint"
+
+        query_params: dict[str, Any] = {}
+        if sprint_state is not None:
+            query_params["state"] = ",".join(sprint_state)
+
+        try:
+            async for sprint_batch in self._get_agile_paginated_data(
+                url=url,
+                initial_params=query_params,
+            ):
+                yield sprint_batch
+        except httpx.HTTPStatusError as err:
+            if err.response.status_code == 400:
+                try:
+                    error_messages = err.response.json().get("errorMessages", [])
+                except Exception:
+                    raise err
+                if any(
+                    "The board does not support sprints" in msg
+                    for msg in error_messages
+                ):
+                    logger.warning(
+                        f"Board {board_id} does not support sprints, skipping. "
+                        f"Details: {'; '.join(error_messages)}"
+                    )
+                    return
+            raise
+
+    async def get_single_sprint(self, sprint_id: int) -> dict[str, Any]:
+        """Fetch a single sprint by ID."""
+        agile_url = await self._get_agile_api_url()
+        return await self._send_api_request(
+            "GET",
+            f"{agile_url}/sprint/{sprint_id}",
+        )
 
     async def get_paginated_backlog_for_board(
         self,
