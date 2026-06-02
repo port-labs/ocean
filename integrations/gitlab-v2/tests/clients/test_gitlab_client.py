@@ -1045,10 +1045,34 @@ class TestGitLabClient:
             assert results[0]["name"] == "Test Job"
             # Verify both pipeline and job API calls
             assert mock_get_paginated.call_count == 2
-            mock_get_paginated.assert_any_call("1", "pipelines")
+            mock_get_paginated.assert_any_call("1", "pipelines", params=None)
             mock_get_paginated.assert_any_call(
                 "1", "pipelines/1/jobs", params={"per_page": 100}
             )
+
+    async def test_get_pipeline_jobs_forwards_pipeline_params(
+        self, client: GitLabClient
+    ) -> None:
+        """pipeline_params should be passed through to the pipelines listing call."""
+        mock_projects = [{"id": 1, "name": "Test Project"}]
+        mock_pipelines = [{"id": 1, "name": "Test Pipeline"}]
+        mock_jobs = [{"id": 1, "name": "Test Job"}]
+        pipeline_params = {"status": "success", "ref": "main"}
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            side_effect=[
+                async_mock_generator([mock_pipelines]),
+                async_mock_generator([mock_jobs]),
+            ],
+        ) as mock_get_paginated:
+            async for _ in client.get_pipeline_jobs(
+                mock_projects, pipeline_params=pipeline_params
+            ):
+                pass
+
+            mock_get_paginated.assert_any_call("1", "pipelines", params=pipeline_params)
 
     async def test_project_resource(self, client: GitLabClient) -> None:
         """Test project resource fetching delegates to REST client"""
@@ -1070,7 +1094,29 @@ class TestGitLabClient:
             assert len(results) == 1
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Pipeline"
-            mock_get_project_resource.assert_called_once_with("1", "pipelines")
+            mock_get_project_resource.assert_called_once_with(
+                "1", "pipelines", params=None
+            )
+
+    async def test_project_resource_forwards_params(self, client: GitLabClient) -> None:
+        """get_projects_resource should forward the params dict to the REST call."""
+        mock_pipelines = [{"id": 1, "name": "Test Pipeline"}]
+        mock_projects = [{"id": 1, "name": "Test Project"}]
+        params = {"status": "success", "ref": "main"}
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_pipelines]),
+        ) as mock_get_project_resource:
+            async for _ in client.get_projects_resource(
+                mock_projects, "pipelines", params=params
+            ):
+                pass
+
+            mock_get_project_resource.assert_called_once_with(
+                "1", "pipelines", params=params
+            )
 
     async def test_default_params_with_min_access_level(self) -> None:
         """Test that default_params includes min_access_level when configured."""

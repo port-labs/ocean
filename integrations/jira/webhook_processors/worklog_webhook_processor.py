@@ -1,5 +1,6 @@
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from kinds import Kinds
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -18,7 +19,7 @@ class WorklogWebhookProcessor(AbstractWebhookProcessor):
         return event.payload.get("webhookEvent") in WORKLOG_WEBHOOK_EVENTS
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return ["worklog"]
+        return [Kinds.WORKLOG]
 
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, str]
