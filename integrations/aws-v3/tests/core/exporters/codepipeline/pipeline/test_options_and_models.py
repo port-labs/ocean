@@ -430,8 +430,7 @@ class TestPipeline:
         assert data["Properties"]["ArtifactStore"]["location"] == "artifact-bucket"
         assert data["Properties"]["ArtifactStore"]["type"] == "S3"
         assert (
-            data["Properties"]["ArtifactStore"]["encryptionKey"]["id"]
-            == "alias/aws/s3"
+            data["Properties"]["ArtifactStore"]["encryptionKey"]["id"] == "alias/aws/s3"
         )
         assert len(data["Properties"]["Stages"]) == 2
         assert data["Properties"]["Stages"][0]["name"] == "Source"

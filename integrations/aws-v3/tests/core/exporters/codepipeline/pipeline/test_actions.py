@@ -93,8 +93,7 @@ class TestGetPipelineDetailsAction:
         assert len(result) == 2
         assert result[0]["Name"] == "pipeline-1"
         assert (
-            result[0]["Arn"]
-            == "arn:aws:codepipeline:us-east-1:123456789012:pipeline-1"
+            result[0]["Arn"] == "arn:aws:codepipeline:us-east-1:123456789012:pipeline-1"
         )
         assert result[0]["RoleArn"] == "arn:aws:iam::123456789012:role/pipeline-1-role"
         assert result[0]["ArtifactStore"]["location"] == "pipeline-1-bucket"
@@ -111,9 +110,7 @@ class TestGetPipelineDetailsAction:
         assert action.client.get_pipeline.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_execute_empty_list(
-        self, action: GetPipelineDetailsAction
-    ) -> None:
+    async def test_execute_empty_list(self, action: GetPipelineDetailsAction) -> None:
         """Test execution with empty pipeline list."""
         pipelines: list[dict[str, Any]] = []
 
@@ -499,9 +496,7 @@ class TestListPipelinesAction:
         assert len(result) == 0
 
     @pytest.mark.asyncio
-    async def test_execute_single_pipeline(
-        self, action: ListPipelinesAction
-    ) -> None:
+    async def test_execute_single_pipeline(self, action: ListPipelinesAction) -> None:
         """Test execution with a single pipeline."""
         created_dt = datetime(2023, 12, 1, 12, 0, 0)
         pipelines = [

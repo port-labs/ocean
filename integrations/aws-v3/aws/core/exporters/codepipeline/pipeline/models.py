@@ -52,7 +52,9 @@ class Pipeline(ResourceModel[PipelineProperties]):
 class SinglePipelineRequest(ResourceRequestModel):
     """Options for exporting a single CodePipeline pipeline."""
 
-    pipeline_name: str = Field(..., description="The name of the CodePipeline pipeline to export")
+    pipeline_name: str = Field(
+        ..., description="The name of the CodePipeline pipeline to export"
+    )
 
 
 class PaginatedPipelineRequest(ResourceRequestModel):

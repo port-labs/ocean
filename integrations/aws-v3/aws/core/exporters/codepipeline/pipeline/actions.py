@@ -20,7 +20,9 @@ class GetPipelineDetailsAction(Action):
         for idx, detail_result in enumerate(details):
             if isinstance(detail_result, Exception):
                 pipeline_name = resources[idx].get("name", "unknown")
-                logger.error(f"Error fetching details for pipeline '{pipeline_name}': {detail_result}")
+                logger.error(
+                    f"Error fetching details for pipeline '{pipeline_name}': {detail_result}"
+                )
             else:
                 results.append(detail_result)
         return results
@@ -45,11 +47,15 @@ class GetPipelineDetailsAction(Action):
                 "Name": pipeline.get("name", pipeline_name),
                 "Arn": metadata.get("pipelineArn", ""),
                 "RoleArn": pipeline.get("roleArn", ""),
-                "ArtifactStore": {
-                    "location": artifact_store.get("location"),
-                    "type": artifact_store.get("type"),
-                    "encryptionKey": artifact_store.get("encryptionKey"),
-                } if artifact_store else None,
+                "ArtifactStore": (
+                    {
+                        "location": artifact_store.get("location"),
+                        "type": artifact_store.get("type"),
+                        "encryptionKey": artifact_store.get("encryptionKey"),
+                    }
+                    if artifact_store
+                    else None
+                ),
                 "ArtifactStores": {
                     region: {
                         "location": store.get("location"),
@@ -71,8 +77,16 @@ class GetPipelineDetailsAction(Action):
                 "PipelineType": pipeline.get("pipelineType"),
                 "Variables": pipeline.get("variables", []),
                 "Triggers": pipeline.get("triggers", []),
-                "Created": metadata.get("created").isoformat() if metadata.get("created") else None,
-                "Updated": metadata.get("updated").isoformat() if metadata.get("updated") else None,
+                "Created": (
+                    metadata.get("created").isoformat()
+                    if metadata.get("created")
+                    else None
+                ),
+                "Updated": (
+                    metadata.get("updated").isoformat()
+                    if metadata.get("updated")
+                    else None
+                ),
             }
 
 
@@ -92,7 +106,9 @@ class GetPipelineTagsAction(Action):
         for idx, tag_result in enumerate(tags):
             if isinstance(tag_result, Exception):
                 pipeline_name = resources[idx].get("name", "unknown")
-                logger.error(f"Error fetching tags for pipeline '{pipeline_name}': {tag_result}")
+                logger.error(
+                    f"Error fetching tags for pipeline '{pipeline_name}': {tag_result}"
+                )
                 continue
             results.append(cast(Dict[str, Any], tag_result))
         return results
@@ -108,7 +124,9 @@ class GetPipelineTagsAction(Action):
                 logger.warning(f"No ARN found for pipeline {pipeline_name}")
                 return {"Tags": {}}
 
-            response = await self.client.list_tags_for_resource(resourceArn=pipeline_arn)
+            response = await self.client.list_tags_for_resource(
+                resourceArn=pipeline_arn
+            )
             tags_list = response.get("tags", [])
 
             tags_dict = {tag.get("key", ""): tag.get("value", "") for tag in tags_list}
@@ -136,8 +154,12 @@ class ListPipelinesAction(Action):
             data = {
                 "name": resource.get("name", ""),
                 "version": resource.get("version"),
-                "created": resource["created"].isoformat() if resource.get("created") else None,
-                "updated": resource["updated"].isoformat() if resource.get("updated") else None,
+                "created": (
+                    resource["created"].isoformat() if resource.get("created") else None
+                ),
+                "updated": (
+                    resource["updated"].isoformat() if resource.get("updated") else None
+                ),
             }
             results.append(data)
         return results
