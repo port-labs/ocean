@@ -2314,14 +2314,13 @@ class AzureDevopsClient(HTTPBaseClient):
                 self._fetch_code_coverage(project_id, build_id, coverage_config)
             )
 
-        if test_runs:
-            logger.info(
-                "Fetched code coverage for {} of {} test runs in project {}. Skipped {} runs without an associated build.",
-                len(test_runs) - skipped_coverage,
-                len(test_runs),
-                project_id,
-                skipped_coverage,
-            )
+        logger.info(
+            "Fetched code coverage for {} of {} test runs in project {}. Skipped {} runs without an associated build.",
+            len(test_runs) - skipped_coverage,
+            len(test_runs),
+            project_id,
+            skipped_coverage,
+        )
 
         return coverage_tasks
 
