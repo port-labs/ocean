@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.5.23 (2026-06-02)
+## 5.5.24 (2026-06-02)
 
 
 ### Improvements
 
 - Reserve 5% of available rate-limits for webhook processing.
+
+
+## 5.5.23 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
 
 
 ## 5.5.22 (2026-06-02)
