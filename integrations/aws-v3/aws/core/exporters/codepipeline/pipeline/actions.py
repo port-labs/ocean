@@ -22,8 +22,8 @@ class GetPipelineDetailsAction(Action):
             if isinstance(detail_result, Exception):
                 pipeline_name = resources[idx].get("name", "unknown")
                 logger.error(f"Error fetching details for pipeline '{pipeline_name}': {detail_result}")
-                continue
-            results.append(cast(Dict[str, Any], detail_result))
+            else:
+                results.append(detail_result)
         return results
 
     async def _fetch_pipeline_details(self, resource: Dict[str, Any]) -> Dict[str, Any]:
