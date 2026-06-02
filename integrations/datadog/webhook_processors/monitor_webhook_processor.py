@@ -10,9 +10,21 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from integration import ObjectKind
 from datadog.core.exporters import MonitorExporter
+from datadog.core.exporters.monitor_exporter import GetMonitorOptions
 
 
 class MonitorWebhookProcessor(_AbstractDatadogWebhookProcessor):
+    @staticmethod
+    def _should_include_restriction_policy(resource_config: ResourceConfig) -> bool:
+        if isinstance(resource_config, dict):
+            selector = resource_config.get("selector")
+            if isinstance(selector, dict):
+                return bool(selector.get("include_restriction_policy", False))
+            return False
+
+        selector = getattr(resource_config, "selector", None)
+        return bool(getattr(selector, "include_restriction_policy", False))
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
         return True
 
@@ -24,7 +36,14 @@ class MonitorWebhookProcessor(_AbstractDatadogWebhookProcessor):
     ) -> WebhookEventRawResults:
         dd_client = init_client()
         monitor_exporter = MonitorExporter(dd_client)
-        monitor = await monitor_exporter.get_resource(payload["alert_id"])
+        monitor = await monitor_exporter.get_resource(
+            GetMonitorOptions(
+                resource_id=payload["alert_id"],
+                include_restriction_policy=self._should_include_restriction_policy(
+                    resource_config
+                ),
+            )
+        )
 
         return WebhookEventRawResults(
             updated_raw_results=[monitor] if monitor else [],

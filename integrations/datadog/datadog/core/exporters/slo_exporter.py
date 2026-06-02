@@ -1,6 +1,5 @@
 import asyncio
 from itertools import batched
-from typing import Any
 
 from pydantic import BaseModel
 from datadog.client import DatadogClient
@@ -22,16 +21,8 @@ class SloExporter(PaginatedExporter[ListSloOptions]):
         super().__init__(client)
         self.rp_exporter = RestrictionPolicyExporter(client)
 
-    async def _enrich_with_restriction_policy(
-        self, slo: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Enrich SLO with restriction policy."""
-        policy = await self.rp_exporter.get_resource(f"slo:{slo['id']}")
-        slo["__restrictionPolicy"] = policy
-        return slo
-
     async def get_paginated_resources(
-        self, options: ListSloOptions
+        self, options: ListSloOptions = ListSloOptions()
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get SLOs from Datadog.
         Docs: https://docs.datadoghq.com/api/latest/service-level-objectives/#get-all-slos
@@ -45,6 +36,11 @@ class SloExporter(PaginatedExporter[ListSloOptions]):
 
             for batch in batched(slos, SLO_ENRICHMENT_BATCH_SIZE):
                 enriched_slos = await asyncio.gather(
-                    *[self._enrich_with_restriction_policy(slo) for slo in batch]
+                    *[
+                        self.rp_exporter.enrich_resource_with_restriction_policy(
+                            "slo", slo
+                        )
+                        for slo in batch
+                    ]
                 )
                 yield enriched_slos

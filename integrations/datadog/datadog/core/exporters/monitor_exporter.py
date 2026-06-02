@@ -18,8 +18,13 @@ class ListMonitorOptions(BaseModel):
     include_restriction_policy: bool = False
 
 
+class GetMonitorOptions(BaseModel):
+    resource_id: str
+    include_restriction_policy: bool = False
+
+
 class MonitorExporter(
-    PaginatedExporter[ListMonitorOptions], SingleResourceExporter[str]
+    PaginatedExporter[ListMonitorOptions], SingleResourceExporter[GetMonitorOptions]
 ):
     """Monitor exporter."""
 
@@ -27,16 +32,8 @@ class MonitorExporter(
         super().__init__(client)
         self.rp_exporter = RestrictionPolicyExporter(client)
 
-    async def _enrich_with_restriction_policy(
-        self, monitor: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Enrich monitor with restriction policy."""
-        policy = await self.rp_exporter.get_resource(f"monitor:{monitor['id']}")
-        monitor["__restrictionPolicy"] = policy
-        return monitor
-
     async def get_paginated_resources(
-        self, options: ListMonitorOptions
+        self, options: ListMonitorOptions = ListMonitorOptions()
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get monitors from Datadog.
         Docs: https://docs.datadoghq.com/api/latest/monitors/#get-all-monitor-details
@@ -53,15 +50,26 @@ class MonitorExporter(
             for batch in batched(monitors, MONITOR_ENRICHMENT_BATCH_SIZE):
                 enriched_monitors = await asyncio.gather(
                     *[
-                        self._enrich_with_restriction_policy(monitor)
+                        self.rp_exporter.enrich_resource_with_restriction_policy(
+                            "monitor", monitor
+                        )
                         for monitor in batch
                     ]
                 )
                 yield enriched_monitors
 
-    async def get_resource(self, resource_id: str) -> dict[str, Any] | None:
+    async def get_resource(
+        self, resource_id: GetMonitorOptions
+    ) -> dict[str, Any] | None:
         """Get a single monitor by ID.
         Docs: https://docs.datadoghq.com/api/latest/monitors/#get-a-monitor-s-details
         """
-        url = f"{self.client.api_url}/api/v1/monitor/{resource_id}"
-        return await self.client.send_api_request(url)
+        url = f"{self.client.api_url}/api/v1/monitor/{resource_id.resource_id}"
+        monitor = await self.client.send_api_request(url)
+
+        if not resource_id.include_restriction_policy:
+            return monitor
+
+        return await self.rp_exporter.enrich_resource_with_restriction_policy(
+            "monitor", monitor
+        )

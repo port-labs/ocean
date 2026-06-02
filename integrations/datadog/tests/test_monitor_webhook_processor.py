@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
+from datadog.core.exporters.monitor_exporter import GetMonitorOptions
 from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
 from integration import ObjectKind
 from typing import Any
@@ -63,7 +64,9 @@ async def test_handle_event_with_monitor(
 
         result = await processor.handle_event(test_payload, resource_config)
 
-        mock_exporter.get_resource.assert_awaited_once_with("123")
+        mock_exporter.get_resource.assert_awaited_once_with(
+            GetMonitorOptions(resource_id="123", include_restriction_policy=False)
+        )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == mock_monitor
         assert len(result.deleted_raw_results) == 0
@@ -88,6 +91,8 @@ async def test_handle_event_without_monitor(
 
         result = await processor.handle_event(test_payload, resource_config)
 
-        mock_exporter.get_resource.assert_awaited_once_with("123")
+        mock_exporter.get_resource.assert_awaited_once_with(
+            GetMonitorOptions(resource_id="123", include_restriction_policy=False)
+        )
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0
