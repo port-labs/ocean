@@ -78,7 +78,7 @@ async def is_lakehouse_data_enabled() -> bool:
             return True
         return False
     except Exception as e:
-        logger.warning(
+        logger.bind(local_only=True).warning(
             f"Failed to check lakehouse feature flags, assuming disabled: {e}"
         )
         return False
@@ -99,7 +99,7 @@ async def is_dsp_mode_enabled() -> bool:
         if ocean.config.processing_mode != ProcessingMode.dsp:
             return False
         if not ocean.config.lakehouse_enabled:
-            logger.warning(
+            logger.bind(local_only=True).warning(
                 "DSP mode requested but lakehouse_enabled is False, falling back to ocean-core"
             )
             return False
@@ -109,7 +109,7 @@ async def is_dsp_mode_enabled() -> bool:
             and IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags
         ):
             return True
-        logger.warning(
+        logger.bind(local_only=True).warning(
             "DSP mode requested but required feature flags are missing "
             f"(LAKEHOUSE_ELIGIBLE={IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags}, "
             f"DATA_SOURCE_PROCESSOR_ENABLED={IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags}), "
@@ -117,7 +117,7 @@ async def is_dsp_mode_enabled() -> bool:
         )
         return False
     except Exception as e:
-        logger.warning(f"Failed to check DSP mode, falling back to ocean-core: {e}")
+        logger.bind(local_only=True).warning(f"Failed to check DSP mode, falling back to ocean-core: {e}")
         return False
 
 

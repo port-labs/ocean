@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.43.11 (2026-06-01)
+
+### Bug Fixes
+
+- Added `local_only` log routing: logs marked with `logger.bind(local_only=True)` are written to stdout only and never shipped to the integration Event log ingest.
+
 ## 0.43.10 (2026-06-01)
 
 ### Improvements
