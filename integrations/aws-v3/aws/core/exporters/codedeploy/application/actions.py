@@ -70,13 +70,7 @@ class ListCodeDeployApplicationsAction(Action):
     """Processes the initial list of CodeDeploy applications."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        results: List[Dict[str, Any]] = []
-        for resource in resources:
-            data = {
-                "ApplicationName": resource["applicationName"],
-            }
-            results.append(data)
-        return results
+        return [{"ApplicationName": resource['applicationName']} for resource in resources]
 
 
 class CodeDeployApplicationActionsMap(ActionMap):
