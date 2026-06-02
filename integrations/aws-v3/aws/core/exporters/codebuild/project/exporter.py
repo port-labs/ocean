@@ -16,33 +16,17 @@ class CodeBuildProjectExporter(IResourceExporter):
     _model_cls: Type[CodeBuildProject] = CodeBuildProject
     _actions_map: Type[CodeBuildProjectActionsMap] = CodeBuildProjectActionsMap
 
-    async def get_resource(
-        self, options: SingleCodeBuildProjectRequest
-    ) -> dict[str, Any]:
+    async def get_resource(self, options: SingleCodeBuildProjectRequest) -> dict[str, Any]:
         """Fetch detailed attributes of a single CodeBuild project."""
-        async with AioBaseClientProxy(
-            self.session, options.region, self._service_name
-        ) as proxy:
-            inspector = ResourceInspector(
-                proxy.client, self._actions_map(), lambda: self._model_cls()
-            )
-            response = await inspector.inspect(
-                [{"name": options.project_name}], options.include
-            )
+        async with AioBaseClientProxy(self.session, options.region, self._service_name) as proxy:
+            inspector = ResourceInspector(proxy.client, self._actions_map(), lambda: self._model_cls())
+            response = await inspector.inspect([{"name": options.project_name}], options.include)
             return response[0] if response else {}
 
-    async def get_paginated_resources(
-        self, options: PaginatedCodeBuildProjectRequest
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_paginated_resources(self, options: PaginatedCodeBuildProjectRequest) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch all CodeBuild projects in a region."""
-        async with AioBaseClientProxy(
-            self.session, options.region, self._service_name
-        ) as proxy:
-            inspector = ResourceInspector(
-                proxy.client, self._actions_map(), lambda: self._model_cls()
-            )
-
-            # Use the list_projects paginator
+        async with AioBaseClientProxy(self.session, options.region, self._service_name) as proxy:
+            inspector = ResourceInspector(proxy.client, self._actions_map(), lambda: self._model_cls())
             paginator = proxy.get_paginator("list_projects", "projects")
 
             async for projects in paginator.paginate():
