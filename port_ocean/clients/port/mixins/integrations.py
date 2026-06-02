@@ -12,6 +12,7 @@ from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     LakehouseDataEntryBatch,
     LakehouseEventType,
+    ProcessingMode,
 )
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
@@ -35,6 +36,10 @@ class MetricsAttributes(TypedDict):
     ingestUrl: str
 
 
+class IngestAttributes(TypedDict):
+    ingestUrl: str
+
+
 class IntegrationClientMixin:
     def __init__(
         self,
@@ -49,6 +54,7 @@ class IntegrationClientMixin:
         self.client = client
         self._log_attributes: LogAttributes | None = None
         self._metrics_attributes: MetricsAttributes | None = None
+        self._ingest_attributes: IngestAttributes | None = None
 
     async def is_integration_provision_enabled(
         self, integration_type: str, should_raise: bool = True, should_log: bool = True
@@ -77,12 +83,11 @@ class IntegrationClientMixin:
         logger.info(f"Fetching integration with id: {self.integration_identifier}")
         request_kwargs: dict[str, Any] = {
             "headers": await self.auth.headers(),
-        }
-        if is_polling:
-            request_kwargs["params"] = {
+            "params": {
                 "oceanCoreVersion": ocean_core_version,
-                "isPolling": "true",
-            }
+                "isPolling": "true" if is_polling else "false",
+            },
+        }
         response = await self.client.get(
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
             **request_kwargs,
@@ -124,6 +129,12 @@ class IntegrationClientMixin:
             response = await self.get_current_integration()
             self._metrics_attributes = response["metricAttributes"]
         return self._metrics_attributes
+
+    async def get_ingest_attributes(self) -> IngestAttributes:
+        if self._ingest_attributes is None:
+            response = await self.get_current_integration()
+            self._ingest_attributes = response["ingestAttributes"]
+        return self._ingest_attributes
 
     async def poll_integration_until_default_provisioning_is_complete(
         self,
@@ -201,6 +212,7 @@ class IntegrationClientMixin:
         port_app_config: Optional["PortAppConfig"] = None,
         actions_processing_enabled: Optional[bool] = None,
         are_port_resources_initialized: Optional[bool] = None,
+        processing_mode: ProcessingMode | None = None,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -215,6 +227,8 @@ class IntegrationClientMixin:
             json["actionsProcessingEnabled"] = actions_processing_enabled
         if changelog_destination is not None:
             json["changelogDestination"] = changelog_destination
+        if processing_mode is not None:
+            json["processingMode"] = processing_mode.value
 
         json["version"] = self.integration_version
 
@@ -361,9 +375,11 @@ class IntegrationClientMixin:
             kind=event["kind"],
         )
         headers = await self.auth.headers()
+        ingest_attributes = await self.get_ingest_attributes()
 
-        data = [
-            {
+        data = []
+        for entry in event["data"]:
+            entry_data: dict[str, Any] = {
                 "request": entry["request"],
                 "response": entry["response"],
                 "items": entry["items"],
@@ -373,8 +389,9 @@ class IntegrationClientMixin:
                     "resourceIndex": entry["metadata"]["resource_index"],
                 },
             }
-            for entry in event["data"]
-        ]
+            if environment_data := entry.get("environment_data"):
+                entry_data["environment_data"] = environment_data
+            data.append(entry_data)
 
         body: dict[str, Any] = {
             "kind": event["kind"],
@@ -393,7 +410,7 @@ class IntegrationClientMixin:
             body["eventId"] = event["event_id"]
 
         response = await self.client.post(
-            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
+            f"{ingest_attributes['ingestUrl']}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
             headers=headers,
             json=body,
         )

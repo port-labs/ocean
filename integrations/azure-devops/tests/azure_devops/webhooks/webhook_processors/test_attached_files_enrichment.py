@@ -52,9 +52,15 @@ class TestAzureDevopsIncludedFilesEnrichment:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that handle_event enriches with included files when configured."""
+        _mgr = MagicMock()
+
+        _mgr.get_client_for_org.return_value = mock_client
+        mock_client._organization_base_url = "https://dev.azure.com/test"
+        _mgr.get_clients.return_value = [mock_client]
+
         monkeypatch.setattr(
-            "azure_devops.webhooks.webhook_processors.repository_processor.AzureDevopsClient.create_from_ocean_config",
-            lambda: mock_client,
+            "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+            lambda: _mgr,
         )
 
         mock_client.get_repository = AsyncMock(return_value=sample_repo)
@@ -69,6 +75,9 @@ class TestAzureDevopsIncludedFilesEnrichment:
             "resource": {
                 "url": "http://example.com",
                 "repository": {"id": "repo-123"},
+            },
+            "resourceContainers": {
+                "account": {"baseUrl": "https://dev.azure.com/test/"}
             },
         }
 
@@ -96,9 +105,15 @@ class TestAzureDevopsIncludedFilesEnrichment:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that handle_event does not enrich when includedFiles is empty."""
+        _mgr = MagicMock()
+
+        _mgr.get_client_for_org.return_value = mock_client
+        mock_client._organization_base_url = "https://dev.azure.com/test"
+        _mgr.get_clients.return_value = [mock_client]
+
         monkeypatch.setattr(
-            "azure_devops.webhooks.webhook_processors.repository_processor.AzureDevopsClient.create_from_ocean_config",
-            lambda: mock_client,
+            "azure_devops.webhooks.webhook_processors.base_processor.AzureDevopsClientManager.create_from_ocean_config",
+            lambda: _mgr,
         )
 
         mock_client.get_repository = AsyncMock(return_value=sample_repo)
@@ -110,6 +125,9 @@ class TestAzureDevopsIncludedFilesEnrichment:
             "resource": {
                 "url": "http://example.com",
                 "repository": {"id": "repo-123"},
+            },
+            "resourceContainers": {
+                "account": {"baseUrl": "https://dev.azure.com/test/"}
             },
         }
 
