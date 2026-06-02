@@ -36,12 +36,10 @@ class GetPipelineDetailsAction(Action):
             logger.warning(f"Pipeline {pipeline_name} not found")
             return {}
         else:
-            pipeline = response.get("pipeline", {})
-            metadata = response.get("metadata", {})
-
             logger.info(f"Successfully fetched details for pipeline {pipeline_name}")
 
-            # Transform AWS response to our model format
+            pipeline = response.get("pipeline", {})
+            metadata = response.get("metadata", {})
             artifact_store = pipeline.get("artifactStore", {})
             artifact_stores = pipeline.get("artifactStores", {})
 
