@@ -11,7 +11,6 @@ class GetPipelineDetailsAction(Action):
         if not resources:
             return []
 
-        # Use asyncio.gather for concurrent API calls
         details = await asyncio.gather(
             *(self._fetch_pipeline_details(resource) for resource in resources),
             return_exceptions=True,
