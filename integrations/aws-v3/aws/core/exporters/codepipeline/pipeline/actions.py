@@ -101,7 +101,6 @@ class GetPipelineTagsAction(Action):
         pipeline_name = resource["name"]
 
         try:
-            # Get pipeline ARN first to fetch tags
             pipeline_response = await self.client.get_pipeline(name=pipeline_name)
             pipeline_arn = pipeline_response.get("metadata", {}).get("pipelineArn")
 
@@ -112,7 +111,6 @@ class GetPipelineTagsAction(Action):
             response = await self.client.list_tags_for_resource(resourceArn=pipeline_arn)
             tags_list = response.get("tags", [])
 
-            # Convert tags list to dictionary
             tags_dict = {tag.get("key", ""): tag.get("value", "") for tag in tags_list}
 
             logger.info(f"Successfully fetched tags for pipeline {pipeline_name}")
