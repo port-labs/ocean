@@ -165,12 +165,9 @@ class DatadogClient:
                 ),
             }
 
-            result = await self.send_api_request(
+            await self.send_api_request(
                 url=dd_webhook_url, method="POST", json_data=body
             )
-
-            logger.info(f"Webhook Subscription Response: {result}")
-
         except Exception as e:
             logger.error(f"Failed to create a webhook: {str(e)}, skipping...")
 

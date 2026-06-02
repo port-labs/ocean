@@ -80,7 +80,7 @@ class SloHistoryExporter(PaginatedExporter[ListSloHistoryOptions]):
             result = await self.client.send_api_request(
                 url, params={"from_ts": from_ts, "to_ts": to_ts}
             )
-            return {**result.get("data"), "__timeframe": timeframe}
+            return {**result.get("data", {}), "__timeframe": timeframe}
         except httpx.HTTPStatusError as err:
             if err.response.status_code == http.HTTPStatus.BAD_REQUEST:
                 if (

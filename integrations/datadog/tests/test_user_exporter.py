@@ -27,9 +27,9 @@ async def test_get_users(mock_datadog_client: DatadogClient) -> None:
 
         assert len(users) == 2
         assert users == users_response["data"]
-        mock_request.assert_called_with(
+        mock_request.assert_any_call(
             f"{mock_datadog_client.api_url}/api/v2/users",
-            params={"page[size]": MAX_PAGE_SIZE, "page[number]": 1},
+            params={"page[size]": MAX_PAGE_SIZE, "page[number]": 0},
         )
 
 

@@ -137,7 +137,7 @@ class ServiceMetricExporter(PaginatedExporter[ListServiceMetricOptions]):
     async def _get_tags(self) -> dict[str, Any]:
         url = f"{self.client.api_url}/api/v1/tags/hosts"
         result = await self.client.send_api_request(url)
-        return result.get("tags")
+        return result.get("tags", {})
 
     @staticmethod
     def _get_env_tags(tags: dict[str, Any], tag_name: str = "env") -> list[str]:
