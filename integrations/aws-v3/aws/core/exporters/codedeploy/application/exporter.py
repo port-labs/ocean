@@ -46,7 +46,7 @@ class CodeDeployApplicationExporter(IResourceExporter):
             async for applications in paginator.paginate():
                 if applications:
                     # Transform application names to the expected format
-                    resources = [{"applicationName": app_name, 'accountId': options.account_id, 'region': options.region} for app_name in applications]
+                    resources = [{"applicationName": app_name, 'accountId': options.account_id, 'region': options.region} for app_name in sorted(applications)]
                     action_result = await inspector.inspect(
                         resources,
                         options.include,

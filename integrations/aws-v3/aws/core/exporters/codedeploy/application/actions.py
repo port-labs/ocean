@@ -17,7 +17,7 @@ class GetCodeDeployApplicationDetailsAction(Action):
 
         logger.info(f"Successfully fetched details for {len(response.get('applicationsInfo', []))} CodeDeploy applications")
 
-        return [
+        return sorted([
             {
                 "ApplicationName": app_info.get("applicationName", ""),
                 "ApplicationId": app_info.get("applicationId", ""),
@@ -27,7 +27,7 @@ class GetCodeDeployApplicationDetailsAction(Action):
                 "ComputePlatform": app_info.get("computePlatform"),
             }
             for app_info in response.get("applicationsInfo", [])
-        ]
+        ], key=lambda app_info: app_info["ApplicationName"])
 
 
 class GetCodeDeployApplicationTagsAction(Action):
