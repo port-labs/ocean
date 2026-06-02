@@ -30,7 +30,6 @@ class GetPipelineDetailsAction(Action):
         pipeline_name = resource["name"]
 
         try:
-            # Get pipeline details
             response = await self.client.get_pipeline(name=pipeline_name)
         except self.client.exceptions.PipelineNotFoundException:
             logger.warning(f"Pipeline {pipeline_name} not found")
