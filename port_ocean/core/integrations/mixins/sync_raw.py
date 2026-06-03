@@ -446,6 +446,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     resync_start_time=event.attributes.get("resync_start_time"),
                     event_type=LakehouseEventType.RESYNC,
                     flush_interval_seconds=ocean.config.lakehouse_buffer_interval_seconds,
+                    max_buffer_count=ocean.config.lakehouse_buffer_max_count,
                 )
                 if lakehouse_data_enabled
                 else None
