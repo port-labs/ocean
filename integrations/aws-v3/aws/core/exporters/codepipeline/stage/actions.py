@@ -13,24 +13,24 @@ class ListPipelinesAction(Action):
             # Get all pipelines
             response = await self.client.list_pipelines()
             pipelines = response.get("pipelines", [])
-            
+
             if not pipelines:
                 logger.info("No pipelines found in this region")
                 return []
-            
+
             # Fetch detailed pipeline information for each pipeline to extract stages
             pipeline_details = await asyncio.gather(
                 *(self._fetch_pipeline_details(pipeline) for pipeline in pipelines),
                 return_exceptions=True,
             )
-            
+
             results: List[Dict[str, Any]] = []
             for idx, detail_result in enumerate(pipeline_details):
                 if isinstance(detail_result, Exception):
                     pipeline_name = pipelines[idx].get("name", "unknown")
                     logger.error(f"Error fetching pipeline details for '{pipeline_name}': {detail_result}")
                     continue
-                
+
                 pipeline_data = cast(Dict[str, Any], detail_result)
                 # Extract stages from the pipeline
                 stages = pipeline_data.get("pipeline", {}).get("stages", [])
@@ -45,10 +45,10 @@ class ListPipelinesAction(Action):
                         "stage_name": stage.get("name", "")
                     }
                     results.append(stage_data)
-            
+
             logger.info(f"Found {len(results)} stages across {len(pipelines)} pipelines")
             return results
-            
+
         except Exception as e:
             logger.error(f"Error listing pipelines: {e}")
             return []
@@ -83,11 +83,11 @@ class GetStageDetailsAction(Action):
                 # Still include the basic data even if we can't get state
                 results.append(resource)
                 continue
-            
+
             state_data = cast(Dict[str, Any], state_result)
             # Merge state information with existing resource data
             enhanced_resource = {**resource}
-            
+
             # Add stage state information if available
             stage_states_list = state_data.get("stageStates", [])
             for stage_state in stage_states_list:
@@ -97,9 +97,9 @@ class GetStageDetailsAction(Action):
                         "InboundTransitionState": stage_state.get("inboundTransitionState", {}),
                     })
                     break
-            
+
             results.append(enhanced_resource)
-        
+
         return results
 
     async def _fetch_stage_state(self, resource: Dict[str, Any]) -> Dict[str, Any]:
@@ -107,7 +107,7 @@ class GetStageDetailsAction(Action):
         pipeline_name = resource.get("PipelineName")
         if not pipeline_name:
             raise ValueError("Pipeline name is required to fetch stage state")
-        
+
         response = await self.client.get_pipeline_state(name=pipeline_name)
         return response
 
@@ -118,6 +118,4 @@ class CodePipelineStageActionsMap(ActionMap):
         ListPipelinesAction,
         GetStageDetailsAction,
     ]
-    options: List[Type[Action]] = [
-        # Add optional actions here if needed
-    ]
+    options: List[Type[Action]] = []
