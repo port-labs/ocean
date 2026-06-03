@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
@@ -8,14 +9,14 @@ class ProjectBuildRunProperties(BaseModel):
     ProjectName: str = Field(default_factory=str, description="The name of the CodeBuild project")
     Arn: str = Field(default_factory=str, description="The Amazon Resource Name (ARN) of the build run")
     BuildNumber: Optional[int] = None
-    StartTime: Optional[str] = None
-    EndTime: Optional[str] = None
+    StartTime: Optional[datetime] = None
+    EndTime: Optional[datetime] = None
     CurrentPhase: Optional[str] = None
     BuildStatus: Optional[str] = None
     SourceVersion: Optional[str] = None
     ResolvedSourceVersion: Optional[str] = None
     ProjectVersion: Optional[int] = None
-    Artifacts: List[Dict[str, Any]] = Field(default_factory=list)
+    Artifacts: Dict[str, Any] = None
     Cache: Optional[Dict[str, Any]] = None
     Environment: Optional[Dict[str, Any]] = None
     ServiceRole: Optional[str] = None
@@ -35,7 +36,7 @@ class ProjectBuildRunProperties(BaseModel):
     Tags: List[Dict[str, str]] = Field(default_factory=list)
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
