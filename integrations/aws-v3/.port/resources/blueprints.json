@@ -180,5 +180,94 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "codeBuildProjectBuildRun",
+    "title": "CodeBuild Project Build Run",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the build run"
+        },
+        "projectName": {
+          "type": "string",
+          "title": "Project Name",
+          "description": "The name of the CodeBuild project"
+        },
+        "buildNumber": {
+          "type": "number",
+          "title": "Build Number",
+          "description": "The build number"
+        },
+        "buildStatus": {
+          "type": "string",
+          "title": "Build Status",
+          "description": "The current status of the build",
+          "enum": [
+            "SUCCEEDED",
+            "FAILED",
+            "FAULT",
+            "TIMED_OUT",
+            "IN_PROGRESS",
+            "STOPPED"
+          ]
+        },
+        "currentPhase": {
+          "type": "string",
+          "title": "Current Phase",
+          "description": "The current phase of the build"
+        },
+        "startTime": {
+          "type": "string",
+          "title": "Start Time",
+          "description": "The time the build started",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "title": "End Time", 
+          "description": "The time the build ended",
+          "format": "date-time"
+        },
+        "sourceVersion": {
+          "type": "string",
+          "title": "Source Version",
+          "description": "The version of the source code"
+        },
+        "buildComplete": {
+          "type": "boolean",
+          "title": "Build Complete",
+          "description": "Whether the build is complete"
+        },
+        "initiator": {
+          "type": "string",
+          "title": "Initiator",
+          "description": "The entity that initiated the build"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the build run",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
