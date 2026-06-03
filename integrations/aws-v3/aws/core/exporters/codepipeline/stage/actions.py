@@ -10,24 +10,15 @@ class ListPipelinesAction(Action):
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Execute the action to list all pipelines and extract stages."""
         try:
-            # Get all pipelines
-            response = await self.client.list_pipelines()
-            pipelines = response.get("pipelines", [])
-
-            if not pipelines:
-                logger.info("No pipelines found in this region")
-                return []
-
-            # Fetch detailed pipeline information for each pipeline to extract stages
             pipeline_details = await asyncio.gather(
-                *(self._fetch_pipeline_details(pipeline) for pipeline in pipelines),
+                *(self._fetch_pipeline_details(pipeline) for pipeline in resources),
                 return_exceptions=True,
             )
 
             results: List[Dict[str, Any]] = []
             for idx, detail_result in enumerate(pipeline_details):
                 if isinstance(detail_result, Exception):
-                    pipeline_name = pipelines[idx].get("name", "unknown")
+                    pipeline_name = resources[idx].get("name", "unknown")
                     logger.error(f"Error fetching pipeline details for '{pipeline_name}': {detail_result}")
                     continue
 
@@ -35,18 +26,17 @@ class ListPipelinesAction(Action):
                 # Extract stages from the pipeline
                 stages = pipeline_data.get("pipeline", {}).get("stages", [])
                 for stage in stages:
-                    stage_data = {
+                    results.append({
                         "Name": stage.get("name", ""),
                         "PipelineName": pipeline_data.get("pipeline", {}).get("name", ""),
-                        "PipelineArn": pipeline_data.get("pipeline", {}).get("arn", ""),
+                        "PipelineArn": pipeline_data.get("metadata", {}).get("pipelineArn", ""),
                         "Actions": stage.get("actions", []),
                         "Blockers": stage.get("blockers", []),
                         "pipeline_name": pipeline_data.get("pipeline", {}).get("name", ""),
                         "stage_name": stage.get("name", "")
-                    }
-                    results.append(stage_data)
+                    })
 
-            logger.info(f"Found {len(results)} stages across {len(pipelines)} pipelines")
+            logger.info(f"Found {len(results)} stages across {len(results)} pipelines")
             return results
 
         except Exception as e:
