@@ -1711,7 +1711,9 @@ async def test_generate_subscriptions_webhook_events_will_skip_404(
                 request=Request("GET", "https://fake_url.com"),
             )
 
-            events = await client.generate_subscriptions_webhook_events()
+            events = await client.generate_subscriptions_webhook_events(
+                publisher_id="tfs", event_type="git.push"
+            )
             assert events == []
 
 
@@ -2175,10 +2177,63 @@ async def test_generate_subscriptions_webhook_events() -> None:
         )
 
         # ACT
-        events = await client.generate_subscriptions_webhook_events()
+        events = await client.generate_subscriptions_webhook_events(
+            publisher_id="tfs", event_type="git.push"
+        )
 
         # ASSERT
         assert [event.dict() for event in events] == EXPECTED_WEBHOOK_EVENTS
+
+
+@pytest.mark.asyncio
+async def test_generate_subscriptions_webhook_events_passes_filters() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200,
+            json={"value": [EXPECTED_WEBHOOK_EVENTS[0]]},
+        )
+
+        events = await client.generate_subscriptions_webhook_events(
+            publisher_id="tfs", event_type="workitem.created"
+        )
+
+        assert len(events) == 1
+        mock_send_request.assert_called_once_with(
+            "GET",
+            f"{MOCK_ORG_URL}/_apis/hooks/subscriptions",
+            headers={"Content-Type": "application/json"},
+            params={"publisherId": "tfs", "eventType": "workitem.created"},
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_filtered_webhook_subscriptions_calls_per_event_type() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    with patch.object(
+        client, "generate_subscriptions_webhook_events", new_callable=AsyncMock
+    ) as mock_fetch:
+        mock_fetch.return_value = []
+
+        await client.get_filtered_webhook_subscriptions()
+
+        from azure_devops.client.azure_devops_client import (
+            AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS,
+        )
+
+        expected_filters = {
+            (sub.publisherId, sub.eventType)
+            for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
+        }
+        assert mock_fetch.call_count == len(expected_filters)
+
+        actual_filters = {
+            (call.kwargs["publisher_id"], call.kwargs["event_type"])
+            for call in mock_fetch.call_args_list
+        }
+        assert actual_filters == expected_filters
 
 
 @pytest.mark.asyncio
@@ -4068,6 +4123,121 @@ async def test_enrich_test_runs_without_build() -> None:
         )
         assert "__codeCoverage" in enriched_test_runs[1]
         assert enriched_test_runs[1]["__codeCoverage"] == {}
+
+
+@pytest.mark.asyncio
+async def test_enrich_test_runs_with_missing_or_null_build() -> None:
+    """Coverage is skipped (mapped to {}) when build is missing, null, or has no id, while runs with a build id are enriched - order preserved."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    test_runs = [
+        {
+            "id": 1,
+            "name": "With build",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "Null build",
+            "build": None,
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 3,
+            "name": "Build without id",
+            "build": {},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 4,
+            "name": "Missing build",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    from integration import CodeCoverageConfig
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        return {"coverageData": {"linesCovered": 100, "linesNotCovered": 50}}
+
+    with patch.object(
+        client,
+        "_fetch_code_coverage",
+        side_effect=mock_fetch_code_coverage,
+    ):
+        enriched_test_runs = await client._enrich_test_runs(
+            test_runs, "proj1", include_results=False, coverage_config=coverage_config
+        )
+
+    assert len(enriched_test_runs) == 4
+    assert (
+        enriched_test_runs[0]["__codeCoverage"]["coverageData"]["linesCovered"] == 100
+    )
+    assert enriched_test_runs[1]["__codeCoverage"] == {}
+    assert enriched_test_runs[2]["__codeCoverage"] == {}
+    assert enriched_test_runs[3]["__codeCoverage"] == {}
+
+
+@pytest.mark.asyncio
+async def test_enrich_test_runs_logs_coverage_summary() -> None:
+    """The coverage summary log reports both fetched and skipped counts."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    test_runs = [
+        {
+            "id": 1,
+            "name": "With build",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "With build",
+            "build": {"id": 124},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 3,
+            "name": "Manual run",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    from integration import CodeCoverageConfig
+    from loguru import logger
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        return {"coverageData": {"linesCovered": 100, "linesNotCovered": 50}}
+
+    messages: List[str] = []
+    sink_id = logger.add(messages.append, level="INFO")
+    try:
+        with patch.object(
+            client,
+            "_fetch_code_coverage",
+            side_effect=mock_fetch_code_coverage,
+        ):
+            await client._enrich_test_runs(
+                test_runs,
+                "proj1",
+                include_results=False,
+                coverage_config=coverage_config,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    summary = "".join(messages)
+    assert "Fetched code coverage for 2 of 3 test runs" in summary
+    assert "Skipped 1 runs" in summary
 
 
 @pytest.mark.asyncio

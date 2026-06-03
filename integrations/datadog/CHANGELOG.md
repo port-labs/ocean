@@ -7,6 +7,105 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.1 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.4.0 (2026-06-02)
+
+
+### Improvements
+
+- Refactored the Datadog integration to use a modular exporter architecture, extracting resource-specific logic from the monolithic client into dedicated exporter classes
+- Added `role` resource kind support
+- Added optional restriction policy enrichment selector for monitors and SLOs
+
+
+## 0.3.161 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.3.160 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.3.159 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.3.158 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.3.157 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.3.156 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.3.155 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.3.154 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 0.3.153 (2026-05-28)
+
+
+### Bug Fixes
+
+- Retry Datadog API 500 and 512 responses during deep pagination (monitors, SLOs, and other list endpoints)
+- Fix metrics query rate-limit handling to re-request after waiting when approaching quota
+
+
+## 0.3.152 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
 ## 0.3.151 (2026-05-26)
 
 

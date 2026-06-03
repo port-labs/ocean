@@ -70,7 +70,6 @@ class Ocean:
             integration_identifier=self.config.integration.identifier,
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
-            ingest_url=self.config.port.ingest_url,
             feature_flags_cache_ttl_seconds=self.config.port.feature_flags_cache_ttl_seconds,
         )
         self.cache_provider: CacheProvider = self._get_caching_provider()
@@ -111,7 +110,6 @@ class Ocean:
             self.port_client, self.config.scheduled_resync_interval
         )
         self.lifecycle_client: LifecycleClient = LifecycleClient(
-            base_url=str(self.config.port.ingest_url),
             auth=self.port_client.auth,
         )
         self.app_initialized = False

@@ -17,12 +17,15 @@ from jira.overrides import (
     JiraWorklogResourceConfig,
     TeamResourceConfig,
     JiraBoardResourceConfig,
+    JiraSprintResourceConfig,
+    JiraBacklogResourceConfig,
     JiraEpicResourceConfig,
 )
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
 from webhook_processors.version_webhook_processor import VersionWebhookProcessor
+from webhook_processors.sprint_webhook_processor import SprintWebhookProcessor
 
 
 async def setup_application() -> None:
@@ -126,6 +129,56 @@ async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield list(enriched_boards)
 
 
+@ocean.on_resync(Kinds.SPRINT)
+async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_or_create_jira_client()
+    selector = cast(JiraSprintResourceConfig, event.resource_config).selector
+
+    sprint_state = selector.sprint_state
+
+    logger.info(
+        f"Starting sprint resync with state filter: {sprint_state or 'all states'}"
+    )
+
+    async for board_batch in client.get_paginated_boards():
+        sprint_streams = [
+            client.get_paginated_sprints_for_board(
+                board_id=board["id"],
+                sprint_state=sprint_state,
+            )
+            for board in board_batch
+        ]
+
+        async for sprint_batch in stream_async_iterators_tasks(*sprint_streams):
+            logger.debug(f"Received sprint batch with {len(sprint_batch)} sprints")
+            yield sprint_batch
+
+
+@ocean.on_resync(Kinds.BACKLOG)
+async def on_resync_backlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_or_create_jira_client()
+    selector = cast(JiraBacklogResourceConfig, event.resource_config).selector
+
+    logger.info(f"Starting backlog resync with JQL filter: '{selector.jql or 'none'}'")
+
+    async for board_batch in client.get_paginated_boards():
+        boards_with_ids = [board for board in board_batch if board.get("id")]
+
+        backlog_streams = [
+            client.get_paginated_backlog_for_board(
+                board_id=board["id"],
+                jql=selector.jql,
+                fields=selector.fields,
+                use_software_api=selector.use_software_api,
+            )
+            for board in boards_with_ids
+        ]
+
+        async for issue_batch in stream_async_iterators_tasks(*backlog_streams):
+            logger.debug(f"Received backlog batch with {len(issue_batch)} issues")
+            yield issue_batch
+
+
 @ocean.on_resync(Kinds.EPIC)
 async def on_resync_epics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_or_create_jira_client()
@@ -183,3 +236,4 @@ ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ocean.add_webhook_processor("/webhook", VersionWebhookProcessor)
 ocean.add_webhook_processor("/webhook", BoardWebhookProcessor)
+ocean.add_webhook_processor("/webhook", SprintWebhookProcessor)
