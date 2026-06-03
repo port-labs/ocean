@@ -180,5 +180,130 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "codePipelinePipelineExecution",
+    "title": "CodePipeline Pipeline Execution",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "pipelineArn": {
+          "type": "string",
+          "title": "Pipeline ARN",
+          "description": "The Amazon Resource Name (ARN) of the pipeline"
+        },
+        "pipelineName": {
+          "type": "string",
+          "title": "Pipeline Name",
+          "description": "The name of the pipeline"
+        },
+        "pipelineVersion": {
+          "type": "number",
+          "title": "Pipeline Version",
+          "description": "The version of the pipeline definition"
+        },
+        "pipelineExecutionId": {
+          "type": "string",
+          "title": "Execution ID",
+          "description": "The unique identifier for the pipeline execution"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the pipeline execution",
+          "enum": [
+            "InProgress",
+            "Stopped",
+            "Stopping",
+            "Succeeded",
+            "Superseded",
+            "Failed"
+          ]
+        },
+        "statusSummary": {
+          "type": "string",
+          "title": "Status Summary",
+          "description": "A summary of the status of the pipeline execution"
+        },
+        "executionMode": {
+          "type": "string",
+          "title": "Execution Mode",
+          "description": "The execution mode for this pipeline execution",
+          "enum": [
+            "QUEUED",
+            "SUPERSEDED",
+            "PARALLEL"
+          ]
+        },
+        "pipelineExecutionDisplayName": {
+          "type": "string",
+          "title": "Display Name",
+          "description": "The display name for the pipeline execution"
+        },
+        "trigger": {
+          "type": "object",
+          "title": "Trigger",
+          "description": "The trigger that caused the pipeline execution"
+        },
+        "artifactRevisions": {
+          "type": "array",
+          "title": "Artifact Revisions",
+          "description": "A list of source code revisions for the pipeline execution",
+          "items": {
+            "type": "object"
+          }
+        },
+        "variableValues": {
+          "type": "object",
+          "title": "Variable Values",
+          "description": "Variables defined for the pipeline execution"
+        },
+        "stageStates": {
+          "type": "array",
+          "title": "Stage States",
+          "description": "The state of all stages in the pipeline execution",
+          "items": {
+            "type": "object"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "description": "The time when the pipeline execution was created",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "title": "Updated At",
+          "description": "The time when the pipeline execution was last updated",
+          "format": "date-time"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "AWS region where the pipeline execution is located"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the pipeline",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

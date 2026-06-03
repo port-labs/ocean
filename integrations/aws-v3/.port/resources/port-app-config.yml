@@ -63,3 +63,31 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::CodePipeline::PipelineExecution
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.pipelineExecutionId
+          title: .Properties.pipelineName + " - " + .Properties.pipelineExecutionId
+          blueprint: '"codePipelinePipelineExecution"'
+          properties:
+            pipelineArn: .Properties.pipelineArn
+            pipelineName: .Properties.pipelineName
+            pipelineVersion: .Properties.pipelineVersion
+            pipelineExecutionId: .Properties.pipelineExecutionId
+            status: .Properties.status
+            statusSummary: .Properties.statusSummary
+            executionMode: .Properties.executionMode
+            pipelineExecutionDisplayName: .Properties.pipelineExecutionDisplayName
+            trigger: .Properties.trigger
+            artifactRevisions: .Properties.artifactRevisions
+            variableValues: .Properties.variableValues
+            stageStates: .Properties.stageStates
+            createdAt: .Properties.createdAt
+            updatedAt: .Properties.updatedAt
+            region: .Properties.region
+            tags: .Properties.tags
+          relations:
+            account: .__ExtraContext.AccountId
