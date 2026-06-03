@@ -15,7 +15,7 @@ class CodePipelineStageAction(BaseModel):
     RunOrder: Optional[int] = Field(default=None, description="The order in which actions are run")
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         populate_by_name = True
 
 
@@ -30,7 +30,7 @@ class CodePipelineStageProperties(BaseModel):
     AccountId: str = Field(default_factory=str, description="AWS account ID")
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         populate_by_name = True
 
 
