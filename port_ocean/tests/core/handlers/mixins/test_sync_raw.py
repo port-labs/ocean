@@ -1031,13 +1031,13 @@ async def test_on_resync_complete_hooks_not_called_on_error(
         attributes={"resync_start_time": datetime.now(timezone.utc)},
     ) as event:
         event.port_app_config = mock_port_app_config
-        with pytest.raises(Exception):
-            await mock_sync_raw_mixin.sync_raw_all(
-                trigger_type="machine",
-                user_agent_type=UserAgentType.exporter,
-            )
+        result = await mock_sync_raw_mixin.sync_raw_all(
+            trigger_type="machine",
+            user_agent_type=UserAgentType.exporter,
+        )
 
     # Verify
+    assert result is False
     assert (
         not resync_complete_called
     ), "on_resync_complete hook should not have been called on error"
@@ -1530,7 +1530,7 @@ async def test_process_resource_unexpected_exception_marks_kind_failed(
     async def capture_kind_report(*args: object, **kwargs: object) -> None:
         sync_states_at_report.append(mock_ocean.metrics.sync_state)
 
-    mock_sync_raw_mixin._register_in_batches = AsyncMock(  # type: ignore
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(
         side_effect=RuntimeError("crash")
     )
     mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
@@ -1572,7 +1572,7 @@ async def test_process_resource_unexpected_exception_returns_error_in_results(
     mock_port_app_config: PortAppConfig,
     mock_ocean: Ocean,
 ) -> None:
-    mock_sync_raw_mixin._register_in_batches = AsyncMock(  # type: ignore
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(
         side_effect=RuntimeError("crash")
     )
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
