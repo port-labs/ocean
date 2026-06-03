@@ -61,13 +61,11 @@ class ListBuildsAction(Action):
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         for resource in resources:
-            # Extract build ID from the resource
-            build_id = resource.get("id", resource.get("Id", ""))
+            build_id = resource.get("id")
             if build_id:
                 data = {
                     "id": build_id,
                     "Id": build_id,
-                    # Add any basic fields available from list operation
                 }
                 results.append(data)
         return results
