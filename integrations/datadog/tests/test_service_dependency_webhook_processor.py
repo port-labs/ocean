@@ -10,6 +10,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from webhook_processors.service_dependency_webhook_processor import (
     ServiceDependencyWebhookProcessor,
 )
+from datadog.core.exporters.service_dependency_exporter import (
+    GetServiceDependencyOptions,
+)
 
 
 @pytest.fixture
@@ -74,19 +77,27 @@ async def test_handle_event_with_service_dependency(
         "service_name": "Test Service Dependency",
     }
 
-    with patch(
-        "webhook_processors.service_dependency_webhook_processor.init_client"
-    ) as mock_init:
-        mock_client = AsyncMock()
-        mock_client.get_single_service_dependency.return_value = mock_service_dependency
-        mock_init.return_value = mock_client
+    with (
+        patch(
+            "webhook_processors.service_dependency_webhook_processor.init_client"
+        ) as mock_init,
+        patch(
+            "webhook_processors.service_dependency_webhook_processor.ServiceDependencyExporter"
+        ) as mock_exporter_cls,
+    ):
+        mock_init.return_value = AsyncMock()
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = mock_service_dependency
+        mock_exporter_cls.return_value = mock_exporter
 
         result = await processor.handle_event(test_payload, resource_config)
 
-        mock_client.get_single_service_dependency.assert_awaited_once_with(
-            service_id="service-a",
-            env=resource_config.selector.environment,
-            start_time=resource_config.selector.start_time,
+        mock_exporter.get_resource.assert_awaited_once_with(
+            GetServiceDependencyOptions(
+                service_id="service-a",
+                env=resource_config.selector.environment,
+                start_time=resource_config.selector.start_time,
+            )
         )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == mock_service_dependency
@@ -100,14 +111,20 @@ async def test_handle_event_without_service_dependency(
 ) -> None:
     test_payload = {"event_type": "service_check", "tags": ["env:prod"]}
 
-    with patch(
-        "webhook_processors.service_dependency_webhook_processor.init_client"
-    ) as mock_init:
-        mock_client = AsyncMock()
-        mock_client.get_single_service_dependency.return_value = None
-        mock_init.return_value = mock_client
+    with (
+        patch(
+            "webhook_processors.service_dependency_webhook_processor.init_client"
+        ) as mock_init,
+        patch(
+            "webhook_processors.service_dependency_webhook_processor.ServiceDependencyExporter"
+        ) as mock_exporter_cls,
+    ):
+        mock_init.return_value = AsyncMock()
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = None
+        mock_exporter_cls.return_value = mock_exporter
 
         result = await processor.handle_event(test_payload, resource_config)
-        mock_client.get_single_service_dependency.assert_not_called()
+        mock_exporter.get_resource.assert_not_called()
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0

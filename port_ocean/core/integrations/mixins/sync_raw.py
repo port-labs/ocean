@@ -1192,7 +1192,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             dsp_enabled = await is_dsp_mode_enabled()
             if dsp_enabled:
-                logger.info(
+                logger.bind(local_only=True).info(
                     "DSP mode active: ocean-core will skip transform, load and reconciliation"
                 )
 
@@ -1310,7 +1310,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
 
                 if dsp_enabled:
-                    logger.info(
+                    logger.bind(local_only=True).info(
                         "DSP mode active: skipping reconciliation, raw data handed off to external processor"
                     )
                     async with metric_resource_context(
