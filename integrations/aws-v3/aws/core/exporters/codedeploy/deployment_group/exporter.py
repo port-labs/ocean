@@ -24,13 +24,13 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            
+
             # Create the deployment group info for the inspector
             deployment_group_info = [{
                 "ApplicationName": options.application_name,
                 "DeploymentGroupName": options.deployment_group_name,
             }]
-            
+
             response = await inspector.inspect(
                 deployment_group_info,
                 options.include,
@@ -58,10 +58,8 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
 
             async for application_names in paginator.paginate():
                 if application_names:
-                    # The inspector will use ListApplicationsAndDeploymentGroupsAction 
-                    # to process the application names and get deployment groups
                     action_result = await inspector.inspect(
-                        application_names,
+                        [{'app_name': app_name} for app_name in application_names],
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
