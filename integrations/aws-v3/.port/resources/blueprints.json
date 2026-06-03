@@ -180,5 +180,79 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "codedeployDeploymentGroup",
+    "title": "CodeDeploy Deployment Group",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "applicationName": {
+          "type": "string",
+          "title": "Application Name",
+          "description": "The CodeDeploy application name"
+        },
+        "deploymentGroupId": {
+          "type": "string",
+          "title": "Deployment Group ID",
+          "description": "The deployment group ID"
+        },
+        "serviceRoleArn": {
+          "type": "string",
+          "title": "Service Role ARN",
+          "description": "The ARN of the service role for the deployment group"
+        },
+        "computePlatform": {
+          "type": "string",
+          "title": "Compute Platform",
+          "description": "The compute platform for the deployment group",
+          "enum": ["Server", "Lambda", "ECS"]
+        },
+        "deploymentStyle": {
+          "type": "object",
+          "title": "Deployment Style",
+          "description": "Information about the type of deployment"
+        },
+        "autoScalingGroups": {
+          "type": "array",
+          "title": "Auto Scaling Groups",
+          "description": "A list of associated Auto Scaling groups",
+          "items": {
+            "type": "object"
+          }
+        },
+        "loadBalancerInfo": {
+          "type": "object",
+          "title": "Load Balancer Info",
+          "description": "Information about the load balancer used in the deployment"
+        },
+        "outdatedInstancesStrategy": {
+          "type": "string",
+          "title": "Outdated Instances Strategy",
+          "description": "Indicates what happens when new Amazon EC2 instances are launched",
+          "enum": ["UPDATE", "IGNORE"]
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "The metadata tags associated with the deployment group",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

@@ -63,3 +63,24 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::CodeDeploy::Application::DeploymentGroup
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ApplicationName + "/" + .Properties.DeploymentGroupName
+          title: .Properties.DeploymentGroupName
+          blueprint: '"codedeployDeploymentGroup"'
+          properties:
+            applicationName: .Properties.ApplicationName
+            deploymentGroupId: .Properties.DeploymentGroupId
+            serviceRoleArn: .Properties.ServiceRoleArn
+            computePlatform: .Properties.ComputePlatform
+            deploymentStyle: .Properties.DeploymentStyle
+            autoScalingGroups: .Properties.AutoScalingGroups
+            loadBalancerInfo: .Properties.LoadBalancerInfo
+            outdatedInstancesStrategy: .Properties.OutdatedInstancesStrategy
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
