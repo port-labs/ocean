@@ -10,7 +10,7 @@ from port_ocean.utils.queue_utils import process_in_queue
 
 from datadog.core.exporters.base_exporter import PaginatedExporter
 from datadog.core.exporters.slo_exporter import ListSloOptions, SloExporter
-from utils import (
+from datadog.utils import (
     generate_time_windows_from_interval_days,
     get_start_of_the_day_in_seconds_x_day_back,
     get_start_of_the_month_in_seconds_x_months_back,

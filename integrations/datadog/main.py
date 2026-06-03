@@ -7,7 +7,9 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from initialize_client import init_client
 from integration import ObjectKind
-from overrides import (
+from datadog.webhook.webhook_client import DatadogWebhookClient
+from datadog.webhook.registry import register_live_events_webhooks
+from datadog.overrides import (
     SLOHistoryResourceConfig,
     ServiceMetricResourceConfig,
     ServiceMetricSelector,
@@ -35,10 +37,6 @@ from datadog.core.exporters.slo_history_exporter import ListSloHistoryOptions
 from datadog.core.exporters.service_metric_exporter import ListServiceMetricOptions
 from datadog.core.exporters.service_dependency_exporter import (
     ListServiceDependencyOptions,
-)
-from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
-from webhook_processors.service_dependency_webhook_processor import (
-    ServiceDependencyWebhookProcessor,
 )
 
 
@@ -179,15 +177,31 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_start()
 async def on_start() -> None:
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
+    if not ocean.app.config.event_listener.should_process_webhooks:
+        logger.info(
+            "Skipping webhook creation as it's not supported for this event listener"
+        )
         return
 
     if base_url := ocean.app.base_url:
         dd_client = init_client()
         webhook_secret = ocean.integration_config.get("webhook_secret")
-        await dd_client.create_webhooks_if_not_exists(base_url, webhook_secret)
+        integration_identifier = ocean.config.integration.identifier
+        org_id = "unknown-org"
+        try:
+            current_integration = await ocean.port_client.get_current_integration()
+            org_id = str(current_integration.get("_orgId", org_id))
+        except Exception as exc:
+            logger.warning(
+                f"Failed to fetch current Port integration metadata for webhook naming: {exc}"
+            )
+        webhook_client = DatadogWebhookClient(dd_client)
+        await webhook_client.upsert_webhook_setup(
+            base_url=base_url,
+            webhook_secret=webhook_secret,
+            org_id=org_id,
+            integration_identifier=integration_identifier,
+        )
 
 
-ocean.add_webhook_processor("/webhook", MonitorWebhookProcessor)
-ocean.add_webhook_processor("/webhook", ServiceDependencyWebhookProcessor)
+register_live_events_webhooks()

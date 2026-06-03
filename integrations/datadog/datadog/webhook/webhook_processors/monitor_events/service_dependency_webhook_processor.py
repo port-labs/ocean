@@ -1,31 +1,30 @@
-from typing import cast, Union, Any
+import asyncio
+from typing import Any, Union, cast
+
+from loguru import logger
 
 from initialize_client import init_client
 from integration import ObjectKind
-from overrides import ServiceDependencyResourceConfig, DatadogServiceDependencySelector
-from webhook_processors._abstract_webhook_processor import (
-    _AbstractDatadogWebhookProcessor,
-)
+from datadog.overrides import DatadogServiceDependencySelector, ServiceDependencyResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
-from loguru import logger
-import asyncio
 
 from datadog.core.exporters import ServiceDependencyExporter
 from datadog.core.exporters.service_dependency_exporter import (
     GetServiceDependencyOptions,
 )
+from datadog.webhook.webhook_processors.monitor_events.base_processor import (
+    BaseMonitorEventsWebhookProcessor,
+)
 
 
-class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
+class ServiceDependencyWebhookProcessor(BaseMonitorEventsWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        """Only process events that are related to service dependencies."""
         event_type = event.payload["event_type"]
-
         service_related_events = [
             "service_check",
             "query_alert_monitor",
@@ -34,9 +33,7 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
             "outlier_monitor",
             "event_v2_alert",
         ]
-
-        should_process = event_type in service_related_events
-        return should_process
+        return event_type in service_related_events
 
     async def get_matching_kinds(self, _: WebhookEvent) -> list[str]:
         return [ObjectKind.SERVICE_DEPENDENCY]
@@ -44,18 +41,14 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        service_ids: list[str] = []
-        for tag in payload["tags"]:
-            if tag.startswith("service:"):
-                service_ids.append(tag.split(":")[1])
-
+        service_ids = self.extract_service_ids(payload)
         config = cast(
             Union[ResourceConfig, ServiceDependencyResourceConfig], resource_config
         )
         selector = cast(DatadogServiceDependencySelector, config.selector)
+
         dd_client = init_client()
         dep_exporter = ServiceDependencyExporter(dd_client)
-
         tasks = [
             dep_exporter.get_resource(
                 GetServiceDependencyOptions(
@@ -66,11 +59,8 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
             )
             for service_id in service_ids
         ]
-
         results: list[dict[str, Any] | None] = await asyncio.gather(*tasks)
-        service_dependencies = [
-            service_dependency for service_dependency in results if service_dependency
-        ]
+        service_dependencies = [result for result in results if result]
 
         return WebhookEventRawResults(
             updated_raw_results=service_dependencies,
@@ -79,18 +69,8 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         has_event_info = "event_type" in payload
-
-        has_service_info = False
-        if "tags" in payload:
-            service_tags = [
-                tag for tag in payload["tags"] if tag.startswith("service:")
-            ]
-            if service_tags:
-                if all(
-                    len(tag.split(":", 1)) > 1 and tag.split(":", 1)[1]
-                    for tag in service_tags
-                ):
-                    has_service_info = True
+        service_tags = self.extract_service_ids(payload)
+        has_service_info = bool(service_tags and all(service_tags))
 
         is_valid = has_service_info and has_event_info
         if not is_valid:

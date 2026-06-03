@@ -1,15 +1,23 @@
 from loguru import logger
 from pydantic import BaseModel
+from typing import Any
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from datadog.core.exporters.base_exporter import PaginatedExporter
+from datadog.core.exporters.base_exporter import PaginatedExporter, SingleResourceExporter
 
 
 class ListTeamOptions(BaseModel):
     include_members: bool = False
 
 
-class TeamExporter(PaginatedExporter[ListTeamOptions]):
+class GetTeamOptions(BaseModel):
+    id: str
+    include_members: bool = False
+
+
+class TeamExporter(
+    PaginatedExporter[ListTeamOptions], SingleResourceExporter[GetTeamOptions]
+):
     async def get_paginated_resources(
         self, options: ListTeamOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -37,3 +45,22 @@ class TeamExporter(PaginatedExporter[ListTeamOptions]):
         url = f"{self.client.api_url}/api/v2/team/{team_id}/memberships"
         async for batch in self._paginate_by_page_param(url, data_key="included"):
             yield batch
+
+    async def get_resource(self, resource_id: GetTeamOptions) -> dict[str, Any] | None:
+        """Get a single team by ID.
+        Docs: https://docs.datadoghq.com/api/latest/teams/#get-a-team-link
+        """
+        url = f"{self.client.api_url}/api/v2/team/{resource_id.id}"
+        team_response = await self.client.send_api_request(url)
+        team = team_response.get("data")
+        if not team:
+            return None
+
+        if not resource_id.include_members:
+            return team
+
+        members: list[dict[str, Any]] = []
+        async for member_batch in self._get_team_members(resource_id.id):
+            members.extend(member_batch)
+        team["__members"] = members
+        return team

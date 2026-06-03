@@ -1,12 +1,15 @@
-import pytest
-from unittest.mock import AsyncMock, patch
-from port_ocean.core.handlers.webhook.webhook_event import (
-    WebhookEvent,
-)
-from datadog.core.exporters.monitor_exporter import GetMonitorOptions
-from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
-from integration import ObjectKind
 from typing import Any
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from integration import ObjectKind
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+
+from datadog.core.exporters.monitor_exporter import GetMonitorOptions
+from datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor import (
+    MonitorWebhookProcessor,
+)
 
 
 @pytest.fixture
@@ -38,9 +41,7 @@ async def test_validate_payload(processor: MonitorWebhookProcessor) -> None:
         await processor.validate_payload({"event_type": "alert", "alert_id": "123"})
         is True
     )
-
     assert await processor.validate_payload({"alert_id": "123"}) is False
-
     assert await processor.validate_payload({"event_type": "alert"}) is False
 
 
@@ -52,9 +53,11 @@ async def test_handle_event_with_monitor(
     mock_monitor = {"id": "123", "name": "Test Monitor"}
 
     with (
-        patch("webhook_processors.monitor_webhook_processor.init_client") as mock_init,
         patch(
-            "webhook_processors.monitor_webhook_processor.MonitorExporter"
+            "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.init_client"
+        ) as mock_init,
+        patch(
+            "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.MonitorExporter"
         ) as mock_exporter_cls,
     ):
         mock_init.return_value = AsyncMock()
@@ -79,9 +82,11 @@ async def test_handle_event_without_monitor(
     test_payload = {"event_type": "alert", "alert_id": "123"}
 
     with (
-        patch("webhook_processors.monitor_webhook_processor.init_client") as mock_init,
         patch(
-            "webhook_processors.monitor_webhook_processor.MonitorExporter"
+            "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.init_client"
+        ) as mock_init,
+        patch(
+            "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.MonitorExporter"
         ) as mock_exporter_cls,
     ):
         mock_init.return_value = AsyncMock()

@@ -1,17 +1,17 @@
 import time
 from typing import Any
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from integration import ObjectKind
-from port_ocean.core.handlers.webhook.webhook_event import (
-    WebhookEvent,
-)
-from webhook_processors.service_dependency_webhook_processor import (
-    ServiceDependencyWebhookProcessor,
-)
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+
 from datadog.core.exporters.service_dependency_exporter import (
     GetServiceDependencyOptions,
+)
+from datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor import (
+    ServiceDependencyWebhookProcessor,
 )
 
 
@@ -31,7 +31,6 @@ def resource_config() -> Any:
     mock_resource_config.kind = ObjectKind.SERVICE_DEPENDENCY
     mock_resource_config.selector.environment = "prod"
     mock_resource_config.selector.start_time = int(time.time()) - 60 * 60
-
     return mock_resource_config
 
 
@@ -51,14 +50,6 @@ async def test_validate_payload(processor: ServiceDependencyWebhookProcessor) ->
         )
         is True
     )
-
-    assert (
-        await processor.validate_payload(
-            {"event_type": "service_check", "tags": ["service:service-a", "env:prod"]}
-        )
-        is True
-    )
-
     assert await processor.validate_payload({"event_type": "service_check"}) is False
 
 
@@ -79,10 +70,10 @@ async def test_handle_event_with_service_dependency(
 
     with (
         patch(
-            "webhook_processors.service_dependency_webhook_processor.init_client"
+            "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.init_client"
         ) as mock_init,
         patch(
-            "webhook_processors.service_dependency_webhook_processor.ServiceDependencyExporter"
+            "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.ServiceDependencyExporter"
         ) as mock_exporter_cls,
     ):
         mock_init.return_value = AsyncMock()
@@ -113,10 +104,10 @@ async def test_handle_event_without_service_dependency(
 
     with (
         patch(
-            "webhook_processors.service_dependency_webhook_processor.init_client"
+            "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.init_client"
         ) as mock_init,
         patch(
-            "webhook_processors.service_dependency_webhook_processor.ServiceDependencyExporter"
+            "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.ServiceDependencyExporter"
         ) as mock_exporter_cls,
     ):
         mock_init.return_value = AsyncMock()

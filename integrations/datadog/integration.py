@@ -2,7 +2,7 @@ from enum import StrEnum
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 
-from overrides import DataDogPortAppConfig
+from datadog.overrides import DataDogPortAppConfig
 
 
 class ObjectKind(StrEnum):
