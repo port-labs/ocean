@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.8 (2026-06-03)
+
+
+### Improvements
+
+- Added code coverage logs for test runs, including how many were processed and skipped when no build was linked.
+
+
 ## 0.9.7 (2026-06-02)
 
 
