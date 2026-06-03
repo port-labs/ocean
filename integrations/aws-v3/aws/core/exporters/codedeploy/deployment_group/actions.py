@@ -8,44 +8,27 @@ import asyncio
 class GetDeploymentGroupDetailsAction(Action):
     """Fetches detailed information for CodeDeploy deployment groups."""
 
-    async def _execute(self, applications: List[Dict[str, str]]) -> List[Dict[str, Any]]:
-        if not applications:
-            return []
-
-        app_to_groups = await asyncio.gather(
-            *(self._fetch_deployment_group_names_of_app(app["app_name"]) for app in applications),
-            return_exceptions=True,
-        )
-        group_data = [group for app_grouping in app_to_groups for group in app_grouping if app_grouping]
-
+    async def _execute(self, groups_data: list[Dict[str, str]]) -> List[Dict[str, Any]]:
         details = await asyncio.gather(
-            *(self._fetch_deployment_group_details(group) for group in group_data),
+            *(self._fetch_deployment_group_details(group) for group in groups_data),
             return_exceptions=True,
         )
 
         results: List[Dict[str, Any]] = []
         for idx, detail_result in enumerate(details):
             if isinstance(detail_result, Exception):
-                dg_name = group_data[idx].get("app_name", "unknown")
-                app_name = group_data[idx].get("group_name", "unknown")
+                error_suffix = (f'deployment group details for {groups_data[idx].get("app_name", "unknown")}/'
+                                f'{groups_data[idx].get("group_name", "unknown")}: {detail_result}')
                 if is_recoverable_aws_exception(detail_result):
-                    logger.warning(
-                        f"Skipping deployment group details for '{app_name}/{dg_name}': {detail_result}"
-                    )
+                    logger.warning(f"Skipping {error_suffix}")
                     continue
                 else:
-                    logger.error(
-                        f"Error fetching deployment group details for '{app_name}/{dg_name}': {detail_result}"
-                    )
+                    logger.error(f"Error fetching {error_suffix}")
                     raise detail_result
             results.append(cast(Dict[str, Any], detail_result))
 
         logger.info(f"Successfully fetched details for {len(results)} CodeDeploy deployment groups")
         return results
-
-    async def _fetch_deployment_group_names_of_app(self, app_name: str) -> list[dict[str, str]]:
-        response = await self.client.list_deployment_groups(applicationName=app_name)
-        return [{'app_name': app_name, 'group_name': group} for group in response.get("deploymentGroups", [])]
 
     async def _fetch_deployment_group_details(self, deployment_group: Dict[str, Any]) -> Dict[str, Any]:
         application_name = deployment_group["app_name"]

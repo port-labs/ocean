@@ -54,18 +54,28 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
 
             # CodeDeploy doesn't have a direct paginator for deployment groups
             # We need to first list applications, then list deployment groups for each application
-            paginator = proxy.get_paginator("list_applications", "applications")
+            app_paginator = proxy.get_paginator("list_applications", "applications")
+            group_paginator = proxy.get_paginator("list_deployment_groups", "deploymentGroups")
 
-            async for application_names in paginator.paginate():
-                if application_names:
-                    action_result = await inspector.inspect(
-                        [{'app_name': app_name} for app_name in application_names],
-                        options.include,
-                        extra_context={
-                            "AccountId": options.account_id,
-                            "Region": options.region,
-                        },
-                    )
-                    yield action_result
-                else:
-                    yield []
+            app_names: list[str] = []
+            async for application_names in app_paginator.paginate():
+                for app in application_names:
+                    app_names.append(app)
+
+            if not app_names:
+                yield []
+            else:
+                for app in app_names:
+                    async for groups in group_paginator.paginate(applicationName=app):
+                        if groups:
+                            action_result = await inspector.inspect(
+                                [{'app_name': app, 'group_name': group_name} for group_name in groups],
+                                options.include,
+                                extra_context={
+                                    "AccountId": options.account_id,
+                                    "Region": options.region,
+                                },
+                            )
+                            yield action_result
+                        else:
+                            yield []
