@@ -52,7 +52,7 @@ class TestWorkflowRunWebhookProcessor:
         "github_event,action,result",
         [
             ("workflow_run", WORKFLOW_UPSERT_EVENTS[0], True),
-            ("workflow_run", "completed", True),
+            ("workflow_run", WORKFLOW_UPSERT_EVENTS[0], True),
             ("workflow_run", "unknown_action", False),
             ("invalid", WORKFLOW_UPSERT_EVENTS[0], False),
             ("invalid", "unknown_action", False),
