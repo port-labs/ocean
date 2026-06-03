@@ -177,7 +177,7 @@ class TestWorkflowRunWebhookProcessor:
             ),
             (
                 {
-                    "action": "completed",
+                    "action": WORKFLOW_UPSERT_EVENTS[0],
                     "repository": {"name": "repo2"},
                     "organization": {"login": "test-org"},
                 },
