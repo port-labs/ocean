@@ -1,7 +1,6 @@
 from typing import Dict, Any, List, Type, cast
 from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
-import asyncio
 
 
 class GetBuildDetailsAction(Action):
@@ -23,9 +22,9 @@ class GetBuildDetailsAction(Action):
             # Use batch_get_builds for efficient retrieval
             response = await self.client.batch_get_builds(ids=build_ids)
             builds = response.get("builds", [])
-            
+
             logger.info(f"Successfully fetched details for {len(builds)} build runs")
-            
+
             # Transform AWS response to our model format
             results = []
             for build in builds:
@@ -61,7 +60,7 @@ class GetBuildDetailsAction(Action):
                     "Tags": self._transform_tags(build.get("tags", []))
                 }
                 results.append(transformed_build)
-            
+
             return results
 
         except Exception as e:
@@ -72,7 +71,7 @@ class GetBuildDetailsAction(Action):
         """Transform AWS tags format to our expected format."""
         if not tags:
             return []
-        
+
         transformed = []
         for tag in tags:
             if isinstance(tag, dict) and "key" in tag and "value" in tag:
@@ -111,7 +110,7 @@ class GetProjectBuildsAction(Action):
         # This action can be used to get builds for specific projects
         # if we need to filter by project name
         results: List[Dict[str, Any]] = []
-        
+
         # Group resources by project if needed
         project_builds = {}
         for resource in resources:
