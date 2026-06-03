@@ -27,6 +27,7 @@ from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ETLPhase
 from port_ocean.context.event import event_context, EventType
 from port_ocean.clients.port.types import UserAgentType
+from port_ocean.helpers.metric.metric import SyncState
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -1516,3 +1517,91 @@ async def test_execute_resync_tasks_passes_examples_amount_to_each_async_generat
     assert mock_wrapper.call_count == 2
     assert mock_wrapper.call_args_list[0].kwargs == {"send_raw_data_examples_amount": 5}
     assert mock_wrapper.call_args_list[1].kwargs == {"send_raw_data_examples_amount": 5}
+
+
+@pytest.mark.asyncio
+async def test_process_resource_unexpected_exception_marks_kind_failed(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    sync_states_at_report: list[str] = []
+
+    async def capture_kind_report(*args: object, **kwargs: object) -> None:
+        sync_states_at_report.append(mock_ocean.metrics.sync_state)
+
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(  # type: ignore
+        side_effect=RuntimeError("crash")
+    )
+    mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(  # type: ignore
+        side_effect=capture_kind_report
+    )
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+            AsyncMock(return_value=False),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+            AsyncMock(return_value=False),
+        ),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ) as event:
+            event.port_app_config = mock_port_app_config
+            await mock_sync_raw_mixin.sync_raw_all(
+                trigger_type="machine",
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert mock_ocean.metrics.report_kind_sync_metrics.await_count >= 1
+    assert SyncState.FAILED in sync_states_at_report
+
+
+@pytest.mark.asyncio
+async def test_process_resource_unexpected_exception_returns_error_in_results(
+    mock_sync_raw_mixin: SyncRawMixin,
+    mock_resource_config: ResourceConfig,
+    mock_port_app_config: PortAppConfig,
+    mock_ocean: Ocean,
+) -> None:
+    mock_sync_raw_mixin._register_in_batches = AsyncMock(  # type: ignore
+        side_effect=RuntimeError("crash")
+    )
+    mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
+    mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
+
+    with (
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_dsp_mode_enabled",
+            AsyncMock(return_value=False),
+        ),
+        patch(
+            "port_ocean.core.integrations.mixins.sync_raw.is_lakehouse_data_enabled",
+            AsyncMock(return_value=False),
+        ),
+    ):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type="machine",
+            attributes={"resync_start_time": datetime.now(timezone.utc)},
+        ) as event:
+            event.port_app_config = mock_port_app_config
+            entities, errors = await mock_sync_raw_mixin._process_resource(
+                mock_resource_config,
+                index=0,
+                user_agent_type=UserAgentType.exporter,
+            )
+
+    assert entities == []
+    assert len(errors) == 1
+    assert isinstance(errors[0], RuntimeError)
+    assert str(errors[0]) == "crash"
+    assert mock_ocean.metrics.sync_state == SyncState.FAILED
