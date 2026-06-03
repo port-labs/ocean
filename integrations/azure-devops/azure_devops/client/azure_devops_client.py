@@ -224,15 +224,23 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> list[dict[str, Any]]:
         exclude_set = set(exclude_tags)
         tags_results = await asyncio.gather(
-            *[self.get_project_tags(project["id"]) for project in projects]
+            *[self.get_project_tags(project["id"]) for project in projects],
+            return_exceptions=True,
         )
-        return [
-            project
-            for project, tags in zip(projects, tags_results)
-            if exclude_set.isdisjoint(
+        filtered = []
+        for project, tags in zip(projects, tags_results):
+            if isinstance(tags, Exception):
+                logger.warning(
+                    "Failed to fetch tags for project %s, including in sync: %s",
+                    project["id"],
+                    tags,
+                )
+                filtered.append(project)
+            elif exclude_set.isdisjoint(
                 t["name"].removeprefix(PROJECT_TAG_PROPERTY_PREFIX) for t in tags
-            )
-        ]
+            ):
+                filtered.append(project)
+        return filtered
 
     async def generate_projects(
         self, sync_default_team: bool = False

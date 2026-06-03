@@ -828,6 +828,35 @@ async def test_filter_projects_by_excluded_tags_allows_untagged_projects() -> No
 
 
 @pytest.mark.asyncio
+async def test_filter_projects_by_excluded_tags_includes_project_on_fetch_error() -> (
+    None
+):
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    projects = [
+        {"id": "proj1", "name": "Project One"},
+        {"id": "proj2", "name": "Project Two"},
+    ]
+
+    async def mock_get_project_tags(project_id: str) -> List[Dict[str, Any]]:
+        if project_id == "proj1":
+            raise Exception("rate limit exceeded")
+        return [
+            {
+                "name": "Microsoft.TeamFoundation.Project.Tag.tr:restricted",
+                "value": "true",
+            }
+        ]
+
+    with patch.object(client, "get_project_tags", side_effect=mock_get_project_tags):
+        result = await client.filter_projects_by_excluded_tags(
+            projects, ["tr:restricted"]
+        )
+
+    assert result == [{"id": "proj1", "name": "Project One"}]
+
+
+@pytest.mark.asyncio
 async def test_generate_projects(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 
