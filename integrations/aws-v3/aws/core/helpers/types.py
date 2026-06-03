@@ -21,6 +21,7 @@ class ObjectKind(StrEnum):
     MSK_CLUSTER = "AWS::MSK::Cluster"
     ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
     EC2_VOLUME = "AWS::EC2::Volume"
+    CODEBUILD_PROJECT_BUILD = "AWS::CodeBuild::Project::Build"
 
 
 SupportedServices = Literal[
@@ -36,4 +37,5 @@ SupportedServices = Literal[
     "memorydb",
     "kafka",
     "elasticache",
+    "codebuild",
 ]

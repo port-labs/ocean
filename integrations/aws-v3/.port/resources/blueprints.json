@@ -180,5 +180,83 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "codeBuildBuild",
+    "title": "CodeBuild Build",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "buildId": {
+          "type": "string",
+          "title": "Build ID",
+          "description": "The unique ID of the build"
+        },
+        "buildArn": {
+          "type": "string",
+          "title": "Build ARN",
+          "description": "The Amazon Resource Name (ARN) of the build"
+        },
+        "projectName": {
+          "type": "string",
+          "title": "Project Name",
+          "description": "The name of the CodeBuild project"
+        },
+        "buildNumber": {
+          "type": "number",
+          "title": "Build Number",
+          "description": "The build number for this build"
+        },
+        "buildStatus": {
+          "type": "string",
+          "title": "Build Status",
+          "description": "The current status of the build"
+        },
+        "currentPhase": {
+          "type": "string",
+          "title": "Current Phase",
+          "description": "The current build phase"
+        },
+        "startTime": {
+          "type": "string",
+          "title": "Start Time",
+          "description": "The time the build started",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "title": "End Time",
+          "description": "The time the build ended",
+          "format": "date-time"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "AWS region where the build is located"
+        },
+        "initiatedBy": {
+          "type": "string",
+          "title": "Initiated By",
+          "description": "The entity that initiated the build"
+        },
+        "sourceVersion": {
+          "type": "string",
+          "title": "Source Version",
+          "description": "The version of the source code to build"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
