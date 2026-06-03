@@ -40,48 +40,16 @@ class CodeBuildProjectBuildRunExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-
-            try:
-                # List all builds using list_builds API
-                # CodeBuild doesn't have a direct paginator for all builds, so we'll use list_builds
-                response = await proxy.client.list_builds(sortOrder='DESCENDING')
-                build_ids = response.get('ids', [])
-                
-                if not build_ids:
-                    logger.info("No build runs found in region")
+            paginator = proxy.get_paginator("list_builds", "ids")
+            async for builds in paginator.paginate(batch_size=100):
+                if builds:
+                    yield await inspector.inspect(
+                        [{"id": build_id} for build_id in builds],
+                        options.include,
+                        extra_context={
+                            "AccountId": options.account_id,
+                            "Region": options.region,
+                        },
+                    )
+                else:
                     yield []
-                    return
-
-                # Process builds in batches (batch_get_builds supports up to 100 at a time)
-                batch_size = 100
-                for i in range(0, len(build_ids), batch_size):
-                    batch_ids = build_ids[i:i + batch_size]
-                    
-                    # Convert to expected format for inspector
-                    batch_resources = [{"id": build_id} for build_id in batch_ids]
-                    
-                    if batch_resources:
-                        action_result = await inspector.inspect(
-                            batch_resources,
-                            options.include,
-                            extra_context={
-                                "AccountId": options.account_id,
-                                "Region": options.region,
-                            },
-                        )
-                        
-                        # Filter by project name if specified
-                        if options.project_name:
-                            filtered_result = [
-                                result for result in action_result
-                                if result.get("Properties", {}).get("ProjectName") == options.project_name
-                            ]
-                            yield filtered_result
-                        else:
-                            yield action_result
-                    else:
-                        yield []
-
-            except Exception as e:
-                logger.error(f"Error fetching CodeBuild project build runs: {e}")
-                yield []
