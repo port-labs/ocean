@@ -185,7 +185,7 @@ class TestWorkflowRunWebhookProcessor:
             ),  # missing workflow_run
             (
                 {
-                    "action": "completed",
+                    "action": WORKFLOW_UPSERT_EVENTS[0],
                     "repository": {"name": "repo2"},
                     "workflow_run": {},
                     "organization": {"login": "test-org"},
