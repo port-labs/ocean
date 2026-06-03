@@ -229,8 +229,7 @@ interface:
 installationDocs:
   saas:
     - name: SaasOAuth2
-      enabled: true
-      docs: build-your-software-catalog/custom-integration/ocean-custom-integration/installation-types/hosted-by-port
+      enabled: false
     - name: Saas
       enabled: true
       docs: build-your-software-catalog/custom-integration/ocean-custom-integration/installation-types/hosted-by-port
