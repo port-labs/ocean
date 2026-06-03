@@ -794,11 +794,18 @@ async def test_filter_projects_by_excluded_tags_excludes_tagged_projects() -> No
 
     async def mock_get_project_tags(project_id: str) -> List[Dict[str, Any]]:
         if project_id == "proj1":
-            return [{"name": "Microsoft.TeamFoundation.Project.Tag.tr:restricted", "value": "true"}]
+            return [
+                {
+                    "name": "Microsoft.TeamFoundation.Project.Tag.tr:restricted",
+                    "value": "true",
+                }
+            ]
         return []
 
     with patch.object(client, "get_project_tags", side_effect=mock_get_project_tags):
-        result = await client.filter_projects_by_excluded_tags(projects, ["tr:restricted"])
+        result = await client.filter_projects_by_excluded_tags(
+            projects, ["tr:restricted"]
+        )
 
     assert result == [{"id": "proj2", "name": "Project Two"}]
 
@@ -813,7 +820,9 @@ async def test_filter_projects_by_excluded_tags_allows_untagged_projects() -> No
     ]
 
     with patch.object(client, "get_project_tags", return_value=[]):
-        result = await client.filter_projects_by_excluded_tags(projects, ["tr:restricted"])
+        result = await client.filter_projects_by_excluded_tags(
+            projects, ["tr:restricted"]
+        )
 
     assert result == projects
 

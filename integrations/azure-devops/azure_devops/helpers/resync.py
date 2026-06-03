@@ -17,7 +17,9 @@ async def _filtered_projects_per_client(
     exclude_tag_filter: list[str],
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in client.generate_projects(sync_default_team):
-        filtered = await client.filter_projects_by_excluded_tags(batch, exclude_tag_filter)
+        filtered = await client.filter_projects_by_excluded_tags(
+            batch, exclude_tag_filter
+        )
         if filtered:
             yield filtered
 
@@ -33,7 +35,9 @@ async def iter_projects(
             yield batch
         return
     async for batch in iterate_per_organization(
-        lambda client: _filtered_projects_per_client(client, sync_default_team, exclude_tag_filter)
+        lambda client: _filtered_projects_per_client(
+            client, sync_default_team, exclude_tag_filter
+        )
     ):
         yield batch
 
