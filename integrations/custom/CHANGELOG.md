@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.44 (2026-06-03)
+
+
+### Improvements
+
+- Move to Build your Own Exporter section
+
 ## 0.6.43 (2026-06-02)
 
 
