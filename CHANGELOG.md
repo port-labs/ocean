@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.43.13 (2026-06-03)
+
+### Improvements
+
+- Polling event listener: always poll the integration resync-request endpoint when the integration document's `updatedAt` is unchanged (removed organization feature flag `OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED`).
+
 ## 0.43.12 (2026-06-02)
 
 ### Bug Fixes
