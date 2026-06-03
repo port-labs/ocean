@@ -13,6 +13,19 @@ TEST_DATA: dict[str, list[dict[str, Any]]] = {
 }
 
 
+def _http_error(status_code: int) -> httpx.HTTPStatusError:
+    """Build an HTTPStatusError as raised by make_request for a given status."""
+    request = httpx.Request("GET", "https://api.github.com/test/resource")
+    response = httpx.Response(status_code, request=request)
+    return httpx.HTTPStatusError(
+        f"{status_code} error", request=request, response=response
+    )
+
+
+def _http_500() -> httpx.HTTPStatusError:
+    return _http_error(500)
+
+
 @pytest.fixture
 def rest_client() -> GithubRestClient:
     return GithubRestClient(
@@ -122,8 +135,8 @@ class TestGithubRestClient:
             ):
                 results.append(page)
 
-            # Verify params were passed with per_page added
-            expected_params = {"type": "public", "per_page": 100}
+            # Verify params were passed with page and per_page added
+            expected_params = {"type": "public", "page": 1, "per_page": 100}
             mock_send.assert_called_once_with(
                 "orgs/test-org/repos",
                 method="GET",
@@ -235,4 +248,104 @@ class TestGithubRestClient:
             assert items == []
 
             # Verify make_request was called once
+            mock_send.assert_called_once()
+
+    async def test_send_paginated_request_halves_page_size_on_500(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        # First request (page=1, per_page=100) fails with a 500
+        # Retry should resume at page=1, per_page=50 and succeed.
+        success_response = MagicMock(spec=httpx.Response)
+        success_response.json.return_value = [{"id": 1}, {"id": 2}]
+        success_response.headers = {}
+
+        with patch.object(
+            rest_client,
+            "make_request",
+            AsyncMock(side_effect=[_http_500(), success_response]),
+        ) as mock_send:
+            items = []
+            async for page in rest_client.send_paginated_request("test/resource"):
+                items.extend(page)
+
+            assert items == [{"id": 1}, {"id": 2}]
+            assert mock_send.call_count == 2
+
+            first_params = mock_send.call_args_list[0].kwargs["params"]
+            assert first_params["page"] == 1
+            assert first_params["per_page"] == 100
+
+            retry_params = mock_send.call_args_list[1].kwargs["params"]
+            # 2 * 1 - 1 == 1, so we re-fetch from the same offset at half size
+            assert retry_params["page"] == 1
+            assert retry_params["per_page"] == 50
+            # per_page must stay an int, not become 50.0
+            assert isinstance(retry_params["per_page"], int)
+
+    async def test_send_paginated_request_resumes_at_correct_offset_on_500(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        # Page 1 succeeds (per_page=100) with a next link, page 2 fails with 500.
+        # Retry must resume at page=3, per_page=50 (items 101-150) — no gaps/dupes.
+        first_response = MagicMock(spec=httpx.Response)
+        first_response.json.return_value = [{"id": 1}]
+        first_response.headers = {
+            "Link": '<https://api.github.com/test/resource?page=2>; rel="next"'
+        }
+
+        retry_response = MagicMock(spec=httpx.Response)
+        retry_response.json.return_value = [{"id": 101}]
+        retry_response.headers = {}
+
+        with patch.object(
+            rest_client,
+            "make_request",
+            AsyncMock(side_effect=[first_response, _http_500(), retry_response]),
+        ) as mock_send:
+            items = []
+            async for page in rest_client.send_paginated_request("test/resource"):
+                items.extend(page)
+
+            assert items == [{"id": 1}, {"id": 101}]
+            assert mock_send.call_count == 3
+
+            failed_params = mock_send.call_args_list[1].kwargs["params"]
+            assert failed_params["page"] == 2
+            assert failed_params["per_page"] == 100
+
+            retry_params = mock_send.call_args_list[2].kwargs["params"]
+            assert retry_params["page"] == 3
+            assert retry_params["per_page"] == 50
+
+    async def test_send_paginated_request_raises_at_page_size_floor(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        # Persistent 500s: 100 -> 50 -> 25, then re-raise once at/below the floor.
+        with patch.object(
+            rest_client,
+            "make_request",
+            AsyncMock(side_effect=[_http_500(), _http_500(), _http_500()]),
+        ) as mock_send:
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in rest_client.send_paginated_request("test/resource"):
+                    pass
+
+            per_page_values = [
+                call.kwargs["params"]["per_page"] for call in mock_send.call_args_list
+            ]
+            assert per_page_values == [100, 50, 25]
+
+    async def test_send_paginated_request_reraises_non_500_error(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        # Non-500 errors must propagate immediately without any backoff/retry.
+        with patch.object(
+            rest_client,
+            "make_request",
+            AsyncMock(side_effect=_http_error(503)),
+        ) as mock_send:
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in rest_client.send_paginated_request("test/resource"):
+                    pass
+
             mock_send.assert_called_once()
