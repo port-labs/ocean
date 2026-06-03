@@ -1,6 +1,7 @@
 title: Mend.io
 description: Mend SCA integration for Port Ocean
 icon: Mend
+formMappingEnabled: true
 features:
   - type: exporter
     section: Code Quality & Security

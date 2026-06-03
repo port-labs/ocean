@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
@@ -8,6 +9,8 @@ from mend.auth.authenticator import MendAuthenticator
 from mend.utils import IgnoredError
 
 PAGE_SIZE = 100
+_TRANSIENT_STATUS_CODES = {502, 503}
+_MAX_RETRIES = 3
 
 
 class MendClient:
@@ -16,16 +19,6 @@ class MendClient:
             status=403, message="Forbidden — insufficient permissions", type="FORBIDDEN"
         ),
         IgnoredError(status=404, message="Resource not found"),
-        IgnoredError(
-            status=502,
-            message="Bad Gateway — transient upstream error",
-            type="BAD_GATEWAY",
-        ),
-        IgnoredError(
-            status=503,
-            message="Service Unavailable — transient server error",
-            type="SERVICE_UNAVAILABLE",
-        ),
     ]
 
     def __init__(self, base_url: str, authenticator: MendAuthenticator) -> None:
@@ -60,7 +53,8 @@ class MendClient:
         ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> Dict[str, Any]:
         url = f"{self.base_url}{endpoint}"
-        retried = False
+        retried_auth = False
+        retry_count = 0
         while True:
             try:
                 logger.debug(f"Making {method} request to {url}")
@@ -74,12 +68,21 @@ class MendClient:
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPStatusError as e:
-                if e.response.status_code == 401 and not retried:
+                status = e.response.status_code
+                if status == 401 and not retried_auth:
                     logger.warning(
                         f"401 at {url} — invalidating token and retrying once"
                     )
                     await self.authenticator.invalidate_token()
-                    retried = True
+                    retried_auth = True
+                    continue
+                if status in _TRANSIENT_STATUS_CODES and retry_count < _MAX_RETRIES:
+                    retry_count += 1
+                    wait = 2**retry_count
+                    logger.warning(
+                        f"Transient {status} at {url} — retry {retry_count}/{_MAX_RETRIES} in {wait}s"
+                    )
+                    await asyncio.sleep(wait)
                     continue
                 if self._should_ignore_error(e, url, ignored_errors):
                     return {}
