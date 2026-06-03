@@ -93,7 +93,7 @@ class LakehouseBuffer:
                     f"{self._max_size_bytes / (1024 * 1024):.0f} MB), flushing"
                 )
             if count_exceeded:
-                logger.debug(
+                logger.bind(local_only=True).info(
                     f"Lakehouse buffer count cap reached"
                     f" ({len(self._buffer)} >= {self._max_buffer_count}), flushing"
                 )
