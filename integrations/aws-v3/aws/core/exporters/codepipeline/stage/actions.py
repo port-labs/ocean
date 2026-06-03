@@ -56,8 +56,7 @@ class ListPipelinesAction(Action):
     async def _fetch_pipeline_details(self, pipeline: Dict[str, Any]) -> Dict[str, Any]:
         """Fetch detailed information about a specific pipeline."""
         pipeline_name = pipeline["name"]
-        response = await self.client.get_pipeline(name=pipeline_name)
-        return response
+        return await self.client.get_pipeline(name=pipeline_name)
 
 
 class GetStageDetailsAction(Action):
