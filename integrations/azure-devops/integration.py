@@ -27,6 +27,12 @@ class AzureDevopsSelector(Selector):
         description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
         alias="defaultTeam",
     )
+    exclude_tag_filter: Optional[list[str]] = Field(
+        alias="excludeTagFilter",
+        default=None,
+        title="Exclude Tag Filter",
+        description="List of project tags. Projects with any of these tags will be excluded from ingestion.",
+    )
 
 
 class AzureDevopsProjectResourceConfig(ResourceConfig):

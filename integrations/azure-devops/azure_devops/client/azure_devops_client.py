@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from integration import CodeCoverageConfig
 
 API_URL_PREFIX = "_apis"
+PROJECT_TAG_PROPERTY_PREFIX = "Microsoft.TeamFoundation.Project.Tag."
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
@@ -201,6 +202,37 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         project = response.json()
         return project
+
+    async def get_project_tags(self, project_id: str) -> list[dict[str, Any]]:
+        url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/properties"
+        response = await self.send_request(
+            "GET",
+            url,
+            params={
+                "keys": f"{PROJECT_TAG_PROPERTY_PREFIX}*",
+                "api-version": "7.1-preview.1",
+            },
+        )
+        if not response:
+            return []
+        return response.json().get("value", [])
+
+    async def filter_projects_by_excluded_tags(
+        self,
+        projects: list[dict[str, Any]],
+        exclude_tags: list[str],
+    ) -> list[dict[str, Any]]:
+        exclude_set = set(exclude_tags)
+        tags_results = await asyncio.gather(
+            *[self.get_project_tags(project["id"]) for project in projects]
+        )
+        return [
+            project
+            for project, tags in zip(projects, tags_results)
+            if exclude_set.isdisjoint(
+                t["name"].removeprefix(PROJECT_TAG_PROPERTY_PREFIX) for t in tags
+            )
+        ]
 
     async def generate_projects(
         self, sync_default_team: bool = False
