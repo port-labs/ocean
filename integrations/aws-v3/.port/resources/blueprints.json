@@ -180,5 +180,114 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "codeBuildBuild",
+    "title": "CodeBuild Build",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "buildId": {
+          "type": "string",
+          "title": "Build ID",
+          "description": "Unique identifier for the build"
+        },
+        "projectName": {
+          "type": "string",
+          "title": "Project Name",
+          "description": "Name of the build project"
+        },
+        "buildNumber": {
+          "type": "number",
+          "title": "Build Number",
+          "description": "Build number"
+        },
+        "buildStatus": {
+          "type": "string",
+          "title": "Build Status",
+          "description": "Current status of the build",
+          "enum": [
+            "SUCCEEDED",
+            "FAILED",
+            "FAULT",
+            "TIMED_OUT",
+            "IN_PROGRESS",
+            "STOPPED"
+          ]
+        },
+        "buildArn": {
+          "type": "string",
+          "title": "Build ARN",
+          "description": "The Amazon Resource Name (ARN) of the build"
+        },
+        "projectArn": {
+          "type": "string",
+          "title": "Project ARN",
+          "description": "The Amazon Resource Name (ARN) of the project"
+        },
+        "startTime": {
+          "type": "string",
+          "title": "Start Time",
+          "description": "Time the build started",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "title": "End Time",
+          "description": "Time the build ended",
+          "format": "date-time"
+        },
+        "currentPhase": {
+          "type": "string",
+          "title": "Current Phase",
+          "description": "Current build phase"
+        },
+        "sourceVersion": {
+          "type": "string",
+          "title": "Source Version",
+          "description": "Version of the source code"
+        },
+        "resolvedSourceVersion": {
+          "type": "string",
+          "title": "Resolved Source Version",
+          "description": "Resolved version of the source"
+        },
+        "initiator": {
+          "type": "string",
+          "title": "Initiator",
+          "description": "Entity that initiated the build"
+        },
+        "buildComplete": {
+          "type": "boolean",
+          "title": "Build Complete",
+          "description": "Whether the build is complete"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "AWS region where the build ran"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the build",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

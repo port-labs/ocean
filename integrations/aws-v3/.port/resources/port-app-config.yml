@@ -63,3 +63,30 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::CodeBuild::Project::Build
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.BuildId
+          title: .Properties.ProjectName + " - Build #" + (.Properties.BuildNumber | tostring)
+          blueprint: '"codeBuildBuild"'
+          properties:
+            buildId: .Properties.BuildId
+            projectName: .Properties.ProjectName
+            buildNumber: .Properties.BuildNumber
+            buildStatus: .Properties.BuildStatus
+            buildArn: .Properties.BuildArn
+            projectArn: .Properties.ProjectArn
+            startTime: .Properties.StartTime
+            endTime: .Properties.EndTime
+            currentPhase: .Properties.CurrentPhase
+            sourceVersion: .Properties.SourceVersion
+            resolvedSourceVersion: .Properties.ResolvedSourceVersion
+            initiator: .Properties.Initiator
+            buildComplete: .Properties.BuildComplete
+            region: .Properties.Region
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
