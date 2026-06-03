@@ -43,12 +43,15 @@ class GetBuildDetailsAction(Action):
                     "VpcConfig": build.get("vpcConfig"),
                     "NetworkInterface": build.get("networkInterface"),
                     "EncryptionKey": build.get("encryptionKey"),
-                    "ExportedEnvironmentVariables": build.get("exportedEnvironmentVariables", []),
+                    "ExportedEnvironmentVariables": build.get(
+                        "exportedEnvironmentVariables", []
+                    ),
                     "ReportArns": build.get("reportArns", []),
                     "FileSystemLocations": build.get("fileSystemLocations", []),
                     "DebugSession": build.get("debugSession"),
                     "BuildBatchArn": build.get("buildBatchArn"),
-                } for build in builds
+                }
+                for build in builds
             ]
         except Exception as e:
             logger.error(f"Error fetching build details: {e}")
@@ -73,6 +76,7 @@ class ListBuildsAction(Action):
 
 class ProjectBuildRunActionsMap(ActionMap):
     """Groups all actions for CodeBuild project build runs."""
+
     defaults: List[Type[Action]] = [
         GetBuildDetailsAction,
         ListBuildsAction,

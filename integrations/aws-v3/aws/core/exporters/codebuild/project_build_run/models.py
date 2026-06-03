@@ -6,8 +6,13 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 class ProjectBuildRunProperties(BaseModel):
     Id: str = Field(default_factory=str, description="The unique ID of the build run")
-    ProjectName: str = Field(default_factory=str, description="The name of the CodeBuild project")
-    Arn: str = Field(default_factory=str, description="The Amazon Resource Name (ARN) of the build run")
+    ProjectName: str = Field(
+        default_factory=str, description="The name of the CodeBuild project"
+    )
+    Arn: str = Field(
+        default_factory=str,
+        description="The Amazon Resource Name (ARN) of the build run",
+    )
     BuildNumber: Optional[int] = None
     StartTime: Optional[datetime] = None
     EndTime: Optional[datetime] = None
@@ -42,14 +47,18 @@ class ProjectBuildRunProperties(BaseModel):
 
 class ProjectBuildRun(ResourceModel[ProjectBuildRunProperties]):
     Type: str = "AWS::CodeBuild::Project::BuildRun"
-    Properties: ProjectBuildRunProperties = Field(default_factory=ProjectBuildRunProperties)
+    Properties: ProjectBuildRunProperties = Field(
+        default_factory=ProjectBuildRunProperties
+    )
 
 
 class SingleProjectBuildRunRequest(ResourceRequestModel):
     """Options for exporting a single CodeBuild project build run."""
+
     build_id: str = Field(..., description="The ID of the build run to export")
 
 
 class PaginatedProjectBuildRunRequest(ResourceRequestModel):
     """Options for exporting all CodeBuild project build runs in a region."""
+
     project_name: Optional[str] = None  # Optional filter by project name

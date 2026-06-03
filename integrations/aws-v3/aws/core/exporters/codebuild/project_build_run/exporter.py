@@ -1,6 +1,8 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.codebuild.project_build_run.actions import ProjectBuildRunActionsMap
+from aws.core.exporters.codebuild.project_build_run.actions import (
+    ProjectBuildRunActionsMap,
+)
 from aws.core.exporters.codebuild.project_build_run.models import ProjectBuildRun
 from aws.core.exporters.codebuild.project_build_run.models import (
     SingleProjectBuildRunRequest,
@@ -9,7 +11,6 @@ from aws.core.exporters.codebuild.project_build_run.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
-from loguru import logger
 
 
 class CodeBuildProjectBuildRunExporter(IResourceExporter):
@@ -17,7 +18,9 @@ class CodeBuildProjectBuildRunExporter(IResourceExporter):
     _model_cls: Type[ProjectBuildRun] = ProjectBuildRun
     _actions_map: Type[ProjectBuildRunActionsMap] = ProjectBuildRunActionsMap
 
-    async def get_resource(self, options: SingleProjectBuildRunRequest) -> dict[str, Any]:
+    async def get_resource(
+        self, options: SingleProjectBuildRunRequest
+    ) -> dict[str, Any]:
         """Fetch detailed attributes of a single build run."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
