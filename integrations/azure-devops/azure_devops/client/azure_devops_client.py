@@ -2249,10 +2249,11 @@ class AzureDevopsClient(HTTPBaseClient):
         for run, value in zip(runs, results):
             if isinstance(value, Exception):
                 logger.error(
-                    "Error {} occurred while fetching {} for run {}",
+                    "Error %s occurred while fetching %s for run %s",
                     value,
                     field_name,
                     run.get("id"),
+                    exc_info=True,
                 )
                 continue
             run[field_name] = value
@@ -2303,7 +2304,7 @@ class AzureDevopsClient(HTTPBaseClient):
             build_id = (run.get("build") or {}).get("id")
             if not build_id:
                 skipped_coverage += 1
-                logger.info(
+                logger.debug(
                     f"Skipping code coverage for test run {run_id} in "
                     f"project {project_id}: no associated build"
                 )
