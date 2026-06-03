@@ -63,3 +63,29 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::CodePipeline::ActionExecution
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '.Properties.PipelineName + "-" + .Properties.ActionExecutionId'
+          title: '.Properties.PipelineName + " - " + .Properties.ActionName'
+          blueprint: '"actionExecution"'
+          properties:
+            pipelineName: .Properties.PipelineName
+            pipelineExecutionId: .Properties.PipelineExecutionId
+            actionName: .Properties.ActionName
+            stageName: .Properties.StageName
+            status: .Properties.Status
+            startTime: .Properties.StartTime
+            lastUpdateTime: .Properties.LastUpdateTime
+            externalExecutionId: .Properties.ExternalExecutionId
+            externalExecutionUrl: .Properties.ExternalExecutionUrl
+            percentComplete: .Properties.PercentComplete
+            summary: .Properties.Summary
+            actionTypeId: .Properties.ActionTypeId
+            errorDetails: .Properties.ErrorDetails
+            region: .Properties.Region
+          relations:
+            account: .__ExtraContext.AccountId

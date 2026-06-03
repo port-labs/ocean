@@ -180,5 +180,99 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "actionExecution",
+    "title": "CodePipeline Action Execution",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "pipelineName": {
+          "type": "string",
+          "title": "Pipeline Name",
+          "description": "The name of the CodePipeline pipeline"
+        },
+        "pipelineExecutionId": {
+          "type": "string",
+          "title": "Pipeline Execution ID",
+          "description": "The ID of the pipeline execution"
+        },
+        "actionName": {
+          "type": "string",
+          "title": "Action Name",
+          "description": "The name of the action"
+        },
+        "stageName": {
+          "type": "string",
+          "title": "Stage Name",
+          "description": "The name of the pipeline stage"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the action execution",
+          "enum": ["InProgress", "Succeeded", "Failed", "Stopped", "Stopping", "Abandoned"]
+        },
+        "startTime": {
+          "type": "string",
+          "title": "Start Time",
+          "description": "When the action execution started",
+          "format": "date-time"
+        },
+        "lastUpdateTime": {
+          "type": "string",
+          "title": "Last Update Time",
+          "description": "When the action execution was last updated",
+          "format": "date-time"
+        },
+        "externalExecutionId": {
+          "type": "string",
+          "title": "External Execution ID",
+          "description": "External execution identifier"
+        },
+        "externalExecutionUrl": {
+          "type": "string",
+          "title": "External Execution URL",
+          "description": "External execution URL"
+        },
+        "percentComplete": {
+          "type": "number",
+          "title": "Percent Complete",
+          "description": "The percentage of completion for the action execution"
+        },
+        "summary": {
+          "type": "string",
+          "title": "Summary",
+          "description": "A summary of the action execution"
+        },
+        "actionTypeId": {
+          "type": "object",
+          "title": "Action Type",
+          "description": "Information about the action type"
+        },
+        "errorDetails": {
+          "type": "object",
+          "title": "Error Details",
+          "description": "Error details if the action failed"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "AWS region where the action execution occurred"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
