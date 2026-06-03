@@ -10,25 +10,16 @@ class GetBuildDetailsAction(Action):
         if not resources:
             return []
 
-        # Extract build IDs for batch operation
-        build_ids = [resource.get("id", resource.get("Id", "")) for resource in resources]
-        build_ids = [build_id for build_id in build_ids if build_id]
-
-        if not build_ids:
-            logger.warning("No valid build IDs found in resources")
-            return []
+        build_ids = [resource.get("id") for resource in resources]
 
         try:
-            # Use batch_get_builds for efficient retrieval
             response = await self.client.batch_get_builds(ids=build_ids)
             builds = response.get("builds", [])
 
             logger.info(f"Successfully fetched details for {len(builds)} build runs")
 
-            # Transform AWS response to our model format
-            results = []
-            for build in builds:
-                transformed_build = {
+            return [
+                {
                     "Id": build.get("id", ""),
                     "ProjectName": build.get("projectName", ""),
                     "Arn": build.get("arn", ""),
@@ -57,29 +48,11 @@ class GetBuildDetailsAction(Action):
                     "FileSystemLocations": build.get("fileSystemLocations", []),
                     "DebugSession": build.get("debugSession"),
                     "BuildBatchArn": build.get("buildBatchArn"),
-                    "Tags": self._transform_tags(build.get("tags", []))
-                }
-                results.append(transformed_build)
-
-            return results
-
+                } for build in builds
+            ]
         except Exception as e:
             logger.error(f"Error fetching build details: {e}")
             raise
-
-    def _transform_tags(self, tags: List[Dict[str, Any]]) -> List[Dict[str, str]]:
-        """Transform AWS tags format to our expected format."""
-        if not tags:
-            return []
-
-        transformed = []
-        for tag in tags:
-            if isinstance(tag, dict) and "key" in tag and "value" in tag:
-                transformed.append({
-                    "key": tag["key"],
-                    "value": tag["value"]
-                })
-        return transformed
 
 
 class ListBuildsAction(Action):
