@@ -70,7 +70,7 @@ resources:
       entity:
         mappings:
           identifier: .Properties.Id
-          title: .Properties.ProjectName + " - Build #" + (.Properties.BuildNumber | tostring)
+          title: .Properties.ProjectName + " - Build " + (.Properties.BuildNumber | tostring)
           blueprint: '"codeBuildProjectBuildRun"'
           properties:
             arn: .Properties.Arn
