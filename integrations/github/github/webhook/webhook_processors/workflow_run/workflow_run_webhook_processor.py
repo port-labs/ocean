@@ -5,7 +5,6 @@ from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
 )
-from github.helpers.utils import enrich_with_organization, enrich_with_repository
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
