@@ -125,6 +125,48 @@ class JiraBoardResourceConfig(ResourceConfig):
     )
 
 
+class JiraSprintSelector(Selector):
+    sprint_state: list[Literal["active", "closed", "future"]] | None = Field(
+        alias="sprintState",
+        default=["active"],
+        title="Sprint State",
+        min_items=1,
+        description=(
+            "Filter sprints by state. Accepts a list of states: active, closed, future. "
+            "Defaults to ['active'] for performance — closed sprints accumulate over time "
+            "and can result in thousands of API calls on large Jira instances. "
+            "Set to null to fetch all states. "
+            "See: https://developer.atlassian.com/cloud/jira/software/rest/api-group-board/"
+            "#api-rest-agile-1-0-board-boardid-sprint-get"
+        ),
+    )
+
+    @validator("sprint_state", always=True)
+    def sprint_state_must_not_contain_duplicates(
+        cls, value: list[str] | None
+    ) -> list[str] | None:
+        if value is None:
+            return value
+        if len(value) != len(set(value)):
+            duplicates = sorted(set(s for s in value if value.count(s) > 1))
+            raise ValueError(
+                f"sprintState must not contain duplicate values — "
+                f"found duplicates: {duplicates}"
+            )
+        return value
+
+
+class JiraSprintResourceConfig(ResourceConfig):
+    kind: Literal["sprint"] = Field(
+        title="Jira Sprint",
+        description="Jira sprint resource kind.",
+    )
+    selector: JiraSprintSelector = Field(
+        title="Sprint Selector",
+        description="Selector for Jira sprint resources.",
+    )
+
+
 class JiraBacklogSelector(Selector):
     jql: str | None = Field(
         default="updated >= -1w OR statusCategory != Done",
@@ -274,6 +316,7 @@ class JiraPortAppConfig(PortAppConfig):
         | JiraUserResourceConfig
         | JiraReleaseResourceConfig
         | JiraBoardResourceConfig
+        | JiraSprintResourceConfig
         | JiraBacklogResourceConfig
         | JiraEpicResourceConfig
         | JiraWorklogResourceConfig

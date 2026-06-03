@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.1 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.4.0 (2026-06-02)
+
+
+### Improvements
+
+- Refactored the Datadog integration to use a modular exporter architecture, extracting resource-specific logic from the monolithic client into dedicated exporter classes
+- Added `role` resource kind support
+- Added optional restriction policy enrichment selector for monitors and SLOs
+
+
+## 0.3.161 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.3.160 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
 ## 0.3.159 (2026-05-31)
 
 

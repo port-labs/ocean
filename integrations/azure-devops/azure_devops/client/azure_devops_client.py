@@ -2253,6 +2253,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     value,
                     field_name,
                     run.get("id"),
+                    exc_info=True,
                 )
                 continue
             run[field_name] = value
@@ -2274,19 +2275,8 @@ class AzureDevopsClient(HTTPBaseClient):
             else []
         )
 
-        coverage_tasks: list[Awaitable[dict[str, Any]]] = (
-            [
-                (
-                    self._fetch_code_coverage(
-                        project_id, run["build"]["id"], coverage_config
-                    )
-                    if run.get("build") and run["build"].get("id")
-                    else self._no_coverage()
-                )
-                for run in test_runs
-            ]
-            if coverage_config
-            else []
+        coverage_tasks = self._build_coverage_tasks(
+            test_runs, project_id, coverage_config
         )
 
         await self._attach_async_results(
@@ -2297,6 +2287,43 @@ class AzureDevopsClient(HTTPBaseClient):
         )
 
         return test_runs
+
+    def _build_coverage_tasks(
+        self,
+        test_runs: list[dict[str, Any]],
+        project_id: str,
+        coverage_config: Optional["CodeCoverageConfig"],
+    ) -> list[Awaitable[dict[str, Any]]]:
+        coverage_tasks: list[Awaitable[dict[str, Any]]] = []
+        if not coverage_config:
+            return coverage_tasks
+
+        skipped_coverage = 0
+        for run in test_runs:
+            run_id = run.get("id")
+            build_id = (run.get("build") or {}).get("id")
+            if not build_id:
+                skipped_coverage += 1
+                logger.debug(
+                    f"Skipping code coverage for test run {run_id} in "
+                    f"project {project_id}: no associated build"
+                )
+                coverage_tasks.append(self._no_coverage())
+                continue
+
+            coverage_tasks.append(
+                self._fetch_code_coverage(project_id, build_id, coverage_config)
+            )
+
+        logger.info(
+            "Fetched code coverage for {} of {} test runs in project {}. Skipped {} runs without an associated build.",
+            len(test_runs) - skipped_coverage,
+            len(test_runs),
+            project_id,
+            skipped_coverage,
+        )
+
+        return coverage_tasks
 
     async def _fetch_test_results(
         self, project_id: str, run_id: str
