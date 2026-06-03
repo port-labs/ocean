@@ -180,5 +180,66 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "codePipelineStageExecution",
+    "title": "CodePipeline Stage Execution",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "pipelineName": {
+          "type": "string",
+          "title": "Pipeline Name",
+          "description": "The name of the CodePipeline"
+        },
+        "pipelineExecutionId": {
+          "type": "string",
+          "title": "Pipeline Execution ID",
+          "description": "The unique identifier of the pipeline execution"
+        },
+        "pipelineVersion": {
+          "type": "number",
+          "title": "Pipeline Version",
+          "description": "The version of the pipeline"
+        },
+        "stageName": {
+          "type": "string",
+          "title": "Stage Name",
+          "description": "The name of the stage"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the stage execution",
+          "enum": [
+            "InProgress",
+            "Failed",
+            "Stopped",
+            "Stopping",
+            "Succeeded"
+          ]
+        },
+        "actionExecutions": {
+          "type": "array",
+          "title": "Action Executions",
+          "description": "Details of action executions within this stage",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
