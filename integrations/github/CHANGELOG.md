@@ -7,12 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.26 (2026-06-03)
+
+
+### Bug Fixes
+
+- Fixed sync failures from intermittent 500 errors on large pages by retrying with a smaller page size
+
+
 ## 5.5.25 (2026-06-03)
 
 
 ### Improvements
 
 - Bumped version to 5.5.25
+
 
 ## 5.5.23 (2026-06-02)
 
