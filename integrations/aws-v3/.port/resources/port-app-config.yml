@@ -63,7 +63,7 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
-  - kind: AWS::CodeDeploy::Application::DeploymentGroup
+  - kind: AWS::CodeDeploy::DeploymentGroup
     selector:
       query: 'true'
     port:

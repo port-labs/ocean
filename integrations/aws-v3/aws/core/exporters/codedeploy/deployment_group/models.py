@@ -32,18 +32,18 @@ class DeploymentGroupProperties(BaseModel):
 
 
 class CodeDeployDeploymentGroup(ResourceModel[DeploymentGroupProperties]):
-    Type: str = "AWS::CodeDeploy::Application::DeploymentGroup"
+    Type: str = "AWS::CodeDeploy::DeploymentGroup"
     Properties: DeploymentGroupProperties = Field(default_factory=DeploymentGroupProperties)
 
 
 class SingleCodeDeployDeploymentGroupRequest(ResourceRequestModel):
     """Options for exporting a single CodeDeploy deployment group."""
-    
+
     application_name: str = Field(..., description="The name of the CodeDeploy application")
     deployment_group_name: str = Field(..., description="The name of the deployment group")
 
 
 class PaginatedCodeDeployDeploymentGroupRequest(ResourceRequestModel):
     """Options for exporting all CodeDeploy deployment groups in a region."""
-    
+
     pass

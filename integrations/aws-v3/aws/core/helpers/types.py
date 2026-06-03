@@ -21,7 +21,7 @@ class ObjectKind(StrEnum):
     MSK_CLUSTER = "AWS::MSK::Cluster"
     ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
     EC2_VOLUME = "AWS::EC2::Volume"
-    CODEDEPLOY_DEPLOYMENT_GROUP = "AWS::CodeDeploy::Application::DeploymentGroup"
+    CODEDEPLOY_DEPLOYMENT_GROUP = "AWS::CodeDeploy::DeploymentGroup"
 
 
 SupportedServices = Literal[
