@@ -104,7 +104,7 @@ class GetStageDetailsAction(Action):
 
     async def _fetch_stage_state(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         """Fetch the state information for a stage."""
-        pipeline_name = resource.get("PipelineName")
+        pipeline_name = resource.get("name")
         if not pipeline_name:
             raise ValueError("Pipeline name is required to fetch stage state")
 
