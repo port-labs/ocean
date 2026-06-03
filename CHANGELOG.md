@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.43.14 (2026-06-03)
+
+### Improvements
+
+- Added a count-based flush condition to the lakehouse buffer: the buffer now flushes automatically when the number of buffered items reaches `lakehouse_buffer_max_count` (default: 50). The threshold is configurable via the `OCEAN__LAKEHOUSE_BUFFER_MAX_COUNT` environment variable.
+
 ## 0.43.13 (2026-06-03)
 
 ### Improvements
