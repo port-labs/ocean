@@ -180,5 +180,102 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "codePipelineAction",
+    "title": "CodePipeline Action",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "actionName": {
+          "type": "string",
+          "title": "Action Name",
+          "description": "The name of the action"
+        },
+        "provider": {
+          "type": "string", 
+          "title": "Provider",
+          "description": "The action provider (e.g., S3, CodeBuild, CodeDeploy)"
+        },
+        "category": {
+          "type": "string",
+          "title": "Category", 
+          "description": "The action category (Source, Build, Deploy, etc.)"
+        },
+        "owner": {
+          "type": "string",
+          "title": "Owner",
+          "description": "The action owner (AWS, ThirdParty, Custom)"
+        },
+        "version": {
+          "type": "string",
+          "title": "Version",
+          "description": "The action version"
+        },
+        "runOrder": {
+          "type": "number",
+          "title": "Run Order",
+          "description": "The order in which the action runs"
+        },
+        "configuration": {
+          "type": "object",
+          "title": "Configuration",
+          "description": "Action configuration parameters"
+        },
+        "inputArtifacts": {
+          "type": "array",
+          "title": "Input Artifacts",
+          "description": "Input artifacts for the action",
+          "items": {
+            "type": "object"
+          }
+        },
+        "outputArtifacts": {
+          "type": "array",
+          "title": "Output Artifacts", 
+          "description": "Output artifacts produced by the action",
+          "items": {
+            "type": "object"
+          }
+        },
+        "roleArn": {
+          "type": "string",
+          "title": "Role ARN",
+          "description": "The ARN of the role used for the action"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The region where the action runs"
+        },
+        "pipelineName": {
+          "type": "string",
+          "title": "Pipeline Name",
+          "description": "The name of the pipeline containing this action"
+        },
+        "stageName": {
+          "type": "string",
+          "title": "Stage Name", 
+          "description": "The name of the stage containing this action"
+        },
+        "pipelineArn": {
+          "type": "string",
+          "title": "Pipeline ARN",
+          "description": "The ARN of the pipeline"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
