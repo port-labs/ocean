@@ -217,6 +217,13 @@ class AWSEC2VolumeResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeDeployApplicationDeploymentGroupResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::Application::DeploymentGroup"] = Field(
+        title="AWS CodeDeploy Application Deployment Group",
+        description="AWS CodeDeploy Application Deployment Group resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -237,6 +244,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSElastiCacheClusterResourceConfig
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
+        | AWSCodeDeployApplicationDeploymentGroupResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
