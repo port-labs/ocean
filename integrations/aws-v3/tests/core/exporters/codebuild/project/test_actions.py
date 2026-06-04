@@ -10,7 +10,6 @@ from aws.core.exporters.codebuild.project.actions import (
 
 @pytest.mark.asyncio
 async def test_list_projects_action() -> None:
-    """Test the ListProjectsAction processes project names correctly."""
     # Arrange
     action = ListProjectsAction(MagicMock())
     projects = ["project1", "project2", "project3"]
@@ -28,7 +27,6 @@ async def test_list_projects_action() -> None:
 
 @pytest.mark.asyncio
 async def test_get_project_details_action() -> None:
-    """Test the GetProjectDetailsAction fetches project details correctly."""
     action = GetProjectDetailsAction(AsyncMock())
 
     # Mock the batch_get_projects response
@@ -77,7 +75,6 @@ async def test_get_project_details_action() -> None:
 
 @pytest.mark.asyncio
 async def test_get_project_details_action_empty_resources() -> None:
-    """Test the GetProjectDetailsAction with empty resources list."""
     action = GetProjectDetailsAction(AsyncMock())
 
     result = await action._execute([])
@@ -88,7 +85,6 @@ async def test_get_project_details_action_empty_resources() -> None:
 
 @pytest.mark.asyncio
 async def test_get_project_webhooks_action() -> None:
-    """Test the GetProjectWebhooksAction fetches webhooks correctly."""
     action = GetProjectWebhooksAction(AsyncMock())
 
     # Mock the list_webhooks_for_project response
@@ -119,7 +115,6 @@ async def test_get_project_webhooks_action() -> None:
 
 @pytest.mark.asyncio
 async def test_get_project_webhooks_action_resource_not_found() -> None:
-    """Test the GetProjectWebhooksAction handles ResourceNotFoundException."""
     mock_client = AsyncMock()
     mock_client.exceptions.ClientError = botocore.exceptions.ClientError
     mock_client.list_webhooks_for_project.side_effect = botocore.exceptions.ClientError(
@@ -143,7 +138,6 @@ async def test_get_project_webhooks_action_resource_not_found() -> None:
 
 @pytest.mark.asyncio
 async def test_get_project_webhooks_action_empty_resources() -> None:
-    """Test the GetProjectWebhooksAction with empty resources list."""
     action = GetProjectWebhooksAction(AsyncMock())
 
     result = await action._execute([])
