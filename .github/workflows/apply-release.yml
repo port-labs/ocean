@@ -42,13 +42,57 @@ jobs:
           echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
           echo "version=$version" >> $GITHUB_OUTPUT
 
+      - name: Resolve GitHub actor
+        id: github_actor
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "login=${{ github.actor }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "login=${{ github.event.workflow_run.actor.login }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve Port user email from GitHub username
+        id: port_user
+        continue-on-error: true
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_AUTH0_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_AUTH0_CLIENT_SECRET }}
+          operation: SEARCH
+          query: |
+            {
+              "combinator": "and",
+              "rules": [
+                {
+                  "operator": "=",
+                  "property": "$blueprint",
+                  "value": "_user"
+                },
+                {
+                  "operator": "=",
+                  "property": "github_username",
+                  "value": "${{ steps.github_actor.outputs.login }}"
+                }
+              ]
+            }
+
+      - name: Resolve Slack mention from Port user
+        id: slack_mention
+        if: ${{ steps.port_user.outputs.entities != '' && steps.port_user.outputs.entities != '[]' }}
+        continue-on-error: true
+        env:
+          ENTITIES: ${{ steps.port_user.outputs.entities }}
+        run: |
+          slack_id=$(echo "$ENTITIES" | jq -r '.[0].relations.slack_user_id // empty')
+          if [ -n "$slack_id" ]; then
+            echo "text=<@${slack_id}>" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Apply changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-
           ./scripts/bump-all.sh ${{ steps.version.outputs.version }}
-
 
       - name: Open pull request
         id: open_pr
@@ -82,7 +126,14 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":white_check_mark: *Apply release completed successfully*"
+                    "text": "*Apply release completed successfully* :white_check_mark:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Triggered by:* ${{ steps.slack_mention.outputs.text != '' && steps.slack_mention.outputs.text || format('<https://github.com/{0}|@{0}>', steps.github_actor.outputs.login) }}"
                   }
                 },
                 {
