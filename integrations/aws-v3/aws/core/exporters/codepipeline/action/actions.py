@@ -12,40 +12,20 @@ class GetPipelineActionsDetails(Action):
         if not pipeline_names:
             return []
 
-        pipeline_details = await asyncio.gather(
-            *(self._fetch_pipeline_details(pipeline_name['name']) for pipeline_name in pipeline_names),
+        pipeline_actions = await asyncio.gather(
+            *(self._fetch_pipeline_actions(pipeline_name['name']) for pipeline_name in pipeline_names),
             return_exceptions=True,
         )
 
-        results: list[dict[str, Any]] = []
-        for idx, details_result in enumerate(pipeline_details):
-            if isinstance(details_result, Exception):
-                pipeline_name = pipeline_names[idx]
-                if is_recoverable_aws_exception(details_result):
-                    logger.warning(
-                        f"Skipping pipeline details for pipeline '{pipeline_name}': {details_result}"
-                    )
-                    continue
-                else:
-                    logger.error(
-                        f"Error fetching pipeline details for pipeline '{pipeline_name}': {details_result}"
-                    )
-                    raise details_result
+        actions = [action for sublist in pipeline_actions for action in sublist]
 
-            # Extract actions from pipeline details
-            pipeline_data = cast(dict[str, Any], details_result)
-            actions = self._extract_actions_from_pipeline(pipeline_data)
-            results.extend(actions)
+        logger.info(f"Successfully extracted {len(actions)} CodePipeline actions")
+        return actions
 
-        logger.info(f"Successfully extracted {len(results)} CodePipeline actions")
-        return results
-
-    async def _fetch_pipeline_details(self, pipeline_name: str) -> dict[str, Any]:
-        response = await self.client.get_pipeline(name=pipeline_name)
+    async def _fetch_pipeline_actions(self, pipeline_name: str) -> list[dict[str, Any]]:
+        pipeline_data = await self.client.get_pipeline(name=pipeline_name)
         logger.info(f"Successfully fetched pipeline details for {pipeline_name}")
-        return response
 
-    def _extract_actions_from_pipeline(self, pipeline_data: dict[str, Any]) -> list[dict[str, Any]]:
         actions = []
         pipeline_info = pipeline_data.get("pipeline", {})
         pipeline_name = pipeline_info.get("name", "")
@@ -70,7 +50,6 @@ class GetPipelineActionsDetails(Action):
                     "Namespace": action.get("namespace"),
                     "TimeoutInMinutes": action.get("timeoutInMinutes"),
                     "OnFailure": action.get("onFailure"),
-                    # Add pipeline context
                     "PipelineName": pipeline_name,
                     "StageName": stage_name,
                     "PipelineArn": pipeline_arn,
