@@ -18,65 +18,59 @@ class GetProjectDetailsAction(Action):
         if not resources:
             return []
 
-        # CodeBuild supports batch requests for up to 100 projects
-        batch_size = 100
         all_results: List[Dict[str, Any]] = []
 
-        for i in range(0, len(resources), batch_size):
-            project_names = resources[i : i + batch_size]
+        try:
+            response = await self.client.batch_get_projects(names=resources)
+            projects = response.get("projects", [])
 
-            try:
-                response = await self.client.batch_get_projects(names=project_names)
-                projects = response.get("projects", [])
-
-                for project in projects:
-                    all_results.append(
-                        {
-                            "name": project.get("name", ""),
-                            "arn": project.get("arn", ""),
-                            "description": project.get("description"),
-                            "source": project.get("source"),
-                            "secondarySources": project.get("secondarySources", []),
-                            "sourceVersion": project.get("sourceVersion"),
-                            "secondarySourceVersions": project.get(
-                                "secondarySourceVersions", []
-                            ),
-                            "artifacts": project.get("artifacts"),
-                            "secondaryArtifacts": project.get("secondaryArtifacts", []),
-                            "cache": project.get("cache"),
-                            "environment": project.get("environment"),
-                            "serviceRole": project.get("serviceRole"),
-                            "timeoutInMinutes": project.get("timeoutInMinutes"),
-                            "queuedTimeoutInMinutes": project.get(
-                                "queuedTimeoutInMinutes"
-                            ),
-                            "encryptionKey": project.get("encryptionKey"),
-                            "tags": project.get("tags", []),
-                            "vpcConfig": project.get("vpcConfig"),
-                            "badge": project.get("badge"),
-                            "logsConfig": project.get("logsConfig"),
-                            "fileSystemLocations": project.get(
-                                "fileSystemLocations", []
-                            ),
-                            "buildBatchConfig": project.get("buildBatchConfig"),
-                            "concurrentBuildLimit": project.get("concurrentBuildLimit"),
-                            "projectVisibility": project.get("projectVisibility"),
-                            "publicReadOnlyAccess": project.get("publicReadOnlyAccess"),
-                            "resourceAccessRole": project.get("resourceAccessRole"),
-                            "created": project.get("created"),
-                            "lastModified": project.get("lastModified"),
-                            "webhook": project.get("webhook"),
-                        }
-                    )
-
-                logger.info(
-                    f"Successfully fetched details for {len(projects)} CodeBuild projects"
+            for project in projects:
+                all_results.append(
+                    {
+                        "name": project.get("name", ""),
+                        "arn": project.get("arn", ""),
+                        "description": project.get("description"),
+                        "source": project.get("source"),
+                        "secondarySources": project.get("secondarySources", []),
+                        "sourceVersion": project.get("sourceVersion"),
+                        "secondarySourceVersions": project.get(
+                            "secondarySourceVersions", []
+                        ),
+                        "artifacts": project.get("artifacts"),
+                        "secondaryArtifacts": project.get("secondaryArtifacts", []),
+                        "cache": project.get("cache"),
+                        "environment": project.get("environment"),
+                        "serviceRole": project.get("serviceRole"),
+                        "timeoutInMinutes": project.get("timeoutInMinutes"),
+                        "queuedTimeoutInMinutes": project.get(
+                            "queuedTimeoutInMinutes"
+                        ),
+                        "encryptionKey": project.get("encryptionKey"),
+                        "tags": project.get("tags", []),
+                        "vpcConfig": project.get("vpcConfig"),
+                        "badge": project.get("badge"),
+                        "logsConfig": project.get("logsConfig"),
+                        "fileSystemLocations": project.get(
+                            "fileSystemLocations", []
+                        ),
+                        "buildBatchConfig": project.get("buildBatchConfig"),
+                        "concurrentBuildLimit": project.get("concurrentBuildLimit"),
+                        "projectVisibility": project.get("projectVisibility"),
+                        "publicReadOnlyAccess": project.get("publicReadOnlyAccess"),
+                        "resourceAccessRole": project.get("resourceAccessRole"),
+                        "created": project.get("created"),
+                        "lastModified": project.get("lastModified"),
+                        "webhook": project.get("webhook"),
+                    }
                 )
-            except Exception as e:
-                logger.error(
-                    f"Error fetching details for CodeBuild projects batch: {e}"
-                )
-                continue
+
+            logger.info(
+                f"Successfully fetched details for {len(projects)} CodeBuild projects"
+            )
+        except Exception as e:
+            logger.error(
+                f"Error fetching details for CodeBuild projects batch: {e}"
+            )
 
         return all_results
 
