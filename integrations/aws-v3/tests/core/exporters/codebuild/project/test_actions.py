@@ -11,19 +11,19 @@ from aws.core.exporters.codebuild.project.actions import (
 @pytest.mark.asyncio
 async def test_list_projects_action() -> None:
     """Test the ListProjectsAction processes project names correctly."""
+    # Arrange
     action = ListProjectsAction(MagicMock())
-
     projects = ["project1", "project2", "project3"]
 
+    #Act
     result = await action._execute(projects)
 
-    assert len(result) == 3
-    assert result[0]["name"] == "project1"
-    assert result[0]["id"] == "project1"
-    assert result[1]["name"] == "project2"
-    assert result[1]["id"] == "project2"
-    assert result[2]["name"] == "project3"
-    assert result[2]["id"] == "project3"
+    # Assert
+    assert result == [
+        {"name": "project1", "id": "project1"},
+        {"name": "project2", "id": "project2"},
+        {"name": "project3", "id": "project3"},
+    ]
 
 
 @pytest.mark.asyncio
