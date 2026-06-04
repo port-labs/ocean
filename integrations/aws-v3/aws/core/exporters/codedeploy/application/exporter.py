@@ -46,12 +46,10 @@ class CodeDeployApplicationExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            # Use the list_applications API to get all applications
             paginator = proxy.get_paginator("list_applications", "applications")
 
             async for applications in paginator.paginate():
                 if applications:
-                    # Transform application names to the expected format
                     resources = [
                         {
                             "applicationName": app_name,
