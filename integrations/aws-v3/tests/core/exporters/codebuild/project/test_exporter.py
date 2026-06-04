@@ -10,12 +10,6 @@ from aws.core.exporters.codebuild.project.models import (
 
 
 @pytest.fixture
-def mock_session() -> AsyncMock:
-    """Create a mock session for testing."""
-    return AsyncMock()
-
-
-@pytest.fixture
 def single_project_options() -> SingleCodeBuildProjectRequest:
     """Create options for single project export."""
     return SingleCodeBuildProjectRequest(
@@ -47,12 +41,12 @@ async def test_codebuild_project_exporter_service_name() -> None:
 async def test_get_resource(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
-    mock_session: AsyncMock,
     single_project_options: SingleCodeBuildProjectRequest,
 ) -> None:
     """Test getting a single CodeBuild project resource."""
 
     # Setup mocks
+    mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy_instance
 
@@ -84,12 +78,12 @@ async def test_get_resource(
 async def test_get_resource_empty_response(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
-    mock_session: AsyncMock,
     single_project_options: SingleCodeBuildProjectRequest,
 ) -> None:
     """Test getting a single resource with empty response."""
 
     # Setup mocks
+    mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy_instance
 
@@ -111,12 +105,12 @@ async def test_get_resource_empty_response(
 async def test_get_paginated_resources(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
-    mock_session: AsyncMock,
     paginated_options: PaginatedCodeBuildProjectRequest,
 ) -> None:
     """Test getting paginated CodeBuild project resources."""
 
     # Setup mocks
+    mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy_instance
 
@@ -187,12 +181,12 @@ async def test_get_paginated_resources(
 async def test_get_paginated_resources_empty_page(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
-    mock_session: AsyncMock,
     paginated_options: PaginatedCodeBuildProjectRequest,
 ) -> None:
     """Test getting paginated resources with only empty pages."""
 
     # Setup mocks
+    mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy_instance
 
