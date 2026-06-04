@@ -671,9 +671,8 @@ class GithubWorkflowRunSelector(RepoSearchSelector):
         default=None,
         description="Filter workflow runs by status or conclusion. When unset, all runs are returned.",
     )
-    lookback_days: Optional[int] = Field(
+    since: Optional[int] = Field(
         title="Lookback Days",
-        alias="lookbackDays",
         default=None,
         ge=1,
         description="Only fetch workflow runs created within the last N days.",
@@ -681,9 +680,9 @@ class GithubWorkflowRunSelector(RepoSearchSelector):
 
     @property
     def created_after(self) -> Optional[str]:
-        if self.lookback_days is None:
+        if self.since is None:
             return None
-        cutoff = datetime.now(timezone.utc) - timedelta(days=self.lookback_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=self.since)
         return f">={cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}"
 
 

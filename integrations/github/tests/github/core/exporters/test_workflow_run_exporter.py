@@ -140,7 +140,7 @@ def test_workflow_run_selector_created_after_none() -> None:
 
 
 def test_workflow_run_selector_created_after_format() -> None:
-    selector = GithubWorkflowRunSelector(query=".", lookbackDays=30)
+    selector = GithubWorkflowRunSelector(query=".", since=30)
     result = selector.created_after
     assert result is not None
     assert re.match(r"^>=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", result)
