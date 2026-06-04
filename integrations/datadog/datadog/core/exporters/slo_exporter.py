@@ -6,7 +6,10 @@ from typing import Any
 from datadog.client import DatadogClient
 from datadog.core.exporters.restriction_policy_exporter import RestrictionPolicyExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from datadog.core.exporters.base_exporter import PaginatedExporter, SingleResourceExporter
+from datadog.core.exporters.base_exporter import (
+    PaginatedExporter,
+    SingleResourceExporter,
+)
 
 SLO_ENRICHMENT_BATCH_SIZE = 10
 
@@ -59,12 +62,13 @@ class SloExporter(
         """
         url = f"{self.client.api_url}/api/v1/slo/{resource_id.id}"
         slo_response = await self.client.send_api_request(url)
-        slos = slo_response.get("data", [])
-        slo = slos[0] if slos else None
+        slo = slo_response.get("data")
         if not slo:
             return None
 
         if not resource_id.include_restriction_policy:
             return slo
 
-        return await self.rp_exporter.enrich_resource_with_restriction_policy("slo", slo)
+        return await self.rp_exporter.enrich_resource_with_restriction_policy(
+            "slo", slo
+        )

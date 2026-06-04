@@ -1,5 +1,6 @@
 from typing import Any
 
+from pydantic import BaseModel, Field, validator
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
 
 from datadog.client import DatadogClient
@@ -9,8 +10,48 @@ from datadog.webhook.webhook_processors.base_webhook_processor import (
 from initialize_client import init_client
 
 
+class AuditTrailAsset(BaseModel):
+    type: str = ""
+    id: str | None = None
+
+    @validator("type", pre=True, always=True)
+    @classmethod
+    def normalize_type(cls, v: object) -> str:
+        return str(v).lower() if v is not None else ""
+
+
+class AuditTrailEvt(BaseModel):
+    name: str = ""
+
+    @validator("name", pre=True, always=True)
+    @classmethod
+    def normalize_name(cls, v: object) -> str:
+        return str(v).strip() if v is not None else ""
+
+
+class AuditTrailUsr(BaseModel):
+    uuid: str | None = None
+    id: str | None = None
+
+
+class AuditTrailAttributes(BaseModel):
+    evt: AuditTrailEvt = Field(default_factory=AuditTrailEvt)
+    action: str = ""
+    asset: AuditTrailAsset | None = None
+    usr: AuditTrailUsr | None = None
+
+    @validator("action", pre=True, always=True)
+    @classmethod
+    def normalize_action(cls, v: object) -> str:
+        return str(v).lower() if v is not None else ""
+
+
+class AuditTrailEvent(BaseModel):
+    attributes: AuditTrailAttributes = Field(default_factory=AuditTrailAttributes)
+
+
 class BaseAuditTrailProcessor(BaseWebhookProcessor):
-    """Shared helpers for audit-trail processors.
+    """Base for all audit-trail webhook processors.
 
     Each WebhookEvent carries exactly one event dict — batches are split
     upstream by DatadogLiveEventsProcessorManager.
@@ -21,44 +62,11 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
         self.client: DatadogClient = init_client()
 
     @staticmethod
-    def _attrs(event: dict[str, Any]) -> dict[str, Any]:
-        attrs = event.get("attributes")
-        return attrs if isinstance(attrs, dict) else event
-
-    @classmethod
-    def extract_evt_name(cls, event: dict[str, Any]) -> str:
-        return str(cls._attrs(event).get("evt", {}).get("name", "")).strip()
-
-    @classmethod
-    def extract_action(cls, event: dict[str, Any]) -> str:
-        return str(cls._attrs(event).get("action", "")).lower()
-
-    @classmethod
-    def extract_asset_type(cls, event: dict[str, Any]) -> str | None:
-        asset = cls._attrs(event).get("asset")
-        if isinstance(asset, dict):
-            t = asset.get("type")
-            return str(t).lower() if t is not None else None
-        return None
-
-    @classmethod
-    def extract_asset_id(cls, event: dict[str, Any]) -> str | None:
-        asset = cls._attrs(event).get("asset")
-        if isinstance(asset, dict):
-            asset_id = asset.get("id")
-            return str(asset_id) if asset_id is not None else None
-        return None
-
-    @classmethod
-    def is_delete_event(cls, event: dict[str, Any]) -> bool:
-        return cls.extract_action(event) == "deleted"
+    def parse_event(payload: dict[str, Any]) -> AuditTrailEvent:
+        return AuditTrailEvent.parse_obj(payload)
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return (
-            isinstance(payload, dict)
-            and self._matches(payload)
-            and self.extract_asset_id(payload) is not None
-        )
-
-    def _matches(self, event: dict[str, Any]) -> bool:  # pragma: no cover
-        raise NotImplementedError
+        if not isinstance(payload, dict):
+            return False
+        event = self.parse_event(payload)
+        return event.attributes.asset is not None and event.attributes.asset.id is not None

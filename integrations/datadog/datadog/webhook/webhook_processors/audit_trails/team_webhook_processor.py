@@ -24,23 +24,24 @@ class TeamWebhookProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return [ObjectKind.TEAM]
 
-    def _matches(self, event: dict[str, Any]) -> bool:
-        return (
-            self.extract_evt_name(event) == "Teams Management"
-            and self.extract_action(event) in _TEAM_ACTIONS
-        )
-
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return isinstance(event.payload, dict) and self._matches(event.payload)
+        if not isinstance(event.payload, dict):
+            return False
+        e = self.parse_event(event.payload)
+        return (
+            e.attributes.evt.name == "Teams Management"
+            and e.attributes.action in _TEAM_ACTIONS
+        )
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        team_id = self.extract_asset_id(payload)
+        event = self.parse_event(payload)
+        team_id = event.attributes.asset.id if event.attributes.asset else None
         if not team_id:
             return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
-        if self.is_delete_event(payload):
+        if event.attributes.action == "deleted":
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[{"id": team_id}]
             )

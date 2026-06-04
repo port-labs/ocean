@@ -22,25 +22,27 @@ class RoleWebhookProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return [ObjectKind.ROLE]
 
-    def _matches(self, event: dict[str, Any]) -> bool:
-        return (
-            self.extract_evt_name(event) == "Access Management"
-            and self.extract_asset_type(event) == ObjectKind.ROLE
-            and self.extract_action(event) in _ROLE_ACTIONS
-        )
-
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return isinstance(event.payload, dict) and self._matches(event.payload)
+        if not isinstance(event.payload, dict):
+            return False
+        e = self.parse_event(event.payload)
+        return (
+            e.attributes.evt.name == "Access Management"
+            and e.attributes.asset is not None
+            and e.attributes.asset.type == ObjectKind.ROLE
+            and e.attributes.action in _ROLE_ACTIONS
+        )
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         del resource_config
-        role_id = self.extract_asset_id(payload)
+        event = self.parse_event(payload)
+        role_id = event.attributes.asset.id if event.attributes.asset else None
         if not role_id:
             return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
-        if self.is_delete_event(payload):
+        if event.attributes.action == "deleted":
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[{"id": role_id}]
             )

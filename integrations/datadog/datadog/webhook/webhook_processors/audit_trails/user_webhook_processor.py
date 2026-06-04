@@ -22,52 +22,52 @@ class UserWebhookProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return [ObjectKind.USER]
 
-    @classmethod
-    def _user_id_from_role_event(cls, event: dict[str, Any]) -> str | None:
-        """Extract the affected user's ID from a role:modified membership-change event."""
-        usr = cls._attrs(event).get("usr")
-        if not isinstance(usr, dict):
-            return None
-        return str(usr.get("uuid") or usr.get("id") or "") or None
-
-    def _matches(self, event: dict[str, Any]) -> bool:
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        if not isinstance(event.payload, dict):
+            return False
+        e = self.parse_event(event.payload)
+        attrs = e.attributes
         return (
-            self.extract_evt_name(event) == "Access Management"
-            and self.extract_asset_type(event) == ObjectKind.USER
-            and self.extract_action(event) in _USER_ACTIONS
+            attrs.evt.name == "Access Management"
+            and attrs.asset is not None
+            and attrs.asset.type == ObjectKind.USER
+            and attrs.action in _USER_ACTIONS
         ) or (
             # User added/removed from a role → refetch the affected user
             # https://docs.datadoghq.com/account_management/audit_trail/events/#access-management
-            self.extract_evt_name(event) == "Access Management"
-            and self.extract_asset_type(event) == ObjectKind.ROLE
-            and self.extract_action(event) == "modified"
-            and self._user_id_from_role_event(event) is not None
+            attrs.evt.name == "Access Management"
+            and attrs.asset is not None
+            and attrs.asset.type == ObjectKind.ROLE
+            and attrs.action == "modified"
+            and attrs.usr is not None
+            and bool(attrs.usr.uuid or attrs.usr.id)
         )
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        return isinstance(event.payload, dict) and self._matches(event.payload)
-
     async def validate_payload(self, payload: EventPayload) -> bool:
-        if not isinstance(payload, dict) or not self._matches(payload):
+        if not isinstance(payload, dict):
             return False
-        if self.extract_asset_type(payload) == ObjectKind.ROLE:
-            return self._user_id_from_role_event(payload) is not None
-        return self.extract_asset_id(payload) is not None
+        event = self.parse_event(payload)
+        attrs = event.attributes
+        if attrs.asset and attrs.asset.type == ObjectKind.ROLE:
+            return attrs.usr is not None and bool(attrs.usr.uuid or attrs.usr.id)
+        return attrs.asset is not None and attrs.asset.id is not None
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         del resource_config
+        event = self.parse_event(payload)
+        attrs = event.attributes
 
-        if self.extract_asset_type(payload) == ObjectKind.ROLE:
-            user_id = self._user_id_from_role_event(payload)
+        if attrs.asset and attrs.asset.type == ObjectKind.ROLE and attrs.usr:
+            user_id = attrs.usr.uuid or attrs.usr.id
         else:
-            user_id = self.extract_asset_id(payload)
+            user_id = attrs.asset.id if attrs.asset else None
 
         if not user_id:
             return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
-        if self.extract_asset_type(payload) == ObjectKind.USER and self.is_delete_event(payload):
+        if attrs.asset and attrs.asset.type == ObjectKind.USER and attrs.action == "deleted":
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[{"id": user_id}]
             )

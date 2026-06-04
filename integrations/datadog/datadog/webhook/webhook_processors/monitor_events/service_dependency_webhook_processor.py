@@ -5,7 +5,10 @@ from loguru import logger
 
 from initialize_client import init_client
 from integration import ObjectKind
-from datadog.overrides import DatadogServiceDependencySelector, ServiceDependencyResourceConfig
+from datadog.overrides import (
+    DatadogServiceDependencySelector,
+    ServiceDependencyResourceConfig,
+)
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -37,6 +40,7 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
             if service_id:
                 service_ids.append(service_id)
         return service_ids
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.payload["event_type"]
         service_related_events = [
@@ -84,9 +88,8 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         has_event_info = "event_type" in payload
         service_tags = self.extract_service_ids(payload)
-        has_service_info = bool(service_tags and all(service_tags))
 
-        is_valid = has_service_info and has_event_info
+        is_valid = len(service_tags) > 0 and has_event_info
         if not is_valid:
             logger.warning(f"Invalid webhook payload for service dependency: {payload}")
 

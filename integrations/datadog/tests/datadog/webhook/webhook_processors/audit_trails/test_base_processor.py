@@ -10,6 +10,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 from datadog.webhook.webhook_processors.audit_trails.base_processor import (
+    AuditTrailEvent,
     BaseAuditTrailProcessor,
 )
 
@@ -32,21 +33,11 @@ class _StubProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return ["stub"]
 
-    def _matches(self, event: dict[str, Any]) -> bool:
-        return (
-            self.extract_evt_name(event) == "Stub"
-            and self.extract_asset_type(event) == "stub"
-        )
-
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return isinstance(event.payload, dict) and self._matches(event.payload)
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        return (
-            isinstance(payload, dict)
-            and self._matches(payload)
-            and self.extract_asset_id(payload) is not None
-        )
+        if not isinstance(event.payload, dict):
+            return False
+        e = self.parse_event(event.payload)
+        return e.attributes.evt.name == "Stub" and e.attributes.asset is not None and e.attributes.asset.type == "stub"
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -59,22 +50,20 @@ def processor() -> _StubProcessor:
     return _StubProcessor(WebhookEvent(trace_id="test", payload={}, headers={}))
 
 
-def test_extract_evt_name_and_action() -> None:
-    event = _raw("Monitor", "modified", "monitor", "m-1")
-    assert BaseAuditTrailProcessor.extract_evt_name(event) == "Monitor"
-    assert BaseAuditTrailProcessor.extract_action(event) == "modified"
+def test_parse_event_normalizes_action_and_type() -> None:
+    raw = {"attributes": {"evt": {"name": "  Monitor  "}, "action": "MODIFIED", "asset": {"type": "MONITOR", "id": "m-1"}}}
+    event = AuditTrailEvent.parse_obj(raw)
+    assert event.attributes.evt.name == "Monitor"
+    assert event.attributes.action == "modified"
+    assert event.attributes.asset is not None
+    assert event.attributes.asset.type == "monitor"
 
 
-def test_extract_asset_type_and_id_from_attributes() -> None:
-    event = _raw("SLO", "created", "slo", "s-1")
-    assert BaseAuditTrailProcessor.extract_asset_type(event) == "slo"
-    assert BaseAuditTrailProcessor.extract_asset_id(event) == "s-1"
-
-
-def test_is_delete_event_only_for_deleted_action() -> None:
-    assert BaseAuditTrailProcessor.is_delete_event(_raw("X", "deleted", "x")) is True
-    assert BaseAuditTrailProcessor.is_delete_event(_raw("X", "modified", "x")) is False
-    assert BaseAuditTrailProcessor.is_delete_event(_raw("X", "created", "x")) is False
+def test_parse_event_missing_attributes_gives_defaults() -> None:
+    event = AuditTrailEvent.parse_obj({})
+    assert event.attributes.evt.name == ""
+    assert event.attributes.action == ""
+    assert event.attributes.asset is None
 
 
 @pytest.mark.asyncio
@@ -107,9 +96,7 @@ async def test_handle_event_returns_result(processor: _StubProcessor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_validate_payload_true_for_matching_event_with_id(
-    processor: _StubProcessor,
-) -> None:
+async def test_validate_payload_true_when_asset_id_present(processor: _StubProcessor) -> None:
     assert await processor.validate_payload(_raw("Stub", "created", "stub", "s-1")) is True
 
 
@@ -121,5 +108,12 @@ async def test_validate_payload_false_when_no_asset_id(processor: _StubProcessor
 
 
 @pytest.mark.asyncio
-async def test_validate_payload_false_when_event_not_matched(processor: _StubProcessor) -> None:
-    assert await processor.validate_payload(_raw("Other", "created", "stub", "s-1")) is False
+async def test_validate_payload_false_when_no_asset(processor: _StubProcessor) -> None:
+    assert await processor.validate_payload(
+        {"attributes": {"evt": {"name": "Stub"}, "action": "created"}}
+    ) is False
+
+
+@pytest.mark.asyncio
+async def test_validate_payload_false_when_not_a_dict(processor: _StubProcessor) -> None:
+    assert await processor.validate_payload([]) is False  # type: ignore[arg-type]
