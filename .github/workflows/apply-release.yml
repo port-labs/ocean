@@ -8,6 +8,9 @@ on:
       - completed
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   create_branch_and_open_pr:
     runs-on: ubuntu-latest
