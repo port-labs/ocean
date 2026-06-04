@@ -24,7 +24,7 @@ class CodePipelineActionExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            
+
             # For single action, we need to get the specific pipeline and extract the action
             response = await inspector.inspect(
                 [options.pipeline_name],
@@ -36,20 +36,19 @@ class CodePipelineActionExporter(IResourceExporter):
                     "TargetActionName": options.action_name,
                 },
             )
-            
+
             # Filter the response to get only the requested action
             if response:
                 for action in response:
                     if (action.get("Properties", {}).get("StageName") == options.stage_name and
                         action.get("Properties", {}).get("ActionName") == options.action_name):
                         return action
-            
+
             return {}
 
     async def get_paginated_resources(
         self, options: PaginatedCodePipelineActionRequest
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Fetch all CodePipeline actions in a region."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
@@ -57,12 +56,10 @@ class CodePipelineActionExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            # Use list_pipelines paginator to get all pipelines
             paginator = proxy.get_paginator("list_pipelines", "pipelines")
 
             async for pipelines in paginator.paginate():
                 if pipelines:
-                    # Process pipelines to extract all actions
                     action_result = await inspector.inspect(
                         pipelines,
                         options.include,
