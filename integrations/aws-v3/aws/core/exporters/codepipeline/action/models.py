@@ -26,7 +26,6 @@ class CodePipelineActionProperties(BaseModel):
     Namespace: Optional[str] = None
     TimeoutInMinutes: Optional[int] = None
     OnFailure: Optional[Dict[str, Any]] = None
-    # Pipeline context
     PipelineName: str = Field(default_factory=str)
     StageName: str = Field(default_factory=str)
     PipelineArn: Optional[str] = None
