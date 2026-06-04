@@ -38,7 +38,6 @@ class BuildRunProperties(BaseModel):
     FileSystemLocations: List[Dict[str, Any]] = Field(default_factory=list)
     DebugSession: Optional[Dict[str, Any]] = None
     BuildBatchArn: Optional[str] = None
-    Tags: List[Dict[str, str]] = Field(default_factory=list)
 
     class Config:
         extra = "ignore"

@@ -246,14 +246,6 @@
           "type": "string",
           "title": "Initiator",
           "description": "The entity that initiated the build"
-        },
-        "tags": {
-          "type": "array",
-          "title": "Tags",
-          "description": "Tags associated with the build run",
-          "items": {
-            "type": "object"
-          }
         }
       },
       "required": []
