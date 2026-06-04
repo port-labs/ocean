@@ -217,6 +217,13 @@ class AWSEC2VolumeResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::Pipeline"] = Field(
+        title="AWS CodePipeline Pipeline",
+        description="AWS CodePipeline Pipeline resource kind.",
+    )
+
+
 class AWSCodePipelinePipelineStageResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodePipeline::Stage"] = Field(
         title="AWS Code Pipeline Pipeline Stage",
@@ -244,6 +251,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSElastiCacheClusterResourceConfig
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
+        | AWSCodePipelinePipelineResourceConfig
         | AWSCodePipelinePipelineStageResourceConfig
     ] = Field(
         default_factory=list,
