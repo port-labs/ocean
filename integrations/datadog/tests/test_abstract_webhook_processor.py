@@ -7,7 +7,7 @@ from webhook_processors._abstract_webhook_processor import (
 from typing import Any, Generator
 
 
-class TestWebhookProcessor(_AbstractDatadogWebhookProcessor):
+class MockWebhookProcessor(_AbstractDatadogWebhookProcessor):
     """Concrete implementation for testing the abstract webhook processor."""
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[Any]:
@@ -24,9 +24,9 @@ class TestWebhookProcessor(_AbstractDatadogWebhookProcessor):
 
 
 @pytest.fixture
-def processor() -> TestWebhookProcessor:
+def processor() -> MockWebhookProcessor:
     mock_event = WebhookEvent(trace_id="test", payload={}, headers={})
-    return TestWebhookProcessor(mock_event)
+    return MockWebhookProcessor(mock_event)
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ def mock_integration_config_without_secret() -> Generator[dict[str, str], None, 
 
 @pytest.mark.asyncio
 async def test_authenticate_with_valid_auth_header(
-    processor: TestWebhookProcessor,
+    processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
     # Base64 encoded "test_user:test_token"
@@ -65,7 +65,7 @@ async def test_authenticate_with_valid_auth_header(
 
 @pytest.mark.asyncio
 async def test_authenticate_without_webhook_secret_no_auth_header(
-    processor: TestWebhookProcessor,
+    processor: MockWebhookProcessor,
     mock_integration_config_without_secret: Generator[dict[str, str], None, None],
 ) -> None:
     # Allow authentication when no webhook secret and no auth header
@@ -74,7 +74,7 @@ async def test_authenticate_without_webhook_secret_no_auth_header(
 
 @pytest.mark.asyncio
 async def test_authenticate_without_webhook_secret_with_auth_header(
-    processor: TestWebhookProcessor,
+    processor: MockWebhookProcessor,
     mock_integration_config_without_secret: Generator[dict[str, str], None, None],
 ) -> None:
     # Fail authentication when no webhook secret but auth header is present
@@ -84,7 +84,7 @@ async def test_authenticate_without_webhook_secret_with_auth_header(
 
 @pytest.mark.asyncio
 async def test_authenticate_with_invalid_secret(
-    processor: TestWebhookProcessor,
+    processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
     # Base64 encoded "test_user:wrong_token"
@@ -94,7 +94,7 @@ async def test_authenticate_with_invalid_secret(
 
 @pytest.mark.asyncio
 async def test_authenticate_with_missing_auth_header(
-    processor: TestWebhookProcessor,
+    processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
     # Fail when webhook secret is configured but no auth header
@@ -103,7 +103,7 @@ async def test_authenticate_with_missing_auth_header(
 
 @pytest.mark.asyncio
 async def test_authenticate_with_invalid_auth_format(
-    processor: TestWebhookProcessor,
+    processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
     # Test invalid authorization header format
@@ -113,7 +113,7 @@ async def test_authenticate_with_invalid_auth_format(
 
 @pytest.mark.asyncio
 async def test_authenticate_with_non_basic_auth(
-    processor: TestWebhookProcessor,
+    processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
     # Test non-Basic authorization type
@@ -123,7 +123,7 @@ async def test_authenticate_with_non_basic_auth(
 
 @pytest.mark.asyncio
 async def test_authenticate_with_malformed_basic_auth(
-    processor: TestWebhookProcessor,
+    processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
     # Test malformed Basic Auth credentials (missing colon)
@@ -134,7 +134,7 @@ async def test_authenticate_with_malformed_basic_auth(
 
 @pytest.mark.asyncio
 async def test_authenticate_with_invalid_base64(
-    processor: TestWebhookProcessor,
+    processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
     # Test invalid base64 encoding

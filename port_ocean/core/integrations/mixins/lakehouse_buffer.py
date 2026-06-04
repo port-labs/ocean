@@ -8,16 +8,18 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import LakehouseDataEntry, LakehouseDataEntryBatch, LakehouseEventType
 
 _DEFAULT_MAX_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
+_DEFAULT_MAX_BUFFER_COUNT = 50
 
 
 class LakehouseBuffer:
     """Accumulates raw items per kind and flushes them to the lakehouse in
-    time-bounded, size-bounded batches.
+    time-bounded, size-bounded, and count-bounded batches.
 
     A single instance covers exactly one kind within one resync.  Items are
-    flushed automatically when either condition is met:
+    flushed automatically when any condition is met:
       - ``flush_interval_seconds`` have elapsed since the last flush, OR
-      - the estimated JSON size of the buffer reaches ``max_size_bytes``.
+      - the estimated JSON size of the buffer reaches ``max_size_bytes``, OR
+      - the number of buffered items reaches ``max_buffer_count``.
 
     Flushing is also forced unconditionally when ``flush()`` is called at the
     end of the kind.  Empty flushes are skipped so no unnecessary HTTP requests
@@ -31,10 +33,12 @@ class LakehouseBuffer:
         resync_start_time: Any,
         flush_interval_seconds: float = 10.0,
         max_size_bytes: int = _DEFAULT_MAX_SIZE_BYTES,
+        max_buffer_count: int = _DEFAULT_MAX_BUFFER_COUNT,
         event_type: LakehouseEventType = LakehouseEventType.RESYNC,
     ) -> None:
         self._flush_interval = flush_interval_seconds
         self._max_size_bytes = max_size_bytes
+        self._max_buffer_count = max_buffer_count
         self._buffer: list[Any] = []
         self._current_size_bytes: int = 0
         self._last_flush_at: float | None = None
@@ -79,12 +83,18 @@ class LakehouseBuffer:
 
         interval_exceeded = now - self._last_flush_at >= self._flush_interval
         size_exceeded = self._current_size_bytes >= self._max_size_bytes
+        count_exceeded = len(self._buffer) >= self._max_buffer_count
 
-        if interval_exceeded or size_exceeded:
+        if interval_exceeded or size_exceeded or count_exceeded:
             if size_exceeded:
                 logger.debug(
                     f"Lakehouse buffer size cap reached"
                     f" ({self._current_size_bytes / (1024 * 1024):.1f} MB >= "
                     f"{self._max_size_bytes / (1024 * 1024):.0f} MB), flushing"
+                )
+            if count_exceeded:
+                logger.bind(local_only=True).info(
+                    f"Lakehouse buffer count cap reached"
+                    f" ({len(self._buffer)} >= {self._max_buffer_count}), flushing"
                 )
             await self.flush()
