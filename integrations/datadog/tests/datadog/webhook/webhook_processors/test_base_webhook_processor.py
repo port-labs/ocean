@@ -4,7 +4,7 @@ from unittest.mock import PropertyMock, patch
 
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from datadog.webhook.webhook_client import _PORT_AUTH_HEADER_NAME
+from datadog.webhook.webhook_client import PORT_AUTH_HEADER_NAME
 from datadog.webhook.webhook_processors.base_webhook_processor import (
     BaseWebhookProcessor,
 )
@@ -57,7 +57,7 @@ async def test_authenticate_with_valid_custom_auth_header(
     processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
-    headers = {_PORT_AUTH_HEADER_NAME: "test_token"}
+    headers = {PORT_AUTH_HEADER_NAME: "test_token"}
     assert await processor.authenticate({}, headers) is True
 
 
@@ -74,7 +74,7 @@ async def test_authenticate_without_webhook_secret_with_auth_header(
     processor: MockWebhookProcessor,
     mock_integration_config_without_secret: Generator[dict[str, str], None, None],
 ) -> None:
-    headers = {_PORT_AUTH_HEADER_NAME: "test_token"}
+    headers = {PORT_AUTH_HEADER_NAME: "test_token"}
     assert await processor.authenticate({}, headers) is False
 
 
@@ -83,7 +83,7 @@ async def test_authenticate_with_invalid_secret(
     processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
-    headers = {_PORT_AUTH_HEADER_NAME: "wrong_token"}
+    headers = {PORT_AUTH_HEADER_NAME: "wrong_token"}
     assert await processor.authenticate({}, headers) is False
 
 
@@ -100,5 +100,5 @@ async def test_authenticate_with_case_insensitive_custom_header(
     processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
-    headers = {_PORT_AUTH_HEADER_NAME.lower(): "test_token"}
+    headers = {PORT_AUTH_HEADER_NAME.lower(): "test_token"}
     assert await processor.authenticate({}, headers) is True

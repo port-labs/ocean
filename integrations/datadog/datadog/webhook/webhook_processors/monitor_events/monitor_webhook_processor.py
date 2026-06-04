@@ -9,12 +9,19 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from datadog.core.exporters import MonitorExporter
 from datadog.core.exporters.monitor_exporter import GetMonitorOptions
-from datadog.webhook.webhook_processors.monitor_events.base_processor import (
-    BaseMonitorEventsWebhookProcessor,
+from datadog.webhook.webhook_processors.base_webhook_processor import (
+    BaseWebhookProcessor,
 )
 
 
-class MonitorWebhookProcessor(BaseMonitorEventsWebhookProcessor):
+class MonitorWebhookProcessor(BaseWebhookProcessor):
+    @staticmethod
+    def extract_monitor_id(payload: EventPayload) -> str | None:
+        alert_id = payload.get("alert_id")
+        if alert_id is None:
+            return None
+        return str(alert_id)
+
     @staticmethod
     def _should_include_restriction_policy(resource_config: ResourceConfig) -> bool:
         if isinstance(resource_config, dict):

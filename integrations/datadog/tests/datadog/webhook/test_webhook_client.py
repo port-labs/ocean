@@ -7,7 +7,7 @@ import pytest
 from datadog.client import DatadogClient
 from datadog.webhook.webhook_client import (
     DatadogWebhookClient,
-    _PORT_AUTH_HEADER_NAME,
+    PORT_AUTH_HEADER_NAME,
     _PORT_MONITOR_NOTIFICATION_RULE_NAME,
 )
 
@@ -67,14 +67,14 @@ async def test_create_webhook_and_append_recipient_when_webhook_is_new(
         )
         assert (
             webhook_call["json_data"]["url"]
-            == "https://example.com/webhook/monitor-events"
+            == "https://example.com/integration/webhook/monitor-events"
         )
         assert json.loads(webhook_call["json_data"]["custom_headers"]) == {
-            _PORT_AUTH_HEADER_NAME: webhook_secret
+            PORT_AUTH_HEADER_NAME: webhook_secret
         }
         assert webhook_call["json_data"]["custom_headers"] == json.dumps(
             {
-                _PORT_AUTH_HEADER_NAME: webhook_secret,
+                PORT_AUTH_HEADER_NAME: webhook_secret,
             }
         )
 
@@ -96,8 +96,8 @@ async def test_skip_webhook_update_when_config_is_unchanged(
     webhook_name = "org_123-dd-integration"
     base_url = "https://example.com"
     secret = "test_secret"
-    current_url = f"{base_url}/webhook/monitor-events"
-    current_headers = json.dumps({_PORT_AUTH_HEADER_NAME: secret})
+    current_url = f"{base_url}/integration/webhook/monitor-events"
+    current_headers = json.dumps({PORT_AUTH_HEADER_NAME: secret})
 
     from datadog.webhook.webhook_client import _WEBHOOK_PAYLOAD_TEMPLATE
 
@@ -143,7 +143,7 @@ async def test_update_webhook_config_and_append_recipient_when_webhook_already_e
         mock_send.side_effect = [
             {
                 "name": webhook_name,
-                "url": "https://old-url.example.com/webhook/monitor-events",
+                "url": "https://old-url.example.com/integration/webhook/monitor-events",
             },
             {"status": "updated"},
             {"data": []},
@@ -166,10 +166,10 @@ async def test_update_webhook_config_and_append_recipient_when_webhook_already_e
             f"/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
         )
         assert (
-            update_call["json_data"]["url"] == f"{new_base_url}/webhook/monitor-events"
+            update_call["json_data"]["url"] == f"{new_base_url}/integration/webhook/monitor-events"
         )
         assert json.loads(update_call["json_data"]["custom_headers"]) == {
-            _PORT_AUTH_HEADER_NAME: new_secret
+            PORT_AUTH_HEADER_NAME: new_secret
         }
 
         post_rule_call = mock_send.await_args_list[3].kwargs

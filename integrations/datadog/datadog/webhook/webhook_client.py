@@ -6,9 +6,11 @@ from loguru import logger
 
 from datadog.client import DatadogClient
 
+MONITOR_WEBHOOK_PATH = "/webhook/monitor-events"
+AUDIT_TRAIL_WEBHOOK_PATH = "/webhook/audit-trail"
+
 _PORT_MONITOR_NOTIFICATION_RULE_NAME = "Port Ocean Monitor Events"
-_PORT_MONITOR_WEBHOOK_PATH = "/webhook/monitor-events"
-_PORT_AUTH_HEADER_NAME = "X-Port-Ocean-Webhook-Secret"
+PORT_AUTH_HEADER_NAME = "X-Port-Ocean-Webhook-Secret"
 
 _WEBHOOK_PAYLOAD_TEMPLATE = json.dumps(
     {
@@ -51,7 +53,7 @@ class DatadogWebhookClient:
     ) -> None:
         webhook_name = self._build_webhook_name(org_id, integration_identifier)
         webhook_target = self._build_webhook_target_url(
-            base_url, _PORT_MONITOR_WEBHOOK_PATH
+            base_url, f"/integration{MONITOR_WEBHOOK_PATH}"
         )
         try:
             await self._sync_webhook(webhook_name, webhook_target, webhook_secret)
@@ -107,7 +109,7 @@ class DatadogWebhookClient:
         webhook_secret: str | None,
     ) -> bool:
         expected_headers = (
-            json.dumps({_PORT_AUTH_HEADER_NAME: webhook_secret})
+            json.dumps({PORT_AUTH_HEADER_NAME: webhook_secret})
             if webhook_secret
             else None
         )
@@ -131,9 +133,7 @@ class DatadogWebhookClient:
         if name:
             body["name"] = name
         if webhook_secret:
-            body["custom_headers"] = json.dumps(
-                {_PORT_AUTH_HEADER_NAME: webhook_secret}
-            )
+            body["custom_headers"] = json.dumps({PORT_AUTH_HEADER_NAME: webhook_secret})
         return body
 
     async def _sync_notification_rule_recipient(self, webhook_name: str) -> None:

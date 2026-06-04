@@ -17,12 +17,26 @@ from datadog.core.exporters import ServiceDependencyExporter
 from datadog.core.exporters.service_dependency_exporter import (
     GetServiceDependencyOptions,
 )
-from datadog.webhook.webhook_processors.monitor_events.base_processor import (
-    BaseMonitorEventsWebhookProcessor,
+from datadog.webhook.webhook_processors.base_webhook_processor import (
+    BaseWebhookProcessor,
 )
 
 
-class ServiceDependencyWebhookProcessor(BaseMonitorEventsWebhookProcessor):
+class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
+    @staticmethod
+    def extract_service_ids(payload: EventPayload) -> list[str]:
+        tags = payload.get("tags")
+        if not isinstance(tags, list):
+            return []
+
+        service_ids: list[str] = []
+        for tag in tags:
+            if not isinstance(tag, str) or not tag.startswith("service:"):
+                continue
+            _, _, service_id = tag.partition(":")
+            if service_id:
+                service_ids.append(service_id)
+        return service_ids
     async def should_process_event(self, event: WebhookEvent) -> bool:
         event_type = event.payload["event_type"]
         service_related_events = [

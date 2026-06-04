@@ -11,63 +11,82 @@ from datadog.webhook.webhook_processors.audit_trails.role_webhook_processor impo
 )
 
 
+def _event(action: str, asset_id: str, asset_type: str = "role", evt_name: str = "Access Management") -> dict:
+    return {
+        "attributes": {
+            "evt": {"name": evt_name},
+            "action": action,
+            "asset": {"type": asset_type, "id": asset_id},
+        }
+    }
+
+
 @pytest.fixture
 def processor() -> RoleWebhookProcessor:
     return RoleWebhookProcessor(WebhookEvent(trace_id="test", payload={}, headers={}))
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_matches_role_type(
-    processor: RoleWebhookProcessor,
-) -> None:
-    event = WebhookEvent(
-        trace_id="ok",
-        payload={"event": {"action": "resource.update", "asset": {"type": "role"}}},
-        headers={},
-    )
-    assert await processor.should_process_event(event) is True
+async def test_should_process_event_matches_role_type(processor: RoleWebhookProcessor) -> None:
+    # correct evt.name + asset.type → True
+    assert await processor.should_process_event(
+        WebhookEvent(trace_id="ok", payload=_event("modified", "r-1"), headers={})
+    ) is True
 
 
 @pytest.mark.asyncio
-async def test_handle_event_with_delete_action_returns_deleted(
+async def test_should_process_event_false_wrong_asset_type(processor: RoleWebhookProcessor) -> None:
+    assert await processor.should_process_event(
+        WebhookEvent(trace_id="no", payload=_event("modified", "u-1", "user"), headers={})
+    ) is False
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_wrong_evt_name(processor: RoleWebhookProcessor) -> None:
+    assert await processor.should_process_event(
+        WebhookEvent(
+            trace_id="no",
+            payload=_event("modified", "r-1", evt_name="Monitor"),
+            headers={},
+        )
+    ) is False
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_unsupported_action(processor: RoleWebhookProcessor) -> None:
+    assert await processor.should_process_event(
+        WebhookEvent(trace_id="no", payload=_event("accessed", "r-1"), headers={})
+    ) is False
+
+
+@pytest.mark.asyncio
+async def test_handle_single_event_delete_returns_deleted(
     processor: RoleWebhookProcessor,
 ) -> None:
     result = await processor.handle_event(
-        {"event": {"action": "resource.remove", "asset": {"id": "r-1"}}},
-        resource_config={},
+        _event("deleted", "r-1"), resource_config={}
     )
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [{"id": "r-1"}]
 
 
 @pytest.mark.asyncio
-async def test_handle_event_converts_404_to_deleted(
+async def test_handle_single_event_404_returns_deleted(
     processor: RoleWebhookProcessor,
 ) -> None:
-    error_response = httpx.Response(
-        404, request=httpx.Request("GET", "https://api.datadoghq.com/api/v2/role/r-1")
-    )
+    req = httpx.Request("GET", "https://api.datadoghq.com/api/v2/role/r-1")
     not_found = httpx.HTTPStatusError(
-        "not found",
-        request=error_response.request,
-        response=error_response,
+        "not found", request=req, response=httpx.Response(404, request=req)
     )
-    with (
-        patch(
-            "datadog.webhook.webhook_processors.audit_trails.role_webhook_processor.init_client",
-            return_value=AsyncMock(),
-        ),
-        patch(
-            "datadog.webhook.webhook_processors.audit_trails.role_webhook_processor.RoleExporter"
-        ) as exporter_cls,
-    ):
+    with patch(
+        "datadog.webhook.webhook_processors.audit_trails.role_webhook_processor.RoleExporter"
+    ) as cls:
         exporter = AsyncMock()
         exporter.get_resource.side_effect = not_found
-        exporter_cls.return_value = exporter
+        cls.return_value = exporter
 
         result = await processor.handle_event(
-            {"event": {"action": "resource.update", "asset": {"id": "r-1"}}},
-            resource_config={},
+            _event("modified", "r-1"), resource_config={}
         )
 
     exporter.get_resource.assert_awaited_once_with("r-1")
@@ -76,11 +95,13 @@ async def test_handle_event_converts_404_to_deleted(
 
 
 @pytest.mark.asyncio
-async def test_get_matching_kinds_and_validate_payload(
-    processor: RoleWebhookProcessor,
-) -> None:
+async def test_get_matching_kinds(processor: RoleWebhookProcessor) -> None:
     assert await processor.get_matching_kinds(
         WebhookEvent(trace_id="x", payload={}, headers={})
     ) == [ObjectKind.ROLE]
-    assert await processor.validate_payload({"event": {"asset": {"id": "r-1"}}}) is True
-    assert await processor.validate_payload({"event": {"asset": {}}}) is False
+
+
+@pytest.mark.asyncio
+async def test_validate_payload(processor: RoleWebhookProcessor) -> None:
+    assert await processor.validate_payload(_event("modified", "r-1")) is True
+    assert await processor.validate_payload({"attributes": {"evt": {"name": "X"}, "action": "modified", "asset": {"type": "role"}}}) is False

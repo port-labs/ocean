@@ -2,68 +2,63 @@ from typing import Any
 
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
 
+from datadog.client import DatadogClient
 from datadog.webhook.webhook_processors.base_webhook_processor import (
     BaseWebhookProcessor,
 )
+from initialize_client import init_client
 
 
-class BaseProcessor(BaseWebhookProcessor):
+class BaseAuditTrailProcessor(BaseWebhookProcessor):
+    """Shared helpers for audit-trail processors.
+
+    Each WebhookEvent carries exactly one event dict — batches are split
+    upstream by DatadogLiveEventsProcessorManager.
+    """
+
+    def __init__(self, event: WebhookEvent) -> None:
+        super().__init__(event)
+        self.client: DatadogClient = init_client()
+
     @staticmethod
-    def _extract_wrapped_event(payload: EventPayload) -> dict[str, Any]:
-        for key in ("event", "data"):
-            value = payload.get(key)
-            if isinstance(value, dict):
-                return value
-        return payload
+    def _attrs(event: dict[str, Any]) -> dict[str, Any]:
+        attrs = event.get("attributes")
+        return attrs if isinstance(attrs, dict) else event
 
     @classmethod
-    def extract_asset_type(cls, payload: EventPayload) -> str | None:
-        event = cls._extract_wrapped_event(payload)
-        asset = event.get("asset")
+    def extract_evt_name(cls, event: dict[str, Any]) -> str:
+        return str(cls._attrs(event).get("evt", {}).get("name", "")).strip()
+
+    @classmethod
+    def extract_action(cls, event: dict[str, Any]) -> str:
+        return str(cls._attrs(event).get("action", "")).lower()
+
+    @classmethod
+    def extract_asset_type(cls, event: dict[str, Any]) -> str | None:
+        asset = cls._attrs(event).get("asset")
         if isinstance(asset, dict):
-            asset_type = asset.get("type")
-            if asset_type is not None:
-                return str(asset_type).lower()
+            t = asset.get("type")
+            return str(t).lower() if t is not None else None
         return None
 
     @classmethod
-    def extract_asset_id(cls, payload: EventPayload) -> str | None:
-        event = cls._extract_wrapped_event(payload)
-        asset = event.get("asset")
+    def extract_asset_id(cls, event: dict[str, Any]) -> str | None:
+        asset = cls._attrs(event).get("asset")
         if isinstance(asset, dict):
             asset_id = asset.get("id")
-            if asset_id is not None:
-                return str(asset_id)
+            return str(asset_id) if asset_id is not None else None
         return None
 
     @classmethod
-    def is_delete_event(cls, payload: EventPayload) -> bool:
-        event = cls._extract_wrapped_event(payload)
-        action = str(event.get("action", "")).lower()
-        return any(token in action for token in ("delete", "remove", "destroy"))
+    def is_delete_event(cls, event: dict[str, Any]) -> bool:
+        return cls.extract_action(event) == "deleted"
 
-    @classmethod
-    def _is_supported_audit_action(cls, payload: EventPayload) -> bool:
-        event = cls._extract_wrapped_event(payload)
-        action = str(event.get("action", "")).lower()
-        if not action:
-            return False
-        return any(
-            token in action
-            for token in (
-                "create",
-                "update",
-                "delete",
-                "add",
-                "remove",
-                "modify",
-                "change",
-                "grant",
-                "revoke",
-                "assign",
-                "unassign",
-            )
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        return (
+            isinstance(payload, dict)
+            and self._matches(payload)
+            and self.extract_asset_id(payload) is not None
         )
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        return self._is_supported_audit_action(event.payload)
+    def _matches(self, event: dict[str, Any]) -> bool:  # pragma: no cover
+        raise NotImplementedError
