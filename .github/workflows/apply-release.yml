@@ -81,27 +81,20 @@ jobs:
         id: slack_mention
         if: ${{ steps.port_user.outputs.entities != '' && steps.port_user.outputs.entities != '[]' }}
         continue-on-error: true
-        env:
-          ENTITIES: ${{ steps.port_user.outputs.entities }}
         run: |
-          slack_id=$(echo "$ENTITIES" | jq -r '
-            .[0].relations.slack_user_id
-            | if type == "object" then .identifier
-              elif type == "string" then .
-              else empty end
-          ')
-          if [ -n "$slack_id" ]; then
+          slack_id='${{ fromJSON(steps.port_user.outputs.entities)[0].relations.slack_user_id }}'
+          if [ -n "$slack_id" ] && [ "$slack_id" != "null" ]; then
             echo "text=<@${slack_id}>" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Echo Slack mention tag (debug)
         run: |
           echo "GitHub actor: ${{ steps.github_actor.outputs.login }}"
-          echo "Port search entities: ${{ steps.port_user.outputs.entities }}"
           if [ -n "${{ steps.slack_mention.outputs.text }}" ]; then
             echo "Slack tag: ${{ steps.slack_mention.outputs.text }}"
           else
             echo "Slack tag: (not resolved)"
+            echo "Port slack_user_id: ${{ steps.port_user.outputs.entities != '' && steps.port_user.outputs.entities != '[]' && fromJSON(steps.port_user.outputs.entities)[0].relations.slack_user_id || 'n/a' }}"
             echo "Fallback would be: <https://github.com/${{ steps.github_actor.outputs.login }}|${{ steps.github_actor.outputs.login }}>"
           fi
 
