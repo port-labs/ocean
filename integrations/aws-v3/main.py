@@ -277,12 +277,3 @@ async def resync_codepipeline_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
     )
     async for batch in service:
         yield batch
-
-
-@ocean.on_resync(ObjectKind.CODEPIPELINE_STAGE)
-async def resync_codepipeline_stage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    service = ResyncAWSService(
-        kind, CodePipelineStageExporter, PaginatedCodePipelineStageRequest, regional=True
-    )
-    async for batch in service:
-        yield batch
