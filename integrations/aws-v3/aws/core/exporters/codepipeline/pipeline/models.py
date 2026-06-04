@@ -61,3 +61,22 @@ class PaginatedPipelineRequest(ResourceRequestModel):
     """Options for exporting all CodePipeline pipelines in a region."""
 
     pass
+
+
+class CodePipelineStageProperties(BaseModel):
+    Name: str = Field(default_factory=str, description="The name of the stage")
+    PipelineName: str = Field(default_factory=str, description="The name of the pipeline")
+    PipelineArn: str = Field(default_factory=str, description="The ARN of the pipeline")
+    Actions: List[Dict[str, Any]] = Field(default_factory=list, description="Stage actions")
+    Blockers: List[Dict[str, Any]] = Field(default_factory=list, description="Stage blockers")
+    Region: str = Field(default_factory=str, description="AWS region")
+    AccountId: str = Field(default_factory=str, description="AWS account ID")
+
+    class Config:
+        extra = "ignore"
+        populate_by_name = True
+
+
+class CodePipelineStage(ResourceModel[CodePipelineStageProperties]):
+    Type: str = "AWS::CodePipeline::Stage"
+    Properties: CodePipelineStageProperties = Field(default_factory=CodePipelineStageProperties)

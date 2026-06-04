@@ -2,12 +2,11 @@ import json
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.codepipeline.pipeline.actions import PipelineActionsMap
-from aws.core.exporters.codepipeline.pipeline.models import Pipeline
+from aws.core.exporters.codepipeline.pipeline.models import Pipeline, CodePipelineStage, CodePipelineStageProperties
 from aws.core.exporters.codepipeline.pipeline.models import (
     SinglePipelineRequest,
     PaginatedPipelineRequest,
 )
-from aws.core.exporters.codepipeline.stage.models import CodePipelineStage, CodePipelineStageProperties
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
