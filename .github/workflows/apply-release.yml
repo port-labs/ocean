@@ -11,6 +11,7 @@ on:
 jobs:
   create_branch_and_open_pr:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout code
@@ -29,7 +30,23 @@ jobs:
       - name: Get package version
         id: version
         run: |
-          version=$(pip index versions port-ocean | grep 'port-ocean' | cut -d' ' -f2 | tr -d '()')
+          set -euo pipefail
+
+          for attempt in 1 2 3; do
+            if version=$(pip index versions port-ocean | grep 'port-ocean' | cut -d' ' -f2 | tr -d '()'); then
+              break
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "Failed to fetch package version after $attempt attempts"
+              exit 1
+            fi
+
+            sleep_time=$((attempt * 5))
+            echo "Failed to fetch package version (attempt $attempt). Retrying in ${sleep_time}s..."
+            sleep "$sleep_time"
+          done
+
           pr_name="[Integration] Apply Ocean version $version to all integrations"
           branch_name="apply-ocean-$version-to-all-integrations"
           echo "Branch Name: $branch_name"
@@ -40,13 +57,29 @@ jobs:
 
       - name: Apply changes
         run: |
+          set -euo pipefail
+
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-          ./scripts/bump-all.sh ${{ steps.version.outputs.version }}
+          for attempt in 1 2 3; do
+            if ./scripts/bump-all.sh ${{ steps.version.outputs.version }}; then
+              break
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "Failed to apply changes after $attempt attempts"
+              exit 1
+            fi
+
+            sleep_time=$((attempt * 5))
+            echo "Failed to apply changes (attempt $attempt). Retrying in ${sleep_time}s..."
+            sleep "$sleep_time"
+          done
 
 
       - name: Open pull request
+        id: open_pr
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
@@ -61,3 +94,38 @@ jobs:
 
             ## How should this be manually tested?
             ./scripts/bump-all.sh ^${{ steps.version.outputs.version }}
+
+      - name: Send Slack notification
+        if: ${{ success() && steps.version.outputs.version != '' }}
+        continue-on-error: true
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":white_check_mark: *Apply release completed successfully*"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Version:* `${{ steps.version.outputs.version }}`\n*Workflow run:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Pull request:* <${{ steps.open_pr.outputs.pull-request-url }}|Open PR>"
+                  }
+                }
+              ]
+            }
