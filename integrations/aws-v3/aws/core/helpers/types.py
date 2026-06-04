@@ -21,7 +21,7 @@ class ObjectKind(StrEnum):
     MSK_CLUSTER = "AWS::MSK::Cluster"
     ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
     EC2_VOLUME = "AWS::EC2::Volume"
-    CODEBUILD_PROJECT_BUILD_RUN = "AWS::CodeBuild::Project::BuildRun"
+    CODEBUILD_BUILD_RUN = "AWS::CodeBuild::BuildRun"
 
 
 SupportedServices = Literal[

@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Type, cast
+from typing import Dict, Any, List, Type
 from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
 
@@ -74,7 +74,7 @@ class ListBuildsAction(Action):
         return results
 
 
-class ProjectBuildRunActionsMap(ActionMap):
+class BuildRunActionsMap(ActionMap):
     """Groups all actions for CodeBuild project build runs."""
 
     defaults: List[Type[Action]] = [

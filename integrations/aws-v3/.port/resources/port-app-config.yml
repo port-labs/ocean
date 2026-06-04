@@ -63,7 +63,7 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
-  - kind: AWS::CodeBuild::Project::BuildRun
+  - kind: AWS::CodeBuild::BuildRun
     selector:
       query: 'true'
     port:
@@ -71,7 +71,7 @@ resources:
         mappings:
           identifier: .Properties.Id
           title: .Properties.ProjectName + " - Build " + (.Properties.BuildNumber | tostring)
-          blueprint: '"codeBuildProjectBuildRun"'
+          blueprint: '"codeBuildBuildRun"'
           properties:
             arn: .Properties.Arn
             projectName: .Properties.ProjectName

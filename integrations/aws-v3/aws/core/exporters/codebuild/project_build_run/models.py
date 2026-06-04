@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
 
-class ProjectBuildRunProperties(BaseModel):
+class BuildRunProperties(BaseModel):
     Id: str = Field(default_factory=str, description="The unique ID of the build run")
     ProjectName: str = Field(
         default_factory=str, description="The name of the CodeBuild project"
@@ -45,20 +45,20 @@ class ProjectBuildRunProperties(BaseModel):
         allow_population_by_field_name = True
 
 
-class ProjectBuildRun(ResourceModel[ProjectBuildRunProperties]):
-    Type: str = "AWS::CodeBuild::Project::BuildRun"
-    Properties: ProjectBuildRunProperties = Field(
-        default_factory=ProjectBuildRunProperties
+class BuildRun(ResourceModel[BuildRunProperties]):
+    Type: str = "AWS::CodeBuild::BuildRun"
+    Properties: BuildRunProperties = Field(
+        default_factory=BuildRunProperties
     )
 
 
-class SingleProjectBuildRunRequest(ResourceRequestModel):
+class SingleBuildRunRequest(ResourceRequestModel):
     """Options for exporting a single CodeBuild project build run."""
 
     build_id: str = Field(..., description="The ID of the build run to export")
 
 
-class PaginatedProjectBuildRunRequest(ResourceRequestModel):
+class PaginatedBuildRunRequest(ResourceRequestModel):
     """Options for exporting all CodeBuild project build runs in a region."""
 
     project_name: Optional[str] = None  # Optional filter by project name

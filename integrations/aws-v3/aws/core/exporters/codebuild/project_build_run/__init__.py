@@ -1,21 +1,21 @@
 from aws.core.exporters.codebuild.project_build_run.exporter import (
-    CodeBuildProjectBuildRunExporter,
+    CodeBuildBuildRunExporter,
 )
 from aws.core.exporters.codebuild.project_build_run.models import (
-    ProjectBuildRun,
-    ProjectBuildRunProperties,
-    SingleProjectBuildRunRequest,
-    PaginatedProjectBuildRunRequest,
+    BuildRun,
+    BuildRunProperties,
+    SingleBuildRunRequest,
+    PaginatedBuildRunRequest,
 )
 from aws.core.exporters.codebuild.project_build_run.actions import (
-    ProjectBuildRunActionsMap,
+    BuildRunActionsMap,
 )
 
 __all__ = [
-    "CodeBuildProjectBuildRunExporter",
-    "ProjectBuildRun",
-    "ProjectBuildRunProperties",
-    "SingleProjectBuildRunRequest",
-    "PaginatedProjectBuildRunRequest",
-    "ProjectBuildRunActionsMap",
+    "CodeBuildBuildRunExporter",
+    "BuildRun",
+    "BuildRunProperties",
+    "SingleBuildRunRequest",
+    "PaginatedBuildRunRequest",
+    "BuildRunActionsMap",
 ]

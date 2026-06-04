@@ -1,25 +1,25 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.codebuild.project_build_run.actions import (
-    ProjectBuildRunActionsMap,
+    BuildRunActionsMap,
 )
-from aws.core.exporters.codebuild.project_build_run.models import ProjectBuildRun
+from aws.core.exporters.codebuild.project_build_run.models import BuildRun
 from aws.core.exporters.codebuild.project_build_run.models import (
-    SingleProjectBuildRunRequest,
-    PaginatedProjectBuildRunRequest,
+    SingleBuildRunRequest,
+    PaginatedBuildRunRequest,
 )
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class CodeBuildProjectBuildRunExporter(IResourceExporter):
+class CodeBuildBuildRunExporter(IResourceExporter):
     _service_name: SupportedServices = "codebuild"
-    _model_cls: Type[ProjectBuildRun] = ProjectBuildRun
-    _actions_map: Type[ProjectBuildRunActionsMap] = ProjectBuildRunActionsMap
+    _model_cls: Type[BuildRun] = BuildRun
+    _actions_map: Type[BuildRunActionsMap] = BuildRunActionsMap
 
     async def get_resource(
-        self, options: SingleProjectBuildRunRequest
+        self, options: SingleBuildRunRequest
     ) -> dict[str, Any]:
         """Fetch detailed attributes of a single build run."""
         async with AioBaseClientProxy(
@@ -34,7 +34,7 @@ class CodeBuildProjectBuildRunExporter(IResourceExporter):
             return response[0] if response else {}
 
     async def get_paginated_resources(
-        self, options: PaginatedProjectBuildRunRequest
+        self, options: PaginatedBuildRunRequest
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch all build runs in a region."""
         async with AioBaseClientProxy(

@@ -43,9 +43,9 @@ from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
 from aws.core.exporters.ec2.volume import EbsVolumeExporter
 from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
-from aws.core.exporters.codebuild import CodeBuildProjectBuildRunExporter
+from aws.core.exporters.codebuild import CodeBuildBuildRunExporter
 from aws.core.exporters.codebuild.project_build_run.models import (
-    PaginatedProjectBuildRunRequest,
+    PaginatedBuildRunRequest,
 )
 from aws.core.helpers.utils import is_access_denied_exception
 
@@ -270,12 +270,12 @@ async def resync_ec2_volume(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
-@ocean.on_resync(ObjectKind.CODEBUILD_PROJECT_BUILD_RUN)
+@ocean.on_resync(ObjectKind.CODEBUILD_BUILD_RUN)
 async def resync_codebuild_project_build_run(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind,
-        CodeBuildProjectBuildRunExporter,
-        PaginatedProjectBuildRunRequest,
+        CodeBuildBuildRunExporter,
+        PaginatedBuildRunRequest,
         regional=True,
     )
     async for batch in service:

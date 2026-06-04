@@ -217,10 +217,10 @@ class AWSEC2VolumeResourceConfig(AWSResourceConfig):
     )
 
 
-class AWSCodeBuildProjectBuildRunResourceConfig(AWSResourceConfig):
-    kind: Literal["AWS::CodeBuild::Project::BuildRun"] = Field(
-        title="AWS CodeBuild Project BuildRun",
-        description="AWS CodeBuild Project BuildRun resource kind.",
+class AWSCodeBuildBuildRunResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeBuild::BuildRun"] = Field(
+        title="AWS CodeBuild BuildRun",
+        description="AWS CodeBuild BuildRun resource kind.",
     )
 
 
@@ -244,7 +244,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSElastiCacheClusterResourceConfig
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
-        | AWSCodeBuildProjectBuildRunResourceConfig
+        | AWSCodeBuildBuildRunResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

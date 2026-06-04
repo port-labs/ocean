@@ -182,8 +182,8 @@
     }
   },
   {
-    "identifier": "codeBuildProjectBuildRun",
-    "title": "CodeBuild Project Build Run",
+    "identifier": "codeBuildBuildRun",
+    "title": "CodeBuild Build Run",
     "icon": "AWS",
     "schema": {
       "properties": {
@@ -228,7 +228,7 @@
         },
         "endTime": {
           "type": "string",
-          "title": "End Time", 
+          "title": "End Time",
           "description": "The time the build ended",
           "format": "date-time"
         },
