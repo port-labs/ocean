@@ -5,7 +5,7 @@ docs: https://docs.port.io/build-your-software-catalog/custom-integration/ocean-
 formMappingEnabled: true
 features:
   - type: exporter
-    section: Other
+    section: Build Your Own Exporter
     resources:
       - kind: dynamic
         description: HTTP API resources - kind is the endpoint path (e.g., /api/v1/users)
