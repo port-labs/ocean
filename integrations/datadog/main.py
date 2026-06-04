@@ -187,14 +187,12 @@ async def on_start() -> None:
         dd_client = init_client()
         webhook_secret = ocean.integration_config.get("webhook_secret")
         integration_identifier = ocean.config.integration.identifier
-        org_id = "unknown-org"
-        try:
-            current_integration = await ocean.port_client.get_current_integration()
-            org_id = str(current_integration.get("_orgId", org_id))
-        except Exception as exc:
-            logger.warning(
-                f"Failed to fetch current Port integration metadata for webhook naming: {exc}"
-            )
+        current_integration = await ocean.port_client.get_current_integration()
+        org_id = str(current_integration.get("_orgId"))
+        if not org_id:
+            logger.warning("No organization ID found for webhook setup")
+            return
+
         webhook_client = DatadogWebhookClient(dd_client)
         await webhook_client.upsert_webhook_setup(
             base_url=base_url,
