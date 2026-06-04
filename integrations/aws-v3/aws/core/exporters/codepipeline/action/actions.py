@@ -38,7 +38,7 @@ class GetPipelineActionsDetails(Action):
             stage_actions = stage.get("actions", [])
 
             for action in stage_actions:
-                action_data = {
+                actions.append({
                     "ActionName": action.get("name", ""),
                     "ActionTypeId": action.get("actionTypeId", {}),
                     "RunOrder": action.get("runOrder"),
@@ -54,8 +54,7 @@ class GetPipelineActionsDetails(Action):
                     "StageName": stage_name,
                     "PipelineArn": pipeline_arn,
                     "PipelineVersion": pipeline_version,
-                }
-                actions.append(action_data)
+                })
 
         return actions
 
