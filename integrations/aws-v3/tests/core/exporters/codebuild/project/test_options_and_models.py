@@ -5,10 +5,6 @@ from aws.core.exporters.codebuild.project.models import (
     ProjectProperties,
     SingleCodeBuildProjectRequest,
     PaginatedCodeBuildProjectRequest,
-    ProjectEnvironment,
-    ProjectSource,
-    ProjectArtifacts,
-    ProjectVpcConfig,
 )
 
 
@@ -35,67 +31,6 @@ def test_project_properties_default_values() -> None:
     assert props.tags == []
     assert props.secondarySources == []
     assert props.secondaryArtifacts == []
-
-
-def test_project_environment_creation() -> None:
-    """Test ProjectEnvironment model creation."""
-    env = ProjectEnvironment(
-        type="LINUX_CONTAINER",
-        image="aws/codebuild/amazonlinux2-x86_64-standard:3.0",
-        computeType="BUILD_GENERAL1_MEDIUM",
-        privilegedMode=False,
-    )
-
-    assert env.type == "LINUX_CONTAINER"
-    assert env.image == "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
-    assert env.computeType == "BUILD_GENERAL1_MEDIUM"
-    assert env.privilegedMode is False
-    assert env.environmentVariables == []
-
-
-def test_project_source_creation() -> None:
-    """Test ProjectSource model creation."""
-    source = ProjectSource(
-        type="GITHUB",
-        location="https://github.com/example/repo.git",
-        gitCloneDepth=1,
-        reportBuildStatus=True,
-    )
-
-    assert source.type == "GITHUB"
-    assert source.location == "https://github.com/example/repo.git"
-    assert source.gitCloneDepth == 1
-    assert source.reportBuildStatus is True
-
-
-def test_project_artifacts_creation() -> None:
-    """Test ProjectArtifacts model creation."""
-    artifacts = ProjectArtifacts(
-        type="S3",
-        location="my-bucket/artifacts",
-        namespaceType="BUILD_ID",
-        name="artifacts.zip",
-        packaging="ZIP",
-    )
-
-    assert artifacts.type == "S3"
-    assert artifacts.location == "my-bucket/artifacts"
-    assert artifacts.namespaceType == "BUILD_ID"
-    assert artifacts.name == "artifacts.zip"
-    assert artifacts.packaging == "ZIP"
-
-
-def test_project_vpc_config_creation() -> None:
-    """Test ProjectVpcConfig model creation."""
-    vpc_config = ProjectVpcConfig(
-        vpcId="vpc-12345678",
-        subnets=["subnet-12345", "subnet-67890"],
-        securityGroupIds=["sg-12345", "sg-67890"],
-    )
-
-    assert vpc_config.vpcId == "vpc-12345678"
-    assert vpc_config.subnets == ["subnet-12345", "subnet-67890"]
-    assert vpc_config.securityGroupIds == ["sg-12345", "sg-67890"]
 
 
 def test_codebuild_project_creation() -> None:
@@ -169,17 +104,17 @@ def test_paginated_codebuild_project_request_default_include() -> None:
 
 def test_project_properties_with_complex_objects() -> None:
     """Test ProjectProperties with nested complex objects."""
-    environment = ProjectEnvironment(
+    environment = dict(
         type="LINUX_CONTAINER",
         image="aws/codebuild/amazonlinux2-x86_64-standard:3.0",
         computeType="BUILD_GENERAL1_MEDIUM",
     )
 
-    source = ProjectSource(
+    source = dict(
         type="GITHUB", location="https://github.com/example/repo.git"
     )
 
-    artifacts = ProjectArtifacts(type="NO_ARTIFACTS")
+    artifacts = dict(type="NO_ARTIFACTS")
 
     props = ProjectProperties(
         name="complex-project",
@@ -192,12 +127,9 @@ def test_project_properties_with_complex_objects() -> None:
     )
 
     assert props.name == "complex-project"
-    assert isinstance(props.environment, ProjectEnvironment)
-    assert props.environment.type == "LINUX_CONTAINER"
-    assert isinstance(props.source, ProjectSource)
-    assert props.source.type == "GITHUB"
-    assert isinstance(props.artifacts, ProjectArtifacts)
-    assert props.artifacts.type == "NO_ARTIFACTS"
+    assert props.environment['type'] == "LINUX_CONTAINER"
+    assert props.source['type'] == "GITHUB"
+    assert props.artifacts['type'] == "NO_ARTIFACTS"
     assert props.timeoutInMinutes == 60
     assert props.concurrentBuildLimit == 5
 
