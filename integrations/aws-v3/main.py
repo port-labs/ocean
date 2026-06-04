@@ -43,8 +43,7 @@ from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
 from aws.core.exporters.ec2.volume import EbsVolumeExporter
 from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
-from aws.core.exporters.codebuild import CodeBuildProjectExporter
-from aws.core.exporters.codebuild.project.models import PaginatedCodeBuildProjectRequest
+from aws.core.exporters.codebuild import CodeBuildProjectExporter, PaginatedCodeBuildProjectRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
