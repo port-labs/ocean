@@ -51,13 +51,14 @@ jobs:
             echo "login=${{ github.event.workflow_run.actor.login }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Resolve Port user email from GitHub username
+      - name: Resolve Port user from GitHub username
         id: port_user
         continue-on-error: true
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_AUTH0_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_AUTH0_CLIENT_SECRET }}
+          baseUrl: https://api.getport.io
           operation: SEARCH
           query: |
             {
@@ -83,9 +84,25 @@ jobs:
         env:
           ENTITIES: ${{ steps.port_user.outputs.entities }}
         run: |
-          slack_id=$(echo "$ENTITIES" | jq -r '.[0].relations.slack_user_id // empty')
+          slack_id=$(echo "$ENTITIES" | jq -r '
+            .[0].relations.slack_user_id
+            | if type == "object" then .identifier
+              elif type == "string" then .
+              else empty end
+          ')
           if [ -n "$slack_id" ]; then
             echo "text=<@${slack_id}>" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Echo Slack mention tag (debug)
+        run: |
+          echo "GitHub actor: ${{ steps.github_actor.outputs.login }}"
+          echo "Port search entities: ${{ steps.port_user.outputs.entities }}"
+          if [ -n "${{ steps.slack_mention.outputs.text }}" ]; then
+            echo "Slack tag: ${{ steps.slack_mention.outputs.text }}"
+          else
+            echo "Slack tag: (not resolved)"
+            echo "Fallback would be: <https://github.com/${{ steps.github_actor.outputs.login }}|${{ steps.github_actor.outputs.login }}>"
           fi
 
       - name: Apply changes
@@ -111,44 +128,52 @@ jobs:
             ## How should this be manually tested?
             ./scripts/bump-all.sh ^${{ steps.version.outputs.version }}
 
-      - name: Send Slack notification
-        if: ${{ success() && steps.version.outputs.version != '' && steps.open_pr.outputs.pull-request-url != '' }}
-        continue-on-error: true
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Apply release completed successfully* :white_check_mark:"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Triggered by:* ${{ steps.slack_mention.outputs.text != '' && steps.slack_mention.outputs.text || format('<https://github.com/{0}|@{0}>', steps.github_actor.outputs.login) }}"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Version:* `${{ steps.version.outputs.version }}`\n*Workflow run:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Pull request:* <${{ steps.open_pr.outputs.pull-request-url }}|Open PR>"
-                  }
-                }
-              ]
-            }
+      # TODO: re-enable after Slack mention testing
+      # - name: Send Slack notification
+      #   if: ${{ success() && steps.version.outputs.version != '' && steps.open_pr.outputs.pull-request-url != '' }}
+      #   continue-on-error: true
+      #   uses: fjogeleit/http-request-action@v1
+      #   with:
+      #     url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
+      #     method: 'POST'
+      #     customHeaders: '{"Content-Type": "application/json"}'
+      #     data: |
+      #       {
+      #         "blocks": [
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "*Apply release completed successfully* :white_check_mark:"
+      #             }
+      #           },
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "*Triggered by:* ${{ steps.slack_mention.outputs.text != '' && steps.slack_mention.outputs.text || format('<https://github.com/{0}|{0}>', steps.github_actor.outputs.login) }}"
+      #             }
+      #           },
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "*Version:* `${{ steps.version.outputs.version }}`"
+      #             }
+      #           },
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "*Workflow run:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+      #             }
+      #           },
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "*Pull request:* <${{ steps.open_pr.outputs.pull-request-url }}|Open PR>"
+      #             }
+      #           }
+      #         ]
+      #       }
