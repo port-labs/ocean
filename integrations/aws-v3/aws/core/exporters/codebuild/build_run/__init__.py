@@ -1,13 +1,13 @@
-from aws.core.exporters.codebuild.project_build_run.exporter import (
+from aws.core.exporters.codebuild.build_run.exporter import (
     CodeBuildBuildRunExporter,
 )
-from aws.core.exporters.codebuild.project_build_run.models import (
+from aws.core.exporters.codebuild.build_run.models import (
     BuildRun,
     BuildRunProperties,
     SingleBuildRunRequest,
     PaginatedBuildRunRequest,
 )
-from aws.core.exporters.codebuild.project_build_run.actions import (
+from aws.core.exporters.codebuild.build_run.actions import (
     BuildRunActionsMap,
 )
 
