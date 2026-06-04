@@ -52,6 +52,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         identifiers: Any,
         include: List[str],
         extra_context: Dict[str, Any] | None = None,
+        child_builders: list[Callable[[Dict[str, Any]], list[Dict[str, Any]]]] | None = None
     ) -> List[Dict[str, Any]]:
         """
         Execute the specified actions for the given resource identifiers and
@@ -60,6 +61,8 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         Args:
             identifiers: A single resource identifier or a list of identifiers (e.g., ARNs, names).
             include: A list of action names to include in the inspection.
+            extra_context: Optional extra context to include in the resource model.
+            child_builders: Optional list of child builders to construct nested resources.
 
         Returns:
             List[Dict[str, Any]]: List of constructed resource models with aggregated data.
@@ -93,7 +96,11 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             if extra_context:
                 builder.with_extra_context(extra_context)
             builder.with_type(type)
-            resources.append(builder.build())
+            resource = builder.build()
+            resources.append(resource)
+            if child_builders:
+                for child_builder in child_builders:
+                    resources.extend(child_builder(resource))
 
         logger.info(
             f"Built {len(resources)} resources from {len(action_results)} actions for {type}"
