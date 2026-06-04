@@ -45,8 +45,6 @@ from aws.core.exporters.ec2.volume import EbsVolumeExporter
 from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
 from aws.core.exporters.codepipeline import PipelineExporter
 from aws.core.exporters.codepipeline.pipeline.models import PaginatedPipelineRequest
-from aws.core.exporters.codepipeline import CodePipelineStageExporter
-from aws.core.exporters.codepipeline.stage.models import PaginatedCodePipelineStageRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
