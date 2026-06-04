@@ -18,6 +18,7 @@ features:
       - kind: AWS::RDS::DBCluster
       - kind: AWS::MSK::Cluster
       - kind: AWS::EC2::Volume
+      - kind: AWS::CodeDeploy::Deployment
 configurations:
   - name: credentialProviderPriority
     required: false
