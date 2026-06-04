@@ -41,29 +41,29 @@ class GetDeploymentGroupDetailsAction(Action):
 
         logger.info(f"Successfully fetched details for deployment group {application_name}/{deployment_group_name}")
 
-        dg_info = response["deploymentGroupInfo"]
+        deployment_group_info = response["deploymentGroupInfo"]
 
         return {
-            "ApplicationName": dg_info.get("applicationName", ""),
-            "DeploymentGroupName": dg_info.get("deploymentGroupName", ""),
-            "DeploymentGroupId": dg_info.get("deploymentGroupId", ""),
-            "ServiceRoleArn": dg_info.get("serviceRoleArn"),
-            "AutoRollbackConfiguration": dg_info.get("autoRollbackConfiguration"),
-            "TriggerConfigurations": dg_info.get("triggerConfigurations", []),
-            "AlarmConfiguration": dg_info.get("alarmConfiguration"),
-            "OutdatedInstancesStrategy": dg_info.get("outdatedInstancesStrategy"),
-            "DeploymentStyle": dg_info.get("deploymentStyle"),
-            "BlueGreenDeploymentConfiguration": dg_info.get("blueGreenDeploymentConfiguration"),
-            "LoadBalancerInfo": dg_info.get("loadBalancerInfo"),
-            "LastSuccessfulDeployment": dg_info.get("lastSuccessfulDeployment"),
-            "LastAttemptedDeployment": dg_info.get("lastAttemptedDeployment"),
-            "Ec2TagFilters": dg_info.get("ec2TagFilters", []),
-            "OnPremisesInstanceTagFilters": dg_info.get("onPremisesInstanceTagFilters", []),
-            "AutoScalingGroups": dg_info.get("autoScalingGroups", []),
-            "Ec2TagSetList": dg_info.get("ec2TagSetList", []),
-            "OnPremisesTagSetList": dg_info.get("onPremisesTagSetList", []),
-            "EcsServices": dg_info.get("ecsServices", []),
-            "ComputePlatform": dg_info.get("computePlatform"),
+            "ApplicationName": deployment_group_info.get("applicationName", ""),
+            "DeploymentGroupName": deployment_group_info.get("deploymentGroupName", ""),
+            "DeploymentGroupId": deployment_group_info.get("deploymentGroupId", ""),
+            "ServiceRoleArn": deployment_group_info.get("serviceRoleArn"),
+            "AutoRollbackConfiguration": deployment_group_info.get("autoRollbackConfiguration"),
+            "TriggerConfigurations": deployment_group_info.get("triggerConfigurations", []),
+            "AlarmConfiguration": deployment_group_info.get("alarmConfiguration"),
+            "OutdatedInstancesStrategy": deployment_group_info.get("outdatedInstancesStrategy"),
+            "DeploymentStyle": deployment_group_info.get("deploymentStyle"),
+            "BlueGreenDeploymentConfiguration": deployment_group_info.get("blueGreenDeploymentConfiguration"),
+            "LoadBalancerInfo": deployment_group_info.get("loadBalancerInfo"),
+            "LastSuccessfulDeployment": deployment_group_info.get("lastSuccessfulDeployment"),
+            "LastAttemptedDeployment": deployment_group_info.get("lastAttemptedDeployment"),
+            "Ec2TagFilters": deployment_group_info.get("ec2TagFilters", []),
+            "OnPremisesInstanceTagFilters": deployment_group_info.get("onPremisesInstanceTagFilters", []),
+            "AutoScalingGroups": deployment_group_info.get("autoScalingGroups", []),
+            "Ec2TagSetList": deployment_group_info.get("ec2TagSetList", []),
+            "OnPremisesTagSetList": deployment_group_info.get("onPremisesTagSetList", []),
+            "EcsServices": deployment_group_info.get("ecsServices", []),
+            "ComputePlatform": deployment_group_info.get("computePlatform"),
         }
 
 
