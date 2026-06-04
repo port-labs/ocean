@@ -399,7 +399,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":x: *Release integrations workflow failed*"
+                    "text": "*Release integrations workflow failed* :x:"
                   }
                 },
                 {
