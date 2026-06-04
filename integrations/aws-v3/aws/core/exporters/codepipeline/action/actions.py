@@ -5,7 +5,7 @@ from loguru import logger
 import asyncio
 
 
-class GetPipelineDetailsAction(Action):
+class GetPipelineActionsDetails(Action):
     """Fetches pipeline details to extract action information."""
 
     async def _execute(self, pipeline_names: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -87,6 +87,6 @@ class CodePipelineActionActionsMap(ActionMap):
     """Groups all actions for CodePipeline actions."""
 
     defaults: list[Type[Action]] = [
-        GetPipelineDetailsAction,
+        GetPipelineActionsDetails,
     ]
     options: list[Type[Action]] = []
