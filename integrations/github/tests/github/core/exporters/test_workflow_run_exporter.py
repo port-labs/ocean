@@ -3,7 +3,10 @@ from typing import Any, AsyncGenerator
 from unittest.mock import patch
 import pytest
 from github.clients.http.rest_client import GithubRestClient
-from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
+from github.core.exporters.workflow_runs_exporter import (
+    RestWorkflowRunExporter,
+    build_workflow_run_params,
+)
 from github.core.options import (
     ListWorkflowRunOptions,
     SingleWorkflowRunOptions,
@@ -132,6 +135,31 @@ async def test_get_paginated_resources_with_filters(
             f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/workflows/159038/runs",
             {"status": "in_progress", "created": ">=2024-01-01T00:00:00Z"},
         )
+
+
+def test_build_workflow_run_params_empty() -> None:
+    options: ListWorkflowRunOptions = {
+        "organization": "org",
+        "repo_name": "repo",
+        "workflow_id": 1,
+        "max_runs": 100,
+    }
+    assert build_workflow_run_params(options) == {}
+
+
+def test_build_workflow_run_params_with_filters() -> None:
+    options: ListWorkflowRunOptions = {
+        "organization": "org",
+        "repo_name": "repo",
+        "workflow_id": 1,
+        "max_runs": 100,
+        "status": "completed",
+        "created": ">=2024-01-01T00:00:00Z",
+    }
+    assert build_workflow_run_params(options) == {
+        "status": "completed",
+        "created": ">=2024-01-01T00:00:00Z",
+    }
 
 
 def test_workflow_run_selector_created_after_none() -> None:
