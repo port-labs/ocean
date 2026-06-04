@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 5.5.27 (2026-06-03)
 
 
-### Bug Fixes
+### Improvements
 
-- Fixed `workflow-run` webhook processor to treat `completed` events as upserts instead of deletions.
+- Bumped ocean version to ^0.43.14
 
 
 ## 5.5.26 (2026-06-03)
