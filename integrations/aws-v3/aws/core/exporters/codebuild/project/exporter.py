@@ -19,7 +19,6 @@ class CodeBuildProjectExporter(IResourceExporter):
     async def get_resource(
         self, options: SingleCodeBuildProjectRequest
     ) -> dict[str, Any]:
-        """Fetch detailed attributes of a single CodeBuild project."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
@@ -34,7 +33,6 @@ class CodeBuildProjectExporter(IResourceExporter):
     async def get_paginated_resources(
         self, options: PaginatedCodeBuildProjectRequest
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Fetch all CodeBuild projects in a region."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
