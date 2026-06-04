@@ -65,7 +65,7 @@ jobs:
             ./scripts/bump-all.sh ^${{ steps.version.outputs.version }}
 
       - name: Send Slack notification
-        if: ${{ success() && steps.version.outputs.version != '' }}
+        if: ${{ success() && steps.version.outputs.version != '' && steps.open_pr.outputs.pull-request-url != '' }}
         continue-on-error: true
         uses: fjogeleit/http-request-action@v1
         with:

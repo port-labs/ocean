@@ -375,3 +375,35 @@ jobs:
               fi
 
           done <file_list.txt
+
+  notify-on-failure:
+    runs-on: ubuntu-latest
+    needs: [prepare-matrix, release-integration, upload-specs]
+    if: ${{ always() && (needs.prepare-matrix.result == 'failure' || needs.release-integration.result == 'failure' || needs.upload-specs.result == 'failure') }}
+    steps:
+      - name: Send Slack notification
+        continue-on-error: true
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":x: *Release integrations workflow failed*"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Workflow run:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+                  }
+                }
+              ]
+            }
