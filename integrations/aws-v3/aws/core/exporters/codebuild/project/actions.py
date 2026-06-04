@@ -59,46 +59,6 @@ class GetProjectDetailsAction(Action):
         ]
 
 
-class GetProjectWebhooksAction(Action):
-    """Fetches webhook information for CodeBuild projects."""
-
-    async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        if not resources:
-            return []
-
-        results = await asyncio.gather(
-            *(self._fetch_project_webhooks(resource) for resource in resources),
-            return_exceptions=True,
-        )
-
-        processed_results: List[Dict[str, Any]] = []
-        for idx, webhook_result in enumerate(results):
-            if isinstance(webhook_result, Exception):
-                project_name = resources[idx].get("name", "unknown")
-                logger.error(
-                    f"Error fetching webhooks for project '{project_name}': {webhook_result}"
-                )
-                continue
-            processed_results.append(cast(Dict[str, Any], webhook_result))
-        return processed_results
-
-    async def _fetch_project_webhooks(self, resource: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            response = await self.client.list_webhooks_for_project(
-                projectName=resource["name"]
-            )
-            return {"webhook": response.get("webhooks", [])}
-        except self.client.exceptions.ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code")
-            if error_code == "ResourceNotFoundException":
-                return {"webhook": []}
-            else:
-                logger.error(
-                    f"Unexpected error fetching webhooks for {resource['name']}: {e}"
-                )
-                raise
-
-
 class CodeBuildProjectActionsMap(ActionMap):
     """Groups all actions for CodeBuild project resource type."""
 
@@ -106,6 +66,4 @@ class CodeBuildProjectActionsMap(ActionMap):
         ListProjectsAction,
         GetProjectDetailsAction,
     ]
-    options: List[Type[Action]] = [
-        GetProjectWebhooksAction,
-    ]
+    options: List[Type[Action]] = []
