@@ -56,8 +56,8 @@ jobs:
         continue-on-error: true
         uses: port-labs/port-github-action@v1
         with:
-          clientId: ${{ secrets.PORT_AUTH0_CLIENT_ID }}
-          clientSecret: ${{ secrets.PORT_AUTH0_CLIENT_SECRET }}
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           baseUrl: https://api.getport.io
           operation: SEARCH
           query: |
