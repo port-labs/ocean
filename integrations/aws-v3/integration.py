@@ -217,6 +217,13 @@ class AWSEC2VolumeResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodePipelineActionResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::Action"] = Field(
+        title="AWS CodePipeline Action",
+        description="AWS CodePipeline Action resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -237,6 +244,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSElastiCacheClusterResourceConfig
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
+        | AWSCodePipelineActionResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
