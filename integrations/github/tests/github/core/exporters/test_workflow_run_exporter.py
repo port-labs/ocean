@@ -137,6 +137,20 @@ async def test_get_paginated_resources_with_filters(
         )
 
 
+def test_build_workflow_run_params_with_none_values() -> None:
+    """Covers the main.py path where status/created are always passed
+    but may be None when the selector has no filter set."""
+    options: ListWorkflowRunOptions = {
+        "organization": "org",
+        "repo_name": "repo",
+        "workflow_id": 1,
+        "max_runs": 100,
+        "status": None,
+        "created": None,
+    }
+    assert build_workflow_run_params(options) == {}
+
+
 def test_build_workflow_run_params_empty() -> None:
     options: ListWorkflowRunOptions = {
         "organization": "org",

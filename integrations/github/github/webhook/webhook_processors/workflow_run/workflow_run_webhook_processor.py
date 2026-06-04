@@ -1,3 +1,4 @@
+from typing import cast
 from loguru import logger
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.core.options import SingleWorkflowRunOptions
@@ -7,6 +8,7 @@ from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_pr
     BaseWorkflowRunWebhookProcessor,
 )
 from github.helpers.utils import enrich_with_organization, enrich_with_repository
+from integration import GithubWorkflowRunConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -32,7 +34,26 @@ class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        if action in WORKFLOW_DELETE_EVENTS:
+        selector_status = cast(GithubWorkflowRunConfig, resource_config).selector.status
+        if selector_status:
+            if selector_status not in (
+                workflow_run["status"],
+                workflow_run.get("conclusion"),
+            ):
+                logger.info(
+                    f"Workflow run {workflow_run['name']} does not match status filter "
+                    f"'{selector_status}', removing from Port"
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[],
+                    deleted_raw_results=[
+                        enrich_with_organization(
+                            enrich_with_repository(workflow_run, repo["name"], repo=repo),
+                            organization,
+                        )
+                    ],
+                )
+        elif action in WORKFLOW_DELETE_EVENTS:
             logger.info(
                 f"Workflow run {workflow_run['name']} was deleted from organization: {organization}"
             )
