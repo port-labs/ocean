@@ -108,7 +108,7 @@ async def test_get_paginated_resources(
     mock_paginator = MagicMock()
     mock_proxy_instance.get_paginator = MagicMock(return_value=mock_paginator)
 
-    async def mock_paginate_generator() -> AsyncGenerator[list[str], None]:
+    async def mock_paginate_generator(batch_size: int) -> AsyncGenerator[list[str], None]:
         yield ["project1", "project2"]
         yield ["project3"]
         yield []
@@ -182,7 +182,7 @@ async def test_get_paginated_resources_empty_page(
     mock_paginator = MagicMock()
     mock_proxy_instance.get_paginator = MagicMock(return_value=mock_paginator)
 
-    async def mock_paginate_generator() -> AsyncGenerator[list[str], None]:
+    async def mock_paginate_generator(batch_size: int) -> AsyncGenerator[list[str], None]:
         yield []
         yield []
 
