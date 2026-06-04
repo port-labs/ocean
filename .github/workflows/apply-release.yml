@@ -30,23 +30,7 @@ jobs:
       - name: Get package version
         id: version
         run: |
-          set -euo pipefail
-
-          for attempt in 1 2 3; do
-            if version=$(pip index versions port-ocean | grep 'port-ocean' | cut -d' ' -f2 | tr -d '()'); then
-              break
-            fi
-
-            if [ "$attempt" -eq 3 ]; then
-              echo "Failed to fetch package version after $attempt attempts"
-              exit 1
-            fi
-
-            sleep_time=$((attempt * 5))
-            echo "Failed to fetch package version (attempt $attempt). Retrying in ${sleep_time}s..."
-            sleep "$sleep_time"
-          done
-
+          version=$(pip index versions port-ocean | grep 'port-ocean' | cut -d' ' -f2 | tr -d '()')
           pr_name="[Integration] Apply Ocean version $version to all integrations"
           branch_name="apply-ocean-$version-to-all-integrations"
           echo "Branch Name: $branch_name"
@@ -57,25 +41,10 @@ jobs:
 
       - name: Apply changes
         run: |
-          set -euo pipefail
-
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-          for attempt in 1 2 3; do
-            if ./scripts/bump-all.sh ${{ steps.version.outputs.version }}; then
-              break
-            fi
-
-            if [ "$attempt" -eq 3 ]; then
-              echo "Failed to apply changes after $attempt attempts"
-              exit 1
-            fi
-
-            sleep_time=$((attempt * 5))
-            echo "Failed to apply changes (attempt $attempt). Retrying in ${sleep_time}s..."
-            sleep "$sleep_time"
-          done
+          ./scripts/bump-all.sh ${{ steps.version.outputs.version }}
 
 
       - name: Open pull request
