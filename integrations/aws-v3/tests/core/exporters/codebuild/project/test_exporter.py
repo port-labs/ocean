@@ -11,7 +11,6 @@ from aws.core.exporters.codebuild.project.models import (
 
 @pytest.fixture
 def single_project_options() -> SingleCodeBuildProjectRequest:
-    """Create options for single project export."""
     return SingleCodeBuildProjectRequest(
         region="us-east-1",
         account_id="123456789012",
@@ -22,7 +21,6 @@ def single_project_options() -> SingleCodeBuildProjectRequest:
 
 @pytest.fixture
 def paginated_options() -> PaginatedCodeBuildProjectRequest:
-    """Create options for paginated export."""
     return PaginatedCodeBuildProjectRequest(
         region="us-east-1", account_id="123456789012", include=[]
     )
@@ -30,7 +28,6 @@ def paginated_options() -> PaginatedCodeBuildProjectRequest:
 
 @pytest.mark.asyncio
 async def test_codebuild_project_exporter_service_name() -> None:
-    """Test that the exporter has the correct service name."""
     exporter = CodeBuildProjectExporter(AsyncMock())
     assert exporter._service_name == "codebuild"
 
@@ -43,8 +40,6 @@ async def test_get_resource(
     mock_proxy_class: MagicMock,
     single_project_options: SingleCodeBuildProjectRequest,
 ) -> None:
-    """Test getting a single CodeBuild project resource."""
-
     # Setup mocks
     mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
@@ -80,8 +75,6 @@ async def test_get_resource_empty_response(
     mock_proxy_class: MagicMock,
     single_project_options: SingleCodeBuildProjectRequest,
 ) -> None:
-    """Test getting a single resource with empty response."""
-
     # Setup mocks
     mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
@@ -107,8 +100,6 @@ async def test_get_paginated_resources(
     mock_proxy_class: MagicMock,
     paginated_options: PaginatedCodeBuildProjectRequest,
 ) -> None:
-    """Test getting paginated CodeBuild project resources."""
-
     # Setup mocks
     mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
@@ -183,8 +174,6 @@ async def test_get_paginated_resources_empty_page(
     mock_proxy_class: MagicMock,
     paginated_options: PaginatedCodeBuildProjectRequest,
 ) -> None:
-    """Test getting paginated resources with only empty pages."""
-
     # Setup mocks
     mock_session = AsyncMock()
     mock_proxy_instance = AsyncMock()
