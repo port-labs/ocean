@@ -125,7 +125,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Apply release completed successfully* :white_check_mark:"
+                    "text": "*PR is waiting for approval!* :white_check_mark:"
                   }
                 },
                 {
