@@ -41,13 +41,11 @@ class GetPipelineActionsDetails(Action):
         return results
 
     async def _fetch_pipeline_details(self, pipeline_name: str) -> dict[str, Any]:
-        """Fetch pipeline details from AWS."""
         response = await self.client.get_pipeline(name=pipeline_name)
         logger.info(f"Successfully fetched pipeline details for {pipeline_name}")
         return response
 
     def _extract_actions_from_pipeline(self, pipeline_data: dict[str, Any]) -> list[dict[str, Any]]:
-        """Extract individual actions from pipeline structure."""
         actions = []
         pipeline_info = pipeline_data.get("pipeline", {})
         pipeline_name = pipeline_info.get("name", "")
