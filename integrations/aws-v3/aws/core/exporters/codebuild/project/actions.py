@@ -20,7 +20,9 @@ class GetProjectDetailsAction(Action):
 
         response = await self.client.batch_get_projects(names=resources)
         projects = response.get("projects", [])
-        logger.info(f"Successfully fetched details for {len(projects)} CodeBuild projects")
+        logger.info(
+            f"Successfully fetched details for {len(projects)} CodeBuild projects"
+        )
 
         return [
             {
@@ -30,26 +32,20 @@ class GetProjectDetailsAction(Action):
                 "source": project.get("source"),
                 "secondarySources": project.get("secondarySources", []),
                 "sourceVersion": project.get("sourceVersion"),
-                "secondarySourceVersions": project.get(
-                    "secondarySourceVersions", []
-                ),
+                "secondarySourceVersions": project.get("secondarySourceVersions", []),
                 "artifacts": project.get("artifacts"),
                 "secondaryArtifacts": project.get("secondaryArtifacts", []),
                 "cache": project.get("cache"),
                 "environment": project.get("environment"),
                 "serviceRole": project.get("serviceRole"),
                 "timeoutInMinutes": project.get("timeoutInMinutes"),
-                "queuedTimeoutInMinutes": project.get(
-                    "queuedTimeoutInMinutes"
-                ),
+                "queuedTimeoutInMinutes": project.get("queuedTimeoutInMinutes"),
                 "encryptionKey": project.get("encryptionKey"),
                 "tags": project.get("tags", []),
                 "vpcConfig": project.get("vpcConfig"),
                 "badge": project.get("badge"),
                 "logsConfig": project.get("logsConfig"),
-                "fileSystemLocations": project.get(
-                    "fileSystemLocations", []
-                ),
+                "fileSystemLocations": project.get("fileSystemLocations", []),
                 "buildBatchConfig": project.get("buildBatchConfig"),
                 "concurrentBuildLimit": project.get("concurrentBuildLimit"),
                 "projectVisibility": project.get("projectVisibility"),
@@ -58,7 +54,8 @@ class GetProjectDetailsAction(Action):
                 "created": project.get("created"),
                 "lastModified": project.get("lastModified"),
                 "webhook": project.get("webhook"),
-            } for project in projects
+            }
+            for project in projects
         ]
 
 

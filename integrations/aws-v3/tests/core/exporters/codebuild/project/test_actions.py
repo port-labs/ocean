@@ -14,7 +14,7 @@ async def test_list_projects_action() -> None:
     action = ListProjectsAction(MagicMock())
     projects = ["project1", "project2", "project3"]
 
-    #Act
+    # Act
     result = await action._execute(projects)
 
     # Assert
