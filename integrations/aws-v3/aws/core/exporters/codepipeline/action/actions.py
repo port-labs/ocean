@@ -38,9 +38,15 @@ class GetPipelineActionsDetails(Action):
             stage_actions = stage.get("actions", [])
 
             for action in stage_actions:
+                action_type_data = action.get('actionTypeId')
                 actions.append({
                     "ActionName": action.get("name", ""),
-                    "ActionTypeId": action.get("actionTypeId", {}),
+                    "ActionTypeId": {
+                        'Category': action_type_data.get('category'),
+                        'Owner': action_type_data.get('owner'),
+                        'Provider': action_type_data.get('provider'),
+                        'Version': action_type_data.get('version'),
+                    } if action_type_data else {},
                     "RunOrder": action.get("runOrder"),
                     "Configuration": action.get("configuration", {}),
                     "InputArtifacts": action.get("inputArtifacts", []),

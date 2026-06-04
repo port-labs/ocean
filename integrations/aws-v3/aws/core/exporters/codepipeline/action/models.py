@@ -3,9 +3,20 @@ from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
 
+class ActionTypeIdProperties(BaseModel):
+    Category: str = Field(default_factory=str)
+    Owner: str = Field(default_factory=str)
+    Provider: str = Field(default_factory=str)
+    Version: str = Field(default_factory=str)
+
+    class Config:
+        extra = "ignore"
+        populate_by_name = True
+
+
 class CodePipelineActionProperties(BaseModel):
     ActionName: str = Field(default_factory=str)
-    ActionTypeId: Optional[dict[str, Any]] = None
+    ActionTypeId: Optional[ActionTypeIdProperties] = None
     RunOrder: Optional[int] = None
     Configuration: Optional[Dict[str, str]] = None
     InputArtifacts: List[dict[str, Any]] = Field(default_factory=list)
