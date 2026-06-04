@@ -51,7 +51,9 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
         url = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/workflows/{options['workflow_id']}/runs"
         fetched_batch = 0
 
-        async for workflows in self.client.send_paginated_request(url, build_workflow_run_params(options)):
+        async for workflows in self.client.send_paginated_request(
+            url, build_workflow_run_params(options)
+        ):
             workflow_batch = cast(dict[str, Any], workflows)
             workflow_runs = workflow_batch["workflow_runs"]
 
