@@ -83,6 +83,5 @@ resources:
             sourceVersion: .Properties.SourceVersion
             buildComplete: .Properties.BuildComplete
             initiator: .Properties.Initiator
-            tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
