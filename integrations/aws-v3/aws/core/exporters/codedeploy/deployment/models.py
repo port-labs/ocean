@@ -33,7 +33,7 @@ class CodeDeployDeploymentProperties(BaseModel):
     Revision: Optional[Dict[str, Any]] = None
 
     class Config:
-        extra = "allow"
+        extra = "ignore"
         allow_population_by_name = True
 
 
