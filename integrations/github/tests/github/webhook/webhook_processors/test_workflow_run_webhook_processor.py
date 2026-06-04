@@ -173,7 +173,7 @@ class TestWorkflowRunWebhookProcessor:
     ) -> None:
         config = GithubWorkflowRunConfig(
             kind=ObjectKind.WORKFLOW_RUN,
-            selector=GithubWorkflowRunSelector(query="true", status=selector_status),
+            selector=GithubWorkflowRunSelector(query="true", status=selector_status),  # type: ignore[arg-type]
             port=PortResourceConfig(
                 entity=MappingsConfig(
                     mappings=EntityMapping(

@@ -48,7 +48,9 @@ class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                     updated_raw_results=[],
                     deleted_raw_results=[
                         enrich_with_organization(
-                            enrich_with_repository(workflow_run, repo["name"], repo=repo),
+                            enrich_with_repository(
+                                workflow_run, repo["name"], repo=repo
+                            ),
                             organization,
                         )
                     ],
