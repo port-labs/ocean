@@ -20,7 +20,7 @@ from github.helpers.utils import (
     enrich_with_repository,
     parse_github_options,
 )
-from github.core.exporters.pull_request_exporter.utils import filter_prs_by_updated_at
+from github.core.exporters.pull_request_exporter.utils import filter_prs_by_date
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 
@@ -59,6 +59,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         states = extras["states"]
         max_results = extras["max_results"]
         updated_after = extras["updated_after"]
+        use_close_date = extras.get("use_close_date", False)
 
         logger.info(
             f"[Rest] Starting pull request export for repository {repo_name} from {organization}"
@@ -78,7 +79,11 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                 f"[Rest] Fetching closed PRs with rest api from {organization}/{repo_name}"
             )
             async for closed_batch in self._fetch_closed_pull_requests(
-                organization, cast(str, repo_name), max_results, updated_after
+                organization,
+                cast(str, repo_name),
+                max_results,
+                updated_after,
+                use_close_date,
             ):
                 yield closed_batch
 
@@ -110,8 +115,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         self,
         organization: str,
         repo_name: str,
-        max_results: int,
+        max_results: Optional[int],
         updated_after: datetime,
+        use_close_date: bool,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         endpoint = self._build_pull_request_paginated_endpoint(organization, repo_name)
         params = {
@@ -133,31 +139,54 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                 )
                 break
 
-            remaining = max_results - total_count
-            if remaining <= 0:
-                break
+            if max_results is not None:
+                remaining = max_results - total_count
+                if remaining <= 0:
+                    break
+                # Trim batch if it would exceed max_results
+                batch = pull_requests[:remaining]
+            else:
+                batch = pull_requests
 
-            # Trim batch if it would exceed max_results
-            limited_batch = pull_requests[:remaining]
-            batch_count = len(limited_batch)
+            if use_close_date:
+                in_window = filter_prs_by_date(batch, "closed_at", updated_after)
+                enriched_batch = [
+                    enrich_with_organization(
+                        enrich_with_repository(pr, repo_name), organization
+                    )
+                    for pr in in_window
+                ]
+                if enriched_batch:
+                    logger.info(
+                        f"[Rest] Fetched closed pull requests batch of {len(enriched_batch)} from {repo_name} from {organization} "
+                        f"(total so far: {total_count + len(in_window)})"
+                    )
+                    yield enriched_batch
+                total_count += len(in_window)
 
-            logger.info(
-                f"[Rest] Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
-                f"(total so far: {total_count + batch_count}/{max_results})"
-            )
-
-            enriched_batch = [
-                enrich_with_organization(
-                    enrich_with_repository(pr, repo_name), organization
+                # closed_at <= updated_at and results are sorted by updated_at desc, so once
+                # updated_at falls before the cutoff no later page can hold an in-window PR.
+                if len(filter_prs_by_date(batch, "updated_at", updated_after)) < len(
+                    batch
+                ):
+                    logger.info(
+                        f"[Rest] Reached cutoff for closed pull requests of {repo_name} from {organization}; stopping."
+                    )
+                    break
+            else:
+                batch_count = len(batch)
+                logger.info(
+                    f"[Rest] Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
+                    f"(total so far: {total_count + batch_count}/{max_results})"
                 )
-                for pr in filter_prs_by_updated_at(
-                    limited_batch, "updated_at", updated_after
-                )
-            ]
-
-            yield enriched_batch
-
-            total_count += batch_count
+                enriched_batch = [
+                    enrich_with_organization(
+                        enrich_with_repository(pr, repo_name), organization
+                    )
+                    for pr in filter_prs_by_date(batch, "updated_at", updated_after)
+                ]
+                yield enriched_batch
+                total_count += batch_count
 
         logger.info(
             f"[Rest] Fetched total of {total_count} closed pull requests from {organization}/{repo_name}"
@@ -211,6 +240,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         states = extras["states"]
         max_results = extras["max_results"]
         updated_after = extras["updated_after"]
+        use_close_date = extras.get("use_close_date", False)
         repo = extras["repo"]
         repo_name = repo["name"]
         pr_gql_options = PullRequestGraphQLOptions(**extras)
@@ -234,6 +264,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 max_results,
                 updated_after,
                 pr_gql_options,
+                use_close_date,
             ):
                 yield batch
 
@@ -281,12 +312,14 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         self,
         organization: str,
         repo: dict[str, Any],
-        max_results: int,
+        max_results: Optional[int],
         updated_after: datetime,
         pr_gql_options: PullRequestGraphQLOptions,
+        use_close_date: bool,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         repo_name = repo["name"]
+        order_by_field = "UPDATED_AT" if use_close_date else "CREATED_AT"
         variables = {
             "organization": organization,
             "repo": repo_name,
@@ -298,7 +331,9 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         total_count = 0
         async for pr_nodes in self.client.send_paginated_request(
-            generate_list_pull_requests_gql(pr_gql_options),
+            generate_list_pull_requests_gql(
+                pr_gql_options, order_by_field=order_by_field
+            ),
             variables,
         ):
             if not pr_nodes:
@@ -307,33 +342,57 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 )
                 break
 
-            remaining = max_results - total_count
-            if remaining <= 0:
-                break
+            if max_results is not None:
+                remaining = max_results - total_count
+                if remaining <= 0:
+                    break
+                batch = pr_nodes[:remaining]
+            else:
+                batch = pr_nodes
 
-            limited_batch = pr_nodes[:remaining]
-            batch_count = len(limited_batch)
+            if use_close_date:
+                in_window = filter_prs_by_date(batch, "closedAt", updated_after)
+                enriched_batch = [
+                    self._normalize_pr_node(
+                        pr,
+                        repo,
+                        organization,
+                        gql_options=pr_gql_options,
+                    )
+                    for pr in in_window
+                ]
+                if enriched_batch:
+                    logger.info(
+                        f"[GraphQL] Fetched closed pull requests batch of {len(enriched_batch)} from {repo_name} from {organization} "
+                        f"(total so far: {total_count + len(in_window)})"
+                    )
+                    yield enriched_batch
+                total_count += len(in_window)
 
-            logger.info(
-                f"[GraphQL] Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
-                f"(total so far: {total_count + batch_count}/{max_results})"
-            )
-
-            enriched_batch = [
-                self._normalize_pr_node(
-                    pr,
-                    repo,
-                    organization,
-                    gql_options=pr_gql_options,
+                if len(filter_prs_by_date(batch, "updatedAt", updated_after)) < len(
+                    batch
+                ):
+                    logger.info(
+                        f"[GraphQL] Reached cutoff for closed pull requests of {repo_name} from {organization}; stopping."
+                    )
+                    break
+            else:
+                batch_count = len(batch)
+                logger.info(
+                    f"[GraphQL] Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
+                    f"(total so far: {total_count + batch_count}/{max_results})"
                 )
-                for pr in filter_prs_by_updated_at(
-                    limited_batch, "updatedAt", updated_after
-                )
-            ]
-
-            yield enriched_batch
-
-            total_count += batch_count
+                enriched_batch = [
+                    self._normalize_pr_node(
+                        pr,
+                        repo,
+                        organization,
+                        gql_options=pr_gql_options,
+                    )
+                    for pr in filter_prs_by_date(batch, "updatedAt", updated_after)
+                ]
+                yield enriched_batch
+                total_count += batch_count
 
         logger.info(
             f"[GraphQL] Fetched total of {total_count} closed pull requests from {organization}/{repo_name}"

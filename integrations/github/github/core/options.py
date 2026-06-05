@@ -50,8 +50,9 @@ class ListPullRequestOptions(RepositoryIdentifier):
     """Options for listing pull requests."""
 
     states: Required[list[str]]
-    max_results: Required[int]
+    max_results: Required[Optional[int]]
     updated_after: Required[datetime]
+    use_close_date: NotRequired[bool]
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
 

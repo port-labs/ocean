@@ -18,7 +18,7 @@ from github.helpers.gql_queries import (
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
 )
-from github.core.exporters.pull_request_exporter.utils import filter_prs_by_updated_at
+from github.core.exporters.pull_request_exporter.utils import filter_prs_by_date
 from integration import GithubPullRequestSelector
 
 
@@ -340,6 +340,208 @@ class TestPullRequestExporter:
         assert flat_results[1]["id"] == 3  # Second recent PR
         assert flat_results[2]["id"] == 4  # Third recent PR
 
+    async def test_unbounded_when_max_results_none(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestPullRequestExporter(rest_client)
+        updated_after = datetime(2025, 1, 1, tzinfo=UTC)
+        page1 = [
+            {
+                "id": i,
+                "number": i,
+                "updated_at": "2025-08-15T15:08:15Z",
+                "closed_at": "2025-08-15T15:08:15Z",
+            }
+            for i in range(60)
+        ]
+        page2 = [
+            {
+                "id": 100 + i,
+                "number": 100 + i,
+                "updated_at": "2025-08-15T15:08:15Z",
+                "closed_at": "2025-08-15T15:08:15Z",
+            }
+            for i in range(60)
+        ]
+
+        async def mock_closed(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield page1
+            yield page2
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_closed
+        ):
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=None,
+                    updated_after=updated_after,
+                    use_close_date=True,
+                )
+                results = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        flat_results = [pr for batch in results for pr in batch]
+        assert len(flat_results) == 120
+
+    async def test_date_driven_early_exit_stops_pagination(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestPullRequestExporter(rest_client)
+        updated_after = datetime(2025, 6, 1, tzinfo=UTC)
+        page1 = [
+            {
+                "id": 1,
+                "number": 1,
+                "updated_at": "2025-08-10T00:00:00Z",
+                "closed_at": "2025-08-10T00:00:00Z",
+            },
+            {
+                "id": 2,
+                "number": 2,
+                "updated_at": "2025-08-05T00:00:00Z",
+                "closed_at": "2025-08-05T00:00:00Z",
+            },
+            {
+                "id": 3,
+                "number": 3,
+                "updated_at": "2025-08-01T00:00:00Z",
+                "closed_at": "2025-08-01T00:00:00Z",
+            },
+        ]
+        page2 = [
+            {
+                "id": 4,
+                "number": 4,
+                "updated_at": "2025-07-01T00:00:00Z",
+                "closed_at": "2025-07-01T00:00:00Z",
+            },
+            {
+                "id": 5,
+                "number": 5,
+                "updated_at": "2025-05-15T00:00:00Z",
+                "closed_at": "2025-05-15T00:00:00Z",
+            },
+            {
+                "id": 6,
+                "number": 6,
+                "updated_at": "2025-05-01T00:00:00Z",
+                "closed_at": "2025-05-01T00:00:00Z",
+            },
+        ]
+        page3 = [
+            {
+                "id": 7,
+                "number": 7,
+                "updated_at": "2025-09-01T00:00:00Z",
+                "closed_at": "2025-09-01T00:00:00Z",
+            },
+        ]
+
+        async def mock_closed(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield page1
+            yield page2
+            yield page3
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_closed
+        ):
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=None,
+                    updated_after=updated_after,
+                    use_close_date=True,
+                )
+                results = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        ids = [pr["id"] for batch in results for pr in batch]
+        assert ids == [1, 2, 3, 4]
+
+    async def test_since_date_selector_fetches_all_closed_until_now(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        selector = GithubPullRequestSelector.parse_obj(
+            {"query": "true", "states": ["closed"], "sinceDate": "2025-01-01"}
+        )
+        assert selector.effective_max_results is None
+        assert selector.updated_after == datetime(2025, 1, 1, tzinfo=UTC)
+
+        exporter = RestPullRequestExporter(rest_client)
+        page1 = [
+            {
+                "id": 1,
+                "number": 1,
+                "updated_at": "2025-03-01T00:00:00Z",
+                "closed_at": "2025-03-01T00:00:00Z",
+            },
+            {
+                "id": 2,
+                "number": 2,
+                "updated_at": "2025-02-01T00:00:00Z",
+                "closed_at": "2024-11-01T00:00:00Z",
+            },
+        ]
+        page2 = [
+            {
+                "id": 3,
+                "number": 3,
+                "updated_at": "2025-01-05T00:00:00Z",
+                "closed_at": "2025-01-05T00:00:00Z",
+            },
+            {
+                "id": 4,
+                "number": 4,
+                "updated_at": "2024-12-20T00:00:00Z",
+                "closed_at": "2024-12-20T00:00:00Z",
+            },
+        ]
+        page3 = [
+            {
+                "id": 5,
+                "number": 5,
+                "updated_at": "2025-06-01T00:00:00Z",
+                "closed_at": "2025-06-01T00:00:00Z",
+            },
+        ]
+
+        async def mock_closed(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield page1
+            yield page2
+            yield page3
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_closed
+        ):
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    states=list(selector.states),
+                    repo_name="repo1",
+                    max_results=selector.effective_max_results,
+                    updated_after=selector.updated_after,
+                    use_close_date=selector.since_date is not None,
+                )
+                results = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        ids = [pr["id"] for batch in results for pr in batch]
+        assert ids == [1, 3]
+
 
 @pytest.mark.asyncio
 class TestGraphQLPullRequestExporter:
@@ -611,7 +813,7 @@ class TestGraphQLPullRequestExporter:
                 side_effect=[mock_open(), mock_closed()],
             ) as mock_paginated,
             patch(
-                "github.core.exporters.pull_request_exporter.core.filter_prs_by_updated_at",
+                "github.core.exporters.pull_request_exporter.core.filter_prs_by_date",
                 side_effect=lambda prs, field, since: prs,
             ),
         ):
@@ -727,15 +929,27 @@ class TestGraphQLPullRequestExporter:
             },
         )
 
-    async def test_closed_prs_use_updated_at_filter_and_max_results(
+    async def test_closed_prs_use_closed_at_filter_and_max_results(
         self, graphql_client: GithubGraphQLClient, mock_datetime: Any
     ) -> None:
         exporter = GraphQLPullRequestExporter(graphql_client)
 
         pr_nodes = [
-            {"id": 1, "updatedAt": "2025-08-10T15:08:15Z"},
-            {"id": 2, "updatedAt": "2025-08-05T15:08:15Z"},
-            {"id": 3, "updatedAt": "2025-07-01T15:08:15Z"},
+            {
+                "id": 1,
+                "closedAt": "2025-08-10T15:08:15Z",
+                "updatedAt": "2025-08-10T15:08:15Z",
+            },
+            {
+                "id": 2,
+                "closedAt": "2025-08-05T15:08:15Z",
+                "updatedAt": "2025-08-05T15:08:15Z",
+            },
+            {
+                "id": 3,
+                "closedAt": "2025-07-01T15:08:15Z",
+                "updatedAt": "2025-07-01T15:08:15Z",
+            },
         ]
 
         async def mock_closed(
@@ -750,7 +964,7 @@ class TestGraphQLPullRequestExporter:
                 side_effect=mock_closed,
             ) as mock_paginated,
             patch(
-                "github.core.exporters.pull_request_exporter.core.filter_prs_by_updated_at",
+                "github.core.exporters.pull_request_exporter.core.filter_prs_by_date",
                 side_effect=lambda prs, field, updated_after: prs[:2],
             ) as mock_filter,
             patch.object(
@@ -771,6 +985,7 @@ class TestGraphQLPullRequestExporter:
                     max_results=2,
                     updated_after=mock_datetime.now(mock_datetime.UTC)
                     - mock_datetime.timedelta(days=30),
+                    use_close_date=True,
                     repo={"name": "repo1"},
                 )
                 batches = [
@@ -781,13 +996,15 @@ class TestGraphQLPullRequestExporter:
         assert len(batches) == 1
         assert len(batches[0]) == 2
 
-        mock_filter.assert_called_once()
-        # Ensure the GraphQL exporter uses "updatedAt" field for filtering
-        assert mock_filter.call_args.args[1] == "updatedAt"
+        assert mock_filter.call_count == 2
+        # Inclusion filters on closedAt; the stop check filters on updatedAt
+        fields = [call.args[1] for call in mock_filter.call_args_list]
+        assert fields == ["closedAt", "updatedAt"]
 
         mock_paginated.assert_called_once_with(
             generate_list_pull_requests_gql(
-                PullRequestGraphQLOptions(enrich_with_first_commit=False)
+                PullRequestGraphQLOptions(enrich_with_first_commit=False),
+                order_by_field="UPDATED_AT",
             ),
             {
                 "organization": "test-org",
@@ -797,6 +1014,77 @@ class TestGraphQLPullRequestExporter:
             },
         )
         assert mock_normalize.call_count == 2
+
+    async def test_date_driven_early_exit_stops_pagination(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        updated_after = datetime(2025, 6, 1, tzinfo=UTC)
+        page1 = [
+            {
+                "id": 1,
+                "closedAt": "2025-08-10T00:00:00Z",
+                "updatedAt": "2025-08-10T00:00:00Z",
+            },
+            {
+                "id": 2,
+                "closedAt": "2025-08-01T00:00:00Z",
+                "updatedAt": "2025-08-01T00:00:00Z",
+            },
+        ]
+        page2 = [
+            {
+                "id": 3,
+                "closedAt": "2025-07-01T00:00:00Z",
+                "updatedAt": "2025-07-01T00:00:00Z",
+            },
+            {
+                "id": 4,
+                "closedAt": "2025-05-01T00:00:00Z",
+                "updatedAt": "2025-05-01T00:00:00Z",
+            },
+        ]
+        page3 = [
+            {
+                "id": 5,
+                "closedAt": "2025-09-01T00:00:00Z",
+                "updatedAt": "2025-09-01T00:00:00Z",
+            },
+        ]
+
+        async def mock_closed(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield page1
+            yield page2
+            yield page3
+
+        with (
+            patch.object(
+                graphql_client, "send_paginated_request", side_effect=mock_closed
+            ),
+            patch.object(
+                GraphQLPullRequestExporter,
+                "_normalize_pr_node",
+                side_effect=lambda pr, repo, org, **kwargs: pr,
+            ),
+        ):
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=None,
+                    updated_after=updated_after,
+                    use_close_date=True,
+                    repo={"name": "repo1"},
+                )
+                batches = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        ids = [pr["id"] for batch in batches for pr in batch]
+        assert ids == [1, 2, 3]
 
 
 class TestGraphQLPullRequestExporterInternals:
@@ -977,13 +1265,13 @@ class TestGraphQLPullRequestExporterInternals:
         assert normalized["__organization"] == "org"
 
 
-def test_filter_prs_by_updated_at_skips_items_missing_updated_at() -> None:
+def test_filter_prs_by_date_skips_items_missing_field() -> None:
     prs: list[dict[str, Any]] = [
-        {"id": 1, "updatedAt": "2025-08-10T15:08:15Z"},
-        {"id": 2},  # missing updatedAt should be ignored
+        {"id": 1, "closedAt": "2025-08-10T15:08:15Z"},
+        {"id": 2},  # missing closedAt should be ignored
     ]
-    filtered = filter_prs_by_updated_at(
-        prs, "updatedAt", datetime(2025, 8, 1, 0, 0, 0, tzinfo=UTC)
+    filtered = filter_prs_by_date(
+        prs, "closedAt", datetime(2025, 8, 1, 0, 0, 0, tzinfo=UTC)
     )
     assert [pr["id"] for pr in filtered] == [1]
 
@@ -998,3 +1286,55 @@ def test_pull_request_selector_accepts_exclude_graphql_fields_alias() -> None:
     )
 
     assert selector.exclude_graphql_fields == ["additions", "author", "somethingElse"]
+
+
+def test_pull_request_selector_since_date_overrides_since_days() -> None:
+    selector = GithubPullRequestSelector.parse_obj(
+        {"query": "true", "sinceDate": "2025-01-01"}
+    )
+    assert selector.updated_after == datetime(2025, 1, 1, tzinfo=UTC)
+
+
+def test_pull_request_selector_since_date_preserves_timezone() -> None:
+    selector = GithubPullRequestSelector.parse_obj(
+        {"query": "true", "sinceDate": "2025-01-01T00:00:00+02:00"}
+    )
+    assert selector.updated_after.utcoffset() == timedelta(hours=2)
+
+
+def test_pull_request_selector_updated_after_falls_back_to_since_days() -> None:
+    selector = GithubPullRequestSelector.parse_obj({"query": "true", "since": 10})
+    delta = datetime.now(UTC) - selector.updated_after
+    assert timedelta(days=9, hours=23) < delta < timedelta(days=10, minutes=1)
+
+
+def test_pull_request_selector_effective_max_results() -> None:
+    days = GithubPullRequestSelector.parse_obj({"query": "true"})
+    assert days.effective_max_results == 100
+
+    since_date = GithubPullRequestSelector.parse_obj(
+        {"query": "true", "sinceDate": "2025-01-01"}
+    )
+    assert since_date.effective_max_results is None
+
+    explicit_with_date = GithubPullRequestSelector.parse_obj(
+        {"query": "true", "sinceDate": "2025-01-01", "maxResults": 50}
+    )
+    assert explicit_with_date.effective_max_results == 50
+
+    explicit_with_days = GithubPullRequestSelector.parse_obj(
+        {"query": "true", "maxResults": 25}
+    )
+    assert explicit_with_days.effective_max_results == 25
+
+
+def test_list_pull_requests_query_order_by_field() -> None:
+    default_query = generate_list_pull_requests_gql(PullRequestGraphQLOptions())
+    assert "field: CREATED_AT" in default_query
+    assert "UPDATED_AT" not in default_query
+
+    closed_query = generate_list_pull_requests_gql(
+        PullRequestGraphQLOptions(), order_by_field="UPDATED_AT"
+    )
+    assert "field: UPDATED_AT" in closed_query
+    assert "CREATED_AT" not in closed_query
