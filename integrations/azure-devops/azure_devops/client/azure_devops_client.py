@@ -1072,7 +1072,10 @@ class AzureDevopsClient(HTTPBaseClient):
                 yield policies
 
     async def generate_work_items(
-        self, wiql: Optional[str], expand: str
+        self,
+        wiql: Optional[str],
+        expand: str,
+        exclude_tags: Optional[list[str]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
@@ -1081,6 +1084,10 @@ class AzureDevopsClient(HTTPBaseClient):
         of 20,000 results per query.
         """
         async for projects in self.generate_projects():
+            if exclude_tags:
+                projects = await self.filter_projects_by_excluded_tags(
+                    projects, exclude_tags
+                )
             for project in projects:
                 # Execute WIQL queries with ID-range pagination to get all work item IDs
                 async for work_item_ids in self._fetch_work_item_id_batches(

@@ -117,6 +117,12 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
             title="Expand",
             description="Expand options for work items. Allowed values are 'None', 'Fields', 'Relations', 'Links' and 'All'. Default value is 'All'.",
         )
+        exclude_tag_filter: Optional[list[str]] = Field(
+            alias="excludeTagFilter",
+            default=None,
+            title="Exclude Tag Filter",
+            description="List of project tags. Work items belonging to projects with any of these tags will be excluded from ingestion.",
+        )
 
     kind: Literal["work-item"] = Field(
         title="Azure Devops Work Item",

@@ -264,7 +264,9 @@ async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
     async for work_items in resync.iter_work_items(
-        wiql=config.selector.wiql, expand=config.selector.expand
+        wiql=config.selector.wiql,
+        expand=config.selector.expand,
+        exclude_tag_filter=config.selector.exclude_tag_filter,
     ):
         logger.info(f"Resyncing {len(work_items)} work items")
         yield work_items

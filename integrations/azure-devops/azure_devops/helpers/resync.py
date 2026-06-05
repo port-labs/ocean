@@ -113,9 +113,12 @@ async def iter_repository_policies() -> AsyncGenerator[list[dict[str, Any]], Non
 async def iter_work_items(
     wiql: Optional[str] = None,
     expand: Optional[str] = None,
+    exclude_tag_filter: Optional[list[str]] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.generate_work_items(wiql=wiql, expand=expand)
+        lambda client: client.generate_work_items(
+            wiql=wiql, expand=expand, exclude_tags=exclude_tag_filter
+        )
     ):
         yield batch
 
