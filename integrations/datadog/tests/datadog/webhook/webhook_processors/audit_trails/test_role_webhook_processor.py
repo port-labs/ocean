@@ -102,6 +102,6 @@ async def test_get_matching_kinds(processor: RoleWebhookProcessor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_validate_payload(processor: RoleWebhookProcessor) -> None:
+async def test_validate_payload_always_true(processor: RoleWebhookProcessor) -> None:
     assert await processor.validate_payload(_event("modified", "r-1")) is True
-    assert await processor.validate_payload({"attributes": {"evt": {"name": "X"}, "action": "modified", "asset": {"type": "role"}}}) is False
+    assert await processor.validate_payload({"whatever": "dict"}) is True

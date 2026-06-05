@@ -4,13 +4,12 @@ import pytest
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
-    EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
 
+from datadog.core.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.audit_trails.base_processor import (
-    AuditTrailEvent,
     BaseAuditTrailProcessor,
 )
 
@@ -33,16 +32,15 @@ class _StubProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return ["stub"]
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        if not isinstance(event.payload, dict):
-            return False
-        e = self.parse_event(event.payload)
-        return e.attributes.evt.name == "Stub" and e.attributes.asset is not None and e.attributes.asset.type == "stub"
+    def _should_process(self, event: AuditTrailEvent) -> bool:
+        return event.attributes.evt.name == "Stub" and event.attributes.asset.type == "stub"
 
-    async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
+    async def _handle_audit_event(
+        self, event: AuditTrailEvent, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        return WebhookEventRawResults(updated_raw_results=[payload], deleted_raw_results=[])
+        return WebhookEventRawResults(
+            updated_raw_results=[event.dict()], deleted_raw_results=[]
+        )
 
 
 @pytest.fixture
@@ -51,19 +49,24 @@ def processor() -> _StubProcessor:
 
 
 def test_parse_event_normalizes_action_and_type() -> None:
-    raw = {"attributes": {"evt": {"name": "  Monitor  "}, "action": "MODIFIED", "asset": {"type": "MONITOR", "id": "m-1"}}}
+    raw = {
+        "attributes": {
+            "evt": {"name": "  Monitor  "},
+            "action": "MODIFIED",
+            "asset": {"type": "MONITOR", "id": "m-1"},
+        }
+    }
     event = AuditTrailEvent.parse_obj(raw)
     assert event.attributes.evt.name == "Monitor"
     assert event.attributes.action == "modified"
-    assert event.attributes.asset is not None
     assert event.attributes.asset.type == "monitor"
 
 
-def test_parse_event_missing_attributes_gives_defaults() -> None:
-    event = AuditTrailEvent.parse_obj({})
-    assert event.attributes.evt.name == ""
-    assert event.attributes.action == ""
-    assert event.attributes.asset is None
+def test_parse_event_missing_required_field_raises() -> None:
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        AuditTrailEvent.parse_obj({"attributes": {"evt": {"name": "X"}, "action": "created"}})
 
 
 @pytest.mark.asyncio
@@ -79,6 +82,15 @@ async def test_should_process_event_false_when_evt_name_mismatch(
 
 
 @pytest.mark.asyncio
+async def test_should_process_event_false_when_payload_unparseable(
+    processor: _StubProcessor,
+) -> None:
+    assert await processor.should_process_event(
+        WebhookEvent(trace_id="t", payload={"bad": "payload"}, headers={})
+    ) is False
+
+
+@pytest.mark.asyncio
 async def test_should_process_event_false_when_payload_is_list(
     processor: _StubProcessor,
 ) -> None:
@@ -88,32 +100,14 @@ async def test_should_process_event_false_when_payload_is_list(
 
 
 @pytest.mark.asyncio
-async def test_handle_event_returns_result(processor: _StubProcessor) -> None:
-    event = _raw("Stub", "created", "stub", "s-1")
-    result = await processor.handle_event(event, resource_config={})
-    assert result.updated_raw_results == [event]
-    assert result.deleted_raw_results == []
-
-
-@pytest.mark.asyncio
-async def test_validate_payload_true_when_asset_id_present(processor: _StubProcessor) -> None:
+async def test_validate_payload_always_true(processor: _StubProcessor) -> None:
     assert await processor.validate_payload(_raw("Stub", "created", "stub", "s-1")) is True
+    assert await processor.validate_payload({"whatever": "dict"}) is True
 
 
 @pytest.mark.asyncio
-async def test_validate_payload_false_when_no_asset_id(processor: _StubProcessor) -> None:
-    assert await processor.validate_payload(
-        {"attributes": {"evt": {"name": "Stub"}, "action": "created", "asset": {"type": "stub"}}}
-    ) is False
-
-
-@pytest.mark.asyncio
-async def test_validate_payload_false_when_no_asset(processor: _StubProcessor) -> None:
-    assert await processor.validate_payload(
-        {"attributes": {"evt": {"name": "Stub"}, "action": "created"}}
-    ) is False
-
-
-@pytest.mark.asyncio
-async def test_validate_payload_false_when_not_a_dict(processor: _StubProcessor) -> None:
-    assert await processor.validate_payload([]) is False  # type: ignore[arg-type]
+async def test_handle_event_delegates_to_handle_audit_event(processor: _StubProcessor) -> None:
+    raw = _raw("Stub", "created", "stub", "s-1")
+    result = await processor.handle_event(raw, resource_config={})
+    assert result.updated_raw_results[0]["attributes"]["asset"]["id"] == "s-1"
+    assert result.deleted_raw_results == []

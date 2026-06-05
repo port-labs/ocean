@@ -3,16 +3,12 @@ from typing import Any
 
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import (
-    EventPayload,
-    WebhookEvent,
-    WebhookEventRawResults,
-)
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import MonitorExporter
 from datadog.core.exporters.monitor_exporter import GetMonitorOptions
+from datadog.core.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.audit_trails.base_processor import (
-    AuditTrailEvent,
     BaseAuditTrailProcessor,
 )
 
@@ -30,8 +26,8 @@ class MonitorWebhookProcessor(BaseAuditTrailProcessor):
     @staticmethod
     def _monitor_id_from_restriction_policy(event: AuditTrailEvent) -> str | None:
         """Return the monitor ID embedded in a restriction_policy asset ID (e.g. 'monitor:12345')."""
-        asset_id = event.attributes.asset.id if event.attributes.asset else None
-        if asset_id and ":" in asset_id:
+        asset_id = event.attributes.asset.id
+        if ":" in asset_id:
             resource_type, resource_id = asset_id.split(":", 1)
             return resource_id if resource_type == ObjectKind.MONITOR else None
         return None
@@ -39,8 +35,7 @@ class MonitorWebhookProcessor(BaseAuditTrailProcessor):
     @classmethod
     def _is_restriction_policy_for_monitor(cls, event: AuditTrailEvent) -> bool:
         return (
-            event.attributes.asset is not None
-            and event.attributes.asset.type == "restriction_policy"
+            event.attributes.asset.type == "restriction_policy"
             and cls._monitor_id_from_restriction_policy(event) is not None
         )
 
@@ -57,45 +52,31 @@ class MonitorWebhookProcessor(BaseAuditTrailProcessor):
             getattr(getattr(resource_config, "selector", None), "include_restriction_policy", False)
         )
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        if not isinstance(event.payload, dict):
-            return False
-        e = self.parse_event(event.payload)
-        attrs = e.attributes
+    def _should_process(self, event: AuditTrailEvent) -> bool:
+        attrs = event.attributes
         return (
             attrs.evt.name == "Monitor"
-            and attrs.asset is not None
             and attrs.asset.type == ObjectKind.MONITOR
             and attrs.action in _MONITOR_ACTIONS
         ) or (
             attrs.evt.name == "Access Management"
-            and self._is_restriction_policy_for_monitor(e)
+            and self._is_restriction_policy_for_monitor(event)
             and attrs.action in _RESTRICTION_POLICY_ACTIONS
         )
 
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        if not isinstance(payload, dict):
-            return False
-        event = self.parse_event(payload)
-        if self._is_restriction_policy_for_monitor(event):
-            return self._monitor_id_from_restriction_policy(event) is not None
-        return event.attributes.asset is not None and event.attributes.asset.id is not None
-
-    async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
+    async def _handle_audit_event(
+        self, event: AuditTrailEvent, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        event = self.parse_event(payload)
         if self._is_restriction_policy_for_monitor(event):
             monitor_id = self._monitor_id_from_restriction_policy(event)
         else:
-            monitor_id = event.attributes.asset.id if event.attributes.asset else None
+            monitor_id = event.attributes.asset.id
 
         if not monitor_id:
             return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
         if (
-            event.attributes.asset is not None
-            and event.attributes.asset.type == ObjectKind.MONITOR
+            event.attributes.asset.type == ObjectKind.MONITOR
             and event.attributes.action == "deleted"
         ):
             return WebhookEventRawResults(

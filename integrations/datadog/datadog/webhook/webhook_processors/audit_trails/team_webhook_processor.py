@@ -4,14 +4,11 @@ from typing import Any, cast
 from integration import ObjectKind
 from datadog.overrides import TeamResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import (
-    EventPayload,
-    WebhookEvent,
-    WebhookEventRawResults,
-)
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import TeamExporter
 from datadog.core.exporters.team_exporter import GetTeamOptions
+from datadog.core.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.audit_trails.base_processor import (
     BaseAuditTrailProcessor,
 )
@@ -24,22 +21,14 @@ class TeamWebhookProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return [ObjectKind.TEAM]
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        if not isinstance(event.payload, dict):
-            return False
-        e = self.parse_event(event.payload)
-        return (
-            e.attributes.evt.name == "Teams Management"
-            and e.attributes.action in _TEAM_ACTIONS
-        )
+    def _should_process(self, event: AuditTrailEvent) -> bool:
+        attrs = event.attributes
+        return attrs.evt.name == "Teams Management" and attrs.action in _TEAM_ACTIONS
 
-    async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
+    async def _handle_audit_event(
+        self, event: AuditTrailEvent, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        event = self.parse_event(payload)
-        team_id = event.attributes.asset.id if event.attributes.asset else None
-        if not team_id:
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+        team_id = event.attributes.asset.id
 
         if event.attributes.action == "deleted":
             return WebhookEventRawResults(
