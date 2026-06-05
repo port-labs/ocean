@@ -613,7 +613,7 @@ class GitLabDeploymentSelector(Selector):
         default=True,
         alias="includeOnlyActiveProjects",
         title="Include Only Active Projects",
-        description="If true, only include deployments from active projects (non-archieved). If false, include deployments from all projects regardless of their active status.",
+        description="If true, only include deployments from active projects (non-archived). If false, include deployments from all projects regardless of their active status.",
     )
     query_params: GitLabDeploymentQueryParams | None = Field(
         default=None,
