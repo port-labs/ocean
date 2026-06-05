@@ -389,6 +389,64 @@ class TestPullRequestExporter:
         flat_results = [pr for batch in results for pr in batch]
         assert len(flat_results) == 120
 
+    async def test_close_date_max_results_scans_full_page_before_cap(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Prefix PRs can fail closed_at while later items on the same page pass."""
+        exporter = RestPullRequestExporter(rest_client)
+        updated_after = datetime(2025, 8, 1, tzinfo=UTC)
+        page = [
+            {
+                "id": 1,
+                "number": 1,
+                "updated_at": "2025-08-10T00:00:00Z",
+                "closed_at": "2025-01-01T00:00:00Z",
+            },
+            {
+                "id": 2,
+                "number": 2,
+                "updated_at": "2025-08-09T00:00:00Z",
+                "closed_at": "2025-01-02T00:00:00Z",
+            },
+            {
+                "id": 3,
+                "number": 3,
+                "updated_at": "2025-08-05T00:00:00Z",
+                "closed_at": "2025-08-05T00:00:00Z",
+            },
+            {
+                "id": 4,
+                "number": 4,
+                "updated_at": "2025-08-04T00:00:00Z",
+                "closed_at": "2025-08-04T00:00:00Z",
+            },
+        ]
+
+        async def mock_closed(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield page
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_closed
+        ) as mock_paginated:
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=2,
+                    updated_after=updated_after,
+                    use_close_date=True,
+                )
+                results = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        flat_results = [pr for batch in results for pr in batch]
+        assert [pr["id"] for pr in flat_results] == [3, 4]
+        mock_paginated.assert_called_once()
+
     async def test_date_driven_early_exit_stops_pagination(
         self, rest_client: GithubRestClient
     ) -> None:
@@ -1014,6 +1072,70 @@ class TestGraphQLPullRequestExporter:
             },
         )
         assert mock_normalize.call_count == 2
+
+    async def test_close_date_max_results_scans_full_page_before_cap(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        """Prefix PRs can fail closedAt while later items on the same page pass."""
+        exporter = GraphQLPullRequestExporter(graphql_client)
+        updated_after = datetime(2025, 8, 1, tzinfo=UTC)
+        pr_nodes = [
+            {
+                "id": 1,
+                "closedAt": "2025-01-01T00:00:00Z",
+                "updatedAt": "2025-08-10T00:00:00Z",
+            },
+            {
+                "id": 2,
+                "closedAt": "2025-01-02T00:00:00Z",
+                "updatedAt": "2025-08-09T00:00:00Z",
+            },
+            {
+                "id": 3,
+                "closedAt": "2025-08-05T00:00:00Z",
+                "updatedAt": "2025-08-05T00:00:00Z",
+            },
+            {
+                "id": 4,
+                "closedAt": "2025-08-04T00:00:00Z",
+                "updatedAt": "2025-08-04T00:00:00Z",
+            },
+        ]
+
+        async def mock_closed(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield pr_nodes
+
+        with (
+            patch.object(
+                graphql_client,
+                "send_paginated_request",
+                side_effect=mock_closed,
+            ) as mock_paginated,
+            patch.object(
+                GraphQLPullRequestExporter,
+                "_normalize_pr_node",
+                side_effect=lambda pr, repo, org, **kwargs: pr,
+            ),
+        ):
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=2,
+                    updated_after=updated_after,
+                    use_close_date=True,
+                    repo={"name": "repo1"},
+                )
+                batches = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        ids = [pr["id"] for batch in batches for pr in batch]
+        assert ids == [3, 4]
+        mock_paginated.assert_called_once()
 
     async def test_date_driven_early_exit_stops_pagination(
         self, graphql_client: GithubGraphQLClient

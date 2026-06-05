@@ -139,17 +139,17 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                 )
                 break
 
-            if max_results is not None:
-                remaining = max_results - total_count
-                if remaining <= 0:
-                    break
-                # Trim batch if it would exceed max_results
-                batch = pull_requests[:remaining]
-            else:
-                batch = pull_requests
-
             if use_close_date:
-                in_window = filter_prs_by_date(batch, "closed_at", updated_after)
+                in_window_all = filter_prs_by_date(
+                    pull_requests, "closed_at", updated_after
+                )
+                if max_results is not None:
+                    remaining = max_results - total_count
+                    if remaining <= 0:
+                        break
+                    in_window = in_window_all[:remaining]
+                else:
+                    in_window = in_window_all
                 enriched_batch = [
                     enrich_with_organization(
                         enrich_with_repository(pr, repo_name), organization
@@ -166,14 +166,21 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
                 # closed_at <= updated_at and results are sorted by updated_at desc, so once
                 # updated_at falls before the cutoff no later page can hold an in-window PR.
-                if len(filter_prs_by_date(batch, "updated_at", updated_after)) < len(
-                    batch
-                ):
+                if len(
+                    filter_prs_by_date(pull_requests, "updated_at", updated_after)
+                ) < len(pull_requests):
                     logger.info(
                         f"[Rest] Reached cutoff for closed pull requests of {repo_name} from {organization}; stopping."
                     )
                     break
             else:
+                if max_results is not None:
+                    remaining = max_results - total_count
+                    if remaining <= 0:
+                        break
+                    batch = pull_requests[:remaining]
+                else:
+                    batch = pull_requests
                 batch_count = len(batch)
                 logger.info(
                     f"[Rest] Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
@@ -342,16 +349,15 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 )
                 break
 
-            if max_results is not None:
-                remaining = max_results - total_count
-                if remaining <= 0:
-                    break
-                batch = pr_nodes[:remaining]
-            else:
-                batch = pr_nodes
-
             if use_close_date:
-                in_window = filter_prs_by_date(batch, "closedAt", updated_after)
+                in_window_all = filter_prs_by_date(pr_nodes, "closedAt", updated_after)
+                if max_results is not None:
+                    remaining = max_results - total_count
+                    if remaining <= 0:
+                        break
+                    in_window = in_window_all[:remaining]
+                else:
+                    in_window = in_window_all
                 enriched_batch = [
                     self._normalize_pr_node(
                         pr,
@@ -369,14 +375,21 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                     yield enriched_batch
                 total_count += len(in_window)
 
-                if len(filter_prs_by_date(batch, "updatedAt", updated_after)) < len(
-                    batch
+                if len(filter_prs_by_date(pr_nodes, "updatedAt", updated_after)) < len(
+                    pr_nodes
                 ):
                     logger.info(
                         f"[GraphQL] Reached cutoff for closed pull requests of {repo_name} from {organization}; stopping."
                     )
                     break
             else:
+                if max_results is not None:
+                    remaining = max_results - total_count
+                    if remaining <= 0:
+                        break
+                    batch = pr_nodes[:remaining]
+                else:
+                    batch = pr_nodes
                 batch_count = len(batch)
                 logger.info(
                     f"[GraphQL] Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
