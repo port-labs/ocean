@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.6.0 (2026-06-05)
+
+
+### Improvements
+
+- Parse yaml files in the file kind with yaml spec 1.2 by default
+
+
 ## 5.5.27 (2026-06-03)
 
 
