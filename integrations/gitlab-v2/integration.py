@@ -615,7 +615,7 @@ class GitLabDeploymentSelector(Selector):
         title="Include Only Active Projects",
         description="If true, only include deployments from active projects (non-archieved). If false, include deployments from all projects regardless of their active status.",
     )
-    query_params: GitLabDeploymentQueryParams = Field(
+    query_params: GitLabDeploymentQueryParams | None = Field(
         default=None,
         alias="apiQueryParams",
         title="API Query Params",
@@ -690,7 +690,7 @@ class GitLabDeploymentStatusSelector(Selector):
         title="Include Only Active Projects",
         description="If true, only include deployment statuses from active projects (non-archived). If false, include deployment statuses from all projects regardless of their active status.",
     )
-    query_params: GitLabDeploymentQueryParams = Field(
+    query_params: GitLabDeploymentQueryParams | None = Field(
         default=None,
         alias="apiQueryParams",
         title="API Query Params",

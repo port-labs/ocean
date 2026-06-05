@@ -982,7 +982,9 @@ class GitLabClient:
                     self._enrich_deployment_with_full_project_context,
                     project,
                     self.rest.get_paginated_project_resource(
-                        str(project["id"]), "deployments", params=params
+                        str(project["id"]),
+                        "deployments",
+                        params=dict(params) if params else None,
                     ),
                 ),
             )
