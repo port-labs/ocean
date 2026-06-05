@@ -955,3 +955,51 @@ class GitLabClient:
                 data[index] = await self._resolve_file_references(item, project_id, ref)
 
         return data
+
+    async def _enrich_deployment_with_full_project_context(
+        self,
+        project: dict[str, Any],
+        deployments_iterator: AsyncIterator[list[dict[str, Any]]],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Enrich deployment data with full project data, including languages and search query results."""
+        async for deployments_batch in deployments_iterator:
+            yield [
+                {**deployment, "__project": project} for deployment in deployments_batch
+            ]
+
+    async def get_deployments(
+        self,
+        projects_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+        params: dict[str, Any] | None = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch deployments for each project in the batch, enriched with project data."""
+        semaphore = asyncio.Semaphore(max_concurrent)
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(
+                    self._enrich_deployment_with_full_project_context,
+                    project,
+                    self.rest.get_paginated_project_resource(
+                        str(project["id"]), "deployments", params=params
+                    ),
+                ),
+            )
+            for project in projects_batch
+        ]
+        async for batch_result in stream_async_iterators_tasks(*tasks):
+            if batch_result:
+                logger.info(f"Received batch with {len(batch_result)} deployments")
+                yield batch_result
+
+    async def get_single_deployment(
+        self, project_id: int | str, deployment_id: int
+    ) -> dict[str, Any] | None:
+        """Fetch a single deployment by ID from the given project."""
+        encoded_project_id = quote(str(project_id), safe="")
+        path = f"projects/{encoded_project_id}/deployments/{deployment_id}"
+        deployment = await self.rest.send_api_request("GET", path)
+        if not deployment:
+            return None
+        return deployment

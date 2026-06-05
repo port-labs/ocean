@@ -1943,3 +1943,164 @@ class TestGitLabClient:
                 results.extend(batch)
 
             assert len(results) == 1
+
+    async def test_get_deployments_enriches_each_deployment_with_full_project(
+        self, client: GitLabClient
+    ) -> None:
+        project = {
+            "id": 1,
+            "path_with_namespace": "group/project",
+            "name": "Test Project",
+            "web_url": "https://gitlab.example.com/group/project",
+        }
+        mock_deployments = [
+            {"id": 10, "status": "success", "ref": "main"},
+            {"id": 11, "status": "failed", "ref": "main"},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_deployments]),
+        ):
+            results = []
+            async for batch in client.get_deployments([project]):
+                results.extend(batch)
+
+        assert len(results) == 2
+        assert all(result["__project"] == project for result in results)
+
+    async def test_get_deployments_injects_full_project_object_not_just_path(
+        self, client: GitLabClient
+    ) -> None:
+        project = {
+            "id": 1,
+            "path_with_namespace": "group/project",
+            "name": "Test Project",
+            "web_url": "https://gitlab.example.com/group/project",
+            "visibility": "private",
+        }
+        mock_deployments = [{"id": 10, "status": "success"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([mock_deployments]),
+        ):
+            results = []
+            async for batch in client.get_deployments([project]):
+                results.extend(batch)
+
+        injected_project = results[0]["__project"]
+        assert injected_project["name"] == "Test Project"
+        assert injected_project["web_url"] == "https://gitlab.example.com/group/project"
+        assert injected_project["visibility"] == "private"
+
+    async def test_get_deployments_passes_params_to_rest_client(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 1, "path_with_namespace": "group/project"}
+        params = {"status": "success", "environment": "production"}
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([[]]),
+        ) as mock_get_paginated:
+            async for _ in client.get_deployments([project], params=params):
+                pass
+
+        mock_get_paginated.assert_called_once_with("1", "deployments", params=params)
+
+    async def test_get_deployments_yields_nothing_when_project_has_no_deployments(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 1, "path_with_namespace": "group/project"}
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            return_value=async_mock_generator([[]]),
+        ):
+            results = []
+            async for batch in client.get_deployments([project]):
+                results.extend(batch)
+
+        assert results == []
+
+    async def test_get_deployments_fans_out_across_multiple_projects_tagging_each_deployment_with_its_own_project(
+        self, client: GitLabClient
+    ) -> None:
+        project_a = {"id": 1, "path_with_namespace": "group/project-a"}
+        project_b = {"id": 2, "path_with_namespace": "group/project-b"}
+        deployments_a = [{"id": 10, "status": "success"}]
+        deployments_b = [{"id": 20, "status": "success"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            side_effect=[
+                async_mock_generator([deployments_a]),
+                async_mock_generator([deployments_b]),
+            ],
+        ):
+            results = []
+            async for batch in client.get_deployments([project_a, project_b]):
+                results.extend(batch)
+
+        assert len(results) == 2
+        project_paths = {r["__project"]["path_with_namespace"] for r in results}
+        assert project_paths == {"group/project-a", "group/project-b"}
+
+    async def test_get_single_deployment_returns_deployment_for_given_ids(
+        self, client: GitLabClient
+    ) -> None:
+        project_id = 123
+        deployment_id = 456
+        mock_deployment = {
+            "id": deployment_id,
+            "iid": 1,
+            "status": "success",
+            "ref": "main",
+        }
+
+        with patch.object(
+            client.rest,
+            "send_api_request",
+            AsyncMock(return_value=mock_deployment),
+        ) as mock_send_request:
+            result = await client.get_single_deployment(project_id, deployment_id)
+
+        assert result == mock_deployment
+        mock_send_request.assert_called_once_with(
+            "GET", f"projects/{project_id}/deployments/{deployment_id}"
+        )
+
+    async def test_get_single_deployment_returns_none_when_api_returns_empty(
+        self, client: GitLabClient
+    ) -> None:
+        with patch.object(
+            client.rest,
+            "send_api_request",
+            AsyncMock(return_value={}),
+        ):
+            result = await client.get_single_deployment(123, 456)
+
+        assert result is None
+
+    async def test_get_single_deployment_url_encodes_string_project_path(
+        self, client: GitLabClient
+    ) -> None:
+        deployment_id = 42
+        mock_deployment = {"id": deployment_id, "status": "success"}
+
+        with patch.object(
+            client.rest,
+            "send_api_request",
+            AsyncMock(return_value=mock_deployment),
+        ) as mock_send_request:
+            await client.get_single_deployment("group/project", deployment_id)
+
+        mock_send_request.assert_called_once_with(
+            "GET", "projects/group%2Fproject/deployments/42"
+        )

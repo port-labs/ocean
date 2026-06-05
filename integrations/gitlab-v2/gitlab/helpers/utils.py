@@ -49,6 +49,8 @@ class ObjectKind(StrEnum):
     TAG = "tag"
     RELEASE = "release"
     BRANCH = "branch"
+    DEPLOYMENT = "deployment"
+    DEPLOYMENT_STATUS = "deployment-status"
 
 
 def parse_file_content(
@@ -152,3 +154,12 @@ class GitlabAccessLevel(IntEnum):
     DEVELOPER = 30
     MAINTAINER = 40
     OWNER = 50
+
+
+class GitLabDeploymentStatus(StrEnum):
+    CREATED = "created"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+    CANCELED = "canceled"
+    BLOCKED = "blocked"

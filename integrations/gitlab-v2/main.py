@@ -31,6 +31,8 @@ from integration import (
     TagResourceConfig,
     GitlabIssueResourceConfig,
     BranchResourceConfig,
+    GitLabDeploymentResourceConfig,
+    GitLabDeploymentStatusResourceConfig,
 )
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
@@ -78,6 +80,9 @@ from gitlab.webhook.webhook_processors.release_webhook_processor import (
 )
 from gitlab.webhook.webhook_processors.branch_webhook_processor import (
     BranchWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.deployment_webhook_processor import (
+    DeploymentWebhookProcessor,
 )
 from gitlab.clients.options import IssueOptions
 
@@ -573,6 +578,54 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield folders_batch
 
 
+@ocean.on_resync(ObjectKind.DEPLOYMENT)
+async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(GitLabDeploymentResourceConfig, event.resource_config).selector
+
+    async for projects_batch in client.get_projects(
+        params=build_project_params(
+            include_only_active_projects=selector.include_only_active_projects
+        ),
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        include_languages=False,
+    ):
+        logger.info(
+            f"Processing batch of {len(projects_batch)} projects for deployments"
+        )
+        async for deployments_batch in client.get_deployments(
+            projects_batch,
+            max_concurrent=DEFAULT_MAX_CONCURRENT,
+            params=selector.build_query_params() or None,
+        ):
+            yield deployments_batch
+
+
+@ocean.on_resync(ObjectKind.DEPLOYMENT_STATUS)
+async def on_resync_deployment_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    selector = cast(
+        GitLabDeploymentStatusResourceConfig, event.resource_config
+    ).selector
+
+    async for projects_batch in client.get_projects(
+        params=build_project_params(
+            include_only_active_projects=selector.include_only_active_projects
+        ),
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        include_languages=False,
+    ):
+        logger.info(
+            f"Processing batch of {len(projects_batch)} projects for deployment statuses"
+        )
+        async for deployments_batch in client.get_deployments(
+            projects_batch,
+            max_concurrent=DEFAULT_MAX_CONCURRENT,
+            params=selector.build_query_params() or None,
+        ):
+            yield deployments_batch
+
+
 ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
@@ -588,3 +641,4 @@ ocean.add_webhook_processor("/hook/{group_id}", ProjectWithMemberWebhookProcesso
 ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", BranchWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", DeploymentWebhookProcessor)
