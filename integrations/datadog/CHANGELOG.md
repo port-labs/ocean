@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.5.0 (2026-06-03)
+## 0.5.0 (2026-06-08)
 
 
 ### Features
@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 - Reworked Datadog live-event bootstrap to reliably create/update webhook configuration and to automatically provision monitor notification rules and audit forwarding destinations.
+
+
+## 0.4.4 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
 
 
 ## 0.4.3 (2026-06-03)
