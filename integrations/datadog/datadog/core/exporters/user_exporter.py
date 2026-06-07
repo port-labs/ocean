@@ -25,3 +25,12 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[str]):
         url = f"{self.client.api_url}/api/v2/users/{resource_id}"
         result = await self.client.send_api_request(url)
         return result.get("data")
+
+    async def get_resource_by_email(self, email: str) -> dict[str, Any] | None:
+        """Get a single user by email.
+        Docs: https://docs.datadoghq.com/api/latest/users/#list-all-users
+        """
+        url = f"{self.client.api_url}/api/v2/users"
+        result = await self.client.send_api_request(url, params={"filter": email})
+        users = result.get("data") or []
+        return users[0] if users else None

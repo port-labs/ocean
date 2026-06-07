@@ -23,6 +23,15 @@ class AuditTrailEvt(BaseModel):
         return str(v).strip()
 
 
+class AuditTrailHttp(BaseModel):
+    class UrlDetails(BaseModel):
+        path: str
+
+    method: str
+    status_code: int
+    url_details: UrlDetails
+
+
 class AuditTrailUsr(BaseModel):
     uuid: Optional[str] = None
     id: Optional[str] = None
@@ -32,7 +41,9 @@ class AuditTrailAttributes(BaseModel):
     evt: AuditTrailEvt
     action: str
     asset: AuditTrailAsset
+    http: Optional[AuditTrailHttp] = None
     usr: Optional[AuditTrailUsr] = None
+    msg: Optional[str] = None
 
     @validator("action", pre=True)
     @classmethod

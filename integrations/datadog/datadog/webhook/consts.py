@@ -12,8 +12,6 @@ class AuditTrailEventName(StrEnum):
     ACCESS_MANAGEMENT = "Access Management"
     TEAMS_MANAGEMENT = "Teams Management"
     SLO = "SLO"
-    ROLES_MANAGEMENT = "Roles Management"
-    USERS_MANAGEMENT = "Users Management"
     MONITOR = "Monitor"
 
 
@@ -49,6 +47,7 @@ MONITOR_ACTIONS = frozenset(
         AuditTrailAction.CREATED,
         AuditTrailAction.MODIFIED,
         AuditTrailAction.DELETED,
+        AuditTrailAction.RESOLVED,
     ]
 )
 

@@ -81,12 +81,24 @@ async def test_should_process_event_false_wrong_evt_name(
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_false_resolved_action(
+async def test_should_process_event_true_resolved_action(
     processor: MonitorWebhookProcessor,
 ) -> None:
     assert (
         await processor.should_process_event(
-            WebhookEvent(trace_id="no", payload=_event("resolved", "m-1"), headers={})
+            WebhookEvent(trace_id="ok", payload=_event("resolved", "m-1"), headers={})
+        )
+        is True
+    )
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_unsupported_action(
+    processor: MonitorWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="no", payload=_event("accessed", "m-1"), headers={})
         )
         is False
     )
