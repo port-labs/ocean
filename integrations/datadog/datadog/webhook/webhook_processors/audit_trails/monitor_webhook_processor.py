@@ -7,7 +7,7 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResult
 
 from datadog.core.exporters import MonitorExporter
 from datadog.core.exporters.monitor_exporter import GetMonitorOptions
-from datadog.core.types import AuditTrailEvent
+from datadog.webhook.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.audit_trails.base_processor import (
     BaseAuditTrailProcessor,
 )
@@ -39,20 +39,7 @@ class MonitorWebhookProcessor(BaseAuditTrailProcessor):
             and cls._monitor_id_from_restriction_policy(event) is not None
         )
 
-    @staticmethod
-    def _should_include_restriction_policy(resource_config: ResourceConfig) -> bool:
-        if isinstance(resource_config, dict):
-            selector = resource_config.get("selector")
-            return bool(
-                selector.get("include_restriction_policy", False)
-                if isinstance(selector, dict)
-                else False
-            )
-        return bool(
-            getattr(getattr(resource_config, "selector", None), "include_restriction_policy", False)
-        )
-
-    def _should_process(self, event: AuditTrailEvent) -> bool:
+    async def _should_process(self, event: AuditTrailEvent) -> bool:
         attrs = event.attributes
         return (
             attrs.evt.name == "Monitor"
@@ -85,12 +72,7 @@ class MonitorWebhookProcessor(BaseAuditTrailProcessor):
 
         try:
             monitor = await MonitorExporter(self.client).get_resource(
-                GetMonitorOptions(
-                    resource_id=monitor_id,
-                    include_restriction_policy=self._should_include_restriction_policy(
-                        resource_config
-                    ),
-                )
+                GetMonitorOptions.from_resource_config(resource_config, resource_id=monitor_id)
             )
         except httpx.HTTPStatusError as err:
             if err.response.status_code == 404:

@@ -1,12 +1,19 @@
 import asyncio
 from itertools import batched
 
+from typing import TYPE_CHECKING, Any
+
 from pydantic import BaseModel
-from typing import Any
+
+if TYPE_CHECKING:
+    from datadog.overrides import SLOResourceConfig
+
 from datadog.client import DatadogClient
 from datadog.core.exporters.restriction_policy_exporter import RestrictionPolicyExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from datadog.core.exporters.base_exporter import (
+    GetOptions,
+    ListOptions,
     PaginatedExporter,
     SingleResourceExporter,
 )
@@ -14,13 +21,24 @@ from datadog.core.exporters.base_exporter import (
 SLO_ENRICHMENT_BATCH_SIZE = 10
 
 
-class ListSloOptions(BaseModel):
+class ListSloOptions(ListOptions):
     include_restriction_policy: bool = False
 
+    @classmethod
+    def from_resource_config(cls, resource_config: "SLOResourceConfig") -> "ListSloOptions":
+        return cls(include_restriction_policy=resource_config.selector.include_restriction_policy)
 
-class GetSloOptions(BaseModel):
+
+class GetSloOptions(GetOptions):
     id: str
     include_restriction_policy: bool = False
+
+    @classmethod
+    def from_resource_config(cls, resource_config: "SLOResourceConfig", *, id: str) -> "GetSloOptions":
+        return cls(
+            id=id,
+            include_restriction_policy=resource_config.selector.include_restriction_policy,
+        )
 
 
 class SloExporter(

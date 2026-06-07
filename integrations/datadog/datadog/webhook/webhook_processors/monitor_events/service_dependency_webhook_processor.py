@@ -1,15 +1,11 @@
 import asyncio
-from typing import Any, Union, cast
+from typing import Any
 
 from loguru import logger
 
 from initialize_client import init_client
 from integration import ObjectKind
-from datadog.overrides import (
-    DatadogServiceDependencySelector,
-    ServiceDependencyResourceConfig,
-)
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from datadog.overrides import ServiceDependencyResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -23,6 +19,7 @@ from datadog.core.exporters.service_dependency_exporter import (
 from datadog.webhook.webhook_processors.base_webhook_processor import (
     BaseWebhookProcessor,
 )
+from datadog.webhook.consts import SERVICE_RELATED_EVENTS
 
 
 class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
@@ -42,38 +39,25 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
         return service_ids
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        event_type = event.payload["event_type"]
-        service_related_events = [
-            "service_check",
-            "query_alert_monitor",
-            "metric_slo_alert",
-            "monitor_slo_alert",
-            "outlier_monitor",
-            "event_v2_alert",
-        ]
-        return event_type in service_related_events
+        event_type = event.payload.get("event_type", None)
+        return (
+            event_type in SERVICE_RELATED_EVENTS
+            and len(self.extract_service_ids(event.payload)) > 0
+        )
 
     async def get_matching_kinds(self, _: WebhookEvent) -> list[str]:
         return [ObjectKind.SERVICE_DEPENDENCY]
 
     async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
+        self, payload: EventPayload, resource_config: ServiceDependencyResourceConfig
     ) -> WebhookEventRawResults:
         service_ids = self.extract_service_ids(payload)
-        config = cast(
-            Union[ResourceConfig, ServiceDependencyResourceConfig], resource_config
-        )
-        selector = cast(DatadogServiceDependencySelector, config.selector)
 
         dd_client = init_client()
         dep_exporter = ServiceDependencyExporter(dd_client)
         tasks = [
             dep_exporter.get_resource(
-                GetServiceDependencyOptions(
-                    service_id=service_id,
-                    env=selector.environment,
-                    start_time=selector.start_time,
-                )
+                GetServiceDependencyOptions.from_resource_config(resource_config, service_id=service_id)
             )
             for service_id in service_ids
         ]
@@ -84,13 +68,3 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
             updated_raw_results=service_dependencies,
             deleted_raw_results=[],
         )
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        has_event_info = "event_type" in payload
-        service_tags = self.extract_service_ids(payload)
-
-        is_valid = len(service_tags) > 0 and has_event_info
-        if not is_valid:
-            logger.warning(f"Invalid webhook payload for service dependency: {payload}")
-
-        return is_valid

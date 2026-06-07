@@ -50,6 +50,7 @@ class DatadogWebhookClient:
         webhook_secret: str | None,
         org_id: str,
         integration_identifier: str,
+        notification_rule_tags: list[str],
     ) -> None:
         webhook_name = self._build_webhook_name(org_id, integration_identifier)
         webhook_target = self._build_webhook_target_url(
@@ -57,7 +58,10 @@ class DatadogWebhookClient:
         )
         try:
             await self._sync_webhook(webhook_name, webhook_target, webhook_secret)
-            await self._sync_notification_rule_recipient(webhook_name)
+            await self._sync_notification_rule(
+                webhook_name,
+                notification_rule_tags=notification_rule_tags,
+            )
         except Exception as e:
             logger.error(f"Failed to setup Datadog live events: {str(e)}, skipping...")
 
@@ -136,7 +140,11 @@ class DatadogWebhookClient:
             body["custom_headers"] = json.dumps({PORT_AUTH_HEADER_NAME: webhook_secret})
         return body
 
-    async def _sync_notification_rule_recipient(self, webhook_name: str) -> None:
+    async def _sync_notification_rule(
+        self,
+        webhook_name: str,
+        notification_rule_tags: list[str],
+    ) -> None:
         rules_url = f"{self.client.api_url}/api/v2/monitor/notification_rule"
         recipient = f"webhook-{webhook_name}"
 
@@ -151,29 +159,42 @@ class DatadogWebhookClient:
                 url=rules_url,
                 method="POST",
                 json_data=self._build_notification_rule_payload(
-                    _PORT_MONITOR_NOTIFICATION_RULE_NAME, [recipient]
+                    _PORT_MONITOR_NOTIFICATION_RULE_NAME,
+                    [recipient],
+                    tags=notification_rule_tags,
                 ),
             )
             return
 
-        current_recipients: list[str] = existing_rule.get("attributes", {}).get(
-            "recipients", []
-        )
-        if recipient in current_recipients:
-            logger.debug("Webhook recipient is already in notification rule")
+        attributes = existing_rule.get("attributes", {})
+        current_recipients: list[str] = attributes.get("recipients", [])
+        current_tags: list[str] = attributes.get("filter", {}).get("tags", [])
+
+        recipient_up_to_date = recipient in current_recipients
+        tags_up_to_date = sorted(current_tags) == sorted(notification_rule_tags)
+
+        if recipient_up_to_date and tags_up_to_date:
+            logger.debug("Monitor notification rule is already up to date")
             return
 
         rule_id = existing_rule.get("id")
+        updated_recipients = (
+            current_recipients
+            if recipient_up_to_date
+            else [*current_recipients, recipient]
+        )
         logger.info(
-            f"Appending webhook recipient to monitor notification rule '{rule_id}'"
+            f"Updating monitor notification rule '{rule_id}' "
+            f"(recipient_added={not recipient_up_to_date}, tags_changed={not tags_up_to_date})"
         )
         await self.client.send_api_request(
             url=f"{rules_url}/{rule_id}",
             method="PATCH",
             json_data=self._build_notification_rule_payload(
                 _PORT_MONITOR_NOTIFICATION_RULE_NAME,
-                [*current_recipients, recipient],
+                updated_recipients,
                 rule_id=rule_id,
+                tags=notification_rule_tags,
             ),
         )
 
@@ -181,13 +202,14 @@ class DatadogWebhookClient:
     def _build_notification_rule_payload(
         name: str,
         recipients: list[str],
+        tags: list[str],
         rule_id: str | None = None,
     ) -> dict[str, Any]:
         data: dict[str, Any] = {
             "type": "monitor-notification-rule",
             "attributes": {
                 "name": name,
-                "filter": {"tags": []},
+                "filter": {"tags": tags},
                 "recipients": recipients,
             },
         }

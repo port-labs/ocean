@@ -4,7 +4,7 @@ from typing import Any
 from loguru import logger
 from pydantic import ValidationError
 
-from datadog.core.types import AuditTrailEvent
+from datadog.webhook.types import AuditTrailEvent
 from datadog.client import DatadogClient
 from datadog.webhook.webhook_processors.base_webhook_processor import (
     BaseWebhookProcessor,
@@ -42,10 +42,10 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
         except (ValidationError, TypeError):
             logger.debug(f"Skipping unparseable audit-trail payload: {event.payload}")
             return False
-        return self._should_process(parsed)
+        return await self._should_process(parsed)
 
     @abstractmethod
-    def _should_process(self, event: AuditTrailEvent) -> bool:
+    async def _should_process(self, event: AuditTrailEvent) -> bool:
         """Return True if this processor handles the given event."""
 
     async def validate_payload(self, payload: EventPayload) -> bool:
@@ -54,7 +54,9 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        return await self._handle_audit_event(self.parse_event(payload), resource_config)
+        return await self._handle_audit_event(
+            self.parse_event(payload), resource_config
+        )
 
     @abstractmethod
     async def _handle_audit_event(

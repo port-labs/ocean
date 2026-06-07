@@ -28,23 +28,6 @@ def _create_datadog_retry_config() -> RetryConfig:
     )
 
 
-def embed_credentials_in_url(url: str, username: str, token: str) -> str:
-    """Inserts username and token into a given URL for Datadog webhook basic-auth."""
-    parsed_url = urlparse(url)
-    netloc_with_credentials = f"{username}:{token}@{parsed_url.netloc}"
-    modified_url = urlunparse(
-        (
-            parsed_url.scheme,
-            netloc_with_credentials,
-            parsed_url.path,
-            parsed_url.params,
-            parsed_url.query,
-            parsed_url.fragment,
-        )
-    )
-    return modified_url
-
-
 class DatadogClient:
     def __init__(
         self,

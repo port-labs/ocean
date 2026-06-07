@@ -50,6 +50,7 @@ async def test_create_webhook_and_append_recipient_when_webhook_is_new(
             webhook_secret=webhook_secret,
             org_id=org_id,
             integration_identifier=integration_identifier,
+            notification_rule_tags=["service:*"],
         )
 
         assert mock_send.await_count == 4
@@ -120,6 +121,7 @@ async def test_skip_webhook_update_when_config_is_unchanged(
             webhook_secret=secret,
             org_id="org_123",
             integration_identifier="dd-integration",
+            notification_rule_tags=["service:*"],
         )
 
         # no PUT — GET webhook + GET rules + POST rule
@@ -155,6 +157,7 @@ async def test_update_webhook_config_and_append_recipient_when_webhook_already_e
             webhook_secret=new_secret,
             org_id="org_123",
             integration_identifier="dd-integration",
+            notification_rule_tags=["service:*"],
         )
 
         # GET webhook-by-name, PUT update, GET rules, POST new rule
@@ -166,7 +169,8 @@ async def test_update_webhook_config_and_append_recipient_when_webhook_already_e
             f"/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
         )
         assert (
-            update_call["json_data"]["url"] == f"{new_base_url}/integration/webhook/monitor-events"
+            update_call["json_data"]["url"]
+            == f"{new_base_url}/integration/webhook/monitor-events"
         )
         assert json.loads(update_call["json_data"]["custom_headers"]) == {
             PORT_AUTH_HEADER_NAME: new_secret
@@ -212,6 +216,7 @@ async def test_create_webhook_without_secret_omits_custom_headers(
             webhook_secret=None,
             org_id="org_123",
             integration_identifier="dd-integration",
+            notification_rule_tags=["service:*"],
         )
 
         webhook_call = mock_send.await_args_list[1].kwargs
@@ -220,7 +225,7 @@ async def test_create_webhook_without_secret_omits_custom_headers(
 
 
 @pytest.mark.asyncio
-async def test_notification_rule_recipient_not_duplicated_when_already_present(
+async def test_notification_rule_not_updated_when_already_in_sync(
     mock_datadog_client: DatadogClient,
 ) -> None:
     webhook_client = DatadogWebhookClient(mock_datadog_client)
@@ -238,18 +243,62 @@ async def test_notification_rule_recipient_not_duplicated_when_already_present(
                         "attributes": {
                             "name": rule_name,
                             "recipients": [recipient],
+                            "filter": {"tags": ["service:*"]},
                         },
                     }
                 ]
             }
         ]
 
-        await webhook_client._sync_notification_rule_recipient("org_123-dd-integration")
+        await webhook_client._sync_notification_rule(
+            "org_123-dd-integration", notification_rule_tags=["service:*"]
+        )
 
-    # only the initial GET — no PATCH because recipient already present
+    # only the initial GET — no PATCH because both recipient and tags are up to date
     assert mock_send.await_count == 1
     methods = [c.kwargs.get("method", "GET") for c in mock_send.await_args_list]
     assert "PATCH" not in methods
+
+
+@pytest.mark.asyncio
+async def test_notification_rule_tags_updated_when_drifted(
+    mock_datadog_client: DatadogClient,
+) -> None:
+    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    rule_name = _PORT_MONITOR_NOTIFICATION_RULE_NAME
+    recipient = "webhook-org_123-dd-integration"
+
+    with patch.object(
+        webhook_client.client, "send_api_request", new_callable=AsyncMock
+    ) as mock_send:
+        mock_send.side_effect = [
+            {
+                "data": [
+                    {
+                        "id": "rule-1",
+                        "attributes": {
+                            "name": rule_name,
+                            "recipients": [recipient],
+                            "filter": {"tags": ["service:old-tag"]},
+                        },
+                    }
+                ]
+            },
+            {"status": "updated"},
+        ]
+
+        await webhook_client._sync_notification_rule(
+            "org_123-dd-integration", notification_rule_tags=["service:*"]
+        )
+
+    assert mock_send.await_count == 2
+    patch_call = mock_send.await_args_list[1].kwargs
+    assert patch_call["method"] == "PATCH"
+    # recipient unchanged, only tags updated
+    assert patch_call["json_data"]["data"]["attributes"]["recipients"] == [recipient]
+    assert patch_call["json_data"]["data"]["attributes"]["filter"]["tags"] == [
+        "service:*"
+    ]
 
 
 @pytest.mark.asyncio
@@ -272,6 +321,7 @@ async def test_notification_rule_new_recipient_appended_to_existing_rule(
                         "attributes": {
                             "name": rule_name,
                             "recipients": [existing_recipient],
+                            "filter": {"tags": ["service:*"]},
                         },
                     }
                 ]
@@ -279,7 +329,9 @@ async def test_notification_rule_new_recipient_appended_to_existing_rule(
             {"status": "updated"},
         ]
 
-        await webhook_client._sync_notification_rule_recipient("org_123-dd-integration")
+        await webhook_client._sync_notification_rule(
+            "org_123-dd-integration", notification_rule_tags=["service:*"]
+        )
 
     assert mock_send.await_count == 2
     patch_call = mock_send.await_args_list[1].kwargs
@@ -287,6 +339,9 @@ async def test_notification_rule_new_recipient_appended_to_existing_rule(
     assert patch_call["json_data"]["data"]["attributes"]["recipients"] == [
         existing_recipient,
         new_recipient,
+    ]
+    assert patch_call["json_data"]["data"]["attributes"]["filter"]["tags"] == [
+        "service:*"
     ]
 
 
@@ -300,13 +355,117 @@ async def test_notification_rule_created_when_missing(
     ) as mock_send:
         mock_send.side_effect = [{"data": []}, {"status": "created"}]
 
-        await webhook_client._sync_notification_rule_recipient("org_123-dd-integration")
+        await webhook_client._sync_notification_rule(
+            "org_123-dd-integration", notification_rule_tags=["service:*"]
+        )
 
     post_call = mock_send.await_args_list[1].kwargs
     assert post_call["method"] == "POST"
     assert post_call["json_data"]["data"]["attributes"]["recipients"] == [
         "webhook-org_123-dd-integration"
     ]
+    assert post_call["json_data"]["data"]["attributes"]["filter"]["tags"] == [
+        "service:*"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_notification_rule_created_with_custom_tags(
+    mock_datadog_client: DatadogClient,
+) -> None:
+    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    custom_tags = ["service:payments", "env:prod"]
+
+    with patch.object(
+        webhook_client.client, "send_api_request", new_callable=AsyncMock
+    ) as mock_send:
+        mock_send.side_effect = [{"data": []}, {"status": "created"}]
+
+        await webhook_client._sync_notification_rule(
+            "org_123-dd-integration", notification_rule_tags=custom_tags
+        )
+
+    post_call = mock_send.await_args_list[1].kwargs
+    assert post_call["json_data"]["data"]["attributes"]["filter"]["tags"] == custom_tags
+
+
+@pytest.mark.asyncio
+async def test_notification_rule_recipient_and_tags_both_updated_when_both_drifted(
+    mock_datadog_client: DatadogClient,
+) -> None:
+    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    rule_name = _PORT_MONITOR_NOTIFICATION_RULE_NAME
+    existing_recipient = "webhook-other-integration"
+    new_recipient = "webhook-org_123-dd-integration"
+
+    with patch.object(
+        webhook_client.client, "send_api_request", new_callable=AsyncMock
+    ) as mock_send:
+        mock_send.side_effect = [
+            {
+                "data": [
+                    {
+                        "id": "rule-1",
+                        "attributes": {
+                            "name": rule_name,
+                            "recipients": [existing_recipient],
+                            "filter": {"tags": ["service:old-tag"]},
+                        },
+                    }
+                ]
+            },
+            {"status": "updated"},
+        ]
+
+        await webhook_client._sync_notification_rule(
+            "org_123-dd-integration", notification_rule_tags=["service:*"]
+        )
+
+    assert mock_send.await_count == 2
+    patch_call = mock_send.await_args_list[1].kwargs
+    assert patch_call["method"] == "PATCH"
+    assert patch_call["json_data"]["data"]["attributes"]["recipients"] == [
+        existing_recipient,
+        new_recipient,
+    ]
+    assert patch_call["json_data"]["data"]["attributes"]["filter"]["tags"] == ["service:*"]
+
+
+@pytest.mark.asyncio
+async def test_notification_rule_not_updated_when_tags_same_different_order(
+    mock_datadog_client: DatadogClient,
+) -> None:
+    webhook_client = DatadogWebhookClient(mock_datadog_client)
+    rule_name = _PORT_MONITOR_NOTIFICATION_RULE_NAME
+    recipient = "webhook-org_123-dd-integration"
+
+    with patch.object(
+        webhook_client.client, "send_api_request", new_callable=AsyncMock
+    ) as mock_send:
+        mock_send.side_effect = [
+            {
+                "data": [
+                    {
+                        "id": "rule-1",
+                        "attributes": {
+                            "name": rule_name,
+                            "recipients": [recipient],
+                            "filter": {"tags": ["env:prod", "service:payments"]},
+                        },
+                    }
+                ]
+            }
+        ]
+
+        await webhook_client._sync_notification_rule(
+            "org_123-dd-integration",
+            notification_rule_tags=["service:payments", "env:prod"],
+        )
+
+    # tags differ only in order — no PATCH expected
+    assert mock_send.await_count == 1
+    methods = [c.kwargs.get("method", "GET") for c in mock_send.await_args_list]
+    assert "PATCH" not in methods
 
 
 @pytest.mark.asyncio

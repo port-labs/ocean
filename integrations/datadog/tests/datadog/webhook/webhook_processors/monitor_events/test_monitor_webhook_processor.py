@@ -1,4 +1,4 @@
-from typing import Any
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -23,8 +23,8 @@ def processor(mock_event: WebhookEvent) -> MonitorWebhookProcessor:
 
 
 @pytest.fixture
-def resource_config() -> Any:
-    return {"kind": ObjectKind.MONITOR}
+def resource_config() -> SimpleNamespace:
+    return SimpleNamespace(selector=SimpleNamespace(include_restriction_policy=False))
 
 
 @pytest.mark.asyncio
@@ -36,18 +36,18 @@ async def test_get_matching_kinds(
 
 
 @pytest.mark.asyncio
-async def test_validate_payload(processor: MonitorWebhookProcessor) -> None:
-    assert (
-        await processor.validate_payload({"event_type": "alert", "alert_id": "123"})
-        is True
-    )
-    assert await processor.validate_payload({"alert_id": "123"}) is False
-    assert await processor.validate_payload({"event_type": "alert"}) is False
+async def test_should_process_event(processor: MonitorWebhookProcessor) -> None:
+    def _event(payload: dict) -> WebhookEvent:
+        return WebhookEvent(trace_id="t", payload=payload, headers={})
+
+    assert await processor.should_process_event(_event({"event_type": "alert", "alert_id": "123"})) is True
+    assert await processor.should_process_event(_event({"alert_id": "123"})) is False
+    assert await processor.should_process_event(_event({"event_type": "alert"})) is False
 
 
 @pytest.mark.asyncio
 async def test_handle_event_with_monitor(
-    processor: MonitorWebhookProcessor, resource_config: Any
+    processor: MonitorWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:
     test_payload = {"event_type": "alert", "alert_id": "123"}
     mock_monitor = {"id": "123", "name": "Test Monitor"}
@@ -77,7 +77,7 @@ async def test_handle_event_with_monitor(
 
 @pytest.mark.asyncio
 async def test_handle_event_without_monitor(
-    processor: MonitorWebhookProcessor, resource_config: Any
+    processor: MonitorWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:
     test_payload = {"event_type": "alert", "alert_id": "123"}
 

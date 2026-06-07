@@ -47,3 +47,6 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
             if header_name.lower() == expected_header_name:
                 return str(value)
         return None
+
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        return True

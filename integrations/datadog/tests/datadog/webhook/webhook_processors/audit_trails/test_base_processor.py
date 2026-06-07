@@ -8,7 +8,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from datadog.core.types import AuditTrailEvent
+from datadog.webhook.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.audit_trails.base_processor import (
     BaseAuditTrailProcessor,
 )
@@ -32,7 +32,7 @@ class _StubProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return ["stub"]
 
-    def _should_process(self, event: AuditTrailEvent) -> bool:
+    async def _should_process(self, event: AuditTrailEvent) -> bool:
         return event.attributes.evt.name == "Stub" and event.attributes.asset.type == "stub"
 
     async def _handle_audit_event(

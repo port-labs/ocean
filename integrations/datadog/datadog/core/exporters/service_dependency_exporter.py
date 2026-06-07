@@ -1,12 +1,17 @@
 from itertools import batched
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from datadog.overrides import ServiceDependencyResourceConfig
 
 from loguru import logger
 from pydantic import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.core.exporters.base_exporter import (
+    GetOptions,
+    ListOptions,
     MAX_PAGE_SIZE,
     PaginatedExporter,
     SingleResourceExporter,
@@ -15,15 +20,34 @@ from datadog.core.exporters.base_exporter import (
 FETCH_WINDOW_TIME_IN_SECONDS = 3600
 
 
-class ListServiceDependencyOptions(BaseModel):
+class ListServiceDependencyOptions(ListOptions):
     env: str
     start_time: float
 
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: "ServiceDependencyResourceConfig"
+    ) -> "ListServiceDependencyOptions":
+        return cls(
+            env=resource_config.selector.environment,
+            start_time=resource_config.selector.start_time,
+        )
 
-class GetServiceDependencyOptions(BaseModel):
+
+class GetServiceDependencyOptions(GetOptions):
     env: str
     start_time: float
     service_id: str
+
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: "ServiceDependencyResourceConfig", *, service_id: str
+    ) -> "GetServiceDependencyOptions":
+        return cls(
+            service_id=service_id,
+            env=resource_config.selector.environment,
+            start_time=resource_config.selector.start_time,
+        )
 
 
 class ServiceDependencyExporter(

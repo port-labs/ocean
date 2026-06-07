@@ -6,7 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import UserExporter
-from datadog.core.types import AuditTrailEvent
+from datadog.webhook.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.audit_trails.base_processor import (
     BaseAuditTrailProcessor,
 )
@@ -19,7 +19,7 @@ class UserWebhookProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return [ObjectKind.USER]
 
-    def _should_process(self, event: AuditTrailEvent) -> bool:
+    async def _should_process(self, event: AuditTrailEvent) -> bool:
         attrs = event.attributes
         return (
             attrs.evt.name == "Access Management"
