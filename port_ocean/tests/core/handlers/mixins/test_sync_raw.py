@@ -51,30 +51,35 @@ def mock_sync_raw_mixin(
             "name": "Entity 1",
             "service": "entity_3",
             "web_url": "https://example.com/entity1",
+            "Type": "mock",
         },
         {
             "id": "entity_2",
             "name": "Entity 2",
             "service": "entity_4",
             "web_url": "https://example.com/entity2",
+            "Type": "mock",
         },
         {
             "id": "entity_3",
             "name": "Entity 3",
             "service": "",
             "web_url": "https://example.com/entity3",
+            "Type": "mock",
         },
         {
             "id": "entity_4",
             "name": "Entity 4",
             "service": "entity_3",
             "web_url": "https://example.com/entity4",
+            "Type": "mock",
         },
         {
             "id": "entity_5",
             "name": "Entity 5",
             "service": "entity_1",
             "web_url": "https://example.com/entity5",
+            "Type": "mock",
         },
     ]
 
@@ -529,7 +534,12 @@ async def test_register_raw(
     kind = "service"
     user_agent_type = UserAgentType.exporter
     raw_entity = [
-        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+        {
+            "id": "entity_1",
+            "name": "entity_1",
+            "web_url": "https://example.com",
+            "Type": kind,
+        },
     ]
     expected_result = [
         {
@@ -594,7 +604,12 @@ async def test_unregister_raw(
     kind = "service"
     user_agent_type = UserAgentType.exporter
     raw_entity = [
-        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+        {
+            "id": "entity_1",
+            "name": "entity_1",
+            "web_url": "https://example.com",
+            "Type": kind,
+        },
     ]
     expected_result = [
         {
@@ -1470,7 +1485,14 @@ async def test_parse_items_sets_both_kind_and_resource_kind_in_logger_context(
     try:
         await processor.parse_items(
             mapping=mock_resource_config,
-            raw_data=[{"id": "1", "name": "test", "web_url": "https://example.com"}],
+            raw_data=[
+                {
+                    "id": "1",
+                    "name": "test",
+                    "web_url": "https://example.com",
+                    "Type": mock_resource_config.kind,
+                }
+            ],
         )
     finally:
         logger.remove(sink_id)
