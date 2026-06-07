@@ -81,15 +81,9 @@ async def test_handle_event_with_service_dependency(
         "service_name": "Test Service Dependency",
     }
 
-    with (
-        patch(
-            "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.init_client"
-        ) as mock_init,
-        patch(
-            "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.ServiceDependencyExporter"
-        ) as mock_exporter_cls,
-    ):
-        mock_init.return_value = AsyncMock()
+    with patch(
+        "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.ServiceDependencyExporter"
+    ) as mock_exporter_cls:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = mock_service_dependency
         mock_exporter_cls.return_value = mock_exporter
@@ -115,15 +109,9 @@ async def test_handle_event_without_service_dependency(
 ) -> None:
     test_payload = {"event_type": "service_check", "tags": ["env:prod"]}
 
-    with (
-        patch(
-            "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.init_client"
-        ) as mock_init,
-        patch(
-            "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.ServiceDependencyExporter"
-        ) as mock_exporter_cls,
-    ):
-        mock_init.return_value = AsyncMock()
+    with patch(
+        "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.ServiceDependencyExporter"
+    ) as mock_exporter_cls:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = None
         mock_exporter_cls.return_value = mock_exporter

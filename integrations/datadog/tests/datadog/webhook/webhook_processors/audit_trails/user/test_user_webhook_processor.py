@@ -10,19 +10,28 @@ from datadog.webhook.webhook_processors.audit_trails.user.user_webhook_processor
 )
 
 
+_USER_HTTP = {
+    "method": "PATCH",
+    "status_code": 200,
+    "url_details": {"path": "/api/v2/users/u-1"},
+}
+
+
 def _event(
     action: str,
     asset_id: str,
     asset_type: str = "user",
     evt_name: str = "Access Management",
+    include_http: bool = True,
 ) -> dict[str, Any]:
-    return {
-        "attributes": {
-            "evt": {"name": evt_name},
-            "action": action,
-            "asset": {"type": asset_type, "id": asset_id},
-        }
+    attrs: dict[str, Any] = {
+        "evt": {"name": evt_name},
+        "action": action,
+        "asset": {"type": asset_type, "id": asset_id},
     }
+    if include_http:
+        attrs["http"] = _USER_HTTP
+    return {"attributes": attrs}
 
 
 @pytest.fixture
@@ -50,6 +59,22 @@ async def test_should_process_event_false_wrong_asset_type(
         await processor.should_process_event(
             WebhookEvent(
                 trace_id="no", payload=_event("modified", "r-1", "role"), headers={}
+            )
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_no_http(
+    processor: UserWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no",
+                payload=_event("modified", "u-1", include_http=False),
+                headers={},
             )
         )
         is False

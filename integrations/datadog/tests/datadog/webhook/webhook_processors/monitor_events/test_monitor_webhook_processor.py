@@ -60,15 +60,9 @@ async def test_handle_event_with_monitor(
     test_payload = {"event_type": "alert", "alert_id": "123"}
     mock_monitor = {"id": "123", "name": "Test Monitor"}
 
-    with (
-        patch(
-            "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.init_client"
-        ) as mock_init,
-        patch(
-            "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.MonitorExporter"
-        ) as mock_exporter_cls,
-    ):
-        mock_init.return_value = AsyncMock()
+    with patch(
+        "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.MonitorExporter"
+    ) as mock_exporter_cls:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = mock_monitor
         mock_exporter_cls.return_value = mock_exporter
@@ -89,15 +83,9 @@ async def test_handle_event_without_monitor(
 ) -> None:
     test_payload = {"event_type": "alert", "alert_id": "123"}
 
-    with (
-        patch(
-            "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.init_client"
-        ) as mock_init,
-        patch(
-            "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.MonitorExporter"
-        ) as mock_exporter_cls,
-    ):
-        mock_init.return_value = AsyncMock()
+    with patch(
+        "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.MonitorExporter"
+    ) as mock_exporter_cls:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = None
         mock_exporter_cls.return_value = mock_exporter

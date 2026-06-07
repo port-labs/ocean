@@ -75,7 +75,8 @@ async def test_authenticate_without_webhook_secret_with_auth_header(
     mock_integration_config_without_secret: Generator[dict[str, str], None, None],
 ) -> None:
     headers = {PORT_AUTH_HEADER_NAME: "test_token"}
-    assert await processor.authenticate({}, headers) is False
+    # When no secret is configured, authentication is disabled: all requests pass.
+    assert await processor.authenticate({}, headers) is True
 
 
 @pytest.mark.asyncio

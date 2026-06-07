@@ -36,7 +36,6 @@ def _role_membership_event(
         "evt": {"name": "Access Management"},
         "action": action,
         "asset": {"type": "user", "id": target_email},
-        "msg": msg,
     }
     if include_http:
         attrs["http"] = {
@@ -44,7 +43,7 @@ def _role_membership_event(
             "status_code": 200,
             "url_details": {"path": url_path},
         }
-    return {"attributes": attrs}
+    return {"attributes": attrs, "message": msg}
 
 
 @pytest.fixture
@@ -187,7 +186,7 @@ async def test_should_process_event_false_no_msg(
     processor: RoleMembershipWebhookProcessor,
 ) -> None:
     event = _role_membership_event()
-    del event["attributes"]["msg"]
+    del event["message"]
     assert (
         await processor.should_process_event(
             WebhookEvent(trace_id="no", payload=event, headers={})
@@ -201,7 +200,7 @@ async def test_should_process_event_false_msg_without_email(
     processor: RoleMembershipWebhookProcessor,
 ) -> None:
     event = _role_membership_event()
-    event["attributes"]["msg"] = "some unrelated message"
+    event["message"] = "some unrelated message"
     assert (
         await processor.should_process_event(
             WebhookEvent(trace_id="no", payload=event, headers={})
