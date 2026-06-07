@@ -268,7 +268,9 @@ async def resync_ec2_volume(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
-@ocean.on_resync(ObjectKind.CODEPIPELINE_PIPELINE, children=[ObjectKind.CODEPIPELINE_STAGE])
+@ocean.on_resync(
+    ObjectKind.CODEPIPELINE_PIPELINE, children=[ObjectKind.CODEPIPELINE_STAGE]
+)
 async def resync_codepipeline_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, PipelineExporter, PaginatedPipelineRequest, regional=True

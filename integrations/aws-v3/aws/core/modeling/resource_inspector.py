@@ -52,7 +52,9 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         identifiers: Any,
         include: List[str],
         extra_context: Dict[str, Any] | None = None,
-        child_builders: list[Callable[[Dict[str, Any]], list[Dict[str, Any]]]] | None = None
+        child_builders: (
+            list[Callable[[Dict[str, Any]], list[Dict[str, Any]]]] | None
+        ) = None,
     ) -> List[Dict[str, Any]]:
         """
         Execute the specified actions for the given resource identifiers and

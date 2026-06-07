@@ -2,7 +2,11 @@ import json
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.codepipeline.pipeline.actions import PipelineActionsMap
-from aws.core.exporters.codepipeline.pipeline.models import Pipeline, CodePipelineStage, CodePipelineStageProperties
+from aws.core.exporters.codepipeline.pipeline.models import (
+    Pipeline,
+    CodePipelineStage,
+    CodePipelineStageProperties,
+)
 from aws.core.exporters.codepipeline.pipeline.models import (
     SinglePipelineRequest,
     PaginatedPipelineRequest,
@@ -52,9 +56,7 @@ class PipelineExporter(IResourceExporter):
                             "AccountId": options.account_id,
                             "Region": options.region,
                         },
-                        child_builders=[
-                            self._construct_stages
-                        ]
+                        child_builders=[self._construct_stages],
                     )
                     yield action_result
                 else:
@@ -62,17 +64,19 @@ class PipelineExporter(IResourceExporter):
 
     def _construct_stages(self, data: dict[str, Any]) -> list[dict[str, Any]]:
         return [
-            json.loads(CodePipelineStage(
-                Properties=CodePipelineStageProperties(
-                    Name=stage.get('name'),
-                    PipelineName=data['Properties'].get('Name'),
-                    PipelineArn=data['Properties'].get('Arn'),
-                    Actions=stage.get('actions', []),
-                    Blockers=stage.get('blockers', []),
-                    Region=data['__ExtraContext']['Region'],
-                    AccountId=data['__ExtraContext']['AccountId'],
-                ),
-                ExtraContext=data['__ExtraContext']
-            ).json(by_alias=True))
-            for stage in data['Properties'].get('Stages', [])
+            json.loads(
+                CodePipelineStage(
+                    Properties=CodePipelineStageProperties(
+                        Name=stage.get("name"),
+                        PipelineName=data["Properties"].get("Name"),
+                        PipelineArn=data["Properties"].get("Arn"),
+                        Actions=stage.get("actions", []),
+                        Blockers=stage.get("blockers", []),
+                        Region=data["__ExtraContext"]["Region"],
+                        AccountId=data["__ExtraContext"]["AccountId"],
+                    ),
+                    ExtraContext=data["__ExtraContext"],
+                ).json(by_alias=True)
+            )
+            for stage in data["Properties"].get("Stages", [])
         ]

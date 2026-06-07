@@ -65,10 +65,16 @@ class PaginatedPipelineRequest(ResourceRequestModel):
 
 class CodePipelineStageProperties(BaseModel):
     Name: str = Field(default_factory=str, description="The name of the stage")
-    PipelineName: str = Field(default_factory=str, description="The name of the pipeline")
+    PipelineName: str = Field(
+        default_factory=str, description="The name of the pipeline"
+    )
     PipelineArn: str = Field(default_factory=str, description="The ARN of the pipeline")
-    Actions: List[Dict[str, Any]] = Field(default_factory=list, description="Stage actions")
-    Blockers: List[Dict[str, Any]] = Field(default_factory=list, description="Stage blockers")
+    Actions: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Stage actions"
+    )
+    Blockers: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Stage blockers"
+    )
     Region: str = Field(default_factory=str, description="AWS region")
     AccountId: str = Field(default_factory=str, description="AWS account ID")
 
@@ -79,4 +85,6 @@ class CodePipelineStageProperties(BaseModel):
 
 class CodePipelineStage(ResourceModel[CodePipelineStageProperties]):
     Type: str = "AWS::CodePipeline::Stage"
-    Properties: CodePipelineStageProperties = Field(default_factory=CodePipelineStageProperties)
+    Properties: CodePipelineStageProperties = Field(
+        default_factory=CodePipelineStageProperties
+    )
