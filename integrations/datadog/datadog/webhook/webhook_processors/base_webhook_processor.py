@@ -1,16 +1,23 @@
 from typing import Any
 
 from loguru import logger
+from datadog.client import DatadogClient
+from initialize_client import init_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.handlers.webhook.webhook_event import EventPayload
+from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
 
 from datadog.webhook.webhook_client import PORT_AUTH_HEADER_NAME
 
 
 class BaseWebhookProcessor(AbstractWebhookProcessor):
+
+    def __init__(self, event: WebhookEvent) -> None:
+        super().__init__(event)
+        self.client: DatadogClient = init_client()
+
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]
     ) -> bool:
@@ -25,8 +32,8 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
                     "Configure webhook_secret to enable authentication."
                 )
             else:
-                logger.info("No webhook secret configured. Authentication disabled.")
-            return not auth_header_value
+                logger.debug("No webhook secret configured. Authentication disabled.")
+            return True
 
         if not auth_header_value:
             logger.warning(

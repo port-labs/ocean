@@ -5,11 +5,9 @@ from loguru import logger
 from pydantic import ValidationError
 
 from datadog.webhook.types import AuditTrailEvent
-from datadog.client import DatadogClient
 from datadog.webhook.webhook_processors.base_webhook_processor import (
     BaseWebhookProcessor,
 )
-from initialize_client import init_client
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -27,10 +25,6 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
     Subclasses implement _should_process and _handle_audit_event, which
     receive an already-parsed AuditTrailEvent so they never touch raw dicts.
     """
-
-    def __init__(self, event: WebhookEvent) -> None:
-        super().__init__(event)
-        self.client: DatadogClient = init_client()
 
     @staticmethod
     def parse_event(payload: Any) -> AuditTrailEvent:

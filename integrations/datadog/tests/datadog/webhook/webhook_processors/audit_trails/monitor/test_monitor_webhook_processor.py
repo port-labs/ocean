@@ -7,7 +7,7 @@ from integration import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 from datadog.webhook.webhook_processors.audit_trails.monitor.monitor_webhook_processor import (
-    MonitorWebhookProcessor,
+    AuditMonitorWebhookProcessor,
 )
 
 
@@ -27,8 +27,8 @@ def _event(
 
 
 @pytest.fixture
-def processor() -> MonitorWebhookProcessor:
-    return MonitorWebhookProcessor(
+def processor() -> AuditMonitorWebhookProcessor:
+    return AuditMonitorWebhookProcessor(
         WebhookEvent(trace_id="test", payload={}, headers={})
     )
 
@@ -40,7 +40,7 @@ def resource_config() -> SimpleNamespace:
 
 @pytest.mark.asyncio
 async def test_should_process_event_matches_monitor_type(
-    processor: MonitorWebhookProcessor,
+    processor: AuditMonitorWebhookProcessor,
 ) -> None:
     assert (
         await processor.should_process_event(
@@ -52,7 +52,7 @@ async def test_should_process_event_matches_monitor_type(
 
 @pytest.mark.asyncio
 async def test_should_process_event_false_wrong_asset_type(
-    processor: MonitorWebhookProcessor,
+    processor: AuditMonitorWebhookProcessor,
 ) -> None:
     assert (
         await processor.should_process_event(
@@ -66,7 +66,7 @@ async def test_should_process_event_false_wrong_asset_type(
 
 @pytest.mark.asyncio
 async def test_should_process_event_false_wrong_evt_name(
-    processor: MonitorWebhookProcessor,
+    processor: AuditMonitorWebhookProcessor,
 ) -> None:
     assert (
         await processor.should_process_event(
@@ -82,7 +82,7 @@ async def test_should_process_event_false_wrong_evt_name(
 
 @pytest.mark.asyncio
 async def test_should_process_event_true_resolved_action(
-    processor: MonitorWebhookProcessor,
+    processor: AuditMonitorWebhookProcessor,
 ) -> None:
     assert (
         await processor.should_process_event(
@@ -94,7 +94,7 @@ async def test_should_process_event_true_resolved_action(
 
 @pytest.mark.asyncio
 async def test_should_process_event_false_unsupported_action(
-    processor: MonitorWebhookProcessor,
+    processor: AuditMonitorWebhookProcessor,
 ) -> None:
     assert (
         await processor.should_process_event(
@@ -106,7 +106,7 @@ async def test_should_process_event_false_unsupported_action(
 
 @pytest.mark.asyncio
 async def test_handle_single_event_delete_returns_deleted(
-    processor: MonitorWebhookProcessor, resource_config: SimpleNamespace
+    processor: AuditMonitorWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:
     result = await processor.handle_event(_event("deleted", "m-1"), resource_config)  # type: ignore[arg-type]
     assert result.updated_raw_results == []
@@ -116,7 +116,7 @@ async def test_handle_single_event_delete_returns_deleted(
 
 
 @pytest.mark.asyncio
-async def test_get_matching_kinds(processor: MonitorWebhookProcessor) -> None:
+async def test_get_matching_kinds(processor: AuditMonitorWebhookProcessor) -> None:
     assert await processor.get_matching_kinds(
         WebhookEvent(trace_id="x", payload={}, headers={})
     ) == [ObjectKind.MONITOR]

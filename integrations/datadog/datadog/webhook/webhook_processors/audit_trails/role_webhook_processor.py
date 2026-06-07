@@ -11,6 +11,7 @@ from datadog.webhook.webhook_processors.audit_trails.base_processor import (
 )
 from datadog.webhook.consts import (
     AuditTrailAction,
+    AuditTrailAssetType,
     AuditTrailEventName,
     ROLES_ACTIONS,
 )
@@ -25,7 +26,7 @@ class RoleWebhookProcessor(BaseAuditTrailProcessor):
         attrs = event.attributes
         return (
             attrs.evt.name == AuditTrailEventName.ACCESS_MANAGEMENT
-            and attrs.asset.type == ObjectKind.ROLE
+            and attrs.asset.type == AuditTrailAssetType.ROLE
             and attrs.action in ROLES_ACTIONS
         )
 

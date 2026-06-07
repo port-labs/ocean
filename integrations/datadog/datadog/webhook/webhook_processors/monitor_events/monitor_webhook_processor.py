@@ -1,4 +1,3 @@
-from initialize_client import init_client
 from integration import ObjectKind
 from typing import cast
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -43,8 +42,7 @@ class MonitorWebhookProcessor(BaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        dd_client = init_client()
-        monitor = await MonitorExporter(dd_client).get_resource(
+        monitor = await MonitorExporter(self.client).get_resource(
             GetMonitorOptions.from_resource_config(
                 cast(MonitorResourceConfig, resource_config), id=monitor_id
             )

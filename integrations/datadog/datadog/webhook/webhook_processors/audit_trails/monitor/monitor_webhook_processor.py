@@ -21,7 +21,7 @@ from datadog.webhook.webhook_processors.audit_trails.base_processor import (
 )
 
 
-class MonitorWebhookProcessor(BaseAuditTrailProcessor):
+class AuditMonitorWebhookProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return [ObjectKind.MONITOR]
 

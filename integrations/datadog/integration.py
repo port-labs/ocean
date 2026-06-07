@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi import Request
 from loguru import logger
-from port_ocean.context.ocean import PortOceanContext
+from port_ocean.context.ocean import ocean, PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
@@ -56,6 +56,8 @@ class DatadogLiveEventsProcessorManager(LiveEventsProcessorManager):
                         headers=headers,
                     )
                     webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
+                    if ocean.config.events_debug_logging:
+                        self._log_webhook_event(webhook_event)
                     await self._event_queues[path].put(webhook_event)
 
                 return {"status": "ok"}

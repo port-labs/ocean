@@ -1,7 +1,6 @@
 import asyncio
 from typing import Any, cast
 
-from initialize_client import init_client
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -53,8 +52,7 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
 
         service_ids = self.extract_service_ids(payload)
 
-        dd_client = init_client()
-        dep_exporter = ServiceDependencyExporter(dd_client)
+        dep_exporter = ServiceDependencyExporter(self.client)
         tasks = [
             dep_exporter.get_resource(
                 GetServiceDependencyOptions.from_resource_config(

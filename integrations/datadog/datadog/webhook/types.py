@@ -32,17 +32,11 @@ class AuditTrailHttp(BaseModel):
     url_details: UrlDetails
 
 
-class AuditTrailUsr(BaseModel):
-    uuid: Optional[str] = None
-    id: Optional[str] = None
-
-
 class AuditTrailAttributes(BaseModel):
     evt: AuditTrailEvt
     action: str
     asset: AuditTrailAsset
     http: Optional[AuditTrailHttp] = None
-    usr: Optional[AuditTrailUsr] = None
 
     @validator("action", pre=True)
     @classmethod

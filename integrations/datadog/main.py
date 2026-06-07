@@ -173,8 +173,8 @@ async def on_start() -> None:
     if base_url := ocean.app.base_url:
         dd_client = init_client()
         webhook_secret = ocean.integration_config.get("webhook_secret")
-        notification_rule_tags: list[str] | None = ocean.integration_config.get(
-            "monitor_notification_rule_tags"
+        notification_rule_scope: str | None = ocean.integration_config.get(
+            "monitor_notification_rule_scope"
         )
         integration_identifier = ocean.config.integration.identifier
         current_integration = await ocean.port_client.get_current_integration()
@@ -189,7 +189,7 @@ async def on_start() -> None:
             webhook_secret=webhook_secret,
             org_id=org_id,
             integration_identifier=integration_identifier,
-            notification_rule_tags=notification_rule_tags,
+            notification_rule_scope=notification_rule_scope,
         )
 
 

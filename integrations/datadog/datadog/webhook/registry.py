@@ -5,7 +5,7 @@ from datadog.webhook.webhook_client import (
     MONITOR_WEBHOOK_PATH,
 )
 from datadog.webhook.webhook_processors.audit_trails.monitor.monitor_webhook_processor import (
-    MonitorWebhookProcessor as AuditMonitorWebhookProcessor,
+    AuditMonitorWebhookProcessor,
 )
 from datadog.webhook.webhook_processors.audit_trails.monitor.monitor_restriction_policy_webhook_processor import (
     MonitorRestrictionPolicyWebhookProcessor,

@@ -1,4 +1,5 @@
 import json
+import uuid
 from typing import Any
 
 import httpx
@@ -8,9 +9,9 @@ from datadog.client import DatadogClient
 
 MONITOR_WEBHOOK_PATH = "/webhook/monitor-events"
 AUDIT_TRAIL_WEBHOOK_PATH = "/webhook/audit-trail"
-DEFAULT_NOTIFICATION_RULE_TAGS = ["service:*"]
+DEFAULT_NOTIFICATION_RULE_SCOPE = "service:*"
 
-_PORT_MONITOR_NOTIFICATION_RULE_NAME = "Port Ocean Monitor Events"
+_PORT_MONITOR_NOTIFICATION_RULE_PREFIX = "Port Ocean Monitor Events"
 PORT_AUTH_HEADER_NAME = "X-Port-Ocean-Webhook-Secret"
 
 _WEBHOOK_PAYLOAD_TEMPLATE = json.dumps(
@@ -51,7 +52,7 @@ class DatadogWebhookClient:
         webhook_secret: str | None,
         org_id: str,
         integration_identifier: str,
-        notification_rule_tags: list[str] | None = None,
+        notification_rule_scope: str | None = None,
     ) -> None:
         webhook_name = self._build_webhook_name(org_id, integration_identifier)
         webhook_target = self._build_webhook_target_url(
@@ -61,8 +62,8 @@ class DatadogWebhookClient:
             await self._sync_webhook(webhook_name, webhook_target, webhook_secret)
             await self._sync_notification_rule(
                 webhook_name,
-                notification_rule_tags=notification_rule_tags
-                or DEFAULT_NOTIFICATION_RULE_TAGS,
+                notification_rule_scope=notification_rule_scope
+                or DEFAULT_NOTIFICATION_RULE_SCOPE,
             )
         except Exception as e:
             logger.error(f"Failed to setup Datadog live events: {str(e)}, skipping...")
@@ -145,58 +146,55 @@ class DatadogWebhookClient:
     async def _sync_notification_rule(
         self,
         webhook_name: str,
-        notification_rule_tags: list[str],
+        notification_rule_scope: str,
     ) -> None:
         rules_url = f"{self.client.api_url}/api/v2/monitor/notification_rule"
         recipient = f"webhook-{webhook_name}"
 
         rules_response = await self.client.send_api_request(url=rules_url)
-        existing_rule = self._find_rule_by_name(
-            rules_response, _PORT_MONITOR_NOTIFICATION_RULE_NAME
+        existing_rule = self._find_rule_by_scope_and_prefix(
+            rules_response,
+            scope=notification_rule_scope,
+            name_prefix=_PORT_MONITOR_NOTIFICATION_RULE_PREFIX,
         )
 
         if existing_rule is None:
-            logger.info("Creating monitor notification rule")
+            rule_name = (
+                f"{_PORT_MONITOR_NOTIFICATION_RULE_PREFIX}-{uuid.uuid4().hex[:8]}"
+            )
+            logger.info(
+                f"Creating monitor notification rule '{rule_name}' with scope '{notification_rule_scope}'"
+            )
             await self.client.send_api_request(
                 url=rules_url,
                 method="POST",
                 json_data=self._build_notification_rule_payload(
-                    _PORT_MONITOR_NOTIFICATION_RULE_NAME,
+                    rule_name,
                     [recipient],
-                    tags=notification_rule_tags,
+                    scope=notification_rule_scope,
                 ),
             )
             return
 
         attributes = existing_rule.get("attributes", {})
         current_recipients: list[str] = attributes.get("recipients", [])
-        current_tags: list[str] = attributes.get("filter", {}).get("tags", [])
 
-        recipient_up_to_date = recipient in current_recipients
-        tags_up_to_date = sorted(current_tags) == sorted(notification_rule_tags)
-
-        if recipient_up_to_date and tags_up_to_date:
+        if recipient in current_recipients:
             logger.debug("Monitor notification rule is already up to date")
             return
 
         rule_id = existing_rule.get("id")
-        updated_recipients = (
-            current_recipients
-            if recipient_up_to_date
-            else [*current_recipients, recipient]
-        )
-        logger.info(
-            f"Updating monitor notification rule '{rule_id}' "
-            f"(recipient_added={not recipient_up_to_date}, tags_changed={not tags_up_to_date})"
-        )
+        rule_name = attributes.get("name")
+        updated_recipients = [*current_recipients, recipient]
+        logger.info(f"Appending recipient to monitor notification rule '{rule_id}'")
         await self.client.send_api_request(
             url=f"{rules_url}/{rule_id}",
             method="PATCH",
             json_data=self._build_notification_rule_payload(
-                _PORT_MONITOR_NOTIFICATION_RULE_NAME,
+                rule_name,
                 updated_recipients,
                 rule_id=rule_id,
-                tags=notification_rule_tags,
+                scope=notification_rule_scope,
             ),
         )
 
@@ -204,14 +202,14 @@ class DatadogWebhookClient:
     def _build_notification_rule_payload(
         name: str,
         recipients: list[str],
-        tags: list[str],
+        scope: str,
         rule_id: str | None = None,
     ) -> dict[str, Any]:
         data: dict[str, Any] = {
             "type": "monitor-notification-rule",
             "attributes": {
                 "name": name,
-                "filter": {"tags": tags},
+                "filter": {"scope": scope},
                 "recipients": recipients,
             },
         }
@@ -220,11 +218,22 @@ class DatadogWebhookClient:
         return {"data": data}
 
     @staticmethod
-    def _find_rule_by_name(
-        response: dict[str, Any], rule_name: str
+    def _find_rule_by_scope_and_prefix(
+        response: dict[str, Any], scope: str, name_prefix: str
     ) -> dict[str, Any] | None:
+        """Return the first notification rule whose name starts with *name_prefix*
+        and whose filter scope matches *scope* exactly.
+
+        Datadog rejects creating a rule with a scope that already exists, so we
+        must locate an existing rule by scope (not just by name) and append our
+        webhook recipient to it instead of creating a duplicate.
+        """
         for rule in response.get("data", []):
-            if rule.get("attributes", {}).get("name") == rule_name:
+            attrs = rule.get("attributes", {})
+            if (
+                attrs.get("name", "").startswith(name_prefix)
+                and attrs.get("filter", {}).get("scope") == scope
+            ):
                 return rule
         return None
 
