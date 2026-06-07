@@ -1,4 +1,3 @@
-import httpx
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
@@ -42,21 +41,15 @@ class SloWebhookProcessor(BaseAuditTrailProcessor):
 
         if event.attributes.action == AuditTrailAction.DELETED:
             return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[{"id": slo_id}]
+                updated_raw_results=[],
+                deleted_raw_results=[event.attributes.asset.dict()],
             )
 
-        try:
-            slo = await SloExporter(self.client).get_resource(
-                GetSloOptions.from_resource_config(
-                    cast("SLOResourceConfig", resource_config), id=slo_id
-                )
+        slo = await SloExporter(self.client).get_resource(
+            GetSloOptions.from_resource_config(
+                cast("SLOResourceConfig", resource_config), id=slo_id
             )
-        except httpx.HTTPStatusError as err:
-            if err.response.status_code == 404:
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[{"id": slo_id}]
-                )
-            raise
+        )
 
         return WebhookEventRawResults(
             updated_raw_results=[slo] if slo else [], deleted_raw_results=[]

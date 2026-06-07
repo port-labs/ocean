@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-import httpx
 import pytest
 
 from integration import ObjectKind
@@ -15,7 +14,7 @@ setattr(overrides_module, "SLOResourceConfig", object)
 setattr(overrides_module, "TeamResourceConfig", object)
 
 from datadog.core.exporters.slo_exporter import GetSloOptions  # noqa: E402
-from datadog.webhook.webhook_processors.audit_trails.slo_webhook_processor import (  # noqa: E402
+from datadog.webhook.webhook_processors.audit_trails.slo.slo_webhook_processor import (  # noqa: E402
     SloWebhookProcessor,
 )
 
@@ -108,7 +107,7 @@ async def test_handle_single_event_delete_returns_deleted(
         _event("deleted", "s-1"), resource_config=resource_config  # type: ignore[arg-type]
     )
     assert result.updated_raw_results == []
-    assert result.deleted_raw_results == [{"id": "s-1"}]
+    assert result.deleted_raw_results == [{"type": "slo", "id": "s-1", "name": None}]
 
 
 @pytest.mark.asyncio
@@ -116,7 +115,7 @@ async def test_handle_single_event_fetches_slo_with_restriction_policy_flag(
     processor: SloWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:
     with patch(
-        "datadog.webhook.webhook_processors.audit_trails.slo_webhook_processor.SloExporter"
+        "datadog.webhook.webhook_processors.audit_trails.slo.slo_webhook_processor.SloExporter"
     ) as cls:
         exporter = AsyncMock()
         exporter.get_resource.return_value = {"id": "s-1"}
@@ -131,29 +130,6 @@ async def test_handle_single_event_fetches_slo_with_restriction_policy_flag(
     )
     assert result.updated_raw_results == [{"id": "s-1"}]
     assert result.deleted_raw_results == []
-
-
-@pytest.mark.asyncio
-async def test_handle_single_event_404_returns_deleted(
-    processor: SloWebhookProcessor, resource_config: SimpleNamespace
-) -> None:
-    req = httpx.Request("GET", "https://api.datadoghq.com/api/v1/slo/s-1")
-    not_found = httpx.HTTPStatusError(
-        "not found", request=req, response=httpx.Response(404, request=req)
-    )
-    with patch(
-        "datadog.webhook.webhook_processors.audit_trails.slo_webhook_processor.SloExporter"
-    ) as cls:
-        exporter = AsyncMock()
-        exporter.get_resource.side_effect = not_found
-        cls.return_value = exporter
-
-        result = await processor.handle_event(
-            _event("modified", "s-1"), resource_config=resource_config  # type: ignore[arg-type]
-        )
-
-    assert result.updated_raw_results == []
-    assert result.deleted_raw_results == [{"id": "s-1"}]
 
 
 @pytest.mark.asyncio

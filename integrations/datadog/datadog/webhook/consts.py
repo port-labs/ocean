@@ -19,7 +19,6 @@ class AuditTrailEventName(StrEnum):
 
 class AuditTrailAssetType(StrEnum):
     USER = "user"
-    TEAM = "team"
     SLO = "slo"
     ROLE = "role"
     MONITOR = "monitor"
@@ -37,6 +36,22 @@ SERVICE_RELATED_EVENTS = frozenset(
     ]
 )
 
+ROLES_ACTIONS = frozenset(
+    [
+        AuditTrailAction.CREATED,
+        AuditTrailAction.DELETED,
+        AuditTrailAction.MODIFIED,
+    ]
+)
+
+MONITOR_ACTIONS = frozenset(
+    [
+        AuditTrailAction.CREATED,
+        AuditTrailAction.MODIFIED,
+        AuditTrailAction.DELETED,
+    ]
+)
+
 SLO_ACTIONS = frozenset(
     [
         AuditTrailAction.CREATED,
@@ -45,10 +60,25 @@ SLO_ACTIONS = frozenset(
     ]
 )
 
-ROLES_ACTIONS = frozenset(
+USER_ACTIONS = frozenset(
     [
         AuditTrailAction.CREATED,
         AuditTrailAction.DELETED,
         AuditTrailAction.MODIFIED,
+    ]
+)
+
+TEAM_ACTIONS = frozenset(
+    [
+        AuditTrailAction.CREATED,
+        AuditTrailAction.DELETED,
+        AuditTrailAction.MODIFIED,
+    ]
+)
+
+RESTRICTION_POLICY_ACTIONS = frozenset(
+    [
+        AuditTrailAction.MODIFIED,
+        AuditTrailAction.DELETED,
     ]
 )

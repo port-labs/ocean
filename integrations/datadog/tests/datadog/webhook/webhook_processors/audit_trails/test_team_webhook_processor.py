@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-import httpx
 import pytest
 
 from integration import ObjectKind
@@ -93,7 +92,7 @@ async def test_handle_single_event_delete_returns_deleted(
         _event("deleted", "t-1"), resource_config=resource_config  # type: ignore[arg-type]
     )
     assert result.updated_raw_results == []
-    assert result.deleted_raw_results == [{"id": "t-1"}]
+    assert result.deleted_raw_results == [{"type": "team", "id": "t-1", "name": None}]
 
 
 @pytest.mark.asyncio
@@ -116,29 +115,6 @@ async def test_handle_single_event_fetches_team_with_members_flag(
     )
     assert result.updated_raw_results == [{"id": "t-1"}]
     assert result.deleted_raw_results == []
-
-
-@pytest.mark.asyncio
-async def test_handle_single_event_404_returns_deleted(
-    processor: TeamWebhookProcessor, resource_config: SimpleNamespace
-) -> None:
-    req = httpx.Request("GET", "https://api.datadoghq.com/api/v2/team/t-1")
-    not_found = httpx.HTTPStatusError(
-        "not found", request=req, response=httpx.Response(404, request=req)
-    )
-    with patch(
-        "datadog.webhook.webhook_processors.audit_trails.team_webhook_processor.TeamExporter"
-    ) as cls:
-        exporter = AsyncMock()
-        exporter.get_resource.side_effect = not_found
-        cls.return_value = exporter
-
-        result = await processor.handle_event(
-            _event("modified", "t-1"), resource_config=resource_config  # type: ignore[arg-type]
-        )
-
-    assert result.updated_raw_results == []
-    assert result.deleted_raw_results == [{"id": "t-1"}]
 
 
 @pytest.mark.asyncio

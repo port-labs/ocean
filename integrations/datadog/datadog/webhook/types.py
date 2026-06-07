@@ -6,6 +6,7 @@ from pydantic import BaseModel, validator
 class AuditTrailAsset(BaseModel):
     type: str
     id: str
+    name: Optional[str] = None
 
     @validator("type", pre=True)
     @classmethod

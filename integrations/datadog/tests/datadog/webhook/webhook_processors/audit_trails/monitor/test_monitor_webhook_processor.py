@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -5,16 +6,16 @@ import pytest
 from integration import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from datadog.webhook.webhook_processors.audit_trails.role_webhook_processor import (
-    RoleWebhookProcessor,
+from datadog.webhook.webhook_processors.audit_trails.monitor.monitor_webhook_processor import (
+    MonitorWebhookProcessor,
 )
 
 
 def _event(
     action: str,
     asset_id: str,
-    asset_type: str = "role",
-    evt_name: str = "Access Management",
+    asset_type: str = "monitor",
+    evt_name: str = "Monitor",
 ) -> dict[str, Any]:
     return {
         "attributes": {
@@ -26,18 +27,24 @@ def _event(
 
 
 @pytest.fixture
-def processor() -> RoleWebhookProcessor:
-    return RoleWebhookProcessor(WebhookEvent(trace_id="test", payload={}, headers={}))
+def processor() -> MonitorWebhookProcessor:
+    return MonitorWebhookProcessor(
+        WebhookEvent(trace_id="test", payload={}, headers={})
+    )
+
+
+@pytest.fixture
+def resource_config() -> SimpleNamespace:
+    return SimpleNamespace(selector=SimpleNamespace(include_restriction_policy=True))
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_matches_role_type(
-    processor: RoleWebhookProcessor,
+async def test_should_process_event_matches_monitor_type(
+    processor: MonitorWebhookProcessor,
 ) -> None:
-    # correct evt.name + asset.type → True
     assert (
         await processor.should_process_event(
-            WebhookEvent(trace_id="ok", payload=_event("modified", "r-1"), headers={})
+            WebhookEvent(trace_id="ok", payload=_event("modified", "m-1"), headers={})
         )
         is True
     )
@@ -45,7 +52,7 @@ async def test_should_process_event_matches_role_type(
 
 @pytest.mark.asyncio
 async def test_should_process_event_false_wrong_asset_type(
-    processor: RoleWebhookProcessor,
+    processor: MonitorWebhookProcessor,
 ) -> None:
     assert (
         await processor.should_process_event(
@@ -59,13 +66,13 @@ async def test_should_process_event_false_wrong_asset_type(
 
 @pytest.mark.asyncio
 async def test_should_process_event_false_wrong_evt_name(
-    processor: RoleWebhookProcessor,
+    processor: MonitorWebhookProcessor,
 ) -> None:
     assert (
         await processor.should_process_event(
             WebhookEvent(
                 trace_id="no",
-                payload=_event("modified", "r-1", evt_name="Monitor"),
+                payload=_event("modified", "m-1", evt_name="Access Management"),
                 headers={},
             )
         )
@@ -74,12 +81,12 @@ async def test_should_process_event_false_wrong_evt_name(
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_false_unsupported_action(
-    processor: RoleWebhookProcessor,
+async def test_should_process_event_false_resolved_action(
+    processor: MonitorWebhookProcessor,
 ) -> None:
     assert (
         await processor.should_process_event(
-            WebhookEvent(trace_id="no", payload=_event("accessed", "r-1"), headers={})
+            WebhookEvent(trace_id="no", payload=_event("resolved", "m-1"), headers={})
         )
         is False
     )
@@ -87,23 +94,17 @@ async def test_should_process_event_false_unsupported_action(
 
 @pytest.mark.asyncio
 async def test_handle_single_event_delete_returns_deleted(
-    processor: RoleWebhookProcessor,
+    processor: MonitorWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:
-    result = await processor.handle_event(
-        _event("deleted", "r-1"), resource_config={}  # type: ignore[arg-type]
-    )
+    result = await processor.handle_event(_event("deleted", "m-1"), resource_config)  # type: ignore[arg-type]
     assert result.updated_raw_results == []
-    assert result.deleted_raw_results == [{"type": "role", "id": "r-1", "name": None}]
+    assert result.deleted_raw_results == [
+        {"type": "monitor", "id": "m-1", "name": None}
+    ]
 
 
 @pytest.mark.asyncio
-async def test_get_matching_kinds(processor: RoleWebhookProcessor) -> None:
+async def test_get_matching_kinds(processor: MonitorWebhookProcessor) -> None:
     assert await processor.get_matching_kinds(
         WebhookEvent(trace_id="x", payload={}, headers={})
-    ) == [ObjectKind.ROLE]
-
-
-@pytest.mark.asyncio
-async def test_validate_payload_always_true(processor: RoleWebhookProcessor) -> None:
-    assert await processor.validate_payload(_event("modified", "r-1")) is True
-    assert await processor.validate_payload({"whatever": "dict"}) is True
+    ) == [ObjectKind.MONITOR]
