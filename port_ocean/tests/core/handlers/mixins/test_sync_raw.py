@@ -51,35 +51,35 @@ def mock_sync_raw_mixin(
             "name": "Entity 1",
             "service": "entity_3",
             "web_url": "https://example.com/entity1",
-            "Type": "mock",
+            "Type": "project",
         },
         {
             "id": "entity_2",
             "name": "Entity 2",
             "service": "entity_4",
             "web_url": "https://example.com/entity2",
-            "Type": "mock",
+            "Type": "project",
         },
         {
             "id": "entity_3",
             "name": "Entity 3",
             "service": "",
             "web_url": "https://example.com/entity3",
-            "Type": "mock",
+            "Type": "project",
         },
         {
             "id": "entity_4",
             "name": "Entity 4",
             "service": "entity_3",
             "web_url": "https://example.com/entity4",
-            "Type": "mock",
+            "Type": "project",
         },
         {
             "id": "entity_5",
             "name": "Entity 5",
             "service": "entity_1",
             "web_url": "https://example.com/entity5",
-            "Type": "mock",
+            "Type": "project",
         },
     ]
 
@@ -127,7 +127,7 @@ async def test_sync_raw_mixin_self_dependency(
     )  # Add this to match real behavior
     calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=[calc_result_mock])  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -252,7 +252,7 @@ async def test_sync_raw_mixin_circular_dependency(
     )  # Add this to match real behavior
     calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=[calc_result_mock])  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -401,7 +401,7 @@ async def test_sync_raw_mixin_dependency(
     calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
     # Mock the parse_items method to return our realistic mock
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=[calc_result_mock])  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -1150,9 +1150,9 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
 
     # Raw data - users with name and email, but NO .nonexistent_field
     raw_results = [
-        {"name": "John Doe", "email": "john@example.com"},
-        {"name": "Jane Smith", "email": "jane@example.com"},
-        {"name": "Bob Wilson", "email": "bob@example.com"},
+        {"name": "John Doe", "email": "john@example.com", "Type": "users"},
+        {"name": "Jane Smith", "email": "jane@example.com", "Type": "users"},
+        {"name": "Bob Wilson", "email": "bob@example.com", "Type": "users"},
     ]
 
     # Mock the port client's ingest_integration_kind_examples method
@@ -1197,8 +1197,8 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
 
         assert kind_arg == "users", "Kind should be 'users'"
         assert len(examples_arg) == 2, "Should send 2 examples as requested"
-        assert examples_arg[0] == {"name": "John Doe", "email": "john@example.com"}
-        assert examples_arg[1] == {"name": "Jane Smith", "email": "jane@example.com"}
+        assert examples_arg[0] == raw_results[0]
+        assert examples_arg[1] == raw_results[1]
 
         # Verify transformation failed (no entities created because .nonexistent_field doesn't exist)
         assert (
@@ -1284,6 +1284,7 @@ async def test_reconciliation_search_entities_uses_resync_start_time_filter(
     resync_start_time = FixedDatetime(2026, 3, 3, 12, 0, 0, tzinfo=timezone.utc)
     mock_ocean.port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
     mock_sync_raw_mixin.sort_and_upsert_failed_entities = AsyncMock()  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=[MagicMock()])  # type: ignore
 
     with patch("port_ocean.core.integrations.mixins.sync_raw.datetime", FixedDatetime):
         await mock_sync_raw_mixin.sync_raw_all()
