@@ -5,13 +5,11 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 if TYPE_CHECKING:
     from datadog.overrides import MonitorResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import MonitorExporter
 from datadog.core.exporters.monitor_exporter import GetMonitorOptions
 from datadog.webhook.consts import (
     MONITOR_ACTIONS,
-    AuditTrailAction,
     AuditTrailAssetType,
     AuditTrailEventName,
 )
@@ -34,24 +32,12 @@ class AuditMonitorWebhookProcessor(BaseAuditTrailProcessor):
             and attrs.action in MONITOR_ACTIONS
         )
 
-    async def _handle_audit_event(
+    async def _fetch_resource(
         self, event: AuditTrailEvent, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        monitor_id = event.attributes.asset.id
-
-        if event.attributes.action == AuditTrailAction.DELETED:
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[event.attributes.asset.dict()],
-            )
-
-        monitor = await MonitorExporter(self.client).get_resource(
+    ) -> dict[str, Any] | None:
+        return await MonitorExporter(self.client).get_resource(
             GetMonitorOptions.from_resource_config(
                 cast("MonitorResourceConfig", resource_config),
-                id=monitor_id,
+                id=event.attributes.asset.id,
             )
-        )
-
-        return WebhookEventRawResults(
-            updated_raw_results=[monitor] if monitor else [], deleted_raw_results=[]
         )

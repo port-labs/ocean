@@ -85,17 +85,6 @@ async def test_should_process_event_false_unsupported_action(
 
 
 @pytest.mark.asyncio
-async def test_handle_single_event_delete_returns_deleted(
-    processor: TeamWebhookProcessor, resource_config: SimpleNamespace
-) -> None:
-    result = await processor.handle_event(
-        _event("deleted", "t-1"), resource_config=resource_config  # type: ignore[arg-type]
-    )
-    assert result.updated_raw_results == []
-    assert result.deleted_raw_results == [{"type": "team", "id": "t-1", "name": None}]
-
-
-@pytest.mark.asyncio
 async def test_handle_single_event_fetches_team_with_members_flag(
     processor: TeamWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:

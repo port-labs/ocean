@@ -4,18 +4,16 @@ if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
 
 from integration import ObjectKind
-from datadog.webhook.consts import (
-    AuditTrailAction,
-    AuditTrailAssetType,
-    AuditTrailEventName,
-    SLO_ACTIONS,
-)
-from datadog.webhook.types import AuditTrailEvent
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import SloExporter
 from datadog.core.exporters.slo_exporter import GetSloOptions
+from datadog.webhook.consts import (
+    SLO_ACTIONS,
+    AuditTrailAssetType,
+    AuditTrailEventName,
+)
+from datadog.webhook.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.audit_trails.base_processor import (
     BaseAuditTrailProcessor,
 )
@@ -34,23 +32,12 @@ class SloWebhookProcessor(BaseAuditTrailProcessor):
             and attrs.action in SLO_ACTIONS
         )
 
-    async def _handle_audit_event(
+    async def _fetch_resource(
         self, event: AuditTrailEvent, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        slo_id = event.attributes.asset.id
-
-        if event.attributes.action == AuditTrailAction.DELETED:
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[event.attributes.asset.dict()],
-            )
-
-        slo = await SloExporter(self.client).get_resource(
+    ) -> dict[str, Any] | None:
+        return await SloExporter(self.client).get_resource(
             GetSloOptions.from_resource_config(
-                cast("SLOResourceConfig", resource_config), id=slo_id
+                cast("SLOResourceConfig", resource_config),
+                id=event.attributes.asset.id,
             )
-        )
-
-        return WebhookEventRawResults(
-            updated_raw_results=[slo] if slo else [], deleted_raw_results=[]
         )

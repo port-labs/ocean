@@ -2,12 +2,10 @@ from typing import Any
 
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import UserExporter
 from datadog.webhook.consts import (
     USER_ACTIONS,
-    AuditTrailAction,
     AuditTrailAssetType,
     AuditTrailEventName,
 )
@@ -28,27 +26,12 @@ class UserWebhookProcessor(BaseAuditTrailProcessor):
             attrs.evt.name == AuditTrailEventName.ACCESS_MANAGEMENT
             and attrs.asset.type == AuditTrailAssetType.USER
             and attrs.action in USER_ACTIONS
-            # This is the only indication that this is user crud event
-            # rather than role membership event
+            # http path distinguishes user CRUD from role-membership events
             and attrs.http is not None
             and not attrs.http.url_details.path.startswith("/api/v2/roles")
         )
 
-    async def _handle_audit_event(
+    async def _fetch_resource(
         self, event: AuditTrailEvent, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        del resource_config
-        attrs = event.attributes
-        user_id = attrs.asset.id
-
-        if attrs.action == AuditTrailAction.DELETED:
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[attrs.asset.dict()],
-            )
-
-        user = await UserExporter(self.client).get_resource(user_id)
-
-        return WebhookEventRawResults(
-            updated_raw_results=[user] if user else [], deleted_raw_results=[]
-        )
+    ) -> dict[str, Any] | None:
+        return await UserExporter(self.client).get_resource(event.attributes.asset.id)

@@ -86,17 +86,6 @@ async def test_should_process_event_false_unsupported_action(
 
 
 @pytest.mark.asyncio
-async def test_handle_single_event_delete_returns_deleted(
-    processor: RoleWebhookProcessor,
-) -> None:
-    result = await processor.handle_event(
-        _event("deleted", "r-1"), resource_config={}  # type: ignore[arg-type]
-    )
-    assert result.updated_raw_results == []
-    assert result.deleted_raw_results == [{"type": "role", "id": "r-1", "name": None}]
-
-
-@pytest.mark.asyncio
 async def test_get_matching_kinds(processor: RoleWebhookProcessor) -> None:
     assert await processor.get_matching_kinds(
         WebhookEvent(trace_id="x", payload={}, headers={})

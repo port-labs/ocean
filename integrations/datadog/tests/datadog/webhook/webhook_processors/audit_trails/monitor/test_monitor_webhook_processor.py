@@ -105,17 +105,6 @@ async def test_should_process_event_false_unsupported_action(
 
 
 @pytest.mark.asyncio
-async def test_handle_single_event_delete_returns_deleted(
-    processor: AuditMonitorWebhookProcessor, resource_config: SimpleNamespace
-) -> None:
-    result = await processor.handle_event(_event("deleted", "m-1"), resource_config)  # type: ignore[arg-type]
-    assert result.updated_raw_results == []
-    assert result.deleted_raw_results == [
-        {"type": "monitor", "id": "m-1", "name": None}
-    ]
-
-
-@pytest.mark.asyncio
 async def test_get_matching_kinds(processor: AuditMonitorWebhookProcessor) -> None:
     assert await processor.get_matching_kinds(
         WebhookEvent(trace_id="x", payload={}, headers={})

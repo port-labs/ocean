@@ -3,7 +3,6 @@ from typing import Any
 
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import UserExporter
 from datadog.webhook.consts import (
@@ -55,17 +54,10 @@ class RoleMembershipWebhookProcessor(BaseAuditTrailProcessor):
             return False
         return _extract_target_user_email(event.message) is not None
 
-    async def _handle_audit_event(
+    async def _fetch_resource(
         self, event: AuditTrailEvent, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
+    ) -> dict[str, Any] | None:
         email = _extract_target_user_email(event.message)
-
         if not email:
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        user = await UserExporter(self.client).get_resource_by_email(email)
-        return WebhookEventRawResults(
-            updated_raw_results=[user] if user else [], deleted_raw_results=[]
-        )
+            return None
+        return await UserExporter(self.client).get_resource_by_email(email)

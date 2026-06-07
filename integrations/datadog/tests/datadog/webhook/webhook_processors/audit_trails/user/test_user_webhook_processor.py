@@ -98,17 +98,6 @@ async def test_should_process_event_false_wrong_evt_name(
 
 
 @pytest.mark.asyncio
-async def test_handle_single_event_delete_returns_deleted(
-    processor: UserWebhookProcessor,
-) -> None:
-    result = await processor.handle_event(
-        _event("deleted", "u-1"), resource_config={}  # type: ignore[arg-type]
-    )
-    assert result.updated_raw_results == []
-    assert result.deleted_raw_results == [{"type": "user", "id": "u-1", "name": None}]
-
-
-@pytest.mark.asyncio
 async def test_get_matching_kinds(processor: UserWebhookProcessor) -> None:
     assert await processor.get_matching_kinds(
         WebhookEvent(trace_id="x", payload={}, headers={})

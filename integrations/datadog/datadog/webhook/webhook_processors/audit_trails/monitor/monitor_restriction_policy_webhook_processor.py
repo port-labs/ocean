@@ -5,7 +5,6 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 if TYPE_CHECKING:
     from datadog.overrides import MonitorResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import MonitorExporter
 from datadog.core.exporters.monitor_exporter import GetMonitorOptions
@@ -22,7 +21,11 @@ from datadog.webhook.webhook_processors.audit_trails.base_processor import (
 
 
 class MonitorRestrictionPolicyWebhookProcessor(BaseAuditTrailProcessor):
-    """Handles Access Management events where a restriction policy wrapping a monitor changes."""
+    """Handles Access Management events where a restriction policy wrapping a monitor changes.
+
+    When the restriction policy is deleted the monitor itself still exists, so
+    _deleted_result returns None to bypass the delete branch and re-fetch instead.
+    """
 
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return [ObjectKind.MONITOR]
@@ -39,24 +42,18 @@ class MonitorRestrictionPolicyWebhookProcessor(BaseAuditTrailProcessor):
         asset = parse_restriction_policy_asset(attrs.asset.id)
         return asset is not None and asset.type == AuditTrailAssetType.MONITOR
 
-    async def _handle_audit_event(
+    def _deleted_result(self, event: AuditTrailEvent) -> dict[str, Any] | None:
+        return None  # restriction deleted ≠ monitor deleted; re-fetch instead
+
+    async def _fetch_resource(
         self, event: AuditTrailEvent, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
+    ) -> dict[str, Any] | None:
         asset = parse_restriction_policy_asset(event.attributes.asset.id)
-        monitor_id = asset.id if asset else None
-
-        if not monitor_id:
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        monitor = await MonitorExporter(self.client).get_resource(
+        if not asset:
+            return None
+        return await MonitorExporter(self.client).get_resource(
             GetMonitorOptions.from_resource_config(
                 cast("MonitorResourceConfig", resource_config),
-                id=monitor_id,
+                id=asset.id,
             )
-        )
-
-        return WebhookEventRawResults(
-            updated_raw_results=[monitor] if monitor else [], deleted_raw_results=[]
         )

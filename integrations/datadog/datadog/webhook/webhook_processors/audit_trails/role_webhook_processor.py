@@ -1,19 +1,17 @@
 from typing import Any
 
 from integration import ObjectKind
-from datadog.webhook.types import AuditTrailEvent
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import RoleExporter
-from datadog.webhook.webhook_processors.audit_trails.base_processor import (
-    BaseAuditTrailProcessor,
-)
 from datadog.webhook.consts import (
-    AuditTrailAction,
+    ROLES_ACTIONS,
     AuditTrailAssetType,
     AuditTrailEventName,
-    ROLES_ACTIONS,
+)
+from datadog.webhook.types import AuditTrailEvent
+from datadog.webhook.webhook_processors.audit_trails.base_processor import (
+    BaseAuditTrailProcessor,
 )
 
 
@@ -30,19 +28,7 @@ class RoleWebhookProcessor(BaseAuditTrailProcessor):
             and attrs.action in ROLES_ACTIONS
         )
 
-    async def _handle_audit_event(
+    async def _fetch_resource(
         self, event: AuditTrailEvent, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        role_id = event.attributes.asset.id
-
-        if event.attributes.action == AuditTrailAction.DELETED:
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[event.attributes.asset.dict()],
-            )
-
-        role = await RoleExporter(self.client).get_resource(role_id)
-
-        return WebhookEventRawResults(
-            updated_raw_results=[role] if role else [], deleted_raw_results=[]
-        )
+    ) -> dict[str, Any] | None:
+        return await RoleExporter(self.client).get_resource(event.attributes.asset.id)

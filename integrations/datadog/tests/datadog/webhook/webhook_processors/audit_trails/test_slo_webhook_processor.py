@@ -100,17 +100,6 @@ async def test_should_process_event_false_wrong_asset_type(
 
 
 @pytest.mark.asyncio
-async def test_handle_single_event_delete_returns_deleted(
-    processor: SloWebhookProcessor, resource_config: SimpleNamespace
-) -> None:
-    result = await processor.handle_event(
-        _event("deleted", "s-1"), resource_config=resource_config  # type: ignore[arg-type]
-    )
-    assert result.updated_raw_results == []
-    assert result.deleted_raw_results == [{"type": "slo", "id": "s-1", "name": None}]
-
-
-@pytest.mark.asyncio
 async def test_handle_single_event_fetches_slo_with_restriction_policy_flag(
     processor: SloWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:

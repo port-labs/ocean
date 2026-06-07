@@ -5,7 +5,6 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import SloExporter
 from datadog.core.exporters.slo_exporter import GetSloOptions
@@ -22,7 +21,11 @@ from datadog.webhook.webhook_processors.audit_trails.base_processor import (
 
 
 class SloRestrictionPolicyWebhookProcessor(BaseAuditTrailProcessor):
-    """Handles Access Management events where a restriction policy wrapping an SLO changes."""
+    """Handles Access Management events where a restriction policy wrapping an SLO changes.
+
+    When the restriction policy is deleted the SLO itself still exists, so
+    _deleted_result returns None to bypass the delete branch and re-fetch instead.
+    """
 
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return [ObjectKind.SLO]
@@ -39,24 +42,18 @@ class SloRestrictionPolicyWebhookProcessor(BaseAuditTrailProcessor):
         asset = parse_restriction_policy_asset(attrs.asset.id)
         return asset is not None and asset.type == AuditTrailAssetType.SLO
 
-    async def _handle_audit_event(
+    def _deleted_result(self, event: AuditTrailEvent) -> dict[str, Any] | None:
+        return None  # restriction deleted ≠ SLO deleted; re-fetch instead
+
+    async def _fetch_resource(
         self, event: AuditTrailEvent, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
+    ) -> dict[str, Any] | None:
         asset = parse_restriction_policy_asset(event.attributes.asset.id)
-        slo_id = asset.id if asset else None
-
-        if not slo_id:
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        slo = await SloExporter(self.client).get_resource(
+        if not asset:
+            return None
+        return await SloExporter(self.client).get_resource(
             GetSloOptions.from_resource_config(
                 cast("SLOResourceConfig", resource_config),
-                id=slo_id,
+                id=asset.id,
             )
-        )
-
-        return WebhookEventRawResults(
-            updated_raw_results=[slo] if slo else [], deleted_raw_results=[]
         )
