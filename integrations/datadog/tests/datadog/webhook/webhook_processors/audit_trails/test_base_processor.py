@@ -14,7 +14,9 @@ from datadog.webhook.webhook_processors.audit_trails.base_processor import (
 )
 
 
-def _raw(evt_name: str, action: str, asset_type: str, asset_id: str = "x-1") -> dict:
+def _raw(
+    evt_name: str, action: str, asset_type: str, asset_id: str = "x-1"
+) -> dict[str, Any]:
     return {
         "attributes": {
             "evt": {"name": evt_name},
@@ -24,7 +26,7 @@ def _raw(evt_name: str, action: str, asset_type: str, asset_id: str = "x-1") -> 
     }
 
 
-def _event(payload: dict) -> WebhookEvent:
+def _event(payload: dict[str, Any]) -> WebhookEvent:
     return WebhookEvent(trace_id="t", payload=payload, headers={})
 
 
@@ -33,7 +35,10 @@ class _StubProcessor(BaseAuditTrailProcessor):
         return ["stub"]
 
     async def _should_process(self, event: AuditTrailEvent) -> bool:
-        return event.attributes.evt.name == "Stub" and event.attributes.asset.type == "stub"
+        return (
+            event.attributes.evt.name == "Stub"
+            and event.attributes.asset.type == "stub"
+        )
 
     async def _handle_audit_event(
         self, event: AuditTrailEvent, resource_config: ResourceConfig
@@ -66,48 +71,70 @@ def test_parse_event_missing_required_field_raises() -> None:
     from pydantic import ValidationError
 
     with pytest.raises(ValidationError):
-        AuditTrailEvent.parse_obj({"attributes": {"evt": {"name": "X"}, "action": "created"}})
+        AuditTrailEvent.parse_obj(
+            {"attributes": {"evt": {"name": "X"}, "action": "created"}}
+        )
 
 
 @pytest.mark.asyncio
 async def test_should_process_event_matches_stub(processor: _StubProcessor) -> None:
-    assert await processor.should_process_event(_event(_raw("Stub", "created", "stub"))) is True
+    assert (
+        await processor.should_process_event(_event(_raw("Stub", "created", "stub")))
+        is True
+    )
 
 
 @pytest.mark.asyncio
 async def test_should_process_event_false_when_evt_name_mismatch(
     processor: _StubProcessor,
 ) -> None:
-    assert await processor.should_process_event(_event(_raw("WrongName", "created", "stub"))) is False
+    assert (
+        await processor.should_process_event(
+            _event(_raw("WrongName", "created", "stub"))
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
 async def test_should_process_event_false_when_payload_unparseable(
     processor: _StubProcessor,
 ) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="t", payload={"bad": "payload"}, headers={})
-    ) is False
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="t", payload={"bad": "payload"}, headers={})
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
 async def test_should_process_event_false_when_payload_is_list(
     processor: _StubProcessor,
 ) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="t", payload=[_raw("Stub", "created", "stub")], headers={})
-    ) is False
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="t", payload=[_raw("Stub", "created", "stub")], headers={}  # type: ignore[arg-type]
+            )
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
 async def test_validate_payload_always_true(processor: _StubProcessor) -> None:
-    assert await processor.validate_payload(_raw("Stub", "created", "stub", "s-1")) is True
+    assert (
+        await processor.validate_payload(_raw("Stub", "created", "stub", "s-1")) is True
+    )
     assert await processor.validate_payload({"whatever": "dict"}) is True
 
 
 @pytest.mark.asyncio
-async def test_handle_event_delegates_to_handle_audit_event(processor: _StubProcessor) -> None:
+async def test_handle_event_delegates_to_handle_audit_event(
+    processor: _StubProcessor,
+) -> None:
     raw = _raw("Stub", "created", "stub", "s-1")
-    result = await processor.handle_event(raw, resource_config={})
+    result = await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
     assert result.updated_raw_results[0]["attributes"]["asset"]["id"] == "s-1"
     assert result.deleted_raw_results == []

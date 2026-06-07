@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     from datadog.overrides import ServiceDependencyResourceConfig
 
 from loguru import logger
-from pydantic import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.core.exporters.base_exporter import (
@@ -20,7 +19,7 @@ from datadog.core.exporters.base_exporter import (
 FETCH_WINDOW_TIME_IN_SECONDS = 3600
 
 
-class ListServiceDependencyOptions(ListOptions):
+class ListServiceDependencyOptions(ListOptions["ServiceDependencyResourceConfig"]):
     env: str
     start_time: float
 
@@ -34,17 +33,17 @@ class ListServiceDependencyOptions(ListOptions):
         )
 
 
-class GetServiceDependencyOptions(GetOptions):
+class GetServiceDependencyOptions(GetOptions["ServiceDependencyResourceConfig"]):
     env: str
     start_time: float
     service_id: str
 
     @classmethod
     def from_resource_config(
-        cls, resource_config: "ServiceDependencyResourceConfig", *, service_id: str
+        cls, resource_config: "ServiceDependencyResourceConfig", *, id: str
     ) -> "GetServiceDependencyOptions":
         return cls(
-            service_id=service_id,
+            service_id=id,
             env=resource_config.selector.environment,
             start_time=resource_config.selector.start_time,
         )

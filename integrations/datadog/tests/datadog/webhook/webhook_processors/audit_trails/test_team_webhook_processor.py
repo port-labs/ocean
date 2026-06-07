@@ -1,6 +1,7 @@
 import sys
 import types
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -13,8 +14,8 @@ overrides_module = sys.modules.setdefault("overrides", types.ModuleType("overrid
 setattr(overrides_module, "TeamResourceConfig", object)
 setattr(overrides_module, "SLOResourceConfig", object)
 
-from datadog.core.exporters.team_exporter import GetTeamOptions
-from datadog.webhook.webhook_processors.audit_trails.team_webhook_processor import (
+from datadog.core.exporters.team_exporter import GetTeamOptions  # noqa: E402
+from datadog.webhook.webhook_processors.audit_trails.team_webhook_processor import (  # noqa: E402
     TeamWebhookProcessor,
 )
 
@@ -24,7 +25,7 @@ def _event(
     asset_id: str,
     asset_type: str = "team",
     evt_name: str = "Teams Management",
-) -> dict:
+) -> dict[str, Any]:
     return {
         "attributes": {
             "evt": {"name": evt_name},
@@ -45,28 +46,43 @@ def resource_config() -> SimpleNamespace:
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_matches_team_type(processor: TeamWebhookProcessor) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="ok", payload=_event("modified", "t-1"), headers={})
-    ) is True
-
-
-@pytest.mark.asyncio
-async def test_should_process_event_false_wrong_evt_name(processor: TeamWebhookProcessor) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(
-            trace_id="no",
-            payload=_event("modified", "t-1", evt_name="Access Management"),
-            headers={},
+async def test_should_process_event_matches_team_type(
+    processor: TeamWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="ok", payload=_event("modified", "t-1"), headers={})
         )
-    ) is False
+        is True
+    )
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_false_unsupported_action(processor: TeamWebhookProcessor) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="no", payload=_event("accessed", "t-1"), headers={})
-    ) is False
+async def test_should_process_event_false_wrong_evt_name(
+    processor: TeamWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no",
+                payload=_event("modified", "t-1", evt_name="Access Management"),
+                headers={},
+            )
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_unsupported_action(
+    processor: TeamWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="no", payload=_event("accessed", "t-1"), headers={})
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -74,7 +90,7 @@ async def test_handle_single_event_delete_returns_deleted(
     processor: TeamWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:
     result = await processor.handle_event(
-        _event("deleted", "t-1"), resource_config=resource_config
+        _event("deleted", "t-1"), resource_config=resource_config  # type: ignore[arg-type]
     )
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [{"id": "t-1"}]
@@ -92,10 +108,12 @@ async def test_handle_single_event_fetches_team_with_members_flag(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _event("modified", "t-1"), resource_config=resource_config
+            _event("modified", "t-1"), resource_config=resource_config  # type: ignore[arg-type]
         )
 
-    exporter.get_resource.assert_awaited_once_with(GetTeamOptions(id="t-1", include_members=True))
+    exporter.get_resource.assert_awaited_once_with(
+        GetTeamOptions(id="t-1", include_members=True)
+    )
     assert result.updated_raw_results == [{"id": "t-1"}]
     assert result.deleted_raw_results == []
 
@@ -116,7 +134,7 @@ async def test_handle_single_event_404_returns_deleted(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _event("modified", "t-1"), resource_config=resource_config
+            _event("modified", "t-1"), resource_config=resource_config  # type: ignore[arg-type]
         )
 
     assert result.updated_raw_results == []

@@ -47,7 +47,9 @@ class UserWebhookProcessor(BaseAuditTrailProcessor):
             user_id = attrs.asset.id
 
         if not user_id:
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         if attrs.asset.type == ObjectKind.USER and attrs.action == "deleted":
             return WebhookEventRawResults(

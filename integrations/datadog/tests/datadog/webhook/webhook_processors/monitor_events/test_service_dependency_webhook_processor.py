@@ -43,14 +43,27 @@ async def test_get_matching_kinds(
 
 
 @pytest.mark.asyncio
-async def test_should_process_event(processor: ServiceDependencyWebhookProcessor) -> None:
-    def _event(payload: dict) -> WebhookEvent:
+async def test_should_process_event(
+    processor: ServiceDependencyWebhookProcessor,
+) -> None:
+    def _event(payload: dict[str, Any]) -> WebhookEvent:
         return WebhookEvent(trace_id="t", payload=payload, headers={})
 
-    assert await processor.should_process_event(
-        _event({"event_type": "service_check", "tags": ["service:service-a", "env:prod"]})
-    ) is True
-    assert await processor.should_process_event(_event({"event_type": "service_check"})) is False
+    assert (
+        await processor.should_process_event(
+            _event(
+                {
+                    "event_type": "service_check",
+                    "tags": ["service:service-a", "env:prod"],
+                }
+            )
+        )
+        is True
+    )
+    assert (
+        await processor.should_process_event(_event({"event_type": "service_check"}))
+        is False
+    )
 
 
 @pytest.mark.asyncio

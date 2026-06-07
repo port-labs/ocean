@@ -1,6 +1,7 @@
 from initialize_client import init_client
 from integration import ObjectKind
-from datadog.overrides import MonitorResourceConfig
+from typing import cast
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -32,15 +33,21 @@ class MonitorWebhookProcessor(BaseWebhookProcessor):
         return [ObjectKind.MONITOR]
 
     async def handle_event(
-        self, payload: EventPayload, resource_config: MonitorResourceConfig
+        self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
+        from datadog.overrides import MonitorResourceConfig
+
         monitor_id = self.extract_monitor_id(payload)
         if monitor_id is None:
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         dd_client = init_client()
         monitor = await MonitorExporter(dd_client).get_resource(
-            GetMonitorOptions.from_resource_config(resource_config, resource_id=monitor_id)
+            GetMonitorOptions.from_resource_config(
+                cast(MonitorResourceConfig, resource_config), id=monitor_id
+            )
         )
 
         return WebhookEventRawResults(

@@ -2,7 +2,6 @@ import asyncio
 from itertools import batched
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from datadog.overrides import MonitorResourceConfig
@@ -20,24 +19,28 @@ from datadog.core.exporters.base_exporter import (
 MONITOR_ENRICHMENT_BATCH_SIZE = 10
 
 
-class ListMonitorOptions(ListOptions):
+class ListMonitorOptions(ListOptions["MonitorResourceConfig"]):
     include_restriction_policy: bool = False
 
     @classmethod
-    def from_resource_config(cls, resource_config: "MonitorResourceConfig") -> "ListMonitorOptions":
-        return cls(include_restriction_policy=resource_config.selector.include_restriction_policy)
+    def from_resource_config(
+        cls, resource_config: "MonitorResourceConfig"
+    ) -> "ListMonitorOptions":
+        return cls(
+            include_restriction_policy=resource_config.selector.include_restriction_policy
+        )
 
 
-class GetMonitorOptions(GetOptions):
+class GetMonitorOptions(GetOptions["MonitorResourceConfig"]):
     resource_id: str
     include_restriction_policy: bool = False
 
     @classmethod
     def from_resource_config(
-        cls, resource_config: "MonitorResourceConfig", *, resource_id: str
+        cls, resource_config: "MonitorResourceConfig", *, id: str
     ) -> "GetMonitorOptions":
         return cls(
-            resource_id=resource_id,
+            resource_id=id,
             include_restriction_policy=resource_config.selector.include_restriction_policy,
         )
 

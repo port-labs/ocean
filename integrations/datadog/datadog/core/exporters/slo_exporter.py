@@ -3,7 +3,6 @@ from itertools import batched
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from datadog.overrides import SLOResourceConfig
@@ -21,20 +20,26 @@ from datadog.core.exporters.base_exporter import (
 SLO_ENRICHMENT_BATCH_SIZE = 10
 
 
-class ListSloOptions(ListOptions):
+class ListSloOptions(ListOptions["SLOResourceConfig"]):
     include_restriction_policy: bool = False
 
     @classmethod
-    def from_resource_config(cls, resource_config: "SLOResourceConfig") -> "ListSloOptions":
-        return cls(include_restriction_policy=resource_config.selector.include_restriction_policy)
+    def from_resource_config(
+        cls, resource_config: "SLOResourceConfig"
+    ) -> "ListSloOptions":
+        return cls(
+            include_restriction_policy=resource_config.selector.include_restriction_policy
+        )
 
 
-class GetSloOptions(GetOptions):
+class GetSloOptions(GetOptions["SLOResourceConfig"]):
     id: str
     include_restriction_policy: bool = False
 
     @classmethod
-    def from_resource_config(cls, resource_config: "SLOResourceConfig", *, id: str) -> "GetSloOptions":
+    def from_resource_config(
+        cls, resource_config: "SLOResourceConfig", *, id: str
+    ) -> "GetSloOptions":
         return cls(
             id=id,
             include_restriction_policy=resource_config.selector.include_restriction_policy,

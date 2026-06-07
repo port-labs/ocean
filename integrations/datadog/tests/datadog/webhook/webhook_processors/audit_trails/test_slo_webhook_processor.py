@@ -1,6 +1,7 @@
 import sys
 import types
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -13,8 +14,8 @@ overrides_module = sys.modules.setdefault("overrides", types.ModuleType("overrid
 setattr(overrides_module, "SLOResourceConfig", object)
 setattr(overrides_module, "TeamResourceConfig", object)
 
-from datadog.core.exporters.slo_exporter import GetSloOptions
-from datadog.webhook.webhook_processors.audit_trails.slo_webhook_processor import (
+from datadog.core.exporters.slo_exporter import GetSloOptions  # noqa: E402
+from datadog.webhook.webhook_processors.audit_trails.slo_webhook_processor import (  # noqa: E402
     SloWebhookProcessor,
 )
 
@@ -24,7 +25,7 @@ def _event(
     asset_id: str,
     asset_type: str = "slo",
     evt_name: str = "SLO",
-) -> dict:
+) -> dict[str, Any]:
     return {
         "attributes": {
             "evt": {"name": evt_name},
@@ -45,36 +46,58 @@ def resource_config() -> SimpleNamespace:
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_matches_slo_type(processor: SloWebhookProcessor) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="ok", payload=_event("modified", "s-1"), headers={})
-    ) is True
-
-
-@pytest.mark.asyncio
-async def test_should_process_event_accepts_any_action(processor: SloWebhookProcessor) -> None:
-    for action in ("created", "modified", "deleted"):
-        assert await processor.should_process_event(
-            WebhookEvent(trace_id="ok", payload=_event(action, "s-1"), headers={})
-        ) is True
-
-
-@pytest.mark.asyncio
-async def test_should_process_event_false_wrong_evt_name(processor: SloWebhookProcessor) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(
-            trace_id="no",
-            payload=_event("modified", "s-1", evt_name="Monitor"),
-            headers={},
+async def test_should_process_event_matches_slo_type(
+    processor: SloWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="ok", payload=_event("modified", "s-1"), headers={})
         )
-    ) is False
+        is True
+    )
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_false_wrong_asset_type(processor: SloWebhookProcessor) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="no", payload=_event("modified", "m-1", "monitor"), headers={})
-    ) is False
+async def test_should_process_event_accepts_any_action(
+    processor: SloWebhookProcessor,
+) -> None:
+    for action in ("created", "modified", "deleted"):
+        assert (
+            await processor.should_process_event(
+                WebhookEvent(trace_id="ok", payload=_event(action, "s-1"), headers={})
+            )
+            is True
+        )
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_wrong_evt_name(
+    processor: SloWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no",
+                payload=_event("modified", "s-1", evt_name="Monitor"),
+                headers={},
+            )
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_wrong_asset_type(
+    processor: SloWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no", payload=_event("modified", "m-1", "monitor"), headers={}
+            )
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -82,7 +105,7 @@ async def test_handle_single_event_delete_returns_deleted(
     processor: SloWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:
     result = await processor.handle_event(
-        _event("deleted", "s-1"), resource_config=resource_config
+        _event("deleted", "s-1"), resource_config=resource_config  # type: ignore[arg-type]
     )
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [{"id": "s-1"}]
@@ -100,7 +123,7 @@ async def test_handle_single_event_fetches_slo_with_restriction_policy_flag(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _event("modified", "s-1"), resource_config=resource_config
+            _event("modified", "s-1"), resource_config=resource_config  # type: ignore[arg-type]
         )
 
     exporter.get_resource.assert_awaited_once_with(
@@ -126,7 +149,7 @@ async def test_handle_single_event_404_returns_deleted(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _event("modified", "s-1"), resource_config=resource_config
+            _event("modified", "s-1"), resource_config=resource_config  # type: ignore[arg-type]
         )
 
     assert result.updated_raw_results == []

@@ -1,7 +1,10 @@
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from typing import Any
 
-from datadog.core.exporters.base_exporter import PaginatedExporter, SingleResourceExporter
+from datadog.core.exporters.base_exporter import (
+    PaginatedExporter,
+    SingleResourceExporter,
+)
 
 
 class RoleExporter(PaginatedExporter[None], SingleResourceExporter[str]):

@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     from datadog.overrides import ServiceMetricResourceConfig
 
 from loguru import logger
-from pydantic import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.client import DatadogClient
@@ -24,7 +23,7 @@ MINIMUM_LIMIT_REMAINING = 1
 DEFAULT_SLEEP_TIME = 0.1
 
 
-class ListServiceMetricOptions(ListOptions):
+class ListServiceMetricOptions(ListOptions["ServiceMetricResourceConfig"]):
     metric_query: str
     env_tag: str = "env"
     env_value: str = "*"

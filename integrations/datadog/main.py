@@ -1,3 +1,5 @@
+from typing import cast
+
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -27,6 +29,14 @@ from datadog.core.exporters.service_metric_exporter import ListServiceMetricOpti
 from datadog.core.exporters.service_dependency_exporter import (
     ListServiceDependencyOptions,
 )
+from datadog.overrides import (
+    TeamResourceConfig,
+    MonitorResourceConfig,
+    SLOResourceConfig,
+    SLOHistoryResourceConfig,
+    ServiceMetricResourceConfig,
+    ServiceDependencyResourceConfig,
+)
 
 
 @ocean.on_resync(ObjectKind.TEAM)
@@ -35,7 +45,9 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     team_exporter = TeamExporter(dd_client)
 
     async for teams in team_exporter.get_paginated_resources(
-        ListTeamOptions.from_resource_config(event.resource_config)
+        ListTeamOptions.from_resource_config(
+            cast(TeamResourceConfig, event.resource_config)
+        )
     ):
         logger.info(f"Received batch with {len(teams)} teams")
         yield teams
@@ -67,7 +79,9 @@ async def on_resync_monitors(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     monitor_exporter = MonitorExporter(dd_client)
 
     async for monitors in monitor_exporter.get_paginated_resources(
-        ListMonitorOptions.from_resource_config(event.resource_config)
+        ListMonitorOptions.from_resource_config(
+            cast(MonitorResourceConfig, event.resource_config)
+        )
     ):
         logger.info(f"Received batch with {len(monitors)} monitors")
         yield monitors
@@ -79,7 +93,9 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     slo_exporter = SloExporter(dd_client)
 
     async for slos in slo_exporter.get_paginated_resources(
-        ListSloOptions.from_resource_config(event.resource_config)
+        ListSloOptions.from_resource_config(
+            cast(SLOResourceConfig, event.resource_config)
+        )
     ):
         logger.info(f"Received batch with {len(slos)} slos")
         yield slos
@@ -91,7 +107,9 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     slo_history_exporter = SloHistoryExporter(dd_client)
 
     async for histories in slo_history_exporter.get_paginated_resources(
-        ListSloHistoryOptions.from_resource_config(event.resource_config)
+        ListSloHistoryOptions.from_resource_config(
+            cast(SLOHistoryResourceConfig, event.resource_config)
+        )
     ):
         yield histories
 
@@ -112,7 +130,9 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service_metric_exporter = ServiceMetricExporter(dd_client)
 
     async for metrics in service_metric_exporter.get_paginated_resources(
-        ListServiceMetricOptions.from_resource_config(event.resource_config)
+        ListServiceMetricOptions.from_resource_config(
+            cast(ServiceMetricResourceConfig, event.resource_config)
+        )
     ):
         logger.info(f"Received batch with {len(metrics)} metrics")
         yield metrics
@@ -124,7 +144,9 @@ async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service_dependency_exporter = ServiceDependencyExporter(dd_client)
 
     async for dependencies in service_dependency_exporter.get_paginated_resources(
-        ListServiceDependencyOptions.from_resource_config(event.resource_config)
+        ListServiceDependencyOptions.from_resource_config(
+            cast(ServiceDependencyResourceConfig, event.resource_config)
+        )
     ):
         logger.info(f"Received batch with {len(dependencies)} dependencies")
         yield dependencies
@@ -151,7 +173,7 @@ async def on_start() -> None:
     if base_url := ocean.app.base_url:
         dd_client = init_client()
         webhook_secret = ocean.integration_config.get("webhook_secret")
-        notification_rule_tags = ocean.integration_config.get(
+        notification_rule_tags: list[str] | None = ocean.integration_config.get(
             "monitor_notification_rule_tags"
         )
         integration_identifier = ocean.config.integration.identifier

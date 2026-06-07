@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -37,12 +38,19 @@ async def test_get_matching_kinds(
 
 @pytest.mark.asyncio
 async def test_should_process_event(processor: MonitorWebhookProcessor) -> None:
-    def _event(payload: dict) -> WebhookEvent:
+    def _event(payload: dict[str, Any]) -> WebhookEvent:
         return WebhookEvent(trace_id="t", payload=payload, headers={})
 
-    assert await processor.should_process_event(_event({"event_type": "alert", "alert_id": "123"})) is True
+    assert (
+        await processor.should_process_event(
+            _event({"event_type": "alert", "alert_id": "123"})
+        )
+        is True
+    )
     assert await processor.should_process_event(_event({"alert_id": "123"})) is False
-    assert await processor.should_process_event(_event({"event_type": "alert"})) is False
+    assert (
+        await processor.should_process_event(_event({"event_type": "alert"})) is False
+    )
 
 
 @pytest.mark.asyncio
@@ -65,7 +73,7 @@ async def test_handle_event_with_monitor(
         mock_exporter.get_resource.return_value = mock_monitor
         mock_exporter_cls.return_value = mock_exporter
 
-        result = await processor.handle_event(test_payload, resource_config)
+        result = await processor.handle_event(test_payload, resource_config)  # type: ignore[arg-type]
 
         mock_exporter.get_resource.assert_awaited_once_with(
             GetMonitorOptions(resource_id="123", include_restriction_policy=False)
@@ -94,7 +102,7 @@ async def test_handle_event_without_monitor(
         mock_exporter.get_resource.return_value = None
         mock_exporter_cls.return_value = mock_exporter
 
-        result = await processor.handle_event(test_payload, resource_config)
+        result = await processor.handle_event(test_payload, resource_config)  # type: ignore[arg-type]
 
         mock_exporter.get_resource.assert_awaited_once_with(
             GetMonitorOptions(resource_id="123", include_restriction_policy=False)

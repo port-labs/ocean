@@ -1,5 +1,8 @@
 import httpx
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from datadog.overrides import SLOResourceConfig
 
 from integration import ObjectKind
 from datadog.webhook.consts import (
@@ -44,7 +47,9 @@ class SloWebhookProcessor(BaseAuditTrailProcessor):
 
         try:
             slo = await SloExporter(self.client).get_resource(
-                GetSloOptions.from_resource_config(resource_config, id=slo_id)
+                GetSloOptions.from_resource_config(
+                    cast("SLOResourceConfig", resource_config), id=slo_id
+                )
             )
         except httpx.HTTPStatusError as err:
             if err.response.status_code == 404:

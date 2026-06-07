@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, Any, AsyncGenerator
+from typing import TYPE_CHECKING, TypeVar, Generic, Any, AsyncGenerator
 
 from abc import ABC, abstractmethod
 
@@ -7,37 +7,40 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.client import DatadogClient
 
+if TYPE_CHECKING:
+    from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+
 MAX_PAGE_SIZE = 100
 
+RC = TypeVar("RC", bound="ResourceConfig")
 
-class ListOptions(BaseModel):
+
+class ListOptions(BaseModel, Generic[RC]):
     """Base for all paginated-exporter options.
 
-    Each subclass must implement from_resource_config(resource_config) so callers
+    Each subclass inherits ListOptions[ConcreteResourceConfig] so callers
     never need to know which ResourceConfig fields map to which option fields.
     """
 
     @classmethod
-    def from_resource_config(cls, resource_config: Any) -> "ListOptions":
+    def from_resource_config(cls, resource_config: RC) -> "ListOptions[RC]":
         raise NotImplementedError(f"{cls.__name__} must implement from_resource_config")
 
 
-class GetOptions(BaseModel):
+class GetOptions(BaseModel, Generic[RC]):
     """Base for all single-resource-exporter options.
 
-    Subclasses must implement from_resource_config(resource_config, *, ...).
-    resource_config is always first; the explicit resource identifier (e.g. id,
-    resource_id, service_id) follows as a keyword-only argument since it doesn't
-    live inside ResourceConfig and its name varies per resource type.
+    Each subclass inherits GetOptions[ConcreteResourceConfig].
+    resource_config is always first; the resource identifier follows as *, id: str.
     """
 
     @classmethod
-    def from_resource_config(cls, resource_config: Any, **kwargs: Any) -> "GetOptions":
+    def from_resource_config(cls, resource_config: RC, *, id: str) -> "GetOptions[RC]":
         raise NotImplementedError(f"{cls.__name__} must implement from_resource_config")
 
 
-ListOptionsT = TypeVar("ListOptionsT", bound=ListOptions)
-GetOptionsT = TypeVar("GetOptionsT", bound=GetOptions)
+ListOptionsT = TypeVar("ListOptionsT")
+GetOptionsT = TypeVar("GetOptionsT")
 
 
 class DatadogExporter(ABC):

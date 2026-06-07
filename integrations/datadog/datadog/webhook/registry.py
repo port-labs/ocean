@@ -1,6 +1,9 @@
 from port_ocean.context.ocean import ocean
 
-from datadog.webhook.webhook_client import AUDIT_TRAIL_WEBHOOK_PATH, MONITOR_WEBHOOK_PATH
+from datadog.webhook.webhook_client import (
+    AUDIT_TRAIL_WEBHOOK_PATH,
+    MONITOR_WEBHOOK_PATH,
+)
 from datadog.webhook.webhook_processors.audit_trails.monitor_webhook_processor import (
     MonitorWebhookProcessor as AuditMonitorWebhookProcessor,
 )
@@ -22,6 +25,7 @@ from datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor
 from datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor import (
     ServiceDependencyWebhookProcessor,
 )
+
 
 def register_live_events_webhooks() -> None:
     ocean.add_webhook_processor(MONITOR_WEBHOOK_PATH, MonitorWebhookProcessor)

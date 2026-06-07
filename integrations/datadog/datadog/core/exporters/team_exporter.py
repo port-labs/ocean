@@ -1,7 +1,6 @@
 from loguru import logger
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from datadog.overrides import TeamResourceConfig
@@ -16,20 +15,24 @@ from datadog.core.exporters.base_exporter import (
 )
 
 
-class ListTeamOptions(ListOptions):
+class ListTeamOptions(ListOptions["TeamResourceConfig"]):
     include_members: bool = False
 
     @classmethod
-    def from_resource_config(cls, resource_config: "TeamResourceConfig") -> "ListTeamOptions":
+    def from_resource_config(
+        cls, resource_config: "TeamResourceConfig"
+    ) -> "ListTeamOptions":
         return cls(include_members=resource_config.selector.include_members)
 
 
-class GetTeamOptions(GetOptions):
+class GetTeamOptions(GetOptions["TeamResourceConfig"]):
     id: str
     include_members: bool = False
 
     @classmethod
-    def from_resource_config(cls, resource_config: "TeamResourceConfig", *, id: str) -> "GetTeamOptions":
+    def from_resource_config(
+        cls, resource_config: "TeamResourceConfig", *, id: str
+    ) -> "GetTeamOptions":
         return cls(id=id, include_members=resource_config.selector.include_members)
 
 

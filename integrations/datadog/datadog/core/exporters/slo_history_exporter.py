@@ -7,7 +7,6 @@ if TYPE_CHECKING:
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.queue_utils import process_in_queue
 
@@ -20,7 +19,7 @@ from datadog.utils import (
 )
 
 
-class ListSloHistoryOptions(ListOptions):
+class ListSloHistoryOptions(ListOptions["SLOHistoryResourceConfig"]):
     timeframe: int
     concurrency: int
     period_of_time_in_months: int

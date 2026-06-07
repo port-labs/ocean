@@ -1,8 +1,11 @@
 import httpx
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+
+if TYPE_CHECKING:
+    from datadog.overrides import TeamResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import TeamExporter
@@ -36,7 +39,9 @@ class TeamWebhookProcessor(BaseAuditTrailProcessor):
 
         try:
             team = await TeamExporter(self.client).get_resource(
-                GetTeamOptions.from_resource_config(resource_config, id=team_id)
+                GetTeamOptions.from_resource_config(
+                    cast("TeamResourceConfig", resource_config), id=team_id
+                )
             )
         except httpx.HTTPStatusError as err:
             if err.response.status_code == 404:

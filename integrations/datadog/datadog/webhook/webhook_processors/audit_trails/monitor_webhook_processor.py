@@ -1,8 +1,11 @@
 import httpx
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+
+if TYPE_CHECKING:
+    from datadog.overrides import MonitorResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 
 from datadog.core.exporters import MonitorExporter
@@ -60,7 +63,9 @@ class MonitorWebhookProcessor(BaseAuditTrailProcessor):
             monitor_id = event.attributes.asset.id
 
         if not monitor_id:
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         if (
             event.attributes.asset.type == ObjectKind.MONITOR
@@ -72,7 +77,10 @@ class MonitorWebhookProcessor(BaseAuditTrailProcessor):
 
         try:
             monitor = await MonitorExporter(self.client).get_resource(
-                GetMonitorOptions.from_resource_config(resource_config, resource_id=monitor_id)
+                GetMonitorOptions.from_resource_config(
+                    cast("MonitorResourceConfig", resource_config),
+                    id=monitor_id,
+                )
             )
         except httpx.HTTPStatusError as err:
             if err.response.status_code == 404:

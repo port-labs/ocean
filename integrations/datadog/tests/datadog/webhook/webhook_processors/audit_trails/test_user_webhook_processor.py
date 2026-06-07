@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -11,7 +12,12 @@ from datadog.webhook.webhook_processors.audit_trails.user_webhook_processor impo
 )
 
 
-def _event(action: str, asset_id: str, asset_type: str = "user", evt_name: str = "Access Management") -> dict:
+def _event(
+    action: str,
+    asset_id: str,
+    asset_type: str = "user",
+    evt_name: str = "Access Management",
+) -> dict[str, Any]:
     return {
         "attributes": {
             "evt": {"name": evt_name},
@@ -21,7 +27,7 @@ def _event(action: str, asset_id: str, asset_type: str = "user", evt_name: str =
     }
 
 
-def _role_membership_event(action: str, role_id: str, user_uuid: str) -> dict:
+def _role_membership_event(action: str, role_id: str, user_uuid: str) -> dict[str, Any]:
     """User added/removed from a role — asset is the role, usr is the affected user."""
     return {
         "attributes": {
@@ -39,41 +45,62 @@ def processor() -> UserWebhookProcessor:
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_matches_user_type(processor: UserWebhookProcessor) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="ok", payload=_event("modified", "u-1"), headers={})
-    ) is True
-
-
-@pytest.mark.asyncio
-async def test_should_process_event_false_wrong_asset_type(processor: UserWebhookProcessor) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="no", payload=_event("modified", "r-1", "role"), headers={})
-    ) is False
-
-
-@pytest.mark.asyncio
-async def test_should_process_event_false_wrong_evt_name(processor: UserWebhookProcessor) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(
-            trace_id="no",
-            payload=_event("modified", "u-1", evt_name="Monitor"),
-            headers={},
+async def test_should_process_event_matches_user_type(
+    processor: UserWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="ok", payload=_event("modified", "u-1"), headers={})
         )
-    ) is False
+        is True
+    )
 
 
 @pytest.mark.asyncio
-async def test_handle_single_event_delete_returns_deleted(processor: UserWebhookProcessor) -> None:
+async def test_should_process_event_false_wrong_asset_type(
+    processor: UserWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no", payload=_event("modified", "r-1", "role"), headers={}
+            )
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_wrong_evt_name(
+    processor: UserWebhookProcessor,
+) -> None:
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no",
+                payload=_event("modified", "u-1", evt_name="Monitor"),
+                headers={},
+            )
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_handle_single_event_delete_returns_deleted(
+    processor: UserWebhookProcessor,
+) -> None:
     result = await processor.handle_event(
-        _event("deleted", "u-1"), resource_config={}
+        _event("deleted", "u-1"), resource_config={}  # type: ignore[arg-type]
     )
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [{"id": "u-1"}]
 
 
 @pytest.mark.asyncio
-async def test_handle_single_event_404_returns_deleted(processor: UserWebhookProcessor) -> None:
+async def test_handle_single_event_404_returns_deleted(
+    processor: UserWebhookProcessor,
+) -> None:
     req = httpx.Request("GET", "https://api.datadoghq.com/api/v2/users/u-1")
     not_found = httpx.HTTPStatusError(
         "not found", request=req, response=httpx.Response(404, request=req)
@@ -86,7 +113,7 @@ async def test_handle_single_event_404_returns_deleted(processor: UserWebhookPro
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _event("modified", "u-1"), resource_config={}
+            _event("modified", "u-1"), resource_config={}  # type: ignore[arg-type]
         )
 
     exporter.get_resource.assert_awaited_once_with("u-1")
@@ -95,24 +122,34 @@ async def test_handle_single_event_404_returns_deleted(processor: UserWebhookPro
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_role_membership_change(processor: UserWebhookProcessor) -> None:
+async def test_should_process_event_role_membership_change(
+    processor: UserWebhookProcessor,
+) -> None:
     # role:modified with usr field → user was added/removed from a role
-    assert await processor.should_process_event(
-        WebhookEvent(
-            trace_id="ok",
-            payload=_role_membership_event("modified", "role-1", "user-uuid-1"),
-            headers={},
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="ok",
+                payload=_role_membership_event("modified", "role-1", "user-uuid-1"),
+                headers={},
+            )
         )
-    ) is True
+        is True
+    )
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_role_no_usr_skipped(processor: UserWebhookProcessor) -> None:
+async def test_should_process_event_role_no_usr_skipped(
+    processor: UserWebhookProcessor,
+) -> None:
     # role:modified without usr → can't identify the user, skip
     event = _event("modified", "role-1", "role")
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="no", payload=event, headers={})
-    ) is False
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="no", payload=event, headers={})
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -127,7 +164,8 @@ async def test_handle_single_event_role_membership_refetches_user(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _role_membership_event("modified", "role-1", "user-uuid-1"), resource_config={}
+            _role_membership_event("modified", "role-1", "user-uuid-1"),
+            resource_config={},  # type: ignore[arg-type]
         )
 
     # User ID extracted from usr.uuid, never a deletion
@@ -150,7 +188,8 @@ async def test_handle_single_event_role_event_never_deletes_user(
 
         # action=deleted on a role event — should still refetch user, not delete
         result = await processor.handle_event(
-            _role_membership_event("deleted", "role-1", "user-uuid-1"), resource_config={}
+            _role_membership_event("deleted", "role-1", "user-uuid-1"),
+            resource_config={},  # type: ignore[arg-type]
         )
 
     assert result.deleted_raw_results == []

@@ -1,7 +1,6 @@
 import http
 import re
 from typing import Any, Optional
-from urllib.parse import urlparse, urlunparse
 
 import httpx
 from http import HTTPStatus

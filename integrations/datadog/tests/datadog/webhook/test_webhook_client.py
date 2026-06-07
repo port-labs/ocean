@@ -428,7 +428,9 @@ async def test_notification_rule_recipient_and_tags_both_updated_when_both_drift
         existing_recipient,
         new_recipient,
     ]
-    assert patch_call["json_data"]["data"]["attributes"]["filter"]["tags"] == ["service:*"]
+    assert patch_call["json_data"]["data"]["attributes"]["filter"]["tags"] == [
+        "service:*"
+    ]
 
 
 @pytest.mark.asyncio

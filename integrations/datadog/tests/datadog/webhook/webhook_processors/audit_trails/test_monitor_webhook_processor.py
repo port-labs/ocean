@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -18,7 +19,7 @@ def _event(
     asset_id: str,
     asset_type: str = "monitor",
     evt_name: str = "Monitor",
-) -> dict:
+) -> dict[str, Any]:
     return {
         "attributes": {
             "evt": {"name": evt_name},
@@ -28,14 +29,18 @@ def _event(
     }
 
 
-def _restriction_policy_event(action: str, resource_id: str) -> dict:
+def _restriction_policy_event(action: str, resource_id: str) -> dict[str, Any]:
     """Restriction policy event where the resource is a monitor."""
-    return _event(action, f"monitor:{resource_id}", "restriction_policy", "Access Management")
+    return _event(
+        action, f"monitor:{resource_id}", "restriction_policy", "Access Management"
+    )
 
 
 @pytest.fixture
 def processor() -> MonitorWebhookProcessor:
-    return MonitorWebhookProcessor(WebhookEvent(trace_id="test", payload={}, headers={}))
+    return MonitorWebhookProcessor(
+        WebhookEvent(trace_id="test", payload={}, headers={})
+    )
 
 
 @pytest.fixture
@@ -47,31 +52,42 @@ def resource_config() -> SimpleNamespace:
 async def test_should_process_event_matches_monitor_type(
     processor: MonitorWebhookProcessor,
 ) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="ok", payload=_event("modified", "m-1"), headers={})
-    ) is True
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="ok", payload=_event("modified", "m-1"), headers={})
+        )
+        is True
+    )
 
 
 @pytest.mark.asyncio
 async def test_should_process_event_false_wrong_asset_type(
     processor: MonitorWebhookProcessor,
 ) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="no", payload=_event("modified", "u-1", "user"), headers={})
-    ) is False
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no", payload=_event("modified", "u-1", "user"), headers={}
+            )
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
 async def test_should_process_event_false_wrong_evt_name(
     processor: MonitorWebhookProcessor,
 ) -> None:
-    assert await processor.should_process_event(
-        WebhookEvent(
-            trace_id="no",
-            payload=_event("modified", "m-1", evt_name="Access Management"),
-            headers={},
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no",
+                payload=_event("modified", "m-1", evt_name="Access Management"),
+                headers={},
+            )
         )
-    ) is False
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -79,18 +95,19 @@ async def test_should_process_event_false_resolved_action(
     processor: MonitorWebhookProcessor,
 ) -> None:
     # "resolved" is not a catalog-relevant lifecycle change — we skip it
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="no", payload=_event("resolved", "m-1"), headers={})
-    ) is False
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="no", payload=_event("resolved", "m-1"), headers={})
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
 async def test_handle_single_event_delete_returns_deleted(
     processor: MonitorWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:
-    result = await processor.handle_event(
-        _event("deleted", "m-1"), resource_config
-    )
+    result = await processor.handle_event(_event("deleted", "m-1"), resource_config)  # type: ignore[arg-type]
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == [{"id": "m-1"}]
 
@@ -111,7 +128,7 @@ async def test_handle_single_event_404_returns_deleted(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _event("modified", "m-1"), resource_config
+            _event("modified", "m-1"), resource_config  # type: ignore[arg-type]
         )
 
     exporter.get_resource.assert_awaited_once_with(
@@ -126,13 +143,16 @@ async def test_should_process_event_restriction_policy_for_monitor(
     processor: MonitorWebhookProcessor,
 ) -> None:
     # restriction_policy with monitor resource → should process
-    assert await processor.should_process_event(
-        WebhookEvent(
-            trace_id="ok",
-            payload=_restriction_policy_event("modified", "m-99"),
-            headers={},
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="ok",
+                payload=_restriction_policy_event("modified", "m-99"),
+                headers={},
+            )
         )
-    ) is True
+        is True
+    )
 
 
 @pytest.mark.asyncio
@@ -140,10 +160,15 @@ async def test_should_process_event_restriction_policy_non_monitor_skipped(
     processor: MonitorWebhookProcessor,
 ) -> None:
     # restriction_policy for a dashboard — should NOT process
-    policy_event = _event("modified", "dashboard:d-1", "restriction_policy", "Access Management")
-    assert await processor.should_process_event(
-        WebhookEvent(trace_id="no", payload=policy_event, headers={})
-    ) is False
+    policy_event = _event(
+        "modified", "dashboard:d-1", "restriction_policy", "Access Management"
+    )
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="no", payload=policy_event, headers={})
+        )
+        is False
+    )
 
 
 @pytest.mark.asyncio
@@ -158,7 +183,7 @@ async def test_handle_single_event_restriction_policy_refetches_monitor(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _restriction_policy_event("modified", "m-99"), resource_config
+            _restriction_policy_event("modified", "m-99"), resource_config  # type: ignore[arg-type]
         )
 
     # ID extracted from "monitor:m-99"
@@ -182,7 +207,7 @@ async def test_handle_single_event_restriction_policy_deleted_refetches_monitor(
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _restriction_policy_event("deleted", "m-99"), resource_config
+            _restriction_policy_event("deleted", "m-99"), resource_config  # type: ignore[arg-type]
         )
 
     assert result.updated_raw_results == [{"id": "m-99"}]

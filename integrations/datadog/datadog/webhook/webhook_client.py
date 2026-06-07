@@ -8,6 +8,7 @@ from datadog.client import DatadogClient
 
 MONITOR_WEBHOOK_PATH = "/webhook/monitor-events"
 AUDIT_TRAIL_WEBHOOK_PATH = "/webhook/audit-trail"
+DEFAULT_NOTIFICATION_RULE_TAGS = ["service:*"]
 
 _PORT_MONITOR_NOTIFICATION_RULE_NAME = "Port Ocean Monitor Events"
 PORT_AUTH_HEADER_NAME = "X-Port-Ocean-Webhook-Secret"
@@ -50,7 +51,7 @@ class DatadogWebhookClient:
         webhook_secret: str | None,
         org_id: str,
         integration_identifier: str,
-        notification_rule_tags: list[str],
+        notification_rule_tags: list[str] | None = None,
     ) -> None:
         webhook_name = self._build_webhook_name(org_id, integration_identifier)
         webhook_target = self._build_webhook_target_url(
@@ -60,7 +61,8 @@ class DatadogWebhookClient:
             await self._sync_webhook(webhook_name, webhook_target, webhook_secret)
             await self._sync_notification_rule(
                 webhook_name,
-                notification_rule_tags=notification_rule_tags,
+                notification_rule_tags=notification_rule_tags
+                or DEFAULT_NOTIFICATION_RULE_TAGS,
             )
         except Exception as e:
             logger.error(f"Failed to setup Datadog live events: {str(e)}, skipping...")

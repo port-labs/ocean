@@ -1,11 +1,9 @@
 import asyncio
-from typing import Any
-
-from loguru import logger
+from typing import Any, cast
 
 from initialize_client import init_client
 from integration import ObjectKind
-from datadog.overrides import ServiceDependencyResourceConfig
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -49,15 +47,20 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
         return [ObjectKind.SERVICE_DEPENDENCY]
 
     async def handle_event(
-        self, payload: EventPayload, resource_config: ServiceDependencyResourceConfig
+        self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
+        from datadog.overrides import ServiceDependencyResourceConfig
+
         service_ids = self.extract_service_ids(payload)
 
         dd_client = init_client()
         dep_exporter = ServiceDependencyExporter(dd_client)
         tasks = [
             dep_exporter.get_resource(
-                GetServiceDependencyOptions.from_resource_config(resource_config, service_id=service_id)
+                GetServiceDependencyOptions.from_resource_config(
+                    cast(ServiceDependencyResourceConfig, resource_config),
+                    id=service_id,
+                )
             )
             for service_id in service_ids
         ]

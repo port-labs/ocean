@@ -21,7 +21,7 @@ class RoleWebhookProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
         return [ObjectKind.ROLE]
 
-    async def _should_process(self, event: AuditTrailEventName) -> bool:
+    async def _should_process(self, event: AuditTrailEvent) -> bool:
         # https://docs.datadoghq.com/account_management/audit_trail/events/#access-management
         attrs = event.attributes
         return (
