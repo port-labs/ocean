@@ -33,15 +33,14 @@ class ListSloOptions(ListOptions["SLOResourceConfig"]):
 
 
 class GetSloOptions(GetOptions["SLOResourceConfig"]):
-    id: str
     include_restriction_policy: bool = False
 
     @classmethod
     def from_resource_config(
-        cls, resource_config: "SLOResourceConfig", *, id: str
+        cls, resource_config: "SLOResourceConfig", *, resource_id: str
     ) -> "GetSloOptions":
         return cls(
-            id=id,
+            resource_id=resource_id,
             include_restriction_policy=resource_config.selector.include_restriction_policy,
         )
 
@@ -83,7 +82,7 @@ class SloExporter(
         """Get a single SLO by ID.
         Docs: https://docs.datadoghq.com/api/latest/service-level-objectives/#get-an-slos-details
         """
-        url = f"{self.client.api_url}/api/v1/slo/{options.id}"
+        url = f"{self.client.api_url}/api/v1/slo/{options.resource_id}"
         slo_response = await self.client.send_api_request(url)
         slo = slo_response.get("data")
         if not slo:

@@ -115,7 +115,7 @@ async def test_handle_single_event_fetches_slo_with_restriction_policy_flag(
         )
 
     exporter.get_resource.assert_awaited_once_with(
-        GetSloOptions(id="s-1", include_restriction_policy=True)
+        GetSloOptions(resource_id="s-1", include_restriction_policy=True)
     )
     assert result.updated_raw_results == [{"id": "s-1"}]
     assert result.deleted_raw_results == []

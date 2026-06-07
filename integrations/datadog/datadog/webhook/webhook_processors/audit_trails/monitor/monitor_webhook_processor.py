@@ -38,6 +38,6 @@ class AuditMonitorWebhookProcessor(BaseAuditTrailProcessor):
         return await MonitorExporter(self.client).get_resource(
             GetMonitorOptions.from_resource_config(
                 cast("MonitorResourceConfig", resource_config),
-                id=event.attributes.asset.id,
+                resource_id=event.attributes.asset.id,
             )
         )

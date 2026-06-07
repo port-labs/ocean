@@ -32,15 +32,14 @@ class ListMonitorOptions(ListOptions["MonitorResourceConfig"]):
 
 
 class GetMonitorOptions(GetOptions["MonitorResourceConfig"]):
-    resource_id: str
     include_restriction_policy: bool = False
 
     @classmethod
     def from_resource_config(
-        cls, resource_config: "MonitorResourceConfig", *, id: str
+        cls, resource_config: "MonitorResourceConfig", *, resource_id: str
     ) -> "GetMonitorOptions":
         return cls(
-            resource_id=id,
+            resource_id=resource_id,
             include_restriction_policy=resource_config.selector.include_restriction_policy,
         )
 

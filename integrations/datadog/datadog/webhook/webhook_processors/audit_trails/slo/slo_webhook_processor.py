@@ -38,6 +38,6 @@ class SloWebhookProcessor(BaseAuditTrailProcessor):
         return await SloExporter(self.client).get_resource(
             GetSloOptions.from_resource_config(
                 cast("SLOResourceConfig", resource_config),
-                id=event.attributes.asset.id,
+                resource_id=event.attributes.asset.id,
             )
         )

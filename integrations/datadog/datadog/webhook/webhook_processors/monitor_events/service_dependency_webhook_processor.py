@@ -57,7 +57,7 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
             dep_exporter.get_resource(
                 GetServiceDependencyOptions.from_resource_config(
                     cast(ServiceDependencyResourceConfig, resource_config),
-                    id=service_id,
+                    resource_id=service_id,
                 )
             )
             for service_id in service_ids

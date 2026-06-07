@@ -34,8 +34,12 @@ class GetOptions(BaseModel, Generic[RC]):
     resource_config is always first; the resource identifier follows as *, id: str.
     """
 
+    resource_id: str
+
     @classmethod
-    def from_resource_config(cls, resource_config: RC, *, id: str) -> "GetOptions[RC]":
+    def from_resource_config(
+        cls, resource_config: RC, *, resource_id: str
+    ) -> "GetOptions[RC]":
         raise NotImplementedError(f"{cls.__name__} must implement from_resource_config")
 
 

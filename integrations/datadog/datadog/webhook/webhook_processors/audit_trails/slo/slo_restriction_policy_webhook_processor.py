@@ -54,6 +54,6 @@ class SloRestrictionPolicyWebhookProcessor(BaseAuditTrailProcessor):
         return await SloExporter(self.client).get_resource(
             GetSloOptions.from_resource_config(
                 cast("SLOResourceConfig", resource_config),
-                id=asset.id,
+                resource_id=asset.id,
             )
         )

@@ -36,14 +36,13 @@ class ListServiceDependencyOptions(ListOptions["ServiceDependencyResourceConfig"
 class GetServiceDependencyOptions(GetOptions["ServiceDependencyResourceConfig"]):
     env: str
     start_time: float
-    service_id: str
 
     @classmethod
     def from_resource_config(
-        cls, resource_config: "ServiceDependencyResourceConfig", *, id: str
+        cls, resource_config: "ServiceDependencyResourceConfig", *, resource_id: str
     ) -> "GetServiceDependencyOptions":
         return cls(
-            service_id=id,
+            resource_id=resource_id,
             env=resource_config.selector.environment,
             start_time=resource_config.selector.start_time,
         )
@@ -87,7 +86,7 @@ class ServiceDependencyExporter(
         end_time = int(time.time())
         start_ts = time.time() - (FETCH_WINDOW_TIME_IN_SECONDS * options.start_time)
 
-        url = f"{self.client.api_url}/api/v1/service_dependencies/{options.service_id}"
+        url = f"{self.client.api_url}/api/v1/service_dependencies/{options.resource_id}"
         result: dict[str, Any] = await self.client.send_api_request(
             url,
             params={"env": options.env, "start": int(start_ts), "end": end_time},
@@ -95,7 +94,7 @@ class ServiceDependencyExporter(
 
         if not result:
             logger.warning(
-                f"No service dependencies found for service {options.service_id} in environment {options.env}"
+                f"No service dependencies found for service {options.resource_id} in environment {options.env}"
             )
             return None
 

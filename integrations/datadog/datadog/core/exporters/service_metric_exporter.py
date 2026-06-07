@@ -10,7 +10,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.client import DatadogClient
 from datadog.core.exporters.base_exporter import ListOptions, PaginatedExporter
-from datadog.core.exporters.service_exporter import ServiceExporter
+from datadog.core.exporters.service_exporter import GetServiceOptions, ServiceExporter
 
 SERVICE_KEY = "__service"
 QUERY_ID_KEY = "__query_id"
@@ -136,7 +136,9 @@ class ServiceMetricExporter(PaginatedExporter[ListServiceMetricOptions]):
                 ):
                     yield metrics
         else:
-            result = await service_exporter.get_resource(options.service_value)
+            result = await service_exporter.get_resource(
+                GetServiceOptions(resource_id=options.service_value)
+            )
             if not result:
                 return
             service_details: dict[str, Any] = result["data"]

@@ -26,14 +26,16 @@ class ListTeamOptions(ListOptions["TeamResourceConfig"]):
 
 
 class GetTeamOptions(GetOptions["TeamResourceConfig"]):
-    id: str
     include_members: bool = False
 
     @classmethod
     def from_resource_config(
-        cls, resource_config: "TeamResourceConfig", *, id: str
+        cls, resource_config: "TeamResourceConfig", *, resource_id: str
     ) -> "GetTeamOptions":
-        return cls(id=id, include_members=resource_config.selector.include_members)
+        return cls(
+            resource_id=resource_id,
+            include_members=resource_config.selector.include_members,
+        )
 
 
 class TeamExporter(
@@ -71,7 +73,7 @@ class TeamExporter(
         """Get a single team by ID.
         Docs: https://docs.datadoghq.com/api/latest/teams/#get-a-team-link
         """
-        url = f"{self.client.api_url}/api/v2/team/{options.id}"
+        url = f"{self.client.api_url}/api/v2/team/{options.resource_id}"
         team_response = await self.client.send_api_request(url)
         team = team_response.get("data")
         if not team:
@@ -81,7 +83,7 @@ class TeamExporter(
             return team
 
         members: list[dict[str, Any]] = []
-        async for member_batch in self._get_team_members(options.id):
+        async for member_batch in self._get_team_members(options.resource_id):
             members.extend(member_batch)
         team["__members"] = members
         return team

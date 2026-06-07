@@ -92,7 +92,7 @@ async def test_handle_event_with_service_dependency(
 
         mock_exporter.get_resource.assert_awaited_once_with(
             GetServiceDependencyOptions(
-                service_id="service-a",
+                resource_id="service-a",
                 env=resource_config.selector.environment,
                 start_time=resource_config.selector.start_time,
             )

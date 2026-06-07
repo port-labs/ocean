@@ -44,7 +44,7 @@ class MonitorWebhookProcessor(BaseWebhookProcessor):
 
         monitor = await MonitorExporter(self.client).get_resource(
             GetMonitorOptions.from_resource_config(
-                cast(MonitorResourceConfig, resource_config), id=monitor_id
+                cast(MonitorResourceConfig, resource_config), resource_id=monitor_id
             )
         )
 

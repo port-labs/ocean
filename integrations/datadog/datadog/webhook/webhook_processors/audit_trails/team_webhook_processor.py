@@ -36,6 +36,6 @@ class TeamWebhookProcessor(BaseAuditTrailProcessor):
         return await TeamExporter(self.client).get_resource(
             GetTeamOptions.from_resource_config(
                 cast("TeamResourceConfig", resource_config),
-                id=event.attributes.asset.id,
+                resource_id=event.attributes.asset.id,
             )
         )

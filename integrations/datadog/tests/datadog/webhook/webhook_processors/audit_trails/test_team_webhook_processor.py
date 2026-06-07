@@ -100,7 +100,7 @@ async def test_handle_single_event_fetches_team_with_members_flag(
         )
 
     exporter.get_resource.assert_awaited_once_with(
-        GetTeamOptions(id="t-1", include_members=True)
+        GetTeamOptions(resource_id="t-1", include_members=True)
     )
     assert result.updated_raw_results == [{"id": "t-1"}]
     assert result.deleted_raw_results == []
