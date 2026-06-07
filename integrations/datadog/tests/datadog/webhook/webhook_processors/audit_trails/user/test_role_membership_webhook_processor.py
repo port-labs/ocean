@@ -11,26 +11,40 @@ from datadog.webhook.webhook_processors.audit_trails.user.role_membership_webhoo
     _extract_target_user_email,
 )
 
+_ROLE_MEMBERSHIP_PATH = "/api/v2/roles/role-uuid/users"
+
 
 def _role_membership_event(
-    action: str,
-    role_id: str,
-    actor_email: str,
-    target_email: str,
+    action: str = "modified",
+    role_id: str = "role-1",
+    actor_email: str = "admin@corp.io",
+    target_email: str = "bob@corp.io",
+    url_path: str = _ROLE_MEMBERSHIP_PATH,
+    include_http: bool = True,
 ) -> dict[str, Any]:
-    """User added/removed from a role — asset is the role, msg carries target email."""
-    msg = (
-        f'{actor_email} successfully {"added" if action != "deleted" else "removed"} '
-        f'user "{target_email}" from the role "Datadog Read Only Role"'
-    )
-    return {
-        "attributes": {
-            "evt": {"name": "Access Management"},
-            "action": action,
-            "asset": {"type": "role", "id": role_id},
-            "msg": msg,
-        }
+    """Simulate an Access Management audit event for a role-membership change.
+
+    Datadog emits this when a user is added to or removed from a role:
+    - asset.type  == "user"  (the affected user, not the role)
+    - action      == "modified"
+    - http.url_details.path starts with "/api/v2/roles"
+    - msg         contains 'added/removed user "<email>"'
+    """
+    verb = "added" if "added" in url_path or action != "modified" else "removed"
+    msg = f'{actor_email} successfully {verb} user "{target_email}" from the role "Datadog Read Only Role"'
+    attrs: dict[str, Any] = {
+        "evt": {"name": "Access Management"},
+        "action": action,
+        "asset": {"type": "user", "id": target_email},
+        "msg": msg,
     }
+    if include_http:
+        attrs["http"] = {
+            "method": "PATCH",
+            "status_code": 200,
+            "url_details": {"path": url_path},
+        }
+    return {"attributes": attrs}
 
 
 @pytest.fixture
@@ -38,6 +52,11 @@ def processor() -> RoleMembershipWebhookProcessor:
     return RoleMembershipWebhookProcessor(
         WebhookEvent(trace_id="test", payload={}, headers={})
     )
+
+
+# ---------------------------------------------------------------------------
+# _extract_target_user_email unit tests
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -51,9 +70,9 @@ def processor() -> RoleMembershipWebhookProcessor:
             'admin@corp.io successfully removed user "alice@corp.io" from the role "Admin"',
             "alice@corp.io",
         ),
-        # must not match when there is no action verb before "user"
+        # verb must be "added" or "removed" — other prefixes don't match
         ('mentioned user "bob@corp.io" in a comment', None),
-        # must not match when the quoted value is not an email
+        # quoted value must contain "@" — display names don't match
         ('removed user "Bob Smith" from the role "Admin"', None),
         ("no user email here", None),
         (None, None),
@@ -63,17 +82,20 @@ def test_extract_target_user_email(msg: str | None, expected: str | None) -> Non
     assert _extract_target_user_email(msg) == expected
 
 
+# ---------------------------------------------------------------------------
+# _should_process tests
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.asyncio
-async def test_should_process_event_role_membership_change(
+async def test_should_process_event_matches_role_membership(
     processor: RoleMembershipWebhookProcessor,
 ) -> None:
     assert (
         await processor.should_process_event(
             WebhookEvent(
                 trace_id="ok",
-                payload=_role_membership_event(
-                    "modified", "role-1", "admin@corp.io", "bob@corp.io"
-                ),
+                payload=_role_membership_event(),
                 headers={},
             )
         )
@@ -82,16 +104,28 @@ async def test_should_process_event_role_membership_change(
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_no_msg_skipped(
+async def test_should_process_event_false_wrong_action(
     processor: RoleMembershipWebhookProcessor,
 ) -> None:
-    event = {
-        "attributes": {
-            "evt": {"name": "Access Management"},
-            "action": "modified",
-            "asset": {"type": "role", "id": "role-1"},
-        }
-    }
+    """Only 'modified' action triggers a membership change event."""
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no",
+                payload=_role_membership_event(action="deleted"),
+                headers={},
+            )
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_wrong_asset_type(
+    processor: RoleMembershipWebhookProcessor,
+) -> None:
+    event = _role_membership_event()
+    event["attributes"]["asset"]["type"] = "role"
     assert (
         await processor.should_process_event(
             WebhookEvent(trace_id="no", payload=event, headers={})
@@ -101,17 +135,11 @@ async def test_should_process_event_no_msg_skipped(
 
 
 @pytest.mark.asyncio
-async def test_should_process_event_msg_without_user_skipped(
+async def test_should_process_event_false_wrong_evt_name(
     processor: RoleMembershipWebhookProcessor,
 ) -> None:
-    event = {
-        "attributes": {
-            "evt": {"name": "Access Management"},
-            "action": "modified",
-            "asset": {"type": "role", "id": "role-1"},
-            "msg": "some unrelated message",
-        }
-    }
+    event = _role_membership_event()
+    event["attributes"]["evt"]["name"] = "Monitor"
     assert (
         await processor.should_process_event(
             WebhookEvent(trace_id="no", payload=event, headers={})
@@ -121,7 +149,74 @@ async def test_should_process_event_msg_without_user_skipped(
 
 
 @pytest.mark.asyncio
-async def test_handle_single_event_refetches_user_by_email(
+async def test_should_process_event_false_no_http(
+    processor: RoleMembershipWebhookProcessor,
+) -> None:
+    """Without the http field we cannot confirm this is a roles API call."""
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no",
+                payload=_role_membership_event(include_http=False),
+                headers={},
+            )
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_non_roles_url(
+    processor: RoleMembershipWebhookProcessor,
+) -> None:
+    """An Access Management event against a non-roles URL is not a membership change."""
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(
+                trace_id="no",
+                payload=_role_membership_event(url_path="/api/v2/users/some-id"),
+                headers={},
+            )
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_no_msg(
+    processor: RoleMembershipWebhookProcessor,
+) -> None:
+    event = _role_membership_event()
+    del event["attributes"]["msg"]
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="no", payload=event, headers={})
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_false_msg_without_email(
+    processor: RoleMembershipWebhookProcessor,
+) -> None:
+    event = _role_membership_event()
+    event["attributes"]["msg"] = "some unrelated message"
+    assert (
+        await processor.should_process_event(
+            WebhookEvent(trace_id="no", payload=event, headers={})
+        )
+        is False
+    )
+
+
+# ---------------------------------------------------------------------------
+# _handle_audit_event tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_handle_event_fetches_user_by_email(
     processor: RoleMembershipWebhookProcessor,
 ) -> None:
     with patch(
@@ -130,41 +225,46 @@ async def test_handle_single_event_refetches_user_by_email(
         exporter = AsyncMock()
         exporter.get_resource_by_email.return_value = {
             "id": "uuid-bob",
-            "email": "bob@corp.io",
+            "attributes": {"email": "bob@corp.io"},
         }
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _role_membership_event(
-                "modified", "role-1", "admin@corp.io", "bob@corp.io"
-            ),
+            _role_membership_event(),
             resource_config={},  # type: ignore[arg-type]
         )
 
     exporter.get_resource_by_email.assert_awaited_once_with("bob@corp.io")
-    assert result.updated_raw_results == [{"id": "uuid-bob", "email": "bob@corp.io"}]
+    assert result.updated_raw_results == [
+        {"id": "uuid-bob", "attributes": {"email": "bob@corp.io"}}
+    ]
     assert result.deleted_raw_results == []
 
 
 @pytest.mark.asyncio
-async def test_handle_single_event_role_event_never_deletes_user(
+async def test_handle_event_user_not_found_returns_empty(
     processor: RoleMembershipWebhookProcessor,
 ) -> None:
-    """Even when the action is 'deleted', we re-fetch the user rather than delete them."""
+    """When Datadog returns no user for the email, emit nothing."""
     with patch(
         "datadog.webhook.webhook_processors.audit_trails.user.role_membership_webhook_processor.UserExporter"
     ) as cls:
         exporter = AsyncMock()
-        exporter.get_resource_by_email.return_value = {"id": "uuid-bob"}
+        exporter.get_resource_by_email.return_value = None
         cls.return_value = exporter
 
         result = await processor.handle_event(
-            _role_membership_event("deleted", "role-1", "admin@corp.io", "bob@corp.io"),
+            _role_membership_event(),
             resource_config={},  # type: ignore[arg-type]
         )
 
+    assert result.updated_raw_results == []
     assert result.deleted_raw_results == []
-    assert result.updated_raw_results == [{"id": "uuid-bob"}]
+
+
+# ---------------------------------------------------------------------------
+# get_matching_kinds
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
