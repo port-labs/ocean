@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Reworked Datadog live-event bootstrap to reliably create/update webhook configuration and to automatically provision monitor notification rules and audit forwarding destinations.
+- Reworked Datadog live-event bootstrap to reliably create/update webhook configuration and to automatically provision monitor notification rules.
 
 
 ## 0.4.4 (2026-06-07)

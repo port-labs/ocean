@@ -67,21 +67,21 @@ class TeamExporter(
         async for batch in self._paginate_by_page_param(url, data_key="included"):
             yield batch
 
-    async def get_resource(self, resource_id: GetTeamOptions) -> dict[str, Any] | None:
+    async def get_resource(self, options: GetTeamOptions) -> dict[str, Any] | None:
         """Get a single team by ID.
         Docs: https://docs.datadoghq.com/api/latest/teams/#get-a-team-link
         """
-        url = f"{self.client.api_url}/api/v2/team/{resource_id.id}"
+        url = f"{self.client.api_url}/api/v2/team/{options.id}"
         team_response = await self.client.send_api_request(url)
         team = team_response.get("data")
         if not team:
             return None
 
-        if not resource_id.include_members:
+        if not options.include_members:
             return team
 
         members: list[dict[str, Any]] = []
-        async for member_batch in self._get_team_members(resource_id.id):
+        async for member_batch in self._get_team_members(options.id):
             members.extend(member_batch)
         team["__members"] = members
         return team

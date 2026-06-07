@@ -79,17 +79,17 @@ class SloExporter(
                 )
                 yield enriched_slos
 
-    async def get_resource(self, resource_id: GetSloOptions) -> dict[str, Any] | None:
+    async def get_resource(self, options: GetSloOptions) -> dict[str, Any] | None:
         """Get a single SLO by ID.
         Docs: https://docs.datadoghq.com/api/latest/service-level-objectives/#get-an-slos-details
         """
-        url = f"{self.client.api_url}/api/v1/slo/{resource_id.id}"
+        url = f"{self.client.api_url}/api/v1/slo/{options.id}"
         slo_response = await self.client.send_api_request(url)
         slo = slo_response.get("data")
         if not slo:
             return None
 
-        if not resource_id.include_restriction_policy:
+        if not options.include_restriction_policy:
             return slo
 
         return await self.rp_exporter.enrich_resource_with_restriction_policy(

@@ -43,7 +43,6 @@ class AuditTrailAttributes(BaseModel):
     asset: AuditTrailAsset
     http: Optional[AuditTrailHttp] = None
     usr: Optional[AuditTrailUsr] = None
-    msg: Optional[str] = None
 
     @validator("action", pre=True)
     @classmethod
@@ -53,3 +52,4 @@ class AuditTrailAttributes(BaseModel):
 
 class AuditTrailEvent(BaseModel):
     attributes: AuditTrailAttributes
+    message: Optional[str] = None

@@ -53,13 +53,12 @@ class RoleMembershipWebhookProcessor(BaseAuditTrailProcessor):
             and attrs.http.url_details.path.startswith("/api/v2/roles")
         ):
             return False
-        return _extract_target_user_email(attrs.msg) is not None
+        return _extract_target_user_email(event.message) is not None
 
     async def _handle_audit_event(
         self, event: AuditTrailEvent, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        del resource_config
-        email = _extract_target_user_email(event.attributes.msg)
+        email = _extract_target_user_email(event.message)
 
         if not email:
             return WebhookEventRawResults(

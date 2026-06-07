@@ -80,16 +80,14 @@ class MonitorExporter(
                 )
                 yield enriched_monitors
 
-    async def get_resource(
-        self, resource_id: GetMonitorOptions
-    ) -> dict[str, Any] | None:
+    async def get_resource(self, options: GetMonitorOptions) -> dict[str, Any] | None:
         """Get a single monitor by ID.
         Docs: https://docs.datadoghq.com/api/latest/monitors/#get-a-monitor-s-details
         """
-        url = f"{self.client.api_url}/api/v1/monitor/{resource_id.resource_id}"
+        url = f"{self.client.api_url}/api/v1/monitor/{options.resource_id}"
         monitor = await self.client.send_api_request(url)
 
-        if not resource_id.include_restriction_policy:
+        if not options.include_restriction_policy:
             return monitor
 
         return await self.rp_exporter.enrich_resource_with_restriction_policy(

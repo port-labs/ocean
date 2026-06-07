@@ -28,6 +28,10 @@ class UserWebhookProcessor(BaseAuditTrailProcessor):
             attrs.evt.name == AuditTrailEventName.ACCESS_MANAGEMENT
             and attrs.asset.type == AuditTrailAssetType.USER
             and attrs.action in USER_ACTIONS
+            # This is the only indication that this is user crud event
+            # rather than role membership event
+            and attrs.http is not None
+            and not attrs.http.url_details.path.startswith("/api/v2/roles")
         )
 
     async def _handle_audit_event(
