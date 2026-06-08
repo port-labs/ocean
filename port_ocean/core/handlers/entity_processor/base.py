@@ -33,7 +33,7 @@ class BaseEntityProcessor(BaseHandler):
         mapping: ResourceConfig,
         raw_data: list[RAW_ITEM],
         parse_all: bool = False,
-    ) -> CalculationResult:
+    ) -> list[CalculationResult]:
         """Public method to parse raw entity data and map it to an EntityDiff.
 
         Args:
@@ -46,5 +46,32 @@ class BaseEntityProcessor(BaseHandler):
         """
         with logger.contextualize(kind=mapping.kind, resource_kind=mapping.kind):
             if not raw_data:
-                return CalculationResult(EntitySelectorDiff([], []), [])
-            return await self._parse_items(mapping, raw_data, parse_all)
+                return [CalculationResult(EntitySelectorDiff([], []), [])]
+
+            primary_items = []
+            secondary_items = {}
+            for item in raw_data:
+                if item["_portOceanKind"] == mapping.kind:
+                    primary_items.append(item)
+                else:
+                    secondary_items[item["_portOceanKind"]] = secondary_items.get(
+                        item["_portOceanKind"], []
+                    ) + [item]
+
+            parsed_items = [await self._parse_items(mapping, primary_items, parse_all)]
+            if secondary_items:
+                config = (
+                    await self.context.app.integration.port_app_config_handler.get_port_app_config()
+                )
+                for secondary_item_type, secondary_items in secondary_items.items():
+                    secondary_mapping = next(
+                        resource
+                        for resource in config.resources
+                        if resource.kind == secondary_item_type
+                    )
+                    parsed_items.append(
+                        await self._parse_items(
+                            secondary_mapping, secondary_items, parse_all
+                        )
+                    )
+            return parsed_items
