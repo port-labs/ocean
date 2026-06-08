@@ -45,6 +45,11 @@ configurations:
     type: string
     required: false
     sensitive: true
+  - name: monitorNotificationRuleScope
+    description: "Scope of the Datadog monitor notification rule (optional). Only monitors matching this scope will trigger webhook events. Defaults to \"service:*\" to capture all service monitors. Example: \"service:my-service AND env:prod\"."
+    type: string
+    default: service:*
+    required: false
   - name: datadogAccessToken
     description: Datadog access token (optional). This is used to authenticate with Datadog using OAuth2. You shouldn't set this value manually.
     type: string
