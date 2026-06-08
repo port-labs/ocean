@@ -809,6 +809,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
             event_data = WebhookEventRawResults(
                 updated_raw_results=[
                     {
+                        "Type": mock_port_app_config.resources[0].kind,
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
@@ -1054,6 +1055,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
             event_data = WebhookEventRawResults(
                 updated_raw_results=[
                     {
+                        "Type": mock_port_app_config.resources[0].kind,
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
@@ -1184,6 +1186,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
             event_data = WebhookEventRawResults(
                 updated_raw_results=[
                     {
+                        "Type": mock_port_app_config.resources[0].kind,
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
@@ -1215,6 +1218,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
             event_data = WebhookEventRawResults(
                 updated_raw_results=[
                     {
+                        "Type": mock_port_app_config.resources[0].kind,
                         "name": "repo-two",
                         "links": {"html": {"href": "https://example.com/repo-two"}},
                         "main_branch": "main",
@@ -1246,6 +1250,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
             event_data = WebhookEventRawResults(
                 updated_raw_results=[
                     {
+                        "Type": mock_port_app_config.resources[0].kind,
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
@@ -1387,6 +1392,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
             event_data = WebhookEventRawResults(
                 updated_raw_results=[
                     {
+                        "Type": mock_port_app_config.resources[0].kind,
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
@@ -1525,6 +1531,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
             event_data = WebhookEventRawResults(
                 updated_raw_results=[
                     {
+                        "Type": mock_port_app_config.resources[0].kind,
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
@@ -1660,6 +1667,7 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
             event_data = WebhookEventRawResults(
                 updated_raw_results=[
                     {
+                        "Type": mock_port_app_config.resources[0].kind,
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
