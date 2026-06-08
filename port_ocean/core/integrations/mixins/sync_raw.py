@@ -176,12 +176,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         raw_diff: list[tuple[ResourceConfig, list[RAW_ITEM]]],
         parse_all: bool = False,
     ) -> list[CalculationResult]:
-        return await asyncio.gather(
+        grouped_results = await asyncio.gather(
             *(
                 self.entity_processor.parse_items(mapping, results, parse_all)
                 for mapping, results in raw_diff
             )
         )
+
+        return [result for result_group in grouped_results for result in result_group]
 
     def _construct_search_query_for_entities(self, entities: list[Entity]) -> dict:
         """Create a query to search for entities by their identifiers.

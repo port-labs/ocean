@@ -75,15 +75,17 @@ class LiveEventsMixin(HandlerMixin):
                     calculation_results = await self.entity_processor.parse_items(
                         resource, batch, parse_all=True
                     )
-                    entities.extend(calculation_results.entity_selector_diff.passed)
-                    entities_not_passed.extend(calculation_results.entity_selector_diff.failed)
+                    for result in calculation_results:
+                        entities.extend(result.entity_selector_diff.passed)
+                        entities_not_passed.extend(result.entity_selector_diff.failed)
 
             for raw_item in webhook_event_raw_result.deleted_raw_results:
                 async for batch in self._expand_raw_item(raw_item, resource):
                     deletion_results = await self.entity_processor.parse_items(
                         resource, batch, parse_all=True
                     )
-                    entities_to_delete.extend(deletion_results.entity_selector_diff.passed)
+                    for result in deletion_results:
+                        entities_to_delete.extend(result.entity_selector_diff.passed)
 
         entities_to_remove = []
         for entity in entities_to_delete + entities_not_passed:
