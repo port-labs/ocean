@@ -202,6 +202,11 @@ async def resync_function_wrapper(
     with resync_error_handling():
         results = validate_result(await fn(kind))
         for value in results:
+            """
+            Question for reviewer:
+            Do we have any file for consts? I'd like to have the var name saved somewhere rather than having a bunch
+            of magic strings, but I was unable to find any file that seemed right.
+            """
             value['_portOceanKind'] = value.get('_portOceanKind', kind)
         await send_raw_data_examples(
             results, kind, send_raw_data_examples_amount
