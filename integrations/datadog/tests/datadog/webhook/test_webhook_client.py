@@ -116,7 +116,7 @@ async def test_skip_webhook_update_when_config_is_unchanged(
                 "name": webhook_name,
                 "url": current_url,
                 "custom_headers": current_headers,
-                "payload": _WEBHOOK_PAYLOAD_TEMPLATE,
+                "payload": json.dumps(_WEBHOOK_PAYLOAD_TEMPLATE),
             },
             {"data": []},
             {"status": "created"},

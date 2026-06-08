@@ -14,32 +14,29 @@ DEFAULT_NOTIFICATION_RULE_SCOPE = "service:*"
 _PORT_MONITOR_NOTIFICATION_RULE_PREFIX = "Port Ocean Monitor Events"
 PORT_AUTH_HEADER_NAME = "X-Port-Ocean-Webhook-Secret"
 
-_WEBHOOK_PAYLOAD_TEMPLATE = json.dumps(
-    {
-        "id": "$ID",
-        "message": "$TEXT_ONLY_MSG",
-        "priority": "$PRIORITY",
-        "last_updated": "$LAST_UPDATED",
-        "event_type": "$EVENT_TYPE",
-        "event_url": "$LINK",
-        "service": "$HOSTNAME",
-        "service_id": "$SERVICE_ID",
-        "service_name": "$SERVICE_NAME",
-        "creator": "$USER",
-        "title": "$EVENT_TITLE",
-        "date": "$DATE",
-        "org_id": "$ORG_ID",
-        "org_name": "$ORG_NAME",
-        "alert_id": "$ALERT_ID",
-        "alert_metric": "$ALERT_METRIC",
-        "alert_status": "$ALERT_STATUS",
-        "alert_title": "$ALERT_TITLE",
-        "alert_type": "$ALERT_TYPE",
-        "tags": "$TAGS",
-        "body": "$EVENT_MSG",
-    },
-    indent=4,
-)
+_WEBHOOK_PAYLOAD_TEMPLATE: dict[str, str] = {
+    "id": "$ID",
+    "message": "$TEXT_ONLY_MSG",
+    "priority": "$PRIORITY",
+    "last_updated": "$LAST_UPDATED",
+    "event_type": "$EVENT_TYPE",
+    "event_url": "$LINK",
+    "service": "$HOSTNAME",
+    "service_id": "$SERVICE_ID",
+    "service_name": "$SERVICE_NAME",
+    "creator": "$USER",
+    "title": "$EVENT_TITLE",
+    "date": "$DATE",
+    "org_id": "$ORG_ID",
+    "org_name": "$ORG_NAME",
+    "alert_id": "$ALERT_ID",
+    "alert_metric": "$ALERT_METRIC",
+    "alert_status": "$ALERT_STATUS",
+    "alert_title": "$ALERT_TITLE",
+    "alert_type": "$ALERT_TYPE",
+    "tags": "$TAGS",
+    "body": "$EVENT_MSG",
+}
 
 
 class DatadogWebhookClient:
@@ -121,10 +118,15 @@ class DatadogWebhookClient:
             if webhook_secret
             else None
         )
+        existing_payload = existing.get("payload")
+        try:
+            parsed_payload = json.loads(existing_payload) if existing_payload else None
+        except (json.JSONDecodeError, TypeError):
+            parsed_payload = None
         return (
             existing.get("url") != target_url
             or existing.get("custom_headers") != expected_headers
-            or existing.get("payload") != _WEBHOOK_PAYLOAD_TEMPLATE
+            or parsed_payload != _WEBHOOK_PAYLOAD_TEMPLATE
         )
 
     @staticmethod
@@ -136,7 +138,7 @@ class DatadogWebhookClient:
         body: dict[str, Any] = {
             "url": target_url,
             "encode_as": "json",
-            "payload": _WEBHOOK_PAYLOAD_TEMPLATE,
+            "payload": json.dumps(_WEBHOOK_PAYLOAD_TEMPLATE),
         }
         if name:
             body["name"] = name
