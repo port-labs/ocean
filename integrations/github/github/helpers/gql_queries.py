@@ -318,7 +318,7 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
         ("comments", "comments { totalCount }"),
         ("reviewThreads", "reviewThreads { totalCount }"),
         (
-            "reviews",
+            "reviews"
             """
             reviews (first: 10) {
               nodes {
