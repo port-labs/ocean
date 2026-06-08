@@ -48,8 +48,8 @@ class BaseEntityProcessor(BaseHandler):
             if not raw_data:
                 return [CalculationResult(EntitySelectorDiff([], []), [])]
 
-            primary_items = []
-            secondary_items = {}
+            primary_items: list[RAW_ITEM] = []
+            secondary_items: dict[str, list[RAW_ITEM]] = {}
             for item in raw_data:
                 if item["_portOceanKind"] == mapping.kind:
                     primary_items.append(item)
