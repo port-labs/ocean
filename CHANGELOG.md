@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.43.15 (2026-06-03)
+
+### Bug Fixes
+
+- `LakehouseBuffer.flush()` is now best-effort in ocean-core (non-DSP) mode: transport errors such as `ConnectError` are logged as warnings and the buffer is discarded, allowing the resync to continue and entities to be upserted via the standard ocean-core path. In DSP mode (where the lake write is the only data-delivery path) flush failures remain fatal. This fixes an issue where a self-hosted integration that cannot reach the lakehouse ingest endpoint would crash its processing subprocess and leave the affected kind stuck at `syncing` indefinitely.
+- `_process_resource` now catches unexpected exceptions from `_register_in_batches` and reports the kind as `failed` via `report_kind_sync_metrics` before the subprocess exits. Previously any unhandled exception would crash the subprocess silently and leave the kind status stuck at `syncing` until the server-side stale-heartbeat timeout (~10 min).
+
+## 0.43.14 (2026-06-03)
+
+### Improvements
+
+- Added a count-based flush condition to the lakehouse buffer: the buffer now flushes automatically when the number of buffered items reaches `lakehouse_buffer_max_count` (default: 50). The threshold is configurable via the `OCEAN__LAKEHOUSE_BUFFER_MAX_COUNT` environment variable.
+
+## 0.43.13 (2026-06-03)
+
+### Improvements
+
+- Polling event listener: always poll the integration resync-request endpoint when the integration document's `updatedAt` is unchanged (removed organization feature flag `OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED`).
+
+## 0.43.12 (2026-06-02)
+
+### Bug Fixes
+
+- Mark DSP mode active logs with `local_only` so they are not shipped to the integration event log.
+
+## 0.43.11 (2026-06-01)
+
+### Bug Fixes
+
+- Added `local_only` log routing: logs marked with `logger.bind(local_only=True)` are written to stdout only and never shipped to the integration Event log ingest.
+
 ## 0.43.10 (2026-06-01)
 
 ### Improvements
