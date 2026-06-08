@@ -665,6 +665,7 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
                 [
                     {
                         "id": "1",
+                        "_portOceanKind": "test-kind",
                         "keep_this": "should stay",
                         "items": [{"sub_id": "a"}, {"sub_id": "b"}],
                     }
@@ -673,8 +674,8 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
             )
             assert expanded_batches == [
                 [
-                    {"id": "1", "keep_this": "should stay", "item": {"sub_id": "a"}},
-                    {"id": "1", "keep_this": "should stay", "item": {"sub_id": "b"}},
+                    {"id": "1", "keep_this": "should stay", "_portOceanKind": "test-kind", "item": {"sub_id": "a"}},
+                    {"id": "1", "keep_this": "should stay", "_portOceanKind": "test-kind", "item": {"sub_id": "b"}},
                 ]
             ]
 
@@ -700,7 +701,7 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
 
             assert result == raw_results
             mock_ocean_context.port_client.ingest_integration_kind_examples.assert_awaited_once_with(
-                "test-kind", [{"id": "1"}], should_log=False
+                "test-kind", [{"id": "1", "_portOceanKind": "test-kind"}], should_log=False
             )
 
     @pytest.mark.asyncio
@@ -729,7 +730,7 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
 
             assert batches == [raw_results]
             mock_ocean_context.port_client.ingest_integration_kind_examples.assert_awaited_once_with(
-                "test-kind", [{"id": "1"}], should_log=False
+                "test-kind", [{"id": "1", "_portOceanKind": "test-kind"}], should_log=False
             )
 
     @pytest.mark.asyncio
@@ -775,12 +776,12 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
             )
             assert calls[0].args == (
                 "test-kind",
-                [{"id": "1", "items": [{"sub_id": "a"}]}],
+                [{"id": "1", "_portOceanKind": "test-kind", "items": [{"sub_id": "a"}]}],
             )
             assert calls[0].kwargs == {"should_log": False}
             assert calls[1].args == (
                 "test-kind",
-                [{"id": "2", "items": [{"sub_id": "b"}]}],
+                [{"id": "2", "_portOceanKind": "test-kind", "items": [{"sub_id": "b"}]}],
             )
             assert calls[1].kwargs == {"should_log": False}
 
