@@ -79,7 +79,7 @@ async def test_get_single_service_dependency_returns_none_when_not_found(
         exporter = ServiceDependencyExporter(mock_datadog_client)
 
         result = await exporter.get_resource(
-            GetServiceDependencyOptions(env="prod", start_time=1, service_id="svc-1")
+            GetServiceDependencyOptions(resource_id="svc-1", env="prod", start_time=1)
         )
 
     assert result is None
