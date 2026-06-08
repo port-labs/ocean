@@ -27,8 +27,6 @@ class AuditTrailHttp(BaseModel):
     class UrlDetails(BaseModel):
         path: str
 
-    method: str
-    status_code: int
     url_details: UrlDetails
 
 

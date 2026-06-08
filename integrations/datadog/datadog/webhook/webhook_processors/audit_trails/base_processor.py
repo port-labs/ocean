@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import Any
 
+from httpx import HTTPStatusError
 from loguru import logger
 from pydantic import ValidationError
 
@@ -40,8 +41,12 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             parsed = self.parse_event(event.payload)
-        except (ValidationError, TypeError):
-            logger.debug(f"Skipping unparseable audit-trail payload: {event.payload}")
+        except (ValidationError, TypeError) as e:
+            logger.warning(
+                "Skipping unparseable audit-trail event",
+                payload=event.payload,
+                error=e,
+            )
             return False
         return await self._should_process(parsed)
 
@@ -65,6 +70,7 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
         self, event: AuditTrailEvent, resource_config: ResourceConfig
     ) -> dict[str, Any] | None:
         """Fetch the live resource from the Datadog API."""
+        pass
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -73,12 +79,17 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
 
         if event.attributes.action == AuditTrailAction.DELETED:
             deleted = self._deleted_result(event)
-            if deleted is not None:
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[deleted]
-                )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[deleted] if deleted else []
+            )
 
-        resource = await self._fetch_resource(event, resource_config)
+        resource = None
+        try:
+            resource = await self._fetch_resource(event, resource_config)
+        except HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning("Resource returned 404, skipping event", error=str(e))
+
         return WebhookEventRawResults(
             updated_raw_results=[resource] if resource else [],
             deleted_raw_results=[],
