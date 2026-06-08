@@ -223,8 +223,14 @@ class AzureDevopsClient(HTTPBaseClient):
         exclude_tags: list[str],
     ) -> list[dict[str, Any]]:
         exclude_set = set(exclude_tags)
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+
+        async def get_tags_with_semaphore(project_id: str) -> list[dict[str, Any]]:
+            async with semaphore:
+                return await self.get_project_tags(project_id)
+
         tags_results = await asyncio.gather(
-            *[self.get_project_tags(project["id"]) for project in projects],
+            *[get_tags_with_semaphore(project["id"]) for project in projects],
             return_exceptions=True,
         )
         filtered = []
