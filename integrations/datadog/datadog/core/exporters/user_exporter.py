@@ -45,7 +45,7 @@ class UserExporter(PaginatedExporter[None], SingleResourceExporter[GetUserOption
         """
         url = f"{self.client.api_url}/api/v2/users"
         result = await self.client.send_api_request(
-            url, params={"filter[email]": email}
+            url, params={"filter": email}
         )
         users = result.get("data") or []
         return users[0] if users else None
