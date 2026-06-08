@@ -1,20 +1,53 @@
 import asyncio
 from itertools import batched
 
-from pydantic import BaseModel
+from typing import TYPE_CHECKING, Any
+
+
+if TYPE_CHECKING:
+    from datadog.overrides import SLOResourceConfig
+
 from datadog.client import DatadogClient
 from datadog.core.exporters.restriction_policy_exporter import RestrictionPolicyExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from datadog.core.exporters.base_exporter import PaginatedExporter
+from datadog.core.exporters.base_exporter import (
+    GetOptions,
+    ListOptions,
+    PaginatedExporter,
+    SingleResourceExporter,
+)
 
 SLO_ENRICHMENT_BATCH_SIZE = 10
 
 
-class ListSloOptions(BaseModel):
+class ListSloOptions(ListOptions["SLOResourceConfig"]):
     include_restriction_policy: bool = False
 
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: "SLOResourceConfig"
+    ) -> "ListSloOptions":
+        return cls(
+            include_restriction_policy=resource_config.selector.include_restriction_policy
+        )
 
-class SloExporter(PaginatedExporter[ListSloOptions]):
+
+class GetSloOptions(GetOptions["SLOResourceConfig"]):
+    include_restriction_policy: bool = False
+
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: "SLOResourceConfig", *, resource_id: str
+    ) -> "GetSloOptions":
+        return cls(
+            resource_id=resource_id,
+            include_restriction_policy=resource_config.selector.include_restriction_policy,
+        )
+
+
+class SloExporter(
+    PaginatedExporter[ListSloOptions], SingleResourceExporter[GetSloOptions]
+):
     """SLO exporter."""
 
     def __init__(self, client: DatadogClient) -> None:
@@ -44,3 +77,20 @@ class SloExporter(PaginatedExporter[ListSloOptions]):
                     ]
                 )
                 yield enriched_slos
+
+    async def get_resource(self, options: GetSloOptions) -> dict[str, Any] | None:
+        """Get a single SLO by ID.
+        Docs: https://docs.datadoghq.com/api/latest/service-level-objectives/#get-an-slos-details
+        """
+        url = f"{self.client.api_url}/api/v1/slo/{options.resource_id}"
+        slo_response = await self.client.send_api_request(url)
+        slo = slo_response.get("data")
+        if not slo:
+            return None
+
+        if not options.include_restriction_policy:
+            return slo
+
+        return await self.rp_exporter.enrich_resource_with_restriction_policy(
+            "slo", slo
+        )
