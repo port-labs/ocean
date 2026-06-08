@@ -51,12 +51,11 @@ class BaseEntityProcessor(BaseHandler):
             primary_items: list[RAW_ITEM] = []
             secondary_items: dict[str, list[RAW_ITEM]] = {}
             for item in raw_data:
-                if item["_portOceanKind"] == mapping.kind:
+                kind = item.get("_portOceanKind", mapping.kind)
+                if kind == mapping.kind:
                     primary_items.append(item)
                 else:
-                    secondary_items[item["_portOceanKind"]] = secondary_items.get(
-                        item["_portOceanKind"], []
-                    ) + [item]
+                    secondary_items[kind] = secondary_items.get(kind, []) + [item]
 
             parsed_items = [await self._parse_items(mapping, primary_items, parse_all)]
             if secondary_items:
