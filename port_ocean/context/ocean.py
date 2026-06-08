@@ -80,6 +80,7 @@ class PortOceanContext:
     def on_resync(
         self,
         kind: str | None = None,
+        children: list[str] | None = None,
     ) -> Callable[[RESYNC_EVENT_LISTENER | None], RESYNC_EVENT_LISTENER | None]:
         def wrapper(
             function: RESYNC_EVENT_LISTENER | None,
@@ -89,6 +90,10 @@ class PortOceanContext:
                     f"Using event listener {self.app.config.event_listener.type}, which shouldn't perform any resyncs. Skipping resyncs setup..."
                 )
                 return None
+
+            if children:
+                for child in children:
+                    self.integration.on_resync(function, child)
             return self.integration.on_resync(function, kind)
 
         return wrapper
