@@ -373,12 +373,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def get_team_field_values(
         self, team: dict[str, Any]
     ) -> Optional[dict[str, Any]]:
-        """Get a team's configured area paths (Team Field Values).
-
-        API: GET {org}/{project}/{team}/_apis/work/teamsettings/teamfieldvalues
-        https://learn.microsoft.com/en-us/rest/api/azure/devops/work/teamfieldvalues/get?view=azure-devops-rest-7.1
-        Returns None when the team has no team-field configured (404).
-        """
+        """Get a team's configured area paths (Team Field Values)."""
         field_values_url = (
             f"{self._organization_base_url}/{team['projectId']}/{team['id']}"
             f"/{API_URL_PREFIX}/work/teamsettings/teamfieldvalues"
