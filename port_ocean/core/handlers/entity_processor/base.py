@@ -53,11 +53,11 @@ class BaseEntityProcessor(BaseHandler):
             primary_items = []
             secondary_items = {}
             for item in raw_data:
-                if item["Type"] == mapping.kind:
+                if item["_portOceanKind"] == mapping.kind:
                     primary_items.append(item)
                 else:
-                    secondary_items[item["Type"]] = secondary_items.get(
-                        item["Type"], []
+                    secondary_items[item["_portOceanKind"]] = secondary_items.get(
+                        item["_portOceanKind"], []
                     ) + [item]
 
             parsed_items = [await self._parse_items(mapping, primary_items, parse_all)]

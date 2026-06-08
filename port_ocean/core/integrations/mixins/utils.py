@@ -201,6 +201,8 @@ async def resync_function_wrapper(
 ) -> RAW_RESULT:
     with resync_error_handling():
         results = validate_result(await fn(kind))
+        for value in results:
+            value['_portOceanKind'] = value.get('_portOceanKind', kind)
         await send_raw_data_examples(
             results, kind, send_raw_data_examples_amount
         )
@@ -275,6 +277,8 @@ async def resync_generator_wrapper(
             try:
                 with resync_error_handling():
                     result = validate_result(await anext(generator))
+                    for value in result:
+                        value['_portOceanKind'] = value.get('_portOceanKind', kind)
                     sent_examples = await send_raw_data_examples(
                         result, kind, remaining_examples_to_send
                     )
