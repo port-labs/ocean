@@ -41,7 +41,7 @@
         "description": "Latest stage execution information"
       },
       "inboundTransitionState": {
-        "type": "object", 
+        "type": "object",
         "title": "Inbound Transition State",
         "description": "State of inbound transitions to this stage"
       }
