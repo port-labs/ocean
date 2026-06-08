@@ -80,8 +80,6 @@ class GitHubRetryTransport(RetryTransport):
             return request.url
 
         try:
-            # The first page request omits `page` (GitHub defaults to 1); later
-            # requests follow the Link header, which includes it explicitly.
             page = int(request.url.params.get("page", 1))
         except ValueError:
             return request.url
