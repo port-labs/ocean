@@ -79,9 +79,11 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
 
         if event.attributes.action == AuditTrailAction.DELETED:
             deleted = self._deleted_result(event)
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[deleted] if deleted else []
-            )
+            if deleted is not None:
+                return WebhookEventRawResults(
+                    updated_raw_results=[],
+                    deleted_raw_results=[deleted] if deleted else [],
+                )
 
         resource = None
         try:
