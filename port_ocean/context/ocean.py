@@ -91,7 +91,7 @@ class PortOceanContext:
                 )
                 return None
 
-            if children:
+            if kind and children:
                 for child in children:
                     self.integration.on_resync(function, child)
             return self.integration.on_resync(function, kind)
