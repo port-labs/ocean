@@ -62,15 +62,13 @@ class BaseEntityProcessor(BaseHandler):
                 config = (
                     await self.context.app.integration.port_app_config_handler.get_port_app_config()
                 )
-                for secondary_item_type, secondary_items in secondary_items.items():
+                for secondary_item_type, items in secondary_items.items():
                     secondary_mapping = next(
                         resource
                         for resource in config.resources
                         if resource.kind == secondary_item_type
                     )
                     parsed_items.append(
-                        await self._parse_items(
-                            secondary_mapping, secondary_items, parse_all
-                        )
+                        await self._parse_items(secondary_mapping, items, parse_all)
                     )
             return parsed_items
