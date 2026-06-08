@@ -75,16 +75,15 @@ class GitHubRetryTransport(RetryTransport):
         if response is None or response.status_code != HTTPStatus.INTERNAL_SERVER_ERROR:
             return request.url
 
-        url_params = request.url.params
-        try:
-            per_page = int(url_params["per_page"])
-            # The first page request omits `page` (GitHub defaults to 1); later
-            # requests follow the Link header, which includes it explicitly.
-            page = int(url_params.get("page", 1))
-        except (KeyError, ValueError):
+        per_page = self._paginated_per_page(request.url)
+        if per_page is None or per_page <= MIN_PAGE_SIZE:
             return request.url
 
-        if per_page <= MIN_PAGE_SIZE:
+        try:
+            # The first page request omits `page` (GitHub defaults to 1); later
+            # requests follow the Link header, which includes it explicitly.
+            page = int(request.url.params.get("page", 1))
+        except ValueError:
             return request.url
 
         reduced_per_page = max(per_page // 2, MIN_PAGE_SIZE)
@@ -163,20 +162,30 @@ class GitHubRetryTransport(RetryTransport):
             )
         super()._log_before_retry(request, sleep_time, response, error)
 
+    @staticmethod
+    def _paginated_per_page(url: httpx.URL) -> Optional[int]:
+        """The `per_page` of a paginated request URL, or None if not paginated."""
+        try:
+            return int(url.params["per_page"])
+        except (KeyError, ValueError):
+            return None
+
     def _page_reduction_exhausted(self, response: httpx.Response) -> bool:
         """True for a 500 whose request is already paginated at the floor size.
 
         Once `per_page` is down to MIN_PAGE_SIZE there is nothing left to shrink,
         so further retries would just replay the same failing request — stop and
-        let the 500 propagate.
+        let the 500 propagate. Non-paginated 500s are not exhausted here; they
+        fall through to the normal retry policy.
         """
         if response.status_code != HTTPStatus.INTERNAL_SERVER_ERROR:
             return False
         try:
-            per_page = int(response.request.url.params["per_page"])
-        except (RuntimeError, KeyError, ValueError):
+            per_page = self._paginated_per_page(response.request.url)
+        except RuntimeError:
+            # response carries no request.
             return False
-        return per_page <= MIN_PAGE_SIZE
+        return per_page is not None and per_page <= MIN_PAGE_SIZE
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         if self._page_reduction_exhausted(response):
