@@ -157,23 +157,25 @@ class TestWorkflowRunWebhookProcessor:
     @pytest.mark.parametrize(
         "selector_status,run_status,run_conclusion,expect_deleted",
         [
-            ("in_progress", "in_progress", None, False),
-            ("failure", "completed", "failure", False),
-            ("in_progress", "completed", "success", True),
-            ("failure", "in_progress", None, True),
+            (["in_progress"], "in_progress", None, False),
+            (["failure"], "completed", "failure", False),
+            (["in_progress"], "completed", "success", True),
+            (["failure"], "in_progress", None, True),
+            (["in_progress", "completed"], "completed", None, False),
+            (["in_progress", "failure"], "completed", "success", True),
         ],
     )
     async def test_handle_event_status_filter(
         self,
         workflow_webhook_processor: WorkflowRunWebhookProcessor,
-        selector_status: str,
+        selector_status: list[str],
         run_status: str,
         run_conclusion: str | None,
         expect_deleted: bool,
     ) -> None:
         config = GithubWorkflowRunConfig(
             kind=ObjectKind.WORKFLOW_RUN,
-            selector=GithubWorkflowRunSelector(query="true", status=selector_status),  # type: ignore[arg-type]
+            selector=GithubWorkflowRunSelector(query="true", statuses=selector_status),  # type: ignore[arg-type]
             port=PortResourceConfig(
                 entity=MappingsConfig(
                     mappings=EntityMapping(

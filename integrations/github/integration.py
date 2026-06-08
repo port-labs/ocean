@@ -649,41 +649,50 @@ class GithubWorkflowConfig(ResourceConfig):
 
 
 class GithubWorkflowRunSelector(RepoSearchSelector):
-    status: Optional[
-        Literal[
-            "completed",
-            "action_required",
-            "cancelled",
-            "failure",
-            "neutral",
-            "skipped",
-            "stale",
-            "success",
-            "timed_out",
-            "in_progress",
-            "queued",
-            "requested",
-            "waiting",
-            "pending",
+    statuses: Optional[
+        list[
+            Literal[
+                "completed",
+                "action_required",
+                "cancelled",
+                "failure",
+                "neutral",
+                "skipped",
+                "stale",
+                "success",
+                "timed_out",
+                "in_progress",
+                "queued",
+                "requested",
+                "waiting",
+                "pending",
+            ]
         ]
     ] = Field(
-        title="Status",
+        title="Statuses",
         default=None,
-        description="Filter workflow runs by status or conclusion. When unset, all runs are returned.",
+        description="Filter workflow runs by status or conclusion. Accepts a list of values. Each additional status value results in one extra API call per workflow — keep the list small.",
     )
     since: Optional[int] = Field(
         title="Lookback Days",
         default=None,
         ge=1,
-        description="Only fetch workflow runs created within the last N days.",
+        description="Only fetch workflow runs created within the last N days. Ignored if sinceDate is set.",
+    )
+    since_date: Optional[str] = Field(
+        title="Since Date",
+        default=None,
+        description="Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Takes precedence over lookbackDays.",
     )
 
     @property
     def created_after(self) -> Optional[str]:
-        if self.since is None:
-            return None
-        cutoff = datetime.now(timezone.utc) - timedelta(days=self.since)
-        return f">={cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        if self.since_date is not None:
+            return f">={self.since_date}"
+        if self.since is not None:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=self.since)
+            return f">={cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        return None
 
 
 class GithubWorkflowRunConfig(ResourceConfig):

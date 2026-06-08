@@ -34,12 +34,9 @@ class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        selector_status = cast(GithubWorkflowRunConfig, resource_config).selector.status
+        selector_status = cast(GithubWorkflowRunConfig, resource_config).selector.statuses
         if selector_status:
-            if selector_status not in (
-                workflow_run["status"],
-                workflow_run.get("conclusion"),
-            ):
+            if workflow_run["status"] not in selector_status and workflow_run.get("conclusion") not in selector_status:
                 logger.info(
                     f"Workflow run {workflow_run['name']} does not match status filter "
                     f"'{selector_status}', removing from Port"

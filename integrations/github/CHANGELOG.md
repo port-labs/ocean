@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.30 (2026-06-08)
+
+
+### Improvements
+
+- Added `statuses` selector to `workflow-run` kind to filter runs by status or conclusion. Accepts a list of values; each additional status results in one extra API call per workflow.
+- Added `since` selector to `workflow-run` kind to limit resync to runs created within the last N days.
+- Added `sinceDate` selector to `workflow-run` kind to limit resync to runs created on or after a fixed ISO 8601 date. Takes precedence over `since` when both are set.
+
+
 ## 5.5.29 (2026-06-08)
 
 
