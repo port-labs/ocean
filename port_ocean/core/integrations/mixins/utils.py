@@ -201,6 +201,11 @@ async def resync_function_wrapper(
 ) -> RAW_RESULT:
     with resync_error_handling():
         results = validate_result(await fn(kind))
+        """
+        Question for reviewer:
+        I'd rather avoid the var name as a magic string, but I was unable to find any relevant const file.
+        Is there an existing one that's relevant, or should I create a new one?
+        """
         for value in results:
             value['_portOceanKind'] = value.get('_portOceanKind', kind)
 
