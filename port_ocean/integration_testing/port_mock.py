@@ -1,4 +1,5 @@
 import json as json_lib
+import re
 from typing import Any
 from urllib.parse import unquote_plus
 
@@ -57,6 +58,11 @@ class PortMockResponder:
             "POST",
             "/v1/entities/search",
             self._handle_search_entities,
+        )
+        self.transport.add_route(
+            "POST",
+            "/v1/blueprints/entities/datasource-entities",
+            self._handle_datasource_entities,
         )
 
         # Bulk entity upsert — must be before generic blueprints route
@@ -125,6 +131,13 @@ class PortMockResponder:
             {"json": {"ok": True}},
         )
 
+        # Resync request (integ-service)
+        self.transport.add_route(
+            "GET",
+            re.compile(r"/integration/[^/]+/resync-request"),
+            {"json": {"request": {}}},
+        )
+
         # Blueprint get/patch — generic catch-all for blueprints
         self.transport.add_route(
             None,
@@ -135,6 +148,16 @@ class PortMockResponder:
     def _handle_search_entities(self, request: httpx.Request) -> dict[str, Any]:
         """Handle POST /v1/entities/search — returns entities for reconciliation diff."""
         return {"json": {"ok": True, "entities": self.search_entities_response}}
+
+    def _handle_datasource_entities(self, request: httpx.Request) -> dict[str, Any]:
+        """Handle POST /v1/blueprints/entities/datasource-entities for reconciliation."""
+        return {
+            "json": {
+                "ok": True,
+                "entities": self.search_entities_response,
+                "next": None,
+            }
+        }
 
     def _handle_integration(self, request: httpx.Request) -> dict[str, Any]:
         return {
@@ -161,6 +184,9 @@ class PortMockResponder:
                     "metricAttributes": {
                         "ingestId": "test-ingest",
                         "ingestUrl": "http://localhost:5555/logs/test",
+                    },
+                    "ingestAttributes": {
+                        "ingestUrl": "http://localhost:5555/ingest/test",
                     },
                 }
             }

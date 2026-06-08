@@ -1,5 +1,6 @@
 import asyncio
 import multiprocessing
+import os
 import re
 from contextlib import contextmanager
 from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
@@ -24,7 +25,37 @@ from port_ocean.exceptions.core import (
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.utils.async_http import _http_client
-from port_ocean.core.models import IntegrationFeatureFlag
+from port_ocean.core.models import IntegrationFeatureFlag, LakehouseDataEntry, LakehouseDataEntryMetadata, ProcessingMode
+
+
+def collect_export_env_variables(
+    variable_names: list[str],
+) -> dict[str, str | None] | None:
+    """Collect values for explicitly requested environment variable names."""
+    if not variable_names:
+        return None
+    return {name: os.environ.get(name) for name in variable_names}
+
+
+def build_lakehouse_data_entry(
+    *,
+    items: list[Any],
+    metadata: LakehouseDataEntryMetadata,
+    export_env_variables: list[str],
+    request: dict[str, Any] | None = None,
+    response: dict[str, Any] | None = None,
+) -> LakehouseDataEntry:
+    """Build a lakehouse data entry, collecting env vars for this bulk."""
+    entry: LakehouseDataEntry = {
+        "request": request or {},
+        "response": response or {},
+        "metadata": metadata,
+        "items": items,
+    }
+    environment_data = collect_export_env_variables(export_env_variables)
+    if environment_data is not None:
+        entry["environment_data"] = environment_data
+    return entry
 
 
 async def is_lakehouse_data_enabled() -> bool:
@@ -47,10 +78,48 @@ async def is_lakehouse_data_enabled() -> bool:
             return True
         return False
     except Exception as e:
-        logger.warning(
+        logger.bind(local_only=True).warning(
             f"Failed to check lakehouse feature flags, assuming disabled: {e}"
         )
         return False
+
+
+async def is_dsp_mode_enabled() -> bool:
+    """Check if DSP (Data Source Processor) mode is active.
+
+    DSP mode offloads all transform/load/reconciliation to an external service.
+    Ocean still extracts raw data and forwards it to the lakehouse, but skips
+    all entity processing.  Requires an explicit opt-in via config AND the right
+    org feature flags.  Errors are swallowed so this never blocks core flows.
+
+    Returns:
+        bool: True only when all four conditions are met, False otherwise.
+    """
+    try:
+        if ocean.config.processing_mode != ProcessingMode.dsp:
+            return False
+        if not ocean.config.lakehouse_enabled:
+            logger.bind(local_only=True).warning(
+                "DSP mode requested but lakehouse_enabled is False, falling back to ocean-core"
+            )
+            return False
+        flags = await ocean.port_client.get_organization_feature_flags()
+        if (
+            IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags
+            and IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags
+        ):
+            return True
+        logger.bind(local_only=True).warning(
+            "DSP mode requested but required feature flags are missing "
+            f"(LAKEHOUSE_ELIGIBLE={IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags}, "
+            f"DATA_SOURCE_PROCESSOR_ENABLED={IntegrationFeatureFlag.DATA_SOURCE_PROCESSOR_ENABLED in flags}), "
+            "falling back to ocean-core"
+        )
+        return False
+    except Exception as e:
+        logger.bind(local_only=True).warning(f"Failed to check DSP mode, falling back to ocean-core: {e}")
+        return False
+
 
 
 def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
@@ -213,7 +282,7 @@ async def resync_generator_wrapper(
                         0, remaining_examples_to_send - sent_examples
                     )
 
-                    if items_to_parse:
+                    if items_to_parse and not await is_dsp_mode_enabled():
                         items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse, items_to_parse_top_level_transform)
                         del result
                         async for batch in items_to_parse_generator:

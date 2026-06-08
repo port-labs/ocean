@@ -7,6 +7,230 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.69 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.2.68 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.2.67 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.2.66 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.2.65 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.2.64 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.2.63 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.2.62 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.2.61 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.2.60 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.2.59 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.2.58 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 0.2.57 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 0.2.56 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 0.2.55 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 0.2.54 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 0.2.53 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 0.2.52 (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 0.2.51 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 0.2.50 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 0.2.49 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 0.2.48 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 0.2.47 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 0.2.46 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 0.2.45 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 0.2.44 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 0.2.43 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 0.2.42 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
 ## 0.2.41 (2026-05-12)
 
 

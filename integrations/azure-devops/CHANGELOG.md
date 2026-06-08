@@ -7,6 +7,277 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.11 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.9.10 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.9.9 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.9.8 (2026-06-03)
+
+
+### Improvements
+
+- Added code coverage logs for test runs, including how many were processed and skipped when no build was linked.
+
+
+## 0.9.7 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.9.6 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.9.5 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.9.4 (2026-05-31)
+
+
+### Bug Fixes
+
+- Fixed webhook setup failure on large Azure DevOps organizations where the unfiltered `GET /_apis/hooks/subscriptions` call would time out. Subscriptions are now fetched once per organization using parallel filtered requests (one per event type), eliminating both the timeout and the per-project redundant fetching.
+
+
+## 0.9.3 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.9.2 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.9.1 (2026-05-31)
+
+
+### Improvements
+
+- Route webhook events to the correct org client via subscription ID registry instead of parsing URLs from the payload
+
+
+## 0.9.0 (2026-05-31)
+
+### Improvements
+
+- Added a configurable `apiVersion` selector field (defaults to the latest supported version) for the User Entitlements endpoint, with automatic pagination strategy selection based on the version (top/skip for legacy versions < 7.x, continuation token for 7.x+)
+
+## 0.8.54 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.8.53 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.8.52 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.8.51 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 0.8.50 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 0.8.49 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 0.8.48 (2026-05-26)
+
+
+### Features
+
+- Added multi-organization (Multiple Accounts) support via Entra ID service principal, allowing a single integration to sync across multiple Azure DevOps organizations
+- Webhook events are now routed to the correct per-org client; events from unknown organizations are dropped instead of falling back to the wrong org
+
+
+## 0.8.47 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 0.8.46 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 0.8.45 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 0.8.44 (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 0.8.43 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 0.8.42 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 0.8.41 (2026-05-20)
+
+
+### Bug Fixes
+
+- Fixed file resyncs aborting on transient `503` responses from the `itemsbatch` endpoint by opting the request into the retry path.
+
+
+## 0.8.40 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 0.8.39 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 0.8.38 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 0.8.37 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 0.8.36 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 0.8.35 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 0.8.34 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 0.8.33 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
 ## 0.8.32 (2026-05-12)
 
 

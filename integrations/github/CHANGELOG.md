@@ -7,6 +7,317 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.28 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 5.5.27 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 5.5.26 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 5.5.25 (2026-06-03)
+
+
+### Improvements
+
+- Bumped version to 5.5.25
+
+## 5.5.23 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 5.5.22 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 5.5.21 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 5.5.20 (2026-05-31)
+
+
+### Bug Fixes
+
+- Fixed asyncio event loop error when `repoManagedMapping` is enabled with multiple file resources.
+
+
+## 5.5.19 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 5.5.18 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 5.5.17 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 5.5.16 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 5.5.15 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 5.5.14 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 5.5.13 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 5.5.12 (2026-05-27)
+
+
+### Bug Fixes
+
+- Fixed OOM crashes during repository enrichment by sub-batching calls to process at most 10 repositories concurrently and preventing cache pollution from enriched data
+
+
+## 5.5.11 (2026-05-27)
+
+
+### Improvements
+
+- Point `repoSearch` selector description to Port docs limitations instead of duplicating GitHub Search API constraints in the UI.
+
+
+## 5.5.10 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 5.5.9 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 5.5.8 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 5.5.7 (2026-05-25)
+
+
+### Improvements
+
+- Applied independent resync streaming to pull request syncs so one failed stream does not block the remaining streams, while still surfacing deferred errors to prevent unsafe reconciliation deletes.
+
+
+## 5.5.6 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 5.5.5 (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 5.5.4 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 5.5.3 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 5.5.2 (2026-05-20)
+
+
+### Improvements
+
+- Added optional GitHub Pages enrichment for repository resources via the `pages` included relation, storing the Pages configuration under `__pages`.
+
+
+## 5.5.1 (2026-05-20)
+
+
+### Improvements
+
+- Added `labeled` and `unlabeled` to the supported `pull_request` webhook actions so PR label changes are processed in real time.
+
+
+## 5.5.0 (2026-05-19)
+
+
+### Bug Fixes
+
+- Added `excludeGraphqlFields` selector for PR GraphQL queries to omit problematic fields (e.g. `additions`, `deletions`, `changedFiles`) as a workaround for GitHub GraphQL query failures.
+
+
+## 5.4.16 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 5.4.15 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 5.4.14 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 5.4.13 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 5.4.12 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 5.4.11 (2026-05-17)
+
+
+### Bug Fixes
+
+- Fixed workflow push webhook processing to detect removed workflow files and propagate workflow deletions.
+
+
+## 5.4.10 (2026-05-14)
+
+
+### Bug Fixes
+
+- Prevent team resync from crashing when GraphQL returns `organization.team` as null for enterprise teams; log and skip the team instead.
+
+
+## 5.4.9 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 5.4.8 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 5.4.7 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 5.4.6 (2026-05-13)
+
+
+### Improvements
+
+- Cached recursive git tree retrieval in file exporter to reduce repeated API calls per repo/branch during file matching.
+
+
 ## 5.4.5 (2026-05-12)
 
 

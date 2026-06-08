@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 from port_ocean.clients.port.types import RequestOptions
 
-
 CUSTOM_KIND = "__custom__"
 
 
@@ -112,6 +111,12 @@ class Selector(_FieldMetadataEnforcer):
     query: str = Field(
         title="Query",
         description="JQ expression that will filter which objects of the specified kind will be ingested into Port.",
+    )
+    export_env_variables: list[str] = Field(
+        alias="exportEnvVariables",
+        default_factory=list,
+        title="Export Env Variables",
+        description="Environment variable names whose values should be included in lakehouse ingest payloads for DSP processing.",
     )
 
 

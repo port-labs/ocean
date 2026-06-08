@@ -1,5 +1,7 @@
 import asyncio
+import copy
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
+from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import parse_github_options, get_repository_metadata
@@ -16,6 +18,8 @@ from github.clients.http.rest_client import GithubRestClient
 if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
 
+ENRICHMENT_BATCH_SIZE = 10
+
 
 class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     _ENRICHMENT_METHODS: ClassVar[dict[str, str]] = {
@@ -23,6 +27,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "teams": "_enrich_repository_with_teams",
         "sbom": "_enrich_repository_with_sbom",
         "custom_properties": "_enrich_repository_with_custom_properties",
+        "pages": "_enrich_repository_with_pages",
     }
 
     async def get_resource[
@@ -65,22 +70,25 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         ):
             if not included_relations:
                 yield repos
-            else:
-                included_relations = cast(dict[str, dict[str, Any]], included_relations)
-                logger.info(
-                    f"Enriching repositories with {list(included_relations.keys())}"
-                )
-                batch = await asyncio.gather(
+                continue
+
+            included_relations = cast(dict[str, dict[str, Any]], included_relations)
+            logger.info(
+                f"Enriching repositories with {list(included_relations.keys())}"
+            )
+
+            for batch in batched(repos, ENRICHMENT_BATCH_SIZE):
+                enriched = await asyncio.gather(
                     *[
                         self.enrich_repository_with_selected_relationships(
-                            repo,
+                            copy.deepcopy(repo),
                             included_relations,
                             organization,
                         )
-                        for repo in repos
+                        for repo in batch
                     ]
                 )
-                yield batch
+                yield enriched
 
     @cache_iterator_result()
     async def _fetch_repositories(
@@ -271,4 +279,21 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             return repository
 
         repository["__sbom"] = response.get("sbom", {})
+        return repository
+
+    async def _enrich_repository_with_pages(
+        self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
+    ) -> RAW_ITEM:
+        repo_name = repository["name"]
+
+        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/pages"
+        response = await self.client.send_api_request(url)
+        if not response:
+            logger.debug(
+                f"Skipping GitHub Pages enrichment for repository {repo_name} in organization {organization}: empty response"
+            )
+            repository["__pages"] = {}
+            return repository
+
+        repository["__pages"] = response
         return repository

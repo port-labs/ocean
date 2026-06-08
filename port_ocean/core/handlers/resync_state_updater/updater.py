@@ -3,6 +3,7 @@ from typing import Any, Literal
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.context.ocean import ocean
+from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
 from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.time import get_next_occurrence
@@ -18,6 +19,7 @@ class ResyncStateUpdater:
         # So that the polling event-listener can decide whether to perform a full resync or not
         # TODO: remove this once we separate the state from the integration
         self.last_integration_state_updated_at: str = ""
+        self.last_resync_request_updated_at: str | None = None
 
     def _calculate_next_scheduled_resync(
         self,
@@ -100,5 +102,6 @@ class ResyncStateUpdater:
             kind=ocean.metrics.current_resource_kind()
         )
         await ocean.metrics.report_sync_metrics(
-            kinds=[ocean.metrics.current_resource_kind()]
+            kinds=[ocean.metrics.current_resource_kind()],
+            dsp_enabled=await is_dsp_mode_enabled(),
         )

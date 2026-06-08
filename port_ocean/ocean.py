@@ -13,6 +13,7 @@ import port_ocean.helpers.metric.metric
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.disk import DiskCacheProvider
 from port_ocean.cache.memory import InMemoryCacheProvider
+from port_ocean.clients.dsp.lifecycle import LifecycleClient
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import (
@@ -26,6 +27,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.integrations.mixins.utils import is_dsp_mode_enabled
 from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.health import create_health_router
 from port_ocean.log.sensetive import sensitive_log_filter
@@ -54,6 +56,7 @@ class Ocean:
             _integration_config_model=config_factory,
             **(config_override or {}),
         )
+        self._warn_non_default_ssl_settings()
         # add the integration sensitive configuration to the sensitive patterns to mask out
         sensitive_log_filter.hide_sensitive_strings(
             *self.config.get_sensitive_fields_data()
@@ -67,7 +70,7 @@ class Ocean:
             integration_identifier=self.config.integration.identifier,
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
-            ingest_url=self.config.port.ingest_url,
+            feature_flags_cache_ttl_seconds=self.config.port.feature_flags_cache_ttl_seconds,
         )
         self.cache_provider: CacheProvider = self._get_caching_provider()
         self.process_execution_mode: ProcessExecutionMode = (
@@ -106,11 +109,27 @@ class Ocean:
         self.resync_state_updater = ResyncStateUpdater(
             self.port_client, self.config.scheduled_resync_interval
         )
+        self.lifecycle_client: LifecycleClient = LifecycleClient(
+            auth=self.port_client.auth,
+        )
         self.app_initialized = False
         self._status_heartbeat_task: asyncio.Task[None] | None = None
 
         signal_handler.register(self._report_resync_aborted, priority=100)
         signal_handler.register(self._stop_status_heartbeat, priority=90)
+
+    def _warn_non_default_ssl_settings(self) -> None:
+        for label, client_ssl in (
+            ("Port API", self.config.ssl.port),
+            ("Third-party", self.config.ssl.third_party),
+        ):
+            if not client_ssl.verify:
+                description = "verify=false"
+            elif not client_ssl.x509.strict:
+                description = "x509.strict=false"
+            else:
+                continue
+            logger.warning(f"{label} SSL settings are non-default ({description}). ")
 
     async def _report_resync_aborted(self) -> None:
         """
@@ -132,6 +151,14 @@ class Ocean:
                     logger.info(
                         "Graceful shutdown completed - sync state set to aborted"
                     )
+                    if await is_dsp_mode_enabled():
+                        resync_id = self.metrics.event_id.strip()
+                        if resync_id:
+                            await self.lifecycle_client.notify_resync_aborted(
+                                resync_id=resync_id,
+                                integration_id=self.config.integration.identifier,
+                                integration_type=self.config.integration.type,
+                            )
                 else:
                     logger.info(
                         "Graceful shutdown completed - sync was already completed, status unchanged"
