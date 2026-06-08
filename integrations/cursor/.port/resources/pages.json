@@ -1,0 +1,223 @@
+[
+  {
+    "icon": "Cursor",
+    "title": "Cursor Insights",
+    "description": "Monitor Cursor AI usage, adoption, and productivity metrics",
+    "protected": false,
+    "widgets": [
+      {
+        "id": "cursorInsightsDashboard",
+        "type": "dashboard-widget",
+        "layout": [
+          {
+            "height": 400,
+            "columns": [
+              {
+                "id": "cursorTotalActiveUsers",
+                "size": 3
+              },
+              {
+                "id": "cursorTotalAiAccepts",
+                "size": 3
+              },
+              {
+                "id": "cursorTotalCost",
+                "size": 3
+              },
+              {
+                "id": "cursorAverageAcceptanceRate",
+                "size": 3
+              }
+            ]
+          },
+          {
+            "height": 420,
+            "columns": [
+              {
+                "id": "cursorModelUsageDistribution",
+                "size": 6
+              },
+              {
+                "id": "cursorUserActivityBreakdown",
+                "size": 6
+              }
+            ]
+          }
+        ],
+        "widgets": [
+          {
+            "id": "cursorTotalActiveUsers",
+            "blueprint": "cursorDailyUsage",
+            "calculationBy": "entities",
+            "unit": "none",
+            "description": "Number of active users using Cursor AI.",
+            "title": "Total Active Users",
+            "dataset": [
+              {
+                "property": "is_active",
+                "operator": "=",
+                "value": true
+              },
+              {
+                "property": "$blueprint",
+                "operator": "=",
+                "value": "cursorDailyUsage"
+              }
+            ],
+            "func": "count",
+            "type": "entities-number-chart",
+            "icon": "Users"
+          },
+          {
+            "id": "cursorTotalAiAccepts",
+            "blueprint": "cursorDailyUsage",
+            "calculationBy": "property",
+            "description": "Total number of AI suggestions accepted.",
+            "title": "Total AI Accepts",
+            "chartType": "aggregateByProperty",
+            "dataset": [
+              {
+                "property": "$blueprint",
+                "operator": "=",
+                "value": "cursorDailyUsage"
+              }
+            ],
+            "property": "total_accepts",
+            "func": "sum",
+            "unitAlignment": "right",
+            "unit": "none",
+            "type": "entities-number-chart",
+            "icon": "Checklist"
+          },
+          {
+            "id": "cursorTotalCost",
+            "blueprint": "cursorUsageEvent",
+            "calculationBy": "property",
+            "description": "Total cost of Cursor AI usage.",
+            "title": "Total Cost (USD)",
+            "chartType": "aggregateByProperty",
+            "dataset": [
+              {
+                "property": "$blueprint",
+                "operator": "=",
+                "value": "cursorUsageEvent"
+              }
+            ],
+            "property": "charged_cents",
+            "func": "sum",
+            "unitAlignment": "right",
+            "unit": "$",
+            "type": "entities-number-chart",
+            "icon": "Cost"
+          },
+          {
+            "id": "cursorAverageAcceptanceRate",
+            "blueprint": "cursorDailyUsage",
+            "calculationBy": "property",
+            "description": "Average acceptance rate of AI suggestions across users.",
+            "title": "Average Acceptance Rate",
+            "chartType": "aggregateByProperty",
+            "dataset": [
+              {
+                "property": "$blueprint",
+                "operator": "=",
+                "value": "cursorDailyUsage"
+              }
+            ],
+            "property": "acceptance_rate",
+            "func": "average",
+            "averageOf":"total",
+            "emptyStateText":"",
+            "unitAlignment": "right",
+            "unit": "%",
+            "type": "entities-number-chart",
+            "icon": "Metric"
+          },
+          {
+            "id": "cursorModelUsageDistribution",
+            "icon": "Pie",
+            "type": "entities-pie-chart",
+            "description": "Which AI models are being used most frequently.",
+            "title": "AI Model Usage Distribution",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "operator": "=",
+                  "value": "cursorUsageEvent",
+                  "property": "$blueprint"
+                }
+              ]
+            },
+            "property": "property#model"
+          },
+          {
+            "type": "table-entities-explorer",
+            "displayMode": "widget",
+            "title": "User Activity Breakdown",
+            "description": "Detailed view of individual user productivity and AI usage patterns.",
+            "icon": "Table",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "operator": "=",
+                  "value": "cursorDailyUsage",
+                  "property": "$blueprint"
+                }
+              ]
+            },
+            "blueprintConfig": {
+              "cursorDailyUsage": {
+                "filterSettings": {
+                  "filterBy": {
+                    "combinator": "and",
+                    "rules": []
+                  }
+                },
+                "groupSettings": {
+                  "groupBy": [
+                    "email"
+                  ]
+                },
+                "sortSettings": {
+                  "sortBy": [
+                    {
+                      "property": "day",
+                      "order": "desc"
+                    }
+                  ]
+                },
+                "propertiesSettings": {
+                  "order": [
+                    "email",
+                    "day"
+                  ],
+                  "shown": [
+                    "email",
+                    "day",
+                    "total_accepts",
+                    "total_rejects",
+                    "acceptance_rate",
+                    "total_lines_added",
+                    "total_lines_deleted",
+                    "agent_requests",
+                    "composer_requests",
+                    "most_used_model",
+                    "is_active"
+                  ]
+                }
+              }
+            },
+            "id": "cursorUserActivityBreakdown"
+          }
+        ]
+      }
+    ],
+    "identifier": "cursorInsightsDashboard",
+    "showInSidebar": true,
+    "requiredQueryParams": [],
+    "section": "software_catalog",
+    "type": "dashboard"
+  }
+]

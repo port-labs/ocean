@@ -1,0 +1,108 @@
+resources:
+  - kind: cursor-daily-usage
+    selector:
+      query: 'true'
+      startDate: 30d
+      endDate: 0d
+    port:
+      entity:
+        mappings:
+          identifier: (.userId + "-" + .day)
+          title: (.email + " " + .day)
+          blueprint: '"cursorDailyUsage"'
+          properties:
+            day: (if .day then (.day + "T00:00:00Z") else null end)
+            user_id: .userId
+            email: .email
+            is_active: .isActive
+            total_lines_added: .totalLinesAdded
+            total_lines_deleted: .totalLinesDeleted
+            accepted_lines_added: .acceptedLinesAdded
+            accepted_lines_deleted: .acceptedLinesDeleted
+            total_applies: .totalApplies
+            total_accepts: .totalAccepts
+            total_rejects: .totalRejects
+            total_tabs_shown: .totalTabsShown
+            total_tabs_accepted: .totalTabsAccepted
+            composer_requests: .composerRequests
+            chat_requests: .chatRequests
+            agent_requests: .agentRequests
+            most_used_model: .mostUsedModel
+            subscription_included_reqs: .subscriptionIncludedReqs
+            api_key_reqs: .apiKeyReqs
+            usage_based_reqs: .usageBasedReqs
+            bugbot_usages: .bugbotUsages
+  - kind: cursor-usage-event
+    selector:
+      query: 'true'
+      startDate: 30d
+      endDate: 0d
+    port:
+      entity:
+        mappings:
+          identifier: ((.timestamp + "-" + .userEmail + "-" + .model + "-" + .kind) | gsub("[^A-Za-z0-9@_.+:\\\\/='-]"; "_"))
+          title: (.userEmail + " " + .model + " " + .kind)
+          blueprint: '"cursorUsageEvent"'
+          properties:
+            timestamp: (.timestamp | tonumber / 1000 | todate)
+            model: .model
+            kind: .kind
+            max_mode: .maxMode
+            requests_costs: .requestsCosts
+            is_token_based_call: .isTokenBasedCall
+            token_usage: .tokenUsage
+            user_email: .userEmail
+            cursor_token_fee: .cursorTokenFee
+            is_headless: .isHeadless
+            charged_cents: (if .chargedCents then (.chargedCents / 100) else null end)
+  - kind: cursor-ai-commit-metric
+    selector:
+      query: 'true'
+      startDate: 30d
+      endDate: 0d
+    port:
+      entity:
+        mappings:
+          identifier: .commitHash
+          title: (.repoName + " " + .commitHash[:7])
+          blueprint: '"cursorAiCommitMetric"'
+          properties:
+            commit_hash: .commitHash
+            commit_source: .commitSource
+            repo_name: .repoName
+            branch_name: .branchName
+            is_primary_branch: .isPrimaryBranch
+            total_lines_added: .totalLinesAdded
+            total_lines_deleted: .totalLinesDeleted
+            tab_lines_added: .tabLinesAdded
+            tab_lines_deleted: .tabLinesDeleted
+            composer_lines_added: .composerLinesAdded
+            composer_lines_deleted: .composerLinesDeleted
+            non_ai_lines_added: .nonAiLinesAdded
+            non_ai_lines_deleted: .nonAiLinesDeleted
+            message: .message
+            commit_ts: (.commitTs | gsub(" "; "T") | split(".") | .[0] + "Z")
+            created_at: (.createdAt | gsub(" "; "T") | split(".") | .[0] + "Z")
+            user_id: .userId
+            user_email: .userEmail
+  - kind: cursor-ai-change-metric
+    selector:
+      query: 'true'
+      startDate: 30d
+      endDate: 0d
+    port:
+      entity:
+        mappings:
+          identifier: (.changeId + "-" + (.createdAt | gsub(" "; "T") | gsub("\\."; "-")))
+          title: (.source + " " + .changeId)
+          blueprint: '"cursorAiChangeMetric"'
+          properties:
+            change_id: .changeId
+            source: .source
+            metadata: .metadata
+            model: .model
+            total_lines_added: .totalLinesAdded
+            total_lines_deleted: .totalLinesDeleted
+            created_at: (.createdAt | gsub(" "; "T") | split(".") | .[0] + "Z")
+            user_id: .userId
+            user_email: .userEmail

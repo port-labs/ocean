@@ -1,0 +1,26 @@
+title: Cursor
+description: Cursor integration for Port Ocean
+icon: Cursor
+formMappingEnabled: true
+recommendedInstallationMethod: Saas
+features:
+  - type: exporter
+    section: AI Agents
+    resources:
+      - kind: cursor-ai-commit-metric
+      - kind: cursor-ai-change-metric
+      - kind: cursor-daily-usage
+      - kind: cursor-usage-event
+saas:
+  enabled: true
+configurations:
+  - name: cursorApiKey
+    type: string
+    required: true
+    sensitive: true
+    description: Cursor API key used for both analytics and team usage endpoints.
+  - name: cursorApiHost
+    required: false
+    type: url
+    default: https://api.cursor.com
+    description: Base URL of the Cursor API.
