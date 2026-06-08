@@ -812,6 +812,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
+                        "_portOceanKind": resource.kind,
                     }
                 ],
                 deleted_raw_results=[],
@@ -1057,6 +1058,7 @@ async def test_integrationTest_postRequestSent_noMatchingHandlers_entityNotUpser
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
+                        "_portOceanKind": resource.kind,
                     }
                 ],
                 deleted_raw_results=[],
@@ -1187,6 +1189,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
+                        "_portOceanKind": resource.kind,
                     }
                 ],
                 deleted_raw_results=[],
@@ -1218,6 +1221,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
                         "name": "repo-two",
                         "links": {"html": {"href": "https://example.com/repo-two"}},
                         "main_branch": "main",
+                        "_portOceanKind": resource.kind,
                     }
                 ],
                 deleted_raw_results=[],
@@ -1249,6 +1253,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
+                        "_portOceanKind": resource.kind,
                     }
                 ],
                 deleted_raw_results=[],
@@ -1390,6 +1395,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
+                        "_portOceanKind": resource.kind,
                     }
                 ],
                 deleted_raw_results=[],
@@ -1528,6 +1534,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
+                        "_portOceanKind": resource.kind,
                     }
                 ],
                 deleted_raw_results=[],
@@ -1663,6 +1670,7 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
                         "name": "repo-one",
                         "links": {"html": {"href": "https://example.com/repo-one"}},
                         "main_branch": "main",
+                        "_portOceanKind": resource.kind,
                     }
                 ],
                 deleted_raw_results=[],
