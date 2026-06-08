@@ -677,21 +677,21 @@ class GithubWorkflowRunSelector(RepoSearchSelector):
         title="Lookback Days",
         default=None,
         ge=1,
-        description="Only fetch workflow runs created within the last N days. Ignored if sinceDate is set.",
+        description="Only fetch workflow runs created within the last N days. Takes precedence over sinceDate when both are set.",
     )
     since_date: Optional[str] = Field(
         title="Since Date",
         default=None,
-        description="Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Takes precedence over lookbackDays.",
+        description="Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Ignored if since is set.",
     )
 
     @property
     def created_after(self) -> Optional[str]:
-        if self.since_date is not None:
-            return f">={self.since_date}"
         if self.since is not None:
             cutoff = datetime.now(timezone.utc) - timedelta(days=self.since)
             return f">={cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        if self.since_date is not None:
+            return f">={self.since_date}"
         return None
 
 

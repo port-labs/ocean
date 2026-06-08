@@ -193,6 +193,8 @@ def test_workflow_run_selector_since_date() -> None:
     assert selector.created_after == ">=2024-01-01"
 
 
-def test_workflow_run_selector_since_date_precedence() -> None:
+def test_workflow_run_selector_since_takes_precedence_over_since_date() -> None:
     selector = GithubWorkflowRunSelector(query=".", since=30, since_date="2024-01-01")
-    assert selector.created_after == ">=2024-01-01"
+    result = selector.created_after
+    assert result is not None
+    assert re.match(r"^>=\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", result)
