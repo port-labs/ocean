@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.43.15 (2026-06-03)
+
+### Bug Fixes
+
+- `LakehouseBuffer.flush()` is now best-effort in ocean-core (non-DSP) mode: transport errors such as `ConnectError` are logged as warnings and the buffer is discarded, allowing the resync to continue and entities to be upserted via the standard ocean-core path. In DSP mode (where the lake write is the only data-delivery path) flush failures remain fatal. This fixes an issue where a self-hosted integration that cannot reach the lakehouse ingest endpoint would crash its processing subprocess and leave the affected kind stuck at `syncing` indefinitely.
+- `_process_resource` now catches unexpected exceptions from `_register_in_batches` and reports the kind as `failed` via `report_kind_sync_metrics` before the subprocess exits. Previously any unhandled exception would crash the subprocess silently and leave the kind status stuck at `syncing` until the server-side stale-heartbeat timeout (~10 min).
+
 ## 0.43.14 (2026-06-03)
 
 ### Improvements

@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 from freezegun import freeze_time
 
-from utils import (
+from datadog.utils import (
     get_start_of_the_day_in_seconds_x_day_back,
     generate_time_windows_from_interval_days,
 )
