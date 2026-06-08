@@ -52,30 +52,35 @@ def mock_sync_raw_mixin(
             "name": "Entity 1",
             "service": "entity_3",
             "web_url": "https://example.com/entity1",
+            "_portOceanKind": "project",
         },
         {
             "id": "entity_2",
             "name": "Entity 2",
             "service": "entity_4",
             "web_url": "https://example.com/entity2",
+            "_portOceanKind": "project",
         },
         {
             "id": "entity_3",
             "name": "Entity 3",
             "service": "",
             "web_url": "https://example.com/entity3",
+            "_portOceanKind": "project",
         },
         {
             "id": "entity_4",
             "name": "Entity 4",
             "service": "entity_3",
             "web_url": "https://example.com/entity4",
+            "_portOceanKind": "project",
         },
         {
             "id": "entity_5",
             "name": "Entity 5",
             "service": "entity_1",
             "web_url": "https://example.com/entity5",
+            "_portOceanKind": "project",
         },
     ]
 
@@ -85,7 +90,7 @@ def mock_sync_raw_mixin(
 
     # Return a list containing the async generator and an empty error list
     sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([raw_results_generator()], []))  # type: ignore
-    sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=MagicMock())  # type: ignore
+    sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=[MagicMock()])  # type: ignore
 
     return sync_raw_mixin
 
@@ -123,7 +128,7 @@ async def test_sync_raw_mixin_self_dependency(
     )  # Add this to match real behavior
     calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=[calc_result_mock])  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -248,7 +253,7 @@ async def test_sync_raw_mixin_circular_dependency(
     )  # Add this to match real behavior
     calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=[calc_result_mock])  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -397,7 +402,7 @@ async def test_sync_raw_mixin_dependency(
     calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
     # Mock the parse_items method to return our realistic mock
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=[calc_result_mock])  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -530,7 +535,12 @@ async def test_register_raw(
     kind = "service"
     user_agent_type = UserAgentType.exporter
     raw_entity = [
-        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+        {
+            "id": "entity_1",
+            "name": "entity_1",
+            "web_url": "https://example.com",
+            "_portOceanKind": kind,
+        },
     ]
     expected_result = [
         {
@@ -595,7 +605,12 @@ async def test_unregister_raw(
     kind = "service"
     user_agent_type = UserAgentType.exporter
     raw_entity = [
-        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+        {
+            "id": "entity_1",
+            "name": "entity_1",
+            "web_url": "https://example.com",
+            "_portOceanKind": kind,
+        },
     ]
     expected_result = [
         {
@@ -1136,9 +1151,9 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
 
     # Raw data - users with name and email, but NO .nonexistent_field
     raw_results = [
-        {"name": "John Doe", "email": "john@example.com"},
-        {"name": "Jane Smith", "email": "jane@example.com"},
-        {"name": "Bob Wilson", "email": "bob@example.com"},
+        {"name": "John Doe", "email": "john@example.com", "_portOceanKind": "users"},
+        {"name": "Jane Smith", "email": "jane@example.com", "_portOceanKind": "users"},
+        {"name": "Bob Wilson", "email": "bob@example.com", "_portOceanKind": "users"},
     ]
 
     # Mock the port client's ingest_integration_kind_examples method
@@ -1183,8 +1198,16 @@ async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
 
         assert kind_arg == "users", "Kind should be 'users'"
         assert len(examples_arg) == 2, "Should send 2 examples as requested"
-        assert examples_arg[0] == {"name": "John Doe", "email": "john@example.com"}
-        assert examples_arg[1] == {"name": "Jane Smith", "email": "jane@example.com"}
+        assert examples_arg[0] == {
+            "name": "John Doe",
+            "email": "john@example.com",
+            "_portOceanKind": "users",
+        }
+        assert examples_arg[1] == {
+            "name": "Jane Smith",
+            "email": "jane@example.com",
+            "_portOceanKind": "users",
+        }
 
         # Verify transformation failed (no entities created because .nonexistent_field doesn't exist)
         assert (
@@ -1471,7 +1494,14 @@ async def test_parse_items_sets_both_kind_and_resource_kind_in_logger_context(
     try:
         await processor.parse_items(
             mapping=mock_resource_config,
-            raw_data=[{"id": "1", "name": "test", "web_url": "https://example.com"}],
+            raw_data=[
+                {
+                    "id": "1",
+                    "name": "test",
+                    "web_url": "https://example.com",
+                    "_portOceanKind": mock_resource_config.kind,
+                }
+            ],
         )
     finally:
         logger.remove(sink_id)
