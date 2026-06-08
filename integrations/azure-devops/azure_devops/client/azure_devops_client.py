@@ -229,7 +229,7 @@ class AzureDevopsClient(HTTPBaseClient):
         )
         filtered = []
         for project, tags in zip(projects, tags_results):
-            if isinstance(tags, Exception):
+            if isinstance(tags, BaseException):
                 logger.warning(
                     "Failed to fetch tags for project %s, including in sync: %s",
                     project["id"],
