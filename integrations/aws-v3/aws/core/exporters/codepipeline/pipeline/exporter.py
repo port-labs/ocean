@@ -14,6 +14,7 @@ from aws.core.exporters.codepipeline.pipeline.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
+from aws.core.modeling.resource_models import ResourceRequestModel
 
 
 class PipelineExporter(IResourceExporter):
@@ -63,6 +64,9 @@ class PipelineExporter(IResourceExporter):
                     yield []
 
     def _construct_stages(self, data: dict[str, Any]) -> list[dict[str, Any]]:
+        extra_context = ResourceRequestModel(**data["__ExtraContext"],
+                                             region=data['__ExtraContext']['Region'],
+                                             account_id=data['__ExtraContext']['AccountId'])
         return [
             json.loads(
                 CodePipelineStage(
@@ -72,10 +76,10 @@ class PipelineExporter(IResourceExporter):
                         PipelineArn=data["Properties"].get("Arn"),
                         Actions=stage.get("actions", []),
                         Blockers=stage.get("blockers", []),
-                        Region=data["__ExtraContext"]["Region"],
-                        AccountId=data["__ExtraContext"]["AccountId"],
+                        Region=extra_context.region,
+                        AccountId=extra_context.account_id,
                     ),
-                    ExtraContext=data["__ExtraContext"],
+                    __ExtraContext=extra_context,
                 ).json(by_alias=True)
             )
             for stage in data["Properties"].get("Stages", [])
