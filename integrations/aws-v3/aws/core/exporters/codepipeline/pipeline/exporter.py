@@ -11,7 +11,7 @@ from aws.core.exporters.codepipeline.pipeline.models import (
     SinglePipelineRequest,
     PaginatedPipelineRequest,
 )
-from aws.core.helpers.types import SupportedServices
+from aws.core.helpers.types import SupportedServices, ObjectKind
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 from aws.core.modeling.resource_models import ResourceRequestModel
@@ -81,6 +81,6 @@ class PipelineExporter(IResourceExporter):
                     ),
                     __ExtraContext=extra_context,
                 ).json(by_alias=True)
-            )
+            ) | {'_portOceanKind': ObjectKind.CODEPIPELINE_STAGE}
             for stage in data["Properties"].get("Stages", [])
         ]

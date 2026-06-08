@@ -1,4 +1,6 @@
 from typing import Dict, Any, List, Type, cast
+
+from aws.core.helpers.types import ObjectKind
 from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
 import asyncio
@@ -87,6 +89,7 @@ class GetPipelineDetailsAction(Action):
                     if metadata.get("updated")
                     else None
                 ),
+                '_portOceanKind': ObjectKind.CODEPIPELINE_PIPELINE
             }
 
 
