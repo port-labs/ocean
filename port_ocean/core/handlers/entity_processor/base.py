@@ -63,12 +63,19 @@ class BaseEntityProcessor(BaseHandler):
                     await self.context.app.integration.port_app_config_handler.get_port_app_config()
                 )
                 for secondary_item_type, items in secondary_items.items():
-                    secondary_mapping = next(
-                        resource
-                        for resource in config.resources
-                        if resource.kind == secondary_item_type
+                    secondary_mapping: ResourceConfig | None = next(
+                        (
+                            resource
+                            for resource in config.resources
+                            if resource.kind == secondary_item_type
+                        ),
+                        None,
                     )
-                    parsed_items.append(
-                        await self._parse_items(secondary_mapping, items, parse_all)
-                    )
+
+                    if secondary_mapping:
+                        parsed_items.append(
+                            await self._parse_items(secondary_mapping, items, parse_all)
+                        )
+                    else:
+                        logger.error(f"No mapping found for {secondary_item_type}")
             return parsed_items
