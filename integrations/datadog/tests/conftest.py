@@ -8,6 +8,17 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 
 
 @pytest.fixture(autouse=True)
+def mock_init_client() -> Generator[None, None, None]:
+    """Patch init_client at the point it is consumed so processor fixtures can be
+    created without real Datadog credentials."""
+    with patch(
+        "datadog.webhook.webhook_processors.base_webhook_processor.init_client",
+        return_value=MagicMock(),
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def mock_integration_config() -> Generator[dict[str, str], None, None]:
     """Mock the ocean integration config."""
     config = {"datadog_service_dependency_env": "prod", "webhook_secret": "test_token"}

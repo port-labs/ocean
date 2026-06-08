@@ -318,6 +318,27 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
         ("comments", "comments { totalCount }"),
         ("reviewThreads", "reviewThreads { totalCount }"),
         (
+            "reviews",
+            """
+            reviews (first: 10) {
+              nodes {
+                state
+                body
+                createdAt
+                author {
+                  login
+                  avatarUrl
+                  url
+                  __typename
+
+                }
+
+              }
+            }
+        """,
+        ),
+        ("statusCheckRollup", "statusCheckRollup { state }"),
+        (
             "commits",
             (
                 PR_COMMITS_WITH_FIRST
