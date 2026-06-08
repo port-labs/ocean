@@ -499,6 +499,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             try:
                 async for items in generator:
                     batch_index += 1
+                    items = [item for item in items if item["_portOceanKind"] == resource_config.kind]
                     if lakehouse_data_enabled and buffer:
                         metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
                         lakehouse_data_entry = build_lakehouse_data_entry(
