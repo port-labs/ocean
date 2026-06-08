@@ -7,13 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.5.28 (2026-06-04)
+## 5.5.29 (2026-06-08)
+
+
+### Bug Fixes
+
+- Fixed sync failures from intermittent 500 errors on large pages by retrying with a smaller page size
+
+
+## 5.5.28 (2026-06-07)
 
 
 ### Improvements
 
-- Added `status` selector to `workflow-run` kind to filter runs by status or conclusion.
-- Added `since` selector to `workflow-run` kind to limit resync to runs created within the last N days.
+- Bumped ocean version to ^0.43.15
 
 
 ## 5.5.27 (2026-06-03)
@@ -38,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped version to 5.5.25
+
 
 ## 5.5.23 (2026-06-02)
 
