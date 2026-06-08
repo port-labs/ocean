@@ -322,8 +322,8 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
             """
             reviews (first: 10) {
               nodes {
-                state,
-                body,
+                state
+                body
                 createdAt
                 author {
                   login
