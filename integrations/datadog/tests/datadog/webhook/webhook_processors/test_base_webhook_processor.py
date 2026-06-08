@@ -1,15 +1,16 @@
 import pytest
-from unittest.mock import patch, PropertyMock
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from webhook_processors._abstract_webhook_processor import (
-    _AbstractDatadogWebhookProcessor,
-)
 from typing import Any, Generator
+from unittest.mock import PropertyMock, patch
+
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+
+from datadog.webhook.webhook_client import PORT_AUTH_HEADER_NAME
+from datadog.webhook.webhook_processors.base_webhook_processor import (
+    BaseWebhookProcessor,
+)
 
 
-class MockWebhookProcessor(_AbstractDatadogWebhookProcessor):
-    """Concrete implementation for testing the abstract webhook processor."""
-
+class MockWebhookProcessor(BaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[Any]:
         return []
 
@@ -31,7 +32,6 @@ def processor() -> MockWebhookProcessor:
 
 @pytest.fixture
 def mock_integration_config_with_secret() -> Generator[dict[str, str], None, None]:
-    """Mock the ocean integration config with webhook secret."""
     config = {"datadog_service_dependency_env": "prod", "webhook_secret": "test_token"}
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
@@ -43,7 +43,6 @@ def mock_integration_config_with_secret() -> Generator[dict[str, str], None, Non
 
 @pytest.fixture
 def mock_integration_config_without_secret() -> Generator[dict[str, str], None, None]:
-    """Mock the ocean integration config without webhook secret."""
     config = {"datadog_service_dependency_env": "prod"}
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
@@ -54,12 +53,11 @@ def mock_integration_config_without_secret() -> Generator[dict[str, str], None, 
 
 
 @pytest.mark.asyncio
-async def test_authenticate_with_valid_auth_header(
+async def test_authenticate_with_valid_custom_auth_header(
     processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
-    # Base64 encoded "test_user:test_token"
-    headers = {"authorization": "Basic dGVzdF91c2VyOnRlc3RfdG9rZW4="}
+    headers = {PORT_AUTH_HEADER_NAME: "test_token"}
     assert await processor.authenticate({}, headers) is True
 
 
@@ -68,7 +66,6 @@ async def test_authenticate_without_webhook_secret_no_auth_header(
     processor: MockWebhookProcessor,
     mock_integration_config_without_secret: Generator[dict[str, str], None, None],
 ) -> None:
-    # Allow authentication when no webhook secret and no auth header
     assert await processor.authenticate({}, {}) is True
 
 
@@ -77,9 +74,9 @@ async def test_authenticate_without_webhook_secret_with_auth_header(
     processor: MockWebhookProcessor,
     mock_integration_config_without_secret: Generator[dict[str, str], None, None],
 ) -> None:
-    # Fail authentication when no webhook secret but auth header is present
-    headers = {"authorization": "Basic dGVzdF91c2VyOnRlc3RfdG9rZW4="}
-    assert await processor.authenticate({}, headers) is False
+    headers = {PORT_AUTH_HEADER_NAME: "test_token"}
+    # When no secret is configured, authentication is disabled: all requests pass.
+    assert await processor.authenticate({}, headers) is True
 
 
 @pytest.mark.asyncio
@@ -87,56 +84,22 @@ async def test_authenticate_with_invalid_secret(
     processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
-    # Base64 encoded "test_user:wrong_token"
-    headers = {"authorization": "Basic dGVzdF91c2VyOndyb25nX3Rva2Vu"}
+    headers = {PORT_AUTH_HEADER_NAME: "wrong_token"}
     assert await processor.authenticate({}, headers) is False
 
 
 @pytest.mark.asyncio
-async def test_authenticate_with_missing_auth_header(
+async def test_authenticate_with_missing_custom_header(
     processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
-    # Fail when webhook secret is configured but no auth header
     assert await processor.authenticate({}, {}) is False
 
 
 @pytest.mark.asyncio
-async def test_authenticate_with_invalid_auth_format(
+async def test_authenticate_with_case_insensitive_custom_header(
     processor: MockWebhookProcessor,
     mock_integration_config_with_secret: Generator[dict[str, str], None, None],
 ) -> None:
-    # Test invalid authorization header format
-    headers = {"authorization": "InvalidFormat"}
-    assert await processor.authenticate({}, headers) is False
-
-
-@pytest.mark.asyncio
-async def test_authenticate_with_non_basic_auth(
-    processor: MockWebhookProcessor,
-    mock_integration_config_with_secret: Generator[dict[str, str], None, None],
-) -> None:
-    # Test non-Basic authorization type
-    headers = {"authorization": "Bearer some-token"}
-    assert await processor.authenticate({}, headers) is False
-
-
-@pytest.mark.asyncio
-async def test_authenticate_with_malformed_basic_auth(
-    processor: MockWebhookProcessor,
-    mock_integration_config_with_secret: Generator[dict[str, str], None, None],
-) -> None:
-    # Test malformed Basic Auth credentials (missing colon)
-    # Base64 encoded "test_user_no_colon"
-    headers = {"authorization": "Basic dGVzdF91c2VyX25vX2NvbG9u"}
-    assert await processor.authenticate({}, headers) is False
-
-
-@pytest.mark.asyncio
-async def test_authenticate_with_invalid_base64(
-    processor: MockWebhookProcessor,
-    mock_integration_config_with_secret: Generator[dict[str, str], None, None],
-) -> None:
-    # Test invalid base64 encoding
-    headers = {"authorization": "Basic invalid_base64!@#"}
-    assert await processor.authenticate({}, headers) is False
+    headers = {PORT_AUTH_HEADER_NAME.lower(): "test_token"}
+    assert await processor.authenticate({}, headers) is True
