@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
@@ -35,8 +36,8 @@ class PipelineProperties(BaseModel):
     PipelineType: Optional[str] = None
     Variables: List[Dict[str, Any]] = Field(default_factory=list)
     Triggers: List[Dict[str, Any]] = Field(default_factory=list)
-    Created: Optional[str] = None
-    Updated: Optional[str] = None
+    Created: Optional[datetime] = None
+    Updated: Optional[datetime] = None
     Tags: Dict[str, str] = Field(default_factory=dict)
 
     class Config:
