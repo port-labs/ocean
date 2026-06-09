@@ -19,7 +19,9 @@ class GetProjectDetailsAction(Action):
 
         response = await self.client.batch_get_projects(names=resources)
         projects = response.get("projects", [])
-        logger.info(f"Successfully fetched details for {len(projects)} CodeBuild projects")
+        logger.info(
+            f"Successfully fetched details for {len(projects)} CodeBuild projects"
+        )
 
         return [
             {
