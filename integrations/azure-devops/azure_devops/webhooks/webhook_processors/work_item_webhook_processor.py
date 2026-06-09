@@ -1,7 +1,10 @@
+from typing import cast
+
 from loguru import logger
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
 )
+from integration import AzureDevopsWorkItemResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -56,6 +59,21 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
+
+        exclude_tag_filter = cast(
+            AzureDevopsWorkItemResourceConfig, resource_config
+        ).selector.exclude_tag_filter
+        if exclude_tag_filter:
+            filtered = await client.filter_projects_by_excluded_tags(
+                [project], exclude_tag_filter
+            )
+            if not filtered:
+                logger.info(
+                    f"Work item {work_item_id} skipped — project {project_id} matched excludeTagFilter"
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
 
         # Handle work item deletion
         if event_type == WorkItemEvents.WORK_ITEM_DELETED:
