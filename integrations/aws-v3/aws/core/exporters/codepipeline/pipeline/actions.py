@@ -6,6 +6,23 @@ from loguru import logger
 import asyncio
 
 
+class ListPipelinesAction(Action):
+    """Processes the initial list of pipelines from AWS."""
+
+    async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        return [
+            {
+                "Name": resource.get("name", ""),
+                "Version": resource.get("version"),
+                "Created": resource.get("created"),
+                "Updated": resource.get("updated"),
+                "PipelineType": resource.get("pipelineType"),
+                "ExecutionMode": resource.get("executionMode"),
+            }
+            for resource in resources
+        ]
+
+
 class GetPipelineDetailsAction(PipelineAction):
     """Fetches detailed information about CodePipeline pipelines."""
 
@@ -145,23 +162,6 @@ class GetPipelineTagsAction(Action):
         except Exception as e:
             logger.error(f"Error fetching tags for pipeline {pipeline_name}: {e}")
             return {"Tags": {}}
-
-
-class ListPipelinesAction(Action):
-    """Processes the initial list of pipelines from AWS."""
-
-    async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        return [
-            {
-                "Name": resource.get("name", ""),
-                "Version": resource.get("version"),
-                "Created": resource.get("created"),
-                "Updated": resource.get("updated"),
-                "PipelineType": resource.get("pipelineType"),
-                "ExecutionMode": resource.get("executionMode"),
-            }
-            for resource in resources
-        ]
 
 
 class PipelineActionsMap(ActionMap):
