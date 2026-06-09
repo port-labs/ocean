@@ -57,6 +57,19 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
+        exclude_tag_filter = client.exclude_tag_filter
+        if exclude_tag_filter:
+            filtered = await client.filter_projects_by_excluded_tags(
+                [project], exclude_tag_filter
+            )
+            if not filtered:
+                logger.info(
+                    f"Work item {work_item_id} skipped — project {project_id} matched excludeTagFilter"
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
+
         # Handle work item deletion
         if event_type == WorkItemEvents.WORK_ITEM_DELETED:
             logger.info(f"Work item {work_item_id} deleted, returning for deletion")
