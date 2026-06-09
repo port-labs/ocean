@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any, Callable, Coroutine, Dict, Iterable, Optional, Union
 import typing
 
@@ -8,6 +9,12 @@ from port_ocean.helpers.retry import RetryConfig, RetryTransport
 from github.clients.rate_limiter.utils import is_rate_limit_response
 
 
+# Floor for the 500-recovery page-size backoff. GitHub returns intermittent 500s
+# on large list pages; we halve per_page on each retry down to this size before
+# giving up, since smaller pages reliably succeed.
+MIN_PAGE_SIZE = 25
+
+
 class GitHubRetryTransport(RetryTransport):
     """
     Extends the default Ocean retry transport with GitHub-specific behaviour:
@@ -16,6 +23,11 @@ class GitHubRetryTransport(RetryTransport):
       response so the rate limiter acquires its lock inline before the retry sleep begins.
     - Refreshes auth headers via `token_refresher` in `before_retry_async` so long
       rate-limit sleeps never leave the retry carrying a stale or expired token.
+    - On a 500, halves the request's `per_page` (and repositions `page` to the same
+      offset) before each retry instead of replaying the identical doomed request,
+      and stops retrying once `per_page` reaches MIN_PAGE_SIZE. GitHub fails large
+      pages deterministically, so this avoids burning the full retry budget on
+      requests that cannot succeed at their current size.
     """
 
     def __init__(
@@ -52,6 +64,39 @@ class GitHubRetryTransport(RetryTransport):
         self._rate_limit_notifier = rate_limit_notifier
         self._token_refresher = token_refresher
 
+    def _reduced_page_url(
+        self, request: httpx.Request, response: Optional[httpx.Response]
+    ) -> httpx.URL:
+        """Halve `per_page` (and reposition `page`) when retrying a 500.
+
+        Returns the original URL unchanged when this is not a 500, when the
+        request is not paginated, or when `per_page` is already at the floor.
+        """
+        if response is None or response.status_code != HTTPStatus.INTERNAL_SERVER_ERROR:
+            return request.url
+
+        per_page = self._paginated_per_page(request.url)
+        if per_page is None or per_page <= MIN_PAGE_SIZE:
+            return request.url
+
+        try:
+            page = int(request.url.params.get("page", 1))
+        except ValueError:
+            return request.url
+
+        reduced_per_page = max(per_page // 2, MIN_PAGE_SIZE)
+        # page N at size S covers the same items as page 2N-1 at size S/2, so the
+        # offset is preserved across the halving — no items skipped or repeated.
+        reduced_page = 2 * page - 1
+        logger.warning(
+            f"GitHub returned 500 for {request.method} {request.url.path} at "
+            f"page={page} per_page={per_page}; retrying at page={reduced_page} "
+            f"per_page={reduced_per_page}"
+        )
+        return request.url.copy_merge_params(
+            {"per_page": str(reduced_per_page), "page": str(reduced_page)}
+        )
+
     async def before_retry_async(
         self,
         request: httpx.Request,
@@ -59,10 +104,15 @@ class GitHubRetryTransport(RetryTransport):
         sleep_time: float,
         attempt: int,
     ) -> Optional[httpx.Request]:
-        if self._token_refresher is None:
+        url = self._reduced_page_url(request, response)
+
+        headers = dict(request.headers)
+        if self._token_refresher is not None:
+            fresh_headers = await self._token_refresher()
+            headers.update({k.lower(): v for k, v in fresh_headers.items()})
+        elif url == request.url:
+            # No token to refresh and no page-size change — keep the request as-is.
             return None
-        fresh_headers = await self._token_refresher()
-        fresh_lower = {k.lower(): v for k, v in fresh_headers.items()}
 
         try:
             content = request.content
@@ -72,10 +122,11 @@ class GitHubRetryTransport(RetryTransport):
             else:
                 request.read()
             content = request.content
+
         return httpx.Request(
             method=request.method,
-            url=request.url,
-            headers={**dict(request.headers), **fresh_lower},
+            url=url,
+            headers=headers,
             content=content,
             extensions=request.extensions,
         )
@@ -109,10 +160,39 @@ class GitHubRetryTransport(RetryTransport):
             )
         super()._log_before_retry(request, sleep_time, response, error)
 
+    @staticmethod
+    def _paginated_per_page(url: httpx.URL) -> Optional[int]:
+        """The `per_page` of a paginated request URL, or None if not paginated."""
+        try:
+            return int(url.params["per_page"])
+        except (KeyError, ValueError):
+            return None
+
+    def _page_reduction_exhausted(self, response: httpx.Response) -> bool:
+        """True for a 500 whose request is already paginated at the floor size.
+
+        Once `per_page` is down to MIN_PAGE_SIZE there is nothing left to shrink,
+        so further retries would just replay the same failing request — stop and
+        let the 500 propagate. Non-paginated 500s are not exhausted here; they
+        fall through to the normal retry policy.
+        """
+        if response.status_code != HTTPStatus.INTERNAL_SERVER_ERROR:
+            return False
+        try:
+            per_page = self._paginated_per_page(response.request.url)
+        except RuntimeError:
+            # response carries no request.
+            return False
+        return per_page is not None and per_page <= MIN_PAGE_SIZE
+
     async def _should_retry_async(self, response: httpx.Response) -> bool:
+        if self._page_reduction_exhausted(response):
+            return False
         return await super()._should_retry_async(response) or is_rate_limit_response(
             response
         )
 
     def _should_retry(self, response: httpx.Response) -> bool:
+        if self._page_reduction_exhausted(response):
+            return False
         return super()._should_retry(response) or is_rate_limit_response(response)
