@@ -1,10 +1,12 @@
 from typing import Dict, Any, List, Type, cast
+
+from aws.core.exporters.codepipeline.utils.base_pipeline_action import PipelineAction
 from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
 import asyncio
 
 
-class GetPipelineDetailsAction(Action):
+class GetPipelineDetailsAction(PipelineAction):
     """Fetches detailed information about CodePipeline pipelines."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -31,7 +33,7 @@ class GetPipelineDetailsAction(Action):
         pipeline_name = resource["name"]
 
         try:
-            response = await self.client.get_pipeline(name=pipeline_name)
+            response = await self._get_pipeline(pipeline_name)
         except self.client.exceptions.PipelineNotFoundException:
             logger.warning(f"Pipeline {pipeline_name} not found")
             return {}
