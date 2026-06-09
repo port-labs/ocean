@@ -2,7 +2,6 @@ from typing import cast
 from loguru import logger
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.core.options import SingleWorkflowRunOptions
-from github.webhook.events import WORKFLOW_DELETE_EVENTS
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
