@@ -5,36 +5,36 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 
 class ProjectProperties(BaseModel):
-    Name: str = Field(default_factory=str)
     Arn: str = Field(default_factory=str)
+    Artifacts: Optional[dict[str, Any]] = None
+    AutoRetryLimit: Optional[int] = None
+    Badge: Optional[Dict[str, Any]] = None
+    BuildBatchConfig: Optional[Dict[str, Any]] = None
+    Cache: Optional[Dict[str, Any]] = None
+    ConcurrentBuildLimit: Optional[int] = None
+    Created: Optional[datetime] = None
     Description: Optional[str] = None
-    Source: Optional[dict[str, Any]] = None
+    EncryptionKey: Optional[str] = None
+    Environment: Optional[dict[str, Any]] = None
+    FileSystemLocations: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
+    LastModified: Optional[datetime] = None
+    LogsConfig: Optional[Dict[str, Any]] = None
+    Name: str = Field(default_factory=str)
+    ProjectVisibility: Optional[str] = None
+    PublicProjectAlias: Optional[str] = None
+    QueuedTimeoutInMinutes: Optional[int] = None
+    ResourceAccessRole: Optional[str] = None
+    SecondaryArtifacts: Optional[List[dict[str, Any]]] = Field(default_factory=list)
     SecondarySources: Optional[List[dict[str, Any]]] = Field(default_factory=list)
-    SourceVersion: Optional[str] = None
     SecondarySourceVersions: Optional[List[Dict[str, Any]]] = Field(
         default_factory=list
     )
-    Artifacts: Optional[dict[str, Any]] = None
-    AutoRetryLimit: Optional[int] = None
-    SecondaryArtifacts: Optional[List[dict[str, Any]]] = Field(default_factory=list)
-    Cache: Optional[Dict[str, Any]] = None
-    Environment: Optional[dict[str, Any]] = None
     ServiceRole: Optional[str] = None
-    TimeoutInMinutes: Optional[int] = None
-    QueuedTimeoutInMinutes: Optional[int] = None
-    EncryptionKey: Optional[str] = None
+    Source: Optional[dict[str, Any]] = None
+    SourceVersion: Optional[str] = None
     Tags: Optional[List[Dict[str, str]]] = Field(default_factory=list)
+    TimeoutInMinutes: Optional[int] = None
     VpcConfig: Optional[dict[str, Any]] = None
-    Badge: Optional[Dict[str, Any]] = None
-    LogsConfig: Optional[Dict[str, Any]] = None
-    FileSystemLocations: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
-    BuildBatchConfig: Optional[Dict[str, Any]] = None
-    ConcurrentBuildLimit: Optional[int] = None
-    ProjectVisibility: Optional[str] = None
-    PublicProjectAlias: Optional[str] = None
-    ResourceAccessRole: Optional[str] = None
-    Created: Optional[datetime] = None
-    LastModified: Optional[datetime] = None
     Webhook: Optional[Dict[str, Any]] = None
 
     class Config:
