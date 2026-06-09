@@ -9,20 +9,20 @@ from datadog.exceptions import IntegrationMissingConfigError
 
 
 def get_credential_map(config: dict[str, Any]) -> dict[str, Any]:
-    cluster_conf_string = config.get("cluster_conf_mapping_string")
-    if cluster_conf_string:
+    credential_map_string = config.get("datadog_credential_map")
+    if credential_map_string:
         try:
-            parsed = json.loads(cluster_conf_string)
+            parsed = json.loads(credential_map_string)
             if isinstance(parsed, dict):
                 return parsed
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse cluster_conf_mapping_string: {e}")
+            logger.error(f"Failed to parse datadogCredentialMap: {e}")
             raise IntegrationMissingConfigError(
-                f"Invalid JSON in cluster_conf_mapping_string: {e}"
+                f"Invalid JSON in datadogCredentialMap: {e}"
             ) from e
 
     raise IntegrationMissingConfigError(
-        "Either clusterConfMapping (object) or clusterConfMappingString (JSON string) must be provided"
+        "datadogCredentialMap (JSON string) must be provided when isMultiOrg is enabled"
     )
 
 
@@ -45,10 +45,18 @@ def init_client_single_org(config: dict[str, Any]) -> DatadogClient:
 
 def init_client_for_multi_org(config: dict[str, Any]) -> Iterator[DatadogClient]:
     credential_map = get_credential_map(config)
-    for k, v in credential_map.items():
+    for org_id, credentials in credential_map.items():
+        try:
+            api_key = credentials["datadogApiKey"]
+            app_key = credentials["datadogApplicationKey"]
+        except (KeyError, TypeError) as e:
+            raise IntegrationMissingConfigError(
+                f"datadogCredentialMap entry for org '{org_id}' must include "
+                "'datadogApiKey' and 'datadogApplicationKey'"
+            ) from e
         yield DatadogClient(
             config["datadog_base_url"],
-            v["datadog_api_key"],
-            v["datadog_application_key"],
-            org_id=k,
+            api_key,
+            app_key,
+            org_id=org_id,
         )
