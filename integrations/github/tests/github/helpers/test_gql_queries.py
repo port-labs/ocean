@@ -37,5 +37,7 @@ class TestGeneratePullRequestDetailsGql:
             exclude_graphql_fields=["author", "headRef"]
         )
         query = generate_pull_request_details_gql(options)
-        assert "author {" not in query
+        # The top-level `author` block is excluded; the only remaining
+        # `author {` is the one nested under the `reviews` block.
+        assert query.count("author {") == 1
         assert "headRef {" not in query
