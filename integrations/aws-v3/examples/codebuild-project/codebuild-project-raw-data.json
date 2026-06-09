@@ -1,10 +1,10 @@
 {
   "Type": "AWS::CodeBuild::Project",
   "Properties": {
-    "name": "sample-codebuild-project",
-    "arn": "arn:aws:codebuild:us-east-1:123456789012:project/sample-codebuild-project",
-    "description": "Sample CodeBuild project for building and testing applications",
-    "source": {
+    "Name": "sample-codebuild-project",
+    "Arn": "arn:aws:codebuild:us-east-1:123456789012:project/sample-codebuild-project",
+    "Description": "Sample CodeBuild project for building and testing applications",
+    "Source": {
       "type": "GITHUB",
       "location": "https://github.com/example/sample-app.git",
       "gitCloneDepth": 1,
@@ -12,10 +12,10 @@
       "reportBuildStatus": true,
       "insecureSsl": false
     },
-    "secondarySources": [],
-    "sourceVersion": "main",
-    "secondarySourceVersions": [],
-    "artifacts": {
+    "SecondarySources": [],
+    "SourceVersion": "main",
+    "SecondarySourceVersions": [],
+    "Artifacts": {
       "type": "S3",
       "location": "sample-build-artifacts-bucket",
       "path": "artifacts/",
@@ -25,12 +25,12 @@
       "overrideArtifactName": false,
       "encryptionDisabled": false
     },
-    "secondaryArtifacts": [],
-    "cache": {
+    "SecondaryArtifacts": [],
+    "Cache": {
       "type": "S3",
       "location": "sample-build-cache-bucket/cache"
     },
-    "environment": {
+    "Environment": {
       "type": "LINUX_CONTAINER",
       "image": "aws/codebuild/amazonlinux2-x86_64-standard:3.0",
       "computeType": "BUILD_GENERAL1_MEDIUM",
@@ -49,11 +49,11 @@
       "privilegedMode": false,
       "imagePullCredentialsType": "CODEBUILD"
     },
-    "serviceRole": "arn:aws:iam::123456789012:role/service-role/codebuild-sample-service-role",
-    "timeoutInMinutes": 60,
-    "queuedTimeoutInMinutes": 480,
-    "encryptionKey": "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012",
-    "tags": [
+    "ServiceRole": "arn:aws:iam::123456789012:role/service-role/codebuild-sample-service-role",
+    "TimeoutInMinutes": 60,
+    "QueuedTimeoutInMinutes": 480,
+    "EncryptionKey": "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012",
+    "Tags": [
       {
         "key": "Environment",
         "value": "Production"
@@ -67,7 +67,7 @@
         "value": "SampleApp"
       }
     ],
-    "vpcConfig": {
+    "VpcConfig": {
       "vpcId": "vpc-12345678",
       "subnets": [
         "subnet-12345678",
@@ -77,11 +77,11 @@
         "sg-12345678"
       ]
     },
-    "badge": {
+    "Badge": {
       "badgeEnabled": true,
       "badgeRequestUrl": "https://codebuild.us-east-1.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiSampleEncryptedData"
     },
-    "logsConfig": {
+    "LogsConfig": {
       "cloudWatchLogs": {
         "status": "ENABLED",
         "groupName": "/aws/codebuild/sample-codebuild-project",
@@ -92,8 +92,8 @@
         "location": "sample-build-logs-bucket/logs"
       }
     },
-    "fileSystemLocations": [],
-    "buildBatchConfig": {
+    "FileSystemLocations": [],
+    "BuildBatchConfig": {
       "serviceRole": "arn:aws:iam::123456789012:role/service-role/codebuild-sample-batch-service-role",
       "combineArtifacts": false,
       "restrictions": {
@@ -105,12 +105,12 @@
       },
       "timeoutInMins": 120
     },
-    "concurrentBuildLimit": 5,
-    "projectVisibility": "PRIVATE",
-    "publicReadOnlyAccess": false,
-    "created": "2023-01-15T10:30:00.000Z",
-    "lastModified": "2023-06-20T14:45:00.000Z",
-    "webhook": {
+    "ConcurrentBuildLimit": 5,
+    "ProjectVisibility": "PRIVATE",
+    "PublicReadOnlyAccess": false,
+    "Created": "2023-01-15T10:30:00.000Z",
+    "LastModified": "2023-06-20T14:45:00.000Z",
+    "Webhook": {
       "url": "https://codebuild.us-east-1.amazonaws.com/webhooks?12345",
       "payloadUrl": "https://codebuild.us-east-1.amazonaws.com/webhooks?12345",
       "secret": "webhook-secret-token",
