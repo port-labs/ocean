@@ -15,6 +15,7 @@ class ProjectProperties(BaseModel):
         default_factory=list
     )
     Artifacts: Optional[dict[str, Any]] = None
+    AutoRetryLimit: Optional[int] = None
     SecondaryArtifacts: Optional[List[dict[str, Any]]] = Field(default_factory=list)
     Cache: Optional[Dict[str, Any]] = None
     Environment: Optional[dict[str, Any]] = None
@@ -30,7 +31,7 @@ class ProjectProperties(BaseModel):
     BuildBatchConfig: Optional[Dict[str, Any]] = None
     ConcurrentBuildLimit: Optional[int] = None
     ProjectVisibility: Optional[str] = None
-    PublicReadOnlyAccess: Optional[bool] = None
+    PublicProjectAlias: Optional[str] = None
     ResourceAccessRole: Optional[str] = None
     Created: Optional[datetime] = None
     LastModified: Optional[datetime] = None

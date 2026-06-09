@@ -25,6 +25,7 @@ class GetProjectDetailsAction(Action):
             {
                 "Name": project.get("name", ""),
                 "Arn": project.get("arn", ""),
+                "AutoRetryLimit": project.get("autoRetryLimit"),
                 "Description": project.get("description"),
                 "Source": project.get("source"),
                 "SecondarySources": project.get("secondarySources", []),
@@ -46,7 +47,7 @@ class GetProjectDetailsAction(Action):
                 "BuildBatchConfig": project.get("buildBatchConfig"),
                 "ConcurrentBuildLimit": project.get("concurrentBuildLimit"),
                 "ProjectVisibility": project.get("projectVisibility"),
-                "PublicReadOnlyAccess": project.get("publicReadOnlyAccess"),
+                "PublicProjectAlias": project.get("publicProjectAlias"),
                 "ResourceAccessRole": project.get("resourceAccessRole"),
                 "Created": project.get("created"),
                 "LastModified": project.get("lastModified"),
