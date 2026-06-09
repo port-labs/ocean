@@ -13,7 +13,7 @@ def mock_init_client() -> Generator[None, None, None]:
     created without real Datadog credentials."""
     with patch(
         "datadog.webhook.webhook_processors.base_webhook_processor.init_client",
-        return_value=MagicMock(),
+        return_value=[MagicMock()],
     ):
         yield
 

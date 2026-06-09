@@ -1,9 +1,10 @@
 import pytest
 from typing import Any, Generator
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
+from datadog.client import DatadogClient
 from datadog.webhook.webhook_client import PORT_AUTH_HEADER_NAME
 from datadog.webhook.webhook_processors.base_webhook_processor import (
     BaseWebhookProcessor,
@@ -103,3 +104,59 @@ async def test_authenticate_with_case_insensitive_custom_header(
 ) -> None:
     headers = {PORT_AUTH_HEADER_NAME.lower(): "test_token"}
     assert await processor.authenticate({}, headers) is True
+
+
+def _client_with_org_id(org_id: str | None) -> DatadogClient:
+    client = MagicMock(spec=DatadogClient)
+    client.org_id = org_id
+    return client
+
+
+@pytest.fixture
+def mock_integration_config_multi_org() -> Generator[dict[str, Any], None, None]:
+    config = {"is_multi_org": True}
+    with patch(
+        "port_ocean.context.ocean.PortOceanContext.integration_config",
+        new_callable=PropertyMock,
+    ) as mock_config:
+        mock_config.return_value = config
+        yield config
+
+
+def test_extract_org_id_returns_str_or_none() -> None:
+    assert BaseWebhookProcessor._extract_org_id({"org_id": 12345}) == "12345"
+    assert BaseWebhookProcessor._extract_org_id({"org_id": "abc"}) == "abc"
+    assert BaseWebhookProcessor._extract_org_id({}) is None
+
+
+def test_get_client_for_payload_single_org_ignores_org_id(
+    processor: MockWebhookProcessor,
+) -> None:
+    # Default config has no is_multi_org -> the sole client always handles the event.
+    only_client = _client_with_org_id(None)
+    processor.clients = [only_client]
+
+    assert processor._get_client_for_payload({"org_id": "anything"}) is only_client
+
+
+def test_get_client_for_payload_multi_org_matches_org_id(
+    processor: MockWebhookProcessor,
+    mock_integration_config_multi_org: dict[str, Any],
+) -> None:
+    client_a = _client_with_org_id("111")
+    client_b = _client_with_org_id("222")
+    processor.clients = [client_a, client_b]
+
+    assert processor._get_client_for_payload({"org_id": "222"}) is client_b
+    # org id from the payload may arrive as an int — comparison is string-based.
+    assert processor._get_client_for_payload({"org_id": 111}) is client_a
+
+
+def test_get_client_for_payload_multi_org_no_match_returns_none(
+    processor: MockWebhookProcessor,
+    mock_integration_config_multi_org: dict[str, Any],
+) -> None:
+    processor.clients = [_client_with_org_id("111"), _client_with_org_id("222")]
+
+    assert processor._get_client_for_payload({"org_id": "999"}) is None
+    assert processor._get_client_for_payload({}) is None

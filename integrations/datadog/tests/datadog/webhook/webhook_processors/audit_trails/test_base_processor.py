@@ -5,6 +5,7 @@ import pytest
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
+from datadog.client import DatadogClient
 from datadog.webhook.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.audit_trails.base_processor import (
     BaseAuditTrailProcessor,
@@ -38,7 +39,10 @@ class _StubProcessor(BaseAuditTrailProcessor):
         )
 
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
         return event.dict()
 

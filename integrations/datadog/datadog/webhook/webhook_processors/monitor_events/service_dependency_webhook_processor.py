@@ -52,7 +52,13 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
 
         service_ids = self.extract_service_ids(payload)
 
-        dep_exporter = ServiceDependencyExporter(self.client)
+        client = self._get_client_for_payload(payload)
+        if client is None:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        dep_exporter = ServiceDependencyExporter(client)
         tasks = [
             dep_exporter.get_resource(
                 GetServiceDependencyOptions.from_resource_config(

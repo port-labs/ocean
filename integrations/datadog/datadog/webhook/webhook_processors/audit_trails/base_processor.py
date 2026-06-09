@@ -5,6 +5,7 @@ from httpx import HTTPStatusError
 from loguru import logger
 from pydantic import ValidationError
 
+from datadog.client import DatadogClient
 from datadog.webhook.consts import AuditTrailAction
 from datadog.webhook.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.base_webhook_processor import (
@@ -67,7 +68,10 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
 
     @abstractmethod
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
         """Fetch the live resource from the Datadog API."""
         pass
@@ -85,9 +89,15 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
                     deleted_raw_results=[deleted] if deleted else [],
                 )
 
+        client = self._get_client_for_payload(payload)
+        if client is None:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         resource = None
         try:
-            resource = await self._fetch_resource(event, resource_config)
+            resource = await self._fetch_resource(client, event, resource_config)
         except HTTPStatusError as e:
             if e.response.status_code == 404:
                 logger.warning("Resource returned 404, skipping event", error=str(e))

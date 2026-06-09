@@ -16,7 +16,35 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
 
     def __init__(self, event: WebhookEvent) -> None:
         super().__init__(event)
-        self.client: DatadogClient = init_client()
+        self.clients: list[DatadogClient] = list(init_client())
+
+    @staticmethod
+    def _extract_org_id(payload: EventPayload) -> str | None:
+        org_id = payload.get("org_id")
+        return str(org_id) if org_id is not None else None
+
+    def _get_client_for_payload(
+        self, payload: EventPayload
+    ) -> DatadogClient | None:
+        """Select the Datadog client responsible for the org that emitted the event.
+
+        Single-org setups have exactly one client, which always handles the event.
+        For multi-org setups the incoming payload's org id is matched against each
+        client's org id (the credential-map key). Returns None when multi-org is
+        enabled but no client matches, so callers can skip the event.
+        """
+        if not ocean.integration_config.get("is_multi_org"):
+            return self.clients[0]
+
+        org_id = self._extract_org_id(payload)
+        for client in self.clients:
+            if str(client.org_id) == org_id:
+                return client
+
+        logger.warning(
+            f"No Datadog client configured for org_id '{org_id}'; skipping event"
+        )
+        return None
 
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]

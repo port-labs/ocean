@@ -3,6 +3,7 @@ from typing import Any
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
+from datadog.client import DatadogClient
 from datadog.core.exporters import UserExporter
 from datadog.core.exporters.user_exporter import GetUserOptions
 from datadog.webhook.consts import (
@@ -33,8 +34,11 @@ class UserWebhookProcessor(BaseAuditTrailProcessor):
         )
 
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
-        return await UserExporter(self.client).get_resource(
+        return await UserExporter(client).get_resource(
             GetUserOptions(resource_id=event.attributes.asset.id)
         )

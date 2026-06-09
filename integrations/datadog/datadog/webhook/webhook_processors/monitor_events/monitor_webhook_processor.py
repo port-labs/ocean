@@ -42,7 +42,13 @@ class MonitorWebhookProcessor(BaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        monitor = await MonitorExporter(self.client).get_resource(
+        client = self._get_client_for_payload(payload)
+        if client is None:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        monitor = await MonitorExporter(client).get_resource(
             GetMonitorOptions.from_resource_config(
                 cast(MonitorResourceConfig, resource_config), resource_id=monitor_id
             )
