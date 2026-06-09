@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "octopus"
-version = "0.2.106"
+version = "0.2.107"
 description = "This integration ingest data from octopus deploy"
 authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>"]
 
