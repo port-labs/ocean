@@ -52,12 +52,8 @@ class BuildRun(ResourceModel[BuildRunProperties]):
 
 
 class SingleBuildRunRequest(ResourceRequestModel):
-    """Options for exporting a single CodeBuild project build run."""
-
     build_id: str = Field(..., description="The ID of the build run to export")
 
 
 class PaginatedBuildRunRequest(ResourceRequestModel):
-    """Options for exporting all CodeBuild project build runs in a region."""
-
-    project_name: Optional[str] = None  # Optional filter by project name
+    pass
