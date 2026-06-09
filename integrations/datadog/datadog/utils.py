@@ -1,6 +1,8 @@
 import time
 import datetime
 
+from datadog.types import RestrictionPolicyResource
+
 
 def get_start_of_the_month_in_seconds_x_months_back(months_back: int) -> int:
     """
@@ -40,3 +42,14 @@ def generate_time_windows_from_interval_days(
             timestamps.append((start_time, end_date))
 
     return timestamps
+
+
+def parse_restriction_policy_asset(asset_id: str) -> RestrictionPolicyResource | None:
+    """Parse a Datadog restriction-policy asset ID of the form 'type:id' (e.g. 'monitor:12345').
+
+    Returns a RestrictionPolicyResource(type, id) when the format is valid, None otherwise.
+    """
+    if ":" not in asset_id:
+        return None
+    type, resource_id = asset_id.split(":", 1)
+    return RestrictionPolicyResource(type=type, id=resource_id)
