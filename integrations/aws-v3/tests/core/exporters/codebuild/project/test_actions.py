@@ -58,17 +58,17 @@ async def test_get_project_details_action() -> None:
 
     assert len(result) == 1
     project = result[0]
-    assert project["name"] == "test-project"
+    assert project["Name"] == "test-project"
     assert (
-        project["arn"]
+        project["Arn"]
         == "arn:aws:codebuild:us-east-1:123456789012:project/test-project"
     )
-    assert project["description"] == "Test project description"
+    assert project["Description"] == "Test project description"
     assert (
-        project["serviceRole"]
+        project["ServiceRole"]
         == "arn:aws:iam::123456789012:role/service-role/codebuild-test-service-role"
     )
-    assert project["timeoutInMinutes"] == 60
+    assert project["TimeoutInMinutes"] == 60
 
 
 @pytest.mark.asyncio

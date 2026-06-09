@@ -25,9 +25,7 @@ class CodeBuildProjectExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await inspector.inspect(
-                [{"name": options.project_name}], options.include
-            )
+            response = await inspector.inspect([options.project_name], options.include)
             return response[0] if response else {}
 
     async def get_paginated_resources(

@@ -69,25 +69,25 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .Properties.arn
-          title: .Properties.name
+          identifier: .Properties.Arn
+          title: .Properties.Name
           blueprint: '"codeBuildProject"'
           properties:
-            name: .Properties.name
-            arn: .Properties.arn
-            description: .Properties.description
-            serviceRole: .Properties.serviceRole
-            timeoutInMinutes: .Properties.timeoutInMinutes
-            queuedTimeoutInMinutes: .Properties.queuedTimeoutInMinutes
-            encryptionKey: .Properties.encryptionKey
-            environment: .Properties.environment
-            source: .Properties.source
-            artifacts: .Properties.artifacts
-            created: .Properties.created
-            lastModified: .Properties.lastModified
-            projectVisibility: .Properties.projectVisibility
-            concurrentBuildLimit: .Properties.concurrentBuildLimit
-            tags: .Properties.tags
+            name: .Properties.Name
+            arn: .Properties.Arn
+            description: .Properties.Description
+            serviceRole: .Properties.ServiceRole
+            timeoutInMinutes: .Properties.TimeoutInMinutes
+            queuedTimeoutInMinutes: .Properties.QueuedTimeoutInMinutes
+            encryptionKey: .Properties.EncryptionKey
+            environment: .Properties.Environment
+            source: .Properties.Source
+            artifacts: .Properties.Artifacts
+            created: .Properties.Created
+            lastModified: .Properties.LastModified
+            projectVisibility: .Properties.ProjectVisibility
+            concurrentBuildLimit: .Properties.ConcurrentBuildLimit
+            tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
   - kind: AWS::CodeBuild::BuildRun
