@@ -4,33 +4,13 @@ from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
 
-class PipelineStage(BaseModel):
-    name: Optional[str] = None
-    actions: List[Dict[str, Any]] = Field(default_factory=list)
-    blockers: List[Dict[str, Any]] = Field(default_factory=list)
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
-
-
-class PipelineArtifactStore(BaseModel):
-    location: Optional[str] = None
-    type: Optional[str] = None
-    encryptionKey: Optional[Dict[str, Any]] = None
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
-
-
 class PipelineProperties(BaseModel):
     Name: str = Field(default_factory=str)
     Arn: Optional[str] = None
     RoleArn: Optional[str] = None
-    ArtifactStore: Optional[PipelineArtifactStore] = None
-    ArtifactStores: Dict[str, PipelineArtifactStore] = Field(default_factory=dict)
-    Stages: List[PipelineStage] = Field(default_factory=list)
+    ArtifactStore: Optional[dict[str, Any]] = None
+    ArtifactStores: Dict[str, dict[str, Any]] = Field(default_factory=dict)
+    Stages: List[dict[str, Any]] = Field(default_factory=list)
     Version: Optional[int] = None
     ExecutionMode: Optional[str] = None
     PipelineType: Optional[str] = None
