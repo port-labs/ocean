@@ -415,7 +415,7 @@ class ExecutionManager:
                     elapsed_ms=(time.monotonic() - start_time) * 1000,
                 )
             except Exception as e:
-                logger.error("Error executing run", error=e)
+                logger.error("Error executing run", error=str(e))
                 error_summary = f"Failed to execute run: {str(e)}"
 
             if error_summary:
