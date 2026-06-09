@@ -678,7 +678,7 @@ class AzureDevopsClient(HTTPBaseClient):
             shaped_batch: list[dict[str, Any]] = []
             for graph_user in graph_user_batch:
                 descriptor = graph_user.get("descriptor", "")
-                identity = identity_by_descriptor.get(descriptor)
+                identity: dict[str, Any] | None = identity_by_descriptor.get(descriptor)
 
                 if identity and self._is_builtin_identity(identity):
                     logger.debug(
