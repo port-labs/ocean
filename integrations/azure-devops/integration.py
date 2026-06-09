@@ -310,18 +310,12 @@ class AzureDevopsUserSelector(Selector):
         title="API Version",
         description="API version for the User Entitlements endpoint. Override if your organization requires a specific version. Will use the default version if not provided.",
     )
-    use_identities_for_user_membership: bool = Field(
-        default=False,
-        alias="useIdentitiesForUserMembership",
-        title="Use Identities for User Membership",
-        description="Use the Graph/Identities APIs (vso.identity scope, no PCA required) instead of the Member Entitlement Management API. Note: accessLevel fields will be null.",
-    )
 
     def to_params(self) -> dict[str, str]:
         data = self.dict(
             by_alias=True,
             exclude_none=True,
-            exclude={"query", "api_version", "use_identities_for_user_membership"},
+            exclude={"query", "api_version"},
         )
         if "includeFields" in data:
             data["select"] = ",".join(data["includeFields"])
