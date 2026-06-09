@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.5.32 (2026-06-09)
+
+
+### Bug Fixes
+
+- Fixed `workflow-run` webhook processor to treat `completed` events as upserts instead of deletions.
+
+
+## 5.5.31 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
 ## 5.5.30 (2026-06-08)
 
 
