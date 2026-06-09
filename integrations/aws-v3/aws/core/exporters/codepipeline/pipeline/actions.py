@@ -154,14 +154,12 @@ class ListPipelinesAction(Action):
         results: List[Dict[str, Any]] = []
         for resource in resources:
             data = {
-                "name": resource.get("name", ""),
-                "version": resource.get("version"),
-                "created": (
-                    resource["created"].isoformat() if resource.get("created") else None
-                ),
-                "updated": (
-                    resource["updated"].isoformat() if resource.get("updated") else None
-                ),
+                "Name": resource.get("name", ""),
+                "Version": resource.get("version"),
+                "Created": resource.get("created"),
+                "Updated": resource.get("updated"),
+                "PipelineType": resource.get("pipelineType"),
+                "ExecutionMode": resource.get("executionMode"),
             }
             results.append(data)
         return results
