@@ -392,6 +392,8 @@ class AzureDevopsClient(HTTPBaseClient):
         field_values_results = await asyncio.gather(*team_tasks, return_exceptions=True)
 
         for team, result in zip(teams, field_values_results):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
             if isinstance(result, BaseException):
                 logger.warning(
                     f"Failed to fetch area paths for team {team.get('id')}: {result}"
