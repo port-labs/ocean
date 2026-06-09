@@ -5,14 +5,9 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 
 class BuildRunProperties(BaseModel):
-    Id: str = Field(default_factory=str, description="The unique ID of the build run")
-    ProjectName: str = Field(
-        default_factory=str, description="The name of the CodeBuild project"
-    )
-    Arn: str = Field(
-        default_factory=str,
-        description="The Amazon Resource Name (ARN) of the build run",
-    )
+    Id: str = Field(default_factory=str)
+    ProjectName: str = Field(default_factory=str)
+    Arn: str = Field(default_factory=str)
     BuildNumber: Optional[int] = None
     StartTime: Optional[datetime] = None
     EndTime: Optional[datetime] = None
