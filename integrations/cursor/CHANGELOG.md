@@ -9,5 +9,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added a new Cursor integration that exports AI commit metrics, AI change metrics, daily usage data, and filtered usage events.
-- Added configurable relative start/end date selectors with strict 30-day window validation for both the AI Code Tracking and Admin APIs.
+- Added a new Cursor integration that exports team model usage, per-user model usage, daily usage data, and filtered usage events.
+- Added configurable relative start/end date selectors with strict 30-day window validation for both the Analytics and Admin APIs.

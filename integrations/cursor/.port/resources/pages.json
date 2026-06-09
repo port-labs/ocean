@@ -103,7 +103,7 @@
                 "value": "cursorUsageEvent"
               }
             ],
-            "property": "charged_cents",
+            "property": "charged_amount",
             "func": "sum",
             "unitAlignment": "right",
             "unit": "$",

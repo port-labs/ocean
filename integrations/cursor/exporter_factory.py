@@ -1,18 +1,18 @@
 from clients.client_factory import create_cursor_client
-from core.exporters.ai_change_metrics_exporter import CursorAiChangeMetricsExporter
-from core.exporters.ai_commit_metrics_exporter import CursorAiCommitMetricsExporter
 from core.exporters.daily_usage_exporter import CursorDailyUsageExporter
+from core.exporters.team_model_usage_exporter import CursorTeamModelUsageExporter
 from core.exporters.usage_events_exporter import CursorUsageEventsExporter
+from core.exporters.user_model_usage_exporter import CursorUserModelUsageExporter
 
 
-def create_ai_commit_metrics_exporter() -> CursorAiCommitMetricsExporter:
+def create_team_model_usage_exporter() -> CursorTeamModelUsageExporter:
     client = create_cursor_client()
-    return CursorAiCommitMetricsExporter(client)
+    return CursorTeamModelUsageExporter(client)
 
 
-def create_ai_change_metrics_exporter() -> CursorAiChangeMetricsExporter:
+def create_user_model_usage_exporter() -> CursorUserModelUsageExporter:
     client = create_cursor_client()
-    return CursorAiChangeMetricsExporter(client)
+    return CursorUserModelUsageExporter(client)
 
 
 def create_daily_usage_exporter() -> CursorDailyUsageExporter:

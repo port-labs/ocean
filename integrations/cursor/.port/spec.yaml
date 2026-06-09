@@ -7,8 +7,8 @@ features:
   - type: exporter
     section: AI Agents
     resources:
-      - kind: cursor-ai-commit-metric
-      - kind: cursor-ai-change-metric
+      - kind: cursor-team-model-usage
+      - kind: cursor-user-model-usage
       - kind: cursor-daily-usage
       - kind: cursor-usage-event
 saas:

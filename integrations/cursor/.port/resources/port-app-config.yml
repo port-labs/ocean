@@ -54,55 +54,38 @@ resources:
             user_email: .userEmail
             cursor_token_fee: .cursorTokenFee
             is_headless: .isHeadless
-            charged_cents: (if .chargedCents then (.chargedCents / 100) else null end)
-  - kind: cursor-ai-commit-metric
+            charged_amount: (if .chargedCents then (.chargedCents / 100) else null end)
+  - kind: cursor-team-model-usage
     selector:
       query: 'true'
       startDate: 30d
       endDate: 0d
     port:
+      itemsToParse: (.model_breakdown // {} | to_entries)
       entity:
         mappings:
-          identifier: .commitHash
-          title: (.repoName + " " + .commitHash[:7])
-          blueprint: '"cursorAiCommitMetric"'
+          identifier: (.date + "-" + .item.key)
+          title: (.date + " " + .item.key)
+          blueprint: '"cursorTeamModelUsage"'
           properties:
-            commit_hash: .commitHash
-            commit_source: .commitSource
-            repo_name: .repoName
-            branch_name: .branchName
-            is_primary_branch: .isPrimaryBranch
-            total_lines_added: .totalLinesAdded
-            total_lines_deleted: .totalLinesDeleted
-            tab_lines_added: .tabLinesAdded
-            tab_lines_deleted: .tabLinesDeleted
-            composer_lines_added: .composerLinesAdded
-            composer_lines_deleted: .composerLinesDeleted
-            non_ai_lines_added: .nonAiLinesAdded
-            non_ai_lines_deleted: .nonAiLinesDeleted
-            message: .message
-            commit_ts: (.commitTs | gsub(" "; "T") | split(".") | .[0] + "Z")
-            created_at: (.createdAt | gsub(" "; "T") | split(".") | .[0] + "Z")
-            user_id: .userId
-            user_email: .userEmail
-  - kind: cursor-ai-change-metric
+            date: (if .date then (.date + "T00:00:00Z") else null end)
+            model: .item.key
+            messages: .item.value.messages
+            users: .item.value.users
+  - kind: cursor-user-model-usage
     selector:
       query: 'true'
       startDate: 30d
       endDate: 0d
     port:
+      itemsToParse: (.model_breakdown // {} | to_entries)
       entity:
         mappings:
-          identifier: (.changeId + "-" + (.createdAt | gsub(" "; "T") | gsub("\\."; "-")))
-          title: (.source + " " + .changeId)
-          blueprint: '"cursorAiChangeMetric"'
+          identifier: (.userEmail + "-" + .date + "-" + .item.key)
+          title: (.userEmail + " " + .item.key)
+          blueprint: '"cursorUserModelUsage"'
           properties:
-            change_id: .changeId
-            source: .source
-            metadata: .metadata
-            model: .model
-            total_lines_added: .totalLinesAdded
-            total_lines_deleted: .totalLinesDeleted
-            created_at: (.createdAt | gsub(" "; "T") | split(".") | .[0] + "Z")
-            user_id: .userId
+            date: (if .date then (.date + "T00:00:00Z") else null end)
             user_email: .userEmail
+            model: .item.key
+            messages: .item.value.messages

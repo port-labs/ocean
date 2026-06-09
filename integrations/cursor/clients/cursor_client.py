@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
-from math import ceil
 from typing import Any
 
 import httpx
@@ -16,12 +16,26 @@ from core.options import (
     ListCursorAnalyticsOptions,
 )
 
-# Cursor enforces 20 requests/minute on the Admin API and on the AI Code Tracking API
-# Limits are per-team and reset every minute. https://cursor.com/docs/api#rate-limits
-DEFAULT_RATE_LIMIT_PER_MINUTE = 20
+# Cursor enforces per-team rate limits that reset every minute.
+# https://cursor.com/docs/api#rate-limits
+#   - Admin API (`/teams/*`):                 20 requests/minute
+#   - Analytics API (team-level endpoints):  100 requests/minute
+#   - Analytics API (by-user endpoints):      50 requests/minute
+ADMIN_RATE_LIMIT_PER_MINUTE = 20
+ANALYTICS_RATE_LIMIT_PER_MINUTE = 100
+ANALYTICS_BY_USER_RATE_LIMIT_PER_MINUTE = 50
 
 # Safety cap so a misbehaving pagination response can never loop forever.
 MAX_PAGES = 10_000
+
+
+def _rate_limit_for_path(path: str) -> int:
+    if path.startswith("/analytics/by-user"):
+        return ANALYTICS_BY_USER_RATE_LIMIT_PER_MINUTE
+    if path.startswith("/analytics"):
+        return ANALYTICS_RATE_LIMIT_PER_MINUTE
+    # `/teams/*` (Admin API) and anything else default to the strictest limit.
+    return ADMIN_RATE_LIMIT_PER_MINUTE
 
 
 class CursorClient:
@@ -31,31 +45,39 @@ class CursorClient:
         api_key: str,
         request_timeout_seconds: int = 30,
         max_retries: int = 5,
-        backoff_seconds: float = 1.0
+        backoff_seconds: float = 1.0,
     ) -> None:
+        if not api_host or not str(api_host).startswith(("http://", "https://")):
+            raise ValueError("cursor_api_host must be a valid http(s) URL")
+        if not api_key:
+            raise ValueError("cursor_api_key must be provided")
+
         self._client = http_async_client
         self._base_url = api_host.rstrip("/")
         self._request_timeout_seconds = request_timeout_seconds
         self._max_retries = max_retries
         self._backoff_seconds = backoff_seconds
-        self._rate_limiter = AsyncLimiter(DEFAULT_RATE_LIMIT_PER_MINUTE, 60)
+        self._rate_limiters: dict[str, AsyncLimiter] = {}
+        encoded_key = base64.b64encode(f"{api_key}:".encode()).decode()
         self._headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Basic {encoded_key}",
             "content-type": "application/json",
         }
+
+    def _limiter_for(self, path: str) -> AsyncLimiter:
+        limiter = self._rate_limiters.get(path)
+        if limiter is None:
+            limiter = AsyncLimiter(_rate_limit_for_path(path), 60)
+            self._rate_limiters[path] = limiter
+        return limiter
 
     async def validate_analytics_connection(self) -> None:
         await self._request_with_retry(
             method="GET",
-            path="/analytics/ai-code/commits",
-            params={
-                "startDate": "1d",
-                "endDate": "0d",
-                "page": 1,
-                "pageSize": 1,
-            },
+            path="/analytics/team/models",
+            params={"startDate": "1d", "endDate": "0d"},
         )
-        logger.info("Cursor AI Code Tracking API connectivity validated successfully")
+        logger.info("Cursor Analytics API connectivity validated successfully")
 
     async def validate_admin_connection(self) -> None:
         now = datetime.now(timezone.utc)
@@ -71,21 +93,71 @@ class CursorClient:
         )
         logger.info("Cursor Admin API connectivity validated successfully")
 
-    async def get_ai_commit_metrics(
+    async def get_team_model_usage(
         self, options: ListCursorAnalyticsOptions
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for page in self._paginate_analytics(
-            "/analytics/ai-code/commits", options
-        ):
-            yield page
+        path = "/analytics/team/models"
+        params = {
+            "startDate": options["startDate"],
+            "endDate": options["endDate"],
+        }
+        response = await self._request_with_retry("GET", path, params=params)
+        payload = self._parse_json(response, path)
 
-    async def get_ai_change_metrics(
+        data = payload.get("data", []) or []
+        logger.info(
+            f"Cursor analytics {path}: fetched {len(data)} daily model breakdowns"
+        )
+        if data:
+            yield data
+
+    async def get_user_model_usage(
         self, options: ListCursorAnalyticsOptions
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for page in self._paginate_analytics(
-            "/analytics/ai-code/changes", options
-        ):
-            yield page
+        path = "/analytics/by-user/models"
+        page = options["page"]
+        page_size = options["pageSize"]
+
+        for _ in range(MAX_PAGES):
+            params = {
+                "startDate": options["startDate"],
+                "endDate": options["endDate"],
+                "page": page,
+                "pageSize": page_size,
+            }
+            response = await self._request_with_retry("GET", path, params=params)
+            payload = self._parse_json(response, path)
+
+            # `data` maps each user email to a list of their daily breakdowns;
+            # flatten it into per-user-day records carrying the owning email.
+            data = payload.get("data", {}) or {}
+            items = [
+                {"userEmail": email, **record}
+                for email, records in data.items()
+                for record in (records or [])
+            ]
+
+            pagination = payload.get("pagination", {}) or {}
+            current_page = int(pagination.get("page", page) or page)
+            total_pages = pagination.get("totalPages")
+            progress = (
+                f"{current_page}/{total_pages}" if total_pages else f"{current_page}"
+            )
+            logger.info(
+                f"Cursor analytics {path}: fetched page {progress} "
+                f"({len(items)} user-day rows)"
+            )
+
+            if items:
+                yield items
+
+            if not bool(pagination.get("hasNextPage", False)):
+                break
+            page = current_page + 1
+        else:
+            logger.warning(
+                f"Cursor analytics {path}: reached MAX_PAGES safety cap ({MAX_PAGES})"
+            )
 
     async def get_daily_usage_data(
         self, options: ListCursorAdminOptions
@@ -110,49 +182,6 @@ class CursorClient:
             has_next_key="hasNextPage",
         ):
             yield page
-
-    async def _paginate_analytics(
-        self,
-        path: str,
-        options: ListCursorAnalyticsOptions,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        page = options["page"]
-        requested_page_size = options["pageSize"]
-
-        for _ in range(MAX_PAGES):
-            params = {
-                "startDate": options["startDate"],
-                "endDate": options["endDate"],
-                "page": page,
-                "pageSize": requested_page_size,
-            }
-            response = await self._request_with_retry("GET", path, params=params)
-            payload = self._parse_json(response, path)
-
-            items = payload.get("items", []) or []
-            total_count = int(payload.get("totalCount", 0) or 0)
-            page_size = int(payload.get("pageSize", requested_page_size) or requested_page_size)
-            total_pages = (
-                ceil(total_count / page_size) if page_size > 0 and total_count else None
-            )
-            progress = f"{page}/{total_pages}" if total_pages else f"{page}"
-            logger.info(
-                f"Cursor analytics {path}: fetched page {progress} ({len(items)} items)"
-            )
-
-            if items:
-                yield items
-
-            # Stop on an empty/partial page. Otherwise stop once every row has been retrieved.
-            if not items or len(items) < page_size:
-                break
-            if total_count and page * page_size >= total_count:
-                break
-            page += 1
-        else:
-            logger.warning(
-                f"Cursor analytics {path}: reached MAX_PAGES safety cap ({MAX_PAGES})"
-            )
 
     async def _paginate_admin(
         self,
@@ -179,7 +208,9 @@ class CursorClient:
             pagination = payload.get("pagination", {}) or {}
             current_page = int(pagination.get(page_key, page) or page)
             total_pages = pagination.get("totalPages") or pagination.get("numPages")
-            progress = f"{current_page}/{total_pages}" if total_pages else f"{current_page}"
+            progress = (
+                f"{current_page}/{total_pages}" if total_pages else f"{current_page}"
+            )
             logger.info(
                 f"Cursor admin {path}: fetched page {progress} ({len(items)} items)"
             )
@@ -223,9 +254,10 @@ class CursorClient:
         json_body: dict[str, Any] | None = None,
     ) -> httpx.Response:
         url = f"{self._base_url}{path}"
+        limiter = self._limiter_for(path)
 
         for attempt in range(self._max_retries + 1):
-            async with self._rate_limiter:
+            async with limiter:
                 response = await self._client.request(
                     method=method,
                     url=url,

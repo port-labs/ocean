@@ -1,7 +1,7 @@
-# Contributing to Ocean - claude
+# Contributing to Ocean - Cursor
 
 ## Running locally
 
-#### NOTE: Add your own instructions of how to run claude
-
-This could be any gotcha's such as rate limiting, how to setup credentials and so forth
+1. Copy `.env.example` to `.env` and fill in the required values.
+2. Install dependencies: `poetry install`.
+3. Run tests: `poetry run pytest`.

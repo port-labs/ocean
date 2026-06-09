@@ -15,8 +15,8 @@ from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 class ObjectKind(StrEnum):
     CURSOR_DAILY_USAGE = "cursor-daily-usage"
     CURSOR_USAGE_EVENT = "cursor-usage-event"
-    CURSOR_AI_COMMIT_METRIC = "cursor-ai-commit-metric"
-    CURSOR_AI_CHANGE_METRIC = "cursor-ai-change-metric"
+    CURSOR_TEAM_MODEL_USAGE = "cursor-team-model-usage"
+    CURSOR_USER_MODEL_USAGE = "cursor-user-model-usage"
 
 
 class CursorRelativeDateSelector(Selector):
@@ -57,18 +57,18 @@ class CursorRelativeDateSelector(Selector):
         return values
 
 
-class CursorAiCommitMetricResourceConfig(ResourceConfig):
-    kind: Literal["cursor-ai-commit-metric"] = Field(
-        description="Cursor AI commit metrics resource kind",
-        title="Cursor AI Commit Metrics",
+class CursorTeamModelUsageResourceConfig(ResourceConfig):
+    kind: Literal["cursor-team-model-usage"] = Field(
+        description="Cursor team-level model usage resource kind",
+        title="Cursor Team Model Usage",
     )
     selector: CursorRelativeDateSelector
 
 
-class CursorAiChangeMetricResourceConfig(ResourceConfig):
-    kind: Literal["cursor-ai-change-metric"] = Field(
-        description="Cursor AI accepted change metrics resource kind",
-        title="Cursor AI Change Metrics",
+class CursorUserModelUsageResourceConfig(ResourceConfig):
+    kind: Literal["cursor-user-model-usage"] = Field(
+        description="Cursor per-user model usage resource kind",
+        title="Cursor User Model Usage",
     )
     selector: CursorRelativeDateSelector
 
@@ -91,8 +91,8 @@ class CursorUsageEventResourceConfig(ResourceConfig):
 
 class CursorPortAppConfig(PortAppConfig):
     resources: list[
-        CursorAiCommitMetricResourceConfig
-        | CursorAiChangeMetricResourceConfig
+        CursorTeamModelUsageResourceConfig
+        | CursorUserModelUsageResourceConfig
         | CursorDailyUsageResourceConfig
         | CursorUsageEventResourceConfig
     ] = Field(

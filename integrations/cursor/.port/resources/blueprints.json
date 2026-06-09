@@ -156,9 +156,9 @@
           "type": "boolean",
           "title": "Headless"
         },
-        "charged_cents": {
+        "charged_amount": {
           "type": "number",
-          "title": "Charged Cents"
+          "title": "Charged Amount (USD)"
         }
       },
       "required": []
@@ -169,145 +169,61 @@
     "relations": {}
   },
   {
-    "identifier": "cursorAiCommitMetric",
-    "description": "Aggregated per-commit Cursor AI code metrics",
-    "title": "Cursor AI Commit Metric",
+    "identifier": "cursorTeamModelUsage",
+    "description": "Daily team-level model usage from the Cursor Analytics API",
+    "title": "Cursor Team Model Usage",
     "icon": "Cursor",
     "schema": {
       "properties": {
-        "commit_hash": {
-          "type": "string",
-          "title": "Commit Hash"
-        },
-        "commit_source": {
-          "type": "string",
-          "title": "Commit Source"
-        },
-        "repo_name": {
-          "type": "string",
-          "title": "Repository"
-        },
-        "branch_name": {
-          "type": "string",
-          "title": "Branch"
-        },
-        "is_primary_branch": {
-          "type": "boolean",
-          "title": "Primary Branch"
-        },
-        "total_lines_added": {
-          "type": "number",
-          "title": "Total Lines Added"
-        },
-        "total_lines_deleted": {
-          "type": "number",
-          "title": "Total Lines Deleted"
-        },
-        "tab_lines_added": {
-          "type": "number",
-          "title": "Tab Lines Added"
-        },
-        "tab_lines_deleted": {
-          "type": "number",
-          "title": "Tab Lines Deleted"
-        },
-        "composer_lines_added": {
-          "type": "number",
-          "title": "Composer Lines Added"
-        },
-        "composer_lines_deleted": {
-          "type": "number",
-          "title": "Composer Lines Deleted"
-        },
-        "non_ai_lines_added": {
-          "type": "number",
-          "title": "Non-AI Lines Added"
-        },
-        "non_ai_lines_deleted": {
-          "type": "number",
-          "title": "Non-AI Lines Deleted"
-        },
-        "message": {
-          "type": "string",
-          "title": "Commit Message"
-        },
-        "commit_ts": {
+        "date": {
           "type": "string",
           "format": "date-time",
-          "title": "Commit Timestamp"
-        },
-        "created_at": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Created At"
-        },
-        "user_id": {
-          "type": "string",
-          "title": "User ID"
-        },
-        "user_email": {
-          "type": "string",
-          "title": "User Email",
-          "format": "email"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {
-      "total_ai_lines_added": {
-        "title": "Total AI Lines Added",
-        "calculation": ".properties.tab_lines_added + .properties.composer_lines_added",
-        "type": "number"
-      }
-    },
-    "aggregationProperties": {},
-    "relations": {}
-  },
-  {
-    "identifier": "cursorAiChangeMetric",
-    "description": "Granular accepted Cursor AI changes",
-    "title": "Cursor AI Change Metric",
-    "icon": "Cursor",
-    "schema": {
-      "properties": {
-        "change_id": {
-          "type": "string",
-          "title": "Change ID"
-        },
-        "source": {
-          "type": "string",
-          "title": "Source"
-        },
-        "metadata": {
-          "type": "array",
-          "title": "File Metadata"
+          "title": "Date"
         },
         "model": {
           "type": "string",
           "title": "Model"
         },
-        "total_lines_added": {
+        "messages": {
           "type": "number",
-          "title": "Total Lines Added"
+          "title": "Messages"
         },
-        "total_lines_deleted": {
+        "users": {
           "type": "number",
-          "title": "Total Lines Deleted"
-        },
-        "created_at": {
+          "title": "Users"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "cursorUserModelUsage",
+    "description": "Daily per-user model usage from the Cursor Analytics API",
+    "title": "Cursor User Model Usage",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "date": {
           "type": "string",
-          "title": "Created At",
-          "format": "date-time"
-        },
-        "user_id": {
-          "type": "string",
-          "title": "User ID"
+          "format": "date-time",
+          "title": "Date"
         },
         "user_email": {
           "type": "string",
-          "title": "User Email",
-          "format": "email"
+          "format": "email",
+          "title": "User Email"
+        },
+        "model": {
+          "type": "string",
+          "title": "Model"
+        },
+        "messages": {
+          "type": "number",
+          "title": "Messages"
         }
       },
       "required": []

@@ -3,7 +3,8 @@ from datetime import datetime, timedelta, timezone
 from core.options import ListCursorAdminOptions, ListCursorAnalyticsOptions
 
 DEFAULT_PAGE = 1
-DEFAULT_PAGE_SIZE = 500 # Cursor's paginated endpoints accept large page sizes
+# Cursor's paginated endpoints accept large page sizes
+DEFAULT_PAGE_SIZE = 500
 
 
 def _parse_relative_days(relative_date: str) -> int:

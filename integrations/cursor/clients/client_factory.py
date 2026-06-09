@@ -15,6 +15,6 @@ def create_cursor_client() -> CursorClient:
     integration_config: dict[str, Any] = ocean.integration_config
     _cursor_client = CursorClient(
         api_host=integration_config["cursor_api_host"],
-        api_key=integration_config["cursor_api_key"]
+        api_key=integration_config["cursor_api_key"],
     )
     return _cursor_client
