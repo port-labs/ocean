@@ -1,4 +1,3 @@
-import botocore.exceptions
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from aws.core.exporters.codebuild.project.actions import (

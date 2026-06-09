@@ -1,7 +1,6 @@
-from typing import Dict, Any, List, Type, cast
+from typing import Dict, Any, List, Type
 from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
-import asyncio
 
 
 class ListProjectsAction(Action):
