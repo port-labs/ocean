@@ -169,6 +169,7 @@ def _flatten_area_path_tree(
     enriched = {
         **{key: value for key, value in node.items() if key != "children"},
         "__projectId": project["id"],
+        "__project": project,
         "__parentIdentifier": parent_identifier,
         "__normalizedPath": _normalize_area_path(node.get("path", "")),
     }
@@ -1012,7 +1013,7 @@ class AzureDevopsClient(HTTPBaseClient):
             return []
 
     async def generate_area_paths(
-        self, depth: int
+        self, depth: Optional[int] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Generate area paths (work item area classification nodes) for all
@@ -1026,7 +1027,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 yield batch
 
     async def _area_paths_for_project(
-        self, project: dict[str, Any], depth: int
+        self, project: dict[str, Any], depth: Optional[int] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Yield the flattened area-path tree for a single project."""
         project_id = project["id"]

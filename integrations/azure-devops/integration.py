@@ -589,10 +589,8 @@ class AzureDevopsIterationConfig(ResourceConfig):
 
 
 class AzureDevopsAreaPathSelector(Selector):
-    depth: int = Field(
-        default=10,
-        ge=1,
-        le=50,
+    depth: Optional[int] = Field(
+        default=None,
         alias="depth",
         title="Depth",
         description="How many levels of the area-path tree to fetch in a single call. Defaults to 10.",

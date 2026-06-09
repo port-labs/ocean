@@ -206,7 +206,9 @@ async def iter_iterations() -> AsyncGenerator[list[dict[str, Any]], None]:
         yield batch
 
 
-async def iter_area_paths(depth: int) -> AsyncGenerator[list[dict[str, Any]], None]:
+async def iter_area_paths(
+    depth: Optional[int],
+) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
         lambda client: client.generate_area_paths(depth=depth)
     ):
