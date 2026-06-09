@@ -12,48 +12,48 @@ class GetBuildDetailsAction(Action):
 
         try:
             response = await self.client.batch_get_builds(ids=resources)
-            builds = response.get("builds", [])
-
-            logger.info(f"Successfully fetched details for {len(builds)} build runs")
-
-            return [
-                {
-                    "Id": build.get("id", ""),
-                    "ProjectName": build.get("projectName", ""),
-                    "Arn": build.get("arn", ""),
-                    "BuildNumber": build.get("buildNumber"),
-                    "StartTime": build.get("startTime"),
-                    "EndTime": build.get("endTime"),
-                    "CurrentPhase": build.get("currentPhase"),
-                    "BuildStatus": build.get("buildStatus"),
-                    "SourceVersion": build.get("sourceVersion"),
-                    "ResolvedSourceVersion": build.get("resolvedSourceVersion"),
-                    "ProjectVersion": build.get("projectVersion"),
-                    "Artifacts": build.get("artifacts", []),
-                    "Cache": build.get("cache"),
-                    "Environment": build.get("environment"),
-                    "ServiceRole": build.get("serviceRole"),
-                    "Logs": build.get("logs"),
-                    "TimeoutInMinutes": build.get("timeoutInMinutes"),
-                    "QueuedTimeoutInMinutes": build.get("queuedTimeoutInMinutes"),
-                    "BuildComplete": build.get("buildComplete"),
-                    "Initiator": build.get("initiator"),
-                    "VpcConfig": build.get("vpcConfig"),
-                    "NetworkInterface": build.get("networkInterface"),
-                    "EncryptionKey": build.get("encryptionKey"),
-                    "ExportedEnvironmentVariables": build.get(
-                        "exportedEnvironmentVariables", []
-                    ),
-                    "ReportArns": build.get("reportArns", []),
-                    "FileSystemLocations": build.get("fileSystemLocations", []),
-                    "DebugSession": build.get("debugSession"),
-                    "BuildBatchArn": build.get("buildBatchArn"),
-                }
-                for build in builds
-            ]
         except Exception as e:
             logger.error(f"Error fetching build details: {e}")
             raise
+
+        builds = response.get("builds", [])
+        logger.info(f"Successfully fetched details for {len(builds)} build runs")
+
+        return [
+            {
+                "Id": build.get("id", ""),
+                "ProjectName": build.get("projectName", ""),
+                "Arn": build.get("arn", ""),
+                "BuildNumber": build.get("buildNumber"),
+                "StartTime": build.get("startTime"),
+                "EndTime": build.get("endTime"),
+                "CurrentPhase": build.get("currentPhase"),
+                "BuildStatus": build.get("buildStatus"),
+                "SourceVersion": build.get("sourceVersion"),
+                "ResolvedSourceVersion": build.get("resolvedSourceVersion"),
+                "ProjectVersion": build.get("projectVersion"),
+                "Artifacts": build.get("artifacts", []),
+                "Cache": build.get("cache"),
+                "Environment": build.get("environment"),
+                "ServiceRole": build.get("serviceRole"),
+                "Logs": build.get("logs"),
+                "TimeoutInMinutes": build.get("timeoutInMinutes"),
+                "QueuedTimeoutInMinutes": build.get("queuedTimeoutInMinutes"),
+                "BuildComplete": build.get("buildComplete"),
+                "Initiator": build.get("initiator"),
+                "VpcConfig": build.get("vpcConfig"),
+                "NetworkInterface": build.get("networkInterface"),
+                "EncryptionKey": build.get("encryptionKey"),
+                "ExportedEnvironmentVariables": build.get(
+                    "exportedEnvironmentVariables", []
+                ),
+                "ReportArns": build.get("reportArns", []),
+                "FileSystemLocations": build.get("fileSystemLocations", []),
+                "DebugSession": build.get("debugSession"),
+                "BuildBatchArn": build.get("buildBatchArn"),
+            }
+            for build in builds
+        ]
 
 
 class ListBuildsAction(Action):
