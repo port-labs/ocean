@@ -469,9 +469,7 @@ class AzureDevopsClient(HTTPBaseClient):
         Uses continuation-token pagination identical to _generate_groups_cached.
         Requires only the vso.identity scope — no PCA.
         """
-        users_url = (
-            self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/users"
-        )
+        users_url = self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/users"
         async for users in self._get_paginated_by_top_and_continuation_token(
             users_url, additional_params={"api-version": "7.1-preview.1"}
         ):
@@ -499,9 +497,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 "queryMembership": query_membership,
                 "api-version": "7.1",
             }
-            url = (
-                self._format_service_url("vssps") + f"/{API_URL_PREFIX}/identities"
-            )
+            url = self._format_service_url("vssps") + f"/{API_URL_PREFIX}/identities"
             response = await self.send_request("GET", url, params=params)
             if not response:
                 logger.warning(
@@ -694,13 +690,11 @@ class AzureDevopsClient(HTTPBaseClient):
                 member_of_full: list[dict[str, Any]] = []
                 if identity:
                     for group_ref in identity.get("memberOf", []):
-                        desc = group_ref.get(
-                            "subjectDescriptor"
-                        ) or group_ref.get("descriptor")
+                        desc = group_ref.get("subjectDescriptor") or group_ref.get(
+                            "descriptor"
+                        )
                         if desc and desc in group_identities_by_descriptor:
-                            member_of_full.append(
-                                group_identities_by_descriptor[desc]
-                            )
+                            member_of_full.append(group_identities_by_descriptor[desc])
 
                 project_entitlements = self._extract_project_entitlements(
                     member_of_full, projects_by_id

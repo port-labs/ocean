@@ -183,6 +183,20 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
         )
 
     # -------------------------------------------------------------------------
+    # Tag filter helper
+    # -------------------------------------------------------------------------
+
+    async def _is_project_excluded(self, project_id: str) -> bool:
+        """Return True if the project matches the excludeTagFilter on the client."""
+        client = self._resolved_client
+        if client is None or not client.exclude_tag_filter:
+            return False
+        filtered = await client.filter_projects_by_excluded_tags(
+            [{"id": project_id}], client.exclude_tag_filter
+        )
+        return not filtered
+
+    # -------------------------------------------------------------------------
     # Subclass hooks
     # -------------------------------------------------------------------------
 

@@ -37,7 +37,9 @@ async def iter_users(
             yield batch
     else:
         async for batch in iterate_per_organization(
-            lambda client: client.generate_users(additional_params=additional_params or {})
+            lambda client: client.generate_users(
+                additional_params=additional_params or {}
+            )
         ):
             yield batch
 

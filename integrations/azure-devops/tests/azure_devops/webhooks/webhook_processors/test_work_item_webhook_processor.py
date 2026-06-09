@@ -512,8 +512,9 @@ async def test_work_item_handle_event_skipped_when_project_matches_exclude_tag_f
     assert result.updated_raw_results == []
     assert result.deleted_raw_results == []
     mock_client.filter_projects_by_excluded_tags.assert_called_once_with(
-        [project], ["tr:restricted"]
+        [{"id": "project-restricted"}], ["tr:restricted"]
     )
+    mock_client.get_single_project.assert_not_called()
     mock_client.get_work_item.assert_not_called()
 
 
@@ -560,7 +561,7 @@ async def test_work_item_handle_event_allowed_when_project_does_not_match_exclud
     assert result.updated_raw_results[0]["id"] == 2
     assert result.updated_raw_results[0]["__project"] == project
     mock_client.filter_projects_by_excluded_tags.assert_called_once_with(
-        [project], ["tr:restricted"]
+        [{"id": "project-allowed"}], ["tr:restricted"]
     )
 
 
