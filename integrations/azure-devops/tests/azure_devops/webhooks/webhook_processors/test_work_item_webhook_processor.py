@@ -655,4 +655,3 @@ async def test_work_item_handle_event_exception(
     assert isinstance(result, WebhookEventRawResults)
     assert len(result.updated_raw_results) == 0
     assert len(result.deleted_raw_results) == 0
-
