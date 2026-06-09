@@ -19,40 +19,38 @@ class GetProjectDetailsAction(Action):
 
         response = await self.client.batch_get_projects(names=resources)
         projects = response.get("projects", [])
-        logger.info(
-            f"Successfully fetched details for {len(projects)} CodeBuild projects"
-        )
+        logger.info(f"Successfully fetched details for {len(projects)} CodeBuild projects")
 
         return [
             {
-                "name": project.get("name", ""),
-                "arn": project.get("arn", ""),
-                "description": project.get("description"),
-                "source": project.get("source"),
-                "secondarySources": project.get("secondarySources", []),
-                "sourceVersion": project.get("sourceVersion"),
-                "secondarySourceVersions": project.get("secondarySourceVersions", []),
-                "artifacts": project.get("artifacts"),
-                "secondaryArtifacts": project.get("secondaryArtifacts", []),
-                "cache": project.get("cache"),
-                "environment": project.get("environment"),
-                "serviceRole": project.get("serviceRole"),
-                "timeoutInMinutes": project.get("timeoutInMinutes"),
-                "queuedTimeoutInMinutes": project.get("queuedTimeoutInMinutes"),
-                "encryptionKey": project.get("encryptionKey"),
-                "tags": project.get("tags", []),
-                "vpcConfig": project.get("vpcConfig"),
-                "badge": project.get("badge"),
-                "logsConfig": project.get("logsConfig"),
-                "fileSystemLocations": project.get("fileSystemLocations", []),
-                "buildBatchConfig": project.get("buildBatchConfig"),
-                "concurrentBuildLimit": project.get("concurrentBuildLimit"),
-                "projectVisibility": project.get("projectVisibility"),
-                "publicReadOnlyAccess": project.get("publicReadOnlyAccess"),
-                "resourceAccessRole": project.get("resourceAccessRole"),
-                "created": project.get("created"),
-                "lastModified": project.get("lastModified"),
-                "webhook": project.get("webhook"),
+                "Name": project.get("name", ""),
+                "Arn": project.get("arn", ""),
+                "Description": project.get("description"),
+                "Source": project.get("source"),
+                "SecondarySources": project.get("secondarySources", []),
+                "SourceVersion": project.get("sourceVersion"),
+                "SecondarySourceVersions": project.get("secondarySourceVersions", []),
+                "Artifacts": project.get("artifacts"),
+                "SecondaryArtifacts": project.get("secondaryArtifacts", []),
+                "Cache": project.get("cache"),
+                "Environment": project.get("environment"),
+                "ServiceRole": project.get("serviceRole"),
+                "TimeoutInMinutes": project.get("timeoutInMinutes"),
+                "QueuedTimeoutInMinutes": project.get("queuedTimeoutInMinutes"),
+                "EncryptionKey": project.get("encryptionKey"),
+                "Tags": project.get("tags", []),
+                "VpcConfig": project.get("vpcConfig"),
+                "Badge": project.get("badge"),
+                "LogsConfig": project.get("logsConfig"),
+                "FileSystemLocations": project.get("fileSystemLocations", []),
+                "BuildBatchConfig": project.get("buildBatchConfig"),
+                "ConcurrentBuildLimit": project.get("concurrentBuildLimit"),
+                "ProjectVisibility": project.get("projectVisibility"),
+                "PublicReadOnlyAccess": project.get("publicReadOnlyAccess"),
+                "ResourceAccessRole": project.get("resourceAccessRole"),
+                "Created": project.get("created"),
+                "LastModified": project.get("lastModified"),
+                "Webhook": project.get("webhook"),
             }
             for project in projects
         ]
