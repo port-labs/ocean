@@ -593,7 +593,7 @@ class AzureDevopsAreaPathSelector(Selector):
         default=None,
         alias="depth",
         title="Depth",
-        description="How many levels of the area-path tree to fetch in a single call. Defaults to 10.",
+        description="How many levels of the area-path tree to fetch in a single call.",
     )
 
 
