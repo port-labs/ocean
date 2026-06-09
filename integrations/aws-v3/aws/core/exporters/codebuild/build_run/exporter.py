@@ -29,7 +29,7 @@ class CodeBuildBuildRunExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"id": options.build_id}], options.include
+                [options.build_id], options.include
             )
             return response[0] if response else {}
 
@@ -47,7 +47,7 @@ class CodeBuildBuildRunExporter(IResourceExporter):
             async for builds in paginator.paginate(batch_size=100):
                 if builds:
                     yield await inspector.inspect(
-                        [{"id": build_id} for build_id in builds],
+                        builds,
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,

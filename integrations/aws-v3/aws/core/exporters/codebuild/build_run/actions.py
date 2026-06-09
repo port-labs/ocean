@@ -6,14 +6,12 @@ from loguru import logger
 class GetBuildDetailsAction(Action):
     """Fetches detailed information about CodeBuild project build runs."""
 
-    async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _execute(self, resources: list[str]) -> List[Dict[str, Any]]:
         if not resources:
             return []
 
-        build_ids = [resource.get("id") for resource in resources]
-
         try:
-            response = await self.client.batch_get_builds(ids=build_ids)
+            response = await self.client.batch_get_builds(ids=resources)
             builds = response.get("builds", [])
 
             logger.info(f"Successfully fetched details for {len(builds)} build runs")
@@ -61,17 +59,8 @@ class GetBuildDetailsAction(Action):
 class ListBuildsAction(Action):
     """Processes the initial list of build runs from AWS."""
 
-    async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        results: List[Dict[str, Any]] = []
-        for resource in resources:
-            build_id = resource.get("id")
-            if build_id:
-                data = {
-                    "id": build_id,
-                    "Id": build_id,
-                }
-                results.append(data)
-        return results
+    async def _execute(self, resources: list[str]) -> List[Dict[str, Any]]:
+        return [{"Id": build_id} for build_id in resources]
 
 
 class BuildRunActionsMap(ActionMap):
