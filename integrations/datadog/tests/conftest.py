@@ -21,7 +21,11 @@ def mock_init_client() -> Generator[None, None, None]:
 @pytest.fixture(autouse=True)
 def mock_integration_config() -> Generator[dict[str, str], None, None]:
     """Mock the ocean integration config."""
-    config = {"datadog_service_dependency_env": "prod", "webhook_secret": "test_token"}
+    config = {
+        "datadog_service_dependency_env": "prod",
+        "webhook_secret": "test_token",
+        "is_multi_org": False,
+    }
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
         new_callable=PropertyMock,
@@ -35,7 +39,7 @@ def mock_integration_config_without_webhook_secret() -> (
     Generator[dict[str, str], None, None]
 ):
     """Mock the ocean integration config."""
-    config = {"datadog_service_dependency_env": "prod"}
+    config = {"datadog_service_dependency_env": "prod", "is_multi_org": False}
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
         new_callable=PropertyMock,

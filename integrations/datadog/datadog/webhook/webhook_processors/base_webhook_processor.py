@@ -33,7 +33,7 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
         client's org id (the credential-map key). Returns None when multi-org is
         enabled but no client matches, so callers can skip the event.
         """
-        if not ocean.integration_config.get("is_multi_org"):
+        if not ocean.integration_config["is_multi_org"]:
             return self.clients[0]
 
         org_id = self._extract_org_id(payload)

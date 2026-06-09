@@ -68,9 +68,10 @@ class DatadogWebhookClient:
                 )
             except Exception as e:
                 logger.error(
-                    f"Failed to setup Datadog live events: {str(e)}, skipping..."
+                    f"Failed to setup Datadog live events for org "
+                    f"'{client.org_id}': {str(e)}, skipping..."
                 )
-                raise
+                continue
 
     async def _sync_webhook(
         self,
