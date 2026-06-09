@@ -2,7 +2,7 @@ from typing import Any
 
 from loguru import logger
 from datadog.client import DatadogClient
-from initialize_client import init_client
+from initialize_client import get_client_manager
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -16,7 +16,7 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
 
     def __init__(self, event: WebhookEvent) -> None:
         super().__init__(event)
-        self.clients: list[DatadogClient] = list(init_client())
+        self._client_manager = get_client_manager()
 
     @staticmethod
     def _extract_org_id(payload: EventPayload) -> str | None:
@@ -28,23 +28,11 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
     ) -> DatadogClient | None:
         """Select the Datadog client responsible for the org that emitted the event.
 
-        Single-org setups have exactly one client, which always handles the event.
-        For multi-org setups the incoming payload's org id is matched against each
-        client's org id (the credential-map key). Returns None when multi-org is
-        enabled but no client matches, so callers can skip the event.
+        Delegates to the client manager: single-org installs always use their sole
+        client; multi-org installs match the payload's org id against the configured
+        credential map, returning None (so callers skip the event) when nothing matches.
         """
-        if not ocean.integration_config["is_multi_org"]:
-            return self.clients[0]
-
-        org_id = self._extract_org_id(payload)
-        for client in self.clients:
-            if str(client.org_id) == org_id:
-                return client
-
-        logger.warning(
-            f"No Datadog client configured for org_id '{org_id}'; skipping event"
-        )
-        return None
+        return self._client_manager.get_client_for_org(self._extract_org_id(payload))
 
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]

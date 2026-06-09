@@ -26,14 +26,6 @@ def get_credential_map(config: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def init_client() -> Iterator[DatadogClient]:
-    config = ocean.integration_config
-    if config["is_multi_org"]:
-        yield from init_client_for_multi_org(config)
-    else:
-        yield init_client_single_org(config)
-
-
 def init_client_single_org(config: dict[str, Any]) -> DatadogClient:
     return DatadogClient(
         config["datadog_base_url"],
@@ -60,3 +52,61 @@ def init_client_for_multi_org(config: dict[str, Any]) -> Iterator[DatadogClient]
             app_key,
             org_id=org_id,
         )
+
+
+class DatadogClientManager:
+    """Owns the set of Datadog clients for the integration.
+
+    Builds one client per configured organization (a single client for
+    single-org installs) and resolves the right client for an incoming event by
+    org id. The config is read once at construction, so clients — and their
+    underlying HTTP connection pools — are reused across resyncs and webhook
+    events rather than rebuilt on every call.
+    """
+
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.is_multi_org: bool = config["is_multi_org"]
+        if self.is_multi_org:
+            self._clients = list(init_client_for_multi_org(config))
+        else:
+            self._clients = [init_client_single_org(config)]
+        self._clients_by_org: dict[str | None, DatadogClient] = {
+            client.org_id: client for client in self._clients
+        }
+
+    @property
+    def clients(self) -> list[DatadogClient]:
+        return self._clients
+
+    def get_client_for_org(self, org_id: str | None) -> DatadogClient | None:
+        """Return the client responsible for *org_id*.
+
+        Single-org installs always use their sole client. Multi-org installs
+        match the event's org id against the configured credential map, returning
+        None (so callers can skip the event) when nothing matches.
+        """
+        if not self.is_multi_org:
+            return self._clients[0]
+
+        client = self._clients_by_org.get(org_id)
+        if client is None:
+            logger.warning(
+                f"No Datadog client configured for org_id '{org_id}'; skipping event"
+            )
+        return client
+
+
+_client_manager: DatadogClientManager | None = None
+
+
+def get_client_manager() -> DatadogClientManager:
+    """Return the process-wide client manager, building it on first use."""
+    global _client_manager
+    if _client_manager is None:
+        _client_manager = DatadogClientManager(ocean.integration_config)
+    return _client_manager
+
+
+def init_client() -> Iterator[DatadogClient]:
+    """Yield every configured Datadog client (one per org), reusing cached clients."""
+    return iter(get_client_manager().clients)

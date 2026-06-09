@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Any, Generator
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
@@ -8,20 +8,24 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 
 
 @pytest.fixture(autouse=True)
-def mock_init_client() -> Generator[None, None, None]:
-    """Patch init_client at the point it is consumed so processor fixtures can be
-    created without real Datadog credentials."""
+def mock_client_manager() -> Generator[MagicMock, None, None]:
+    """Patch the client manager at the point it is consumed so processor fixtures
+    can be created without real Datadog credentials. By default the manager
+    resolves any payload to a single mock client."""
+    manager = MagicMock()
+    manager.clients = [MagicMock()]
+    manager.get_client_for_org.return_value = MagicMock()
     with patch(
-        "datadog.webhook.webhook_processors.base_webhook_processor.init_client",
-        return_value=[MagicMock()],
+        "datadog.webhook.webhook_processors.base_webhook_processor.get_client_manager",
+        return_value=manager,
     ):
-        yield
+        yield manager
 
 
 @pytest.fixture(autouse=True)
-def mock_integration_config() -> Generator[dict[str, str], None, None]:
+def mock_integration_config() -> Generator[dict[str, Any], None, None]:
     """Mock the ocean integration config."""
-    config = {
+    config: dict[str, Any] = {
         "datadog_service_dependency_env": "prod",
         "webhook_secret": "test_token",
         "is_multi_org": False,
@@ -36,10 +40,13 @@ def mock_integration_config() -> Generator[dict[str, str], None, None]:
 
 @pytest.fixture(autouse=True)
 def mock_integration_config_without_webhook_secret() -> (
-    Generator[dict[str, str], None, None]
+    Generator[dict[str, Any], None, None]
 ):
     """Mock the ocean integration config."""
-    config = {"datadog_service_dependency_env": "prod", "is_multi_org": False}
+    config: dict[str, Any] = {
+        "datadog_service_dependency_env": "prod",
+        "is_multi_org": False,
+    }
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
         new_callable=PropertyMock,
