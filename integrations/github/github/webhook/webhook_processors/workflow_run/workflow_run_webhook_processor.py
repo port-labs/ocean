@@ -56,20 +56,6 @@ class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                         )
                     ],
                 )
-        elif action in WORKFLOW_DELETE_EVENTS:
-            logger.info(
-                f"Workflow run {workflow_run['name']} was deleted from organization: {organization}"
-            )
-
-            data_to_delete = enrich_with_organization(
-                enrich_with_repository(workflow_run, repo["name"], repo=repo),
-                organization,
-            )
-
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[data_to_delete]
-            )
-
         exporter = RestWorkflowRunExporter(create_github_client())
         options = SingleWorkflowRunOptions(
             organization=organization, repo_name=repo["name"], run_id=workflow_run["id"]
