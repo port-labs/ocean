@@ -26,7 +26,7 @@ class CodeBuildProjectExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"name": options.project_name}], options.include
+                [options.project_name], options.include
             )
             return response[0] if response else {}
 
