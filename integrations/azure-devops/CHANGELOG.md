@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.9.12 (2026-06-09)
+## 0.9.13 (2026-06-09)
 
 
 ### Features
 
 - Added `excludeTagFilter` selector to the `project` kind.
 - Added `excludeTagFilter` selector to the `work items` kind.
+
+
+## 0.9.12 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
 
 
 ## 0.9.11 (2026-06-07)
