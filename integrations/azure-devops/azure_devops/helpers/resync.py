@@ -22,11 +22,24 @@ async def iter_projects(
 
 async def iter_users(
     additional_params: Optional[dict[str, Any]] = None,
+    use_identities: bool = False,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
-    async for batch in iterate_per_organization(
-        lambda client: client.generate_users(additional_params=additional_params or {})
-    ):
-        yield batch
+    """Yield org users enriched with __organizationUrl / __organizationName.
+
+    When use_identities is True, fetches via the Graph/Identities APIs
+    (vso.identity scope, no PCA required).  Otherwise uses the Member
+    Entitlement Management API (userentitlements), which requires PCA.
+    """
+    if use_identities:
+        async for batch in iterate_per_organization(
+            lambda client: client.generate_users_via_identities()
+        ):
+            yield batch
+    else:
+        async for batch in iterate_per_organization(
+            lambda client: client.generate_users(additional_params=additional_params or {})
+        ):
+            yield batch
 
 
 async def iter_teams() -> AsyncGenerator[list[dict[str, Any]], None]:
