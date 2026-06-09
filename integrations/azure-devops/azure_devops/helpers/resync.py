@@ -11,28 +11,11 @@ from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.helpers.multi_org import iterate_per_organization
 
 
-async def _generate_projects_per_client(
-    client: AzureDevopsClient,
-    sync_default_team: bool,
-    exclude_tag_filter: Optional[list[str]],
-) -> AsyncGenerator[list[dict[str, Any]], None]:
-    async for batch in client.generate_projects(sync_default_team):
-        if exclude_tag_filter:
-            batch = await client.filter_projects_by_excluded_tags(
-                batch, exclude_tag_filter
-            )
-        if batch:
-            yield batch
-
-
 async def iter_projects(
     sync_default_team: bool = False,
-    exclude_tag_filter: Optional[list[str]] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: _generate_projects_per_client(
-            client, sync_default_team, exclude_tag_filter
-        )
+        lambda client: client.generate_projects(sync_default_team)
     ):
         yield batch
 
@@ -113,12 +96,9 @@ async def iter_repository_policies() -> AsyncGenerator[list[dict[str, Any]], Non
 async def iter_work_items(
     wiql: Optional[str] = None,
     expand: Optional[str] = None,
-    exclude_tag_filter: Optional[list[str]] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.generate_work_items(
-            wiql=wiql, expand=expand, exclude_tags=exclude_tag_filter
-        )
+        lambda client: client.generate_work_items(wiql=wiql, expand=expand)
     ):
         yield batch
 

@@ -1,10 +1,7 @@
-from typing import cast
-
 from loguru import logger
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
 )
-from integration import AzureDevopsWorkItemResourceConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -60,9 +57,7 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        exclude_tag_filter = cast(
-            AzureDevopsWorkItemResourceConfig, resource_config
-        ).selector.exclude_tag_filter
+        exclude_tag_filter = client.exclude_tag_filter
         if exclude_tag_filter:
             filtered = await client.filter_projects_by_excluded_tags(
                 [project], exclude_tag_filter

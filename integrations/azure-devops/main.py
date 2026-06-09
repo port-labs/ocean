@@ -87,9 +87,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 @ocean.on_resync(Kind.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AzureDevopsProjectResourceConfig, event.resource_config).selector
-    async for projects in resync.iter_projects(
-        selector.default_team, selector.exclude_tag_filter
-    ):
+    async for projects in resync.iter_projects(selector.default_team):
         logger.info(f"Resyncing {len(projects)} projects")
         yield projects
 
@@ -266,7 +264,6 @@ async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for work_items in resync.iter_work_items(
         wiql=config.selector.wiql,
         expand=config.selector.expand,
-        exclude_tag_filter=config.selector.exclude_tag_filter,
     ):
         logger.info(f"Resyncing {len(work_items)} work items")
         yield work_items

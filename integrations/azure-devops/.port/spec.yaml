@@ -98,6 +98,10 @@ configurations:
     type: string
     required: false
     default: port
+  - name: excludeTagFilter
+    description: List of project tags. Projects with any of these tags — and all their child resources (repos, pipelines, builds, work items, etc.) — will be excluded from ingestion.
+    type: array
+    required: false
 deploymentMethodOverride:
   - type: helm
 saas:

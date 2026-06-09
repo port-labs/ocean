@@ -152,11 +152,13 @@ class AzureDevopsClient(HTTPBaseClient):
         organization_url: str,
         auth_provider: AuthProvider,
         webhook_auth_username: Optional[str] = None,
+        exclude_tag_filter: Optional[list[str]] = None,
     ) -> None:
         super().__init__(auth_provider)
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username
+        self.exclude_tag_filter = exclude_tag_filter
 
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
@@ -167,6 +169,7 @@ class AzureDevopsClient(HTTPBaseClient):
             ocean.integration_config["organization_url"].strip("/"),
             auth_provider,
             ocean.integration_config.get("webhook_auth_username"),
+            ocean.integration_config.get("exclude_tag_filter"),
         )
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
@@ -178,6 +181,7 @@ class AzureDevopsClient(HTTPBaseClient):
             ocean.integration_config["organization_url"].strip("/"),
             auth_provider,
             ocean.integration_config.get("webhook_auth_username"),
+            ocean.integration_config.get("exclude_tag_filter"),
         )
         return azure_devops_client
 
@@ -251,14 +255,18 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_projects(
         self, sync_default_team: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        exclude_tags = tuple(self.exclude_tag_filter) if self.exclude_tag_filter else ()
         async for batch in self._generate_projects_cached(
-            self._organization_base_url, sync_default_team
+            self._organization_base_url, sync_default_team, exclude_tags
         ):
             yield batch
 
     @cache_iterator_result()
     async def _generate_projects_cached(
-        self, org_identifier: str, sync_default_team: bool = False
+        self,
+        org_identifier: str,
+        sync_default_team: bool = False,
+        exclude_tags: tuple[str, ...] = (),
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         sync_default_team: bool - The List projects endpoint of ADO API excludes default team of a project.
@@ -279,7 +287,12 @@ class AzureDevopsClient(HTTPBaseClient):
                     *tasks
                 )
                 projects = [project for project in projects_batch if project]
-            yield projects
+            if exclude_tags:
+                projects = await self.filter_projects_by_excluded_tags(
+                    projects, list(exclude_tags)
+                )
+            if projects:
+                yield projects
 
     async def get_single_advanced_security_alert(
         self,
@@ -1081,7 +1094,6 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         wiql: Optional[str],
         expand: str,
-        exclude_tags: Optional[list[str]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
@@ -1090,10 +1102,6 @@ class AzureDevopsClient(HTTPBaseClient):
         of 20,000 results per query.
         """
         async for projects in self.generate_projects():
-            if exclude_tags:
-                projects = await self.filter_projects_by_excluded_tags(
-                    projects, exclude_tags
-                )
             for project in projects:
                 # Execute WIQL queries with ID-range pagination to get all work item IDs
                 async for work_item_ids in self._fetch_work_item_id_batches(

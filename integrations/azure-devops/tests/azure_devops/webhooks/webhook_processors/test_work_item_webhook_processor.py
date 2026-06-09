@@ -22,6 +22,7 @@ def work_item_processor(
     mock_client.filter_projects_by_excluded_tags = AsyncMock(
         return_value=[{"id": "project-123", "name": "Test Project"}]
     )
+    mock_client.exclude_tag_filter = None
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
@@ -186,9 +187,7 @@ async def test_work_item_handle_event_created(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-123", "name": "Test Project"}
     )
-    mock_client.filter_projects_by_excluded_tags = AsyncMock(
-        return_value=[{"id": "project-123", "name": "Test Project"}]
-    )
+    mock_client.exclude_tag_filter = None
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
@@ -243,9 +242,7 @@ async def test_work_item_handle_event_updated(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-456", "name": "Test Project"}
     )
-    mock_client.filter_projects_by_excluded_tags = AsyncMock(
-        return_value=[{"id": "project-456", "name": "Test Project"}]
-    )
+    mock_client.exclude_tag_filter = None
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
@@ -298,9 +295,7 @@ async def test_work_item_handle_event_commented(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-789", "name": "Test Project"}
     )
-    mock_client.filter_projects_by_excluded_tags = AsyncMock(
-        return_value=[{"id": "project-789", "name": "Test Project"}]
-    )
+    mock_client.exclude_tag_filter = None
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
@@ -341,9 +336,7 @@ async def test_work_item_handle_event_deleted(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-999", "name": "Test Project"}
     )
-    mock_client.filter_projects_by_excluded_tags = AsyncMock(
-        return_value=[{"id": "project-999", "name": "Test Project"}]
-    )
+    mock_client.exclude_tag_filter = None
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
@@ -449,9 +442,7 @@ async def test_work_item_handle_event_not_found(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-404", "name": "Test Project"}
     )
-    mock_client.filter_projects_by_excluded_tags = AsyncMock(
-        return_value=[{"id": "project-404", "name": "Test Project"}]
-    )
+    mock_client.exclude_tag_filter = None
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
@@ -491,6 +482,7 @@ async def test_work_item_handle_event_skipped_when_project_matches_exclude_tag_f
     mock_client = MagicMock()
     mock_client.get_single_project = AsyncMock(return_value=project)
     mock_client.filter_projects_by_excluded_tags = AsyncMock(return_value=[])
+    mock_client.exclude_tag_filter = ["tr:restricted"]
     _mgr = MagicMock()
     mock_client._organization_base_url = "https://dev.azure.com/test"
     _mgr.get_clients.return_value = [mock_client]
@@ -513,7 +505,6 @@ async def test_work_item_handle_event_skipped_when_project_matches_exclude_tag_f
         },
     }
     resource_config = MagicMock()
-    resource_config.selector.exclude_tag_filter = ["tr:restricted"]
 
     result = await work_item_processor.handle_event(payload, resource_config)
 
@@ -538,6 +529,7 @@ async def test_work_item_handle_event_allowed_when_project_does_not_match_exclud
     mock_client.get_single_project = AsyncMock(return_value=project)
     mock_client.filter_projects_by_excluded_tags = AsyncMock(return_value=[project])
     mock_client.get_work_item = AsyncMock(return_value=work_item)
+    mock_client.exclude_tag_filter = ["tr:restricted"]
     _mgr = MagicMock()
     mock_client._organization_base_url = "https://dev.azure.com/test"
     _mgr.get_clients.return_value = [mock_client]
@@ -560,7 +552,6 @@ async def test_work_item_handle_event_allowed_when_project_does_not_match_exclud
         },
     }
     resource_config = MagicMock()
-    resource_config.selector.exclude_tag_filter = ["tr:restricted"]
 
     result = await work_item_processor.handle_event(payload, resource_config)
 
@@ -585,6 +576,7 @@ async def test_work_item_handle_event_skips_tag_check_when_no_exclude_filter_con
     mock_client.get_single_project = AsyncMock(return_value=project)
     mock_client.filter_projects_by_excluded_tags = AsyncMock()
     mock_client.get_work_item = AsyncMock(return_value=work_item)
+    mock_client.exclude_tag_filter = None
     _mgr = MagicMock()
     mock_client._organization_base_url = "https://dev.azure.com/test"
     _mgr.get_clients.return_value = [mock_client]
@@ -604,7 +596,6 @@ async def test_work_item_handle_event_skips_tag_check_when_no_exclude_filter_con
         },
     }
     resource_config = MagicMock()
-    resource_config.selector.exclude_tag_filter = None
 
     result = await work_item_processor.handle_event(payload, resource_config)
 
@@ -625,9 +616,7 @@ async def test_work_item_handle_event_exception(
     mock_client.get_single_project = AsyncMock(
         return_value={"id": "project-500", "name": "Test Project"}
     )
-    mock_client.filter_projects_by_excluded_tags = AsyncMock(
-        return_value=[{"id": "project-500", "name": "Test Project"}]
-    )
+    mock_client.exclude_tag_filter = None
     _mgr = MagicMock()
 
     _mgr.get_client_for_org.return_value = mock_client
