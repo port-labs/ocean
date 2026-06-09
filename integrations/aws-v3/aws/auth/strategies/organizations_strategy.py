@@ -212,20 +212,11 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         if not raw_ou_id:
             return []
 
-        if isinstance(raw_ou_id, list):
-            parts = raw_ou_id
-        else:
-            parts = str(raw_ou_id).split(",")
-
-        seen: set[str] = set()
-        unique_ou_ids: List[str] = []
-        for ou_id in parts:
-            normalized_ou_id = ou_id.strip()
-            if normalized_ou_id and normalized_ou_id not in seen:
-                seen.add(normalized_ou_id)
-                unique_ou_ids.append(normalized_ou_id)
-
-        return unique_ou_ids
+        return list(
+            dict.fromkeys(
+                ou_id.strip() for ou_id in raw_ou_id.split(",") if ou_id.strip()
+            )
+        )
 
     async def _get_active_accounts_for_ous(
         self, ou_ids: List[str], org_client: AioBaseClient
