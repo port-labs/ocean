@@ -77,7 +77,7 @@ class GetPipelineDetailsAction(PipelineAction):
             }
 
 
-class GetPipelineTagsAction(Action):
+class GetPipelineTagsAction(PipelineAction):
     """Fetches tags for CodePipeline pipelines."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -104,7 +104,7 @@ class GetPipelineTagsAction(Action):
         pipeline_name = resource["name"]
 
         try:
-            pipeline_response = await self.client.get_pipeline(name=pipeline_name)
+            pipeline_response = await self._get_pipeline(pipeline_name)
             pipeline_arn = pipeline_response.get("metadata", {}).get("pipelineArn")
 
             if not pipeline_arn:
