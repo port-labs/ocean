@@ -59,53 +59,21 @@ class GetPipelineDetailsAction(PipelineAction):
 
             pipeline = response.get("pipeline", {})
             metadata = response.get("metadata", {})
-            artifact_store = pipeline.get("artifactStore", {})
-            artifact_stores = pipeline.get("artifactStores", {})
 
             return {
                 "Name": pipeline.get("name", pipeline_name),
                 "Arn": metadata.get("pipelineArn", ""),
                 "RoleArn": pipeline.get("roleArn", ""),
-                "ArtifactStore": (
-                    {
-                        "location": artifact_store.get("location"),
-                        "type": artifact_store.get("type"),
-                        "encryptionKey": artifact_store.get("encryptionKey"),
-                    }
-                    if artifact_store
-                    else None
-                ),
-                "ArtifactStores": {
-                    region: {
-                        "location": store.get("location"),
-                        "type": store.get("type"),
-                        "encryptionKey": store.get("encryptionKey"),
-                    }
-                    for region, store in artifact_stores.items()
-                },
-                "Stages": [
-                    {
-                        "name": stage.get("name"),
-                        "actions": stage.get("actions", []),
-                        "blockers": stage.get("blockers", []),
-                    }
-                    for stage in pipeline.get("stages", [])
-                ],
+                "ArtifactStore": pipeline.get("artifactStore"),
+                "ArtifactStores": pipeline.get("artifactStores", []),
+                "Stages": pipeline.get("stages", []),
                 "Version": pipeline.get("version"),
                 "ExecutionMode": pipeline.get("executionMode"),
                 "PipelineType": pipeline.get("pipelineType"),
                 "Variables": pipeline.get("variables", []),
                 "Triggers": pipeline.get("triggers", []),
-                "Created": (
-                    metadata.get("created").isoformat()
-                    if metadata.get("created")
-                    else None
-                ),
-                "Updated": (
-                    metadata.get("updated").isoformat()
-                    if metadata.get("updated")
-                    else None
-                ),
+                "Created": metadata.get("created"),
+                "Updated": metadata.get("updated"),
             }
 
 
