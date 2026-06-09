@@ -2,6 +2,7 @@ from aws.core.exporters.codebuild.project.exporter import CodeBuildProjectExport
 from aws.core.exporters.codebuild.project.models import (
     SingleCodeBuildProjectRequest,
     PaginatedCodeBuildProjectRequest,
+)
 from aws.core.exporters.codebuild.build_run.exporter import (
     CodeBuildBuildRunExporter,
 )
