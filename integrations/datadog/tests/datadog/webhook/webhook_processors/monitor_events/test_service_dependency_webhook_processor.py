@@ -1,17 +1,17 @@
 import time
 from typing import Any
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from integration import ObjectKind
-from port_ocean.core.handlers.webhook.webhook_event import (
-    WebhookEvent,
-)
-from webhook_processors.service_dependency_webhook_processor import (
-    ServiceDependencyWebhookProcessor,
-)
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+
 from datadog.core.exporters.service_dependency_exporter import (
     GetServiceDependencyOptions,
+)
+from datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor import (
+    ServiceDependencyWebhookProcessor,
 )
 
 
@@ -31,7 +31,6 @@ def resource_config() -> Any:
     mock_resource_config.kind = ObjectKind.SERVICE_DEPENDENCY
     mock_resource_config.selector.environment = "prod"
     mock_resource_config.selector.start_time = int(time.time()) - 60 * 60
-
     return mock_resource_config
 
 
@@ -44,22 +43,27 @@ async def test_get_matching_kinds(
 
 
 @pytest.mark.asyncio
-async def test_validate_payload(processor: ServiceDependencyWebhookProcessor) -> None:
+async def test_should_process_event(
+    processor: ServiceDependencyWebhookProcessor,
+) -> None:
+    def _event(payload: dict[str, Any]) -> WebhookEvent:
+        return WebhookEvent(trace_id="t", payload=payload, headers={})
+
     assert (
-        await processor.validate_payload(
-            {"event_type": "service_check", "tags": ["service:service-a", "env:prod"]}
+        await processor.should_process_event(
+            _event(
+                {
+                    "event_type": "service_check",
+                    "tags": ["service:service-a", "env:prod"],
+                }
+            )
         )
         is True
     )
-
     assert (
-        await processor.validate_payload(
-            {"event_type": "service_check", "tags": ["service:service-a", "env:prod"]}
-        )
-        is True
+        await processor.should_process_event(_event({"event_type": "service_check"}))
+        is False
     )
-
-    assert await processor.validate_payload({"event_type": "service_check"}) is False
 
 
 @pytest.mark.asyncio
@@ -77,15 +81,9 @@ async def test_handle_event_with_service_dependency(
         "service_name": "Test Service Dependency",
     }
 
-    with (
-        patch(
-            "webhook_processors.service_dependency_webhook_processor.init_client"
-        ) as mock_init,
-        patch(
-            "webhook_processors.service_dependency_webhook_processor.ServiceDependencyExporter"
-        ) as mock_exporter_cls,
-    ):
-        mock_init.return_value = AsyncMock()
+    with patch(
+        "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.ServiceDependencyExporter"
+    ) as mock_exporter_cls:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = mock_service_dependency
         mock_exporter_cls.return_value = mock_exporter
@@ -94,7 +92,7 @@ async def test_handle_event_with_service_dependency(
 
         mock_exporter.get_resource.assert_awaited_once_with(
             GetServiceDependencyOptions(
-                service_id="service-a",
+                resource_id="service-a",
                 env=resource_config.selector.environment,
                 start_time=resource_config.selector.start_time,
             )
@@ -111,15 +109,9 @@ async def test_handle_event_without_service_dependency(
 ) -> None:
     test_payload = {"event_type": "service_check", "tags": ["env:prod"]}
 
-    with (
-        patch(
-            "webhook_processors.service_dependency_webhook_processor.init_client"
-        ) as mock_init,
-        patch(
-            "webhook_processors.service_dependency_webhook_processor.ServiceDependencyExporter"
-        ) as mock_exporter_cls,
-    ):
-        mock_init.return_value = AsyncMock()
+    with patch(
+        "datadog.webhook.webhook_processors.monitor_events.service_dependency_webhook_processor.ServiceDependencyExporter"
+    ) as mock_exporter_cls:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = None
         mock_exporter_cls.return_value = mock_exporter

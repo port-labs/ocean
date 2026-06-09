@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.0 (2026-06-08)
+
+
+### Features
+
+- Added dual-source live event ingestion for Datadog: monitor notifications (`/monitor-events`) and audit-trail forwarding (`/audit-trail`) with dedicated processors per source.
+- Added audit-trail processors for monitor, user, team, SLO, and role assets to handle CRUD/access-management updates in near real time.
+
+### Bug Fixes
+
+- Reworked Datadog live-event bootstrap to reliably create/update webhook configuration and to automatically provision monitor notification rules.
+
+
+## 0.4.4 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.4.3 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.4.2 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
 ## 0.4.1 (2026-06-02)
 
 

@@ -1,15 +1,50 @@
-from typing import TypeVar, Generic, Any, AsyncGenerator
+from typing import TYPE_CHECKING, TypeVar, Generic, Any, AsyncGenerator
 
 from abc import ABC, abstractmethod
 
+from pydantic import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.client import DatadogClient
 
+if TYPE_CHECKING:
+    from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+
 MAX_PAGE_SIZE = 100
 
-OptionsT = TypeVar("OptionsT")
-ResourceIdT = TypeVar("ResourceIdT")
+RC = TypeVar("RC", bound="ResourceConfig")
+
+
+class ListOptions(BaseModel, Generic[RC]):
+    """Base for all paginated-exporter options.
+
+    Each subclass inherits ListOptions[ConcreteResourceConfig] so callers
+    never need to know which ResourceConfig fields map to which option fields.
+    """
+
+    @classmethod
+    def from_resource_config(cls, resource_config: RC) -> "ListOptions[RC]":
+        raise NotImplementedError(f"{cls.__name__} must implement from_resource_config")
+
+
+class GetOptions(BaseModel, Generic[RC]):
+    """Base for all single-resource-exporter options.
+
+    Each subclass inherits GetOptions[ConcreteResourceConfig].
+    resource_config is always first; the resource identifier follows as *, id: str.
+    """
+
+    resource_id: str
+
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: RC, *, resource_id: str
+    ) -> "GetOptions[RC]":
+        raise NotImplementedError(f"{cls.__name__} must implement from_resource_config")
+
+
+ListOptionsT = TypeVar("ListOptionsT")
+GetOptionsT = TypeVar("GetOptionsT")
 
 
 class DatadogExporter(ABC):
@@ -19,12 +54,12 @@ class DatadogExporter(ABC):
         self.client = client
 
 
-class PaginatedExporter(DatadogExporter, Generic[OptionsT]):
+class PaginatedExporter(DatadogExporter, Generic[ListOptionsT]):
     """Mixin for exporters that support paginated resource listing."""
 
     @abstractmethod
     def get_paginated_resources(
-        self, options: OptionsT
+        self, options: ListOptionsT
     ) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
 
     async def _paginate_by_page_param(
@@ -82,8 +117,8 @@ class PaginatedExporter(DatadogExporter, Generic[OptionsT]):
             offset += page_size
 
 
-class SingleResourceExporter(DatadogExporter, Generic[ResourceIdT]):
+class SingleResourceExporter(DatadogExporter, Generic[GetOptionsT]):
     """Mixin for exporters that support single resource fetching."""
 
     @abstractmethod
-    async def get_resource(self, resource_id: ResourceIdT) -> dict[str, Any] | None: ...
+    async def get_resource(self, options: GetOptionsT) -> dict[str, Any] | None: ...

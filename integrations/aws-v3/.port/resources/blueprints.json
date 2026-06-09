@@ -182,6 +182,108 @@
     }
   },
   {
+    "identifier": "codeBuildProject",
+    "title": "CodeBuild Project",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Project Name",
+          "description": "The name of the CodeBuild project"
+        },
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the CodeBuild project"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "A description of the CodeBuild project"
+        },
+        "serviceRole": {
+          "type": "string",
+          "title": "Service Role",
+          "description": "The ARN of the AWS Identity and Access Management (IAM) service role"
+        },
+        "timeoutInMinutes": {
+          "type": "number",
+          "title": "Timeout (Minutes)",
+          "description": "How long, in minutes, from 5 to 480, for AWS CodeBuild to wait before timing out any related build"
+        },
+        "queuedTimeoutInMinutes": {
+          "type": "number",
+          "title": "Queued Timeout (Minutes)",
+          "description": "The number of minutes a build is allowed to be queued before timing out"
+        },
+        "encryptionKey": {
+          "type": "string",
+          "title": "Encryption Key",
+          "description": "The AWS Key Management Service (AWS KMS) customer master key (CMK) to be used for encrypting the build project artifacts"
+        },
+        "environment": {
+          "type": "object",
+          "title": "Build Environment",
+          "description": "Information about the build environment for the build project"
+        },
+        "source": {
+          "type": "object",
+          "title": "Source",
+          "description": "Information about the build input source code for the build project"
+        },
+        "artifacts": {
+          "type": "object",
+          "title": "Artifacts",
+          "description": "Information about the build output artifacts for the build project"
+        },
+        "created": {
+          "type": "string",
+          "title": "Created",
+          "description": "When the build project was created",
+          "format": "date-time"
+        },
+        "lastModified": {
+          "type": "string",
+          "title": "Last Modified",
+          "description": "When the build project was last modified",
+          "format": "date-time"
+        },
+        "projectVisibility": {
+          "type": "string",
+          "title": "Project Visibility",
+          "description": "The visibility setting for the project",
+          "enum": ["PRIVATE", "PUBLIC_READ"]
+        },
+        "concurrentBuildLimit": {
+          "type": "number",
+          "title": "Concurrent Build Limit",
+          "description": "The maximum number of concurrent builds that are allowed for this project"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the CodeBuild project",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "codeBuildBuildRun",
     "title": "CodeBuild Build Run",
     "icon": "AWS",
