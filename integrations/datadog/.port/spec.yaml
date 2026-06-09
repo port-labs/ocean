@@ -36,6 +36,11 @@ configurations:
     required: true
     type: string
     sensitive: true
+  - name: datadogCredentialMap
+    description: "Datadog credential map as a json string. This enables fetching resources from multiple Datadog organizations example '{\"org_id\":{\"datadogApiKey\":\"apiKey\", \"datadogApplicationKey\":\"appKey\"}}'"
+    type: string
+    sensitive: true
+    required: false
   - name: appHost
     type: url
     required: false
@@ -55,6 +60,12 @@ configurations:
     type: string
     required: false
     sensitive: true
+  - name: isMultiOrg
+    default: false
+    type: boolean
+    required: true
+    sensitive: false
+    description: Whether this exporter is set-up to export resources from multiple Datadog organizations. Setting this to true requires `datadogCredentialMap` to be set as well.
 
 saas:
   enabled: true
