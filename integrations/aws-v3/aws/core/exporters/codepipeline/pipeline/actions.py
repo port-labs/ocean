@@ -151,9 +151,8 @@ class ListPipelinesAction(Action):
     """Processes the initial list of pipelines from AWS."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        results: List[Dict[str, Any]] = []
-        for resource in resources:
-            data = {
+        return [
+            {
                 "Name": resource.get("name", ""),
                 "Version": resource.get("version"),
                 "Created": resource.get("created"),
@@ -161,8 +160,8 @@ class ListPipelinesAction(Action):
                 "PipelineType": resource.get("pipelineType"),
                 "ExecutionMode": resource.get("executionMode"),
             }
-            results.append(data)
-        return results
+            for resource in resources
+        ]
 
 
 class PipelineActionsMap(ActionMap):
