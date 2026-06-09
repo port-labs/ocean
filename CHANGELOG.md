@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Fixed action execution error logs failing to ship to Port when `logger.error(..., error=e)` passed a raw `Exception` object in log extra fields, which is not JSON serializable. The execution manager now logs `error=str(e)` so failed run errors appear in the integration event log.
+- Fixed action execution error logs failing to ship to Port when the execution manager passed raw `Exception` objects in log extra fields (not JSON serializable). All execution manager error handlers now use `logger.exception(..., error=str(e))` so failed run errors and tracebacks appear in the integration event log.
 
 ## 0.43.15 (2026-06-03)
 

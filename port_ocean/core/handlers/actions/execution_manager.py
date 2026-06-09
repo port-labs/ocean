@@ -213,19 +213,19 @@ class ExecutionManager:
                             "Partition key not found in invocation payload, skipping run...",
                             run_id=run.id,
                             action_type=action_type,
-                            error=e,
+                            error=str(e),
                         )
                     except Exception as e:
-                        logger.error(
+                        logger.exception(
                             "Error adding run to queue",
                             run_id=run.id,
                             action_type=action_type,
-                            error=e,
+                            error=str(e),
                         )
             except Exception as e:
-                logger.error(
+                logger.exception(
                     "Unexpected error in poll action runs, will attempt to re-poll",
-                    error=e,
+                    error=str(e),
                 )
                 # Backoff to avoid overwhelming the API with requests
                 await asyncio.sleep(self._poll_check_interval_seconds)
@@ -313,7 +313,7 @@ class ExecutionManager:
                 else:
                     await self._handle_partition_queue_once(source)
             except Exception as e:
-                logger.error("Worker processing error", source=source, error=e)
+                logger.exception("Worker processing error", source=source, error=str(e))
 
     async def _handle_global_queue_once(self) -> None:
         """
@@ -401,9 +401,9 @@ class ExecutionManager:
                 )
                 return
             except Exception as e:
-                logger.error(
+                logger.exception(
                     "Error occurred while trying to trigger run execution",
-                    error=e,
+                    error=str(e),
                 )
                 error_summary = "Failed to trigger run execution"
 
@@ -415,7 +415,7 @@ class ExecutionManager:
                     elapsed_ms=(time.monotonic() - start_time) * 1000,
                 )
             except Exception as e:
-                logger.error("Error executing run", error=str(e))
+                logger.exception("Error executing run", error=str(e))
                 error_summary = f"Failed to execute run: {str(e)}"
 
             if error_summary:
