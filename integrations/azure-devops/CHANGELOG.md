@@ -7,13 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.9.12 (2026-06-08)
+## 0.9.15 (2026-06-10)
 
 
 ### Features
 
 - Added a new `area-path` kind.
+
+### Improvements
+
 - Added an `includeAreaPaths` option to the `team` kind.
+
+
+## 0.9.14 (2026-06-10)
+
+
+### Features
+
+- Renamed `excludeTagFilter` integration config field to `excludedTags` (the old key is still supported for backward compatibility).
+
+## 0.9.13 (2026-06-09)
+
+
+### Features
+
+- Added `excludeTagFilter` integration config field to exclude ADO projects from syncing based on project tags. Projects matching any specified tag are skipped during resync for all resource kinds.
+
+
+## 0.9.12 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
 
 
 ## 0.9.11 (2026-06-07)
