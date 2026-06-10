@@ -45,7 +45,7 @@ class PipelineExporter(IResourceExporter):
             async for pipelines in paginator.paginate():
                 if pipelines:
                     action_result = await inspector.inspect(
-                        pipelines,
+                        {"pipelines": pipelines, "extras": {"region": options.region, "account_id": options.account_id}},
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
