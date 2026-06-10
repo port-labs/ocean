@@ -153,9 +153,9 @@ def cache_coroutine_result(
         # Your code here
     ```
 
-    :param cache_keys: If defined, a list of cache keys that must be present in the kwargs under the key "cache_keys"
-        in order to use the cache. This allows us to inject extra context that is relevant to the caching mechanism,
-        but not to the actual function call.
+    :param cache_keys: If defined, a list of cache keys that must be present as an object in the kwargs under the key
+        "cache_keys" in order to use the cache. This allows us to inject extra context that is relevant to the caching
+        mechanism, but not to the actual function call.
     """
 
     def decorator(func: AsyncCallable) -> AsyncCallable:
