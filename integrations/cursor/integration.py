@@ -62,7 +62,10 @@ class CursorTeamModelUsageResourceConfig(ResourceConfig):
         description="Cursor team-level model usage resource kind",
         title="Cursor Team Model Usage",
     )
-    selector: CursorRelativeDateSelector
+    selector: CursorRelativeDateSelector = Field(
+        description="Relative date window for team model usage analytics.",
+        title="Team Model Usage Selector",
+    )
 
 
 class CursorUserModelUsageResourceConfig(ResourceConfig):
@@ -70,7 +73,10 @@ class CursorUserModelUsageResourceConfig(ResourceConfig):
         description="Cursor per-user model usage resource kind",
         title="Cursor User Model Usage",
     )
-    selector: CursorRelativeDateSelector
+    selector: CursorRelativeDateSelector = Field(
+        description="Relative date window for per-user model usage analytics.",
+        title="User Model Usage Selector",
+    )
 
 
 class CursorDailyUsageResourceConfig(ResourceConfig):
@@ -78,7 +84,10 @@ class CursorDailyUsageResourceConfig(ResourceConfig):
         description="Cursor daily usage data resource kind",
         title="Cursor Daily Usage",
     )
-    selector: CursorRelativeDateSelector
+    selector: CursorRelativeDateSelector = Field(
+        description="Relative date window for daily team usage data.",
+        title="Daily Usage Selector",
+    )
 
 
 class CursorUsageEventResourceConfig(ResourceConfig):
@@ -86,7 +95,10 @@ class CursorUsageEventResourceConfig(ResourceConfig):
         description="Cursor usage events data resource kind",
         title="Cursor Usage Events",
     )
-    selector: CursorRelativeDateSelector
+    selector: CursorRelativeDateSelector = Field(
+        description="Relative date window for detailed usage events.",
+        title="Usage Events Selector",
+    )
 
 
 class CursorPortAppConfig(PortAppConfig):

@@ -11,11 +11,6 @@ from aiolimiter import AsyncLimiter
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-from core.options import (
-    ListCursorAdminOptions,
-    ListCursorAnalyticsOptions,
-)
-
 # Cursor enforces per-team rate limits that reset every minute.
 # https://cursor.com/docs/api#rate-limits
 #   - Admin API (`/teams/*`):                 20 requests/minute
@@ -24,6 +19,9 @@ from core.options import (
 ADMIN_RATE_LIMIT_PER_MINUTE = 20
 ANALYTICS_RATE_LIMIT_PER_MINUTE = 100
 ANALYTICS_BY_USER_RATE_LIMIT_PER_MINUTE = 50
+
+DEFAULT_PAGE = 1
+DEFAULT_PAGE_SIZE = 500
 
 # Safety cap so a misbehaving pagination response can never loop forever.
 MAX_PAGES = 10_000
@@ -39,6 +37,13 @@ def _rate_limit_for_path(path: str) -> int:
 
 
 class CursorClient:
+    """Thin transport layer for the Cursor API.
+
+    This client is intentionally resource-agnostic: it only knows how to send
+    authenticated, rate-limited HTTP requests and how to walk Cursor's standard
+    `pagination` envelope.
+    """
+
     def __init__(
         self,
         api_host: str,
@@ -72,18 +77,18 @@ class CursorClient:
         return limiter
 
     async def validate_analytics_connection(self) -> None:
-        await self._request_with_retry(
-            method="GET",
-            path="/analytics/team/models",
+        await self.send_api_request(
+            "GET",
+            "/analytics/team/models",
             params={"startDate": "1d", "endDate": "0d"},
         )
         logger.info("Cursor Analytics API connectivity validated successfully")
 
     async def validate_admin_connection(self) -> None:
         now = datetime.now(timezone.utc)
-        await self._request_with_retry(
-            method="POST",
-            path="/teams/daily-usage-data",
+        await self.send_api_request(
+            "POST",
+            "/teams/daily-usage-data",
             json_body={
                 "startDate": int((now - timedelta(days=1)).timestamp() * 1000),
                 "endDate": int(now.timestamp() * 1000),
@@ -93,147 +98,62 @@ class CursorClient:
         )
         logger.info("Cursor Admin API connectivity validated successfully")
 
-    async def get_team_model_usage(
-        self, options: ListCursorAnalyticsOptions
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        path = "/analytics/team/models"
-        params = {
-            "startDate": options["startDate"],
-            "endDate": options["endDate"],
-        }
-        response = await self._request_with_retry("GET", path, params=params)
-        payload = self._parse_json(response, path)
-
-        data = payload.get("data", []) or []
-        logger.info(
-            f"Cursor analytics {path}: fetched {len(data)} daily model breakdowns"
+    async def send_api_request(
+        self,
+        method: str,
+        path: str,
+        params: dict[str, Any] | None = None,
+        json_body: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        response = await self._request_with_retry(
+            method, path, params=params, json_body=json_body
         )
-        if data:
-            yield data
+        return self._parse_json(response, path)
 
-    async def get_user_model_usage(
-        self, options: ListCursorAnalyticsOptions
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        path = "/analytics/by-user/models"
-        page = options["page"]
-        page_size = options["pageSize"]
+    async def send_paginated_request(
+        self,
+        method: str,
+        path: str,
+        params: dict[str, Any] | None = None,
+        json_body: dict[str, Any] | None = None,
+        page_size: int = DEFAULT_PAGE_SIZE,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Yield each raw page payload for Cursor's standard pagination envelope.
+
+        `page`/`pageSize` are injected into the query string for GET requests and
+        into the JSON body for everything else. Pagination continues while the
+        response's `pagination.hasNextPage` flag is truthy.
+        """
+        page = DEFAULT_PAGE
 
         for _ in range(MAX_PAGES):
-            params = {
-                "startDate": options["startDate"],
-                "endDate": options["endDate"],
-                "page": page,
-                "pageSize": page_size,
-            }
-            response = await self._request_with_retry("GET", path, params=params)
-            payload = self._parse_json(response, path)
+            page_params = dict(params or {})
+            page_body = dict(json_body or {})
+            if method.upper() == "GET":
+                page_params.update({"page": page, "pageSize": page_size})
+            else:
+                page_body.update({"page": page, "pageSize": page_size})
 
-            # `data` maps each user email to a list of their daily breakdowns;
-            # flatten it into per-user-day records carrying the owning email.
-            data = payload.get("data", {}) or {}
-            items = [
-                {"userEmail": email, **record}
-                for email, records in data.items()
-                for record in (records or [])
-            ]
+            payload = await self.send_api_request(
+                method,
+                path,
+                params=page_params or None,
+                json_body=page_body or None,
+            )
 
             pagination = payload.get("pagination", {}) or {}
-            current_page = int(pagination.get("page", page) or page)
-            total_pages = pagination.get("totalPages")
-            progress = (
-                f"{current_page}/{total_pages}" if total_pages else f"{current_page}"
-            )
-            logger.info(
-                f"Cursor analytics {path}: fetched page {progress} "
-                f"({len(items)} user-day rows)"
-            )
+            total_pages = pagination.get("totalPages") or pagination.get("numPages")
+            progress = f"{page}/{total_pages}" if total_pages else f"{page}"
+            logger.info(f"Cursor pagination {path}: fetched page {progress}")
 
-            if items:
-                yield items
+            yield payload
 
             if not bool(pagination.get("hasNextPage", False)):
                 break
-            page = current_page + 1
+            page += 1
         else:
             logger.warning(
-                f"Cursor analytics {path}: reached MAX_PAGES safety cap ({MAX_PAGES})"
-            )
-
-    async def get_daily_usage_data(
-        self, options: ListCursorAdminOptions
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for page in self._paginate_admin(
-            "/teams/daily-usage-data",
-            options,
-            items_key="data",
-            page_key="page",
-            has_next_key="hasNextPage",
-        ):
-            yield page
-
-    async def get_usage_events_data(
-        self, options: ListCursorAdminOptions
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for page in self._paginate_admin(
-            "/teams/filtered-usage-events",
-            options,
-            items_key="usageEvents",
-            page_key="currentPage",
-            has_next_key="hasNextPage",
-        ):
-            yield page
-
-    async def _paginate_admin(
-        self,
-        path: str,
-        options: ListCursorAdminOptions,
-        items_key: str,
-        page_key: str,
-        has_next_key: str,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        page = options["page"]
-        requested_page_size = options["pageSize"]
-
-        for _ in range(MAX_PAGES):
-            body = {
-                "startDate": options["startDate"],
-                "endDate": options["endDate"],
-                "page": page,
-                "pageSize": requested_page_size,
-            }
-            response = await self._request_with_retry("POST", path, json_body=body)
-            payload = self._parse_json(response, path)
-
-            items = payload.get(items_key, []) or []
-            pagination = payload.get("pagination", {}) or {}
-            current_page = int(pagination.get(page_key, page) or page)
-            total_pages = pagination.get("totalPages") or pagination.get("numPages")
-            progress = (
-                f"{current_page}/{total_pages}" if total_pages else f"{current_page}"
-            )
-            logger.info(
-                f"Cursor admin {path}: fetched page {progress} ({len(items)} items)"
-            )
-
-            if items:
-                yield items
-
-            has_next_page = bool(pagination.get(has_next_key, False))
-            # Defensive: a full page with no pagination metadata most likely means
-            # there is more data to fetch rather than a silent end-of-results.
-            if not pagination and len(items) == requested_page_size:
-                logger.warning(
-                    f"Cursor admin {path}: missing pagination metadata; "
-                    "continuing based on page fullness"
-                )
-                has_next_page = True
-
-            if not items or not has_next_page:
-                break
-            page = current_page + 1
-        else:
-            logger.warning(
-                f"Cursor admin {path}: reached MAX_PAGES safety cap ({MAX_PAGES})"
+                f"Cursor pagination {path}: reached MAX_PAGES safety cap ({MAX_PAGES})"
             )
 
     def _parse_json(self, response: httpx.Response, path: str) -> dict[str, Any]:

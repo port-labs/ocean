@@ -62,91 +62,67 @@ async def test_request_with_retry_retries_on_429(cursor_client: CursorClient) ->
 
 
 @pytest.mark.asyncio
-async def test_get_team_model_usage_yields_data(cursor_client: CursorClient) -> None:
-    page = MagicMock(spec=httpx.Response)
-    page.status_code = 200
-    page.json.return_value = {
-        "data": [
-            {
-                "date": "2026-05-10",
-                "model_breakdown": {"default": {"messages": 5, "users": 2}},
-            }
-        ]
-    }
+async def test_send_api_request_returns_parsed_json(
+    cursor_client: CursorClient,
+) -> None:
+    response = MagicMock(spec=httpx.Response)
+    response.json.return_value = {"data": [1, 2, 3]}
 
     with patch.object(
-        cursor_client,
-        "_request_with_retry",
-        new=AsyncMock(return_value=page),
+        cursor_client, "_request_with_retry", new=AsyncMock(return_value=response)
     ):
-        batches = [
-            batch
-            async for batch in cursor_client.get_team_model_usage(
-                {"startDate": "30d", "endDate": "0d", "page": 1, "pageSize": 500}
-            )
-        ]
+        result = await cursor_client.send_api_request("GET", "/analytics/team/models")
 
-    assert batches == [
-        [
-            {
-                "date": "2026-05-10",
-                "model_breakdown": {"default": {"messages": 5, "users": 2}},
-            }
-        ]
-    ]
+    assert result == {"data": [1, 2, 3]}
 
 
 @pytest.mark.asyncio
-async def test_get_user_model_usage_flattens_and_paginates(
+async def test_send_paginated_request_walks_pages_and_injects_params(
     cursor_client: CursorClient,
 ) -> None:
-    first = MagicMock(spec=httpx.Response)
-    first.status_code = 200
-    first.json.return_value = {
-        "data": {
-            "a@port.io": [
-                {"date": "2026-05-11", "model_breakdown": {"default": {"messages": 3}}}
-            ],
-            "b@port.io": [],
-        },
-        "pagination": {"page": 1, "totalPages": 2, "hasNextPage": True},
-    }
-    second = MagicMock(spec=httpx.Response)
-    second.status_code = 200
-    second.json.return_value = {
-        "data": {
-            "c@port.io": [
-                {"date": "2026-05-12", "model_breakdown": {"default": {"messages": 9}}}
-            ]
-        },
-        "pagination": {"page": 2, "totalPages": 2, "hasNextPage": False},
-    }
+    payloads = [
+        {"data": {}, "pagination": {"hasNextPage": True}},
+        {"data": {}, "pagination": {"hasNextPage": False}},
+    ]
+    mock_send = AsyncMock(side_effect=payloads)
 
-    with patch.object(
-        cursor_client,
-        "_request_with_retry",
-        new=AsyncMock(side_effect=[first, second]),
-    ):
-        batches = [
-            batch
-            async for batch in cursor_client.get_user_model_usage(
-                {"startDate": "30d", "endDate": "0d", "page": 1, "pageSize": 50}
+    with patch.object(cursor_client, "send_api_request", new=mock_send):
+        pages = [
+            page
+            async for page in cursor_client.send_paginated_request(
+                "GET",
+                "/analytics/by-user/models",
+                params={"startDate": "30d", "endDate": "0d"},
+                page_size=50,
             )
         ]
 
-    assert batches == [
-        [
-            {
-                "userEmail": "a@port.io",
-                "date": "2026-05-11",
-                "model_breakdown": {"default": {"messages": 3}},
-            }
-        ],
-        [
-            {
-                "userEmail": "c@port.io",
-                "date": "2026-05-12",
-                "model_breakdown": {"default": {"messages": 9}},
-            }
-        ],
-    ]
+    assert pages == payloads
+    first_params = mock_send.call_args_list[0].kwargs["params"]
+    second_params = mock_send.call_args_list[1].kwargs["params"]
+    assert first_params["page"] == 1 and first_params["pageSize"] == 50
+    assert second_params["page"] == 2
+
+
+@pytest.mark.asyncio
+async def test_send_paginated_request_injects_page_into_body_for_post(
+    cursor_client: CursorClient,
+) -> None:
+    mock_send = AsyncMock(
+        return_value={"data": [], "pagination": {"hasNextPage": False}}
+    )
+
+    with patch.object(cursor_client, "send_api_request", new=mock_send):
+        _ = [
+            page
+            async for page in cursor_client.send_paginated_request(
+                "POST",
+                "/teams/daily-usage-data",
+                json_body={"startDate": 1, "endDate": 2},
+                page_size=500,
+            )
+        ]
+
+    body = mock_send.call_args_list[0].kwargs["json_body"]
+    assert body["page"] == 1 and body["pageSize"] == 500
+    assert mock_send.call_args_list[0].kwargs["params"] is None
