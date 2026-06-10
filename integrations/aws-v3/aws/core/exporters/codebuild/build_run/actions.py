@@ -3,6 +3,13 @@ from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
 
 
+class ListBuildsAction(Action):
+    """Processes the initial list of build runs from AWS."""
+
+    async def _execute(self, resources: list[str]) -> List[Dict[str, Any]]:
+        return [{"id": build_id} for build_id in resources]
+
+
 class GetBuildDetailsAction(Action):
     """Fetches detailed information about CodeBuild project build runs."""
 
@@ -19,14 +26,6 @@ class GetBuildDetailsAction(Action):
         builds = response.get("builds", [])
         logger.info(f"Successfully fetched details for {len(builds)} build runs")
         return builds
-
-
-
-class ListBuildsAction(Action):
-    """Processes the initial list of build runs from AWS."""
-
-    async def _execute(self, resources: list[str]) -> List[Dict[str, Any]]:
-        return [{"id": build_id} for build_id in resources]
 
 
 class BuildRunActionsMap(ActionMap):
