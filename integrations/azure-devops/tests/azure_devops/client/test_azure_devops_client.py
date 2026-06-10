@@ -2144,7 +2144,9 @@ async def test_generate_pipeline_runs_bounded_concurrency(
         yield projects
 
     async with event_context("test_event"):
-        with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
             with patch.object(
                 client, "_runs_for_project", side_effect=mock_runs_for_project
             ):
@@ -2435,7 +2437,9 @@ async def test_get_filtered_webhook_subscriptions_calls_per_event_type() -> None
 
 @pytest.mark.asyncio
 async def test_get_filtered_webhook_subscriptions_bounded_concurrency() -> None:
-    from azure_devops.client.azure_devops_client import MAX_CONCURRENT_SUBSCRIPTION_REQUESTS
+    from azure_devops.client.azure_devops_client import (
+        MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+    )
 
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 
@@ -2471,7 +2475,9 @@ async def test_get_filtered_webhook_subscriptions_partial_failure() -> None:
 
     good_sub = WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH)
 
-    async def mock_fetch(publisher_id: str, event_type: str) -> List[WebhookSubscription]:
+    async def mock_fetch(
+        publisher_id: str, event_type: str
+    ) -> List[WebhookSubscription]:
         if event_type == PushEvents.PUSH:
             return [good_sub]
         raise Exception("429 rate limited")

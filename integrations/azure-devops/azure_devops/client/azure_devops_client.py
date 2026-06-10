@@ -1551,7 +1551,9 @@ class AzureDevopsClient(HTTPBaseClient):
         }
         semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
 
-        async def fetch(publisher_id: str, event_type: str) -> list[WebhookSubscription]:
+        async def fetch(
+            publisher_id: str, event_type: str
+        ) -> list[WebhookSubscription]:
             async with semaphore:
                 return await self.generate_subscriptions_webhook_events(
                     publisher_id=publisher_id, event_type=event_type
