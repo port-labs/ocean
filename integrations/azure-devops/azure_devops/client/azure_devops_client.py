@@ -154,13 +154,13 @@ class AzureDevopsClient(HTTPBaseClient):
         organization_url: str,
         auth_provider: AuthProvider,
         webhook_auth_username: Optional[str] = None,
-        exclude_tag_filter: Optional[list[str]] = None,
+        excluded_tags: Optional[list[str]] = None,
     ) -> None:
         super().__init__(auth_provider)
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username
-        self.exclude_tag_filter = exclude_tag_filter
+        self.excluded_tags = excluded_tags
 
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
@@ -171,7 +171,7 @@ class AzureDevopsClient(HTTPBaseClient):
             ocean.integration_config["organization_url"].strip("/"),
             auth_provider,
             ocean.integration_config.get("webhook_auth_username"),
-            ocean.integration_config.get("exclude_tag_filter"),
+            ocean.integration_config.get("excluded_tags"),
         )
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
@@ -183,7 +183,7 @@ class AzureDevopsClient(HTTPBaseClient):
             ocean.integration_config["organization_url"].strip("/"),
             auth_provider,
             ocean.integration_config.get("webhook_auth_username"),
-            ocean.integration_config.get("exclude_tag_filter"),
+            ocean.integration_config.get("excluded_tags"),
         )
         return azure_devops_client
 
@@ -257,7 +257,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_projects(
         self, sync_default_team: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        exclude_tags = tuple(self.exclude_tag_filter) if self.exclude_tag_filter else ()
+        exclude_tags = tuple(self.excluded_tags) if self.excluded_tags else ()
         async for batch in self._generate_projects_cached(
             self._organization_base_url, sync_default_team, exclude_tags
         ):

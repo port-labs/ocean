@@ -50,13 +50,13 @@ class AzureDevopsClientManager:
         validate_azure_devops_config(config)
         auth_provider = build_auth_provider(config)
         webhook_auth_username = config.get("webhook_auth_username")
-        exclude_tag_filter = config.get("exclude_tag_filter")
+        excluded_tags = config.get("excluded_tags")
 
         if config.get("account_mode") == ACCOUNT_MODE_MULTIPLE:
             org_urls = parse_organization_urls(config.get("organization_urls"))
             clients = [
                 AzureDevopsClient(
-                    url, auth_provider, webhook_auth_username, exclude_tag_filter
+                    url, auth_provider, webhook_auth_username, excluded_tags
                 )
                 for url in org_urls
             ]
@@ -67,7 +67,7 @@ class AzureDevopsClientManager:
             org_url = config["organization_url"].strip("/")
             clients = [
                 AzureDevopsClient(
-                    org_url, auth_provider, webhook_auth_username, exclude_tag_filter
+                    org_url, auth_provider, webhook_auth_username, excluded_tags
                 )
             ]
             logger.info("AzureDevopsClientManager: Single Account mode")
