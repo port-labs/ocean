@@ -1,11 +1,12 @@
-from typing import Any, Type, cast
+from typing import Any, Type
+
+from aws.core.exporters.codepipeline.utils.base_pipeline_action import PipelineAction
 from aws.core.interfaces.action import Action, ActionMap
-from aws.core.helpers.utils import is_recoverable_aws_exception
 from loguru import logger
 import asyncio
 
 
-class GetPipelineActionsDetails(Action):
+class GetPipelineActionsDetails(PipelineAction):
     """Fetches pipeline details to extract action information."""
 
     async def _execute(self, pipeline_names: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -23,7 +24,7 @@ class GetPipelineActionsDetails(Action):
         return actions
 
     async def _fetch_pipeline_actions(self, pipeline_name: str) -> list[dict[str, Any]]:
-        pipeline_data = await self.client.get_pipeline(name=pipeline_name)
+        pipeline_data = await self._get_pipeline(pipeline_name)
         logger.info(f"Successfully fetched pipeline details for {pipeline_name}")
 
         actions = []
