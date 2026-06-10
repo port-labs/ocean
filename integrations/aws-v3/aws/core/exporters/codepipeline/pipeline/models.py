@@ -5,20 +5,20 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 
 class PipelineProperties(BaseModel):
-    Arn: Optional[str] = None
-    ArtifactStore: Optional[dict[str, Any]] = None
-    ArtifactStores: Dict[str, dict[str, Any]] = Field(default_factory=dict)
-    Created: Optional[datetime] = None
-    ExecutionMode: Optional[str] = None
-    Name: str = Field(default_factory=str)
-    PipelineType: Optional[str] = None
-    RoleArn: Optional[str] = None
-    Stages: List[dict[str, Any]] = Field(default_factory=list)
-    Tags: Dict[str, str] = Field(default_factory=dict)
-    Triggers: List[Dict[str, Any]] = Field(default_factory=list)
-    Updated: Optional[datetime] = None
-    Variables: List[Dict[str, Any]] = Field(default_factory=list)
-    Version: Optional[int] = None
+    artifactStore: Optional[dict[str, Any]] = Field(default=None, alias="ArtifactStore")
+    artifactStores: Optional[Dict[str, dict[str, Any]]] = Field(default=None, alias="ArtifactStores")
+    created: Optional[datetime] = Field(default=None, alias="Created")
+    executionMode: Optional[str] = Field(default=None, alias="ExecutionMode")
+    name: str = Field(default_factory=str, alias="Name")
+    pipelineArn: Optional[str] = Field(default=None, alias="PipelineArn")
+    pipelineType: Optional[str] = Field(default=None, alias="PipelineType")
+    roleArn: Optional[str] = Field(default=None, alias="RoleArn")
+    stages: List[dict[str, Any]] = Field(default_factory=list, alias="Stages")
+    tags: Dict[str, str] = Field(default_factory=dict, alias="Tags")
+    triggers: List[Dict[str, Any]] = Field(default_factory=list, alias="Triggers")
+    updated: Optional[datetime] = Field(default=None, alias="Updated")
+    variables: List[Dict[str, Any]] = Field(default_factory=list, alias="Variables")
+    version: Optional[int] = Field(default=None, alias="Version")
 
     class Config:
         extra = "ignore"

@@ -10,17 +10,7 @@ class ListPipelinesAction(Action):
     """Processes the initial list of pipelines from AWS."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        return [
-            {
-                "Name": resource.get("name", ""),
-                "Version": resource.get("version"),
-                "Created": resource.get("created"),
-                "Updated": resource.get("updated"),
-                "PipelineType": resource.get("pipelineType"),
-                "ExecutionMode": resource.get("executionMode"),
-            }
-            for resource in resources
-        ]
+        return resources
 
 
 class GetPipelineDetailsAction(PipelineAction):
@@ -52,23 +42,9 @@ class GetPipelineDetailsAction(PipelineAction):
         response = await self._get_pipeline(pipeline_name)
         logger.info(f"Successfully fetched details for pipeline {pipeline_name}")
 
-        pipeline = response.get("pipeline", {})
-        metadata = response.get("metadata", {})
-
         return {
-            "Name": pipeline.get("name", pipeline_name),
-            "Arn": metadata.get("pipelineArn", ""),
-            "RoleArn": pipeline.get("roleArn", ""),
-            "ArtifactStore": pipeline.get("artifactStore"),
-            "ArtifactStores": pipeline.get("artifactStores", []),
-            "Stages": pipeline.get("stages", []),
-            "Version": pipeline.get("version"),
-            "ExecutionMode": pipeline.get("executionMode"),
-            "PipelineType": pipeline.get("pipelineType"),
-            "Variables": pipeline.get("variables", []),
-            "Triggers": pipeline.get("triggers", []),
-            "Created": metadata.get("created"),
-            "Updated": metadata.get("updated"),
+            **response.get("metadata", {}),
+            **response.get("pipeline", {}),
         }
 
 
@@ -91,6 +67,7 @@ class GetPipelineTagsAction(PipelineAction):
                 logger.error(
                     f"Error fetching tags for pipeline '{pipeline_name}': {tag_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], tag_result))
         return results
@@ -104,7 +81,7 @@ class GetPipelineTagsAction(PipelineAction):
 
             if not pipeline_arn:
                 logger.warning(f"No ARN found for pipeline {pipeline_name}")
-                return {"Tags": {}}
+                return {"tags": {}}
 
             response = await self.client.list_tags_for_resource(
                 resourceArn=pipeline_arn
@@ -114,17 +91,17 @@ class GetPipelineTagsAction(PipelineAction):
             tags_dict = {tag.get("key", ""): tag.get("value", "") for tag in tags_list}
 
             logger.info(f"Successfully fetched tags for pipeline {pipeline_name}")
-            return {"Tags": tags_dict}
+            return {"tags": tags_dict}
 
         except self.client.exceptions.PipelineNotFoundException:
             logger.warning(f"Pipeline {pipeline_name} not found when fetching tags")
-            return {"Tags": {}}
+            return {"tags": {}}
         except self.client.exceptions.ResourceNotFoundException:
             logger.warning(f"No tags found for pipeline {pipeline_name}")
-            return {"Tags": {}}
+            return {"tags": {}}
         except Exception as e:
             logger.error(f"Error fetching tags for pipeline {pipeline_name}: {e}")
-            return {"Tags": {}}
+            return {"tags": {}}
 
 
 class PipelineActionsMap(ActionMap):

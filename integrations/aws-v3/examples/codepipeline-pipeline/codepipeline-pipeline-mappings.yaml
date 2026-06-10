@@ -7,11 +7,11 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .Properties.Arn
+          identifier: .Properties.PipelineArn
           title: .Properties.Name
           blueprint: '"codePipeline"'
           properties:
-            arn: .Properties.Arn
+            arn: .Properties.PipelineArn
             roleArn: .Properties.RoleArn
             executionMode: .Properties.ExecutionMode
             pipelineType: .Properties.PipelineType
