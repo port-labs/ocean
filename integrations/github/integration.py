@@ -648,12 +648,59 @@ class GithubWorkflowConfig(ResourceConfig):
     )
 
 
+class GithubWorkflowRunSelector(RepoSearchSelector):
+    statuses: Optional[
+        list[
+            Literal[
+                "completed",
+                "action_required",
+                "cancelled",
+                "failure",
+                "neutral",
+                "skipped",
+                "stale",
+                "success",
+                "timed_out",
+                "in_progress",
+                "queued",
+                "requested",
+                "waiting",
+                "pending",
+            ]
+        ]
+    ] = Field(
+        title="Statuses",
+        default=None,
+        description="Filter workflow runs by status or conclusion. Accepts a list of values. Each additional status value results in one extra API call per workflow — keep the list small.",
+    )
+    since: Optional[int] = Field(
+        title="Lookback Days",
+        default=None,
+        ge=1,
+        description="Only fetch workflow runs created within the last N days. Takes precedence over sinceDate when both are set.",
+    )
+    since_date: Optional[str] = Field(
+        title="Since Date",
+        default=None,
+        description="Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Ignored if since is set.",
+    )
+
+    @property
+    def created_after(self) -> Optional[str]:
+        if self.since is not None:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=self.since)
+            return f">={cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        if self.since_date is not None:
+            return f">={self.since_date}"
+        return None
+
+
 class GithubWorkflowRunConfig(ResourceConfig):
     kind: Literal[ObjectKind.WORKFLOW_RUN] = Field(
         title="Github Workflow Run",
         description="Github workflow run resource kind.",
     )
-    selector: RepoSearchSelector = Field(
+    selector: GithubWorkflowRunSelector = Field(
         title="Workflow run selector",
         description="Selector for the workflow run resource.",
     )
