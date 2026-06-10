@@ -16,9 +16,7 @@ class GetProjectDetailsAction(Action):
     async def _execute(self, resources: List[str]) -> List[Dict[str, Any]]:
         response = await self.client.batch_get_projects(names=resources)
         projects = response.get("projects", [])
-        logger.info(
-            f"Successfully fetched details for {len(projects)} CodeBuild projects"
-        )
+        logger.info(f"Fetched details for {len(projects)} projects")
 
         return projects
 
