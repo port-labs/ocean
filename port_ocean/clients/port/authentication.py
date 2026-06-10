@@ -36,7 +36,6 @@ class PortAuthentication:
         integration_identifier: str,
         integration_type: str,
         integration_version: str,
-        ingest_url: str,
     ):
         self.client = client
         self.api_url = api_url
@@ -45,7 +44,6 @@ class PortAuthentication:
         self.integration_identifier = integration_identifier
         self.integration_type = integration_type
         self.integration_version = integration_version
-        self.ingest_url = ingest_url
         self.last_token_object: TokenResponse | None = None
 
     async def _get_token(self, client_id: str, client_secret: str) -> TokenResponse:
@@ -59,6 +57,7 @@ class PortAuthentication:
         response = await self.client.post(
             f"{self.api_url}/auth/access_token",
             json=credentials,
+            headers={"User-Agent": self.user_agent()},
             extensions={"retryable": True},
         )
         handle_port_status_code(response)
@@ -90,6 +89,11 @@ class PortAuthentication:
                 self.client_id, self.client_secret
             )
         return self.last_token_object.full_token
+
+    async def refresh_token(self) -> str:
+        """Fetch a new access token, even if the cached token is not yet expired locally."""
+        self.last_token_object = None
+        return await self.token
 
     async def is_machine_user(self) -> bool:
         # Ensure self.last_token_object is populated

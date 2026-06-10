@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
@@ -22,10 +22,25 @@ def mock_webhook_event() -> Any:
     event = MagicMock(spec=WebhookEvent)
     event.payload = {
         "notifications": [{"trigger": "run:completed", "run_status": "applied"}],
+        "workspace_id": "ws-test123",
         "workspace_name": "test-workspace",
         "organization_name": "test-org",
     }
     return event
+
+
+@pytest.fixture
+def resource_config_current_only_true() -> MagicMock:
+    config = MagicMock()
+    config.selector.current_only = True
+    return config
+
+
+@pytest.fixture
+def resource_config_current_only_false() -> MagicMock:
+    config = MagicMock()
+    config.selector.current_only = False
+    return config
 
 
 class TestGetMatchingKinds:
@@ -104,14 +119,16 @@ class TestShouldProcessEvent:
         assert result is False
 
 
-class TestHandleEvent:
+class TestHandleEventCurrentOnlyFalse:
     @pytest.mark.asyncio
-    async def test_handle_event_success(self, processor: Any) -> None:
+    async def test_handle_event_fetches_all_historical_state_files(
+        self, processor: Any, resource_config_current_only_false: MagicMock
+    ) -> None:
         payload: dict[str, Any] = {
+            "workspace_id": "ws-test123",
             "workspace_name": "test-workspace",
             "organization_name": "test-org",
         }
-        resource_config = MagicMock()
         state_files = [
             {"version": 4, "resources": []},
             {"version": 4, "resources": [{"type": "aws_instance"}]},
@@ -129,7 +146,9 @@ class TestHandleEvent:
         ) as mock_init:
             mock_init.return_value = mock_client
 
-            result = await processor.handle_event(payload, resource_config)
+            result = await processor.handle_event(
+                payload, resource_config_current_only_false
+            )
 
             assert isinstance(result, WebhookEventRawResults)
             assert len(result.updated_raw_results) == 2
@@ -137,12 +156,14 @@ class TestHandleEvent:
             mock_init.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_handle_event_no_state_files(self, processor: Any) -> None:
+    async def test_handle_event_no_state_files(
+        self, processor: Any, resource_config_current_only_false: MagicMock
+    ) -> None:
         payload: dict[str, Any] = {
+            "workspace_id": "ws-test123",
             "workspace_name": "test-workspace",
             "organization_name": "test-org",
         }
-        resource_config = MagicMock()
 
         mock_client = MagicMock()
 
@@ -156,19 +177,23 @@ class TestHandleEvent:
         ) as mock_init:
             mock_init.return_value = mock_client
 
-            result = await processor.handle_event(payload, resource_config)
+            result = await processor.handle_event(
+                payload, resource_config_current_only_false
+            )
 
             assert isinstance(result, WebhookEventRawResults)
             assert len(result.updated_raw_results) == 0
             assert result.deleted_raw_results == []
 
     @pytest.mark.asyncio
-    async def test_handle_event_multiple_batches(self, processor: Any) -> None:
+    async def test_handle_event_multiple_batches(
+        self, processor: Any, resource_config_current_only_false: MagicMock
+    ) -> None:
         payload: dict[str, Any] = {
+            "workspace_id": "ws-test123",
             "workspace_name": "test-workspace",
             "organization_name": "test-org",
         }
-        resource_config = MagicMock()
 
         mock_client = MagicMock()
 
@@ -183,7 +208,9 @@ class TestHandleEvent:
         ) as mock_init:
             mock_init.return_value = mock_client
 
-            result = await processor.handle_event(payload, resource_config)
+            result = await processor.handle_event(
+                payload, resource_config_current_only_false
+            )
 
             assert isinstance(result, WebhookEventRawResults)
             assert len(result.updated_raw_results) == 2
@@ -191,14 +218,14 @@ class TestHandleEvent:
 
     @pytest.mark.asyncio
     async def test_handle_event_extracts_correct_payload_fields(
-        self, processor: Any
+        self, processor: Any, resource_config_current_only_false: MagicMock
     ) -> None:
         payload: dict[str, Any] = {
+            "workspace_id": "ws-test123",
             "workspace_name": "my-workspace",
             "organization_name": "my-org",
             "run_id": "run-123",
         }
-        resource_config = MagicMock()
 
         mock_client = MagicMock()
 
@@ -213,6 +240,137 @@ class TestHandleEvent:
         ) as mock_init:
             mock_init.return_value = mock_client
 
-            await processor.handle_event(payload, resource_config)
+            await processor.handle_event(payload, resource_config_current_only_false)
 
             mock_state_files_wrapped.assert_called_once_with("my-workspace", "my-org")
+
+
+class TestHandleEventCurrentOnlyTrue:
+    @pytest.mark.asyncio
+    async def test_handle_event_fetches_current_state_file_only(
+        self, processor: Any, resource_config_current_only_true: MagicMock
+    ) -> None:
+        payload: dict[str, Any] = {
+            "workspace_id": "ws-test123",
+            "workspace_name": "test-workspace",
+            "organization_name": "test-org",
+        }
+        state_version = {
+            "id": "sv-123",
+            "attributes": {"hosted-state-download-url": "https://example.com/state"},
+        }
+        state_file = {"version": 4, "resources": [{"type": "aws_instance"}]}
+
+        mock_client = MagicMock()
+        mock_client.get_current_state_version_for_workspace = AsyncMock(
+            return_value=state_version
+        )
+        mock_client.download_state_file = AsyncMock(return_value=state_file)
+
+        with patch(
+            "webhook_processors.state_file_webhook_processor.init_terraform_client"
+        ) as mock_init:
+            mock_init.return_value = mock_client
+
+            result = await processor.handle_event(
+                payload, resource_config_current_only_true
+            )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert len(result.updated_raw_results) == 1
+            assert result.updated_raw_results[0] == state_file
+            assert result.deleted_raw_results == []
+            mock_client.get_current_state_version_for_workspace.assert_called_once_with(
+                "ws-test123"
+            )
+            mock_client.download_state_file.assert_called_once_with(state_version)
+
+    @pytest.mark.asyncio
+    async def test_handle_event_no_state_version_returns_empty(
+        self, processor: Any, resource_config_current_only_true: MagicMock
+    ) -> None:
+        payload: dict[str, Any] = {
+            "workspace_id": "ws-test123",
+            "workspace_name": "test-workspace",
+            "organization_name": "test-org",
+        }
+
+        mock_client = MagicMock()
+        mock_client.get_current_state_version_for_workspace = AsyncMock(
+            return_value=None
+        )
+
+        with patch(
+            "webhook_processors.state_file_webhook_processor.init_terraform_client"
+        ) as mock_init:
+            mock_init.return_value = mock_client
+
+            result = await processor.handle_event(
+                payload, resource_config_current_only_true
+            )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert len(result.updated_raw_results) == 0
+            assert result.deleted_raw_results == []
+            mock_client.get_current_state_version_for_workspace.assert_called_once_with(
+                "ws-test123"
+            )
+
+    @pytest.mark.asyncio
+    async def test_handle_event_download_returns_none(
+        self, processor: Any, resource_config_current_only_true: MagicMock
+    ) -> None:
+        payload: dict[str, Any] = {
+            "workspace_id": "ws-test123",
+            "workspace_name": "test-workspace",
+            "organization_name": "test-org",
+        }
+        state_version = {
+            "id": "sv-123",
+            "attributes": {"hosted-state-download-url": None},
+        }
+
+        mock_client = MagicMock()
+        mock_client.get_current_state_version_for_workspace = AsyncMock(
+            return_value=state_version
+        )
+        mock_client.download_state_file = AsyncMock(return_value=None)
+
+        with patch(
+            "webhook_processors.state_file_webhook_processor.init_terraform_client"
+        ) as mock_init:
+            mock_init.return_value = mock_client
+
+            result = await processor.handle_event(
+                payload, resource_config_current_only_true
+            )
+
+            assert isinstance(result, WebhookEventRawResults)
+            assert len(result.updated_raw_results) == 0
+            assert result.deleted_raw_results == []
+
+    @pytest.mark.asyncio
+    async def test_handle_event_uses_workspace_id_from_payload(
+        self, processor: Any, resource_config_current_only_true: MagicMock
+    ) -> None:
+        payload: dict[str, Any] = {
+            "workspace_id": "ws-specific-id",
+            "workspace_name": "test-workspace",
+            "organization_name": "test-org",
+        }
+
+        mock_client = MagicMock()
+        mock_client.get_current_state_version_for_workspace = AsyncMock(
+            return_value=None
+        )
+
+        with patch(
+            "webhook_processors.state_file_webhook_processor.init_terraform_client"
+        ) as mock_init:
+            mock_init.return_value = mock_client
+
+            await processor.handle_event(payload, resource_config_current_only_true)
+
+            mock_client.get_current_state_version_for_workspace.assert_called_once_with(
+                "ws-specific-id"
+            )

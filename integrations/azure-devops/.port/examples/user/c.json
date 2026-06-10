@@ -1,0 +1,48 @@
+{
+  "user": {
+    "subjectKind": "user",
+    "metaType": "member",
+    "directoryAlias": "mdixon",
+    "domain": "8b2a3c91-11d2-4e89-a2c3-99b8d7621a55",
+    "principalName": "mdixon@technova.com",
+    "mailAddress": "mdixon@technova.com",
+    "origin": "aad",
+    "originId": "f7d5c3b1-a9e8-4211-b384-5c918a2b3c4d",
+    "displayName": "Miles Dixon",
+    "_links": {
+      "self": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/Users/aad.WzNhNGI1YzZkLTdlOGYtOWEwYi0xYzJkLTNlNGY1ZzZoN2k4"
+      },
+      "memberships": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/Memberships/aad.WzNhNGI1YzZkLTdlOGYtOWEwYi0xYzJkLTNlNGY1ZzZoN2k4"
+      },
+      "membershipState": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/MembershipStates/aad.WzNhNGI1YzZkLTdlOGYtOWEwYi0xYzJkLTNlNGY1ZzZoN2k4"
+      },
+      "storageKey": {
+        "href": "https://vssps.dev.azure.com/technova/_apis/Graph/StorageKeys/aad.WzNhNGI1YzZkLTdlOGYtOWEwYi0xYzJkLTNlNGY1ZzZoN2k4"
+      },
+      "avatar": {
+        "href": "[REDACTED]/_apis/GraphProfile/MemberAvatars/aad.WzNhNGI1YzZkLTdlOGYtOWEwYi0xYzJkLTNlNGY1ZzZoN2k4"
+      }
+    },
+    "url": "https://vssps.dev.azure.com/technova/_apis/Graph/Users/aad.WzNhNGI1YzZkLTdlOGYtOWEwYi0xYzJkLTNlNGY1ZzZoN2k4",
+    "descriptor": "aad.WzNhNGI1YzZkLTdlOGYtOWEwYi0xYzJkLTNlNGY1ZzZoN2k4"
+  },
+  "extensions": [],
+  "id": "22222222-3333-4444-5555-666666666666",
+  "accessLevel": {
+    "licensingSource": "account",
+    "accountLicenseType": "stakeholder",
+    "msdnLicenseType": "none",
+    "gitHubLicenseType": "none",
+    "licenseDisplayName": "Stakeholder",
+    "status": "active",
+    "statusMessage": "",
+    "assignmentSource": "unknown"
+  },
+  "lastAccessedDate": "2026-03-20T09:45:11.8542911Z",
+  "dateCreated": "2024-11-10T11:22:33.4455667Z",
+  "projectEntitlements": [],
+  "groupAssignments": []
+}

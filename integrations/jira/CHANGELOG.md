@@ -7,6 +7,561 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.39 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.7.38 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.7.37 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.7.36 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.7.35 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.7.34 (2026-06-02)
+
+
+### Improvements
+
+- Added `sprint` kind to sync Jira sprints into Port using the Jira Software Cloud Agile REST API.
+
+
+## 0.7.33 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.7.32 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.7.31 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.7.30 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.7.29 (2026-05-31)
+
+
+### Improvements
+
+- Added `backlog` kind to sync Backlog issues into Port using the Jira Software Cloud REST API.
+
+
+## 0.7.28 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.7.27 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.7.26 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.7.25 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 0.7.24 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 0.7.23 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 0.7.22 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 0.7.21 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 0.7.20 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 0.7.19 (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 0.7.18 (2026-05-22)
+
+
+### Improvements
+
+- Added support for syncing Jira Epics as a new `epic` kind in Port.
+
+
+## 0.7.17 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 0.7.16 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 0.7.15 (2026-05-20)
+
+
+### Improvements
+
+- Added support for Issue Worklogs to sync worklog entries from Jira issues into Port, including worklog author, time spent, and comments. This allows teams to track time spent on issues directly within Port and gain insights into effort distribution across projects and tasks.
+
+
+## 0.7.14 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 0.7.13 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 0.7.12 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 0.7.11 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 0.7.10 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 0.7.9 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 0.7.8 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 0.7.7 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 0.7.6 (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+## 0.7.5 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 0.7.4 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 0.7.3 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.7.2 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.7.1 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.7.0 (2026-04-23)
+
+
+### Improvements
+
+- Added `board` kind to sync Jira boards into Port using the Jira Software Cloud Agile REST API.
+
+
+## 0.6.26 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.6.25 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.6.24 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.6.23 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.6.22 (2026-04-19)
+
+
+### Improvements
+
+- After OAuth token refresh on 401 retry, persist bearer auth on the Jira HTTP client so new requests use the updated access token without repeating failed attempts.
+
+
+## 0.6.21 (2026-04-17)
+
+
+### Bug Fixes
+
+- Fix selector propagation for Jira
+
+
+## 0.6.20 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.6.19 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.6.18 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.6.17 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.6.16 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.6.15 (2026-04-07)
+
+
+### Improvements
+
+- Enhanced logging to provide clearer and more detailed insights into OAUTH processes
+
+
+## 0.6.14 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.6.13 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.6.12 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.6.11 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.6.10 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 0.6.9 (2026-04-01)
+
+
+### Bug Fixes
+
+- Fixed Jira OAuth sync abort on 401 by marking JQL search POST requests as retryable so token refresh is triggered correctly without affecting non-idempotent POST operations like webhook creation
+
+
+## 0.6.8 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 0.6.7 (2026-03-29)
+
+
+### Bug Fixes
+
+- Fixed rate limiter crashing on responses without rate limit headers (`int() argument must be a string, not 'NoneType'`).
+- Removed unsupported legacy beta header fallback (`X-Beta-RateLimit-*`) and aligned with official Jira Cloud rate limit headers.
+- Fixed conftest mock patching the wrong module (`port_ocean.helpers.async_client` → `port_ocean.utils.async_http`).
+
+
+## 0.6.6 (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.6.5 (2026-03-24)
+
+
+### Improvements
+
+- Renamed the `version` kind to `release`.
+
+
+## 0.6.4 (2026-03-22)
+
+
+### Improvements
+
+- Switched issue search to POST `/rest/api/3/search/jql` to avoid URL length limits
+- Unified reconcile and paginated issue search into `get_paginated_issues`
+
+
+## 0.6.3 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.6.3 (2026-03-22)
+
+
+### Improvements
+
+- Renamed the `version` kind to `release`.
+
+
+## 0.6.2 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.6.1 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.6.0 (2026-03-11)
+
+
+### Features
+
+- Added `version` as a standalone kind to sync Jira project releases as entities in Port.
+
+
+## 0.5.100 (2026-03-17)
+
+
+### Improvements
+
+- Issue webhook: log Jira webhook headers (x-atlassian-webhook-identifier, flow, retry) and issue key for traceability when authenticating.
+
+
 ## 0.5.99 (2026-03-17)
 
 

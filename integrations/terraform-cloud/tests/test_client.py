@@ -1,5 +1,6 @@
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+import httpx
 
 import pytest
 
@@ -928,3 +929,210 @@ class TestTerraformWebhookEvents:
             HealthAssessmentEvents.FAILED,
         ]
         assert TERRAFORM_WEBHOOK_EVENTS == expected_events
+
+
+class TestGetCurrentStateVersionForWorkspace:
+    @pytest.mark.asyncio
+    async def test_get_current_state_version_for_workspace_success(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        state_version_data = {
+            "id": "sv-123",
+            "type": "state-versions",
+            "attributes": {
+                "hosted-state-download-url": "https://archivist.terraform.io/state1",
+                "status": "finalized",
+            },
+        }
+        response = {"data": state_version_data}
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+            mock_send.return_value = response
+
+            result = await terraform_client.get_current_state_version_for_workspace(
+                "ws-123"
+            )
+
+            assert result == state_version_data
+            mock_send.assert_called_once_with("workspaces/ws-123/current-state-version")
+
+    @pytest.mark.asyncio
+    async def test_get_current_state_version_for_workspace_no_state(
+        self, terraform_client: TerraformClient
+    ) -> None:
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+            mock_send.side_effect = httpx.HTTPStatusError(
+                "Not found", request=MagicMock(), response=mock_response
+            )
+
+            result = await terraform_client.get_current_state_version_for_workspace(
+                "ws-no-state"
+            )
+
+            assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_current_state_version_for_workspace_raises_on_other_errors(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+            mock_send.side_effect = httpx.HTTPStatusError(
+                "Server error", request=MagicMock(), response=mock_response
+            )
+
+            with pytest.raises(httpx.HTTPStatusError):
+                await terraform_client.get_current_state_version_for_workspace(
+                    "ws-error"
+                )
+
+
+class TestGetCurrentStateFiles:
+    @pytest.mark.asyncio
+    async def test_get_current_state_files_success(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        workspaces = [
+            {"id": "ws-1", "attributes": {"name": "workspace-1"}},
+            {"id": "ws-2", "attributes": {"name": "workspace-2"}},
+        ]
+        state_version_1 = {
+            "id": "sv-1",
+            "attributes": {
+                "hosted-state-download-url": "https://archivist.terraform.io/state1",
+                "status": "finalized",
+            },
+            "relationships": {
+                "workspace": {"data": {"id": "ws-1", "type": "workspaces"}},
+            },
+        }
+        state_version_2 = {
+            "id": "sv-2",
+            "attributes": {
+                "hosted-state-download-url": "https://archivist.terraform.io/state2",
+                "status": "finalized",
+            },
+            "relationships": {
+                "workspace": {"data": {"id": "ws-2", "type": "workspaces"}},
+            },
+        }
+        state_file_content = {"version": 4, "resources": []}
+
+        with (
+            patch.object(
+                terraform_client, "get_paginated_workspaces"
+            ) as mock_workspaces,
+            patch.object(
+                terraform_client,
+                "get_current_state_version_for_workspace",
+                new_callable=AsyncMock,
+            ) as mock_current,
+            patch.object(
+                terraform_client, "send_api_request", new_callable=AsyncMock
+            ) as mock_send,
+        ):
+
+            async def workspace_generator() -> Any:
+                yield workspaces
+
+            mock_workspaces.return_value = workspace_generator()
+            mock_current.side_effect = [state_version_1, state_version_2]
+            mock_send.return_value = state_file_content
+
+            result = []
+            async for batch in terraform_client.get_current_state_files():
+                result.extend(batch)
+
+            assert len(result) == 2
+            assert mock_current.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_get_current_state_files_skips_workspaces_without_state(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        workspaces = [
+            {"id": "ws-1", "attributes": {"name": "workspace-1"}},
+            {"id": "ws-2", "attributes": {"name": "workspace-no-state"}},
+        ]
+        state_version_1 = {
+            "id": "sv-1",
+            "attributes": {
+                "hosted-state-download-url": "https://archivist.terraform.io/state1",
+                "status": "finalized",
+            },
+            "relationships": {
+                "workspace": {"data": {"id": "ws-1", "type": "workspaces"}},
+            },
+        }
+        state_file_content = {"version": 4, "resources": []}
+
+        with (
+            patch.object(
+                terraform_client, "get_paginated_workspaces"
+            ) as mock_workspaces,
+            patch.object(
+                terraform_client,
+                "get_current_state_version_for_workspace",
+                new_callable=AsyncMock,
+            ) as mock_current,
+            patch.object(
+                terraform_client, "send_api_request", new_callable=AsyncMock
+            ) as mock_send,
+        ):
+
+            async def workspace_generator() -> Any:
+                yield workspaces
+
+            mock_workspaces.return_value = workspace_generator()
+            mock_current.side_effect = [state_version_1, None]
+            mock_send.return_value = state_file_content
+
+            result = []
+            async for batch in terraform_client.get_current_state_files():
+                result.extend(batch)
+
+            assert len(result) == 1
+            assert result[0]["__state_version_id"] == "sv-1"
+
+    @pytest.mark.asyncio
+    async def test_get_current_state_files_empty_when_no_workspaces_have_state(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        workspaces = [
+            {"id": "ws-1", "attributes": {"name": "workspace-1"}},
+        ]
+
+        with (
+            patch.object(
+                terraform_client, "get_paginated_workspaces"
+            ) as mock_workspaces,
+            patch.object(
+                terraform_client,
+                "get_current_state_version_for_workspace",
+                new_callable=AsyncMock,
+            ) as mock_current,
+        ):
+
+            async def workspace_generator() -> Any:
+                yield workspaces
+
+            mock_workspaces.return_value = workspace_generator()
+            mock_current.return_value = None
+
+            result = []
+            async for batch in terraform_client.get_current_state_files():
+                result.extend(batch)
+
+            assert len(result) == 0

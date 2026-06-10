@@ -1,11 +1,37 @@
-from copy import deepcopy
-from enum import StrEnum
-from loguru import logger
-from typing import Any, Union
 import json
+import re
+from copy import deepcopy
+from enum import IntEnum
+from enum import StrEnum
+from typing import Any, Union
 
-# import strictyaml as syaml
-from yaml import safe_load, YAMLError
+from loguru import logger
+from yaml import YAMLError, safe_load
+
+# GitLab project/group access-token bots have system-generated usernames like
+# "project_<id>_bot_<hex>" or "group_<id>_bot_<hex>".  The members/all API
+# does NOT return a `bot` field, so we fall back to pattern detection.
+_BOT_USERNAME_RE = re.compile(r"^(?:project|group)_\d+_bot_[a-f0-9]+$")
+
+
+def is_bot_member(member: dict[str, Any]) -> bool:
+    """Return True when *member* looks like a GitLab bot / access-token user.
+
+    Priority:
+    1. Explicit ``bot=True`` from the API  → bot.
+    2. Explicit ``bot=False`` from the API → not a bot (trust the API).
+    3. ``bot`` field absent or ``None``    → fall back to username pattern.
+       GitLab's /members/all endpoint omits the ``bot`` field for access-token
+       users, so we detect them by their system-generated username format.
+    """
+    bot = member.get("bot")
+    if bot is True:
+        return True
+    if bot is False:
+        return False
+    # bot field absent or None — fall back to username pattern
+    username: str = member.get("username") or ""
+    return bool(_BOT_USERNAME_RE.match(username))
 
 
 class ObjectKind(StrEnum):
@@ -14,6 +40,7 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
     MERGE_REQUEST = "merge-request"
     GROUP_WITH_MEMBERS = "group-with-members"
+    PROJECT_WITH_MEMBERS = "project-with-members"
     MEMBER = "member"
     FILE = "file"
     PIPELINE = "pipeline"
@@ -21,6 +48,7 @@ class ObjectKind(StrEnum):
     FOLDER = "folder"
     TAG = "tag"
     RELEASE = "release"
+    BRANCH = "branch"
 
 
 def parse_file_content(
@@ -73,6 +101,29 @@ def parse_file_content(
         return content
 
 
+def build_search_query(search_path: str) -> str:
+    """Build a GitLab search query string from a file path pattern.
+
+    The query always includes a ``filename:`` modifier so results are filtered
+    by file name rather than just file contents.  When a directory component is
+    present a ``path:`` modifier is also appended.  Glob characters (``*``) are
+    stripped from the keyword because GitLab does not support them there, but
+    they are preserved inside the ``filename:`` and ``path:`` modifiers.
+
+    Examples:
+        ``readme.md``            -> ``readme.md filename:readme.md``
+        ``src/config/app.json``  -> ``app.json path:src/config filename:app.json``
+        ``home/directory/*.txt`` -> ``.txt path:home/directory filename:*.txt``
+        ``home/*/*.txt``         -> ``.txt path:home/* filename:*.txt``
+    """
+    if "/" not in search_path:
+        keyword = search_path.replace("*", "")
+        return f"{keyword} filename:{search_path}"
+    directory, filename = search_path.rsplit("/", 1)
+    keyword = filename.replace("*", "")
+    return f"{keyword} path:{directory} filename:{filename}"
+
+
 def enrich_resources_with_project(
     resources: list[dict[str, Any]], project_map: dict[str, Any]
 ) -> list[dict[str, Any]]:
@@ -93,3 +144,11 @@ def enrich_resources_with_project(
         enriched_resource = {**resource, "__project": project_map.get(project_id)}
         enriched_resources.append(enriched_resource)
     return enriched_resources
+
+
+class GitlabAccessLevel(IntEnum):
+    GUEST = 10
+    REPORTER = 20
+    DEVELOPER = 30
+    MAINTAINER = 40
+    OWNER = 50

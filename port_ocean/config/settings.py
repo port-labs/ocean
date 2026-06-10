@@ -1,10 +1,9 @@
 import platform
 from typing import Any, Literal, Optional, Type
 
-from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
+from pydantic import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
 from pydantic.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
-from pydantic.fields import Field
 from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
@@ -17,6 +16,7 @@ from port_ocean.core.models import (
     CreatePortResourcesOrigin,
     EventListenerType,
     ProcessExecutionMode,
+    ProcessingMode,
     Runtime,
 )
 from port_ocean.utils.misc import (
@@ -26,6 +26,22 @@ from port_ocean.utils.misc import (
 )
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
+
+
+class SslX509Settings(BaseOceanModel):
+    """X.509 verification profile applied when ``verify`` is true."""
+
+    strict: bool = True
+
+
+class SslClientSettings(BaseOceanModel):
+    verify: bool = True
+    x509: SslX509Settings = Field(default_factory=SslX509Settings)
+
+
+class SslSettings(BaseOceanModel):
+    port: SslClientSettings = Field(default_factory=SslClientSettings)
+    third_party: SslClientSettings = Field(default_factory=SslClientSettings)
 
 
 class ApplicationSettings(BaseSettings):
@@ -54,7 +70,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
-    ingest_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://ingest.getport.io")
+    feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
@@ -102,6 +118,10 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     allow_environment_variables_jq_access: bool = True
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
+    status_heartbeat_interval_seconds: int = Field(
+        default=10,  # Interval in seconds for sending metrics heartbeat (liveness).
+        gt=0,
+    )
     client_timeout: int = 60
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
@@ -115,6 +135,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         )
     )
     event_workers_count: int = 1
+    events_debug_logging: bool = False
     # If an identifier or type is not provided, it will be generated based on the integration name
     integration: IntegrationSettings = Field(
         default_factory=lambda: IntegrationSettings(type="", identifier="")
@@ -136,6 +157,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
+    lakehouse_buffer_interval_seconds: float = 10.0
+    lakehouse_buffer_max_count: int = 50
+    processing_mode: ProcessingMode = ProcessingMode.ocean_core
     yield_items_to_parse_batch_size: int = 200
     process_in_queue_timeout: int = 120
     process_in_queue_max_workers: int = Field(
@@ -146,6 +170,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     actions_processor: ActionsProcessorSettings = Field(
         default_factory=lambda: ActionsProcessorSettings()
     )
+    ssl: SslSettings = Field(default_factory=SslSettings)
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(

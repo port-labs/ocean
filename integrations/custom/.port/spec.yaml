@@ -2,16 +2,17 @@ title: Ocean Custom
 description: Universal HTTP REST API integration with dynamic path parameters and flexible authentication
 icon: RestAPI
 docs: https://docs.port.io/build-your-software-catalog/custom-integration/ocean-custom-integration/overview
+formMappingEnabled: true
 features:
   - type: exporter
-    section: Other
+    section: Build Your Own Exporter
     resources:
       - kind: dynamic
         description: HTTP API resources - kind is the endpoint path (e.g., /api/v1/users)
 configurations:
   - name: baseUrl
     required: true
-    type: string
+    type: url
     description: "The base URL of your HTTP API, for example: https://api.example.com"
   - name: authType
     required: false
@@ -77,8 +78,8 @@ configurations:
     required: false
     type: string
     default: "none"
-    description: "Pagination method: none, offset, page, cursor, or next_link"
-    enum: ["offset", "page", "cursor", "next_link", "none"]
+    description: "Pagination method: none, offset, page, cursor, next_link, or header_link"
+    enum: ["offset", "page", "cursor", "next_link", "header_link", "none"]
   - name: pageSize
     required: false
     type: string
@@ -141,6 +142,16 @@ configurations:
           in: ["offset", "page", "cursor"]
         then:
           required: false
+  - name: lastPagePath
+    required: false
+    type: string
+    description: "Dot-notation path to a boolean field where truthy means 'this is the last page' (e.g., Spring Data REST 'data.last'). Inverted semantics vs hasMorePath. If both are set, hasMorePath takes precedence."
+    dependencies:
+      - on: paginationType
+        when:
+          equals: page
+        then:
+          required: false
   - name: nextLinkPath
     required: false
     type: string
@@ -150,6 +161,17 @@ configurations:
       - on: paginationType
         when:
           equals: next_link
+        then:
+          required: false
+  - name: headerLinkRel
+    required: false
+    type: string
+    default: "next"
+    description: "The rel value to look for in the Link header when using header_link pagination. Default is 'next'. Some APIs use different values like 'nextPage'."
+    dependencies:
+      - on: paginationType
+        when:
+          equals: header_link
         then:
           required: false
   - name: timeout
@@ -198,7 +220,9 @@ interface:
         - startPage
         - cursorPath
         - hasMorePath
+        - lastPagePath
         - nextLinkPath
+        - headerLinkRel
         - timeout
         - verifySsl
         - maxConcurrentRequests
@@ -207,7 +231,8 @@ installationDocs:
     - name: SaasOAuth2
       enabled: false
     - name: Saas
-      enabled: false
+      enabled: true
+      docs: build-your-software-catalog/custom-integration/ocean-custom-integration/installation-types/hosted-by-port
   githubWorkflow:
     enabled: true
     docs: build-your-software-catalog/custom-integration/ocean-custom-integration/overview

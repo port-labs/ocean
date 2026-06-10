@@ -15,6 +15,37 @@ import httpx
 # ============================================================================
 
 
+def _dict_response_has_next(
+    response_data: Dict[str, Any],
+    config: Dict[str, Any],
+    get_nested_value: Callable[[Dict[str, Any], str], Any],
+    *,
+    default_has_next: Callable[[Dict[str, Any]], bool],
+) -> bool:
+    """Determine whether more pages exist. Precedence:
+
+    - has_more_path: truthy resolved value means continue.
+    - last_page_path: truthy resolved value means stop (inverted).
+    - default_has_next: handler-specific heuristic fallback.
+
+    None (missing field) at any path falls through to the next check.
+    """
+    has_more_path = config.get("has_more_path", "")
+    last_page_path = config.get("last_page_path", "")
+
+    if has_more_path:
+        value = get_nested_value(response_data, has_more_path)
+        if value is not None:
+            return bool(value)
+
+    if last_page_path:
+        value = get_nested_value(response_data, last_page_path)
+        if value is not None:
+            return not bool(value)
+
+    return default_has_next(response_data)
+
+
 class PaginationHandler:
     """Base class for pagination handlers"""
 
@@ -24,7 +55,13 @@ class PaginationHandler:
         config: Dict[str, Any],
         extract_items_fn: Callable[[Any], List[Dict[str, Any]]],
         make_request_fn: Callable[
-            [str, str, Dict[str, Any], Dict[str, str], Optional[Dict[str, Any]]],
+            [
+                str,
+                str,
+                Optional[Dict[str, Any]],
+                Dict[str, str],
+                Optional[Dict[str, Any]],
+            ],
             Awaitable[httpx.Response],
         ],
         get_nested_value_fn: Callable[[Dict[str, Any], str], Any],
@@ -80,9 +117,15 @@ class PagePagination(PaginationHandler):
         page_param = self.config.get("pagination_param", "page")
         size_param = self.config.get("size_param", "size")
         start_page = int(self.config.get("start_page", 1))
-        has_more_path = self.config.get("has_more_path", "")
 
         page = start_page
+
+        def _page_default_has_next(data: Dict[str, Any]) -> bool:
+            return (
+                data.get("next_page") is not None
+                or data.get("next") is not None
+                or data.get("hasMore", False)
+            )
 
         while True:
             current_params = {
@@ -101,14 +144,12 @@ class PagePagination(PaginationHandler):
 
             # Check for next page
             if isinstance(response_data, dict):
-                if has_more_path:
-                    has_next = self.get_nested_value(response_data, has_more_path)
-                else:
-                    has_next = (
-                        response_data.get("next_page") is not None
-                        or response_data.get("next") is not None
-                        or response_data.get("hasMore", False)
-                    )
+                has_next = _dict_response_has_next(
+                    response_data,
+                    self.config,
+                    self.get_nested_value,
+                    default_has_next=_page_default_has_next,
+                )
                 if not has_next:
                     break
             else:
@@ -262,7 +303,7 @@ class NextLinkPagination(PaginationHandler):
         next_link_path = self.config.get("next_link_path", "@odata.nextLink")
 
         current_url = url
-        current_params = params
+        current_params: Optional[Dict[str, Any]] = params
 
         while True:
             response = await self.make_request(
@@ -283,7 +324,48 @@ class NextLinkPagination(PaginationHandler):
                 break
 
             current_url = next_url
-            current_params = {}
+            current_params = None
+
+
+class HeaderLinkPagination(PaginationHandler):
+    """Pagination using RFC 5988 Link header.
+
+    Uses httpx's built-in response.links property to parse Link headers.
+    The next link URL is used directly for subsequent requests.
+
+    Example Link header:
+        Link: <https://api.example.com/items?page=2>; rel="next",
+              <https://api.example.com/items?page=10>; rel="last"
+    """
+
+    async def fetch_all(
+        self,
+        url: str,
+        method: str,
+        params: Dict[str, Any],
+        headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenType[List[Dict[str, Any]], None]:
+        link_rel = self.config.get("header_link_rel", "next")
+
+        current_url = url
+        current_params: Optional[Dict[str, Any]] = params
+
+        while True:
+            response = await self.make_request(
+                current_url, method, current_params, headers, body
+            )
+            response_data = response.json()
+
+            yield [response_data]
+
+            next_url = response.links.get(link_rel, {}).get("url")
+
+            if not next_url:
+                break
+
+            current_url = next_url
+            current_params = None
 
 
 # Registry of available pagination handlers
@@ -293,6 +375,7 @@ PAGINATION_HANDLERS = {
     "offset": OffsetPagination,
     "cursor": CursorPagination,
     "next_link": NextLinkPagination,
+    "header_link": HeaderLinkPagination,
 }
 
 
@@ -302,7 +385,7 @@ def get_pagination_handler(
     config: Dict[str, Any],
     extract_items_fn: Callable[[Any], List[Dict[str, Any]]],
     make_request_fn: Callable[
-        [str, str, Dict[str, Any], Dict[str, str], Optional[Dict[str, Any]]],
+        [str, str, Optional[Dict[str, Any]], Dict[str, str], Optional[Dict[str, Any]]],
         Awaitable[httpx.Response],
     ],
     get_nested_value_fn: Callable[[Dict[str, Any], str], Any],

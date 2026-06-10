@@ -7,6 +7,358 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.43.16 (2026-06-09)
+
+### Bug Fixes
+
+- Fixed action execution error logs failing to ship to Port when the execution manager passed raw `Exception` objects in log extra fields (not JSON serializable). All execution manager error handlers now use `logger.exception(..., error=str(e))` so failed run errors and tracebacks appear in the integration event log.
+
+## 0.43.15 (2026-06-03)
+
+### Bug Fixes
+
+- `LakehouseBuffer.flush()` is now best-effort in ocean-core (non-DSP) mode: transport errors such as `ConnectError` are logged as warnings and the buffer is discarded, allowing the resync to continue and entities to be upserted via the standard ocean-core path. In DSP mode (where the lake write is the only data-delivery path) flush failures remain fatal. This fixes an issue where a self-hosted integration that cannot reach the lakehouse ingest endpoint would crash its processing subprocess and leave the affected kind stuck at `syncing` indefinitely.
+- `_process_resource` now catches unexpected exceptions from `_register_in_batches` and reports the kind as `failed` via `report_kind_sync_metrics` before the subprocess exits. Previously any unhandled exception would crash the subprocess silently and leave the kind status stuck at `syncing` until the server-side stale-heartbeat timeout (~10 min).
+
+## 0.43.14 (2026-06-03)
+
+### Improvements
+
+- Added a count-based flush condition to the lakehouse buffer: the buffer now flushes automatically when the number of buffered items reaches `lakehouse_buffer_max_count` (default: 50). The threshold is configurable via the `OCEAN__LAKEHOUSE_BUFFER_MAX_COUNT` environment variable.
+
+## 0.43.13 (2026-06-03)
+
+### Improvements
+
+- Polling event listener: always poll the integration resync-request endpoint when the integration document's `updatedAt` is unchanged (removed organization feature flag `OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED`).
+
+## 0.43.12 (2026-06-02)
+
+### Bug Fixes
+
+- Mark DSP mode active logs with `local_only` so they are not shipped to the integration event log.
+
+## 0.43.11 (2026-06-01)
+
+### Bug Fixes
+
+- Added `local_only` log routing: logs marked with `logger.bind(local_only=True)` are written to stdout only and never shipped to the integration Event log ingest.
+
+## 0.43.10 (2026-06-01)
+
+### Improvements
+
+- Skip reporting integration sync metrics to Port when DSP mode is enabled, since transform/load/reconciliation is handled externally.
+
+## 0.43.9 (2026-05-31)
+
+### Improvements
+
+- Patch processing mode integration on initialize
+
+## 0.43.8 (2026-05-31)
+
+### Improvements
+
+- Added `exportEnvVariables` to port-app-config selectors so integrations can include explicitly requested environment variable values as `environment_data` on each lakehouse bulk payload for DSP processing.
+
+## 0.43.7 (2026-05-31)
+
+### Bug Fixes
+
+- Remove ingest_url from the configuration
+
+## 0.43.6 (2026-05-31)
+
+### Bug Fixes
+
+- Fixed Port API 401 handling during resync: refresh the access token and apply it to the retried request when Port rejects an expired JWT before the local cache marks it expired.
+
+## 0.43.5 (2026-05-29)
+
+### Bug Fixes
+
+- Fixed DSP lifecycle URL: derive ingest host Port API.
+
+## 0.43.4 (2026-05-29)
+
+### Bug Fixes
+
+- Fixed DSP lifecycle URL: derive ingest host from `OCEAN__PORT__BASE_URL` (EU/US static map) at construction time. Removes the runtime Port API fetch introduced in 0.43.3 and the resulting 404 on `/v1/lifecycle` paths.
+
+## 0.43.3 (2026-05-27)
+
+### Improvements
+
+- Dynamically infer the ingest_url
+
+## 0.43.2 (2026-05-27)
+
+### Bug Fixes
+
+- Fixed resync reconciliation to fetch datasource entities before the resync start time using the datasource pagination endpoint.
+
+## 0.43.1 (2026-05-26)
+
+### Improvements
+
+- Added earlywarning.io to the trusted subdomains list in the IP blocker to fix hostname rewriting for hosted custom integrations
+
+## 0.43.0 (2026-05-25)
+
+### Improvements
+
+- Added SSL verification settings to Ocean core and integrations
+  - New config: `ssl.port` and `ssl.third_party`, each with `verify` (bool) and `x509.strict` (bool).
+  - New helpers: `resolve_verify_param()`, `create_third_party_http_client()`.
+  - Wired into Port API client, shared `http_async_client`.
+  - Startup warnings when non-default SSL settings are used.
+
+## 0.42.11 (2026-05-25)
+
+### Improvements
+
+-  Lifecycle use backoff and handling exception
+
+## 0.42.10 (2026-05-25)
+
+### Improvements
+
+- Added a shared async iterator utility for streaming independent iterators while deferring failures until surviving iterators finish.
+
+## 0.42.9 (2026-05-24)
+
+### Bug Fixes
+
+- Fixed polling resync-request detection so stale manual resync requests are not replayed after the first regular polling resync.
+
+## 0.42.8 (2026-05-21)
+
+### Improvements
+
+- Added missing values to lifecycle API
+
+## 0.42.7 (2026-05-19)
+
+### Features
+
+- Remove lifecycle url from settings
+
+## 0.42.6 (2026-05-19)
+
+### Features
+
+- Send all granularities to lifecycle-api
+
+## 0.42.5 (2026-05-19)
+
+### Features
+
+- Kafka event listener: while consuming the legacy `{org_id}.change.log` topic, also process manual resync request messages (`action: RESYNC` with matching `context.integrationId`) in addition to integration changelog events.
+
+
+## 0.42.4 (2026-05-17)
+
+### Features
+
+- Polling event listener: when the organization feature flag `OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED` is present, Ocean polls the integration resync-request endpoint when the integration document’s `updatedAt` is unchanged, and runs a resync when the request’s `updatedAt` is newer than the last stored watermark.
+
+
+## 0.42.3 (2026-05-17)
+
+### Bug fixes
+
+- Fix raw data dispatching with items to parse.
+
+
+## 0.42.2 (2026-05-17)
+
+### Improvements
+
+- Fixed outbound requests to Code Rabbit dropping hostname-based routing by adding coderabbit.ai to the trusted subdomains list in the IP blocker
+
+## 0.42.1 (2026-05-14)
+
+### Improvements
+
+- Added lifecycle client and shutdown aborted notifications.
+
+## 0.42.0 (2026-05-13)
+
+### Vulnerabilities
+
+- Fixed vulnerabilities for Ocean core and docs
+
+## 0.41.9 (2026-05-13)
+
+### Improvements
+
+- Fixed outbound requests to SentinelOne and Anthropic dropping hostname-based routing by adding sentinelone.net to the trusted subdomains list in the IP blocker
+
+## 0.41.8 (2026-05-12)
+
+### Improvements
+
+- Kafka event listener: when the organization feature flag `OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED` is enabled, the consumer subscribes to `{org_id}.integration.resync.requests` instead of `{org_id}.change.log`. If feature flags cannot be fetched, behavior falls back to the change log topic.
+
+## 0.41.7 (2026-05-07)
+
+### Improvements
+
+- Serialize Port app config mappings to JSON-safe types in resync logs.
+
+## 0.41.6 (2026-04-30)
+
+### Improvements
+
+- When using the polling event listener, requests to Port to fetch the current integration now include `oceanCoreVersion` and `isPolling=true` query parameters. Other callers of the same API are unchanged.
+
+## 0.41.5 (2026-04-27)
+
+### Bug fixes
+
+- Fixed raw examples ingestion for resources using `itemsToParse`: examples are now sent from the original extracted payload before `itemsToParse` expansion/top-level transform, so arrays and parent fields are preserved in Port examples.
+
+## 0.41.4 (2026-04-23)
+
+### Bug fixes
+
+- Fixed the `once` event listener on non-SaaS runtimes so that when a resync fails, integration resync state and sync metrics are reported as failed instead of incorrectly completed.
+
+## 0.41.3 (2026-04-22)
+
+### Bug fixes
+
+- Add support for path prefix in health routes
+
+
+## 0.41.2 (2026-04-21)
+
+### Bug Fixes
+
+- Ocean CLI would now be able to create private integrations with working docker file (all the required scripts are now added to the scaffold)
+
+## 0.41.1 (2026-04-20)
+
+### Fixes
+
+- Fixed integration tests to run single process as default to avoid issues with multiprocessing.
+
+## 0.41.0 (2026-04-20)
+
+### Improvements
+
+- Implemented health routes for liveness and readiness to deprecate the current /docs usage
+
+## 0.40.7 (2026-04-15)
+
+### Improvements
+
+- Port app config JSON Schema export (`port-app-config` CLI JSON output) now sets `additionalProperties: false` on selector definitions by patching the exported schema in the CLI, so exported schemas reject unknown selector fields without changing runtime integration models.
+
+## 0.40.6 (2026-04-15)
+
+### Improvements
+
+- Send event_type and resync_start_time to Lakehouse API for better event tracking and audit trail.
+
+## 0.40.5 (2026-04-09)
+
+### Features
+
+- Integration lakehouse raw-data POST now includes `resourceIndex`; resync and live events passes the resource list index.
+
+## 0.40.4 (2026-04-09)
+
+### Improvements
+
+- When loading an external OAuth access token from a file fails, the debug log now includes the underlying exception for easier troubleshooting.
+
+## 0.40.3 (2026-04-07)
+
+
+### Improvements
+
+- Enhanced logging to provide clearer and more detailed insights into OAUTH processes
+
+
+## 0.40.2 (2026-03-31)
+
+### Features
+
+- Metrics heartbeat: while a sync has an active metrics `eventId`, Ocean periodically `PUT`s to the ingest URL `/heartbeat` so Port can track live sync progress. Configurable via `status_heartbeat_interval_seconds` (default 10).
+
+## 0.40.1 (2026-04-06)
+
+### Bug Fixes
+
+- Added `User-Agent` configuration for the Port's `/auth/access_token` route
+
+## 0.40.0 (2026-04-06)
+
+### Bug Fixes
+
+- Fixed retry behavior for chunked/unknown-length HTTP responses where a transient `httpx.RemoteProtocolError` could occur during body reads (e.g. “incomplete chunked read”) outside the retry loop, aborting resync instead of retrying. Added unit test coverage for this scenario.
+
+## 0.39.1 (2026-04-05)
+
+### Bug Fixes
+
+- Fixed `UnboundLocalError` in `event_context` when `EmptyPortAppConfigError` is raised: `success` is now set in that handler so the `finally` block can log “Event finished” without masking the original error.
+
+
+## 0.39.0 (2026-04-05)
+
+### Improvements
+
+- Normalize JQ input data to JSON-compatible types only when needed (fallback on “not JSON serializable” errors), preventing transform failures from `date`/`datetime` values.
+
+
+## 0.38.27 (2026-03-30)
+
+### Improvements
+
+- Updated GH token used in CI
+
+
+## 0.38.26 (2026-03-25)
+
+### Improvements
+
+- Migrated GHCR authentication across all CI workflows to use the org-level `PORT_MACHINE_USER_GITHUB_TOKEN` secret instead of `DOCKER_MACHINE_TOKEN`
+
+## 0.38.25 (2026-03-26)
+
+### Bug Fixes
+
+- Added `x-ratelimit-reset` to the list of retry-after headers checked by the Port HTTP transport, so that when Ocean receives a 429 from the Port API it waits until the rate-limit window resets instead of falling back to exponential backoff
+
+## 0.38.24 (2026-03-25)
+
+### Improvements
+
+- Enforced strict boundaries for entity_deletion_threshold, allowing only values between 0 and 1
+
+
+## 0.38.23 (2026-03-24)
+
+### Improvements
+
+- Revised descriptions for port-app-config root flags
+
+
+## 0.38.22 (2026-03-19)
+
+### Features
+
+- Traceable webhook retrieval: log incoming webhooks with base64-encoded payload and trace_id for debugging.
+
+## 0.38.21 (2026-03-19)
+
+### Features
+
+- Added /isHealth route to ocean core
+
 ## 0.38.20 (2026-03-17)
 
 ### Features

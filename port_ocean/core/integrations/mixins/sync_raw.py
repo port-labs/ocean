@@ -8,7 +8,9 @@ import typing
 from typing import AsyncGenerator, Callable, Awaitable, Any
 import multiprocessing
 import httpx
+import json
 from loguru import logger
+from port_ocean.clients.dsp.lifecycle import GranularityType
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.metric_resource import metric_resource_context
@@ -17,9 +19,12 @@ from port_ocean.context.resource import resource_context
 from port_ocean.context import resource
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
+from port_ocean.core.integrations.mixins.lakehouse_buffer import LakehouseBuffer
 from port_ocean.core.integrations.mixins.utils import (
     ProcessWrapper,
+    build_lakehouse_data_entry,
     clear_http_client_context,
+    is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
     is_resource_supported,
     start_kind_tracking,
@@ -28,7 +33,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, ProcessExecutionMode
+from port_ocean.core.models import Entity, LakehouseDataEntryMetadata, ProcessExecutionMode, LakehouseEventType, LakehouseOperation
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -78,7 +83,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         raise NotImplementedError("on_resync must be implemented")
 
     async def _get_resource_raw_results(
-        self, resource_config: ResourceConfig
+        self,
+        resource_config: ResourceConfig,
+        send_raw_data_examples_amount: int = 0,
     ) -> tuple[RESYNC_RESULT, list[Exception]]:
         logger.info(f"Fetching {resource_config.kind} resync results")
 
@@ -92,7 +99,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         fns = self._collect_resync_functions(resource_config)
         logger.info(f"Found {len(fns)} resync functions for {resource_config.kind}")
 
-        results, errors = await self._execute_resync_tasks(fns, resource_config)
+        results, errors = await self._execute_resync_tasks(
+            fns, resource_config, send_raw_data_examples_amount
+        )
 
         return results, errors
 
@@ -113,6 +122,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self,
         fns: list[Callable[[str], Awaitable[RAW_RESULT]]],
         resource_config: ResourceConfig,
+        send_raw_data_examples_amount: int = 0,
     ) -> tuple[RESYNC_RESULT, list[RAW_RESULT | Exception]]:
         tasks = []
         results = []
@@ -128,6 +138,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resource_config.port.items_to_parse_name,
                         resource_config.port.items_to_parse,
                         resource_config.port.items_to_parse_top_level_transform,
+                        send_raw_data_examples_amount=send_raw_data_examples_amount,
                     )
                 )
             else:
@@ -137,7 +148,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
                 tasks.append(
                     resync_function_wrapper(
-                        task, resource_config.kind, resource_config.port.items_to_parse
+                        task,
+                        resource_config.kind,
+                        send_raw_data_examples_amount=send_raw_data_examples_amount,
                     )
                 )
 
@@ -162,13 +175,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self,
         raw_diff: list[tuple[ResourceConfig, list[RAW_ITEM]]],
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
     ) -> list[CalculationResult]:
         return await asyncio.gather(
             *(
-                self.entity_processor.parse_items(
-                    mapping, results, parse_all, send_raw_data_examples_amount
-                )
+                self.entity_processor.parse_items(mapping, results, parse_all)
                 for mapping, results in raw_diff
             )
         )
@@ -267,7 +277,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
         batch_index: int = 1,
     ) -> CalculationResult:
         with logger.contextualize(etl_phase=ETLPhase.TRANSFORM):
@@ -276,9 +285,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 batch_index=batch_index,
                 raw_items=len(results),
             )
-            objects_diff = await self._calculate_raw(
-                [(resource, results)], parse_all, send_raw_data_examples_amount
-            )
+            objects_diff = await self._calculate_raw([(resource, results)], parse_all)
             entities_transformed = len(objects_diff[0].entity_selector_diff.passed)
             entities_failed = len(objects_diff[0].entity_selector_diff.failed)
             logger.info(
@@ -407,11 +414,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     @TimeMetric(MetricPhase.RESYNC)
     async def _register_in_batches(
-        self, resource_config: ResourceConfig, user_agent_type: UserAgentType
+        self,
+        resource_config: ResourceConfig,
+        user_agent_type: UserAgentType,
+        index: int,
+        dsp_enabled: bool = False,
     ) -> tuple[list[Entity], list[Exception]]:
+        send_raw_data_examples_amount = (
+            SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
+        )
+
         with logger.contextualize(etl_phase=ETLPhase.EXTRACT):
             logger.info("Starting extract phase")
-            results, errors = await self._get_resource_raw_results(resource_config)
+            results, errors = await self._get_resource_raw_results(
+                resource_config, send_raw_data_examples_amount
+            )
             async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
             raw_results: RAW_RESULT = []
             lakehouse_data_enabled = await is_lakehouse_data_enabled()
@@ -422,10 +439,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 else:
                     async_generators.append(result)
 
-            if lakehouse_data_enabled and raw_results:
-                await ocean.port_client.post_integration_raw_data(
-                    raw_results, event.id, resource_config.kind, data_type="resync"
+
+            buffer: LakehouseBuffer | None = (
+                LakehouseBuffer(
+                    sync_id=event.id,
+                    kind=resource_config.kind,
+                    resync_start_time=event.attributes.get("resync_start_time"),
+                    event_type=LakehouseEventType.RESYNC,
+                    flush_interval_seconds=ocean.config.lakehouse_buffer_interval_seconds,
+                    max_buffer_count=ocean.config.lakehouse_buffer_max_count,
+                    fatal=dsp_enabled,
                 )
+                if lakehouse_data_enabled
+                else None
+            )
 
             logger.info(
                 "Extract phase complete",
@@ -433,65 +460,73 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 async_generators=len(async_generators),
             )
 
-        send_raw_data_examples_amount = (
-            SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
-        )
-
         passed_entities = []
         number_of_raw_results = 0
         number_of_transformed_entities = 0
         batch_index = 0
 
         if raw_results:
+            if lakehouse_data_enabled and buffer:
+                metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
+                lakehouse_data_entry = build_lakehouse_data_entry(
+                    items=raw_results,
+                    metadata=metadata,
+                    export_env_variables=resource_config.selector.export_env_variables,
+                )
+                await buffer.add(lakehouse_data_entry)
             batch_index += 1
             number_of_raw_results += len(raw_results)
-            calculation_result = await self._register_resource_raw(
-                resource_config,
-                raw_results,
-                user_agent_type,
-                send_raw_data_examples_amount=send_raw_data_examples_amount,
-                batch_index=batch_index,
-            )
-            errors.extend(calculation_result.errors)
-            passed_entities = list(calculation_result.entity_selector_diff.passed)
-            number_of_transformed_entities += (
-                calculation_result.number_of_transformed_entities
-            )
-            logger.info(
-                f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
-            )
+
+            if not await is_dsp_mode_enabled():
+                calculation_result = await self._register_resource_raw(
+                    resource_config,
+                    raw_results,
+                    user_agent_type,
+                    batch_index=batch_index,
+                )
+                errors.extend(calculation_result.errors)
+                passed_entities = list(calculation_result.entity_selector_diff.passed)
+                number_of_transformed_entities += (
+                    calculation_result.number_of_transformed_entities
+                )
+                logger.info(
+                    f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
+                )
 
         for generator in async_generators:
             try:
                 async for items in generator:
                     batch_index += 1
-                    if lakehouse_data_enabled:
-                        await ocean.port_client.post_integration_raw_data(
-                            items, event.id, resource_config.kind, data_type="resync"
+                    if lakehouse_data_enabled and buffer:
+                        metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
+                        lakehouse_data_entry = build_lakehouse_data_entry(
+                            items=items,
+                            metadata=metadata,
+                            export_env_variables=resource_config.selector.export_env_variables,
                         )
+                        await buffer.add(lakehouse_data_entry)
                     number_of_raw_results += len(items)
-                    if send_raw_data_examples_amount > 0:
-                        send_raw_data_examples_amount = max(
-                            0, send_raw_data_examples_amount - len(passed_entities)
-                        )
 
-                    calculation_result = await self._register_resource_raw(
-                        resource_config,
-                        items,
-                        user_agent_type,
-                        send_raw_data_examples_amount=send_raw_data_examples_amount,
-                        batch_index=batch_index,
-                    )
-                    passed_entities.extend(
-                        calculation_result.entity_selector_diff.passed
-                    )
-                    errors.extend(calculation_result.errors)
-                    number_of_transformed_entities += (
-                        calculation_result.number_of_transformed_entities
-                    )
+                    if not await is_dsp_mode_enabled():
+                        calculation_result = await self._register_resource_raw(
+                            resource_config,
+                            items,
+                            user_agent_type,
+                            batch_index=batch_index,
+                        )
+                        passed_entities.extend(
+                            calculation_result.entity_selector_diff.passed
+                        )
+                        errors.extend(calculation_result.errors)
+                        number_of_transformed_entities += (
+                            calculation_result.number_of_transformed_entities
+                        )
             except* OceanAbortException as error:
                 ocean.metrics.sync_state = SyncState.FAILED
                 errors.append(error)
+
+        if buffer:
+            await buffer.flush()
 
         logger.info(
             f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
@@ -534,6 +569,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
         return passed_entities, errors
+
 
 
     async def register_raw(
@@ -775,7 +811,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(f"Process finished for {resource.kind} with index {index}")
 
     async def _process_resource(
-        self, resource: ResourceConfig, index: int, user_agent_type: UserAgentType
+        self,
+        resource: ResourceConfig,
+        index: int,
+        user_agent_type: UserAgentType,
     ) -> tuple[list[Entity], list[Exception]]:
         # create resource context per resource kind, so resync method could have access to the resource
         # config as we might have multiple resources in the same event
@@ -787,23 +826,50 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             # Start monitoring resource usage for this kind
             start_kind_tracking(resource_kind_id)
 
+            dsp_enabled = await is_dsp_mode_enabled()
+
             await ocean.metrics.report_kind_sync_metrics(
-                kind=resource_kind_id, blueprint=resource.port.entity.mappings.blueprint
+                kind=resource_kind_id,
+                blueprint=resource.port.entity.mappings.blueprint,
+                dsp_enabled=dsp_enabled,
             )
 
+            resync_id = ocean.metrics.event_id
+            if dsp_enabled and resync_id:
+                await ocean.app.lifecycle_client.notify_started(
+                    event_id=resync_id,
+                    integration_id=ocean.config.integration.identifier,
+                    integration_type=ocean.config.integration.type,
+                    granularity=GranularityType.KIND,
+                    kind_identifier=resource_kind_id,
+                )
+
             task = asyncio.create_task(
-                self._register_in_batches(resource, user_agent_type)
+                self._register_in_batches(resource, user_agent_type, index, dsp_enabled)
             )
             event.on_abort(lambda: task.cancel())
 
+            kind_results: tuple[list[Entity], list[Exception]] = ([], [])
             try:
-                kind_results: tuple[list[Entity], list[Exception]] = await task
+                kind_results = await task
                 if ocean.metrics.sync_state != SyncState.FAILED:
                     ocean.metrics.sync_state = SyncState.COMPLETED
             except asyncio.CancelledError:
                 logger.warning(f"Resource {resource.kind} processing was aborted")
                 ocean.metrics.sync_state = SyncState.ABORTED
+                if dsp_enabled and resync_id:
+                    await ocean.app.lifecycle_client.notify_aborted(
+                        event_id=resync_id,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
                 raise
+            except Exception as e:
+                logger.error(
+                    f"Resource {resource.kind} processing failed unexpectedly: {e}"
+                )
+                ocean.metrics.sync_state = SyncState.FAILED
+                kind_results = ([], [e])
             finally:
                 # Stop tracking and report resource usage metrics
                 stop_kind_tracking(resource_kind_id)
@@ -811,8 +877,25 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             await ocean.metrics.send_metrics_to_webhook(kind=resource_kind_id)
             await ocean.metrics.report_kind_sync_metrics(
-                kind=resource_kind_id, blueprint=resource.port.entity.mappings.blueprint
+                kind=resource_kind_id,
+                blueprint=resource.port.entity.mappings.blueprint,
+                dsp_enabled=dsp_enabled,
             )
+
+            if dsp_enabled and resync_id:
+                if ocean.metrics.sync_state == SyncState.FAILED:
+                    await ocean.app.lifecycle_client.notify_failed(
+                        event_id=resync_id,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
+                else:
+                    await ocean.app.lifecycle_client.notify_finished(
+                        event_id=resync_id,
+                        integration_type=ocean.config.integration.type,
+                        granularity=GranularityType.KIND,
+                        kind_identifier=resource_kind_id,
+                    )
 
             return kind_results
 
@@ -843,7 +926,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info("Resync reconciliation subprocess finished")
 
     async def process_resource(
-        self, resource: ResourceConfig, index: int, user_agent_type: UserAgentType
+        self,
+        resource: ResourceConfig,
+        index: int,
+        user_agent_type: UserAgentType,
     ) -> tuple[list[Entity], list[Exception]]:
         with logger.contextualize(resource_kind=resource.kind, index=index):
             if ocean.app.process_execution_mode == ProcessExecutionMode.multi_process:
@@ -944,31 +1030,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resync_start_time: datetime | None = event.attributes.get(
                 "resync_start_time"
             )
-            query: dict[Any, Any] | None = None
             if not (resync_start_time and isinstance(resync_start_time, datetime)):
                 logger.warning(
                     "Resync start time is not set, fetching all entities from Port with no updatedAt filter"
                 )
+                before: str | None = None
             else:
-                query = {
-                    "combinator": "and",
-                    "rules": [
-                        {
-                            "property": "$updatedAt",
-                            "operator": "notBetween",
-                            "value": {
-                                "from": resync_start_time.isoformat(),
-                                "to": datetime.now(timezone.utc).isoformat(),
-                            },
-                        },
-                    ],
-                }
+                before = resync_start_time.isoformat()
             logger.info(
                 "Fetching current entity state from Port",
                 entities_synced=len(generated_entities),
             )
             entities_at_port = await ocean.port_client.search_entities(
-                user_agent_type, query
+                user_agent_type, before=before
             )
             entities_to_delete = max(0, len(entities_at_port) - len(generated_entities))
             logger.info(
@@ -1050,6 +1124,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self,
         creation_results: list[tuple[list[Entity], list[Exception]]],
         app_config: Any,
+        dsp_enabled: bool = False,
     ) -> None:
         """Handle resync abortion by updating metrics for runtime, pending resources, and reconciliation.
 
@@ -1060,7 +1135,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with metric_resource_context(MetricResourceKind.RUNTIME):
             ocean.metrics.sync_state = SyncState.ABORTED
             await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
-            await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
+            await ocean.metrics.report_sync_metrics(
+                kinds=[MetricResourceKind.RUNTIME], dsp_enabled=dsp_enabled
+            )
 
         for pending_index in range(len(creation_results), len(app_config.resources)):
             pending_resource = app_config.resources[pending_index]
@@ -1071,6 +1148,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 await ocean.metrics.report_kind_sync_metrics(
                     kind=pending_kind_id,
                     blueprint=pending_resource.port.entity.mappings.blueprint,
+                    dsp_enabled=dsp_enabled,
                 )
 
         async with metric_resource_context(MetricResourceKind.RECONCILIATION):
@@ -1084,7 +1162,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 kind=MetricResourceKind.RECONCILIATION
             )
             await ocean.metrics.report_sync_metrics(
-                kinds=[MetricResourceKind.RECONCILIATION]
+                kinds=[MetricResourceKind.RECONCILIATION], dsp_enabled=dsp_enabled
             )
 
     @TimeMetric(MetricPhase.RESYNC)
@@ -1120,7 +1198,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
-            logger.info(f"Resync will use the following mappings: {app_config.dict()}")
+            logger.info(f"Resync will use the following mappings: {json.loads(app_config.json())}")
+
+            dsp_enabled = await is_dsp_mode_enabled()
+            if dsp_enabled:
+                logger.bind(local_only=True).info(
+                    "DSP mode active: ocean-core will skip transform, load and reconciliation"
+                )
 
             kinds = [
                 f"{resource.kind}-{index}"
@@ -1131,7 +1215,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for resource in app_config.resources
             ]
             ocean.metrics.initialize_metrics(kinds)
-            await ocean.metrics.report_sync_metrics(kinds=kinds, blueprints=blueprints)
+            await ocean.metrics.report_sync_metrics(
+                kinds=kinds, blueprints=blueprints, dsp_enabled=dsp_enabled
+            )
 
             async with metric_resource_context(MetricResourceKind.RUNTIME):
                 ocean.metrics.sync_state = SyncState.SYNCING
@@ -1145,17 +1231,25 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     kind=MetricResourceKind.RUNTIME
                 )
                 await ocean.metrics.report_sync_metrics(
-                    kinds=[MetricResourceKind.RUNTIME]
+                    kinds=[MetricResourceKind.RUNTIME], dsp_enabled=dsp_enabled
                 )
 
             # Clear cache
             await ocean.app.cache_provider.clear()
 
-            # Execute resync_start hooks
-            for resync_start_fn in self.event_strategy["resync_start"]:
-                await resync_start_fn()
+            if dsp_enabled:
+                await ocean.app.lifecycle_client.notify_resync_started(
+                    resync_id=event.id,
+                    integration_id=ocean.config.integration.identifier,
+                    integration_type=ocean.config.integration.type,
+                    started_at=datetime.now(timezone.utc),
+                )
 
             try:
+                # Execute resync_start hooks
+                for resync_start_fn in self.event_strategy["resync_start"]:
+                    await resync_start_fn()
+
                 did_fetched_current_state = True
             except httpx.HTTPError as e:
                 logger.warning(
@@ -1187,11 +1281,27 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
-                await self._handle_resync_abortion(creation_results, app_config)
+                await self._handle_resync_abortion(
+                    creation_results, app_config, dsp_enabled=dsp_enabled
+                )
+                if dsp_enabled:
+                    await ocean.app.lifecycle_client.notify_resync_aborted(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
                 raise
             except Exception as e:
                 logger.error(f"Error in resync: {e}")
-                await self._handle_resync_abortion(creation_results, app_config)
+                await self._handle_resync_abortion(
+                    creation_results, app_config, dsp_enabled=dsp_enabled
+                )
+                if dsp_enabled:
+                    await ocean.app.lifecycle_client.notify_resync_failed(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
                 raise
             else:
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
@@ -1205,8 +1315,40 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         kind=MetricResourceKind.RECONCILIATION
                     )
                     await ocean.metrics.report_sync_metrics(
-                        kinds=[MetricResourceKind.RECONCILIATION]
+                        kinds=[MetricResourceKind.RECONCILIATION],
+                        dsp_enabled=dsp_enabled,
                     )
+
+                if dsp_enabled:
+                    logger.bind(local_only=True).info(
+                        "DSP mode active: skipping reconciliation, raw data handed off to external processor"
+                    )
+                    async with metric_resource_context(
+                        MetricResourceKind.RECONCILIATION
+                    ):
+                        ocean.metrics.sync_state = SyncState.COMPLETED
+                        ocean.metrics.set_metric(
+                            name=MetricType.SUCCESS_NAME,
+                            labels=[
+                                MetricResourceKind.RECONCILIATION,
+                                MetricPhase.RESYNC,
+                            ],
+                            value=1,
+                        )
+                        await ocean.metrics.send_metrics_to_webhook(
+                            kind=MetricResourceKind.RECONCILIATION
+                        )
+                        await ocean.metrics.report_kind_sync_metrics(
+                            kind=MetricResourceKind.RECONCILIATION,
+                            dsp_enabled=dsp_enabled,
+                        )
+
+                    await ocean.app.lifecycle_client.notify_resync_finished(
+                        resync_id=event.id,
+                        integration_id=ocean.config.integration.identifier,
+                        integration_type=ocean.config.integration.type,
+                    )
+                    return True
 
                 success = await self.resync_reconciliation(
                     creation_results,
@@ -1229,8 +1371,23 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         kind=MetricResourceKind.RECONCILIATION
                     )
                     await ocean.metrics.report_kind_sync_metrics(
-                        kind=MetricResourceKind.RECONCILIATION
+                        kind=MetricResourceKind.RECONCILIATION,
+                        dsp_enabled=dsp_enabled,
                     )
+
+                if dsp_enabled:
+                    if success:
+                        await ocean.app.lifecycle_client.notify_resync_finished(
+                            resync_id=event.id,
+                            integration_id=ocean.config.integration.identifier,
+                            integration_type=ocean.config.integration.type,
+                        )
+                    else:
+                        await ocean.app.lifecycle_client.notify_resync_failed(
+                            resync_id=event.id,
+                            integration_id=ocean.config.integration.identifier,
+                            integration_type=ocean.config.integration.type,
+                        )
 
                 return success
             finally:

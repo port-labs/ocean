@@ -1,5 +1,7 @@
 import asyncio
+import copy
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
+from itertools import batched
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import parse_github_options, get_repository_metadata
@@ -16,12 +18,16 @@ from github.clients.http.rest_client import GithubRestClient
 if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
 
+ENRICHMENT_BATCH_SIZE = 10
+
 
 class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     _ENRICHMENT_METHODS: ClassVar[dict[str, str]] = {
         "collaborators": "_enrich_repository_with_collaborators",
         "teams": "_enrich_repository_with_teams",
         "sbom": "_enrich_repository_with_sbom",
+        "custom_properties": "_enrich_repository_with_custom_properties",
+        "pages": "_enrich_repository_with_pages",
     }
 
     async def get_resource[
@@ -29,7 +35,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         name = options["name"]
         organization = options["organization"]
-        included_relationships = options.get("included_relationships")
+        included_relations = options.get("included_relations")
 
         response = await get_repository_metadata(self.client, organization, name)
         if not response:
@@ -42,11 +48,13 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched repository with identifier: {name} for organization {organization}"
         )
 
-        if not included_relationships:
+        if not included_relations:
             return response
 
         return await self.enrich_repository_with_selected_relationships(
-            response, cast(list[str], included_relationships), organization
+            response,
+            cast(dict[str, dict[str, Any]], included_relations),
+            organization,
         )
 
     async def get_paginated_resources[
@@ -55,24 +63,32 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all repositories in the organization with pagination."""
         organization = options["organization"]
         options_dict = dict(options)
-        included_relationships = options_dict.pop("included_relationships", None)
+        included_relations = options_dict.pop("included_relations", None)
 
         async for repos in self._fetch_repositories(
             cast(ListRepositoryOptions, options_dict)
         ):
-            if not included_relationships:
+            if not included_relations:
                 yield repos
-            else:
-                logger.info(f"Enriching repositories with {included_relationships}")
-                batch = await asyncio.gather(
+                continue
+
+            included_relations = cast(dict[str, dict[str, Any]], included_relations)
+            logger.info(
+                f"Enriching repositories with {list(included_relations.keys())}"
+            )
+
+            for batch in batched(repos, ENRICHMENT_BATCH_SIZE):
+                enriched = await asyncio.gather(
                     *[
                         self.enrich_repository_with_selected_relationships(
-                            repo, cast(list[str], included_relationships), organization
+                            copy.deepcopy(repo),
+                            included_relations,
+                            organization,
                         )
-                        for repo in repos
+                        for repo in batch
                     ]
                 )
-                yield batch
+                yield enriched
 
     @cache_iterator_result()
     async def _fetch_repositories(
@@ -163,38 +179,41 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     async def enrich_repository_with_selected_relationships(
         self,
         repository: Dict[str, Any],
-        included_relationships: list[str],
+        included_relations: dict[str, dict[str, Any]],
         organization: str,
     ) -> RAW_ITEM:
         """Enrich a repository with selected relationships."""
         repo_name = repository["name"]
 
-        for relationship in included_relationships:
+        for relationship, config in included_relations.items():
             method_name = self._ENRICHMENT_METHODS.get(relationship)
-            if method_name:
+            if method_name and config.get("include"):
                 logger.debug(
                     f"Applying relationship '{relationship}' using '{method_name}' "
                     f"for repository '{repo_name}'"
                 )
                 method = getattr(self, method_name)
-                repository = await method(repository, organization)
+                repository = await method(repository, organization, config)
 
         logger.info(f"Finished enrichment for repository '{repo_name}'")
         return repository
 
     async def _enrich_repository_with_collaborators(
-        self, repository: Dict[str, Any], organization: str
+        self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
     ) -> RAW_ITEM:
         """Enrich repository with collaborators."""
         repo_name = repository["name"]
+        affiliation = config.get("affiliation", "all")
+        params = {"affiliation": affiliation}
+
         all_collaborators = []
 
         async for collaborators in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{organization}/{repo_name}/collaborators",
-            {},
+            params,
         ):
             logger.info(
-                f"Fetched batch of {len(collaborators)} collaborators for repository {repo_name} in repository relationship"
+                f"Fetched batch of {len(collaborators)} collaborators for repository {repo_name} in repository relationship with params: {params}"
             )
             all_collaborators.extend(collaborators)
 
@@ -202,7 +221,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         return repository
 
     async def _enrich_repository_with_teams(
-        self, repository: Dict[str, Any], organization: str
+        self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
     ) -> RAW_ITEM:
         """Enrich repository with teams."""
         repo_name = repository["name"]
@@ -220,8 +239,33 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         repository["__teams"] = all_teams
         return repository
 
+    async def _enrich_repository_with_custom_properties(
+        self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
+    ) -> RAW_ITEM:
+        if "custom_properties" in repository:
+            return repository
+        repo_name = repository["name"]
+        logger.info(
+            f"Fetching custom properties for repository {repo_name} in organization {organization}"
+        )
+        properties = cast(
+            list[Dict[str, Any]],
+            await self.client.send_api_request(
+                f"{self.client.base_url}/repos/{organization}/{repo_name}/properties/values"
+            ),
+        )
+        repository["custom_properties"] = (
+            {prop["property_name"]: prop["value"] for prop in properties}
+            if properties
+            else {}
+        )
+        logger.info(
+            f"Fetched {len(repository['custom_properties'])} custom properties for repository {repo_name} in organization {organization}"
+        )
+        return repository
+
     async def _enrich_repository_with_sbom(
-        self, repository: Dict[str, Any], organization: str
+        self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
     ) -> RAW_ITEM:
         repo_name = repository["name"]
 
@@ -235,4 +279,21 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             return repository
 
         repository["__sbom"] = response.get("sbom", {})
+        return repository
+
+    async def _enrich_repository_with_pages(
+        self, repository: Dict[str, Any], organization: str, config: dict[str, Any]
+    ) -> RAW_ITEM:
+        repo_name = repository["name"]
+
+        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/pages"
+        response = await self.client.send_api_request(url)
+        if not response:
+            logger.debug(
+                f"Skipping GitHub Pages enrichment for repository {repo_name} in organization {organization}: empty response"
+            )
+            repository["__pages"] = {}
+            return repository
+
+        repository["__pages"] = response
         return repository

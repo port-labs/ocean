@@ -28,7 +28,6 @@ from port_ocean.exceptions.context import (
 )
 from port_ocean.utils.misc import get_time
 
-
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import (
         ResourceConfig,
@@ -181,6 +180,7 @@ async def event_context(
         try:
             yield event
         except EmptyPortAppConfigError as e:
+            success = False
             logger.bind(traceback=traceback.format_exc()).error(
                 f"Skipping resync due to empty mapping: {str(e)}"
             )

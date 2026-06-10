@@ -171,6 +171,8 @@ class TestPullRequestWebhookProcessor:
                         repo_name="test-repo",
                         pr_number=101,
                         repo=None,
+                        enrich_with_first_commit=False,
+                        exclude_graphql_fields=[],
                     )
                 )
             elif expected_delete:
@@ -180,3 +182,38 @@ class TestPullRequestWebhookProcessor:
                     {**pr_data, "__organization": "test-org"}
                 ]
                 mock_exporter.get_resource.assert_not_called()
+
+    async def test_handle_event_passes_excluded_graphql_fields_when_configured(
+        self,
+        pull_request_webhook_processor: PullRequestWebhookProcessor,
+        resource_config: GithubPullRequestConfig,
+    ) -> None:
+        resource_config.selector.api = "graphql"
+        resource_config.selector.exclude_graphql_fields = ["additions", "changedFiles"]
+
+        pr_data = {"id": 1, "number": 101, "title": "Test PR", "state": "open"}
+        repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
+        payload = {
+            "action": "opened",
+            "pull_request": pr_data,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
+
+        updated_pr_data = {**pr_data, "additional_data": "from_api"}
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource.return_value = updated_pr_data
+
+        with patch(
+            "github.webhook.webhook_processors.pull_request_webhook_processor.GraphQLPullRequestExporter",
+            return_value=mock_exporter,
+        ):
+            result = await pull_request_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == [updated_pr_data]
+        mock_exporter.get_resource.assert_called_once()
+        called_opts = mock_exporter.get_resource.call_args.args[0]
+        assert called_opts["exclude_graphql_fields"] == ["additions", "changedFiles"]

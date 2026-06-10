@@ -1,5 +1,6 @@
 from typing import Any, AsyncGenerator, List, Dict, Optional
 from httpx import HTTPStatusError, AsyncClient
+from aiolimiter import AsyncLimiter
 from clients.auth_client import AikidoAuth
 from clients.options import ListRepositoriesOptions, ListContainersOptions
 from loguru import logger
@@ -9,6 +10,7 @@ API_VERSION = "v1"
 FIRST_PAGE = 0
 PAGE_SIZE = 20
 REPOSITORIES_PAGE_SIZE = 100
+REQUESTS_PER_MINUTE = 15
 
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
 ISSUE_DETAILS_ENDPOINT = f"api/public/{API_VERSION}/issues"
@@ -28,6 +30,7 @@ class AikidoClient:
         self.base_url = base_url.rstrip("/")
         self.http_client: AsyncClient = http_async_client
         self.auth = AikidoAuth(base_url, client_id, client_secret, self.http_client)
+        self.rate_limiter = AsyncLimiter(REQUESTS_PER_MINUTE, 60)
 
     async def _send_api_request(
         self,
@@ -38,38 +41,40 @@ class AikidoClient:
     ) -> Dict[str, Any]:
         """
         Send an authenticated API request to the Aikido API.
+        Rate limited to stay under Aikido's 20 req/min limit.
         """
         token = await self.auth.get_token()
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        async with self.rate_limiter:
 
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-        }
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            }
 
-        try:
-            response = await self.http_client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json_data,
-                headers=headers,
-                timeout=30,
-            )
-            response.raise_for_status()
-            return response.json()
-        except HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning(
-                    f"Requested resource not found: {url}; message: {str(e)}"
+            try:
+                response = await self.http_client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_data,
+                    headers=headers,
+                    timeout=30,
                 )
-                return {}
-            logger.error(f"API request failed for {url}: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error during API request to {url}: {e}")
-            raise
+                response.raise_for_status()
+                return response.json()
+            except HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    logger.warning(
+                        f"Requested resource not found: {url}; message: {str(e)}"
+                    )
+                    return {}
+                logger.error(f"API request failed for {url}: {e}")
+                raise
+            except Exception as e:
+                logger.error(f"Unexpected error during API request to {url}: {e}")
+                raise
 
     async def get_paginated_resource(
         self,
@@ -146,18 +151,31 @@ class AikidoClient:
         """
         Fetch all issues and yield them in batches of the specified size.
         """
+
         all_issues = await self.get_all_issues()
         for i in range(0, len(all_issues), batch_size):
             yield all_issues[i : i + batch_size]
 
-    async def get_open_issue_groups(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch paginated open issue groups from the Aikido API."""
+    async def get_open_issue_groups(
+        self, team_id: Optional[str | int] = None
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch paginated open issue groups from the Aikido API.
 
+        If team_id is provided, results are scoped to that team via filter_team_id.
+        """
+
+        if team_id is None:
+            base_params: Dict[str, Any] = {}
+            resource_name = "open issue groups"
+        else:
+            base_params = {"filter_team_id": team_id}
+            resource_name = f"open issue groups for team {team_id}"
         async for issue_groups in self.get_paginated_resource(
             endpoint=OPEN_ISSUE_GROUPS_ENDPOINT,
-            resource_name="open issue groups",
+            resource_name=resource_name,
             first_page=FIRST_PAGE,
             page_size=PAGE_SIZE,
+            base_params=base_params,
         ):
             yield issue_groups
 
@@ -171,6 +189,26 @@ class AikidoClient:
             page_size=PAGE_SIZE,
         ):
             yield teams
+
+    async def get_open_issue_groups_by_team(
+        self,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch open issue groups scoped to each active team, enriched with team metadata."""
+        async for team_batch in self.get_teams():
+            for team in team_batch:
+                if not team.get("active", False):
+                    continue
+                team_id = team.get("id")
+                if not team_id:
+                    logger.warning(f"Skipping team with missing id: {team}")
+                    continue
+                team_name = team.get("name")
+                logger.info(f"Fetching issue groups for team {team_id} from Aikido API")
+                async for batch in self.get_open_issue_groups(team_id=str(team_id)):
+                    yield [
+                        {**issue_group, "__team_id": team_id, "__team_name": team_name}
+                        for issue_group in batch
+                    ]
 
     async def get_containers(
         self,

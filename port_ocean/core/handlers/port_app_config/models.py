@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 from port_ocean.clients.port.types import RequestOptions
 
-
 CUSTOM_KIND = "__custom__"
 
 
@@ -113,6 +112,12 @@ class Selector(_FieldMetadataEnforcer):
         title="Query",
         description="JQ expression that will filter which objects of the specified kind will be ingested into Port.",
     )
+    export_env_variables: list[str] = Field(
+        alias="exportEnvVariables",
+        default_factory=list,
+        title="Export Env Variables",
+        description="Environment variable names whose values should be included in lakehouse ingest payloads for DSP processing.",
+    )
 
 
 class ResourceConfig(_FieldMetadataEnforcer):
@@ -143,20 +148,22 @@ class PortAppConfig(_FieldMetadataEnforcer):
     delete_dependent_entities: bool = Field(
         alias="deleteDependentEntities",
         default=True,
-        title="Delete Dependent Entities",
-        description="Flag that controls whether Port is allowed to automatically delete dependent entities when you delete a target entity that has required relations.",
+        title="Auto-delete related entities",
+        description="Automatically delete entities that have a relation to a deleted entity. Enable this to avoid orphaned relations in the catalog.",
     )
     create_missing_related_entities: bool = Field(
         alias="createMissingRelatedEntities",
         default=True,
-        title="Create Missing Related Entities",
-        description="Flag that tells Port to automatically create “placeholder” entities when they are referenced in a relation but don’t yet exist in the catalog.",
+        title="Auto-create related entities",
+        description="Create related entities automatically if they don't exist in the catalog yet. Useful when ingesting entities before their dependencies.",
     )
     entity_deletion_threshold: float = Field(
         alias="entityDeletionThreshold",
         default=0.9,
-        title="Entity Deletion Threshold",
-        description="The threshold for deleting entities. If the threshold is reached, the entity will be deleted.",
+        ge=0,
+        le=1,
+        title="Deletion safety limit",
+        description="Skip deletion if the number of entities to delete exceeds this percentage of total entities. Set between 0 and 1. Protects against accidental mass deletion from misconfigurations.",
     )
     resources: list[ResourceConfig] = Field(
         default_factory=list,

@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 from urllib.parse import quote_plus
 
@@ -8,9 +8,15 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.models import CreatePortResourcesOrigin, LakehouseOperation
+from port_ocean.core.models import (
+    CreatePortResourcesOrigin,
+    LakehouseDataEntryBatch,
+    LakehouseEventType,
+    ProcessingMode,
+)
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
+from port_ocean.version import __version__ as ocean_core_version
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -30,6 +36,10 @@ class MetricsAttributes(TypedDict):
     ingestUrl: str
 
 
+class IngestAttributes(TypedDict):
+    ingestUrl: str
+
+
 class IntegrationClientMixin:
     def __init__(
         self,
@@ -44,6 +54,7 @@ class IntegrationClientMixin:
         self.client = client
         self._log_attributes: LogAttributes | None = None
         self._metrics_attributes: MetricsAttributes | None = None
+        self._ingest_attributes: IngestAttributes | None = None
 
     async def is_integration_provision_enabled(
         self, integration_type: str, should_raise: bool = True, should_log: bool = True
@@ -66,11 +77,20 @@ class IntegrationClientMixin:
 
         return response.json().get("integrations", [])
 
-    async def _get_current_integration(self) -> httpx.Response:
+    async def _get_current_integration(
+        self, *, is_polling: bool = False
+    ) -> httpx.Response:
         logger.info(f"Fetching integration with id: {self.integration_identifier}")
+        request_kwargs: dict[str, Any] = {
+            "headers": await self.auth.headers(),
+            "params": {
+                "oceanCoreVersion": ocean_core_version,
+                "isPolling": "true" if is_polling else "false",
+            },
+        }
         response = await self.client.get(
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
-            headers=await self.auth.headers(),
+            **request_kwargs,
         )
         return response
 
@@ -78,10 +98,25 @@ class IntegrationClientMixin:
         self,
         should_raise: bool = True,
         should_log: bool = True,
+        *,
+        is_polling: bool = False,
     ) -> dict[str, Any]:
-        response = await self._get_current_integration()
+        response = await self._get_current_integration(is_polling=is_polling)
         handle_port_status_code(response, should_raise, should_log)
         return response.json().get("integration", {})
+
+    async def _get_integration_resync_request(self) -> httpx.Response:
+        return await self.client.get(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/resync-request",
+            headers=await self.auth.headers(),
+        )
+
+    async def get_integration_resync_request(
+        self, should_raise: bool = True, should_log: bool = True
+    ) -> dict[str, Any]:
+        response = await self._get_integration_resync_request()
+        handle_port_status_code(response, should_raise, should_log)
+        return response.json().get("request") or {}
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:
@@ -94,6 +129,12 @@ class IntegrationClientMixin:
             response = await self.get_current_integration()
             self._metrics_attributes = response["metricAttributes"]
         return self._metrics_attributes
+
+    async def get_ingest_attributes(self) -> IngestAttributes:
+        if self._ingest_attributes is None:
+            response = await self.get_current_integration()
+            self._ingest_attributes = response["ingestAttributes"]
+        return self._ingest_attributes
 
     async def poll_integration_until_default_provisioning_is_complete(
         self,
@@ -171,6 +212,7 @@ class IntegrationClientMixin:
         port_app_config: Optional["PortAppConfig"] = None,
         actions_processing_enabled: Optional[bool] = None,
         are_port_resources_initialized: Optional[bool] = None,
+        processing_mode: ProcessingMode | None = None,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -185,6 +227,8 @@ class IntegrationClientMixin:
             json["actionsProcessingEnabled"] = actions_processing_enabled
         if changelog_destination is not None:
             json["changelogDestination"] = changelog_destination
+        if processing_mode is not None:
+            json["processingMode"] = processing_mode.value
 
         json["version"] = self.integration_version
 
@@ -212,6 +256,19 @@ class IntegrationClientMixin:
         )
         handle_port_status_code(response, should_log=False)
         logger.debug("Finished POST metrics request")
+
+    async def post_integration_metrics_heartbeat(self, event_id: str) -> None:
+        logger.debug("starting PUT metrics heartbeat request", event_id=event_id)
+        metrics_attributes = await self.get_metrics_attributes()
+        url = metrics_attributes["ingestUrl"] + "/heartbeat"
+        headers = await self.auth.headers()
+        response = await self.client.post(
+            url,
+            headers=headers,
+            json={"eventId": event_id},
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Finished PUT metrics heartbeat request")
 
     async def put_integration_sync_metrics(self, kind_metrics: dict[str, Any]) -> None:
         logger.debug("starting PUT metrics request", kind_metrics=kind_metrics)
@@ -277,34 +334,85 @@ class IntegrationClientMixin:
         handle_port_status_code(response, should_raise, should_log)
         return response.json()
 
-    async def post_integration_raw_data(
-        self,
-        raw_data: list[dict[Any, Any]],
-        sync_id: str,
-        kind: str,
-        operation: LakehouseOperation = LakehouseOperation.UPSERT,
-        data_type: str | None = None,
-        kafka_metadata: dict[str, Any] | None = None,
+    def _validate_lakehouse_params(
+        self, sync_id: str, kind: str, resync_start_time: datetime | None
     ) -> None:
+        if not sync_id:
+            raise ValueError("sync_id cannot be empty")
+        if not kind:
+            raise ValueError("kind cannot be empty")
+        if resync_start_time is not None:
+            # Normalize both timestamps to UTC for comparison
+            # If resync_start_time is naive, treat it as UTC
+            if resync_start_time.tzinfo is None:
+                resync_time_utc = resync_start_time.replace(tzinfo=timezone.utc)
+            else:
+                resync_time_utc = resync_start_time
+
+            now_utc = datetime.now(timezone.utc)
+            if resync_time_utc > now_utc:
+                raise ValueError(
+                    f"resync_start_time cannot be in the future: {resync_start_time}"
+                )
+
+    async def post_integration_raw_data_batch(
+        self,
+        sync_id: str,
+        event: LakehouseDataEntryBatch,
+    ) -> None:
+        """Send multiple raw data entries in a single POST request.
+
+        Each entry must be a LakehouseDataEntry with request, response, items,
+        and metadata (operation, resource_index, extraction_timestamp).
+        """
+        self._validate_lakehouse_params(
+            sync_id, event["kind"], event["resync_start_time"]
+        )
+
         logger.debug(
-            "starting POST raw data request", raw_data=raw_data, operation=operation
+            "starting POST raw data batch request",
+            entry_count=len(event["data"]),
+            kind=event["kind"],
         )
         headers = await self.auth.headers()
+        ingest_attributes = await self.get_ingest_attributes()
+
+        data = []
+        for entry in event["data"]:
+            entry_data: dict[str, Any] = {
+                "request": entry["request"],
+                "response": entry["response"],
+                "items": entry["items"],
+                "metadata": {
+                    "operation": entry["metadata"]["operation"].value,
+                    "extractionTimestamp": entry["metadata"]["extraction_timestamp"],
+                    "resourceIndex": entry["metadata"]["resource_index"],
+                },
+            }
+            if environment_data := entry.get("environment_data"):
+                entry_data["environment_data"] = environment_data
+            data.append(entry_data)
 
         body: dict[str, Any] = {
-            "items": raw_data,
-            "extractionTimestamp": int(datetime.now().timestamp() * 1000),
-            "operation": operation.value,
+            "kind": event["kind"],
+            "eventType": (
+                event["event_type"].value
+                if event["event_type"]
+                else LakehouseEventType.LIVE_EVENT.value
+            ),
+            "extractionTimestamp": event["extraction_timestamp"],
+            "data": data,
         }
-        if data_type is not None:
-            body["type"] = data_type
-        if kafka_metadata:
-            body["kafkaMetadata"] = kafka_metadata
+
+        if event["resync_start_time"] is not None:
+            body["resyncStartTime"] = event["resync_start_time"].isoformat()
+        if event["event_id"]:
+            body["eventId"] = event["event_id"]
 
         response = await self.client.post(
-            f"{self.auth.ingest_url}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(kind)}",
+            f"{ingest_attributes['ingestUrl']}/lake/write/integration-type/{quote_plus(self.auth.integration_type)}/integration/{quote_plus(self.integration_identifier)}/sync/{quote_plus(sync_id)}/kind/{quote_plus(event['kind'])}",
             headers=headers,
             json=body,
         )
         handle_port_status_code(response, should_raise=False, should_log=True)
-        logger.debug("Finished POST raw data request")
+        logger.debug("Finished POST raw data batch request")

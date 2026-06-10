@@ -7,6 +7,632 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.16 (2026-06-10)
+
+
+### Features
+
+- Added a new `area-path` kind.
+
+### Improvements
+
+- Added an `includeAreaPaths` option to the `team` kind.
+
+
+## 0.9.15 (2026-06-10)
+
+
+### Bug Fixes
+
+- Added bounded concurrency to webhook subscription listing and creation to prevent TSTU budget exhaustion from unbounded parallel requests, which caused 429 errors that aborted webhook setup entirely.
+- Added bounded concurrency to `generate_pipeline_runs` and `_runs_for_project`.
+
+
+## 0.9.14 (2026-06-10)
+
+
+### Features
+
+- Renamed `excludeTagFilter` integration config field to `excludedTags` (the old key is still supported for backward compatibility).
+
+## 0.9.13 (2026-06-09)
+
+
+### Features
+
+- Added `excludeTagFilter` integration config field to exclude ADO projects from syncing based on project tags. Projects matching any specified tag are skipped during resync for all resource kinds.
+
+
+## 0.9.12 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.9.11 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.9.10 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.9.9 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.9.8 (2026-06-03)
+
+
+### Improvements
+
+- Added code coverage logs for test runs, including how many were processed and skipped when no build was linked.
+
+
+## 0.9.7 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.9.6 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.9.5 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.9.4 (2026-05-31)
+
+
+### Bug Fixes
+
+- Fixed webhook setup failure on large Azure DevOps organizations where the unfiltered `GET /_apis/hooks/subscriptions` call would time out. Subscriptions are now fetched once per organization using parallel filtered requests (one per event type), eliminating both the timeout and the per-project redundant fetching.
+
+
+## 0.9.3 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.9.2 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.9.1 (2026-05-31)
+
+
+### Improvements
+
+- Route webhook events to the correct org client via subscription ID registry instead of parsing URLs from the payload
+
+
+## 0.9.0 (2026-05-31)
+
+### Improvements
+
+- Added a configurable `apiVersion` selector field (defaults to the latest supported version) for the User Entitlements endpoint, with automatic pagination strategy selection based on the version (top/skip for legacy versions < 7.x, continuation token for 7.x+)
+
+## 0.8.54 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.8.53 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.8.52 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 0.8.51 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 0.8.50 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 0.8.49 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 0.8.48 (2026-05-26)
+
+
+### Features
+
+- Added multi-organization (Multiple Accounts) support via Entra ID service principal, allowing a single integration to sync across multiple Azure DevOps organizations
+- Webhook events are now routed to the correct per-org client; events from unknown organizations are dropped instead of falling back to the wrong org
+
+
+## 0.8.47 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 0.8.46 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 0.8.45 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 0.8.44 (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 0.8.43 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 0.8.42 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 0.8.41 (2026-05-20)
+
+
+### Bug Fixes
+
+- Fixed file resyncs aborting on transient `503` responses from the `itemsbatch` endpoint by opting the request into the retry path.
+
+
+## 0.8.40 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 0.8.39 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 0.8.38 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 0.8.37 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 0.8.36 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 0.8.35 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 0.8.34 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 0.8.33 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 0.8.32 (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+## 0.8.31 (2026-05-11)
+
+
+### Bug Fixes
+
+- Fixed missing code coverage data on `test-run` entities by passing the required `api-version` parameter to the `test/codecoverage` endpoint
+
+
+## 0.8.30 (2026-05-10)
+
+
+### Features
+
+- Added `includeFields` selector field to the user kind, allowing enrichment of user entitlements
+
+
+## 0.8.29 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 0.8.28 (2026-05-03)
+
+
+### Features
+
+- Added `release-definition` kind for classic release pipeline definitions
+- Added configurable selector on the `release` kind with expand, status, tag, source branch, and date filters
+
+
+## 0.8.27 (2026-05-03)
+
+
+### Features
+
+- Added live event support for the `test-run` kind by piggybacking on pipeline run state change events
+
+
+## 0.8.26 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 0.8.25 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.8.24 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 0.8.23 (2026-04-24)
+
+
+### Improvements
+
+- Added concurrency support for repository fetching across projects
+
+
+## 0.8.22 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 0.8.21 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 0.8.20 (2026-04-21)
+
+
+### Improvements
+
+- Added default WIQL filter to work-item port-app-config to exclude closed/done/removed items
+
+
+## 0.8.19 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 0.8.18 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 0.8.17 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 0.8.16 (2026-04-16)
+
+
+### Features
+
+- Added live event support for releases and release deployments via ADO service hooks (release created, abandoned, deployment started, deployment completed)
+
+
+## 0.8.15 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 0.8.14 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 0.8.13 (2026-04-15)
+
+
+### Improvements
+
+- Enhanced repository-policy and test-run fetching with concurrency support
+
+
+## 0.8.12 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 0.8.11 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 0.8.10 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 0.8.9 (2026-04-06)
+
+
+### Improvements
+
+- Added title/description metadata to AzureDevopsFolderSelector, AzureDevopsFolderResourceConfig, and AzureDevopsReleaseDeploymentConfig for schema validation compliance
+
+
+## 0.8.8 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 0.8.7 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 0.8.6 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 0.8.5 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 0.8.4 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 0.8.3 (2026-03-30)
+
+
+### Improvements
+
+- Enabled formMappingEnabled flag
+
+
+## 0.8.2 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 0.8.1 (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 0.8.0 (2026-03-24)
+
+
+### Improvements
+
+- Renamed `included files` to `Additional files`
+
+## 0.7.48 (2026-03-24)
+
+
+### Bug Fixes
+
+- Fixed test runs ingestion pagination to use `$skip/$top` for the Test Runs List endpoint (instead of continuation tokens), preventing missing test runs in large projects/orgs.
+
+
+## 0.7.47 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 0.7.46 (2026-03-23)
+
+### Bug Fixes
+
+- Fixed work items sync capped at 20K per project: added ID-range pagination to fetch all work items when a project exceeds the Azure DevOps WIQL API limit of 20,000 results per query
+- When user's WIQL contains ORDER BY: use their query as-is (respecting their order) but disable pagination with a warning; without ORDER BY we append our own for full pagination
+
+## 0.7.45 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 0.7.44 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
+## 0.7.43 (2026-03-18)
+
+
+### Improvements
+
+- Updated HTTP client to use Ocean's core `client_timeout` configuration
+
+
 ## 0.7.42 (2026-03-17)
 
 

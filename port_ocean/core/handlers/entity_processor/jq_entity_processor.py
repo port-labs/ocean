@@ -22,11 +22,15 @@ from port_ocean.core.ocean_types import (
     CalculationResult,
     EntitySelectorDiff,
 )
+from port_ocean.core.utils.json_compat import (
+    JQInputNotJsonSerializableError,
+    compile_jq,
+    make_json_compatible,
+)
 from port_ocean.core.utils.utils import (
     gather_and_split_errors_from_results,
 )
 from port_ocean.exceptions.core import EntityProcessorException
-
 
 # Set globals for multiprocessing of batch data. When a process forks, it inherits these globals by reference.
 # We will take advantage of COW to avoid pickling the data.
@@ -101,7 +105,10 @@ class JQEntityProcessor(BaseEntityProcessor):
         """Execute a JQ pattern against data, logging a structured ERROR with field context on failure."""
         try:
             compiled_pattern = self._compile(pattern)
-            func = compiled_pattern.input_value(data)
+            try:
+                func = compile_jq(compiled_pattern, data)
+            except JQInputNotJsonSerializableError:
+                func = compile_jq(compiled_pattern, make_json_compatible(data))
             return func.first()
         except Exception as exc:
             self._log_search_failure(pattern, exc, field)
@@ -111,7 +118,10 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         compiled_pattern = self._compile(pattern)
 
-        func = compiled_pattern.input_value(data)
+        try:
+            func = compile_jq(compiled_pattern, data)
+        except JQInputNotJsonSerializableError:
+            func = compile_jq(compiled_pattern, make_json_compatible(data))
 
         value = func.first()
         if isinstance(value, bool):
@@ -364,19 +374,6 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
             return set()
 
-    @staticmethod
-    async def _send_examples(data: list[dict[str, Any]], kind: str) -> None:
-        try:
-            if data:
-                await ocean.port_client.ingest_integration_kind_examples(
-                    kind, data, should_log=False
-                )
-        except Exception as ex:
-            logger.warning(
-                f"Failed to send raw data example {ex}",
-                exc_info=True,
-            )
-
     async def separate_compileable_and_uncompileable_patterns_and_warmup_cache(
         self, raw_entity_mappings: dict[str, Any], selector_queries: list[str] = []
     ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -565,16 +562,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         mapping: ResourceConfig,
         raw_results: list[RAW_ITEM],
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
     ) -> CalculationResult:
-        # Send raw data examples FIRST (before transformation)
-        # This ensures users can see the raw data even if transformation fails
-        if send_raw_data_examples_amount > 0 and raw_results:
-            examples_to_send = [
-                item.copy() for item in raw_results[:send_raw_data_examples_amount]
-            ]
-            await self._send_examples(examples_to_send, mapping.kind)
-
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )

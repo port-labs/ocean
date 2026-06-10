@@ -1,14 +1,34 @@
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, cast
+
+from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-from loguru import logger
-from typing import cast
+from port_ocean.helpers.retry import RetryConfig, register_retry_config_callback
 
-from initialize_client import init_aikido_client
 from clients.options import ListRepositoriesOptions, ListContainersOptions
+from initialize_client import init_aikido_client
+from integration import (
+    ObjectKind,
+    RepositoryResourceConfig,
+    ContainerResourceConfig,
+    IssueGroupResourceConfig,
+)
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
-from integration import ObjectKind, RepositoryResourceConfig, ContainerResourceConfig
+
+AIKIDO_RETRY_MAX_BACKOFF = 1800
+
+
+def _get_aikido_retry_config() -> RetryConfig:
+    """Configure retry behavior to respect Aikido's Retry-After header on 429 responses."""
+    return RetryConfig(
+        retry_after_headers=["Retry-After"],
+        respect_retry_after_header=True,
+        max_backoff_wait=AIKIDO_RETRY_MAX_BACKOFF,
+    )
+
+
+register_retry_config_callback(_get_aikido_retry_config)
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
@@ -38,12 +58,20 @@ async def on_issue_groups_resync(
     kind: str,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     client = init_aikido_client()
-    logger.info("Fetching open issue groups from Aikido API")
-    async for issue_group_batch in client.get_open_issue_groups():
-        logger.info(
-            f"Yielding open issue groups batch of size: {len(issue_group_batch)}"
-        )
-        yield issue_group_batch
+    selector = cast(IssueGroupResourceConfig, event.resource_config).selector
+
+    if selector.scope_to_team:
+        logger.info("Fetching team-scoped open issue groups from Aikido API")
+        async for batch in client.get_open_issue_groups_by_team():
+            logger.info(
+                f"Yielding team-scoped open issue groups batch of size: {len(batch)}"
+            )
+            yield batch
+    else:
+        logger.info("Fetching open issue groups from Aikido API")
+        async for batch in client.get_open_issue_groups():
+            logger.info(f"Yielding open issue groups batch of size: {len(batch)}")
+            yield batch
 
 
 @ocean.on_resync(ObjectKind.TEAM)

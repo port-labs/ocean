@@ -31,14 +31,18 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.event import event
-from utils.overrides import AWSPortAppConfig, AWSResourceConfig
+from utils.overrides import (
+    AWSPortAppConfig,
+    AWSResourceConfig,
+    AWSResourceGroupResourceConfig,
+)
 from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
     ResourceKindsWithSpecialHandling,
     OPT_IN_REGIONS,
     is_access_denied_exception,
-    is_resource_type_not_available_exception,
+    is_region_not_supported_exception,
     is_server_error,
     safe_iterate,
 )
@@ -69,7 +73,6 @@ async def _handle_global_resource_resync(
     resync_func: Callable[[str, Session], ASYNC_GENERATOR_RESYNC_TYPE],
     allowed_regions: Optional[Iterable[str]] = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     async for session in credentials.create_session_for_each_region(allowed_regions):
         region = session.region_name
         try:
@@ -83,10 +86,10 @@ async def _handle_global_resource_resync(
                     f"{region}, trying next region"
                 )
                 continue
-            elif is_resource_type_not_available_exception(e):
-                logger.warning(
+            elif is_region_not_supported_exception(e, region):
+                logger.bind(traceback=e, region=region).warning(
                     f"Skipping global resource {kind} in region {region}: "
-                    f"resource type not available in this region"
+                    f"resource is missing for the provided region"
                 )
                 continue
             else:
@@ -157,7 +160,7 @@ async def resync_resources_for_account(
                 tasks.clear()
     except Exception as exc:
         logger.bind(traceback=exc, kind=kind, region=session.region_name).error(
-            f"Failed to complete resync for {kind} in region {session.region_name}"
+            f"Failed to complete resync for {kind} in region {session.region_name}: {exc}"
         )
         failed_regions.append(session.region_name)
         errors.append(exc)
@@ -211,7 +214,6 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER)
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     elasticache_resync_func = functools.partial(
         resync_custom_kind,
         service_name="elasticache",
@@ -414,7 +416,9 @@ async def resync_s3(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUP)
 async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    aws_resource_config = typing.cast(
+        AWSResourceGroupResourceConfig, event.resource_config
+    )
     tasks = []
 
     # Determine which resync function to use based on configuration

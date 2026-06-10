@@ -1,0 +1,35 @@
+{
+  "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0041",
+  "description": "summary",
+  "impactedServices": [
+    "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0052"
+  ],
+  "tinyId": "3",
+  "message": "Example Token Incident",
+  "status": "open",
+  "tags": [
+    "tags"
+  ],
+  "createdAt": "2023-09-26T17:06:16.824Z",
+  "updatedAt": "2023-09-26T17:49:10.17Z",
+  "priority": "P3",
+  "ownerTeam": "",
+  "responders": [
+    {
+      "type": "team",
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0012"
+    },
+    {
+      "type": "user",
+      "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0001"
+    }
+  ],
+  "extraProperties": {},
+  "links": {
+    "web": "https://app.opsgenie.com/incident/detail/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0041",
+    "api": "https://api.opsgenie.com/v1/incidents/aaaaaaaa-bbbb-cccc-dddd-eeeeeeee0041"
+  },
+  "impactStartDate": "2023-09-26T17:06:16.824Z",
+  "impactEndDate": "2023-09-26T17:45:25.719Z",
+  "actions": []
+}

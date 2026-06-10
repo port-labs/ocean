@@ -7,7 +7,7 @@ from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from aiobotocore.session import AioSession
-from typing import Any, TypedDict, AsyncIterator
+from typing import Any, TypedDict, AsyncIterator, Dict
 from aws.auth.providers.assume_role_with_web_identity_provider import (
     AssumeRoleWithWebIdentityProvider,
 )
@@ -15,34 +15,71 @@ import os
 
 StrategyType = SingleAccountStrategy | MultiAccountStrategy | OrganizationsStrategy
 
+DEFAULT_PROVIDER_PRIORITY: str = "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole"
+
 
 class AccountStrategyFactory:
     """A factory for creating account strategies based on the global configuration."""
 
     _cached_strategy: StrategyType | None = None
 
+    _provider_factories: Dict[str, type[CredentialProvider]] = {
+        "AssumeRoleWithWebIdentity": AssumeRoleWithWebIdentityProvider,
+        "StaticCredential": StaticCredentialProvider,
+        "AssumeRole": AssumeRoleProvider,
+    }
+
+    @classmethod
+    def _get_provider_priority(cls, config: dict[str, Any]) -> list[str]:
+        """
+        Returns the credential provider priority list, falling back to DEFAULT_PROVIDER_PRIORITY if not provided.
+        Example: "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole"
+        """
+        priority_str = (
+            config.get("credential_provider_priority") or DEFAULT_PROVIDER_PRIORITY
+        )
+        return [
+            provider.strip() for provider in priority_str.split(",") if provider.strip()
+        ]
+
     @classmethod
     def _detect_provider_type(cls, config: dict[str, Any]) -> CredentialProvider:
         """
-        Detect the appropriate provider type based on environment variables and config.
-        Returns a tuple of (provider_instance, provider_type_name, strategy_class)
+        Dynamically detect the appropriate provider type based on the configured priority.
         """
+        for provider_name in cls._get_provider_priority(config):
+            provider_cls = cls._provider_factories.get(provider_name)
+            if not provider_cls:
+                logger.warning(f"Unknown provider '{provider_name}', skipping...")
+                continue
 
-        # Check for web identity token first (highest priority)
-        if os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"):
-            logger.info(
-                "[AccountStrategyFactory] Using AssumeRoleWithWebIdentityProvider (found AWS_WEB_IDENTITY_TOKEN_FILE)"
+            if cls._provider_is_applicable(provider_name, config):
+                logger.info(
+                    f"Using {provider_cls.__name__} (priority: {provider_name})"
+                )
+                return provider_cls(config=config)
+
+            logger.debug(
+                f"Provider '{provider_name}' failed to satisfy config requirement, skipping..."
             )
-            return AssumeRoleWithWebIdentityProvider(config=config)
 
-        if config.get("aws_access_key_id") and config.get("aws_secret_access_key"):
-            logger.info(
-                "[AccountStrategyFactory] Using StaticCredentialProvider (found aws_access_key_id and aws_secret_access_key)"
-            )
-            return StaticCredentialProvider(config=config)
-
-        logger.info("[AccountStrategyFactory] Using AssumeRoleProvider")
+        logger.warning("No valid provider found; falling back to assuming role")
         return AssumeRoleProvider(config=config)
+
+    @staticmethod
+    def _provider_is_applicable(provider_name: str, config: dict[str, Any]) -> bool:
+        """Determine if a provider is applicable given the current environment and config."""
+        if provider_name == "AssumeRoleWithWebIdentity":
+            return bool(os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"))
+        if provider_name == "StaticCredential":
+            return bool(
+                config.get("aws_access_key_id") and config.get("aws_secret_access_key")
+            )
+        if provider_name == "AssumeRole":
+            return bool(
+                config.get("account_role_arn") or config.get("account_role_arns")
+            )
+        return False
 
     @classmethod
     def _detect_strategy_type(cls, config: dict[str, Any]) -> type[StrategyType]:

@@ -1,10 +1,12 @@
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
-from httpx import BasicAuth, ReadTimeout, Response
+from httpx import ReadTimeout, Response
 from loguru import logger
+from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
+from azure_devops.client.auth import AuthProvider
 from azure_devops.client.rate_limiter import (
     AzureDevOpsRateLimiter,
     LIMIT_RESET_HEADER,
@@ -18,7 +20,7 @@ MAX_TIMEMOUT_RETRIES = 3
 
 
 class HTTPBaseClient:
-    def __init__(self, personal_access_token: str) -> None:
+    def __init__(self, auth_provider: AuthProvider) -> None:
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 retry_after_headers=[
@@ -26,8 +28,9 @@ class HTTPBaseClient:
                     LIMIT_RETRY_AFTER_HEADER,
                 ],
             ),
+            timeout=ocean.config.client_timeout,
         )
-        self._personal_access_token = personal_access_token
+        self._auth_provider = auth_provider
         self._rate_limiter = AzureDevOpsRateLimiter()
 
     async def send_request(
@@ -37,9 +40,9 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
-        timeout: int = 5,
     ) -> Response | None:
-        self._client.auth = BasicAuth("", self._personal_access_token)
+        auth_headers = await self._auth_provider.get_auth_headers()
+        headers = {**(headers or {}), **auth_headers}
         self._client.follow_redirects = True
 
         try:
@@ -50,7 +53,6 @@ class HTTPBaseClient:
                     data=data,
                     params=params,
                     headers=headers,
-                    timeout=timeout,
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
@@ -60,10 +62,10 @@ class HTTPBaseClient:
             else:
                 if response.status_code == 401:
                     logger.error(
-                        f"Couldn't access url {url} . Make sure the PAT (Personal Access Token) is valid!"
+                        f"Couldn't access url {url}. Make sure the {self._auth_provider.auth_description} is valid!"
                     )
                 logger.error(
-                    f"Request with bad status code {response.status_code}: {method} to url {url}"
+                    f"Request with bad status code {response.status_code}: {method} to url {url}. Response body: {e.response.text}"
                 )
                 raise e
         except httpx.HTTPError as e:
@@ -134,8 +136,14 @@ class HTTPBaseClient:
         url: str,
         params: Optional[dict[str, Any]] = None,
         max_results: Optional[int] = None,
+        top_param: Optional[str] = None,
+        skip_param: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        default_params = {"$top": PAGE_SIZE, "$skip": 0}
+        if not top_param:
+            top_param = "$top"
+        if not skip_param:
+            skip_param = "$skip"
+        default_params = {top_param: PAGE_SIZE, skip_param: 0}
         params = {**default_params, **(params or {})}
         timeout_retries = 0
         total_items_fetched = 0
@@ -143,8 +151,7 @@ class HTTPBaseClient:
             if max_results and total_items_fetched >= max_results:
                 break
             if max_results:
-                params["$top"] = min(PAGE_SIZE, max_results - total_items_fetched)
-
+                params[top_param] = min(PAGE_SIZE, max_results - total_items_fetched)
             try:
                 response = await self.send_request("GET", url, params=params)
                 if not response:
@@ -157,7 +164,7 @@ class HTTPBaseClient:
                     )
                     yield objects_page
                     total_items_fetched += len(objects_page)
-                    params["$skip"] += len(objects_page)
+                    params[skip_param] += len(objects_page)
                     timeout_retries = 0
                 else:
                     break

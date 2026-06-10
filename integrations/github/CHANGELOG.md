@@ -7,6 +7,782 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.0.0 (2026-06-10)
+
+
+### Improvements
+
+- Parse yaml files in the file kind with yaml spec 1.2 by default
+
+
+## 5.5.33 (2026-06-09)
+
+
+### Improvements
+
+- Added `statuses` selector to `workflow-run` kind to filter runs by status or conclusion. Accepts a list of values; each additional status results in one extra API call per workflow.
+- Added `since` selector to `workflow-run` kind to limit resync to runs created within the last N days.
+- Added `sinceDate` selector to `workflow-run` kind to limit resync to runs created on or after a fixed ISO 8601 date. Ignored if `since` is also set.
+
+
+## 5.5.32 (2026-06-09)
+
+
+### Bug Fixes
+
+- Fixed `workflow-run` webhook processor to treat `completed` events as upserts instead of deletions.
+
+
+## 5.5.31 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 5.5.30 (2026-06-08)
+
+
+### Improvements
+
+- Add reviews and statusCheckRollup to returned pull request kind in GraphQL-based exporter
+
+
+## 5.5.29 (2026-06-08)
+
+
+### Bug Fixes
+
+- Fixed sync failures from intermittent 500 errors on large pages by retrying with a smaller page size
+
+
+## 5.5.28 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 5.5.27 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 5.5.26 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 5.5.25 (2026-06-03)
+
+
+### Improvements
+
+- Bumped version to 5.5.25
+
+
+## 5.5.23 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 5.5.22 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 5.5.21 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 5.5.20 (2026-05-31)
+
+
+### Bug Fixes
+
+- Fixed asyncio event loop error when `repoManagedMapping` is enabled with multiple file resources.
+
+
+## 5.5.19 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 5.5.18 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 5.5.17 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 5.5.16 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 5.5.15 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 5.5.14 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 5.5.13 (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 5.5.12 (2026-05-27)
+
+
+### Bug Fixes
+
+- Fixed OOM crashes during repository enrichment by sub-batching calls to process at most 10 repositories concurrently and preventing cache pollution from enriched data
+
+
+## 5.5.11 (2026-05-27)
+
+
+### Improvements
+
+- Point `repoSearch` selector description to Port docs limitations instead of duplicating GitHub Search API constraints in the UI.
+
+
+## 5.5.10 (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 5.5.9 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 5.5.8 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 5.5.7 (2026-05-25)
+
+
+### Improvements
+
+- Applied independent resync streaming to pull request syncs so one failed stream does not block the remaining streams, while still surfacing deferred errors to prevent unsafe reconciliation deletes.
+
+
+## 5.5.6 (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 5.5.5 (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 5.5.4 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 5.5.3 (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 5.5.2 (2026-05-20)
+
+
+### Improvements
+
+- Added optional GitHub Pages enrichment for repository resources via the `pages` included relation, storing the Pages configuration under `__pages`.
+
+
+## 5.5.1 (2026-05-20)
+
+
+### Improvements
+
+- Added `labeled` and `unlabeled` to the supported `pull_request` webhook actions so PR label changes are processed in real time.
+
+
+## 5.5.0 (2026-05-19)
+
+
+### Bug Fixes
+
+- Added `excludeGraphqlFields` selector for PR GraphQL queries to omit problematic fields (e.g. `additions`, `deletions`, `changedFiles`) as a workaround for GitHub GraphQL query failures.
+
+
+## 5.4.16 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 5.4.15 (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 5.4.14 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 5.4.13 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 5.4.12 (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 5.4.11 (2026-05-17)
+
+
+### Bug Fixes
+
+- Fixed workflow push webhook processing to detect removed workflow files and propagate workflow deletions.
+
+
+## 5.4.10 (2026-05-14)
+
+
+### Bug Fixes
+
+- Prevent team resync from crashing when GraphQL returns `organization.team` as null for enterprise teams; log and skip the team instead.
+
+
+## 5.4.9 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 5.4.8 (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 5.4.7 (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 5.4.6 (2026-05-13)
+
+
+### Improvements
+
+- Cached recursive git tree retrieval in file exporter to reduce repeated API calls per repo/branch during file matching.
+
+
+## 5.4.5 (2026-05-12)
+
+
+### Bug Fixes
+
+- Prevented resync failures when `includedFiles` targets a path that is not a regular file (e.g. symlink/submodule) or when the GitHub Contents API response is missing `content`/`encoding`.
+
+
+## 5.4.4 (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+## 5.4.3 (2026-05-12)
+
+
+### Bug Fixes
+
+- Added opt-in `customProperties` selector under `includedRelations` to enrich repositories with organization custom property values via the properties/values API.
+
+
+## 5.4.2 (2026-05-11)
+
+
+### Bug Fixes
+
+- Fix repo search query in live-events
+
+
+## 5.4.1 (2026-05-10)
+
+
+### Improvements
+
+- Enriched GitHub team export and team webhook upsert payloads with organization context, and consolidated GraphQL team-member enrichment.
+
+
+## 5.4.0 (2026-05-07)
+
+
+### Improvements
+
+- Added `skipWebhookPatching` configuration option to prevent the integration from patching existing webhook configurations
+
+
+## 5.3.20 (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 5.3.19 (2026-05-06)
+
+
+### Bug Fixes
+
+- Fixed `RequestNotRead` error during branch resync retries caused by `before_retry_async` accessing `request.content` on an unread streaming body. httpx does not pre-buffer the body for bodyless GET requests, so `request.content` raised `httpx.RequestNotRead` on retry. Replaced with `request.read()` which materialises the stream safely regardless of body type.
+
+
+## 5.3.18 (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 5.3.17 (2026-04-29)
+
+
+### Bug Fixes
+
+- Removed unused `PageInfoFields` GraphQL fragment from the single pull request detail query, which caused all webhook-triggered PR updates to fail when using `api: graphql`
+
+
+## 5.3.16 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 5.3.15 (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 5.3.14 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 5.3.13 (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 5.3.12 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 5.3.11 (2026-04-21)
+
+
+### Bug Fixes
+
+- Removed `extra = "forbid"` from the GitHub user and team selector blocks
+
+
+## 5.3.10 (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 5.3.9 (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 5.3.8 (2026-04-20)
+
+
+### Improvements
+
+- Added `includeSAMLEmail` selector to enrich exported users and team members with `__SAMLEmail` from the org SAML identity provider, and propagated the option through resync and webhook flows.
+
+
+## 5.3.7 (2026-04-20)
+
+
+### Improvements
+
+- Added further context to dispatch event evaluation logs
+- Revised include_relations selector's title and description
+
+
+## 5.3.6 (2026-04-16)
+
+
+### Improvements
+
+- Added structured repository relations enrichment configuration (teams/sbom/collaborators), including collaborator `affiliation` support.
+- Expanded repository webhook handling to also react to collaborator/team collaborator events so repository entities can be re-enriched when relationships change.
+
+
+## 5.3.5 (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 5.3.4 (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 5.3.3 (2026-04-15)
+
+
+### Improvements
+
+- Ignore enrich_with_first_commit if the api selector is set to rest instead of throwing ValidationError
+
+
+## 5.3.2 (2026-04-14)
+
+
+### Improvements
+
+- changed log level to debug
+
+
+## 5.3.1 (2026-04-14)
+
+
+### Improvements
+
+- Added warning log for unprocessed dispatch workflow run events due to actor mismatch
+
+
+## 5.3.0 (2026-04-12)
+
+
+### Improvements
+
+- Added optional enrich with first commit selector for PR kind for LTTM metrics
+
+
+## 5.2.19 (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 5.2.18 (2026-04-09)
+
+
+### Improvements
+
+- Add `selector.affiliation` support for the Collaborator kind (`all`/`direct`/`outside`).
+- Skip Collaborator live events when `selector.affiliation` is not `all` to avoid catalog
+
+
+## 5.2.17 (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 5.2.16 (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 5.2.15 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 5.2.14 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 5.2.13 (2026-04-06)
+
+
+### Bug fixes
+
+- Fixed spacing for file kind's descriptions
+
+## 5.2.12 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 5.2.11 (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 5.2.10 (2026-04-05)
+
+### Improvements
+
+- Make github CI and gitlab CI docs more specific
+
+
+## 5.2.9 (2026-04-05)
+
+### Bug fixes
+
+- Fixed installation docs
+
+
+## 5.2.8 (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 5.2.7 (2026-03-31)
+
+
+### Bug Fixes
+
+- Increased retries count in fetching dispatched workflow run and revised created filter to be more accurate
+
+
+## 5.2.6 (2026-03-30)
+
+
+### Improvements
+
+- Enabled formMappingEnabled flag
+
+
+## 5.2.5 (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 5.2.4 (2026-03-29)
+
+
+### Improvements
+
+- Updated description for attached files
+
+## 5.2.3 (2026-03-25)
+
+
+### Improvements
+
+- Add static resource examples to the integration, enabling blueprint mapping before any data has been ingested.
+
+
+## 5.2.2 (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 5.2.1 (2026-03-24)
+
+### Improvements
+
+- Renamed the pull request `since` selector label from "Since (Days)" to "Closed PRs Lookback Days" and updated its description to clarify it applies to the lookback window for closed pull requests.
+
+
+## 5.2.0 (2026-03-24)
+
+
+### Improvements
+
+- Renamed `included files` to `Additional files`
+
+## 5.1.36 (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 5.1.35 (2026-03-22)
+
+
+### Bug Fixes
+
+- Fixed `team` collaborator webhook processing by iterating REST team-members pagination correctly and mapping REST payload fields.
+- Standardized collaborator webhook enrichment to avoid emitting multiple repository-enriched data in webhook upserts/deletes.
+
+
+## 5.1.34 (2026-03-22)
+
+
+### Improvements
+
+- Refined selectors descriptions
+
+
+## 5.1.33 (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 5.1.32 (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
 ## 5.1.31 (2026-03-17)
 
 

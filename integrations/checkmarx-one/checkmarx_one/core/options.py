@@ -73,6 +73,7 @@ class ListKicsOptions(TypedDict):
     """Options for listing KICS scan results (IaC Security)."""
 
     scan_id: Required[str]
+    project_id: Required[str]
     severity: NotRequired[
         Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
     ]
@@ -83,6 +84,7 @@ class ListSastOptions(TypedDict, total=False):
     """Options for listing SAST scan results."""
 
     scan_id: Required[str]
+    project_id: Required[str]
     compliance: NotRequired[Optional[str]]
     group: NotRequired[Optional[str]]
     include_nodes: NotRequired[bool]
@@ -128,6 +130,7 @@ class ListDastScanResultOptions(TypedDict):
     """Options for listing DAST results for a scan."""
 
     dast_scan_id: Required[str]
+    dast_project_id: Required[str]
     severity: NotRequired[
         Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
     ]

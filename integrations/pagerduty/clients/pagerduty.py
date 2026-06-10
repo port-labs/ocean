@@ -12,7 +12,12 @@ from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
 from clients.utils import get_date_range_for_last_n_months
-from clients.rate_limiter import PagerDutyRateLimiter
+from clients.rate_limiter import (
+    PagerDutyDailyRateLimitExceededError,
+    PagerDutyRateLimiter,
+    daily_quota_exhausted,
+)
+from clients.retry_transport import PagerDutyRetryTransport
 
 USER_KEY = "users"
 
@@ -29,7 +34,12 @@ class PagerDutyClient(OAuthClient):
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
+        self._rate_limiter = PagerDutyRateLimiter(
+            max_concurrent=MAX_CONCURRENT_REQUESTS,
+        )
         self.http_client = OceanAsyncClient(
+            transport_class=PagerDutyRetryTransport,
+            transport_kwargs={"rate_limiter": self._rate_limiter},
             retry_config=RetryConfig(
                 additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
                 retry_after_headers=[
@@ -39,9 +49,6 @@ class PagerDutyClient(OAuthClient):
             timeout=ocean.config.client_timeout,
         )
         self.http_client.headers.update(self.headers)
-        self._rate_limiter = PagerDutyRateLimiter(
-            max_concurrent=MAX_CONCURRENT_REQUESTS,
-        )
 
     @classmethod
     def from_ocean_configuration(cls) -> "PagerDutyClient":
@@ -307,6 +314,8 @@ class PagerDutyClient(OAuthClient):
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
 
+        self._rate_limiter.check_daily_budget(endpoint)
+
         async with self._rate_limiter:
             try:
                 response = await self.http_client.request(
@@ -320,11 +329,20 @@ class PagerDutyClient(OAuthClient):
                 return response.json()
             except httpx.HTTPStatusError as e:
                 status_code = e.response.status_code
-                if status_code == 404:
+                if status_code == HTTPStatus.NOT_FOUND:
                     logger.debug(
                         f"Resource not found at endpoint '{endpoint}' with params: {query_params}, method: {method}"
                     )
                     return {}
+
+                if (
+                    status_code == HTTPStatus.TOO_MANY_REQUESTS
+                    and endpoint.startswith("analytics/")
+                    and daily_quota_exhausted(e.response.headers)
+                ):
+                    raise PagerDutyDailyRateLimitExceededError(
+                        f"PagerDuty analytics daily quota exhausted on {endpoint}."
+                    ) from e
 
                 logger.error(
                     f"HTTP error for endpoint '{endpoint}': Status code {status_code}, Method: {method}, Query params: {query_params}, Response text: {e.response.text}"

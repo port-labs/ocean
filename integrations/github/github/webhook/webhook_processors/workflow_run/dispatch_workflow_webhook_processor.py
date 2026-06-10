@@ -48,13 +48,26 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
             return False
 
         workflow_run = event.payload["workflow_run"]
-        actor = await get_authenticated_actor()
-        should_process = (
-            workflow_run["status"] == "completed"
-            and workflow_run["actor"]["login"] == actor
-        )
+        workflow_run_actor = (workflow_run.get("actor") or {}).get("login")
+        workflow_run_status = workflow_run.get("status")
+        with logger.contextualize(
+            workflow_run_id=workflow_run.get("id"),
+            workflow_run_actor=workflow_run_actor,
+            workflow_run_status=workflow_run_status,
+        ):
+            if workflow_run_status != "completed":
+                logger.debug("Skipping workflow run event as it's not completed yet")
+                return False
 
-        return should_process
+            integration_actor = await get_authenticated_actor()
+            if workflow_run_actor == integration_actor:
+                return True
+
+            logger.debug(
+                "Skipping workflow run event as it was not triggered by this integration",
+                integration_actor=integration_actor,
+            )
+            return False
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

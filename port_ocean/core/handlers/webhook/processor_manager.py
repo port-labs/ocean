@@ -4,6 +4,8 @@ from typing import Dict, Tuple, Type, Set, List
 from fastapi import APIRouter, Request
 from loguru import logger
 import asyncio
+import base64
+import json
 
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import EventType, event_context
@@ -18,6 +20,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     LiveEventTimestamp,
 )
 from port_ocean.context.event import event
+from port_ocean.log.sensetive import sensitive_log_filter
 
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -25,6 +28,19 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import LocalQueue
+
+# Cap JSON UTF-8 size before base64 when logging under events_debug_logging (1 MiB).
+_WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES = 1024 * 1024
+
+
+def _truncate_utf8_bytes_for_webhook_debug_log(data: bytes, max_len: int) -> bytes:
+    """Truncate UTF-8 for webhook debug log lines without splitting a code point."""
+    if len(data) <= max_len:
+        return data
+    truncated = data[:max_len]
+    while truncated and (truncated[-1] & 0b11000000) == 0b10000000:
+        truncated = truncated[:-1]
+    return truncated
 
 
 class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
@@ -63,7 +79,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         while True:
             event = None
             matching_processors: List[
-                Tuple[ResourceConfig | None, AbstractWebhookProcessor]
+                Tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]
             ] = []
             try:
                 event = await queue.get()
@@ -86,8 +102,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
                         processing_results = await asyncio.gather(
                             *(
-                                self._process_single_event(proc, path, res)
-                                for res, proc in matching_processors
+                                self._process_single_event(
+                                    proc, path, res, resource_index
+                                )
+                                for res, proc, resource_index in matching_processors
                             ),
                             return_exceptions=True,
                         )
@@ -118,7 +136,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
             except asyncio.CancelledError:
                 logger.info(f"Worker {worker_id} for {path} shutting down")
-                for _, proc in matching_processors:
+                for _, proc, _ in matching_processors:
                     await proc.cancel()
                     self._timestamp_event_error(proc.event)
                 break
@@ -126,7 +144,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 logger.exception(
                     f"Unexpected error in worker {worker_id} for {path}: {e}"
                 )
-                for _, proc in matching_processors:
+                for _, proc, _ in matching_processors:
                     self._timestamp_event_error(proc.event)
             finally:
                 try:
@@ -140,11 +158,11 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
     async def _extract_matching_processors(
         self, webhook_event: WebhookEvent, path: str
-    ) -> list[tuple[ResourceConfig | None, AbstractWebhookProcessor]]:
+    ) -> list[tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]]:
         """Find and extract the matching processor for an event"""
 
         created_processors: list[
-            tuple[ResourceConfig | None, AbstractWebhookProcessor]
+            tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]
         ] = []
         event_processor_names = []
 
@@ -153,14 +171,18 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             if await processor.should_process_event(webhook_event):
                 event_processor_names.append(processor.__class__.__name__)
                 if processor.get_processor_type() == WebhookProcessorType.ACTION:
-                    created_processors.append((None, processor))
+                    created_processors.append((None, processor, None))
                     continue
 
                 kinds = await processor.get_matching_kinds(webhook_event)
                 for kind in kinds:
-                    for resource in event.port_app_config.resources:
+                    for resource_index, resource in enumerate(
+                        event.port_app_config.resources
+                    ):
                         if resource.kind == kind:
-                            created_processors.append((resource, processor))
+                            created_processors.append(
+                                (resource, processor, resource_index)
+                            )
 
         if not created_processors:
             if event_processor_names:
@@ -196,6 +218,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         processor: AbstractWebhookProcessor,
         path: str,
         resource: ResourceConfig | None,
+        resource_index: int | None = None,
     ) -> WebhookEventRawResults:
         """Process a single event with a specific processor"""
         try:
@@ -203,7 +226,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             processor.event.set_timestamp(LiveEventTimestamp.StartedProcessing)
 
             webhook_event_raw_results = await self._execute_processor(
-                processor, resource
+                processor, resource, resource_index
             )
             processor.event.set_timestamp(
                 LiveEventTimestamp.FinishedProcessingSuccessfully
@@ -215,12 +238,15 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             raise
 
     async def _execute_processor(
-        self, processor: AbstractWebhookProcessor, resource: ResourceConfig | None
+        self,
+        processor: AbstractWebhookProcessor,
+        resource: ResourceConfig | None,
+        resource_index: int | None = None,
     ) -> WebhookEventRawResults:
         """Execute a single processor within a max processing time"""
         try:
             return await asyncio.wait_for(
-                self._process_webhook_request(processor, resource),
+                self._process_webhook_request(processor, resource, resource_index),
                 timeout=self._max_event_processing_seconds,
             )
         except asyncio.TimeoutError:
@@ -229,7 +255,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             )
 
     async def _process_webhook_request(
-        self, processor: AbstractWebhookProcessor, resource: ResourceConfig | None
+        self,
+        processor: AbstractWebhookProcessor,
+        resource: ResourceConfig | None,
+        resource_index: int | None = None,
     ) -> WebhookEventRawResults:
         """Process a webhook request with retry logic
 
@@ -257,7 +286,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 )
                 if resource is not None:
                     webhook_event_raw_results.resource = resource
+                    webhook_event_raw_results.resource_index = resource_index
                 webhook_event_raw_results._webhook_trace_id = processor.event.trace_id
+                webhook_event_raw_results._created_at = processor.event.created_at
                 webhook_event_raw_results.original_webhook = original_payload
                 webhook_event_raw_results.original_headers = headers
                 break
@@ -310,6 +341,8 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             try:
                 webhook_event = await WebhookEvent.from_request(request)
                 webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
+                if ocean.config.events_debug_logging:
+                    self._log_webhook_event(webhook_event)
                 await self._event_queues[path].put(webhook_event)
                 return {"status": "ok"}
             except Exception as e:
@@ -321,6 +354,28 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             handle_webhook,
             methods=["POST"],
         )
+
+    def _log_webhook_event(self, webhook_event: WebhookEvent) -> None:
+        """Log a webhook event"""
+        try:
+            webhook_event_masked = sensitive_log_filter.mask_object(
+                webhook_event.payload, full_hide=True
+            )
+            json_bytes = json.dumps(webhook_event_masked).encode("utf-8")
+            payload_truncated = len(json_bytes) > _WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES
+            json_bytes = _truncate_utf8_bytes_for_webhook_debug_log(
+                json_bytes, _WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES
+            )
+            base64_payload = base64.b64encode(json_bytes).decode("utf-8")
+            log_kwargs: Dict[str, str | bool] = {
+                "base64_masked_webhook_debug_payload": base64_payload,
+                "trace_id": webhook_event.trace_id,
+            }
+            if payload_truncated:
+                log_kwargs["webhook_debug_log_json_truncated"] = True
+            logger.info("Got webhook event", **log_kwargs)
+        except Exception as e:
+            logger.error("Error logging webhook event", error=str(e))
 
     async def _cancel_all_event_processors(
         self,

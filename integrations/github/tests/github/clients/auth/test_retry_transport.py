@@ -1,11 +1,13 @@
 import time
-from typing import Any, Callable, Coroutine, Optional
+from http import HTTPStatus
+from typing import Any, Callable, Coroutine, List, Optional, Tuple
 from unittest.mock import Mock, patch, AsyncMock
 
 import httpx
 import pytest
 
-from github.clients.auth.retry_transport import GitHubRetryTransport
+from port_ocean.helpers.retry import RetryConfig
+from github.clients.auth.retry_transport import GitHubRetryTransport, MIN_PAGE_SIZE
 
 
 def _make_transport(
@@ -17,6 +19,25 @@ def _make_transport(
     return GitHubRetryTransport(
         wrapped_transport=wrapped,
         rate_limit_notifier=notifier,
+        token_refresher=token_refresher,
+    )
+
+
+def _make_backoff_transport(
+    handler: Optional[Callable[[httpx.Request], httpx.Response]] = None,
+    token_refresher: Optional[Callable[[], Coroutine[Any, Any, dict[str, str]]]] = None,
+) -> GitHubRetryTransport:
+    """Transport configured like production: 500 is retryable, no backoff sleeps."""
+    wrapped = httpx.MockTransport(handler or (lambda r: httpx.Response(200)))
+    config = RetryConfig(
+        additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+        base_delay=0.0,
+        max_backoff_wait=0.0,
+        max_attempts=10,
+    )
+    return GitHubRetryTransport(
+        wrapped_transport=wrapped,
+        retry_config=config,
         token_refresher=token_refresher,
     )
 
@@ -50,6 +71,17 @@ def _rate_limit_403_response() -> httpx.Response:
 
 def _plain_500_response() -> httpx.Response:
     req = httpx.Request("GET", "https://api.github.com/repos")
+    return httpx.Response(500, request=req, headers={})
+
+
+def _paginated_500(page: int, per_page: int) -> httpx.Response:
+    req = httpx.Request(
+        "GET",
+        httpx.URL(
+            "https://api.github.com/repos",
+            params={"page": str(page), "per_page": str(per_page)},
+        ),
+    )
     return httpx.Response(500, request=req, headers={})
 
 
@@ -270,3 +302,183 @@ class TestGitHubRetryTransportBeforeRetryAsync:
         assert result_2 is not None
         assert result_1.headers["Authorization"] == "Bearer token-1"
         assert result_2.headers["Authorization"] == "Bearer token-2"
+
+    @pytest.mark.asyncio
+    async def test_raises_for_unread_streaming_post_body_without_fix(self) -> None:
+        """Demonstrate that request.content raises RequestNotRead for non-buffered streaming bodies.
+
+        This test documents the original bug: before_retry_async used request.content which
+        raises httpx.RequestNotRead when the request body has not been materialized into
+        memory (e.g. GET requests in Python 3.13 or POST requests with iterable bodies).
+        The fix replaces request.content with request.read().
+        """
+        # Directly accessing .content on a streaming body reproduces the error
+        streaming_body = iter([b'{"query": "{ viewer { login } }"}'])
+        request = httpx.Request(
+            "POST",
+            "https://api.github.com/graphql",
+            content=streaming_body,
+        )
+        assert not hasattr(request, "_content")
+        with pytest.raises(httpx.RequestNotRead):
+            _ = request.content
+
+    @pytest.mark.asyncio
+    async def test_handles_unread_streaming_body(self) -> None:
+        """before_retry_async preserves the body when request.content is not pre-buffered."""
+        body = b'{"query": "{ viewer { login } }"}'
+        refresher = AsyncMock(return_value={"Authorization": "Bearer fresh-token"})
+        transport = _make_transport(token_refresher=refresher)
+
+        request = httpx.Request(
+            "POST",
+            "https://api.github.com/graphql",
+            content=iter([body]),
+        )
+        assert not hasattr(request, "_content")
+
+        result = await transport.before_retry_async(request, None, 5.0, 1)
+
+        assert result is not None
+        assert result.content == body
+        assert result.headers["authorization"] == "Bearer fresh-token"
+
+
+class TestGitHubRetryTransportPageSizeBackoff:
+    def _params(self, url: httpx.URL) -> Tuple[int, int]:
+        return int(url.params["page"]), int(url.params["per_page"])
+
+    def test_reduced_page_url_halves_and_repositions_on_500(self) -> None:
+        """A 500 halves per_page and moves page to the same offset (N -> 2N-1)."""
+        transport = _make_transport()
+        page, per_page = self._params(
+            transport._reduced_page_url(
+                _paginated_500(page=2, per_page=100).request,
+                _paginated_500(page=2, per_page=100),
+            )
+        )
+        assert (page, per_page) == (3, 50)
+
+    def test_reduced_page_url_floors_per_page(self) -> None:
+        """per_page never drops below MIN_PAGE_SIZE."""
+        transport = _make_transport()
+        # 50 -> 25 (the floor), page 2 -> 3
+        _, per_page = self._params(
+            transport._reduced_page_url(
+                _paginated_500(page=2, per_page=50).request,
+                _paginated_500(page=2, per_page=50),
+            )
+        )
+        assert per_page == MIN_PAGE_SIZE
+
+    def test_reduced_page_url_unchanged_at_floor(self) -> None:
+        """At the floor there is nothing left to shrink — URL is returned as-is."""
+        transport = _make_transport()
+        req = _paginated_500(page=5, per_page=MIN_PAGE_SIZE).request
+        assert (
+            transport._reduced_page_url(
+                req, _paginated_500(page=5, per_page=MIN_PAGE_SIZE)
+            )
+            == req.url
+        )
+
+    def test_reduced_page_url_defaults_first_page(self) -> None:
+        """The first request omits `page`; reduction treats it as page 1."""
+        transport = _make_transport()
+        req = httpx.Request("GET", "https://api.github.com/repos?per_page=100")
+        resp = httpx.Response(500, request=req)
+        page, per_page = self._params(transport._reduced_page_url(req, resp))
+        assert (page, per_page) == (1, 50)
+
+    def test_reduced_page_url_unchanged_for_non_500(self) -> None:
+        transport = _make_transport()
+        req = httpx.Request("GET", "https://api.github.com/repos?page=2&per_page=100")
+        ok = httpx.Response(200, request=req)
+        assert transport._reduced_page_url(req, ok) == req.url
+
+    def test_reduced_page_url_unchanged_when_not_paginated(self) -> None:
+        transport = _make_transport()
+        req = httpx.Request("GET", "https://api.github.com/repos")
+        resp = httpx.Response(500, request=req)
+        assert transport._reduced_page_url(req, resp) == req.url
+
+    def test_page_reduction_exhausted_only_at_floor_500(self) -> None:
+        transport = _make_transport()
+        assert (
+            transport._page_reduction_exhausted(
+                _paginated_500(page=5, per_page=MIN_PAGE_SIZE)
+            )
+            is True
+        )
+        assert (
+            transport._page_reduction_exhausted(_paginated_500(page=2, per_page=100))
+            is False
+        )
+        # A non-500 at the floor size is unaffected.
+        req = _paginated_500(page=5, per_page=MIN_PAGE_SIZE).request
+        assert (
+            transport._page_reduction_exhausted(httpx.Response(200, request=req))
+            is False
+        )
+
+    @pytest.mark.asyncio
+    async def test_should_retry_async_stops_at_floor(self) -> None:
+        """500 is retried while there is room to shrink, then stops at the floor."""
+        transport = _make_backoff_transport()
+        assert (
+            await transport._should_retry_async(_paginated_500(page=2, per_page=100))
+            is True
+        )
+        assert (
+            await transport._should_retry_async(
+                _paginated_500(page=5, per_page=MIN_PAGE_SIZE)
+            )
+            is False
+        )
+
+    @pytest.mark.asyncio
+    async def test_before_retry_reduces_url_and_refreshes_headers(self) -> None:
+        """On a 500, before_retry_async returns a reduced URL with fresh headers."""
+        refresher = AsyncMock(return_value={"Authorization": "Bearer fresh"})
+        transport = _make_transport(token_refresher=refresher)
+        failing = _paginated_500(page=2, per_page=100)
+
+        result = await transport.before_retry_async(failing.request, failing, 1.0, 1)
+
+        assert result is not None
+        assert int(result.url.params["page"]) == 3
+        assert int(result.url.params["per_page"]) == 50
+        assert result.headers["Authorization"] == "Bearer fresh"
+
+    @pytest.mark.asyncio
+    async def test_full_retry_loop_walks_page_size_down(self) -> None:
+        """End-to-end: the loop tries 100 -> 50 -> 25 then succeeds, no replays."""
+        seen: List[Tuple[int, int]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            page = int(request.url.params["page"])
+            per_page = int(request.url.params["per_page"])
+            seen.append((page, per_page))
+            if per_page > MIN_PAGE_SIZE:
+                return httpx.Response(500, request=request)
+            return httpx.Response(200, request=request, json=[{"id": page}])
+
+        transport = _make_backoff_transport(
+            handler=handler, token_refresher=AsyncMock(return_value={})
+        )
+
+        request = httpx.Request(
+            "GET",
+            httpx.URL(
+                "https://api.github.com/repos",
+                params={"page": "2", "per_page": "100"},
+            ),
+        )
+        with patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()):
+            response = await transport.handle_async_request(request)
+
+        assert response.status_code == 200
+        # 100 fails, 50 fails, 25 succeeds — each size tried exactly once.
+        assert seen == [(2, 100), (3, 50), (5, 25)]
+        # The succeeding request's offset is preserved (page 5 @ 25 == items 101-125).
+        assert self._params(response.request.url) == (5, 25)

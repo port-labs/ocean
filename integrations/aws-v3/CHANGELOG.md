@@ -7,6 +7,562 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.3.0-beta (2026-06-10)
+
+
+### Features
+
+- Extended `ouId` to support multiple AWS Organizational Units via comma-separated values (e.g. `ou-abc,ou-def`).
+
+
+## 2.2.42-beta (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 2.2.41-beta (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 2.2.40-beta (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 2.2.39-beta (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 2.2.38-beta (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 2.2.37-beta (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 2.2.36-beta (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 2.2.35-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 2.2.34-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 2.2.33-beta (2026-05-31)
+
+
+### Features
+
+- Added support for AWS::MSK::ServerlessCluster resource kind, enabling ingestion of MSK serverless clusters into the Port catalog with attributes such as cluster state, creation time, VPC configuration, client authentication, and tags.
+
+
+## 2.2.32-beta (2026-05-31)
+
+
+### Features
+
+- Added support for AWS::RDS::DBCluster resource kind, enabling ingestion of Aurora and multi-AZ RDS cluster entities into the Port catalog with attributes such as cluster members, engine mode, writer/reader endpoints, availability zones, and encryption settings.
+
+
+## 2.2.31-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 2.2.30-beta (2026-05-31)
+
+
+### Features
+
+- Added support for `AWS::MemoryDB::User` resource kind, enabling ingestion of MemoryDB users into the Port catalog with attributes such as status, access string, ACL names, authentication mode, and optional tags via `ListTagsForMemoryDbUserAction`.
+
+
+## 2.2.29-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 2.2.28-beta (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 2.2.27-beta (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 2.2.26-beta (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 2.2.25-beta (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 2.2.24-beta (2026-05-26)
+
+
+### Bug Fixes
+
+- Added `State` field to `AccountProperties` and changed `extra` to `allow` so AWS Organizations accounts are ingested correctly when the new `State` field (introduced Sept 2025) is present alongside the deprecated `Status` field
+
+
+## 2.2.23-beta (2026-05-26)
+
+
+### Bug Fixes
+
+- Fixed ARN validation in Organizations strategy to support AWS GovCloud (`arn:aws-us-gov:iam::`) and China (`arn:aws-cn:iam::`) partitions, which were previously rejected by a hardcoded commercial-partition prefix check. Also fixed role ARN construction to preserve the correct partition when building member account role ARNs.
+
+
+## 2.2.22-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 2.2.21-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 2.2.20-beta (2026-05-25)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions per AWS resource kind
+
+
+## 2.2.19-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 2.2.18-beta (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 2.2.17-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 2.2.16-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 2.2.15-beta (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 2.2.14-beta (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 2.2.13-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 2.2.12-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 2.2.11-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 2.2.10-beta (2026-05-17)
+
+
+### Bug Fixes
+
+- Update docs embed link to match install path
+
+
+## 2.2.9-beta (2026-05-17)
+
+
+### Features
+
+- Added support for MSK (Amazon Managed Streaming for Apache Kafka) clusters
+
+
+## 2.2.8-beta (2026-05-17)
+
+
+### Features
+
+- Added support for AWS::ElastiCache::Cluster kind to sync ElastiCache clusters (Redis and Memcached) with optional tag enrichment via ListTagsForResourceAction
+
+
+## 2.2.7-beta (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 2.2.6-beta (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 2.2.5-beta (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 2.2.4-beta (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
+## 2.2.3-beta (2026-05-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.7
+
+
+## 2.2.2-beta (2026-05-04)
+
+
+### Improvements
+
+- Introduce `CREDENTIAL_PROVIDER_PRIORITY` environment variable, allowing users to customize and control the priority order in which AWS credential providers are selected for authentication.
+
+
+## 2.2.1-beta (2026-04-26)
+
+
+### Features
+
+- Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind.
+
+
+## 2.2.0-beta (2026-04-23)
+
+
+### Features
+
+- Added support to fetch resources exclusively from a user-specified AWS Organization Unit (OU), allowing targeted account discovery.
+
+### Improvements
+
+- Updated account activity checks to use the `State` property instead of `Status`, in preparation for AWS deprecating the `Status` field on September 9, 2026.
+
+
+## 2.1.86-beta (2026-04-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.6
+
+
+## 2.1.85-beta (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 2.1.84-beta (2026-04-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.5
+
+
+## 2.1.83-beta (2026-04-24)
+
+
+### Features
+
+- Added support for AWS::ECS::TaskDefinition resource kind, enabling ingestion of ECS task definitions into the Port catalog with attributes such as container definitions, CPU, memory, network mode, and IAM roles.
+
+
+## 2.1.82-beta (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.4
+
+
+## 2.1.81-beta (2026-04-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.3
+
+
+## 2.1.80-beta (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.2
+
+
+## 2.1.79-beta (2026-04-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.1
+
+
+## 2.1.78-beta (2026-04-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.0
+
+
+## 2.1.77-beta (2026-04-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.7
+
+
+## 2.1.76-beta (2026-04-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.6
+
+
+## 2.1.75-beta (2026-04-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.5
+
+
+## 2.1.74-beta (2026-04-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.4
+
+
+## 2.1.73-beta (2026-04-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.3
+
+
+## 2.1.72-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.2
+
+
+## 2.1.71-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.1
+
+
+## 2.1.70-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.40.0
+
+
+## 2.1.69-beta (2026-04-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.1
+
+
+## 2.1.68-beta (2026-04-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.39.0
+
+
+## 2.1.67-beta (2026-03-31)
+
+
+### Bug Fixes
+
+- Bumped `aioboto3` to `^15.5.0`, `aiobotocore` to `^2.25.0`, `types-aiobotocore` to `^2.25.0`, and added `aiohttp` `^3.13.4` to resolve security vulnerability in transitive dependency `aiohttp`
+
+
+## 2.1.66-beta (2026-03-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.27
+
+
+## 2.1.65-beta (2026-03-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.24
+
+
+## 2.1.64-beta (2026-03-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.23
+
+
+## 2.1.63-beta (2026-03-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.22
+
+
+## 2.1.62-beta (2026-03-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.38.21
+
+
 ## 2.1.61-beta (2026-03-17)
 
 
@@ -582,6 +1138,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
+
 - Bumped ocean version to ^0.29.8
 
 
@@ -630,6 +1187,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+
 
 ## 2.0.2-beta (2025-11-09)
 

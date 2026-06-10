@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import Request
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, root_validator
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -45,29 +45,133 @@ class RepoSearchSelector(Selector):
     repo_search: Optional[RepoSearchParams] = Field(
         title="Repositories",
         alias="repoSearch",
-        description="Ingest specific repositories using <a target='_blank' href='https://docs.github.com/en/search-github/searching-on-github/searching-for-repositories'>Github repository search API</a>",
+        description=(
+            "Filter which repositories are ingested using GitHub's repository search API. "
+            "<b>Read the limitations before using this selector:</b> "
+            "<a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/capabilities/#limitations-1'>Port docs</a>."
+        ),
         default=None,
     )
 
 
 class IncludedFilesConfig(BaseModel):
     included_files: list[str] = Field(
-        title="Included Files",
+        title="Attached Files",
         alias="includedFiles",
         default_factory=list,
-        description="File paths to fetch and attach to the folder entity.",
+        description='File paths to fetch and attach to the raw data under `__includedFiles`. E.g. ["README.md", "CODEOWNERS"]',
     )
 
     class Config:
         extra = "forbid"
 
 
+class GitHubCollaboratorRelationshipSelector(BaseModel):
+    affiliation: Literal["all", "direct", "outside"] = Field(
+        title="Affiliation",
+        default="all",
+        description="Filter collaborators by affiliation (all, direct, outside).",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GitHubRepositoryRelationSelector(BaseModel):
+    collaborators: Optional[GitHubCollaboratorRelationshipSelector] = Field(
+        title="Collaborators",
+        description="Fetch collaborators of the repository.",
+        default=None,
+    )
+    teams: bool = Field(
+        title="Include Teams",
+        default=False,
+        description="Include teams with access to the repository.",
+    )
+    sbom: bool = Field(
+        title="Include SBOM",
+        default=False,
+        description="Include SBOM for the repository.",
+    )
+    custom_properties: bool = Field(
+        title="Include Custom Properties",
+        alias="customProperties",
+        default=False,
+        description="Include organization custom property values for the repository.",
+    )
+    pages: bool = Field(
+        title="Include GitHub Pages",
+        default=False,
+        description="Include GitHub Pages configuration for the repository.",
+    )
+
+    class Config:
+        extra = "forbid"
+
+    def get_relations_dict(self) -> dict[str, dict[str, Any]]:
+        result = {}
+
+        if self.collaborators:
+            result["collaborators"] = {"include": True, **self.collaborators.dict()}
+
+        if self.teams:
+            result["teams"] = {"include": self.teams}
+
+        if self.sbom:
+            result["sbom"] = {"include": self.sbom}
+
+        if self.custom_properties:
+            result["custom_properties"] = {"include": self.custom_properties}
+
+        if self.pages:
+            result["pages"] = {"include": self.pages}
+
+        return result
+
+
 class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
+    class Config:
+        schema_extra = {
+            "extra": {
+                "ui_schema": {
+                    "mutuallyExclusiveSelectorGroups": [
+                        {"legacyKey": "include", "newKey": "includedRelations"}
+                    ]
+                }
+            }
+        }
+
     include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
         title="Additional Repository Data",
         description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
         default_factory=list,
     )
+    included_relations: Optional[GitHubRepositoryRelationSelector] = Field(
+        alias="includedRelations",
+        title="Additional Repository Data",
+        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples/#repositories-with-multiple-relationships'>teams, collaborators, sbom, custom properties and pages</a>",
+        default=None,
+    )
+
+    @property
+    def normalized_relations(self) -> dict[str, dict[str, Any]]:
+        if self.included_relations:
+            return self.included_relations.get_relations_dict()
+
+        if self.include:
+            return {item: {"include": True} for item in self.include}
+
+        return {}
+
+    @root_validator(pre=True)
+    def validate_include_and_included_relations(
+        cls, values: dict[str, Any]
+    ) -> dict[str, Any]:
+        if values.get("include") and values.get("includedRelations"):
+            raise ValueError(
+                "You cannot supply both 'include' and 'includedRelations' at the same time."
+            )
+        return values
 
 
 class GithubRepositoryConfig(ResourceConfig):
@@ -151,14 +255,18 @@ class GithubFilePattern(RepositorySourceModel):
 
 class GithubFileSelector(Selector, IncludedFilesConfig):
     files: list[GithubFilePattern] = Field(
-        title="Files",
-        description="File patterns (path, repos) to ingest.",
+        title="File sync patterns",
+        description="""Array of files to retrieve. Each cell can include:<br/>
+• <b>Path</b> - files path, supports glob pattern. Example: "**/package.json"<br/>
+• <b>Organization</b> - GitHub org to scan<br/>
+• <b>Repos</b> - array of repositories used to fetch files from. Each repo includes name and branch.<br/>
+For more information, see <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#files-and-file-contents'>Our docs</a>.""",
     )
     included_files: list[str] = Field(
-        title="Included Files",
+        title="Additional files",
         alias="includedFiles",
         default_factory=list,
-        description="Additional file paths to fetch and attach to the file entity.",
+        description="List of file paths to fetch and attach to the file entity. This selector will add the content of the file to the API response under the `__includedFiles` field.",
     )
 
 
@@ -173,10 +281,31 @@ class GithubFileResourceConfig(ResourceConfig):
     )
 
 
+class IncludeSAMLEmailSelector(Selector):
+    include_saml_email: bool = Field(
+        title="Include SAML email",
+        alias="includeSAMLEmail",
+        default=False,
+        description=(
+            "When enabled, the integration will enrich exported GitHub users with "
+            "`__SAMLEmail` populated from the organization's SAML external identity (nameId). "
+            "If no SAML identity is found for a user, `__SAMLEmail` will be null."
+        ),
+    )
+
+
+class GithubUserSelector(IncludeSAMLEmailSelector):
+    pass
+
+
 class GithubUserConfig(ResourceConfig):
     kind: Literal[ObjectKind.USER] = Field(
         title="Github User",
         description="Github user resource kind.",
+    )
+    selector: GithubUserSelector = Field(
+        title="User selector",
+        description="Selector for the user resource.",
     )
 
 
@@ -198,22 +327,43 @@ class GithubPullRequestSelector(RepoSearchSelector):
         description="Filter pull requests by states (e.g. ['open']).",
     )
     max_results: int = Field(
-        title="Max pull requests to return",
+        title="Max merged pull requests",
         alias="maxResults",
         default=100,
         ge=1,
-        description="Maximum number of pull requests to return per repository.",
+        description="Max number of merged pull requests. Note: large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
     )
     since: int = Field(
-        title="Since (Days)",
+        title="Closed PRs Lookback Days",
         default=60,
         ge=1,
-        description="Only fetch pull requests updated within the last N days.",
+        description="Numbers of days back for closed pull requests.",
     )
     api: Literal["rest", "graphql"] = Field(
         title="API",
         default="rest",
         description="API to use for fetching pull requests (REST or GraphQL).",
+    )
+    enrich_with_first_commit: bool = Field(
+        title="Enrich with first commit",
+        alias="enrichWithFirstCommit",
+        default=False,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, each pull request is enriched with the "
+            "first commit on the branch (OID and committed timestamp in UTC). Use this to measure "
+            "lead time from the initial commit through review and merge."
+            "This option will be ignored if the api selector is set to rest."
+        ),
+    )
+    exclude_graphql_fields: list[str] = Field(
+        title="Exclude GraphQL Fields",
+        alias="excludeGraphqlFields",
+        default_factory=list,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, fields specified in this list will be omitted from the query. "
+            "This is useful as a workaround for GitHub GraphQL instability or to reduce rate limit cost. "
+            "This option will be ignored if the api selector is set to rest."
+        ),
     )
 
     @property
@@ -262,7 +412,7 @@ class GithubIssueConfig(ResourceConfig):
     )
 
 
-class GithubTeamSector(Selector):
+class GithubTeamSelector(IncludeSAMLEmailSelector):
     members: bool = Field(
         title="Include Members",
         default=True,
@@ -271,7 +421,7 @@ class GithubTeamSector(Selector):
 
 
 class GithubTeamConfig(ResourceConfig):
-    selector: GithubTeamSector = Field(
+    selector: GithubTeamSelector = Field(
         title="Team selector",
         description="Selector for the team resource.",
     )
@@ -459,6 +609,12 @@ class GithubBranchSelector(RepoSearchSelector):
     )
 
 
+class GithubCollaboratorSelector(
+    RepoSearchSelector, GitHubCollaboratorRelationshipSelector
+):
+    pass
+
+
 class GithubBranchConfig(ResourceConfig):
     kind: Literal[ObjectKind.BRANCH] = Field(
         title="Github Branch",
@@ -492,12 +648,59 @@ class GithubWorkflowConfig(ResourceConfig):
     )
 
 
+class GithubWorkflowRunSelector(RepoSearchSelector):
+    statuses: Optional[
+        list[
+            Literal[
+                "completed",
+                "action_required",
+                "cancelled",
+                "failure",
+                "neutral",
+                "skipped",
+                "stale",
+                "success",
+                "timed_out",
+                "in_progress",
+                "queued",
+                "requested",
+                "waiting",
+                "pending",
+            ]
+        ]
+    ] = Field(
+        title="Statuses",
+        default=None,
+        description="Filter workflow runs by status or conclusion. Accepts a list of values. Each additional status value results in one extra API call per workflow — keep the list small.",
+    )
+    since: Optional[int] = Field(
+        title="Lookback Days",
+        default=None,
+        ge=1,
+        description="Only fetch workflow runs created within the last N days. Takes precedence over sinceDate when both are set.",
+    )
+    since_date: Optional[str] = Field(
+        title="Since Date",
+        default=None,
+        description="Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Ignored if since is set.",
+    )
+
+    @property
+    def created_after(self) -> Optional[str]:
+        if self.since is not None:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=self.since)
+            return f">={cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        if self.since_date is not None:
+            return f">={self.since_date}"
+        return None
+
+
 class GithubWorkflowRunConfig(ResourceConfig):
     kind: Literal[ObjectKind.WORKFLOW_RUN] = Field(
         title="Github Workflow Run",
         description="Github workflow run resource kind.",
     )
-    selector: RepoSearchSelector = Field(
+    selector: GithubWorkflowRunSelector = Field(
         title="Workflow run selector",
         description="Selector for the workflow run resource.",
     )
@@ -541,7 +744,7 @@ class GithubCollaboratorConfig(ResourceConfig):
         title="Github Collaborator",
         description="Github collaborator resource kind.",
     )
-    selector: RepoSearchSelector = Field(
+    selector: GithubCollaboratorSelector = Field(
         title="Collaborator selector",
         description="Selector for the collaborator resource.",
     )

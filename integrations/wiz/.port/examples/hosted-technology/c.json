@@ -1,0 +1,19 @@
+{
+  "id": "a1f2efdc-5834-5210-b755-8bbbb7093b5d",
+  "name": "Libwebp (docker.io/nginx@dec7a90b)",
+  "technology": {
+    "id": "9553",
+    "name": "Libwebp"
+  },
+  "resource": {
+    "id": "8687d4ec-9644-55ba-a9be-6c7c9bfa0111",
+    "name": "docker.io/nginx@dec7a90b"
+  },
+  "detectionMethods": [
+    "PACKAGE"
+  ],
+  "installedPackages": null,
+  "firstSeen": "2026-03-18T14:17:58.904917Z",
+  "updatedAt": "2026-03-20T09:50:09.819797Z",
+  "cpe": "cpe:/a:webmproject:libwebp:1.5.0"
+}

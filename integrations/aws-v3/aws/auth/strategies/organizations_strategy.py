@@ -8,8 +8,12 @@ from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from loguru import logger
 import asyncio
-from typing import Any, AsyncIterator, Dict, List
-from botocore.utils import ArnParser
+from typing import Any, AsyncIterator, Dict, List, cast
+from botocore.utils import ArnParser, InvalidArnException
+from aiobotocore.client import AioBaseClient
+
+# https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
+VALID_AWS_PARTITIONS = frozenset({"aws", "aws-us-gov", "aws-cn"})
 
 
 class OrganizationDiscoveryMixin(AWSSessionStrategy):
@@ -53,11 +57,16 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
 
         organization_role_arn = self._get_organization_account_role_arn()
 
-        # validate role arn format
-        if not organization_role_arn.startswith("arn:aws:iam::"):
+        try:
+            arn_data = ArnParser().parse_arn(arn=organization_role_arn)
+        except InvalidArnException:
             raise AWSSessionError("account_role_arn must be a valid ARN")
 
-        arn_data = ArnParser().parse_arn(arn=organization_role_arn)
+        if (
+            arn_data["service"] != "iam"
+            or arn_data["partition"] not in VALID_AWS_PARTITIONS
+        ):
+            raise AWSSessionError("account_role_arn must be a valid ARN")
 
         self._organization_role_details = arn_data
         return self._organization_role_details
@@ -65,7 +74,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
     def _build_role_arn(self, account_id: str) -> str:
         """Build the role ARN for the organization account."""
         details = self._get_organization_account_role_details()
-        return f"arn:aws:iam::{account_id}:{details['resource']}"
+        return f"arn:{details['partition']}:iam::{account_id}:{details['resource']}"
 
     async def _get_organization_session(self) -> AioSession:
         """Get or create the organization session for the management account."""
@@ -94,41 +103,168 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
             logger.error(f"Failed to assume organization role: {e}")
             raise AWSSessionError(f"Cannot assume organization role: {e}")
 
+    async def _get_active_accounts_for_ou(
+        self, parent_id: str, org_client: AioBaseClient
+    ) -> List[Dict[str, str]]:
+        """
+        Fetch and return a flat list of all accounts under a given OU (including child OUs).
+        Returns a list of AWS account dicts.
+        """
+        logger.debug(f"Fetching AWS accounts for organizational unit '{parent_id}'...")
+
+        accounts = await self._fetch_direct_accounts_for_ou(parent_id, org_client)
+        child_ou_ids = await self._fetch_child_ou_ids(parent_id, org_client)
+        child_accounts = await self._fetch_accounts_from_child_ous(
+            child_ou_ids, org_client
+        )
+
+        accounts.extend(child_accounts)
+
+        logger.info(
+            f"Finished fetching accounts for OU '{parent_id}'. {len(accounts)} active accounts found."
+        )
+        return accounts
+
+    async def _fetch_direct_accounts_for_ou(
+        self, parent_id: str, org_client: AioBaseClient
+    ) -> List[Dict[str, str]]:
+        """Fetch active AWS accounts directly under the given OU."""
+        accounts: List[Dict[str, str]] = []
+        paginator = org_client.get_paginator("list_accounts_for_parent")
+        async for page in cast(
+            AsyncIterator[Any], paginator.paginate(ParentId=parent_id)
+        ):
+            filtered_accounts = self.filter_active_accounts(page["Accounts"])
+            if filtered_accounts:
+                logger.debug(
+                    f"Found {len(filtered_accounts)} active account(s) directly under OU '{parent_id}'."
+                )
+            accounts.extend(filtered_accounts)
+        return accounts
+
+    async def _fetch_child_ou_ids(
+        self, parent_id: str, org_client: AioBaseClient
+    ) -> List[str]:
+        """Fetch child organizational unit IDs for a given parent OU."""
+        child_ou_ids: List[str] = []
+        ou_paginator = org_client.get_paginator("list_organizational_units_for_parent")
+        async for page in cast(
+            AsyncIterator[Any], ou_paginator.paginate(ParentId=parent_id)
+        ):
+            for ou in page["OrganizationalUnits"]:
+                logger.debug(
+                    f"Found child organizational unit '{ou['Id']}' under parent OU '{parent_id}'."
+                )
+                child_ou_ids.append(ou["Id"])
+        return child_ou_ids
+
+    async def _fetch_accounts_from_child_ous(
+        self, child_ou_ids: List[str], org_client: AioBaseClient
+    ) -> List[Dict[str, str]]:
+        """Recursively fetch accounts from all child OUs."""
+        accounts: List[Dict[str, str]] = []
+        for child_ou_id in child_ou_ids:
+            logger.debug(
+                f"Fetching accounts from child OU '{child_ou_id}' recursively..."
+            )
+            child_accounts = await self._get_active_accounts_for_ou(
+                child_ou_id, org_client
+            )
+            if child_accounts:
+                logger.debug(
+                    f"Found {len(child_accounts)} account(s) in child OU '{child_ou_id}'."
+                )
+            accounts.extend(child_accounts)
+        return accounts
+
+    async def _get_active_accounts_from_organizations(
+        self, org_client: AioBaseClient
+    ) -> List[Dict[str, str]]:
+        discovered_accounts: List[Dict[str, str]] = []
+
+        paginator = org_client.get_paginator("list_accounts")
+        async for page in cast(AsyncIterator[Any], paginator.paginate()):
+            # Only include active accounts
+            filtered_accounts = self.filter_active_accounts(page["Accounts"])
+            discovered_accounts.extend(filtered_accounts)
+
+        logger.info(f"Discovered {len(discovered_accounts)} active accounts")
+        return discovered_accounts
+
+    def filter_active_accounts(
+        self, accounts: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
+        """Filter the accounts to only include active accounts."""
+        return [
+            {
+                "Id": account["Id"],
+                "Name": account["Name"],
+                "Email": account.get("Email", ""),
+                "Arn": account.get("Arn", ""),
+            }
+            for account in accounts
+            if account["State"] == "ACTIVE"
+        ]
+
+    def _get_configured_ou_ids(self) -> List[str]:
+        """Return configured OU IDs from a comma-separated ou_id string."""
+        raw_ou_id = self.config.get("ou_id")
+        if not raw_ou_id:
+            return []
+
+        return list(
+            dict.fromkeys(
+                ou_id.strip() for ou_id in raw_ou_id.split(",") if ou_id.strip()
+            )
+        )
+
+    async def _get_active_accounts_for_ous(
+        self, ou_ids: List[str], org_client: AioBaseClient
+    ) -> List[Dict[str, str]]:
+        """Fetch active accounts from multiple OUs, deduplicated by account ID."""
+        accounts_by_id: dict[str, Dict[str, str]] = {}
+
+        for ou_id in ou_ids:
+            ou_accounts = await self._get_active_accounts_for_ou(ou_id, org_client)
+            for account in ou_accounts:
+                accounts_by_id[account["Id"]] = account
+
+        logger.info(
+            f"Finished fetching accounts for {len(ou_ids)} OU(s). "
+            f"{len(accounts_by_id)} unique active accounts found."
+        )
+        return list(accounts_by_id.values())
+
     async def discover_accounts(self) -> List[Dict[str, str]]:
         """Discover all accounts in the AWS Organization."""
         if self._discovered_accounts:
             return self._discovered_accounts
 
-        organization_session = await self._get_organization_session()
-        discovered_accounts = []
+        ou_ids = self._get_configured_ou_ids()
 
         try:
+            organization_session = await self._get_organization_session()
             async with organization_session.create_client(
                 "organizations"
             ) as org_client:
-                logger.info("Discovering accounts via AWS Organizations API")
-
-                paginator = org_client.get_paginator("list_accounts")
-                async for page in paginator.paginate():
-                    for account in page["Accounts"]:
-                        # Only include active accounts
-                        if account["Status"] == "ACTIVE":
-                            discovered_accounts.append(
-                                {
-                                    "Id": account["Id"],
-                                    "Name": account["Name"],
-                                    "Email": account.get("Email", ""),
-                                    "Arn": account.get("Arn", ""),
-                                }
-                            )
-
-                logger.info(f"Discovered {len(discovered_accounts)} active accounts")
-                self._discovered_accounts = discovered_accounts
-                return discovered_accounts
+                if ou_ids:
+                    logger.info(
+                        f"Discovering accounts from {len(ou_ids)} organizational unit(s)"
+                    )
+                    discovered_accounts = await self._get_active_accounts_for_ous(
+                        ou_ids, org_client
+                    )
+                else:
+                    logger.info("Discovering all active accounts from the organization")
+                    discovered_accounts = (
+                        await self._get_active_accounts_from_organizations(org_client)
+                    )
+            self._discovered_accounts = discovered_accounts
+            return discovered_accounts
 
         except Exception as e:
             if "AccessDenied" in str(e):
-                logger.warning("Access denied to AWS Organizations API")
+                logger.warning(f"Access denied to AWS Organizations API: {str(e)}")
                 raise AWSOrganizationsNotInUseError(
                     "Cannot access AWS Organizations API - check permissions"
                 )

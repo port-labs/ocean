@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
@@ -22,6 +23,7 @@ class Kind(StrEnum):
     BOARD = "board"
     COLUMN = "column"
     RELEASE = "release"
+    RELEASE_DEFINITION = "release-definition"
     ENVIRONMENT = "environment"
     RELEASE_DEPLOYMENT = "release-deployment"
     PIPELINE_DEPLOYMENT = "pipeline-deployment"
@@ -30,6 +32,7 @@ class Kind(StrEnum):
     USER = "user"
     FOLDER = "folder"
     ITERATION = "iteration"
+    AREA_PATH = "area-path"
     BRANCH = "branch"
     ADVANCED_SECURITY_ALERT = "advanced-security-alert"
     GROUP = "group"
@@ -58,8 +61,32 @@ def create_closed_pull_request_search_criteria(
     ]
 
 
+ORG_URL_FIELD = "__organizationUrl"
+ORG_NAME_FIELD = "__organizationName"
+
+
 def extract_branch_name_from_ref(ref: str) -> str:
     return "/".join(ref.split("/")[2:])
+
+
+def extract_org_name_from_url(url: str) -> str:
+    """Derive the Azure DevOps organization name from any supported URL form.
+
+    Supports:
+      - https://dev.azure.com/{org}[/...]
+      - https://{org}.visualstudio.com[/...]
+    """
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+
+    if host == "dev.azure.com" or host.endswith(".dev.azure.com"):
+        parts = parsed.path.strip("/").split("/")
+        return parts[0] if parts and parts[0] else url
+
+    if host.endswith(".visualstudio.com"):
+        return host.split(".visualstudio.com")[0]
+
+    return url
 
 
 class RepositoryBranchMapping(BaseModel):
@@ -93,15 +120,18 @@ class AzureDevopsFolderSelector(Selector):
 
     project_name: str | None = Field(
         default=None,
+        title="Project Name",
         description="Name of the Azure DevOps project that contains the repositories to be scanned. If not provided, scans all projects.",
     )
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
+        title="Folders",
         description="Specify the repositories, branches and folders to include under this relative path",
     )
     included_files: list[str] = Field(
         alias="includedFiles",
+        title="Included Files",
         default_factory=list,
         description="List of file paths to fetch and attach to the folder entity",
     )
@@ -110,5 +140,11 @@ class AzureDevopsFolderSelector(Selector):
 class AzureDevopsFolderResourceConfig(ResourceConfig):
     """Resource configuration for folder scanning"""
 
-    kind: Literal["folder"]
-    selector: AzureDevopsFolderSelector
+    kind: Literal["folder"] = Field(
+        title="Azure Devops Folder",
+        description="Azure Devops folder resource kind.",
+    )
+    selector: AzureDevopsFolderSelector = Field(
+        title="Folder selector",
+        description="Selector for the folder resource.",
+    )

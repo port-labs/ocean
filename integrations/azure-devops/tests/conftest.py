@@ -1,18 +1,44 @@
 from typing import Any, Generator
 from unittest.mock import MagicMock, AsyncMock
+
 import pytest
 from integration import GitPortAppConfig
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-    Selector,
-    PortResourceConfig,
-    MappingsConfig,
-    EntityMapping,
-    PortAppConfig,
-)
 from port_ocean.context.event import _event_context_stack, EventContext
 from port_ocean.context.ocean import PortOceanContext
+from port_ocean.core.handlers.port_app_config.models import (
+    EntityMapping,
+    MappingsConfig,
+    PortAppConfig,
+    PortResourceConfig,
+    ResourceConfig,
+    Selector,
+)
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+
+# Default org URL used across webhook processor tests.
+MOCK_ORG_URL = "https://dev.azure.com/test"
+# resourceContainers fragment that satisfies _extract_org_url_from_payload.
+MOCK_RESOURCE_CONTAINERS_ACCOUNT = {"account": {"baseUrl": f"{MOCK_ORG_URL}/"}}
+
+
+def mock_client_manager(monkeypatch: Any, mock_client: MagicMock) -> MagicMock:
+    """Patch AzureDevopsClientManager.create_from_ocean_config in base_processor.
+
+    Returns a mock manager whose get_client_for_org always returns *mock_client*.
+    Also configures get_clients to return the single mock client so that
+    _resolve_client's single-client fallback works correctly.
+    All webhook processor tests should use this instead of patching AzureDevopsClient.
+    """
+    manager = MagicMock()
+    manager.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = MOCK_ORG_URL
+    manager.get_clients.return_value = [mock_client]
+    monkeypatch.setattr(
+        "azure_devops.webhooks.webhook_processors.base_processor"
+        ".AzureDevopsClientManager.create_from_ocean_config",
+        lambda: manager,
+    )
+    return manager
 
 
 @pytest.fixture
@@ -41,7 +67,8 @@ def mock_event_context() -> Generator[None, None, None]:
 def mock_context(monkeypatch: Any) -> PortOceanContext:
     mock_context = AsyncMock()
     mock_context.port_app_config = GitPortAppConfig()
-    mock_context.is_saas.return_value = False  # callable so ocean.app.is_saas() works
+    mock_context.is_saas.return_value = False
+    mock_context.config.client_timeout = 60
     monkeypatch.setattr(PortOceanContext, "app", mock_context)
     return mock_context
 

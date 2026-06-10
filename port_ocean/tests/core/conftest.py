@@ -102,7 +102,6 @@ def mock_port_client(mock_http_client: MagicMock) -> PortClient:
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        MagicMock(),
     )
     mock_port_client.auth = AsyncMock()
     mock_port_client.auth.headers = AsyncMock(
@@ -133,6 +132,7 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.port_client = mock_port_client
         ocean_mock.process_execution_mode = ProcessExecutionMode.single_process
         ocean_mock.cache_provider = InMemoryCacheProvider()
+        ocean_mock.lifecycle_client = None  # type: ignore
         metrics_settings = MetricsSettings(enabled=True)
         integration_settings = IntegrationSettings(type="test", identifier="test")
         ocean_mock.metrics = Metrics(

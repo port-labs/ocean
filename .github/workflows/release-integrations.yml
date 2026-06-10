@@ -5,6 +5,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   prepare-matrix:
     runs-on: ubuntu-latest
@@ -108,7 +111,7 @@ jobs:
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
             INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
-          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          docker-password: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
 
       - name: Get image sizes
         continue-on-error: true
@@ -375,3 +378,36 @@ jobs:
               fi
 
           done <file_list.txt
+
+  notify-on-failure:
+    runs-on: ubuntu-latest
+    needs: [prepare-matrix, release-integration, upload-specs]
+    if: ${{ always() && (needs.prepare-matrix.result == 'failure' || needs.release-integration.result == 'failure' || needs.upload-specs.result == 'failure') }}
+    permissions: {}
+    steps:
+      - name: Send Slack notification
+        continue-on-error: true
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Release integrations workflow failed* :x:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Workflow run:* <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>"
+                  }
+                }
+              ]
+            }
