@@ -1,12 +1,16 @@
-import pytest
-from unittest.mock import AsyncMock, patch
-from port_ocean.core.handlers.webhook.webhook_event import (
-    WebhookEvent,
-)
-from datadog.core.exporters.monitor_exporter import GetMonitorOptions
-from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
-from integration import ObjectKind
+from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from integration import ObjectKind
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+
+from datadog.core.exporters.monitor_exporter import GetMonitorOptions
+from datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor import (
+    MonitorWebhookProcessor,
+)
 
 
 @pytest.fixture
@@ -20,8 +24,8 @@ def processor(mock_event: WebhookEvent) -> MonitorWebhookProcessor:
 
 
 @pytest.fixture
-def resource_config() -> Any:
-    return {"kind": ObjectKind.MONITOR}
+def resource_config() -> SimpleNamespace:
+    return SimpleNamespace(selector=SimpleNamespace(include_restriction_policy=False))
 
 
 @pytest.mark.asyncio
@@ -33,36 +37,37 @@ async def test_get_matching_kinds(
 
 
 @pytest.mark.asyncio
-async def test_validate_payload(processor: MonitorWebhookProcessor) -> None:
+async def test_should_process_event(processor: MonitorWebhookProcessor) -> None:
+    def _event(payload: dict[str, Any]) -> WebhookEvent:
+        return WebhookEvent(trace_id="t", payload=payload, headers={})
+
     assert (
-        await processor.validate_payload({"event_type": "alert", "alert_id": "123"})
+        await processor.should_process_event(
+            _event({"event_type": "alert", "alert_id": "123"})
+        )
         is True
     )
-
-    assert await processor.validate_payload({"alert_id": "123"}) is False
-
-    assert await processor.validate_payload({"event_type": "alert"}) is False
+    assert await processor.should_process_event(_event({"alert_id": "123"})) is False
+    assert (
+        await processor.should_process_event(_event({"event_type": "alert"})) is False
+    )
 
 
 @pytest.mark.asyncio
 async def test_handle_event_with_monitor(
-    processor: MonitorWebhookProcessor, resource_config: Any
+    processor: MonitorWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:
     test_payload = {"event_type": "alert", "alert_id": "123"}
     mock_monitor = {"id": "123", "name": "Test Monitor"}
 
-    with (
-        patch("webhook_processors.monitor_webhook_processor.init_client") as mock_init,
-        patch(
-            "webhook_processors.monitor_webhook_processor.MonitorExporter"
-        ) as mock_exporter_cls,
-    ):
-        mock_init.return_value = AsyncMock()
+    with patch(
+        "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.MonitorExporter"
+    ) as mock_exporter_cls:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = mock_monitor
         mock_exporter_cls.return_value = mock_exporter
 
-        result = await processor.handle_event(test_payload, resource_config)
+        result = await processor.handle_event(test_payload, resource_config)  # type: ignore[arg-type]
 
         mock_exporter.get_resource.assert_awaited_once_with(
             GetMonitorOptions(resource_id="123", include_restriction_policy=False)
@@ -74,22 +79,18 @@ async def test_handle_event_with_monitor(
 
 @pytest.mark.asyncio
 async def test_handle_event_without_monitor(
-    processor: MonitorWebhookProcessor, resource_config: Any
+    processor: MonitorWebhookProcessor, resource_config: SimpleNamespace
 ) -> None:
     test_payload = {"event_type": "alert", "alert_id": "123"}
 
-    with (
-        patch("webhook_processors.monitor_webhook_processor.init_client") as mock_init,
-        patch(
-            "webhook_processors.monitor_webhook_processor.MonitorExporter"
-        ) as mock_exporter_cls,
-    ):
-        mock_init.return_value = AsyncMock()
+    with patch(
+        "datadog.webhook.webhook_processors.monitor_events.monitor_webhook_processor.MonitorExporter"
+    ) as mock_exporter_cls:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = None
         mock_exporter_cls.return_value = mock_exporter
 
-        result = await processor.handle_event(test_payload, resource_config)
+        result = await processor.handle_event(test_payload, resource_config)  # type: ignore[arg-type]
 
         mock_exporter.get_resource.assert_awaited_once_with(
             GetMonitorOptions(resource_id="123", include_restriction_policy=False)
