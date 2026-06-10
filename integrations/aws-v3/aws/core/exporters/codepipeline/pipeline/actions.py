@@ -48,33 +48,27 @@ class GetPipelineDetailsAction(PipelineAction):
 
     async def _fetch_pipeline_details(self, resource: Dict[str, Any]) -> Dict[str, Any]:
         pipeline_name = resource["name"]
+        response = await self._get_pipeline(pipeline_name)
+        logger.info(f"Successfully fetched details for pipeline {pipeline_name}")
 
-        try:
-            response = await self._get_pipeline(pipeline_name)
-        except self.client.exceptions.PipelineNotFoundException:
-            logger.warning(f"Pipeline {pipeline_name} not found")
-            return {}
-        else:
-            logger.info(f"Successfully fetched details for pipeline {pipeline_name}")
+        pipeline = response.get("pipeline", {})
+        metadata = response.get("metadata", {})
 
-            pipeline = response.get("pipeline", {})
-            metadata = response.get("metadata", {})
-
-            return {
-                "Name": pipeline.get("name", pipeline_name),
-                "Arn": metadata.get("pipelineArn", ""),
-                "RoleArn": pipeline.get("roleArn", ""),
-                "ArtifactStore": pipeline.get("artifactStore"),
-                "ArtifactStores": pipeline.get("artifactStores", []),
-                "Stages": pipeline.get("stages", []),
-                "Version": pipeline.get("version"),
-                "ExecutionMode": pipeline.get("executionMode"),
-                "PipelineType": pipeline.get("pipelineType"),
-                "Variables": pipeline.get("variables", []),
-                "Triggers": pipeline.get("triggers", []),
-                "Created": metadata.get("created"),
-                "Updated": metadata.get("updated"),
-            }
+        return {
+            "Name": pipeline.get("name", pipeline_name),
+            "Arn": metadata.get("pipelineArn", ""),
+            "RoleArn": pipeline.get("roleArn", ""),
+            "ArtifactStore": pipeline.get("artifactStore"),
+            "ArtifactStores": pipeline.get("artifactStores", []),
+            "Stages": pipeline.get("stages", []),
+            "Version": pipeline.get("version"),
+            "ExecutionMode": pipeline.get("executionMode"),
+            "PipelineType": pipeline.get("pipelineType"),
+            "Variables": pipeline.get("variables", []),
+            "Triggers": pipeline.get("triggers", []),
+            "Created": metadata.get("created"),
+            "Updated": metadata.get("updated"),
+        }
 
 
 class GetPipelineTagsAction(PipelineAction):
