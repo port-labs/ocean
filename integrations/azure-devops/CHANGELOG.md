@@ -12,8 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added `excludeTagFilter` selector to the `project` kind.
-- Added `excludeTagFilter` selector to the `work items` kind.
+- Added `excludeTagFilter` integration config field to exclude ADO projects from syncing based on project tags. Projects matching any specified tag are skipped during resync for all resource kinds.
 
 
 ## 0.9.12 (2026-06-09)

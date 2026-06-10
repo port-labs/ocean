@@ -187,7 +187,6 @@ class AzureDevOpsBaseWebhookProcessor(AbstractWebhookProcessor):
     # -------------------------------------------------------------------------
 
     async def _is_project_excluded(self, project_id: str) -> bool:
-        """Return True if the project matches the excludeTagFilter on the client."""
         client = self._resolved_client
         if client is None or not client.exclude_tag_filter:
             return False
