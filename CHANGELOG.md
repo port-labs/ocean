@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.43.16 (2026-06-09)
+
+### Bug Fixes
+
+- Fixed action execution error logs failing to ship to Port when the execution manager passed raw `Exception` objects in log extra fields (not JSON serializable). All execution manager error handlers now use `logger.exception(..., error=str(e))` so failed run errors and tracebacks appear in the integration event log.
+
 ## 0.43.15 (2026-06-03)
 
 ### Bug Fixes
