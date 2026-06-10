@@ -12,8 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added `excludedTags` integration config field to exclude ADO projects and their resources from syncing based on project tags.
-
+- Renamed `excludeTagFilter` integration config field to `excludedTags` (the old key is still supported for backward compatibility).
 
 ## 0.9.13 (2026-06-09)
 
