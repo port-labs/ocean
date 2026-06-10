@@ -98,9 +98,9 @@ configurations:
     type: string
     required: false
     default: port
-  - name: excludeTagFilter
-    title: Excluded Project Tags
-    description: A list of tags used to exclude projects from syncing. Projects that have any of the specified tags will be skipped, along with all resources that belong to them (repositories, pull requests, webhooks, etc.).
+  - name: excludedTags
+    title: Excluded Tags
+    description: A list of tags used to exclude projects and resources that belong to them from syncing.
     type: array
     required: false
 deploymentMethodOverride:

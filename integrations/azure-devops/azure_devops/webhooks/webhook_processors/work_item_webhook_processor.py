@@ -49,7 +49,7 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         if await self._is_project_excluded(project_id):
             logger.info(
-                f"Work item {work_item_id} skipped - project {project_id} matched excludeTagFilter"
+                f"Work item {work_item_id} skipped - project {project_id} matched excludedTags"
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
