@@ -1567,14 +1567,14 @@ class AzureDevopsClient(HTTPBaseClient):
             return_exceptions=True,
         )
 
-        subscriptions = []
+        subscriptions: list[WebhookSubscription] = []
         for result in results:
             if isinstance(result, asyncio.CancelledError):
                 raise result
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 logger.warning(f"Failed to fetch webhook subscriptions: {result}")
-            else:
-                subscriptions.extend(result)
+                continue
+            subscriptions.extend(result)
         return subscriptions
 
     async def create_subscription(
