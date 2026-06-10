@@ -5,39 +5,39 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 
 class BuildRunProperties(BaseModel):
-    Arn: str = Field(default_factory=str)
-    Artifacts: dict[str, Any] | None = None
-    AutoRetryConfig: dict[str, Any] | None = None
-    BuildBatchArn: Optional[str] = None
-    BuildComplete: Optional[bool] = None
-    BuildNumber: Optional[int] = None
-    BuildStatus: Optional[str] = None
-    Cache: Optional[Dict[str, Any]] = None
-    CurrentPhase: Optional[str] = None
-    DebugSession: Optional[Dict[str, Any]] = None
-    EncryptionKey: Optional[str] = None
-    EndTime: Optional[datetime] = None
-    Environment: Optional[Dict[str, Any]] = None
-    ExportedEnvironmentVariables: List[Dict[str, Any]] = Field(default_factory=list)
-    FileSystemLocations: List[Dict[str, Any]] = Field(default_factory=list)
-    Id: str = Field(default_factory=str)
-    Initiator: Optional[str] = None
-    Logs: Optional[Dict[str, Any]] = None
-    NetworkInterface: Optional[Dict[str, Any]] = None
-    Phases: list[dict[str, Any]] = Field(default_factory=list)
-    ProjectName: str = Field(default_factory=str)
-    QueuedTimeoutInMinutes: Optional[int] = None
-    ReportArns: List[str] = Field(default_factory=list)
-    ResolvedSourceVersion: Optional[str] = None
-    SecondaryArtifacts: list[dict[str, Any]] = Field(default_factory=list)
-    SecondarySources: list[dict[str, Any]] = Field(default_factory=list)
-    SecondarySourceVersions: list[dict[str, Any]] = Field(default_factory=list)
-    ServiceRole: Optional[str] = None
-    Source: dict[str, Any] | None = None
-    SourceVersion: Optional[str] = None
-    StartTime: Optional[datetime] = None
-    TimeoutInMinutes: Optional[int] = None
-    VpcConfig: Optional[Dict[str, Any]] = None
+    arn: str = Field(default_factory=str, alias="Arn")
+    artifacts: dict[str, Any] | None = Field(default=None, alias="Artifacts")
+    autoRetryConfig: dict[str, Any] | None = Field(default=None, alias="AutoRetryConfig")
+    buildBatchArn: Optional[str] = Field(default=None, alias="BuildBatchArn")
+    buildComplete: Optional[bool] = Field(default=None, alias="BuildComplete")
+    buildNumber: Optional[int] = Field(default=None, alias="BuildNumber")
+    buildStatus: Optional[str] = Field(default=None, alias="BuildStatus")
+    cache: Optional[Dict[str, Any]] = Field(default=None, alias="Cache")
+    currentPhase: Optional[str] = Field(default=None, alias="CurrentPhase")
+    debugSession: Optional[Dict[str, Any]] = Field(default=None, alias="DebugSession")
+    encryptionKey: Optional[str] = Field(default=None, alias="EncryptionKey")
+    endTime: Optional[datetime] = Field(default=None, alias="EndTime")
+    environment: Optional[Dict[str, Any]] = Field(default=None, alias="Environment")
+    exportedEnvironmentVariables: List[Dict[str, Any]] = Field(default_factory=list, alais="ExportedEnvironmentVariables")
+    fileSystemLocations: List[Dict[str, Any]] = Field(default_factory=list, alias="FileSystemLocations")
+    id: str = Field(default_factory=str, alias="Id")
+    initiator: Optional[str] = Field(default=None, alias="Initiator")
+    logs: Optional[Dict[str, Any]] = Field(default=None, alias="Logs")
+    networkInterface: Optional[Dict[str, Any]] = Field(default=None, alias="NetworkInterface")
+    phases: list[dict[str, Any]] = Field(default_factory=list, alias="Phases")
+    projectName: str = Field(default_factory=str, alias="ProjectName")
+    queuedTimeoutInMinutes: Optional[int] = Field(default=None, alias="QueuedTimeoutInMinutes")
+    reportArns: List[str] = Field(default_factory=list, alias="ReportArns")
+    resolvedSourceVersion: Optional[str] = Field(default=None, alias="ResolvedSourceVersion")
+    secondaryArtifacts: list[dict[str, Any]] = Field(default_factory=list, alias="SecondaryArtifacts")
+    secondarySources: list[dict[str, Any]] = Field(default_factory=list, alias="SecondarySources")
+    secondarySourceVersions: list[dict[str, Any]] = Field(default_factory=list, alias="SecondarySourceVersions")
+    serviceRole: Optional[str] = Field(default=None, alias="ServiceRole")
+    source: dict[str, Any] | None = Field(default=None, alias="Source")
+    sourceVersion: Optional[str] = Field(default=None, alias="SourceVersion")
+    startTime: Optional[datetime] = Field(default=None, alias="StartTime")
+    timeoutInMinutes: Optional[int] = Field(default=None, alias="TimeoutInMinutes")
+    vpcConfig: Optional[Dict[str, Any]] = Field(default=None, alias="VpcConfig")
 
     class Config:
         extra = "ignore"
