@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import MagicMock, patch, AsyncMock
 
+import asyncio
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import Request, Response, HTTPStatusError
@@ -2121,6 +2122,95 @@ async def test_generate_pipeline_runs(mock_event_context: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_pipeline_runs_bounded_concurrency(
+    mock_event_context: MagicMock,
+) -> None:
+    from azure_devops.client.azure_devops_client import MAX_CONCURRENT_PROJECTS
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    num_projects = MAX_CONCURRENT_PROJECTS + 2
+    projects = [{"id": f"proj{i}", "name": f"Project {i}"} for i in range(num_projects)]
+
+    active = 0
+    peak_active = 0
+
+    async def mock_runs_for_project(
+        project: Dict[str, Any],
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        nonlocal active, peak_active
+        active += 1
+        peak_active = max(peak_active, active)
+        await asyncio.sleep(0)
+        yield [{"id": 1, "__project": project, "__pipeline": {"id": 1}}]
+        active -= 1
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield projects
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client, "_runs_for_project", side_effect=mock_runs_for_project
+            ):
+                runs: List[Dict[str, Any]] = []
+                async for batch in client.generate_pipeline_runs():
+                    runs.extend(batch)
+
+    assert peak_active <= MAX_CONCURRENT_PROJECTS
+    assert len(runs) == num_projects
+
+
+@pytest.mark.asyncio
+async def test_runs_for_project_bounded_concurrency(
+    mock_event_context: MagicMock,
+) -> None:
+    from azure_devops.client.azure_devops_client import MAX_CONCURRENT_PIPELINES
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    project = {"id": "proj1", "name": "Project One"}
+    num_pipelines = MAX_CONCURRENT_PIPELINES + 2
+    pipelines = [{"id": i, "name": f"Pipeline {i}"} for i in range(num_pipelines)]
+
+    active = 0
+    peak_active = 0
+
+    async def mock_paginate_pipeline_runs(
+        proj: Dict[str, Any], pipeline: Dict[str, Any]
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        nonlocal active, peak_active
+        active += 1
+        peak_active = max(peak_active, active)
+        await asyncio.sleep(0)
+        yield [{"id": pipeline["id"], "__project": proj, "__pipeline": pipeline}]
+        active -= 1
+
+    async def mock_paginate_pipelines(
+        project_id: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield pipelines
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "_paginate_pipelines", side_effect=mock_paginate_pipelines
+        ):
+            with patch.object(
+                client,
+                "_paginate_pipeline_runs",
+                side_effect=mock_paginate_pipeline_runs,
+            ):
+                runs: List[Dict[str, Any]] = []
+                async for batch in client._runs_for_project(project):
+                    runs.extend(batch)
+
+    assert peak_active <= MAX_CONCURRENT_PIPELINES
+    assert len(runs) == num_pipelines
+
+
+@pytest.mark.asyncio
 async def test_get_pull_request() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 
@@ -2348,6 +2438,64 @@ async def test_get_filtered_webhook_subscriptions_calls_per_event_type() -> None
             for call in mock_fetch.call_args_list
         }
         assert actual_filters == expected_filters
+
+
+@pytest.mark.asyncio
+async def test_get_filtered_webhook_subscriptions_bounded_concurrency() -> None:
+    from azure_devops.client.azure_devops_client import (
+        MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+    )
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    active = 0
+    peak_active = 0
+
+    async def mock_fetch(
+        publisher_id: str, event_type: str
+    ) -> List[WebhookSubscription]:
+        nonlocal active, peak_active
+        active += 1
+        peak_active = max(peak_active, active)
+        await asyncio.sleep(0)
+        active -= 1
+        return []
+
+    with patch.object(
+        client,
+        "generate_subscriptions_webhook_events",
+        new_callable=AsyncMock,
+        side_effect=mock_fetch,
+    ):
+        await client.get_filtered_webhook_subscriptions()
+
+    assert peak_active <= MAX_CONCURRENT_SUBSCRIPTION_REQUESTS
+
+
+@pytest.mark.asyncio
+async def test_get_filtered_webhook_subscriptions_partial_failure() -> None:
+    from azure_devops.webhooks.events import PushEvents
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    good_sub = WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH)
+
+    async def mock_fetch(
+        publisher_id: str, event_type: str
+    ) -> List[WebhookSubscription]:
+        if event_type == PushEvents.PUSH:
+            return [good_sub]
+        raise Exception("429 rate limited")
+
+    with patch.object(
+        client,
+        "generate_subscriptions_webhook_events",
+        new_callable=AsyncMock,
+        side_effect=mock_fetch,
+    ):
+        result = await client.get_filtered_webhook_subscriptions()
+
+    assert good_sub in result
 
 
 @pytest.mark.asyncio
