@@ -42,6 +42,7 @@ class GetPipelineDetailsAction(PipelineAction):
                 logger.error(
                     f"Error fetching details for pipeline '{pipeline_name}': {detail_result}"
                 )
+                results.append({})
             else:
                 results.append(detail_result)
         return results
