@@ -454,7 +454,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 raise result
             if isinstance(result, BaseException):
                 logger.warning(
-                    f"Failed to fetch area paths for team {team.get('id')}: {result}"
+                    f"Failed to fetch area paths for team {team['id']} in project {team['projectId']}: {result}"
                 )
                 team["__areaPaths"] = None
             else:
