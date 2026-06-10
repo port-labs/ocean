@@ -1095,7 +1095,9 @@ class AzureDevopsClient(HTTPBaseClient):
             f"{self._organization_base_url}/{project_id}"
             f"/{API_URL_PREFIX}/wit/classificationnodes/Areas"
         )
-        params = {"$depth": depth, **API_PARAMS}
+        params: dict[str, Any] = {**API_PARAMS}
+        if depth is not None:
+            params["$depth"] = depth
 
         try:
             response = await self.send_request("GET", areas_url, params=params)

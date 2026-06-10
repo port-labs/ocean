@@ -10,6 +10,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 
 from azure_devops.client.auth import PatAuthProvider
 from azure_devops.client.azure_devops_client import (
+    API_PARAMS,
     AzureDevopsClient,
     _flatten_area_path_tree,
     _normalize_area_path,
@@ -5353,6 +5354,31 @@ async def test_generate_area_paths(mock_event_context: MagicMock) -> None:
         f"/{MOCK_PROJECT_ID}/_apis/wit/classificationnodes/Areas"
     )
     assert mock_send_request.call_args.kwargs["params"]["$depth"] == 5
+
+
+@pytest.mark.asyncio
+async def test_generate_area_paths_without_depth_omits_depth_param(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_generate_projects(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": MOCK_PROJECT_ID, "name": MOCK_PROJECT_NAME}]
+
+    with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(client, "send_request") as mock_send_request:
+            mock_send_request.return_value = Response(
+                status_code=200, json=MOCK_AREA_TREE
+            )
+            async with event_context("test_event"):
+                async for _ in client.generate_area_paths():
+                    pass
+
+    params = mock_send_request.call_args.kwargs["params"]
+    assert "$depth" not in params
+    assert params == API_PARAMS
 
 
 @pytest.mark.asyncio
