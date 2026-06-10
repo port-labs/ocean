@@ -73,18 +73,12 @@ class GetPipelineTagsAction(PipelineAction):
         return results
 
     async def _fetch_pipeline_tags(self, resource: Dict[str, Any]) -> Dict[str, Any]:
-        pipeline_name = resource["name"]
-
-        pipeline_response = await self._get_pipeline(pipeline_name)
+        pipeline_response = await self._get_pipeline(resource["name"])
         pipeline_arn = pipeline_response.get("metadata", {}).get("pipelineArn")
 
         response = await self.client.list_tags_for_resource(resourceArn=pipeline_arn)
-        tags_list = response.get("tags", [])
-
-        tags_dict = {tag.get("key", ""): tag.get("value", "") for tag in tags_list}
-
-        logger.info(f"Successfully fetched tags for pipeline {pipeline_name}")
-        return {"tags": tags_dict}
+        logger.info(f"Successfully fetched tags for pipeline {resource["name"]}")
+        return response
 
 
 class PipelineActionsMap(ActionMap):

@@ -50,9 +50,12 @@
         "format": "date-time"
       },
       "tags": {
-        "type": "object",
+        "type": "array",
         "title": "Tags",
-        "description": "Tags associated with the pipeline"
+        "description": "Tags associated with the pipeline",
+        "items": {
+          "type": "object"
+        }
       }
     },
     "required": []

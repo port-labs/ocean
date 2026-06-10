@@ -14,7 +14,7 @@ class PipelineProperties(BaseModel):
     pipelineType: Optional[str] = Field(default=None, alias="PipelineType")
     roleArn: Optional[str] = Field(default=None, alias="RoleArn")
     stages: List[dict[str, Any]] = Field(default_factory=list, alias="Stages")
-    tags: Dict[str, str] = Field(default_factory=dict, alias="Tags")
+    tags: list[Dict[str, str]] = Field(default_factory=list, alias="Tags")
     triggers: List[Dict[str, Any]] = Field(default_factory=list, alias="Triggers")
     updated: Optional[datetime] = Field(default=None, alias="Updated")
     variables: List[Dict[str, Any]] = Field(default_factory=list, alias="Variables")
