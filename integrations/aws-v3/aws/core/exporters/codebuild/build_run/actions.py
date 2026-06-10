@@ -17,12 +17,7 @@ class GetBuildDetailsAction(Action):
         if not resources:
             return []
 
-        try:
-            response = await self.client.batch_get_builds(ids=resources)
-        except Exception as e:
-            logger.error(f"Error fetching build details: {e}")
-            raise
-
+        response = await self.client.batch_get_builds(ids=resources)
         builds = response.get("builds", [])
         logger.info(f"Successfully fetched details for {len(builds)} build runs")
         return builds
