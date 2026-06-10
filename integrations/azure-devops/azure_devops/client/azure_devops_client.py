@@ -1555,6 +1555,9 @@ class AzureDevopsClient(HTTPBaseClient):
             publisher_id: str, event_type: str
         ) -> list[WebhookSubscription]:
             async with semaphore:
+                logger.debug(
+                    f"Fetching existing subscriptions for publisherId={publisher_id}, eventType={event_type}"
+                )
                 return await self.generate_subscriptions_webhook_events(
                     publisher_id=publisher_id, event_type=event_type
                 )
