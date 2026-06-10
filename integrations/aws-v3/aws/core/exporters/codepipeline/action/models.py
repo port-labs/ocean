@@ -4,36 +4,38 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 
 class ActionTypeIdProperties(BaseModel):
-    Category: str = Field(default_factory=str)
-    Owner: str = Field(default_factory=str)
-    Provider: str = Field(default_factory=str)
-    Version: str = Field(default_factory=str)
+    category: str | None = Field(default=None, alias="Category")
+    owner: str | None = Field(default=None, alias="Owner")
+    provider: str | None = Field(default=None, alias="Provider")
+    version: str | None = Field(default=None, alias="Version")
 
     class Config:
         extra = "ignore"
-        populate_by_name = True
+        allow_population_by_field_name = True
 
 
 class CodePipelineActionProperties(BaseModel):
-    ActionName: str = Field(default_factory=str)
-    ActionTypeId: Optional[ActionTypeIdProperties] = None
-    RunOrder: Optional[int] = None
-    Configuration: Optional[Dict[str, str]] = None
-    InputArtifacts: List[dict[str, Any]] = Field(default_factory=list)
-    OutputArtifacts: List[dict[str, Any]] = Field(default_factory=list)
-    RoleArn: Optional[str] = None
-    Region: Optional[str] = None
-    Namespace: Optional[str] = None
-    TimeoutInMinutes: Optional[int] = None
-    OnFailure: Optional[Dict[str, Any]] = None
-    PipelineName: str = Field(default_factory=str)
-    StageName: str = Field(default_factory=str)
-    PipelineArn: Optional[str] = None
-    PipelineVersion: Optional[int] = None
+    actionTypeId: ActionTypeIdProperties = Field(default_factory=ActionTypeIdProperties, alias="ActionTypeId")
+    configuration: Optional[Dict[str, str]] = Field(default=None, alias="Configuration")
+    commands: Optional[List[str]] = Field(default=None, alias="Commands")
+    environmentVariables: Optional[List[dict[str, Any]]] = Field(default=None, alias="EnvironmentVariables")
+    inputArtifacts: Optional[List[dict[str, Any]]] = Field(default=None, alias="InputArtifacts")
+    name: str = Field(default_factory=str, alias="Name")
+    namespace: Optional[str] = Field(default=None, alias="Namespace")
+    outputArtifacts: Optional[List[dict[str, Any]]] = Field(default=None, alias="OutputArtifacts")
+    outputVariables: Optional[List[str]] = Field(default=None, alias="OutputVariables")
+    pipelineName: Optional[str] = Field(default=None, alias="PipelineName")
+    pipelineArn: Optional[str] = Field(default=None, alias="PipelineArn")
+    pipelineVersion: Optional[int] = Field(default=None, alias="PipelineVersion")
+    region: Optional[str] = Field(default=None, alias="Region")
+    roleArn: Optional[str] = Field(default=None, alias="RoleArn")
+    runOrder: Optional[int] = Field(default=None, alias="RunOrder")
+    stageName: Optional[str] = Field(default=None, alias="StageName")
+    timeoutInMinutes: Optional[int] = Field(default=None, alias="TimeoutInMinutes")
 
     class Config:
         extra = "ignore"
-        populate_by_name = True
+        allow_population_by_field_name = True
 
 
 class CodePipelineAction(ResourceModel[CodePipelineActionProperties]):
