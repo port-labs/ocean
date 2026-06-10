@@ -12,6 +12,7 @@ class PipelineProperties(BaseModel):
     name: str = Field(default_factory=str, alias="Name")
     pipelineArn: Optional[str] = Field(default=None, alias="PipelineArn")
     pipelineType: Optional[str] = Field(default=None, alias="PipelineType")
+    pollingDisabledAt: Optional[datetime] = Field(default=None, alias="PollingDisabledAt")
     roleArn: Optional[str] = Field(default=None, alias="RoleArn")
     stages: List[dict[str, Any]] = Field(default_factory=list, alias="Stages")
     tags: list[Dict[str, str]] = Field(default_factory=list, alias="Tags")
