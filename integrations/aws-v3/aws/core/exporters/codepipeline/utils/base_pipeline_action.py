@@ -6,6 +6,6 @@ from port_ocean.utils.cache import cache_coroutine_result
 
 
 class PipelineAction(Action, ABC):
-    @cache_coroutine_result()
+    @cache_coroutine_result(['region', 'account_id'])
     async def _get_pipeline(self, name: str) -> dict[str, Any]:
         return await self.client.get_pipeline(name=name)
