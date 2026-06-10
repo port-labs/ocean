@@ -72,6 +72,8 @@ MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
 MAX_CONCURRENT_PROJECTS = 5
+MAX_CONCURRENT_PIPELINES = 5
+MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -771,8 +773,15 @@ class AzureDevopsClient(HTTPBaseClient):
         https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/list
         """
         async for projects in self.generate_projects():
-            project_tasks = [self._runs_for_project(project) for project in projects]
-            async for batch in stream_async_iterators_tasks(*project_tasks):
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(self._runs_for_project, project),
+                )
+                for project in projects
+            ]
+            async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
 
     async def _runs_for_project(
@@ -782,8 +791,12 @@ class AzureDevopsClient(HTTPBaseClient):
         async for pipelines in self._paginate_pipelines(project_id=project["id"]):
             if not pipelines:
                 continue
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PIPELINES)
             pipeline_tasks = [
-                self._paginate_pipeline_runs(project, pipeline)
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(self._paginate_pipeline_runs, project, pipeline),
+                )
                 for pipeline in pipelines
             ]
             async for batch in stream_async_iterators_tasks(*pipeline_tasks):
@@ -1536,17 +1549,33 @@ class AzureDevopsClient(HTTPBaseClient):
             (sub.publisherId, sub.eventType)
             for sub in AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS
         }
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
 
-        results = await asyncio.gather(
-            *[
-                self.generate_subscriptions_webhook_events(
+        async def fetch(
+            publisher_id: str, event_type: str
+        ) -> list[WebhookSubscription]:
+            async with semaphore:
+                logger.debug(
+                    f"Fetching existing subscriptions for publisherId={publisher_id}, eventType={event_type}"
+                )
+                return await self.generate_subscriptions_webhook_events(
                     publisher_id=publisher_id, event_type=event_type
                 )
-                for publisher_id, event_type in unique_filters
-            ]
+
+        results = await asyncio.gather(
+            *[fetch(pub_id, evt_type) for pub_id, evt_type in unique_filters],
+            return_exceptions=True,
         )
 
-        return [sub for batch in results for sub in batch]
+        subscriptions: list[WebhookSubscription] = []
+        for result in results:
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, BaseException):
+                logger.warning(f"Failed to fetch webhook subscriptions: {result}")
+                continue
+            subscriptions.extend(result)
+        return subscriptions
 
     async def create_subscription(
         self,
@@ -1979,8 +2008,14 @@ class AzureDevopsClient(HTTPBaseClient):
 
         created_sub_ids: list[str] = []
         if subs_to_create:
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_SUBSCRIPTION_REQUESTS)
+
+            async def create(subscription: WebhookSubscription) -> Optional[str]:
+                async with semaphore:
+                    return await self.create_subscription(subscription)
+
             results = await asyncio.gather(
-                *[self.create_subscription(sub) for sub in subs_to_create],
+                *[create(sub) for sub in subs_to_create],
                 return_exceptions=True,
             )
 
