@@ -63,30 +63,3 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
-  - kind: AWS::CodeBuild::Project
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .Properties.Arn
-          title: .Properties.Name
-          blueprint: '"codeBuildProject"'
-          properties:
-            name: .Properties.Name
-            arn: .Properties.Arn
-            description: .Properties.Description
-            serviceRole: .Properties.ServiceRole
-            timeoutInMinutes: .Properties.TimeoutInMinutes
-            queuedTimeoutInMinutes: .Properties.QueuedTimeoutInMinutes
-            encryptionKey: .Properties.EncryptionKey
-            environment: .Properties.Environment
-            source: .Properties.Source
-            artifacts: .Properties.Artifacts
-            created: .Properties.Created
-            lastModified: .Properties.LastModified
-            projectVisibility: .Properties.ProjectVisibility
-            concurrentBuildLimit: .Properties.ConcurrentBuildLimit
-            tags: .Properties.Tags
-          relations:
-            account: .__ExtraContext.AccountId
