@@ -168,7 +168,6 @@ def _flatten_area_path_tree(
 
     enriched = {
         **{key: value for key, value in node.items() if key != "children"},
-        "__projectId": project["id"],
         "__project": project,
         "__parentIdentifier": parent_identifier,
         "__normalizedPath": _normalize_area_path(node.get("path", "")),

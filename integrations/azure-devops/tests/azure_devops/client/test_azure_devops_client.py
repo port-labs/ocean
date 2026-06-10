@@ -5192,7 +5192,7 @@ def test_flatten_area_path_tree_builds_parent_chain() -> None:
     assert by_id["db-guid"]["__normalizedPath"] == "My Project\\Backend\\Database"
 
     # Project context stamped on every node
-    assert all(node["__projectId"] == MOCK_PROJECT_ID for node in nodes)
+    assert all(node["__project"]["id"] == MOCK_PROJECT_ID for node in nodes)
 
 
 def test_flatten_area_path_tree_skips_non_area_nodes() -> None:
