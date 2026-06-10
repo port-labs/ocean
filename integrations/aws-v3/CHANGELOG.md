@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.2.42-beta (2026-06-04)
+## 2.2.42-beta (2026-06-09)
 
 
 ### Improvements
 
-- Extended `ouId` to support multiple AWS Organizational Units via comma-separated values (e.g. `ou-abc,ou-def`).
+- Bumped ocean version to ^0.43.16
 
 
 ## 2.2.41-beta (2026-06-07)
