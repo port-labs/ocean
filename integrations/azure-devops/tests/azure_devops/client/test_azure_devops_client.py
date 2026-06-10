@@ -748,6 +748,115 @@ async def test_get_single_project() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_project_tags() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    expected_tags = [
+        {"name": "Microsoft.TeamFoundation.Project.Tag.tr:restricted", "value": "true"}
+    ]
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json={"count": 1, "value": expected_tags}
+        )
+
+        tags = await client.get_project_tags(MOCK_PROJECT_ID)
+
+        assert tags == expected_tags
+        mock_send_request.assert_called_once_with(
+            "GET",
+            f"{MOCK_ORG_URL}/_apis/projects/{MOCK_PROJECT_ID}/properties",
+            params={
+                "keys": "Microsoft.TeamFoundation.Project.Tag.*",
+                "api-version": "7.1-preview.1",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_project_tags_returns_empty_on_404() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    with patch.object(client, "send_request", return_value=None):
+        tags = await client.get_project_tags(MOCK_PROJECT_ID)
+
+        assert tags == []
+
+
+@pytest.mark.asyncio
+async def test_filter_projects_by_excluded_tags_excludes_tagged_projects() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    projects = [
+        {"id": "proj1", "name": "Project One"},
+        {"id": "proj2", "name": "Project Two"},
+    ]
+
+    async def mock_get_project_tags(project_id: str) -> List[Dict[str, Any]]:
+        if project_id == "proj1":
+            return [
+                {
+                    "name": "Microsoft.TeamFoundation.Project.Tag.tr:restricted",
+                    "value": "true",
+                }
+            ]
+        return []
+
+    with patch.object(client, "get_project_tags", side_effect=mock_get_project_tags):
+        result = await client.filter_projects_by_excluded_tags(
+            projects, ["tr:restricted"]
+        )
+
+    assert result == [{"id": "proj2", "name": "Project Two"}]
+
+
+@pytest.mark.asyncio
+async def test_filter_projects_by_excluded_tags_allows_untagged_projects() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    projects = [
+        {"id": "proj1", "name": "Project One"},
+        {"id": "proj2", "name": "Project Two"},
+    ]
+
+    with patch.object(client, "get_project_tags", return_value=[]):
+        result = await client.filter_projects_by_excluded_tags(
+            projects, ["tr:restricted"]
+        )
+
+    assert result == projects
+
+
+@pytest.mark.asyncio
+async def test_filter_projects_by_excluded_tags_includes_project_on_fetch_error() -> (
+    None
+):
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    projects = [
+        {"id": "proj1", "name": "Project One"},
+        {"id": "proj2", "name": "Project Two"},
+    ]
+
+    async def mock_get_project_tags(project_id: str) -> List[Dict[str, Any]]:
+        if project_id == "proj1":
+            raise Exception("rate limit exceeded")
+        return [
+            {
+                "name": "Microsoft.TeamFoundation.Project.Tag.tr:restricted",
+                "value": "true",
+            }
+        ]
+
+    with patch.object(client, "get_project_tags", side_effect=mock_get_project_tags):
+        result = await client.filter_projects_by_excluded_tags(
+            projects, ["tr:restricted"]
+        )
+
+    assert result == [{"id": "proj1", "name": "Project One"}]
+
+
+@pytest.mark.asyncio
 async def test_generate_projects(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 
@@ -4123,6 +4232,121 @@ async def test_enrich_test_runs_without_build() -> None:
         )
         assert "__codeCoverage" in enriched_test_runs[1]
         assert enriched_test_runs[1]["__codeCoverage"] == {}
+
+
+@pytest.mark.asyncio
+async def test_enrich_test_runs_with_missing_or_null_build() -> None:
+    """Coverage is skipped (mapped to {}) when build is missing, null, or has no id, while runs with a build id are enriched - order preserved."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    test_runs = [
+        {
+            "id": 1,
+            "name": "With build",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "Null build",
+            "build": None,
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 3,
+            "name": "Build without id",
+            "build": {},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 4,
+            "name": "Missing build",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    from integration import CodeCoverageConfig
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        return {"coverageData": {"linesCovered": 100, "linesNotCovered": 50}}
+
+    with patch.object(
+        client,
+        "_fetch_code_coverage",
+        side_effect=mock_fetch_code_coverage,
+    ):
+        enriched_test_runs = await client._enrich_test_runs(
+            test_runs, "proj1", include_results=False, coverage_config=coverage_config
+        )
+
+    assert len(enriched_test_runs) == 4
+    assert (
+        enriched_test_runs[0]["__codeCoverage"]["coverageData"]["linesCovered"] == 100
+    )
+    assert enriched_test_runs[1]["__codeCoverage"] == {}
+    assert enriched_test_runs[2]["__codeCoverage"] == {}
+    assert enriched_test_runs[3]["__codeCoverage"] == {}
+
+
+@pytest.mark.asyncio
+async def test_enrich_test_runs_logs_coverage_summary() -> None:
+    """The coverage summary log reports both fetched and skipped counts."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    test_runs = [
+        {
+            "id": 1,
+            "name": "With build",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "With build",
+            "build": {"id": 124},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 3,
+            "name": "Manual run",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    from integration import CodeCoverageConfig
+    from loguru import logger
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        return {"coverageData": {"linesCovered": 100, "linesNotCovered": 50}}
+
+    messages: List[str] = []
+    sink_id = logger.add(messages.append, level="INFO")
+    try:
+        with patch.object(
+            client,
+            "_fetch_code_coverage",
+            side_effect=mock_fetch_code_coverage,
+        ):
+            await client._enrich_test_runs(
+                test_runs,
+                "proj1",
+                include_results=False,
+                coverage_config=coverage_config,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    summary = "".join(messages)
+    assert "Fetched code coverage for 2 of 3 test runs" in summary
+    assert "Skipped 1 runs" in summary
 
 
 @pytest.mark.asyncio

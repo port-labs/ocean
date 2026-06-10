@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from integration import CodeCoverageConfig
 
 API_URL_PREFIX = "_apis"
+PROJECT_TAG_PROPERTY_PREFIX = "Microsoft.TeamFoundation.Project.Tag."
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
@@ -151,11 +152,13 @@ class AzureDevopsClient(HTTPBaseClient):
         organization_url: str,
         auth_provider: AuthProvider,
         webhook_auth_username: Optional[str] = None,
+        exclude_tag_filter: Optional[list[str]] = None,
     ) -> None:
         super().__init__(auth_provider)
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username
+        self.exclude_tag_filter = exclude_tag_filter
 
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
@@ -166,6 +169,7 @@ class AzureDevopsClient(HTTPBaseClient):
             ocean.integration_config["organization_url"].strip("/"),
             auth_provider,
             ocean.integration_config.get("webhook_auth_username"),
+            ocean.integration_config.get("exclude_tag_filter"),
         )
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
@@ -177,6 +181,7 @@ class AzureDevopsClient(HTTPBaseClient):
             ocean.integration_config["organization_url"].strip("/"),
             auth_provider,
             ocean.integration_config.get("webhook_auth_username"),
+            ocean.integration_config.get("exclude_tag_filter"),
         )
         return azure_devops_client
 
@@ -202,17 +207,66 @@ class AzureDevopsClient(HTTPBaseClient):
         project = response.json()
         return project
 
+    async def get_project_tags(self, project_id: str) -> list[dict[str, Any]]:
+        url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/properties"
+        response = await self.send_request(
+            "GET",
+            url,
+            params={
+                "keys": f"{PROJECT_TAG_PROPERTY_PREFIX}*",
+                "api-version": "7.1-preview.1",
+            },
+        )
+        if not response:
+            return []
+        return response.json().get("value", [])
+
+    async def filter_projects_by_excluded_tags(
+        self,
+        projects: list[dict[str, Any]],
+        exclude_tags: list[str],
+    ) -> list[dict[str, Any]]:
+        exclude_set = set(exclude_tags)
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+
+        async def get_tags_with_semaphore(project_id: str) -> list[dict[str, Any]]:
+            async with semaphore:
+                return await self.get_project_tags(project_id)
+
+        tags_results = await asyncio.gather(
+            *[get_tags_with_semaphore(project["id"]) for project in projects],
+            return_exceptions=True,
+        )
+        filtered = []
+        for project, tags in zip(projects, tags_results):
+            if isinstance(tags, BaseException):
+                logger.warning(
+                    "Failed to fetch tags for project %s, including in sync: %s",
+                    project["id"],
+                    tags,
+                )
+                filtered.append(project)
+            elif exclude_set.isdisjoint(
+                t["name"].removeprefix(PROJECT_TAG_PROPERTY_PREFIX) for t in tags
+            ):
+                filtered.append(project)
+        return filtered
+
     async def generate_projects(
         self, sync_default_team: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        exclude_tags = tuple(self.exclude_tag_filter) if self.exclude_tag_filter else ()
         async for batch in self._generate_projects_cached(
-            self._organization_base_url, sync_default_team
+            self._organization_base_url, sync_default_team, exclude_tags
         ):
             yield batch
 
     @cache_iterator_result()
     async def _generate_projects_cached(
-        self, org_identifier: str, sync_default_team: bool = False
+        self,
+        org_identifier: str,
+        sync_default_team: bool = False,
+        exclude_tags: tuple[str, ...] = (),
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         sync_default_team: bool - The List projects endpoint of ADO API excludes default team of a project.
@@ -233,7 +287,12 @@ class AzureDevopsClient(HTTPBaseClient):
                     *tasks
                 )
                 projects = [project for project in projects_batch if project]
-            yield projects
+            if exclude_tags:
+                projects = await self.filter_projects_by_excluded_tags(
+                    projects, list(exclude_tags)
+                )
+            if projects:
+                yield projects
 
     async def get_single_advanced_security_alert(
         self,
@@ -1032,7 +1091,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 yield policies
 
     async def generate_work_items(
-        self, wiql: Optional[str], expand: str
+        self,
+        wiql: Optional[str],
+        expand: str,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
@@ -2253,6 +2314,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     value,
                     field_name,
                     run.get("id"),
+                    exc_info=True,
                 )
                 continue
             run[field_name] = value
@@ -2274,19 +2336,8 @@ class AzureDevopsClient(HTTPBaseClient):
             else []
         )
 
-        coverage_tasks: list[Awaitable[dict[str, Any]]] = (
-            [
-                (
-                    self._fetch_code_coverage(
-                        project_id, run["build"]["id"], coverage_config
-                    )
-                    if run.get("build") and run["build"].get("id")
-                    else self._no_coverage()
-                )
-                for run in test_runs
-            ]
-            if coverage_config
-            else []
+        coverage_tasks = self._build_coverage_tasks(
+            test_runs, project_id, coverage_config
         )
 
         await self._attach_async_results(
@@ -2297,6 +2348,43 @@ class AzureDevopsClient(HTTPBaseClient):
         )
 
         return test_runs
+
+    def _build_coverage_tasks(
+        self,
+        test_runs: list[dict[str, Any]],
+        project_id: str,
+        coverage_config: Optional["CodeCoverageConfig"],
+    ) -> list[Awaitable[dict[str, Any]]]:
+        coverage_tasks: list[Awaitable[dict[str, Any]]] = []
+        if not coverage_config:
+            return coverage_tasks
+
+        skipped_coverage = 0
+        for run in test_runs:
+            run_id = run.get("id")
+            build_id = (run.get("build") or {}).get("id")
+            if not build_id:
+                skipped_coverage += 1
+                logger.debug(
+                    f"Skipping code coverage for test run {run_id} in "
+                    f"project {project_id}: no associated build"
+                )
+                coverage_tasks.append(self._no_coverage())
+                continue
+
+            coverage_tasks.append(
+                self._fetch_code_coverage(project_id, build_id, coverage_config)
+            )
+
+        logger.info(
+            "Fetched code coverage for {} of {} test runs in project {}. Skipped {} runs without an associated build.",
+            len(test_runs) - skipped_coverage,
+            len(test_runs),
+            project_id,
+            skipped_coverage,
+        )
+
+        return coverage_tasks
 
     async def _fetch_test_results(
         self, project_id: str, run_id: str

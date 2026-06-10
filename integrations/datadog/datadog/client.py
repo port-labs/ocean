@@ -1,8 +1,6 @@
 import http
-import json
 import re
 from typing import Any, Optional
-from urllib.parse import urlparse, urlunparse
 
 import httpx
 from http import HTTPStatus
@@ -27,23 +25,6 @@ def _create_datadog_retry_config() -> RetryConfig:
             DATADOG_UNKNOWN_STATUS_CODE,
         ],
     )
-
-
-def embed_credentials_in_url(url: str, username: str, token: str) -> str:
-    """Inserts username and token into a given URL for Datadog webhook basic-auth."""
-    parsed_url = urlparse(url)
-    netloc_with_credentials = f"{username}:{token}@{parsed_url.netloc}"
-    modified_url = urlunparse(
-        (
-            parsed_url.scheme,
-            netloc_with_credentials,
-            parsed_url.path,
-            parsed_url.params,
-            parsed_url.query,
-            parsed_url.fragment,
-        )
-    )
-    return modified_url
 
 
 class DatadogClient:
@@ -113,70 +94,3 @@ class DatadogClient:
         self._log_rate_limit_context(url, method, response)
         response.raise_for_status()
         return response.json()
-
-    async def create_webhooks_if_not_exists(
-        self, base_url: Any, webhook_secret: Any
-    ) -> None:
-        webhook_name = "PORT"
-        dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
-
-        try:
-            if await self._webhook_exists(dd_webhook_url):
-                logger.info("Webhook already exists")
-                return
-
-            logger.info("Subscribing to Datadog webhooks...")
-
-            base_webhook_url = f"{base_url}/integration/webhook"
-            modified_url = (
-                embed_credentials_in_url(base_webhook_url, "port", webhook_secret)
-                if webhook_secret
-                else base_webhook_url
-            )
-
-            body = {
-                "name": webhook_name,
-                "url": modified_url,
-                "encode_as": "json",
-                "payload": json.dumps(
-                    {
-                        "id": "$ID",
-                        "message": "$TEXT_ONLY_MSG",
-                        "priority": "$PRIORITY",
-                        "last_updated": "$LAST_UPDATED",
-                        "event_type": "$EVENT_TYPE",
-                        "event_url": "$LINK",
-                        "service": "$HOSTNAME",
-                        "service_id": "$SERVICE_ID",
-                        "service_name": "$SERVICE_NAME",
-                        "creator": "$USER",
-                        "title": "$EVENT_TITLE",
-                        "date": "$DATE",
-                        "org_id": "$ORG_ID",
-                        "org_name": "$ORG_NAME",
-                        "alert_id": "$ALERT_ID",
-                        "alert_metric": "$ALERT_METRIC",
-                        "alert_status": "$ALERT_STATUS",
-                        "alert_title": "$ALERT_TITLE",
-                        "alert_type": "$ALERT_TYPE",
-                        "tags": "$TAGS",
-                        "body": "$EVENT_MSG",
-                    }
-                ),
-            }
-
-            await self.send_api_request(
-                url=dd_webhook_url, method="POST", json_data=body
-            )
-        except Exception as e:
-            logger.error(f"Failed to create a webhook: {str(e)}, skipping...")
-
-    async def _webhook_exists(self, webhook_url: str) -> bool:
-        try:
-            webhook = await self.send_api_request(url=webhook_url)
-            return bool(webhook)
-        except httpx.HTTPStatusError as err:
-            logger.warning(
-                f"An error occurred while checking if a webhook exists. Error: {str(err)}. Skipping webhook setup."
-            )
-            return False
