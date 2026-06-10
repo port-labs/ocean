@@ -1569,7 +1569,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
         subscriptions = []
         for result in results:
-            if isinstance(result, BaseException):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, Exception):
                 logger.warning(f"Failed to fetch webhook subscriptions: {result}")
             else:
                 subscriptions.extend(result)
