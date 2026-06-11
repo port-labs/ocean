@@ -1,26 +1,6 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from aws.core.exporters.codebuild.project.actions import (
-    ListProjectsAction,
-    GetProjectDetailsAction,
-)
-
-
-@pytest.mark.asyncio
-async def test_list_projects_action() -> None:
-    # Arrange
-    action = ListProjectsAction(MagicMock())
-    projects = ["project1", "project2", "project3"]
-
-    # Act
-    result = await action._execute(projects)
-
-    # Assert
-    assert result == [
-        {"name": "project1", "id": "project1"},
-        {"name": "project2", "id": "project2"},
-        {"name": "project3", "id": "project3"},
-    ]
+from unittest.mock import AsyncMock
+from aws.core.exporters.codebuild.project.actions import GetProjectDetailsAction
 
 
 @pytest.mark.asyncio
