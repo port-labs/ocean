@@ -50,16 +50,11 @@ class CodeDeployApplicationExporter(IResourceExporter):
 
             async for applications in paginator.paginate():
                 if applications:
-                    resources = [
-                        {
-                            "applicationName": app_name,
-                            "accountId": options.account_id,
-                            "region": options.region,
-                        }
-                        for app_name in sorted(applications)
-                    ]
                     action_result = await inspector.inspect(
-                        resources,
+                        {
+                            "applications": sorted(applications),
+                            "extras": {"region": options.region, "account_id": options.account_id}
+                        },
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,

@@ -5,17 +5,17 @@ from datetime import datetime
 
 
 class CodeDeployApplicationProperties(BaseModel):
-    ApplicationName: str = Field(default_factory=str)
-    ApplicationId: str = Field(default_factory=str)
-    CreateTime: Optional[datetime] = None
-    LinkedToGitHub: Optional[bool] = None
-    GitHubAccountName: Optional[str] = None
-    ComputePlatform: Optional[str] = None
+    applicationName: str = Field(default_factory=str, alias="ApplicationName")
+    applicationId: str = Field(default_factory=str, alias="ApplicationId")
+    computePlatform: Optional[str] = Field(default=None, alias="ComputePlatform")
+    createTime: Optional[datetime] = Field(default=None, alias="CreateTime")
+    gitHubAccountName: Optional[str] = Field(default=None, alias="GitHubAccountName")
+    linkedToGitHub: Optional[bool] = Field(default=None, alias="LinkedToGitHub")
     Tags: List[Dict[str, Any]] = Field(default_factory=list)
 
     class Config:
         extra = "ignore"
-        populate_by_name = True
+        allow_population_by_field_name = True
 
 
 class CodeDeployApplication(ResourceModel[CodeDeployApplicationProperties]):
