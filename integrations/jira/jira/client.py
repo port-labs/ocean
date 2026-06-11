@@ -7,7 +7,11 @@ import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
-from jira.overrides import JiraEpicAPIQueryParams, JiraWorklogAPIQueryParams
+from jira.overrides import (
+    JiraEpicAPIQueryParams,
+    JiraWorklogAPIQueryParams,
+    ComponentSource,
+)
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -400,6 +404,17 @@ class JiraClient(OAuthClient):
         """Inject ``__boardId`` to each entity in the list for later relation mapping."""
         return [
             {**entity, "__boardId": board_id} for entity in entities if entity.get("id")
+        ]
+
+    @staticmethod
+    def _enrich_with_project_key(
+        components: list[dict[str, Any]], project_key: str
+    ) -> list[dict[str, Any]]:
+        """Inject ``__projectKey`` into each component for relation mapping."""
+        return [
+            {**component, "__projectKey": project_key}
+            for component in components
+            if component.get("id")
         ]
 
     @staticmethod
@@ -961,3 +976,21 @@ class JiraClient(OAuthClient):
             url, "worklogs", initial_params=query_params
         ):
             yield [{**worklog, "__issueKey": issue_key} for worklog in batch]
+
+    async def get_paginated_components_for_project(
+        self,
+        project_key: str,
+        component_source: ComponentSource,
+        name_filter: str | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield paginated component batches for a single Jira project."""
+        params: dict[str, Any] = {"componentSource": component_source}
+        if name_filter is not None:
+            params["query"] = name_filter
+
+        async for batch in self._get_paginated_data(
+            f"{self.api_url}/project/{project_key}/component",
+            "values",
+            initial_params=params,
+        ):
+            yield self._enrich_with_project_key(batch, project_key)

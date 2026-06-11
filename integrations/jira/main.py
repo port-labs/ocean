@@ -20,6 +20,7 @@ from jira.overrides import (
     JiraSprintResourceConfig,
     JiraBacklogResourceConfig,
     JiraEpicResourceConfig,
+    JiraComponentResourceConfig,
 )
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
@@ -217,6 +218,24 @@ async def on_resync_worklogs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         async for worklog_batch in stream_async_iterators_tasks(*worklog_streams):
             yield worklog_batch
+
+
+@ocean.on_resync(Kinds.COMPONENT)
+async def on_resync_components(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_or_create_jira_client()
+    selector = cast(JiraComponentResourceConfig, event.resource_config).selector
+
+    async for projects_batch in client.get_paginated_projects():
+        component_streams = [
+            client.get_paginated_components_for_project(
+                project["key"],
+                selector.component_source,
+                name_filter=selector.name_filter,
+            )
+            for project in projects_batch
+        ]
+        async for component_batch in stream_async_iterators_tasks(*component_streams):
+            yield component_batch
 
 
 # Called once when the integration starts.
