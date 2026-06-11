@@ -65,7 +65,7 @@ class HTTPBaseClient:
                         f"Couldn't access url {url}. Make sure the {self._auth_provider.auth_description} is valid!"
                     )
                 logger.error(
-                    f"Request with bad status code {response.status_code}: {method} to url {url}"
+                    f"Request with bad status code {response.status_code}: {method} to url {url}. Response body: {e.response.text}"
                 )
                 raise e
         except httpx.HTTPError as e:

@@ -98,6 +98,11 @@ configurations:
     type: string
     required: false
     default: port
+  - name: excludedTags
+    title: Excluded Tags
+    description: A list of tags used to exclude projects and resources that belong to them from syncing.
+    type: array
+    required: false
 deploymentMethodOverride:
   - type: helm
 saas:

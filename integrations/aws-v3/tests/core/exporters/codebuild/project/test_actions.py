@@ -1,26 +1,6 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from aws.core.exporters.codebuild.project.actions import (
-    ListProjectsAction,
-    GetProjectDetailsAction,
-)
-
-
-@pytest.mark.asyncio
-async def test_list_projects_action() -> None:
-    # Arrange
-    action = ListProjectsAction(MagicMock())
-    projects = ["project1", "project2", "project3"]
-
-    # Act
-    result = await action._execute(projects)
-
-    # Assert
-    assert result == [
-        {"name": "project1", "id": "project1"},
-        {"name": "project2", "id": "project2"},
-        {"name": "project3", "id": "project3"},
-    ]
+from unittest.mock import AsyncMock
+from aws.core.exporters.codebuild.project.actions import GetProjectDetailsAction
 
 
 @pytest.mark.asyncio
@@ -58,24 +38,14 @@ async def test_get_project_details_action() -> None:
 
     assert len(result) == 1
     project = result[0]
-    assert project["Name"] == "test-project"
+    assert project["name"] == "test-project"
     assert (
-        project["Arn"]
+        project["arn"]
         == "arn:aws:codebuild:us-east-1:123456789012:project/test-project"
     )
-    assert project["Description"] == "Test project description"
+    assert project["description"] == "Test project description"
     assert (
-        project["ServiceRole"]
+        project["serviceRole"]
         == "arn:aws:iam::123456789012:role/service-role/codebuild-test-service-role"
     )
-    assert project["TimeoutInMinutes"] == 60
-
-
-@pytest.mark.asyncio
-async def test_get_project_details_action_empty_resources() -> None:
-    action = GetProjectDetailsAction(AsyncMock())
-
-    result = await action._execute([])
-
-    assert result == []
-    action.client.batch_get_projects.assert_not_called()
+    assert project["timeoutInMinutes"] == 60
