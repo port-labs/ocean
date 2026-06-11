@@ -38,14 +38,14 @@ async def test_get_project_details_action() -> None:
 
     assert len(result) == 1
     project = result[0]
-    assert project["Name"] == "test-project"
+    assert project["name"] == "test-project"
     assert (
-        project["Arn"]
+        project["arn"]
         == "arn:aws:codebuild:us-east-1:123456789012:project/test-project"
     )
-    assert project["Description"] == "Test project description"
+    assert project["description"] == "Test project description"
     assert (
-        project["ServiceRole"]
+        project["serviceRole"]
         == "arn:aws:iam::123456789012:role/service-role/codebuild-test-service-role"
     )
-    assert project["TimeoutInMinutes"] == 60
+    assert project["timeoutInMinutes"] == 60
