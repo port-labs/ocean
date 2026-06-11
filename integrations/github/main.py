@@ -391,17 +391,34 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     async for workflows in workflow_exporter.get_paginated_resources(
                         workflow_options
                     ):
-                        tasks = [
-                            workflow_run_exporter.get_paginated_resources(
-                                ListWorkflowRunOptions(
-                                    organization=org_name,
-                                    repo_name=repo_name,
-                                    workflow_id=workflow["id"],
-                                    max_runs=100,
+                        if config.selector.statuses:
+                            tasks = [
+                                workflow_run_exporter.get_paginated_resources(
+                                    ListWorkflowRunOptions(
+                                        organization=org_name,
+                                        repo_name=repo_name,
+                                        workflow_id=workflow["id"],
+                                        max_runs=100,
+                                        status=status,
+                                        created=config.selector.created_after,
+                                    )
                                 )
-                            )
-                            for workflow in workflows
-                        ]
+                                for workflow in workflows
+                                for status in config.selector.statuses
+                            ]
+                        else:
+                            tasks = [
+                                workflow_run_exporter.get_paginated_resources(
+                                    ListWorkflowRunOptions(
+                                        organization=org_name,
+                                        repo_name=repo_name,
+                                        workflow_id=workflow["id"],
+                                        max_runs=100,
+                                        created=config.selector.created_after,
+                                    )
+                                )
+                                for workflow in workflows
+                            ]
 
                     async for runs in stream_async_iterators_tasks(*tasks):
                         yield runs

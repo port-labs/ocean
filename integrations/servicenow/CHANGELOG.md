@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.88 (2026-06-09)
+
+
+### Improvements
+
+- Added proactive rate limiter that reads X-RateLimit-Limit and X-RateLimit-Reset headers from ServiceNow responses to pace requests and avoid 429 errors
+
+
+## 0.3.87 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.3.86 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
 ## 0.3.85 (2026-06-03)
 
 

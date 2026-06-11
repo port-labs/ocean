@@ -7,15 +7,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from initialize_client import init_client
 from integration import ObjectKind
-from overrides import (
-    SLOHistoryResourceConfig,
-    ServiceMetricResourceConfig,
-    ServiceMetricSelector,
-    TeamResourceConfig,
-    ServiceDependencyResourceConfig,
-    MonitorResourceConfig,
-    SLOResourceConfig,
-)
+from datadog.webhook.webhook_client import DatadogWebhookClient
+from datadog.webhook.registry import register_live_events_webhooks
 from datadog.core.exporters import (
     TeamExporter,
     UserExporter,
@@ -36,20 +29,25 @@ from datadog.core.exporters.service_metric_exporter import ListServiceMetricOpti
 from datadog.core.exporters.service_dependency_exporter import (
     ListServiceDependencyOptions,
 )
-from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
-from webhook_processors.service_dependency_webhook_processor import (
-    ServiceDependencyWebhookProcessor,
+from datadog.overrides import (
+    TeamResourceConfig,
+    MonitorResourceConfig,
+    SLOResourceConfig,
+    SLOHistoryResourceConfig,
+    ServiceMetricResourceConfig,
+    ServiceDependencyResourceConfig,
 )
 
 
 @ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
-    selector = cast(TeamResourceConfig, event.resource_config).selector
     team_exporter = TeamExporter(dd_client)
 
     async for teams in team_exporter.get_paginated_resources(
-        ListTeamOptions(include_members=selector.include_members)
+        ListTeamOptions.from_resource_config(
+            cast(TeamResourceConfig, event.resource_config)
+        )
     ):
         logger.info(f"Received batch with {len(teams)} teams")
         yield teams
@@ -78,12 +76,11 @@ async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.MONITOR)
 async def on_resync_monitors(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
-    selector = cast(MonitorResourceConfig, event.resource_config).selector
     monitor_exporter = MonitorExporter(dd_client)
 
     async for monitors in monitor_exporter.get_paginated_resources(
-        ListMonitorOptions(
-            include_restriction_policy=selector.include_restriction_policy
+        ListMonitorOptions.from_resource_config(
+            cast(MonitorResourceConfig, event.resource_config)
         )
     ):
         logger.info(f"Received batch with {len(monitors)} monitors")
@@ -93,11 +90,12 @@ async def on_resync_monitors(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SLO)
 async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
-    selector = cast(SLOResourceConfig, event.resource_config).selector
     slo_exporter = SloExporter(dd_client)
 
     async for slos in slo_exporter.get_paginated_resources(
-        ListSloOptions(include_restriction_policy=selector.include_restriction_policy)
+        ListSloOptions.from_resource_config(
+            cast(SLOResourceConfig, event.resource_config)
+        )
     ):
         logger.info(f"Received batch with {len(slos)} slos")
         yield slos
@@ -106,15 +104,11 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SLO_HISTORY)
 async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
-    selector = cast(SLOHistoryResourceConfig, event.resource_config).selector
     slo_history_exporter = SloHistoryExporter(dd_client)
 
     async for histories in slo_history_exporter.get_paginated_resources(
-        ListSloHistoryOptions(
-            timeframe=selector.timeframe,
-            concurrency=selector.concurrency,
-            period_of_time_in_months=selector.period_of_time_in_months,
-            period_of_time_in_days=selector.period_of_time_in_days,
+        ListSloHistoryOptions.from_resource_config(
+            cast(SLOHistoryResourceConfig, event.resource_config)
         )
     ):
         yield histories
@@ -133,19 +127,11 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SERVICE_METRIC)
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
-    params: ServiceMetricSelector = cast(
-        ServiceMetricResourceConfig, event.resource_config
-    ).selector.metric_selector
     service_metric_exporter = ServiceMetricExporter(dd_client)
 
     async for metrics in service_metric_exporter.get_paginated_resources(
-        ListServiceMetricOptions(
-            metric_query=params.metric,
-            env_tag=params.env.tag,
-            env_value=params.env.value,
-            service_tag=params.service.tag,
-            service_value=params.service.value,
-            time_window_in_minutes=params.timeframe,
+        ListServiceMetricOptions.from_resource_config(
+            cast(ServiceMetricResourceConfig, event.resource_config)
         )
     ):
         logger.info(f"Received batch with {len(metrics)} metrics")
@@ -155,12 +141,11 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SERVICE_DEPENDENCY)
 async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
-    selector = cast(ServiceDependencyResourceConfig, event.resource_config).selector
     service_dependency_exporter = ServiceDependencyExporter(dd_client)
 
     async for dependencies in service_dependency_exporter.get_paginated_resources(
-        ListServiceDependencyOptions(
-            env=selector.environment, start_time=selector.start_time
+        ListServiceDependencyOptions.from_resource_config(
+            cast(ServiceDependencyResourceConfig, event.resource_config)
         )
     ):
         logger.info(f"Received batch with {len(dependencies)} dependencies")
@@ -179,15 +164,33 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_start()
 async def on_start() -> None:
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
+    if not ocean.app.config.event_listener.should_process_webhooks:
+        logger.info(
+            "Skipping webhook creation as it's not supported for this event listener"
+        )
         return
 
     if base_url := ocean.app.base_url:
         dd_client = init_client()
         webhook_secret = ocean.integration_config.get("webhook_secret")
-        await dd_client.create_webhooks_if_not_exists(base_url, webhook_secret)
+        notification_rule_scope: str | None = ocean.integration_config.get(
+            "monitor_notification_rule_scope"
+        )
+        integration_identifier = ocean.config.integration.identifier
+        current_integration = await ocean.port_client.get_current_integration()
+        org_id = str(current_integration.get("_orgId"))
+        if not org_id:
+            logger.warning("No organization ID found for webhook setup")
+            return
+
+        webhook_client = DatadogWebhookClient(dd_client)
+        await webhook_client.upsert_webhook_setup(
+            base_url=base_url,
+            webhook_secret=webhook_secret,
+            org_id=org_id,
+            integration_identifier=integration_identifier,
+            notification_rule_scope=notification_rule_scope,
+        )
 
 
-ocean.add_webhook_processor("/webhook", MonitorWebhookProcessor)
-ocean.add_webhook_processor("/webhook", ServiceDependencyWebhookProcessor)
+register_live_events_webhooks()
