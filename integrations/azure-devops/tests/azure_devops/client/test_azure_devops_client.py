@@ -12,6 +12,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 from azure_devops.client.auth import PatAuthProvider
 from azure_devops.client.azure_devops_client import (
     API_PARAMS,
+    GRAPH_USERS_API_PARAMS,
     AzureDevopsClient,
     _flatten_area_path_tree,
     _normalize_area_path,
@@ -1231,7 +1232,10 @@ async def test_generate_users_uses_graph_source_by_default(
     assert users == expected_users
     call = mock_paginate.call_args
     assert "/_apis/graph/users" in call.args[0]
-    assert call.kwargs["additional_params"]["api-version"] == "7.1-preview.1"
+    assert (
+        call.kwargs["additional_params"]["api-version"]
+        == GRAPH_USERS_API_PARAMS["api-version"]
+    )
 
 
 @pytest.mark.asyncio

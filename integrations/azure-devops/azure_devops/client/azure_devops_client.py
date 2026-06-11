@@ -56,6 +56,7 @@ if TYPE_CHECKING:
 API_URL_PREFIX = "_apis"
 PROJECT_TAG_PROPERTY_PREFIX = "Microsoft.TeamFoundation.Project.Tag."
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
+GRAPH_USERS_API_PARAMS = {"api-version": "7.1-preview.1"}
 ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
 PIPELINES_PUBLISHER_ID = "pipelines"
@@ -517,7 +518,7 @@ class AzureDevopsClient(HTTPBaseClient):
             return
 
         users_url = self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/users"
-        params = {"api-version": "7.1-preview.1", **(additional_params or {})}
+        params = {**GRAPH_USERS_API_PARAMS, **(additional_params or {})}
         async for users in self._get_paginated_by_top_and_continuation_token(
             users_url, additional_params=params
         ):
