@@ -18,8 +18,13 @@ class UserSource(ABC):
 
 
 class GraphUserSource(UserSource):
-    def __init__(self, subject_types: Optional[Sequence[str]] = None) -> None:
+    def __init__(
+        self,
+        subject_types: Optional[Sequence[str]] = None,
+        include_group_memberships: bool = False,
+    ) -> None:
         self._subject_types = subject_types
+        self._include_group_memberships = include_group_memberships
 
     def to_params(self) -> dict[str, str]:
         if self._subject_types:
@@ -30,6 +35,8 @@ class GraphUserSource(UserSource):
         self, client: AzureDevopsClient
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for batch in client.generate_graph_users(self.to_params()):
+            if self._include_group_memberships:
+                batch = await client.enrich_users_with_group_memberships(batch)
             yield batch
 
 

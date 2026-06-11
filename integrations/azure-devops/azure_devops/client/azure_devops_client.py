@@ -2,6 +2,7 @@ from azure_devops.webhooks.events import AdvancedSecurityAlertEvents
 import asyncio
 import functools
 import json
+import re
 import httpx
 from collections import defaultdict
 from itertools import batched
@@ -72,6 +73,7 @@ MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
+MAX_CONCURRENT_USER_MEMBERSHIPS = 10
 MAX_CONCURRENT_PROJECTS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
@@ -500,6 +502,76 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield users
 
+    @staticmethod
+    def _parse_project_from_principal_name(principal_name: str) -> Optional[str]:
+        match = re.match(r"^\[(?P<project>.+?)\]\\", principal_name or "")
+        return match.group("project") if match else None
+
+    async def enrich_users_with_group_memberships(
+        self, users: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Enrich graph users with their direct group memberships."""
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_USER_MEMBERSHIPS)
+
+        async def fetch_group_descriptors(descriptor: str) -> list[str]:
+            async with semaphore:
+                memberships = await self._get_subject_memberships(descriptor, "Up")
+            if not memberships:
+                return []
+            return [
+                membership["containerDescriptor"]
+                for membership in memberships
+                if membership.get("containerDescriptor")
+            ]
+
+        candidates = [user for user in users if user.get("descriptor")]
+        results = await asyncio.gather(
+            *[fetch_group_descriptors(user["descriptor"]) for user in candidates],
+            return_exceptions=True,
+        )
+
+        user_group_descriptors: dict[str, list[str]] = {}
+        all_descriptors: set[str] = set()
+        for user, result in zip(candidates, results):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to fetch group memberships for user "
+                    f"'{user['descriptor']}': {result}"
+                )
+                user_group_descriptors[user["descriptor"]] = []
+                continue
+            user_group_descriptors[user["descriptor"]] = result
+            all_descriptors.update(result)
+
+        subject_details = (
+            await self._lookup_subjects(list(all_descriptors))
+            if all_descriptors
+            else {}
+        )
+
+        for user in users:
+            descriptors = user_group_descriptors.get(user["descriptor"], [])
+            groups = [
+                subject_details[descriptor]
+                for descriptor in descriptors
+                if descriptor in subject_details
+            ]
+            projects = {
+                project
+                for group in groups
+                if (
+                    project := self._parse_project_from_principal_name(
+                        group.get("principalName", "")
+                    )
+                )
+            }
+            user["__groups"] = groups
+            user["__projects"] = sorted(projects)
+
+        return users
+
     async def generate_entitlement_users(
         self,
         additional_params: dict[str, str] | None = None,
@@ -555,20 +627,30 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield groups
 
-    async def _get_group_direct_members(
-        self, group_descriptor: str
+    async def _get_subject_memberships(
+        self, descriptor: str, direction: str
     ) -> Optional[list[dict[str, Any]]]:
-        """Get direct members of a group."""
-        members_url = (
+        """Get memberships for a subject in the given direction.
+
+        direction='Down' yields the members contained by a group;
+        direction='Up' yields the groups a subject belongs to.
+        """
+        memberships_url = (
             self._format_service_url("vssps")
-            + f"/{API_URL_PREFIX}/graph/Memberships/{group_descriptor}"
+            + f"/{API_URL_PREFIX}/graph/memberships/{descriptor}"
         )
         response = await self.send_request(
-            "GET", members_url, params={"direction": "Down"}
+            "GET", memberships_url, params={"direction": direction}
         )
         if not response:
             return None
         return response.json()["value"]
+
+    async def _get_group_direct_members(
+        self, group_descriptor: str
+    ) -> Optional[list[dict[str, Any]]]:
+        """Get direct members of a group."""
+        return await self._get_subject_memberships(group_descriptor, "Down")
 
     async def _lookup_subjects(
         self, descriptors: list[str]

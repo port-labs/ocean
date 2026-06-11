@@ -319,6 +319,12 @@ class AzureDevopsUserSelector(Selector):
         title="Subject Types",
         description="Graph source only. Filter users by subject subtype, e.g. 'aad', 'msa', 'svc', 'imp'.",
     )
+    include_group_memberships: bool = Field(
+        default=False,
+        alias="includeGroupMemberships",
+        title="Include Group Memberships",
+        description="Graph source only. Enrich each user with their direct group memberships (__groups) and derived project entitlements (__projects).",
+    )
     include_fields: Optional[
         list[Literal["license", "extensions", "projects", "groupRules"]]
     ] = Field(
@@ -336,7 +342,10 @@ class AzureDevopsUserSelector(Selector):
 
     def build_source(self) -> UserSource:
         if self.source == "graph":
-            return GraphUserSource(subject_types=self.subject_types)
+            return GraphUserSource(
+                subject_types=self.subject_types,
+                include_group_memberships=self.include_group_memberships,
+            )
         return EntitlementsUserSource(
             include_fields=self.include_fields,
             api_version=self.api_version,

@@ -1532,6 +1532,116 @@ async def test_generate_group_members_skips_unresolved_subjects(
 
 
 @pytest.mark.asyncio
+async def test_get_subject_memberships_uses_direction() -> None:
+    """Test that _get_subject_memberships issues the requested direction."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    expected_memberships = [
+        {"memberDescriptor": "aad.user1", "containerDescriptor": "vssgp.group1"},
+    ]
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"value": expected_memberships}
+
+    with patch.object(client, "send_request", return_value=mock_response) as mock_send:
+        result = await client._get_subject_memberships("aad.user1", "Up")
+
+    assert result == expected_memberships
+    call_args = mock_send.call_args
+    assert call_args.kwargs["params"]["direction"] == "Up"
+
+
+@pytest.mark.asyncio
+async def test_enrich_users_with_group_memberships() -> None:
+    """Test that users are enriched with their groups and parsed projects."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    users = [
+        {"descriptor": "aad.user1", "displayName": "Jane Doe"},
+        {"descriptor": "aad.user2", "displayName": "John Roe"},
+    ]
+
+    memberships_by_user = {
+        "aad.user1": [
+            {"containerDescriptor": "vssgp.projectA_contrib"},
+            {"containerDescriptor": "vssgp.org_admins"},
+        ],
+        "aad.user2": [
+            {"containerDescriptor": "vssgp.projectA_contrib"},
+        ],
+    }
+
+    subjects = {
+        "vssgp.projectA_contrib": {
+            "descriptor": "vssgp.projectA_contrib",
+            "displayName": "Contributors",
+            "principalName": "[ProjectA]\\Contributors",
+        },
+        "vssgp.org_admins": {
+            "descriptor": "vssgp.org_admins",
+            "displayName": "Project Collection Administrators",
+            "principalName": "Project Collection Administrators",
+        },
+    }
+
+    async def mock_get_memberships(
+        descriptor: str, direction: str
+    ) -> List[Dict[str, Any]]:
+        return memberships_by_user[descriptor]
+
+    with (
+        patch.object(
+            client, "_get_subject_memberships", side_effect=mock_get_memberships
+        ),
+        patch.object(client, "_lookup_subjects", return_value=subjects),
+    ):
+        enriched = await client.enrich_users_with_group_memberships(users)
+
+    assert [g["descriptor"] for g in enriched[0]["__groups"]] == [
+        "vssgp.projectA_contrib",
+        "vssgp.org_admins",
+    ]
+    assert enriched[0]["__projects"] == ["ProjectA"]
+    assert enriched[1]["__projects"] == ["ProjectA"]
+
+
+@pytest.mark.asyncio
+async def test_enrich_users_with_group_memberships_handles_failure() -> None:
+    """Test that a failed per-user memberships call yields empty groups."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    users = [
+        {"descriptor": "aad.user1", "displayName": "Jane Doe"},
+        {"descriptor": "aad.user2", "displayName": "John Roe"},
+    ]
+
+    async def mock_get_memberships(
+        descriptor: str, direction: str
+    ) -> List[Dict[str, Any]]:
+        if descriptor == "aad.user1":
+            raise RuntimeError("boom")
+        return [{"containerDescriptor": "vssgp.projectA_contrib"}]
+
+    subjects = {
+        "vssgp.projectA_contrib": {
+            "descriptor": "vssgp.projectA_contrib",
+            "principalName": "[ProjectA]\\Contributors",
+        },
+    }
+
+    with (
+        patch.object(
+            client, "_get_subject_memberships", side_effect=mock_get_memberships
+        ),
+        patch.object(client, "_lookup_subjects", return_value=subjects),
+    ):
+        enriched = await client.enrich_users_with_group_memberships(users)
+
+    assert enriched[0]["__groups"] == []
+    assert enriched[0]["__projects"] == []
+    assert enriched[1]["__projects"] == ["ProjectA"]
+
+
+@pytest.mark.asyncio
 async def test_generate_groups_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:

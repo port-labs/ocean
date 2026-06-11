@@ -24,6 +24,25 @@ def test_user_selector_graph_forwards_subject_types() -> None:
     assert source.to_params() == {"subjectTypes": "aad,svc"}
 
 
+def test_user_selector_graph_defaults_to_no_group_memberships() -> None:
+    source = _user_selector(source="graph").build_source()
+    assert isinstance(source, GraphUserSource)
+    assert source._include_group_memberships is False
+
+
+def test_user_selector_graph_forwards_include_group_memberships() -> None:
+    source = _user_selector(source="graph", includeGroupMemberships=True).build_source()
+    assert isinstance(source, GraphUserSource)
+    assert source._include_group_memberships is True
+
+
+def test_user_selector_entitlements_ignores_include_group_memberships() -> None:
+    source = _user_selector(
+        source="entitlements", includeGroupMemberships=True
+    ).build_source()
+    assert isinstance(source, EntitlementsUserSource)
+
+
 def test_user_selector_entitlements_maps_include_fields_and_api_version() -> None:
     source = _user_selector(
         source="entitlements",
