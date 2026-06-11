@@ -1970,32 +1970,6 @@ class TestGitLabClient:
         assert len(results) == 2
         assert all(result["__project"] == project for result in results)
 
-    async def test_get_deployments_injects_full_project_object_not_just_path(
-        self, client: GitLabClient
-    ) -> None:
-        project = {
-            "id": 1,
-            "path_with_namespace": "group/project",
-            "name": "Test Project",
-            "web_url": "https://gitlab.example.com/group/project",
-            "visibility": "private",
-        }
-        mock_deployments = [{"id": 10, "status": "success"}]
-
-        with patch.object(
-            client.rest,
-            "get_paginated_project_resource",
-            return_value=async_mock_generator([mock_deployments]),
-        ):
-            results = []
-            async for batch in client.get_deployments([project]):
-                results.extend(batch)
-
-        injected_project = results[0]["__project"]
-        assert injected_project["name"] == "Test Project"
-        assert injected_project["web_url"] == "https://gitlab.example.com/group/project"
-        assert injected_project["visibility"] == "private"
-
     async def test_get_deployments_passes_params_to_rest_client(
         self, client: GitLabClient
     ) -> None:

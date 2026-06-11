@@ -1,4 +1,4 @@
-from typing import Any
+from typing import cast, Union
 
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -8,6 +8,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
+from integration import (
+    GitlabDeploymentResourceConfig,
+    GitlabDeploymentStatusResourceConfig,
+)
 from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
@@ -29,12 +33,51 @@ class DeploymentWebhookProcessor(_GitlabAbstractWebhookProcessor):
         resource_config: ResourceConfig,
     ) -> WebhookEventRawResults:
         deployment_id: int = payload["deployment_id"]
-        project: dict[str, Any] = payload["project"]
-        project_id: int = project["id"]
+        project_id: int = payload["project"]["id"]
+
+        selector = cast(
+            Union[GitlabDeploymentResourceConfig, GitlabDeploymentStatusResourceConfig],
+            resource_config,
+        ).selector
+
+        full_project = await self._gitlab_webhook_client.get_project(str(project_id))
+
+        if not full_project:
+            logger.warning(
+                f"Project with ID {project_id} not found for deployment {deployment_id}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        if selector.include_only_active_projects and full_project.get("archived"):
+            logger.info(
+                f"Skipping deployment {deployment_id} in archived project {full_project['path_with_namespace']} due to selector settings."
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        if selector.query_params:
+            if (
+                selector.query_params.environment
+                and payload.get("environment") != selector.query_params.environment
+            ):
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
+
+            if (
+                selector.query_params.status
+                and payload.get("status") != selector.query_params.status
+            ):
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
 
         logger.info(
             f"Handling deployment webhook event for deployment {deployment_id} "
-            f"in project {project['path_with_namespace']} "
+            f"in project {full_project['path_with_namespace']} "
             f"(status={payload.get('status')})"
         )
 
@@ -48,7 +91,7 @@ class DeploymentWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        deployment["__project"] = project
+        deployment["__project"] = full_project
 
         return WebhookEventRawResults(
             updated_raw_results=[deployment],

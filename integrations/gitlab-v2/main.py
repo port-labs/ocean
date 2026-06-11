@@ -31,8 +31,8 @@ from integration import (
     TagResourceConfig,
     GitlabIssueResourceConfig,
     BranchResourceConfig,
-    GitLabDeploymentResourceConfig,
-    GitLabDeploymentStatusResourceConfig,
+    GitlabDeploymentResourceConfig,
+    GitlabDeploymentStatusResourceConfig,
 )
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
@@ -578,14 +578,14 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield folders_batch
 
 
-@ocean.on_resync(ObjectKind.DEPLOYMENT)
-async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def _resync_deployments(
+    include_only_active_projects: bool | None,
+    params: dict[str, Any] | None,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
-    selector = cast(GitLabDeploymentResourceConfig, event.resource_config).selector
-
     async for projects_batch in client.get_projects(
         params=build_project_params(
-            include_only_active_projects=selector.include_only_active_projects
+            include_only_active_projects=include_only_active_projects
         ),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
@@ -596,34 +596,31 @@ async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for deployments_batch in client.get_deployments(
             projects_batch,
             max_concurrent=DEFAULT_MAX_CONCURRENT,
-            params=selector.build_query_params() or None,
+            params=params,
         ):
             yield deployments_batch
+
+
+@ocean.on_resync(ObjectKind.DEPLOYMENT)
+async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(GitlabDeploymentResourceConfig, event.resource_config).selector
+    async for batch in _resync_deployments(
+        selector.include_only_active_projects,
+        selector.generate_query_params() or None,
+    ):
+        yield batch
 
 
 @ocean.on_resync(ObjectKind.DEPLOYMENT_STATUS)
 async def on_resync_deployment_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_gitlab_client()
     selector = cast(
-        GitLabDeploymentStatusResourceConfig, event.resource_config
+        GitlabDeploymentStatusResourceConfig, event.resource_config
     ).selector
-
-    async for projects_batch in client.get_projects(
-        params=build_project_params(
-            include_only_active_projects=selector.include_only_active_projects
-        ),
-        max_concurrent=DEFAULT_MAX_CONCURRENT,
-        include_languages=False,
+    async for batch in _resync_deployments(
+        selector.include_only_active_projects,
+        selector.generate_query_params() or None,
     ):
-        logger.info(
-            f"Processing batch of {len(projects_batch)} projects for deployment statuses"
-        )
-        async for deployments_batch in client.get_deployments(
-            projects_batch,
-            max_concurrent=DEFAULT_MAX_CONCURRENT,
-            params=selector.build_query_params() or None,
-        ):
-            yield deployments_batch
+        yield batch
 
 
 ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)

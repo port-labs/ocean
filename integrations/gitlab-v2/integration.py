@@ -569,11 +569,12 @@ class BranchResourceConfig(ResourceConfig):
     )
 
 
-class GitLabDeploymentQueryParams(BaseModel):
+class GitlabDeploymentQueryParams(BaseModel):
     """Shared API query params that filters returned deployments."""
 
     class Config:
         allow_population_by_field_name = True
+        use_enum_values = True
 
     environment: str | None = Field(
         default=None,
@@ -592,69 +593,87 @@ class GitLabDeploymentQueryParams(BaseModel):
         alias="updatedAfter",
         title="Updated After",
         description=(
-            "Return deployments updated after this datetime (ISO 8601). "
-            "Recommended for incremental resyncs to avoid fetching the full history every cycle."
+            "Return deployments updated after this datetime (ISO 8601 with timezone, "
+            "e.g. 2024-01-15T10:00:00Z). Recommended for incremental resyncs to avoid "
+            "fetching the full history every cycle."
         ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    updated_before: str | None = Field(
+        default=None,
+        alias="updatedBefore",
+        title="Updated Before",
+        description=(
+            "Return deployments updated before this datetime (ISO 8601 with timezone, "
+            "e.g. 2024-06-01T00:00:00Z)."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
     )
 
-    def build_query_params(self) -> dict[str, Any]:
-        params: dict[str, Any] = {}
-        if self.environment:
-            params["environment"] = self.environment
-        if self.status:
-            params["status"] = self.status.value
-        if self.updated_after:
-            params["updated_after"] = self.updated_after
-        return params
+    def generate_query_params(self) -> dict[str, Any]:
+        return self.dict(exclude_unset=True, exclude_none=True)
 
 
-class GitLabDeploymentSelector(Selector):
-    include_only_active_projects: bool = Field(
-        default=True,
+class GitlabDeploymentBaseSelector(Selector):
+
+    include_only_active_projects: bool | None = Field(
+        default=None,
         alias="includeOnlyActiveProjects",
         title="Include Only Active Projects",
-        description="If true, only include deployments from active projects (non-archived). If false, include deployments from all projects regardless of their active status.",
+        description=(
+            "If true, only include deployments from active (non-archived) projects. Defaults to None (no filter)."
+        ),
     )
-    query_params: GitLabDeploymentQueryParams | None = Field(
+    query_params: GitlabDeploymentQueryParams | None = Field(
         default=None,
         alias="apiQueryParams",
         title="API Query Params",
-        description="Additional query params to filter deployments.",
+        description="Shared query parameters applied to the GitLab deployments API.",
     )
-    finished_after: datetime | None = Field(
+
+    def generate_query_params(self) -> dict[str, Any]:
+        if self.query_params:
+            return self.query_params.generate_query_params()
+        return {}
+
+
+class GitlabDeploymentSelector(GitlabDeploymentBaseSelector):
+    finished_after: str | None = Field(
         alias="finishedAfter",
         default=None,
         title="Finished After",
         description=(
-            "Return deployments whose CI job finished after this datetime (ISO 8601). "
+            "Return deployments whose CI job finished after this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-01-01T00:00:00Z). "
             "Requires apiQueryParams.status to be 'success'."
         ),
+        regex=ISO_8601_DATETIME_REGEX,
     )
-    finished_before: datetime | None = Field(
+    finished_before: str | None = Field(
         alias="finishedBefore",
         default=None,
         title="Finished Before",
         description=(
-            "Return deployments whose CI job finished before this datetime (ISO 8601). "
+            "Return deployments whose CI job finished before this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-06-01T00:00:00Z). "
             "Requires apiQueryParams.status to be 'success'."
         ),
+        regex=ISO_8601_DATETIME_REGEX,
     )
 
     @validator("finished_before", always=True)
     def _finished_at_window_requires_success_status(
         cls,
-        finished_before: datetime | None,
+        finished_before: str | None,
         values: dict[str, Any],
-    ) -> datetime | None:
+    ) -> str | None:
         uses_finished_at_window = values.get("finished_after") or finished_before
         if not uses_finished_at_window:
             return finished_before
-        api_query_params: GitLabDeploymentQueryParams | None = values.get(
-            "query_params"
-        )
+        query_params: GitlabDeploymentQueryParams | None = values.get("query_params")
         if (
-            api_query_params is None
-            or api_query_params.status != GitLabDeploymentStatus.SUCCESS
+            query_params is None
+            or query_params.status != GitLabDeploymentStatus.SUCCESS
         ):
             raise ValueError(
                 "apiQueryParams.status must be 'success' when finishedAfter or "
@@ -662,64 +681,51 @@ class GitLabDeploymentSelector(Selector):
             )
         return finished_before
 
-    def build_query_params(self) -> dict[str, Any]:
-        params: dict[str, Any] = {}
-
-        if self.query_params:
-            params.update(self.query_params.build_query_params())
+    def generate_query_params(self) -> dict[str, Any]:
+        params: dict[str, Any] = super().generate_query_params()
         if self.finished_after or self.finished_before:
-            params["order_by"] = (
-                "id"  # default on GitLab API, tracking this explicitly here for clarity
-            )
-            params["sort"] = (
-                "asc"  # default on GitLab API, tracking this for same reason
-            )
-
+            # GitLab API requires order_by=finished_at when filtering by a finished time window.
+            params["order_by"] = "finished_at"
             if self.finished_after:
-                params["finished_after"] = self.finished_after.isoformat()
+                params["finished_after"] = self.finished_after
             if self.finished_before:
-                params["finished_before"] = self.finished_before.isoformat()
-
+                params["finished_before"] = self.finished_before
         return params
 
 
-class GitLabDeploymentStatusSelector(Selector):
-    include_only_active_projects: bool = Field(
-        default=True,
-        alias="includeOnlyActiveProjects",
-        title="Include Only Active Projects",
-        description="If true, only include deployment statuses from active projects (non-archived). If false, include deployment statuses from all projects regardless of their active status.",
-    )
-    query_params: GitLabDeploymentQueryParams | None = Field(
-        default=None,
-        alias="apiQueryParams",
-        title="API Query Params",
-        description="Additional query params to filter deployment statuses.",
-    )
+class GitlabDeploymentStatusSelector(GitlabDeploymentBaseSelector):
+    """Selector for the deployment-status kind.
 
-    def build_query_params(self) -> dict[str, Any]:
-        return self.query_params.build_query_params() if self.query_params else {}
+    The deployment-status kind does not support finished-at time windows (those are deployment-specific).
+    """
+
+    pass
 
 
-class GitLabDeploymentResourceConfig(ResourceConfig):
+class GitlabDeploymentResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.DEPLOYMENT] = Field(
         title="GitLab Deployment",
         description="GitLab deployment resource kind, representing a CI/CD deployment to an environment.",
     )
-    selector: GitLabDeploymentSelector = Field(
+    selector: GitlabDeploymentSelector = Field(
         title="Deployment Selector",
         description="Selector for the GitLab deployment resource.",
     )
 
 
-class GitLabDeploymentStatusResourceConfig(ResourceConfig):
+class GitlabDeploymentStatusResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.DEPLOYMENT_STATUS] = Field(
         title="GitLab Deployment Status",
         description=(
-            "GitLab deployment status resource kind, representing the current status of a CI/CD deployment."
+            "GitLab deployment status resource kind, representing the current status of a "
+            "CI/CD deployment. Unlike GitHub's deployment-status API (which exposes a full "
+            "status transition history), GitLab exposes a single status field per deployment. "
+            "This kind provides a status-focused view of the same deployment record — "
+            "not a separate status history. Customers expecting GitHub semantics should "
+            "be aware that only the current status is available."
         ),
     )
-    selector: GitLabDeploymentStatusSelector = Field(
+    selector: GitlabDeploymentStatusSelector = Field(
         title="Deployment Status Selector",
         description="Selector for the GitLab deployment status resource.",
     )
@@ -747,8 +753,8 @@ class GitlabPortAppConfig(PortAppConfig):
         | PipelineResourceConfig
         | JobResourceConfig
         | BranchResourceConfig
-        | GitLabDeploymentResourceConfig
-        | GitLabDeploymentStatusResourceConfig
+        | GitlabDeploymentResourceConfig
+        | GitlabDeploymentStatusResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

@@ -323,13 +323,25 @@ class GitLabClient:
         self,
         project: dict[str, Any],
         resource_iterator: AsyncIterator[list[dict[str, Any]]],
+        full_project_enrichment: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Enrich resources with project information as they are fetched."""
+        """Enrich resources with project information as they are fetched.
+
+        When full_project_enrichment is False (default), injects only
+        {"path_with_namespace": ...} via enrich_with_project_path.
+
+        When full_project_enrichment is True, injects the full project object
+        so the mapping layer can access any project field via .__project.<field>.
+        """
         async for batch in resource_iterator:
             if batch:
                 yield [
-                    self.enrich_with_project_path(
-                        resource, project["path_with_namespace"]
+                    (
+                        {**resource, "__project": project}
+                        if full_project_enrichment
+                        else self.enrich_with_project_path(
+                            resource, project["path_with_namespace"]
+                        )
                     )
                     for resource in batch
                 ]
@@ -345,9 +357,9 @@ class GitLabClient:
         resource_type: str,
         max_concurrent: int = 10,
         params: Optional[dict[str, Any]] = None,
+        full_project_enrichment: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         semaphore = asyncio.Semaphore(max_concurrent)
-
         tasks = [
             semaphore_async_iterator(
                 semaphore,
@@ -357,11 +369,11 @@ class GitLabClient:
                     self.rest.get_paginated_project_resource(
                         str(project["id"]), resource_type, params=params
                     ),
+                    full_project_enrichment,
                 ),
             )
             for project in projects_batch
         ]
-
         async for batch in stream_async_iterators_tasks(*tasks):
             if batch:
                 yield batch
@@ -956,17 +968,6 @@ class GitLabClient:
 
         return data
 
-    async def _enrich_deployment_with_full_project_context(
-        self,
-        project: dict[str, Any],
-        deployments_iterator: AsyncIterator[list[dict[str, Any]]],
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Enrich deployment data with full project data, including languages and search query results."""
-        async for deployments_batch in deployments_iterator:
-            yield [
-                {**deployment, "__project": project} for deployment in deployments_batch
-            ]
-
     async def get_deployments(
         self,
         projects_batch: list[dict[str, Any]],
@@ -974,26 +975,15 @@ class GitLabClient:
         params: dict[str, Any] | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch deployments for each project in the batch, enriched with project data."""
-        semaphore = asyncio.Semaphore(max_concurrent)
-        tasks = [
-            semaphore_async_iterator(
-                semaphore,
-                partial(
-                    self._enrich_deployment_with_full_project_context,
-                    project,
-                    self.rest.get_paginated_project_resource(
-                        str(project["id"]),
-                        "deployments",
-                        params=dict(params) if params else None,
-                    ),
-                ),
-            )
-            for project in projects_batch
-        ]
-        async for batch_result in stream_async_iterators_tasks(*tasks):
-            if batch_result:
-                logger.info(f"Received batch with {len(batch_result)} deployments")
-                yield batch_result
+        async for batch in self.get_projects_resource_with_enrichment(
+            projects_batch,
+            "deployments",
+            max_concurrent,
+            params=params,
+            full_project_enrichment=True,
+        ):
+            logger.info(f"Received batch with {len(batch)} deployments")
+            yield batch
 
     async def get_single_deployment(
         self, project_id: int | str, deployment_id: int
