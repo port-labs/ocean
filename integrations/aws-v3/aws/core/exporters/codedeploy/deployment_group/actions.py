@@ -40,31 +40,7 @@ class GetDeploymentGroupDetailsAction(Action):
         )
 
         logger.info(f"Successfully fetched details for deployment group {application_name}/{deployment_group_name}")
-
-        deployment_group_info = response["deploymentGroupInfo"]
-
-        return {
-            "ApplicationName": deployment_group_info.get("applicationName", ""),
-            "DeploymentGroupName": deployment_group_info.get("deploymentGroupName", ""),
-            "DeploymentGroupId": deployment_group_info.get("deploymentGroupId", ""),
-            "ServiceRoleArn": deployment_group_info.get("serviceRoleArn"),
-            "AutoRollbackConfiguration": deployment_group_info.get("autoRollbackConfiguration"),
-            "TriggerConfigurations": deployment_group_info.get("triggerConfigurations", []),
-            "AlarmConfiguration": deployment_group_info.get("alarmConfiguration"),
-            "OutdatedInstancesStrategy": deployment_group_info.get("outdatedInstancesStrategy"),
-            "DeploymentStyle": deployment_group_info.get("deploymentStyle"),
-            "BlueGreenDeploymentConfiguration": deployment_group_info.get("blueGreenDeploymentConfiguration"),
-            "LoadBalancerInfo": deployment_group_info.get("loadBalancerInfo"),
-            "LastSuccessfulDeployment": deployment_group_info.get("lastSuccessfulDeployment"),
-            "LastAttemptedDeployment": deployment_group_info.get("lastAttemptedDeployment"),
-            "Ec2TagFilters": deployment_group_info.get("ec2TagFilters", []),
-            "OnPremisesInstanceTagFilters": deployment_group_info.get("onPremisesInstanceTagFilters", []),
-            "AutoScalingGroups": deployment_group_info.get("autoScalingGroups", []),
-            "Ec2TagSetList": deployment_group_info.get("ec2TagSetList", []),
-            "OnPremisesTagSetList": deployment_group_info.get("onPremisesTagSetList", []),
-            "EcsServices": deployment_group_info.get("ecsServices", []),
-            "ComputePlatform": deployment_group_info.get("computePlatform"),
-        }
+        return response.get('deploymentGroupInfo', {})
 
 
 class CodeDeployDeploymentGroupActionsMap(ActionMap):
