@@ -69,7 +69,7 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
                     async for groups in group_paginator.paginate(applicationName=app):
                         if groups:
                             action_result = await inspector.inspect(
-                                [{'app_name': app, 'group_name': group_name} for group_name in groups],
+                                {'app_name': app, 'groups': groups, 'extras': {'region': options.region, 'account_id': options.account_id}},
                                 options.include,
                                 extra_context={
                                     "AccountId": options.account_id,
