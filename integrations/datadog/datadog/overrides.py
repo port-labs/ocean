@@ -1,4 +1,3 @@
-from dataclasses import field
 from typing import Optional, Literal
 
 from port_ocean.core.handlers import APIPortAppConfig

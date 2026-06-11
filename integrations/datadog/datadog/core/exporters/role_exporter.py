@@ -33,7 +33,9 @@ class GetRoleOptions(GetOptions["RoleResourceConfig"]):
         return cls(resource_id=resource_id)
 
 
-class RoleExporter(PaginatedExporter[None], SingleResourceExporter[GetRoleOptions]):
+class RoleExporter(
+    PaginatedExporter[ListRoleOptions], SingleResourceExporter[GetRoleOptions]
+):
     async def get_paginated_resources(
         self, options: ListRoleOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
