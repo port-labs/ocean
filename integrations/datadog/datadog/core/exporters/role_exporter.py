@@ -26,11 +26,16 @@ class ListRoleOptions(ListOptions["RoleResourceConfig"]):
 
 
 class GetRoleOptions(GetOptions["RoleResourceConfig"]):
+    enrich_with_users: bool = False
+
     @classmethod
     def from_resource_config(
         cls, resource_config: "RoleResourceConfig", *, resource_id: str
     ) -> "GetRoleOptions":
-        return cls(resource_id=resource_id)
+        return cls(
+            resource_id=resource_id,
+            enrich_with_users=resource_config.selector.enrich_with_users,
+        )
 
 
 class RoleExporter(
@@ -55,7 +60,10 @@ class RoleExporter(
         """
         url = f"{self.client.api_url}/api/v2/roles/{options.resource_id}"
         result = await self.client.send_api_request(url)
-        return result.get("data")
+        data = result.get("data")
+        if options.enrich_with_users:
+            data["__users"] = await self._fetch_users_for_role(data["id"])
+        return data
 
     async def enrich_role_with_users(
         self, role_batch: list[dict[str, Any]]
