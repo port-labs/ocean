@@ -70,6 +70,7 @@ class RoleExporter(PaginatedExporter[None], SingleResourceExporter[GetRoleOption
                 logger.warning(
                     f"Error {users} occurred while fetching related users for role {role.get('attributes', {}).get('name')}"
                 )
+                role["__users"] = []
                 continue
             role["__users"] = users
         return role_batch
