@@ -1,16 +1,29 @@
 from typing import Any
 
-from datadog.core.exporters.base_exporter import SingleResourceExporter
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+
+from datadog.core.exporters.base_exporter import GetOptions, SingleResourceExporter
 
 
-class RestrictionPolicyExporter(SingleResourceExporter[str]):
-    async def get_resource(self, resource_id: str) -> dict[str, Any] | None:
+class GetRestrictionPolicyOptions(GetOptions[ResourceConfig]):
+    """Options for fetching a restriction policy.
+
+    resource_id is a compound string formatted as {type}:{id} (e.g. "slo:abc123").
+    from_resource_config is intentionally not overridden — this exporter is always
+    constructed directly, never via a ResourceConfig.
+    """
+
+    pass
+
+
+class RestrictionPolicyExporter(SingleResourceExporter[GetRestrictionPolicyOptions]):
+    async def get_resource(
+        self, options: GetRestrictionPolicyOptions
+    ) -> dict[str, Any] | None:
         """Get the restriction policy for a specific resource.
         Docs: https://docs.datadoghq.com/api/latest/restriction-policies/
-        Args:
-            resource_id: Identifier formatted as {type}:{id} (e.g. "slo:abc123")
         """
-        url = f"{self.client.api_url}/api/v2/restriction_policy/{resource_id}"
+        url = f"{self.client.api_url}/api/v2/restriction_policy/{options.resource_id}"
         result = await self.client.send_api_request(url)
         return result.get("data")
 
@@ -41,7 +54,9 @@ class RestrictionPolicyExporter(SingleResourceExporter[str]):
         self, resource_type: str, resource: dict[str, Any]
     ) -> dict[str, Any]:
         """Enrich a resource dict with its restriction policy."""
-        policy = await self.get_resource(f"{resource_type}:{resource['id']}")
+        policy = await self.get_resource(
+            GetRestrictionPolicyOptions(resource_id=f"{resource_type}:{resource['id']}")
+        )
         restricted_users, restricted_teams, restricted_roles = (
             self._extract_restricted_principals(policy)
         )

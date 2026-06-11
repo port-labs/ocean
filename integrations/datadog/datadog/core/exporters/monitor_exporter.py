@@ -1,12 +1,17 @@
 import asyncio
 from itertools import batched
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from datadog.overrides import MonitorResourceConfig
+
 from datadog.client import DatadogClient
 from datadog.core.exporters.restriction_policy_exporter import RestrictionPolicyExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from datadog.core.exporters.base_exporter import (
+    GetOptions,
+    ListOptions,
     PaginatedExporter,
     SingleResourceExporter,
 )
@@ -14,13 +19,29 @@ from datadog.core.exporters.base_exporter import (
 MONITOR_ENRICHMENT_BATCH_SIZE = 10
 
 
-class ListMonitorOptions(BaseModel):
+class ListMonitorOptions(ListOptions["MonitorResourceConfig"]):
     include_restriction_policy: bool = False
 
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: "MonitorResourceConfig"
+    ) -> "ListMonitorOptions":
+        return cls(
+            include_restriction_policy=resource_config.selector.include_restriction_policy
+        )
 
-class GetMonitorOptions(BaseModel):
-    resource_id: str
+
+class GetMonitorOptions(GetOptions["MonitorResourceConfig"]):
     include_restriction_policy: bool = False
+
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: "MonitorResourceConfig", *, resource_id: str
+    ) -> "GetMonitorOptions":
+        return cls(
+            resource_id=resource_id,
+            include_restriction_policy=resource_config.selector.include_restriction_policy,
+        )
 
 
 class MonitorExporter(
@@ -58,16 +79,14 @@ class MonitorExporter(
                 )
                 yield enriched_monitors
 
-    async def get_resource(
-        self, resource_id: GetMonitorOptions
-    ) -> dict[str, Any] | None:
+    async def get_resource(self, options: GetMonitorOptions) -> dict[str, Any] | None:
         """Get a single monitor by ID.
         Docs: https://docs.datadoghq.com/api/latest/monitors/#get-a-monitor-s-details
         """
-        url = f"{self.client.api_url}/api/v1/monitor/{resource_id.resource_id}"
+        url = f"{self.client.api_url}/api/v1/monitor/{options.resource_id}"
         monitor = await self.client.send_api_request(url)
 
-        if not resource_id.include_restriction_policy:
+        if not options.include_restriction_policy:
             return monitor
 
         return await self.rp_exporter.enrich_resource_with_restriction_policy(
