@@ -1192,9 +1192,103 @@ async def test_generate_users_will_skip_404(
     async with event_context("test_event"):
         with patch.object(client._client, "request", side_effect=mock_make_request):
             users: List[Dict[str, Any]] = []
-            async for user_batch in client.generate_users():
+            async for user_batch in client.generate_users(source="graph"):
                 users.extend(user_batch)
             assert not users
+
+
+@pytest.mark.asyncio
+async def test_generate_users_uses_graph_source_by_default(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    expected_users = [
+        {"descriptor": "aad.user1", "displayName": "Jane Doe", "subjectKind": "user"},
+    ]
+
+    async def mock_get_paginated(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield expected_users
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated,
+    ) as mock_paginate:
+        async with event_context("test_event"):
+            users: List[Dict[str, Any]] = []
+            async for user_batch in client.generate_users(source="graph"):
+                users.extend(user_batch)
+
+    assert users == expected_users
+    call = mock_paginate.call_args
+    assert "/_apis/graph/users" in call.args[0]
+    assert call.kwargs["additional_params"]["api-version"] == "7.1-preview.1"
+
+
+@pytest.mark.asyncio
+async def test_generate_users_entitlements_source(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    expected_users = [{"user": {"displayName": "Jane Doe"}, "accessLevel": {}}]
+
+    async def mock_get_paginated(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield expected_users
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated,
+    ) as mock_paginate:
+        async with event_context("test_event"):
+            users: List[Dict[str, Any]] = []
+            async for user_batch in client.generate_users(
+                source="entitlements", additional_params={"api-version": "7.1"}
+            ):
+                users.extend(user_batch)
+
+    assert users == expected_users
+    call = mock_paginate.call_args
+    assert "/_apis/userentitlements" in call.args[0]
+    assert call.kwargs["data_key"] == "items"
+
+
+@pytest.mark.asyncio
+async def test_generate_users_legacy_entitlements_uses_top_skip(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    expected_users = [{"user": {"displayName": "Legacy User"}}]
+
+    async def mock_get_paginated(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield expected_users
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_skip",
+        side_effect=mock_get_paginated,
+    ) as mock_paginate:
+        async with event_context("test_event"):
+            users: List[Dict[str, Any]] = []
+            async for user_batch in client.generate_users(
+                source="entitlements", additional_params={"api-version": "6.0"}
+            ):
+                users.extend(user_batch)
+
+    assert users == expected_users
+    call = mock_paginate.call_args
+    assert "/_apis/userentitlements" in call.args[0]
+    assert call.kwargs["top_param"] == "top"
+    assert call.kwargs["skip_param"] == "skip"
 
 
 @pytest.mark.asyncio

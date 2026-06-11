@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.15 (2026-06-10)
+
+
+### Improvements
+
+- The `user` kind now supports the Graph Users API via a `source` selector (`source: graph`, `vso.graph` scope); the default remains the Entitlements API (`source: entitlements`).
+
+
 ## 0.9.14 (2026-06-10)
 
 

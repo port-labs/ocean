@@ -21,10 +21,13 @@ async def iter_projects(
 
 
 async def iter_users(
+    source: str = "entitlements",
     additional_params: Optional[dict[str, Any]] = None,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.generate_users(additional_params=additional_params or {})
+        lambda client: client.generate_users(
+            source=source, additional_params=additional_params or {}
+        )
     ):
         yield batch
 
