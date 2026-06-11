@@ -63,22 +63,3 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
-  - kind: AWS::CodeDeploy::Application
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .Properties.ApplicationId
-          title: .Properties.ApplicationName
-          blueprint: '"codeDeployApplication"'
-          properties:
-            applicationName: .Properties.ApplicationName
-            applicationId: .Properties.ApplicationId
-            createTime: .Properties.CreateTime
-            linkedToGitHub: .Properties.LinkedToGitHub
-            gitHubAccountName: .Properties.GitHubAccountName
-            computePlatform: .Properties.ComputePlatform
-            tags: .Properties.Tags
-          relations:
-            account: .__ExtraContext.AccountId
