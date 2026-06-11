@@ -1,3 +1,4 @@
+from dataclasses import field
 from typing import Optional, Literal
 
 from port_ocean.core.handlers import APIPortAppConfig
@@ -222,10 +223,22 @@ class UserResourceConfig(ResourceConfig):
     )
 
 
+class RoleSelector(Selector):
+    enrich_with_users: bool = Field(
+        default=False,
+        alias="enrichWithUsers",
+        title="Enrich roles with users",
+        description="Enrich Datadog roles with all the users attached to the role.",
+    )
+
+
 class RoleResourceConfig(ResourceConfig):
     kind: Literal["role"] = Field(
         title="Datadog Role",
         description="Datadog role resource kind.",
+    )
+    selector: RoleSelector = Field(
+        title="Datadog Selector", description="Selector for Datadog roles."
     )
 
 
