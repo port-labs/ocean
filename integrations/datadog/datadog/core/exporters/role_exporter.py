@@ -78,7 +78,7 @@ class RoleExporter(
         return role_batch
 
     async def _fetch_users_for_role(self, role_id: str) -> list[dict[str, Any]]:
-        """Get roles for specified Datadog role.
+        """Get users for specified Datadog role.
         Docs: https://docs.datadoghq.com/api/latest/roles/get-all-users-of-a-role/
         """
         url = f"{self.client.api_url}/api/v2/roles/{role_id}/users"
