@@ -27,7 +27,7 @@ class DeploymentGroupProperties(BaseModel):
     Tags: List[Dict[str, str]] = Field(default_factory=list)
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
