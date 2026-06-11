@@ -30,7 +30,7 @@ configurations:
     required: false
     type: string
     sensitive: false
-    description: AWS Organization Unit (OU) ID to discover active accounts from. When provided, the integration will only attempt to use discover active accounts from the specified OU.
+    description: AWS Organizational Unit (OU) ID(s) to discover active accounts from. Provide a single OU ID or multiple comma-separated OU IDs. When provided, the integration discovers active accounts from the specified OUs and their child OUs.
   - name: accountRoleArn
     required: false
     type: string

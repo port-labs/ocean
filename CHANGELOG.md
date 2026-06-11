@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.43.17 (2026-06-11)
+
+### Improvements
+
+- Allow `cache_coroutine_result` to accept additional cache only keys in order to enrich the hashed cache key without injecting extra data into the function call
+
 ## 0.43.16 (2026-06-09)
 
 ### Bug Fixes

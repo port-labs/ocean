@@ -5,6 +5,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.273-dev (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.1.272-dev (2026-06-09)
+
+
+### Features
+
+- Add fake-office, fake-team, and fake-project resource kinds with complex JQ mappings
+
+
 ## 0.1.271-dev (2026-06-09)
 
 

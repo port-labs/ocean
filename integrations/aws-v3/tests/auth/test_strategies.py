@@ -743,6 +743,48 @@ class TestOUScopedAccountDiscovery:
         provider = StaticCredentialProvider(config=config)
         return OrganizationsStrategy(provider=provider, config=config)
 
+    @pytest.fixture
+    def strategy_with_ous(self) -> OrganizationsStrategy:
+        config = {
+            "account_role_arn": "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole",
+            "ou_id": "ou-root-abc123,ou-root-def456",
+        }
+        provider = StaticCredentialProvider(config=config)
+        return OrganizationsStrategy(provider=provider, config=config)
+
+    # --- _get_configured_ou_ids ---
+
+    def test_get_configured_ou_ids_from_single_ou_id(
+        self, strategy_with_ou: OrganizationsStrategy
+    ) -> None:
+        assert strategy_with_ou._get_configured_ou_ids() == ["ou-root-abc123"]
+
+    def test_get_configured_ou_ids_from_comma_separated_ou_id(
+        self, strategy_with_ous: OrganizationsStrategy
+    ) -> None:
+        assert strategy_with_ous._get_configured_ou_ids() == [
+            "ou-root-abc123",
+            "ou-root-def456",
+        ]
+
+    def test_get_configured_ou_ids_trims_whitespace_and_deduplicates(
+        self, strategy: OrganizationsStrategy
+    ) -> None:
+        strategy.config = {
+            **strategy.config,
+            "ou_id": " ou-root-abc123 , ou-root-abc123 , ou-root-def456 ",
+        }
+
+        assert strategy._get_configured_ou_ids() == [
+            "ou-root-abc123",
+            "ou-root-def456",
+        ]
+
+    def test_get_configured_ou_ids_returns_empty_when_not_configured(
+        self, strategy: OrganizationsStrategy
+    ) -> None:
+        assert strategy._get_configured_ou_ids() == []
+
     # --- filter_active_accounts ---
 
     def test_filter_active_accounts_keeps_only_active(
@@ -1040,13 +1082,73 @@ class TestOUScopedAccountDiscovery:
         ):
             with patch.object(
                 strategy_with_ou,
-                "_get_active_accounts_for_ou",
+                "_get_active_accounts_for_ous",
                 return_value=mock_accounts,
             ) as mock_ou_fn:
                 result = await strategy_with_ou.discover_accounts()
 
-        mock_ou_fn.assert_called_once_with("ou-root-abc123", ANY)
+        mock_ou_fn.assert_called_once_with(["ou-root-abc123"], ANY)
         assert result == mock_accounts
+
+    @pytest.mark.asyncio
+    async def test_discover_accounts_routes_to_multiple_ous_when_ou_ids_set(
+        self, strategy_with_ous: OrganizationsStrategy, mock_aiosession: AsyncMock
+    ) -> None:
+        mock_accounts = [
+            {"Id": "111", "Name": "A1", "Email": "", "Arn": ""},
+            {"Id": "222", "Name": "A2", "Email": "", "Arn": ""},
+        ]
+
+        @asynccontextmanager
+        async def mock_create_client(
+            _service_name: str, **_kwargs: Any
+        ) -> AsyncIterator[Any]:
+            yield AsyncMock()
+
+        mock_aiosession.create_client = mock_create_client
+
+        with patch.object(
+            strategy_with_ous, "_get_organization_session", return_value=mock_aiosession
+        ):
+            with patch.object(
+                strategy_with_ous,
+                "_get_active_accounts_for_ous",
+                return_value=mock_accounts,
+            ) as mock_ou_fn:
+                result = await strategy_with_ous.discover_accounts()
+
+        mock_ou_fn.assert_called_once_with(["ou-root-abc123", "ou-root-def456"], ANY)
+        assert result == mock_accounts
+
+    @pytest.mark.asyncio
+    async def test_get_active_accounts_for_ous_deduplicates_accounts_by_id(
+        self, strategy: OrganizationsStrategy
+    ) -> None:
+        mock_org_client = AsyncMock()
+
+        async def mock_get_active_accounts_for_ou(
+            ou_id: str, _org_client: Any
+        ) -> list[dict[str, str]]:
+            if ou_id == "ou-a":
+                return [
+                    {"Id": "111", "Name": "A1", "Email": "", "Arn": ""},
+                    {"Id": "222", "Name": "A2", "Email": "", "Arn": ""},
+                ]
+            return [
+                {"Id": "222", "Name": "A2", "Email": "", "Arn": ""},
+                {"Id": "333", "Name": "A3", "Email": "", "Arn": ""},
+            ]
+
+        with patch.object(
+            strategy,
+            "_get_active_accounts_for_ou",
+            side_effect=mock_get_active_accounts_for_ou,
+        ):
+            result = await strategy._get_active_accounts_for_ous(
+                ["ou-a", "ou-b"], mock_org_client
+            )
+
+        assert [account["Id"] for account in result] == ["111", "222", "333"]
 
     @pytest.mark.asyncio
     async def test_discover_accounts_routes_to_full_org_when_no_ou_configured(

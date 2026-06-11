@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.3.0-beta (2026-06-10)
+## 2.4.0-beta (2026-06-11)
 
 
 ### Features
 
 - Added support for AWS::CodeBuild::Project resource kind, enabling ingestion of CodeBuild projects into the Port catalog
+
+
+## 2.3.1-beta (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 2.3.0-beta (2026-06-10)
+
+
+### Features
+
+- Extended `ouId` to support multiple AWS Organizational Units via comma-separated values (e.g. `ou-abc,ou-def`).
 
 
 ## 2.2.42-beta (2026-06-09)
