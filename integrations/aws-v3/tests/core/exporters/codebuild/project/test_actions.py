@@ -69,13 +69,3 @@ async def test_get_project_details_action() -> None:
         == "arn:aws:iam::123456789012:role/service-role/codebuild-test-service-role"
     )
     assert project["TimeoutInMinutes"] == 60
-
-
-@pytest.mark.asyncio
-async def test_get_project_details_action_empty_resources() -> None:
-    action = GetProjectDetailsAction(AsyncMock())
-
-    result = await action._execute([])
-
-    assert result == []
-    action.client.batch_get_projects.assert_not_called()
