@@ -24,13 +24,10 @@ class GetDeploymentGroupDetailsAction(Action):
         for idx, detail_result in enumerate(details):
             if isinstance(detail_result, Exception):
                 error_suffix = f'deployment group details for {groups_data["app_name"]}/{groups_data['groups'][idx]}: {detail_result}'
-                if is_recoverable_aws_exception(detail_result):
-                    logger.warning(f"Skipping {error_suffix}")
-                    continue
-                else:
-                    logger.error(f"Error fetching {error_suffix}")
-                    raise detail_result
-            results.append(cast(Dict[str, Any], detail_result))
+                logger.warning(f"Skipping {error_suffix}")
+                results.append({})
+            else:
+                results.append(cast(Dict[str, Any], detail_result))
 
         logger.info(f"Successfully fetched details for {len(results)} CodeDeploy deployment groups")
         return results
