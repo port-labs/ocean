@@ -206,22 +206,53 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
             if account["State"] == "ACTIVE"
         ]
 
+    def _get_configured_ou_ids(self) -> List[str]:
+        """Return configured OU IDs from a comma-separated ou_id string."""
+        raw_ou_id = self.config.get("ou_id")
+        if not raw_ou_id:
+            return []
+
+        return list(
+            dict.fromkeys(
+                ou_id.strip() for ou_id in raw_ou_id.split(",") if ou_id.strip()
+            )
+        )
+
+    async def _get_active_accounts_for_ous(
+        self, ou_ids: List[str], org_client: AioBaseClient
+    ) -> List[Dict[str, str]]:
+        """Fetch active accounts from multiple OUs, deduplicated by account ID."""
+        accounts_by_id: dict[str, Dict[str, str]] = {}
+
+        for ou_id in ou_ids:
+            ou_accounts = await self._get_active_accounts_for_ou(ou_id, org_client)
+            for account in ou_accounts:
+                accounts_by_id[account["Id"]] = account
+
+        logger.info(
+            f"Finished fetching accounts for {len(ou_ids)} OU(s). "
+            f"{len(accounts_by_id)} unique active accounts found."
+        )
+        return list(accounts_by_id.values())
+
     async def discover_accounts(self) -> List[Dict[str, str]]:
         """Discover all accounts in the AWS Organization."""
         if self._discovered_accounts:
             return self._discovered_accounts
 
-        ou_id = self.config.get("ou_id")
+        ou_ids = self._get_configured_ou_ids()
 
         try:
             organization_session = await self._get_organization_session()
             async with organization_session.create_client(
                 "organizations"
             ) as org_client:
-                if ou_id:
-                    logger.info("Discovering accounts from the organizational unit")
-                    discovered_accounts = await self._get_active_accounts_for_ou(
-                        ou_id, org_client
+                if ou_ids:
+                    logger.info(
+                        f"Discovering accounts from {len(ou_ids)} organizational unit(s)"
+                    )
+                    discovered_accounts = await self._get_active_accounts_for_ous(
+                        ou_ids, org_client
                     )
                 else:
                     logger.info("Discovering all active accounts from the organization")
