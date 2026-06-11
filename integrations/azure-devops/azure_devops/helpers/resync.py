@@ -8,6 +8,7 @@ __organizationUrl / __organizationName.
 from typing import Any, AsyncGenerator, Optional
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.client.user_sources import UserSource
 from azure_devops.helpers.multi_org import iterate_per_organization
 
 
@@ -21,14 +22,9 @@ async def iter_projects(
 
 
 async def iter_users(
-    source: str = "entitlements",
-    additional_params: Optional[dict[str, Any]] = None,
+    source: UserSource,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
-    async for batch in iterate_per_organization(
-        lambda client: client.generate_users(
-            source=source, additional_params=additional_params or {}
-        )
-    ):
+    async for batch in iterate_per_organization(lambda client: source.generate(client)):
         yield batch
 
 

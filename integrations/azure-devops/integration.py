@@ -4,6 +4,11 @@ from datetime import datetime, timedelta, timezone
 from pydantic import Field, BaseModel
 
 from azure_devops.gitops.file_entity_processor import GitManipulationHandler
+from azure_devops.client.user_sources import (
+    EntitlementsUserSource,
+    GraphUserSource,
+    UserSource,
+)
 from azure_devops.misc import AzureDevopsFolderResourceConfig, Kind
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -329,18 +334,13 @@ class AzureDevopsUserSelector(Selector):
         description="Entitlements source only. API version for the User Entitlements endpoint. Override if your organization requires a specific version. Will use the default version if not provided.",
     )
 
-    def to_params(self) -> dict[str, str]:
+    def build_source(self) -> UserSource:
         if self.source == "graph":
-            if self.subject_types:
-                return {"subjectTypes": ",".join(self.subject_types)}
-            return {}
-
-        params: dict[str, str] = {}
-        if self.include_fields:
-            params["select"] = ",".join(self.include_fields)
-        if self.api_version:
-            params["api-version"] = self.api_version
-        return params
+            return GraphUserSource(subject_types=self.subject_types)
+        return EntitlementsUserSource(
+            include_fields=self.include_fields,
+            api_version=self.api_version,
+        )
 
 
 class AzureDevopsUserConfig(ResourceConfig):

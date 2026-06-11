@@ -489,40 +489,40 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return base_url
 
-    async def generate_users(
+    async def generate_graph_users(
         self,
-        source: str,
         additional_params: dict[str, str] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if source == "entitlements":
-            users_url = (
-                self._format_service_url("vsaex")
-                + f"/{API_URL_PREFIX}/userentitlements"
-            )
-            params = dict(additional_params or {})
-            api_version = params.get("api-version", "")
-
-            if self._is_legacy_user_entitlements_version(api_version):
-                async for users in self._get_paginated_by_top_and_skip(
-                    users_url,
-                    params=params,
-                    top_param="top",
-                    skip_param="skip",
-                ):
-                    yield users
-            else:
-                async for users in self._get_paginated_by_top_and_continuation_token(
-                    users_url, data_key="items", additional_params=params
-                ):
-                    yield users
-            return
-
         users_url = self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/users"
         params = {**GRAPH_USERS_API_PARAMS, **(additional_params or {})}
         async for users in self._get_paginated_by_top_and_continuation_token(
             users_url, additional_params=params
         ):
             yield users
+
+    async def generate_entitlement_users(
+        self,
+        additional_params: dict[str, str] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        users_url = (
+            self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
+        )
+        params = dict(additional_params or {})
+        api_version = params.get("api-version", "")
+
+        if self._is_legacy_user_entitlements_version(api_version):
+            async for users in self._get_paginated_by_top_and_skip(
+                users_url,
+                params=params,
+                top_param="top",
+                skip_param="skip",
+            ):
+                yield users
+        else:
+            async for users in self._get_paginated_by_top_and_continuation_token(
+                users_url, data_key="items", additional_params=params
+            ):
+                yield users
 
     @staticmethod
     def _is_legacy_user_entitlements_version(api_version: str) -> bool:
