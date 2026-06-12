@@ -1,14 +1,28 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.core.exporters.base_exporter import (
+    GetOptions,
     PaginatedExporter,
     SingleResourceExporter,
 )
 
+if TYPE_CHECKING:
+    from datadog.overrides import ServiceResourceConfig
 
-class ServiceExporter(PaginatedExporter[None], SingleResourceExporter[str]):
+
+class GetServiceOptions(GetOptions["ServiceResourceConfig"]):
+    @classmethod
+    def from_resource_config(
+        cls, resource_config: "ServiceResourceConfig", *, resource_id: str
+    ) -> "GetServiceOptions":
+        return cls(resource_id=resource_id)
+
+
+class ServiceExporter(
+    PaginatedExporter[None], SingleResourceExporter[GetServiceOptions]
+):
     async def get_paginated_resources(
         self, options: None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -21,7 +35,7 @@ class ServiceExporter(PaginatedExporter[None], SingleResourceExporter[str]):
         ):
             yield batch
 
-    async def get_resource(self, resource_id: str) -> dict[str, Any] | None:
+    async def get_resource(self, options: GetServiceOptions) -> dict[str, Any] | None:
         """Get a single service by ID."""
-        url = f"{self.client.api_url}/api/v2/services/definitions/{resource_id}"
+        url = f"{self.client.api_url}/api/v2/services/definitions/{options.resource_id}"
         return await self.client.send_api_request(url)

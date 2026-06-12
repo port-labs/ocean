@@ -168,6 +168,12 @@ class TeamSelector(Selector):
         title="Include Members",
         description="Whether to include the members of the team, defaults to false",
     )
+    include_area_paths: bool = Field(
+        alias="includeAreaPaths",
+        default=False,
+        title="Include Area Paths",
+        description="Whether to attach the team's configured area paths under __areaPaths (from the Team Field Values API), defaults to false",
+    )
 
 
 class AzureDevopsTeamResourceConfig(ResourceConfig):
@@ -582,6 +588,26 @@ class AzureDevopsIterationConfig(ResourceConfig):
     )
 
 
+class AzureDevopsAreaPathSelector(Selector):
+    depth: Optional[int] = Field(
+        default=None,
+        alias="depth",
+        title="Depth",
+        description="How many levels of the area-path tree to fetch in a single call.",
+    )
+
+
+class AzureDevopsAreaPathResourceConfig(ResourceConfig):
+    kind: Literal[Kind.AREA_PATH] = Field(
+        title="Azure Devops Area Path",
+        description="Azure Devops area path resource kind.",
+    )
+    selector: AzureDevopsAreaPathSelector = Field(
+        title="Area path selector",
+        description="Selector for the area path resource.",
+    )
+
+
 class AzureDevopsGroupResourceConfig(ResourceConfig):
     kind: Literal[Kind.GROUP] = Field(
         title="Azure Devops Group",
@@ -635,6 +661,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsReleaseDeploymentConfig
         | AzureDevopsPipelineDeploymentConfig
         | AzureDevopsIterationConfig
+        | AzureDevopsAreaPathResourceConfig
         | AzureDevopsGroupResourceConfig
         | AzureDevopsGroupMemberResourceConfig
     ] = Field(
