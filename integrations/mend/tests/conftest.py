@@ -12,7 +12,7 @@ from port_ocean.context.event import EventContext
 _CAESAR_OFFSET = 4
 
 SAMPLE_ACTIVATION_PAYLOAD = {
-    "email": "test@example.com",
+    "integratorEmail": "test@example.com",
     "userKey": "test-user-key",
     "wsEnvUrl": "https://saas.mend.io",
     "orgUuid": "test-org-uuid-1234",

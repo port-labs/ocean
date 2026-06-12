@@ -1,16 +1,15 @@
-import asyncio
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
 from loguru import logger
-from port_ocean.utils import http_async_client
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.async_client import OceanAsyncClient
 
 from mend.auth.authenticator import MendAuthenticator
+from mend.auth.retry_transport import MendRetryTransport
 from mend.utils import IgnoredError
 
 PAGE_SIZE = 100
-_TRANSIENT_STATUS_CODES = {502, 503}
-_MAX_RETRIES = 3
 
 
 class MendClient:
@@ -25,6 +24,11 @@ class MendClient:
         self.base_url = base_url.rstrip("/")
         self.authenticator = authenticator
         self.org_uuid = authenticator.org_uuid
+        self._http_client: httpx.AsyncClient = OceanAsyncClient(
+            MendRetryTransport,
+            transport_kwargs={"token_refresher": authenticator.get_auth_headers},
+            timeout=ocean.config.client_timeout,
+        )
 
     @property
     async def auth_headers(self) -> dict[str, str]:
@@ -53,46 +57,27 @@ class MendClient:
         ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> Dict[str, Any]:
         url = f"{self.base_url}{endpoint}"
-        retried_auth = False
-        retry_count = 0
-        while True:
-            try:
-                logger.debug(f"Making {method} request to {url}")
-                response = await http_async_client.request(
-                    method=method,
-                    url=url,
-                    params=params,
-                    json=json_data,
-                    headers=await self.auth_headers,
-                )
-                response.raise_for_status()
-                return response.json()
-            except httpx.HTTPStatusError as e:
-                status = e.response.status_code
-                if status == 401 and not retried_auth:
-                    logger.warning(
-                        f"401 at {url} — invalidating token and retrying once"
-                    )
-                    await self.authenticator.invalidate_token()
-                    retried_auth = True
-                    continue
-                if status in _TRANSIENT_STATUS_CODES and retry_count < _MAX_RETRIES:
-                    retry_count += 1
-                    wait = 2**retry_count
-                    logger.warning(
-                        f"Transient {status} at {url} — retry {retry_count}/{_MAX_RETRIES} in {wait}s"
-                    )
-                    await asyncio.sleep(wait)
-                    continue
-                if self._should_ignore_error(e, url, ignored_errors):
-                    return {}
-                logger.error(
-                    f"HTTP {e.response.status_code} for {method} {url}: {e.response.text}"
-                )
-                raise
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error during {method} {url}: {e}")
-                raise
+        try:
+            logger.debug(f"Making {method} request to {url}")
+            response = await self._http_client.request(
+                method=method,
+                url=url,
+                params=params,
+                json=json_data,
+                headers=await self.auth_headers,
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            if self._should_ignore_error(e, url, ignored_errors):
+                return {}
+            logger.error(
+                f"HTTP {e.response.status_code} for {method} {url}: {e.response.text}"
+            )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error during {method} {url}: {e}")
+            raise
 
     async def send_cursor_paginated_request(
         self,

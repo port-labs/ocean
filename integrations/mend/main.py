@@ -6,10 +6,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from integration import (
-    MendScaResourceConfig,
-    ObjectKind,
-)
+from integration import MendScaResourceConfig
 from mend.core.options import (
     ListProjectOptions,
     ListScaVulnerabilityOptions,
@@ -25,6 +22,7 @@ from mend.exporter_factory import (
     create_project_exporter,
     create_sca_vulnerability_exporter,
 )
+from mend.utils import ObjectKind
 
 
 @ocean.on_resync(ObjectKind.PROJECT)

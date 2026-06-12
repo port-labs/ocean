@@ -73,6 +73,37 @@ class TestDecodeActivationKey:
         ):
             decode_activation_key("")
 
+    def test_raises_on_missing_payload_fields(self) -> None:
+        # Structurally valid key, but the payload lacks required credentials.
+        key = _make_activation_key({"integratorEmail": "user@example.com"})
+        with pytest.raises(
+            MendAuthenticationError,
+            match="missing: userKey, wsEnvUrl, orgUuid",
+        ):
+            decode_activation_key(key)
+
+    def test_raises_on_empty_payload_field_value(self) -> None:
+        payload = {
+            "integratorEmail": "user@example.com",
+            "userKey": "",  # present but empty → still unusable
+            "wsEnvUrl": "https://saas.mend.io",
+            "orgUuid": "org-uuid-001",
+        }
+        key = _make_activation_key(payload)
+        with pytest.raises(MendAuthenticationError, match="missing: userKey"):
+            decode_activation_key(key)
+
+    def test_extra_payload_fields_are_preserved(self) -> None:
+        payload = {
+            "integratorEmail": "user@example.com",
+            "userKey": "abc123",
+            "wsEnvUrl": "https://saas.mend.io",
+            "orgUuid": "org-uuid-001",
+            "someFutureField": "value",
+        }
+        key = _make_activation_key(payload)
+        assert decode_activation_key(key)["someFutureField"] == "value"
+
 
 # ── derive_base_url ───────────────────────────────────────────────────────────
 

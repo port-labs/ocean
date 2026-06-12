@@ -1,5 +1,4 @@
 from typing import List, Literal, Optional
-from enum import StrEnum
 
 from pydantic import Field
 
@@ -10,11 +9,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-
-
-class ObjectKind(StrEnum):
-    PROJECT = "mend-project"
-    SECURITY_FINDING = "sca-finding"
 
 
 class MendScaSelector(Selector):

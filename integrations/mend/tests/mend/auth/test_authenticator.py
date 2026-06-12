@@ -6,6 +6,7 @@ import pytest
 
 from mend.auth.authenticator import MendAuthenticator
 from mend.exceptions import MendAuthenticationError
+from mend.utils import INTEGRATION_AGENT_HEADERS
 
 
 @pytest.fixture
@@ -227,3 +228,59 @@ class TestMendAuthenticator:
 
         assert authenticator._jwt_token is None
         assert authenticator._token_expires_at is None
+
+    @pytest.mark.asyncio
+    async def test_get_auth_headers_include_agent_identification(
+        self, authenticator: MendAuthenticator
+    ) -> None:
+        authenticator._jwt_token = "cached-jwt"
+        authenticator._token_expires_at = time.time() + 3600
+
+        headers = await authenticator.get_auth_headers()
+
+        assert headers["Content-Type"] == "application/json"
+        assert headers["agent-name"] == INTEGRATION_AGENT_HEADERS["agent-name"]
+        assert headers["agent-version"] == INTEGRATION_AGENT_HEADERS["agent-version"]
+
+    @pytest.mark.asyncio
+    async def test_login_sends_agent_identification_headers(
+        self, authenticator: MendAuthenticator
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "response": {"refreshToken": "test-refresh-token"}
+        }
+        mock_response.raise_for_status.return_value = None
+
+        with patch("mend.auth.authenticator.http_async_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            await authenticator._fetch_refresh_token()
+
+        sent_headers = mock_client.post.call_args.kwargs["headers"]
+        assert sent_headers["Content-Type"] == "application/json"
+        assert sent_headers["agent-name"] == INTEGRATION_AGENT_HEADERS["agent-name"]
+        assert (
+            sent_headers["agent-version"] == INTEGRATION_AGENT_HEADERS["agent-version"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_access_token_sends_agent_identification_headers(
+        self, authenticator: MendAuthenticator
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "response": {"jwtToken": "jwt-tok", "tokenTTL": 1800}
+        }
+        mock_response.raise_for_status.return_value = None
+
+        with patch("mend.auth.authenticator.http_async_client") as mock_client:
+            mock_client.post = AsyncMock(return_value=mock_response)
+            await authenticator._fetch_jwt_token("refresh-tok")
+
+        sent_headers = mock_client.post.call_args.kwargs["headers"]
+        assert sent_headers["Content-Type"] == "application/json"
+        assert sent_headers["wss-refresh-token"] == "refresh-tok"
+        assert sent_headers["agent-name"] == INTEGRATION_AGENT_HEADERS["agent-name"]
+        assert (
+            sent_headers["agent-version"] == INTEGRATION_AGENT_HEADERS["agent-version"]
+        )

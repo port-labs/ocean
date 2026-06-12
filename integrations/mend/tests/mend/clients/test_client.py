@@ -1,19 +1,34 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
+from pytest_httpx import HTTPXMock
 
 from mend.auth.authenticator import MendAuthenticator
 from mend.clients.client import MendClient, PAGE_SIZE
+from mend.utils import IgnoredError
+
+BASE_URL = "https://api-saas.mend.io"
+
+AUTH_HEADERS = {
+    "Authorization": "Bearer test-token",
+    "Content-Type": "application/json",
+    "agent-name": "pi-port",
+    "agent-version": "test-version",
+}
+
+REFRESHED_AUTH_HEADERS = {
+    "Authorization": "Bearer refreshed-token",
+    "Content-Type": "application/json",
+    "agent-name": "pi-port",
+    "agent-version": "test-version",
+}
 
 
 @pytest.fixture
 def mock_authenticator() -> AsyncMock:
     auth = AsyncMock(spec=MendAuthenticator)
-    auth.get_auth_headers.return_value = {
-        "Authorization": "Bearer test-token",
-        "Content-Type": "application/json",
-    }
+    auth.get_auth_headers.return_value = dict(AUTH_HEADERS)
     auth.org_uuid = "test-org-uuid"
     return auth
 
@@ -21,222 +36,215 @@ def mock_authenticator() -> AsyncMock:
 @pytest.fixture
 def client(mock_authenticator: AsyncMock) -> MendClient:
     return MendClient(
-        base_url="https://api-saas.mend.io",
+        base_url=BASE_URL,
         authenticator=mock_authenticator,
     )
 
 
 class TestMendClient:
     def test_init(self, client: MendClient) -> None:
-        assert client.base_url == "https://api-saas.mend.io"
+        assert client.base_url == BASE_URL
         assert client.org_uuid == "test-org-uuid"
 
     def test_trailing_slash_stripped(self, mock_authenticator: AsyncMock) -> None:
-        c = MendClient("https://api-saas.mend.io/", mock_authenticator)
-        assert c.base_url == "https://api-saas.mend.io"
+        c = MendClient(f"{BASE_URL}/", mock_authenticator)
+        assert c.base_url == BASE_URL
 
     def test_page_size_constant(self) -> None:
         assert PAGE_SIZE == 100
 
-    @pytest.mark.asyncio
-    async def test_send_api_request_success(self, client: MendClient) -> None:
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"response": [{"uuid": "1"}]}
-        mock_response.raise_for_status.return_value = None
-
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(return_value=mock_response)
-            result = await client.send_api_request("/api/v3.0/test")
-            assert result == {"response": [{"uuid": "1"}]}
-
-    @pytest.mark.asyncio
-    async def test_send_api_request_401_invalidates_and_retries(
-        self, client: MendClient, mock_authenticator: AsyncMock
+    async def test_send_api_request_success(
+        self, client: MendClient, httpx_mock: HTTPXMock
     ) -> None:
-        unauthorized = MagicMock()
-        unauthorized.status_code = 401
-        unauthorized.text = "Unauthorized"
-        unauthorized.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "401", request=MagicMock(), response=unauthorized
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/api/v3.0/test",
+            json={"response": [{"uuid": "1"}]},
         )
 
-        ok = MagicMock()
-        ok.json.return_value = {"response": [{"uuid": "1"}]}
-        ok.raise_for_status.return_value = None
+        result = await client.send_api_request("/api/v3.0/test")
 
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(side_effect=[unauthorized, ok])
-            result = await client.send_api_request("/api/v3.0/test")
-            assert result == {"response": [{"uuid": "1"}]}
-            mock_authenticator.invalidate_token.assert_awaited_once()
+        assert result == {"response": [{"uuid": "1"}]}
 
-    @pytest.mark.asyncio
-    async def test_send_api_request_persistent_401_raises(
-        self, client: MendClient
+    async def test_send_api_request_sends_auth_and_agent_headers(
+        self, client: MendClient, httpx_mock: HTTPXMock
     ) -> None:
-        unauthorized = MagicMock()
-        unauthorized.status_code = 401
-        unauthorized.text = "Unauthorized"
-        unauthorized.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "401", request=MagicMock(), response=unauthorized
+        httpx_mock.add_response(url=f"{BASE_URL}/api/v3.0/test", json={})
+
+        await client.send_api_request("/api/v3.0/test")
+
+        request = httpx_mock.get_requests()[0]
+        assert request.headers["Authorization"] == "Bearer test-token"
+        assert request.headers["agent-name"] == "pi-port"
+        assert request.headers["agent-version"] == "test-version"
+
+    async def test_send_api_request_401_refreshes_token_and_retries(
+        self,
+        client: MendClient,
+        mock_authenticator: AsyncMock,
+        httpx_mock: HTTPXMock,
+    ) -> None:
+        # First call builds the request headers, second call comes from the
+        # retry transport's token refresher after the 401.
+        mock_authenticator.get_auth_headers.side_effect = [
+            dict(AUTH_HEADERS),
+            dict(REFRESHED_AUTH_HEADERS),
+        ]
+        httpx_mock.add_response(url=f"{BASE_URL}/api/v3.0/test", status_code=401)
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/api/v3.0/test",
+            json={"response": [{"uuid": "1"}]},
         )
 
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(return_value=unauthorized)
-            with pytest.raises(httpx.HTTPStatusError):
-                await client.send_api_request("/api/v3.0/test")
+        result = await client.send_api_request("/api/v3.0/test")
 
-    @pytest.mark.asyncio
-    async def test_send_api_request_403_ignored(self, client: MendClient) -> None:
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-        mock_response.text = "Forbidden"
-        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "403", request=MagicMock(), response=mock_response
+        assert result == {"response": [{"uuid": "1"}]}
+        requests = httpx_mock.get_requests()
+        assert len(requests) == 2
+        assert requests[0].headers["Authorization"] == "Bearer test-token"
+        assert requests[1].headers["Authorization"] == "Bearer refreshed-token"
+
+    async def test_send_api_request_persistent_401_on_post_raises(
+        self, client: MendClient, httpx_mock: HTTPXMock
+    ) -> None:
+        # POST is not a retryable method, so a 401 surfaces immediately
+        # instead of going through the token-refresh retry path.
+        httpx_mock.add_response(
+            method="POST", url=f"{BASE_URL}/api/v3.0/test", status_code=401
         )
 
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(return_value=mock_response)
-            result = await client.send_api_request("/api/v3.0/test")
-            assert result == {}
+        with pytest.raises(httpx.HTTPStatusError):
+            await client.send_api_request("/api/v3.0/test", method="POST")
 
-    @pytest.mark.asyncio
-    async def test_send_api_request_404_ignored(self, client: MendClient) -> None:
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.text = "Not Found"
-        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "404", request=MagicMock(), response=mock_response
+    async def test_send_api_request_403_ignored(
+        self, client: MendClient, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(url=f"{BASE_URL}/api/v3.0/test", status_code=403)
+
+        result = await client.send_api_request("/api/v3.0/test")
+
+        assert result == {}
+
+    async def test_send_api_request_404_ignored(
+        self, client: MendClient, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(url=f"{BASE_URL}/api/v3.0/test", status_code=404)
+
+        result = await client.send_api_request("/api/v3.0/test")
+
+        assert result == {}
+
+    async def test_send_api_request_custom_ignored_error(
+        self, client: MendClient, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(url=f"{BASE_URL}/api/v3.0/test", status_code=410)
+
+        result = await client.send_api_request(
+            "/api/v3.0/test",
+            ignored_errors=[IgnoredError(status=410, message="Gone")],
         )
 
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(return_value=mock_response)
-            result = await client.send_api_request("/api/v3.0/test")
-            assert result == {}
+        assert result == {}
 
-    @pytest.mark.asyncio
-    async def test_send_api_request_500_raises(self, client: MendClient) -> None:
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "Server Error"
-        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "500", request=MagicMock(), response=mock_response
+    async def test_send_api_request_500_raises(
+        self, client: MendClient, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(url=f"{BASE_URL}/api/v3.0/test", status_code=500)
+
+        with pytest.raises(httpx.HTTPStatusError):
+            await client.send_api_request("/api/v3.0/test")
+
+    async def test_cursor_paginated_single_page(
+        self, client: MendClient, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/api/v3.0/test?limit=100",
+            json={
+                "response": [{"uuid": "1"}, {"uuid": "2"}],
+                "additionalData": {"next": None, "cursor": None},
+            },
         )
 
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(return_value=mock_response)
-            with pytest.raises(httpx.HTTPStatusError):
-                await client.send_api_request("/api/v3.0/test")
-
-    @pytest.mark.asyncio
-    async def test_cursor_paginated_single_page(self, client: MendClient) -> None:
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "response": [{"uuid": "1"}, {"uuid": "2"}],
-            "additionalData": {"next": None, "cursor": None},
-        }
-        mock_response.raise_for_status.return_value = None
-
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(return_value=mock_response)
-            results = []
-            async for batch in client.send_cursor_paginated_request("/api/v3.0/test"):
-                results.append(batch)
+        results = []
+        async for batch in client.send_cursor_paginated_request("/api/v3.0/test"):
+            results.append(batch)
 
         assert len(results) == 1
         assert results[0] == [{"uuid": "1"}, {"uuid": "2"}]
 
-    @pytest.mark.asyncio
-    async def test_cursor_paginated_multiple_pages(self, client: MendClient) -> None:
-        mock_response1 = MagicMock()
-        mock_response1.json.return_value = {
-            "response": [{"uuid": str(i)} for i in range(100)],
-            "additionalData": {
-                "next": "https://api-saas.mend.io/api?cursor=100",
-                "cursor": 100,
+    async def test_cursor_paginated_multiple_pages(
+        self, client: MendClient, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/api/v3.0/test?limit=100",
+            json={
+                "response": [{"uuid": str(i)} for i in range(100)],
+                "additionalData": {"next": True, "cursor": 100},
             },
-        }
-        mock_response1.raise_for_status.return_value = None
+        )
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/api/v3.0/test?limit=100&cursor=100",
+            json={
+                "response": [{"uuid": str(i)} for i in range(100, 140)],
+                "additionalData": {"next": None, "cursor": None},
+            },
+        )
 
-        mock_response2 = MagicMock()
-        mock_response2.json.return_value = {
-            "response": [{"uuid": str(i)} for i in range(100, 140)],
-            "additionalData": {"next": None, "cursor": None},
-        }
-        mock_response2.raise_for_status.return_value = None
-
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(side_effect=[mock_response1, mock_response2])
-            results = []
-            async for batch in client.send_cursor_paginated_request("/api/v3.0/test"):
-                results.append(batch)
+        results = []
+        async for batch in client.send_cursor_paginated_request("/api/v3.0/test"):
+            results.append(batch)
 
         assert len(results) == 2
         assert len(results[0]) == 100
         assert len(results[1]) == 40
 
-    @pytest.mark.asyncio
-    async def test_cursor_paginated_empty_response(self, client: MendClient) -> None:
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "response": [],
-            "additionalData": {"next": None, "cursor": None},
-        }
-        mock_response.raise_for_status.return_value = None
+    async def test_cursor_paginated_empty_response(
+        self, client: MendClient, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/api/v3.0/test?limit=100",
+            json={
+                "response": [],
+                "additionalData": {"next": None, "cursor": None},
+            },
+        )
 
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(return_value=mock_response)
-            results = []
-            async for batch in client.send_cursor_paginated_request("/api/v3.0/test"):
-                results.append(batch)
+        results = []
+        async for batch in client.send_cursor_paginated_request("/api/v3.0/test"):
+            results.append(batch)
 
         assert len(results) == 0
 
-    @pytest.mark.asyncio
-    async def test_cursor_paginated_passes_cursor_param(
-        self, client: MendClient
+    async def test_cursor_paginated_stops_on_ignored_error(
+        self, client: MendClient, httpx_mock: HTTPXMock
     ) -> None:
-        mock_response1 = MagicMock()
-        mock_response1.json.return_value = {
-            "response": [{"uuid": "1"}] * 100,
-            "additionalData": {"next": "url", "cursor": 100},
-        }
-        mock_response1.raise_for_status.return_value = None
+        # An ignored 404 yields an empty body, which terminates pagination.
+        httpx_mock.add_response(
+            url=f"{BASE_URL}/api/v3.0/test?limit=100", status_code=404
+        )
 
-        mock_response2 = MagicMock()
-        mock_response2.json.return_value = {
-            "response": [{"uuid": "x"}],
-            "additionalData": {"next": None, "cursor": None},
-        }
-        mock_response2.raise_for_status.return_value = None
+        results = []
+        async for batch in client.send_cursor_paginated_request("/api/v3.0/test"):
+            results.append(batch)
 
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(side_effect=[mock_response1, mock_response2])
-            async for _ in client.send_cursor_paginated_request("/api/v3.0/test"):
-                pass
+        assert results == []
 
-        calls = mock_http.request.call_args_list
-        assert len(calls) == 2
-        first_params = calls[0].kwargs.get("params", {})
-        assert "cursor" not in first_params
-        second_params = calls[1].kwargs.get("params", {})
-        assert second_params.get("cursor") == 100
+    async def test_cursor_paginated_post_method(
+        self, client: MendClient, httpx_mock: HTTPXMock
+    ) -> None:
+        httpx_mock.add_response(
+            method="POST",
+            url=f"{BASE_URL}/api/v3.0/test?limit=100",
+            json={
+                "response": [{"uuid": "1"}],
+                "additionalData": {"next": None},
+            },
+        )
 
-    @pytest.mark.asyncio
-    async def test_cursor_paginated_post_method(self, client: MendClient) -> None:
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "response": [{"uuid": "1"}],
-            "additionalData": {"next": None},
-        }
-        mock_response.raise_for_status.return_value = None
+        async for _ in client.send_cursor_paginated_request(
+            "/api/v3.0/test", method="POST", json_data={"filter": "value"}
+        ):
+            pass
 
-        with patch("mend.clients.client.http_async_client") as mock_http:
-            mock_http.request = AsyncMock(return_value=mock_response)
-            async for _ in client.send_cursor_paginated_request(
-                "/api/v3.0/test", method="POST", json_data={"filter": "value"}
-            ):
-                pass
-
-        call_args = mock_http.request.call_args
-        assert call_args.kwargs.get("method") == "POST" or call_args.args[0] == "POST"
+        request = httpx_mock.get_requests()[0]
+        assert request.method == "POST"
+        assert b'"filter"' in request.content

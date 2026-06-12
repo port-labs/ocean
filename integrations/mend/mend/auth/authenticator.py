@@ -7,6 +7,7 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 
 from mend.exceptions import MendAuthenticationError
+from mend.utils import INTEGRATION_AGENT_HEADERS
 
 
 class MendAuthenticator:
@@ -43,7 +44,10 @@ class MendAuthenticator:
             response = await http_async_client.post(
                 login_url,
                 json={"email": self.email, "userKey": self.user_key},
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    **INTEGRATION_AGENT_HEADERS,
+                },
             )
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
@@ -82,6 +86,7 @@ class MendAuthenticator:
                 headers={
                     "Content-Type": "application/json",
                     "wss-refresh-token": refresh_token,
+                    **INTEGRATION_AGENT_HEADERS,
                 },
             )
             response.raise_for_status()
@@ -138,4 +143,5 @@ class MendAuthenticator:
         return {
             "Authorization": f"Bearer {jwt_token}",
             "Content-Type": "application/json",
+            **INTEGRATION_AGENT_HEADERS,
         }
