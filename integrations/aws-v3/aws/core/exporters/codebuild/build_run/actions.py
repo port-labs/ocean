@@ -14,9 +14,6 @@ class GetBuildDetailsAction(Action):
     """Fetches detailed information about CodeBuild project build runs."""
 
     async def _execute(self, resources: list[str]) -> List[Dict[str, Any]]:
-        if not resources:
-            return []
-
         response = await self.client.batch_get_builds(ids=resources)
         builds = response.get("builds", [])
         logger.info(f"Successfully fetched details for {len(builds)} build runs")
