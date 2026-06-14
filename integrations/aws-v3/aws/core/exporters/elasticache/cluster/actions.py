@@ -5,7 +5,7 @@ from loguru import logger
 import asyncio
 
 
-class DescribeCacheClustersAction(Action):
+class DescribeCacheClustersAction(Action[list[dict[str, Any]]]):
     """Pass-through action that returns the raw cluster data."""
 
     async def _execute(
@@ -14,7 +14,7 @@ class DescribeCacheClustersAction(Action):
         return cache_clusters
 
 
-class ListTagsForResourceAction(Action):
+class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
     """Fetches tags for ElastiCache clusters."""
 
     async def _execute(

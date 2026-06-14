@@ -5,7 +5,7 @@ from aws.core.interfaces.action import Action, ActionMap
 from aws.core.helpers.utils import is_recoverable_aws_exception
 
 
-class DescribeClusterAction(Action):
+class DescribeClusterAction(Action[list[str]]):
     async def _execute(self, cluster_names: List[str]) -> List[Dict[str, Any]]:
 
         cluster_results = await asyncio.gather(

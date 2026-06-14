@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Type
 from aws.core.interfaces.action import Action, ActionMap
 
 
-class DescribeClustersAction(Action):
+class DescribeClustersAction(Action[list[str]]):
     async def _execute(self, cluster_arns: List[str]) -> List[Dict[str, Any]]:
         if not cluster_arns:
             return []

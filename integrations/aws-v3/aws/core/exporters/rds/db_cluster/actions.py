@@ -3,14 +3,14 @@ from aws.core.interfaces.action import Action, ActionMap
 from aws.core.helpers.utils import execute_concurrent_aws_operations
 
 
-class DescribeDBClustersAction(Action):
+class DescribeDBClustersAction(Action[list[dict[str, Any]]]):
     """Pass-through action that returns raw cluster dicts from the paginator."""
 
     async def _execute(self, db_clusters: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return db_clusters
 
 
-class ListTagsForResourceAction(Action):
+class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
     """Fetches tags for RDS DB clusters."""
 
     async def _execute(self, db_clusters: list[dict[str, Any]]) -> list[dict[str, Any]]:

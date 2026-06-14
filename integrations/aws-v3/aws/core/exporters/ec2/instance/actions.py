@@ -7,7 +7,7 @@ from loguru import logger
 import asyncio
 
 
-class DescribeInstanceStatusAction(Action):
+class DescribeInstanceStatusAction(Action[list[dict[str, Any]]]):
     async def _execute(self, instances: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Fetch detailed status information for the EC2 instances."""
 
@@ -40,7 +40,7 @@ class DescribeInstanceStatusAction(Action):
         return response["InstanceStatuses"]
 
 
-class DescribeInstancesAction(Action):
+class DescribeInstancesAction(Action[list[dict[str, Any]]]):
     async def _execute(self, instances: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Return instances as is"""
         return instances

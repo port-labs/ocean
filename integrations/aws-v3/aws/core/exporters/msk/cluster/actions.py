@@ -3,7 +3,7 @@ from typing import Any, List, Type
 from aws.core.interfaces.action import Action, ActionMap
 
 
-class ListClustersAction(Action):
+class ListClustersAction(Action[list[dict[str, Any]]]):
     """List MSK clusters as a pass-through action."""
 
     async def _execute(self, clusters: List[dict[str, Any]]) -> List[dict[str, Any]]:

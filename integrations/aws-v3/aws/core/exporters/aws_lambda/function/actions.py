@@ -5,7 +5,7 @@ from loguru import logger
 import asyncio
 
 
-class ListFunctionsAction(Action):
+class ListFunctionsAction(Action[list[dict[str, Any]]]):
     """List Lambda functions as a pass-through function."""
 
     async def _execute(self, functions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -13,7 +13,7 @@ class ListFunctionsAction(Action):
         return functions
 
 
-class ListTagsAction(Action):
+class ListTagsAction(Action[list[dict[str, Any]]]):
     """Fetches tags for Lambda functions."""
 
     async def _execute(self, functions: list[dict[str, Any]]) -> list[dict[str, Any]]:

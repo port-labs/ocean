@@ -4,7 +4,7 @@ from aws.core.exporters.ecs.utils import get_cluster_arn_from_service_arn
 from loguru import logger
 
 
-class ListServicesAction(Action):
+class ListServicesAction(Action[list[str]]):
     """List services as a pass-through function."""
 
     async def _execute(self, service_arns: List[str]) -> List[Dict[str, Any]]:
@@ -12,7 +12,7 @@ class ListServicesAction(Action):
         return [{"serviceArn": arn} for arn in service_arns]
 
 
-class DescribeServicesAction(Action):
+class DescribeServicesAction(Action[list[str]]):
     """Describes services with cluster context."""
 
     async def _execute(self, service_arns: List[str]) -> List[Dict[str, Any]]:

@@ -6,7 +6,7 @@ from loguru import logger
 import asyncio
 
 
-class GetPublicAccessBlockAction(Action):
+class GetPublicAccessBlockAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         public_access_blocks = await asyncio.gather(
             *(self._fetch_public_access_block(bucket) for bucket in buckets),
@@ -36,7 +36,7 @@ class GetPublicAccessBlockAction(Action):
         }
 
 
-class GetBucketOwnershipControlsAction(Action):
+class GetBucketOwnershipControlsAction(Action[list[dict[str, Any]]]):
 
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         ownership_controls = await asyncio.gather(
@@ -65,7 +65,7 @@ class GetBucketOwnershipControlsAction(Action):
         return {"OwnershipControls": response["OwnershipControls"]}
 
 
-class GetBucketEncryptionAction(Action):
+class GetBucketEncryptionAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         encryptions = await asyncio.gather(
             *(self._fetch_encryption(bucket) for bucket in buckets),
@@ -91,7 +91,7 @@ class GetBucketEncryptionAction(Action):
         return {"BucketEncryption": response["ServerSideEncryptionConfiguration"]}
 
 
-class GetBucketLocationAction(Action):
+class GetBucketLocationAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
         locations = await asyncio.gather(
@@ -116,7 +116,7 @@ class GetBucketLocationAction(Action):
         return {"LocationConstraint": response["LocationConstraint"]}
 
 
-class ListBucketsAction(Action):
+class ListBucketsAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         for bucket in buckets:
@@ -131,7 +131,7 @@ class ListBucketsAction(Action):
         return results
 
 
-class GetBucketTaggingAction(Action):
+class GetBucketTaggingAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         tagging_results = await asyncio.gather(

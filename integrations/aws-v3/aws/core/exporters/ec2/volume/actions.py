@@ -3,14 +3,14 @@ from aws.core.interfaces.action import Action, ActionMap
 from aws.core.helpers.utils import execute_concurrent_aws_operations
 
 
-class DescribeVolumesAction(Action):
+class DescribeVolumesAction(Action[list[dict[str, Any]]]):
     """Pass-through; describe_volumes returns all required fields including tags."""
 
     async def _execute(self, volumes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return volumes
 
 
-class DescribeVolumeAttributeAction(Action):
+class DescribeVolumeAttributeAction(Action[list[dict[str, Any]]]):
     """Fetches AutoEnableIO attribute for each volume (requires ec2:DescribeVolumeAttribute)."""
 
     async def _execute(self, volumes: list[dict[str, Any]]) -> list[dict[str, Any]]:

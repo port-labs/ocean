@@ -3,7 +3,7 @@ from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
 
 
-class GetProjectDetailsAction(Action):
+class GetProjectDetailsAction(Action[list[str]]):
     """Fetches detailed information about CodeBuild projects."""
 
     async def _execute(self, resources: List[str]) -> List[Dict[str, Any]]:
