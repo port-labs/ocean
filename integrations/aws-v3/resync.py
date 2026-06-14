@@ -76,7 +76,7 @@ class ResyncStrategy(ABC):
 
     def __init__(
         self,
-        exporter: "IResourceExporter",
+        exporter: IResourceExporter[Any],
         options_factory: Callable[[str], Any],
         kind: str,
         account_id: str | None = None,
@@ -96,7 +96,7 @@ class RegionalResyncStrategy(ResyncStrategy):
 
     def __init__(
         self,
-        exporter: "IResourceExporter",
+        exporter: IResourceExporter[Any],
         options_factory: Callable[[str], Any],
         kind: str,
         account_id: str,
@@ -156,7 +156,7 @@ class ResyncAWSService:
     def __init__(
         self,
         kind: str,
-        exporter_cls: Type["IResourceExporter"],
+        exporter_cls: Type[IResourceExporter[Any]],
         request_cls: Type[ResourceRequestModel],
         regional: bool,
     ):
