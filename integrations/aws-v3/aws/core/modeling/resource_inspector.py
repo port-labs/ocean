@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Callable, cast
 from loguru import logger
 import asyncio
-from aws.core.interfaces.action import Action, ActionMap, ActionInput
+from aws.core.interfaces.action import Action, ActionMap
 from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_models import ResourceModel
 from collections import defaultdict
