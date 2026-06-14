@@ -1,4 +1,4 @@
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Any
 
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -100,7 +100,7 @@ async def test_get_paginated_resources(
     mock_paginator = MagicMock()
     mock_proxy_instance.get_paginator = MagicMock(return_value=mock_paginator)
 
-    async def mock_paginate_generator(**kwargs) -> AsyncGenerator[list[str], None]:
+    async def mock_paginate_generator(**kwargs: Any) -> AsyncGenerator[list[str], None]:
         yield ["project:build1", "project:build2"]
         yield ["project:build3"]
         yield []
@@ -154,7 +154,7 @@ async def test_get_paginated_resources_empty_page(
     mock_paginator = MagicMock()
     mock_proxy_instance.get_paginator = MagicMock(return_value=mock_paginator)
 
-    async def mock_paginate_generator(**kwargs) -> AsyncGenerator[list[str], None]:
+    async def mock_paginate_generator(**kwargs: Any) -> AsyncGenerator[list[str], None]:
         yield []
         yield []
 
