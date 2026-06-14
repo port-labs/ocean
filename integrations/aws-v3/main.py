@@ -43,8 +43,12 @@ from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
 from aws.core.exporters.ec2.volume import EbsVolumeExporter
 from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
-from aws.core.exporters.codedeploy import CodeDeployApplicationExporter
-from aws.core.exporters.codedeploy.application.models import (
+from aws.core.exporters.codebuild import (
+    CodeBuildProjectExporter,
+    PaginatedCodeBuildProjectRequest,
+)
+from aws.core.exporters.codedeploy import (
+    CodeDeployApplicationExporter,
     PaginatedCodeDeployApplicationRequest,
 )
 from aws.core.exporters.codedeploy import CodeDeployDeploymentGroupExporter
@@ -267,6 +271,15 @@ async def resync_elasticache_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ec2_volume(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EbsVolumeExporter, PaginatedEbsVolumeRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.CODEBUILD_PROJECT)
+async def resync_codebuild_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, CodeBuildProjectExporter, PaginatedCodeBuildProjectRequest, regional=True
     )
     async for batch in service:
         yield batch

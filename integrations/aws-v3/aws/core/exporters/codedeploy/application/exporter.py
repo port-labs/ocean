@@ -31,7 +31,16 @@ class CodeDeployApplicationExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"ApplicationName": options.application_name}], options.include
+                [
+                    {
+                        "applications": [options.application_name],
+                        "extras": {
+                            "region": options.region,
+                            "account_id": options.account_id,
+                        },
+                    }
+                ],
+                options.include,
             )
             return response[0] if response else {}
 
@@ -49,11 +58,14 @@ class CodeDeployApplicationExporter(IResourceExporter):
             paginator = proxy.get_paginator("list_applications", "applications")
 
             async for applications in paginator.paginate():
-                if applications:
-                    action_result = await inspector.inspect(
+                yield (
+                    await inspector.inspect(
                         {
                             "applications": sorted(applications),
-                            "extras": {"region": options.region, "account_id": options.account_id}
+                            "extras": {
+                                "region": options.region,
+                                "account_id": options.account_id,
+                            },
                         },
                         options.include,
                         extra_context={
@@ -61,6 +73,6 @@ class CodeDeployApplicationExporter(IResourceExporter):
                             "Region": options.region,
                         },
                     )
-                    yield action_result
-                else:
-                    yield []
+                    if applications
+                    else []
+                )

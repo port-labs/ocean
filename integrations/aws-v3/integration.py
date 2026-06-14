@@ -217,6 +217,13 @@ class AWSEC2VolumeResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeBuildProjectResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeBuild::Project"] = Field(
+        title="AWS CodeBuild Project",
+        description="AWS CodeBuild Project resource kind.",
+    )
+
+
 class AWSCodeDeployApplicationResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodeDeploy::Application"] = Field(
         title="AWS CodeDeploy Application",
@@ -251,6 +258,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSElastiCacheClusterResourceConfig
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
+        | AWSCodeBuildProjectResourceConfig
         | AWSCodeDeployApplicationResourceConfig
         | AWSCodeDeployDeploymentGroupResourceConfig
     ] = Field(
