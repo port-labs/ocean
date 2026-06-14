@@ -45,19 +45,11 @@ class GetCodeDeployApplicationTagsAction(Action):
         return await self.client.list_tags_for_resource(ResourceArn=app_arn)
 
 
-class ListCodeDeployApplicationsAction(Action):
-    """Processes the initial list of CodeDeploy applications."""
-
-    async def _execute(self, resources: CodeDeployApplicationActionInput) -> List[Dict[str, Any]]:
-        return [{"applicationName": app} for app in resources['applications']]
-
-
 class CodeDeployApplicationActionsMap(ActionMap):
     """Groups all actions for CodeDeploy applications."""
 
     defaults: List[Type[Action]] = [
         GetCodeDeployApplicationDetailsAction,
         GetCodeDeployApplicationTagsAction,
-        ListCodeDeployApplicationsAction,
     ]
     options: List[Type[Action]] = []
