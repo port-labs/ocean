@@ -1,4 +1,6 @@
-from aws.core.exporters.codedeploy.deployment_group.exporter import CodeDeployDeploymentGroupExporter
+from aws.core.exporters.codedeploy.deployment_group.exporter import (
+    CodeDeployDeploymentGroupExporter,
+)
 from aws.core.exporters.codedeploy.deployment_group.models import (
     SingleCodeDeployDeploymentGroupRequest,
     PaginatedCodeDeployDeploymentGroupRequest,
@@ -6,6 +8,6 @@ from aws.core.exporters.codedeploy.deployment_group.models import (
 
 __all__ = [
     "CodeDeployDeploymentGroupExporter",
-    "SingleCodeDeployDeploymentGroupRequest", 
+    "SingleCodeDeployDeploymentGroupRequest",
     "PaginatedCodeDeployDeploymentGroupRequest",
 ]

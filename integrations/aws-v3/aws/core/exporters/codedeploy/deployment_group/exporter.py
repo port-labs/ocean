@@ -1,7 +1,11 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.codedeploy.deployment_group.actions import CodeDeployDeploymentGroupActionsMap
-from aws.core.exporters.codedeploy.deployment_group.models import CodeDeployDeploymentGroup
+from aws.core.exporters.codedeploy.deployment_group.actions import (
+    CodeDeployDeploymentGroupActionsMap,
+)
+from aws.core.exporters.codedeploy.deployment_group.models import (
+    CodeDeployDeploymentGroup,
+)
 from aws.core.exporters.codedeploy.deployment_group.models import (
     SingleCodeDeployDeploymentGroupRequest,
     PaginatedCodeDeployDeploymentGroupRequest,
@@ -14,9 +18,13 @@ from aws.core.modeling.resource_inspector import ResourceInspector
 class CodeDeployDeploymentGroupExporter(IResourceExporter):
     _service_name: SupportedServices = "codedeploy"
     _model_cls: Type[CodeDeployDeploymentGroup] = CodeDeployDeploymentGroup
-    _actions_map: Type[CodeDeployDeploymentGroupActionsMap] = CodeDeployDeploymentGroupActionsMap
+    _actions_map: Type[CodeDeployDeploymentGroupActionsMap] = (
+        CodeDeployDeploymentGroupActionsMap
+    )
 
-    async def get_resource(self, options: SingleCodeDeployDeploymentGroupRequest) -> dict[str, Any]:
+    async def get_resource(
+        self, options: SingleCodeDeployDeploymentGroupRequest
+    ) -> dict[str, Any]:
         """Fetch detailed attributes of a single CodeDeploy deployment group."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
@@ -26,10 +34,12 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
             )
 
             # Create the deployment group info for the inspector
-            deployment_group_info = [{
-                "ApplicationName": options.application_name,
-                "DeploymentGroupName": options.deployment_group_name,
-            }]
+            deployment_group_info = [
+                {
+                    "ApplicationName": options.application_name,
+                    "DeploymentGroupName": options.deployment_group_name,
+                }
+            ]
 
             response = await inspector.inspect(
                 deployment_group_info,
@@ -55,17 +65,29 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
             # CodeDeploy doesn't have a direct paginator for deployment groups
             # We need to first list applications, then list deployment groups for each application
             app_paginator = proxy.get_paginator("list_applications", "applications")
-            group_paginator = proxy.get_paginator("list_deployment_groups", "deploymentGroups")
+            group_paginator = proxy.get_paginator(
+                "list_deployment_groups", "deploymentGroups"
+            )
 
             async for application_names in app_paginator.paginate():
                 for app in application_names:
                     async for groups in group_paginator.paginate(applicationName=app):
-                        yield await inspector.inspect(
-                            {'app_name': app, 'groups': groups,
-                             'extras': {'region': options.region, 'account_id': options.account_id}},
-                            options.include,
-                            extra_context={
-                                "AccountId": options.account_id,
-                                "Region": options.region,
-                            },
-                        ) if groups else []
+                        yield (
+                            await inspector.inspect(
+                                {
+                                    "app_name": app,
+                                    "groups": groups,
+                                    "extras": {
+                                        "region": options.region,
+                                        "account_id": options.account_id,
+                                    },
+                                },
+                                options.include,
+                                extra_context={
+                                    "AccountId": options.account_id,
+                                    "Region": options.region,
+                                },
+                            )
+                            if groups
+                            else []
+                        )

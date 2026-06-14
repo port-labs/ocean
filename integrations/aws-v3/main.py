@@ -52,7 +52,9 @@ from aws.core.exporters.codedeploy import (
     PaginatedCodeDeployApplicationRequest,
 )
 from aws.core.exporters.codedeploy import CodeDeployDeploymentGroupExporter
-from aws.core.exporters.codedeploy.deployment_group.models import PaginatedCodeDeployDeploymentGroupRequest
+from aws.core.exporters.codedeploy.deployment_group.models import (
+    PaginatedCodeDeployDeploymentGroupRequest,
+)
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -300,7 +302,10 @@ async def resync_codedeploy_application(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
 @ocean.on_resync(ObjectKind.CODEDEPLOY_DEPLOYMENT_GROUP)
 async def resync_codedeploy_deployment_group(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
-        kind, CodeDeployDeploymentGroupExporter, PaginatedCodeDeployDeploymentGroupRequest, regional=True
+        kind,
+        CodeDeployDeploymentGroupExporter,
+        PaginatedCodeDeployDeploymentGroupRequest,
+        regional=True,
     )
     async for batch in service:
         yield batch

@@ -14,22 +14,35 @@ class DeploymentGroupActionInput(TypedDict):
 class GetDeploymentGroupDetailsAction(Action):
     """Fetches detailed information for CodeDeploy deployment groups."""
 
-    async def _execute(self, groups_data: DeploymentGroupActionInput) -> List[Dict[str, Any]]:
-        results = (await self.client.batch_get_deployment_groups(applicationName=groups_data["app_name"],
-                                                                 deploymentGroupNames=groups_data["groups"])).get('deploymentGroupsInfo', [])
-        logger.info(f"Successfully fetched details for {len(results)} CodeDeploy deployment groups")
+    async def _execute(
+        self, groups_data: DeploymentGroupActionInput
+    ) -> List[Dict[str, Any]]:
+        results = (
+            await self.client.batch_get_deployment_groups(
+                applicationName=groups_data["app_name"],
+                deploymentGroupNames=groups_data["groups"],
+            )
+        ).get("deploymentGroupsInfo", [])
+        logger.info(
+            f"Successfully fetched details for {len(results)} CodeDeploy deployment groups"
+        )
         return results
 
 
 class GetDeploymentGroupTags(Action):
-    async def _execute(self, groups_data: DeploymentGroupActionInput) -> List[Dict[str, Any]]:
+    async def _execute(
+        self, groups_data: DeploymentGroupActionInput
+    ) -> List[Dict[str, Any]]:
         tags = await asyncio.gather(
-            *(self._fetch_tags(
-                app_name=groups_data['app_name'],
-                group_name=group,
-                region=groups_data['extras']['region'],
-                account_id=groups_data['extras']['account_id'],
-            ) for group in groups_data['groups']),
+            *(
+                self._fetch_tags(
+                    app_name=groups_data["app_name"],
+                    group_name=group,
+                    region=groups_data["extras"]["region"],
+                    account_id=groups_data["extras"]["account_id"],
+                )
+                for group in groups_data["groups"]
+            ),
             return_exceptions=True,
         )
 
@@ -44,7 +57,9 @@ class GetDeploymentGroupTags(Action):
             results.append(cast(Dict[str, Any], tag_result))
         return results
 
-    async def _fetch_tags(self, app_name: str, group_name: str, region: str, account_id: str) -> List[Dict[str, Any]]:
+    async def _fetch_tags(
+        self, app_name: str, group_name: str, region: str, account_id: str
+    ) -> List[Dict[str, Any]]:
         arn = f"arn:aws:codedeploy:{region}:{account_id}:deploymentgroup:{app_name}/{group_name}"
         return await self.client.list_tags_for_resource(ResourceArn=arn)
 
