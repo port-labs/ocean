@@ -44,9 +44,8 @@ class GetCodeDeployApplicationTagsAction(Action):
         results: List[Dict[str, Any]] = []
         for idx, tag_result in enumerate(tags):
             if isinstance(tag_result, Exception):
-                app_name = resources["applications"][idx]
                 logger.error(
-                    f"Error fetching tags for CodeDeploy application '{app_name}': {tag_result}"
+                    f"Error fetching tags for CodeDeploy application '{resources["applications"][idx]}': {tag_result}"
                 )
                 results.append({})
                 continue
