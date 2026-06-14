@@ -84,7 +84,7 @@ class TestEcsClusterExporter:
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            [{"clusterName": "test-cluster"}], []
+            ["test-cluster"], []
         )
 
     @pytest.mark.asyncio
@@ -136,7 +136,7 @@ class TestEcsClusterExporter:
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            [{"clusterName": "prod-cluster"}], []
+            ["prod-cluster"], []
         )
 
     @pytest.mark.asyncio
@@ -386,7 +386,7 @@ class TestEcsClusterExporter:
 
         # Verify the inspector was called correctly
         mock_inspector.inspect.assert_called_once_with(
-            [{"clusterName": "test-cluster"}], []
+            ["test-cluster"], []
         )
 
         # Verify the context manager was used correctly (__aenter__ and __aexit__ were called)
