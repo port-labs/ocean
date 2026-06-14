@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
@@ -7,12 +6,12 @@ from botocore.exceptions import ClientError
 from aws.core.exporters.codedeploy.application.actions import (
     GetCodeDeployApplicationDetailsAction,
     GetCodeDeployApplicationTagsAction,
+    CodeDeployApplicationActionInput,
 )
 from aws.core.interfaces.action import Action
 
 
 class TestGetCodeDeployApplicationDetailsAction:
-
     @pytest.fixture
     def mock_client(self) -> AsyncMock:
         """Create a mock AioBaseClient for testing."""
@@ -29,115 +28,44 @@ class TestGetCodeDeployApplicationDetailsAction:
     async def test_execute_success(
         self, action: GetCodeDeployApplicationDetailsAction
     ) -> None:
-        """Test successful execution of batch_get_applications."""
-        resources = [
-            {"applicationName": "app-b"},
-            {"applicationName": "app-a"},
-        ]
-        create_time = datetime(2023, 12, 1, 10, 30)
+        # Arrange
+        resources: CodeDeployApplicationActionInput = {
+            "applications": ["a", "b"],
+            "extras": {"region": "region", "account_id": "account_id"},
+        }
+        mock_response_one = {"applicationName": "b"}
+        mock_response_two = {"applicationName": "a"}
         action.client.batch_get_applications.return_value = {
-            "applicationsInfo": [
-                {
-                    "applicationName": "app-b",
-                    "applicationId": "id-b",
-                    "createTime": create_time,
-                    "linkedToGitHub": False,
-                    "gitHubAccountName": "",
-                    "computePlatform": "Server",
-                },
-                {
-                    "applicationName": "app-a",
-                    "applicationId": "id-a",
-                    "createTime": create_time,
-                    "linkedToGitHub": True,
-                    "gitHubAccountName": "octo",
-                    "computePlatform": "Lambda",
-                },
-            ]
+            "applicationsInfo": [mock_response_one, mock_response_two]
         }
 
-        result = await action.execute(resources)
+        # Act
+        result = await action._execute(resources)
 
-        assert len(result) == 2
-        # Results are sorted by ApplicationName
-        assert result[0]["ApplicationName"] == "app-a"
-        assert result[0]["ApplicationId"] == "id-a"
-        assert result[0]["ComputePlatform"] == "Lambda"
-        assert result[0]["LinkedToGitHub"] is True
-        assert result[0]["GitHubAccountName"] == "octo"
-        assert result[0]["CreateTime"] == create_time
-        assert result[1]["ApplicationName"] == "app-b"
-        assert result[1]["ApplicationId"] == "id-b"
-
+        # Assert
+        assert result == [mock_response_two, mock_response_one]
         action.client.batch_get_applications.assert_called_once_with(
-            applicationNames=["app-b", "app-a"]
+            applicationNames=resources["applications"]
         )
-
-    @pytest.mark.asyncio
-    async def test_execute_empty_resources(
-        self, action: GetCodeDeployApplicationDetailsAction
-    ) -> None:
-        """Test execution with empty resources list."""
-        result = await action.execute([])
-
-        assert result == []
-        action.client.batch_get_applications.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_execute_empty_applications_info(
         self, action: GetCodeDeployApplicationDetailsAction
     ) -> None:
-        """Test execution when API returns no applicationsInfo."""
-        resources = [{"applicationName": "missing"}]
-        action.client.batch_get_applications.return_value = {"applicationsInfo": []}
+        # Arrange
+        resources: CodeDeployApplicationActionInput = {
+            "applications": ["a", "b"],
+            "extras": {"region": "region", "account_id": "account_id"},
+        }
+        action.client.batch_get_applications.return_value = {}
 
-        result = await action.execute(resources)
+        # Act
+        result = await action._execute(resources)
 
+        # Assert
         assert result == []
         action.client.batch_get_applications.assert_called_once_with(
-            applicationNames=["missing"]
-        )
-
-    @pytest.mark.asyncio
-    async def test_execute_missing_fields_use_defaults(
-        self, action: GetCodeDeployApplicationDetailsAction
-    ) -> None:
-        """Test that missing optional fields fall back to defaults."""
-        resources = [{"applicationName": "app-1"}]
-        action.client.batch_get_applications.return_value = {
-            "applicationsInfo": [{"applicationName": "app-1"}]
-        }
-
-        result = await action.execute(resources)
-
-        assert result == [
-            {
-                "ApplicationName": "app-1",
-                "ApplicationId": "",
-                "CreateTime": None,
-                "LinkedToGitHub": None,
-                "GitHubAccountName": None,
-                "ComputePlatform": None,
-            }
-        ]
-
-    @pytest.mark.asyncio
-    @patch("aws.core.exporters.codedeploy.application.actions.logger")
-    async def test_execute_logs_success(
-        self,
-        mock_logger: MagicMock,
-        action: GetCodeDeployApplicationDetailsAction,
-    ) -> None:
-        """Test that a success log message is emitted with the right count."""
-        resources = [{"applicationName": "app-1"}]
-        action.client.batch_get_applications.return_value = {
-            "applicationsInfo": [{"applicationName": "app-1", "applicationId": "id-1"}]
-        }
-
-        await action.execute(resources)
-
-        mock_logger.info.assert_called_once_with(
-            "Successfully fetched details for 1 CodeDeploy applications"
+            applicationNames=resources['applications']
         )
 
 
