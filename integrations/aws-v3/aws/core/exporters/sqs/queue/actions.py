@@ -90,5 +90,8 @@ class ListQueuesAction(Action[list[str]]):
 class SqsQueueActionsMap(ActionMap[list[str]]):
     """Groups all actions for SQS queues."""
 
-    defaults: list[Type[Action[list[str]]]] = [ListQueuesAction, GetQueueAttributesAction]
+    defaults: list[Type[Action[list[str]]]] = [
+        ListQueuesAction,
+        GetQueueAttributesAction,
+    ]
     options: list[Type[Action[list[str]]]] = [ListQueueTagsAction]

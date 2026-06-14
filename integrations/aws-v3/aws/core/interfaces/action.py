@@ -4,6 +4,7 @@ from aiobotocore.client import AioBaseClient
 from typing import Type, Protocol
 from loguru import logger
 
+
 class IdentifiersDict(TypedDict):
     identifiers: list[Any]
 
@@ -22,7 +23,16 @@ class Action[ActionInput](ABC):
         self.client: Any = client
 
     async def execute(self, identifiers: ActionInput) -> List[Dict[str, Any]]:
-        count = len(identifiers) if isinstance(identifiers, list) else len(identifiers["identifiers"])
+        count: str | int = (
+            len(identifiers)
+            if isinstance(identifiers, list)
+            else (
+                len(identifiers["identifiers"])
+                if isinstance(identifiers, dict) and "identifiers" in identifiers
+                else "unknown"
+            )
+        )
+
         logger.info(f"Executing {self.__class__.__name__} on {count} resources")
         response = await self._execute(identifiers)
         logger.info(f"{self.__class__.__name__} fetched {len(response)} resources")
