@@ -20,6 +20,7 @@ class Action(ABC):
             f"Executing {self.__class__.__name__} on {len(identifiers)} resources"
         )
         response = await self._execute(identifiers)
+        logger.info(f"Successfully executed {self.__class__.__name__} on {len(response)} resources")
         return response
 
     @abstractmethod
