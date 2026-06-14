@@ -118,6 +118,21 @@ from github.enrichments.included_files import (
 MAX_CONCURRENT_REPOS = 10
 
 
+def _tag_repo_fetch_errors(
+    org_name: str,
+    repo_name: str,
+    iterator: ASYNC_GENERATOR_RESYNC_TYPE,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def _wrapped() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        try:
+            async for batch in iterator:
+                yield batch
+        except Exception as exc:
+            raise type(exc)(f"pull requests for {org_name}/{repo_name}: {exc}") from exc
+
+    return _wrapped()
+
+
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
     github_host = ocean.integration_config["github_host"]
     webhook_secret = ocean.integration_config["webhook_secret"]
