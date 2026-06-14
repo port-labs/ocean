@@ -18,9 +18,7 @@ class CodeBuildBuildRunExporter(IResourceExporter):
     _model_cls: Type[BuildRun] = BuildRun
     _actions_map: Type[BuildRunActionsMap] = BuildRunActionsMap
 
-    async def get_resource(
-        self, options: SingleBuildRunRequest
-    ) -> dict[str, Any]:
+    async def get_resource(self, options: SingleBuildRunRequest) -> dict[str, Any]:
         """Fetch detailed attributes of a single build run."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
@@ -28,9 +26,7 @@ class CodeBuildBuildRunExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await inspector.inspect(
-                [options.build_id], options.include
-            )
+            response = await inspector.inspect([options.build_id], options.include)
             return response[0] if response else {}
 
     async def get_paginated_resources(

@@ -51,9 +51,12 @@ async def test_get_resource(
 
     # Assert
     assert result == expected_result
-    mock_proxy_class.assert_called_once_with(mock_session, single_build_run_options.region, "codebuild")
-    mock_inspector_instance.inspect.assert_called_once_with([single_build_run_options.build_id],
-                                                            single_build_run_options.include)
+    mock_proxy_class.assert_called_once_with(
+        mock_session, single_build_run_options.region, "codebuild"
+    )
+    mock_inspector_instance.inspect.assert_called_once_with(
+        [single_build_run_options.build_id], single_build_run_options.include
+    )
 
 
 @pytest.mark.asyncio
