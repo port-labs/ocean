@@ -43,7 +43,9 @@ class DeploymentGroupProperties(BaseModel):
     onPremisesInstanceTagFilters: List[Dict[str, Any]] = Field(
         default_factory=list, alias="OnPremisesInstanceTagFilters"
     )
-    onPremisesTagSet: list[dict[str, Any]] | None = Field(default=None, alias="OnPremisesTagSet")
+    onPremisesTagSet: list[dict[str, Any]] | None = Field(
+        default=None, alias="OnPremisesTagSet"
+    )
     outdatedInstancesStrategy: Optional[str] = Field(
         default=None, alias="OutdatedInstancesStrategy"
     )

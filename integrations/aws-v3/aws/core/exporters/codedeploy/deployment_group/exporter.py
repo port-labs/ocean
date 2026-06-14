@@ -1,7 +1,8 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.codedeploy.deployment_group.actions import (
-    CodeDeployDeploymentGroupActionsMap, DeploymentGroupActionInput,
+    CodeDeployDeploymentGroupActionsMap,
+    DeploymentGroupActionInput,
 )
 from aws.core.exporters.codedeploy.deployment_group.models import (
     CodeDeployDeploymentGroup,
