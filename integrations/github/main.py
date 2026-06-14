@@ -118,6 +118,23 @@ from github.enrichments.included_files import (
 MAX_CONCURRENT_REPOS = 10
 
 
+def _tag_repo_fetch_errors(
+    org_name: str,
+    repo_name: str,
+    iterator: ASYNC_GENERATOR_RESYNC_TYPE,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def _wrapped() -> ASYNC_GENERATOR_RESYNC_TYPE:
+        try:
+            async for batch in iterator:
+                yield batch
+        except Exception as exc:
+            raise type(exc)(
+                f"pull requests for {org_name}/{repo_name}: {exc}"
+            ) from exc
+
+    return _wrapped()
+
+
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
     github_host = ocean.integration_config["github_host"]
     webhook_secret = ocean.integration_config["webhook_secret"]
@@ -443,6 +460,8 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else RestPullRequestExporter(rest_client)
     )
 
+    fetch_errors: list[Exception] = []
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -461,24 +480,46 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 tasks = []
                 for repo in repos:
                     tasks.append(
-                        pull_request_exporter.get_paginated_resources(
-                            ListPullRequestOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                states=list(config.selector.states),
-                                max_results=config.selector.max_results,
-                                updated_after=config.selector.updated_after,
-                                enrich_with_first_commit=config.selector.enrich_with_first_commit,
-                                repo=repo if is_graphql_api else None,
-                                exclude_graphql_fields=config.selector.exclude_graphql_fields,
-                            )
+                        _tag_repo_fetch_errors(
+                            org_name,
+                            repo["name"],
+                            pull_request_exporter.get_paginated_resources(
+                                ListPullRequestOptions(
+                                    organization=org_name,
+                                    repo_name=repo["name"],
+                                    states=list(config.selector.states),
+                                    max_results=config.selector.max_results,
+                                    updated_after=config.selector.updated_after,
+                                    enrich_with_first_commit=config.selector.enrich_with_first_commit,
+                                    repo=repo if is_graphql_api else None,
+                                    exclude_graphql_fields=config.selector.exclude_graphql_fields,
+                                )
+                            ),
                         )
                     )
 
-                async for pull_requests in stream_independent_async_iterators(
-                    *tasks, context=kind
-                ):
-                    yield pull_requests
+                try:
+                    async for pull_requests in stream_independent_async_iterators(
+                        *tasks, context=kind
+                    ):
+                        yield pull_requests
+                except ExceptionGroup as page_errors:
+                    fetch_errors.extend(page_errors.exceptions)
+                    logger.error(
+                        f"{len(page_errors.exceptions)} repo(s) failed fetching pull requests "
+                        f"in org {org_name} (batch of {len(repos)}), continuing with remaining pages",
+                        extra={
+                            "failed_repos": [
+                                str(error) for error in page_errors.exceptions
+                            ],
+                        },
+                    )
+
+    if fetch_errors:
+        raise ExceptionGroup(
+            f"{kind} failed with {len(fetch_errors)} error(s)",
+            fetch_errors,
+        )
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
