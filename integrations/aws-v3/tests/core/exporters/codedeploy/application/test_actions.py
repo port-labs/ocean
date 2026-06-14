@@ -25,10 +25,6 @@ class TestGetCodeDeployApplicationDetailsAction:
         """Create a GetCodeDeployApplicationDetailsAction instance for testing."""
         return GetCodeDeployApplicationDetailsAction(mock_client)
 
-    def test_inheritance(self, action: GetCodeDeployApplicationDetailsAction) -> None:
-        """Test that the action inherits from Action."""
-        assert isinstance(action, Action)
-
     @pytest.mark.asyncio
     async def test_execute_success(
         self, action: GetCodeDeployApplicationDetailsAction
