@@ -13,9 +13,6 @@ class GetCodeDeployApplicationDetailsAction(Action):
     """Fetches detailed information about CodeDeploy applications."""
 
     async def _execute(self, resources: CodeDeployApplicationActionInput) -> List[Dict[str, Any]]:
-        if not resources:
-            return []
-
         response = (await self.client.batch_get_applications(applicationNames=resources['applications'])).get('applicationsInfo', [])
 
         logger.info(f"Successfully fetched details for {len(response)} CodeDeploy applications")
@@ -26,9 +23,6 @@ class GetCodeDeployApplicationTagsAction(Action):
     """Fetches tags for CodeDeploy applications."""
 
     async def _execute(self, resources: CodeDeployApplicationActionInput) -> List[Dict[str, Any]]:
-        if not resources:
-            return []
-
         tags = await asyncio.gather(
             *(self._fetch_application_tags(application, resources['extras']) for application in resources['applications']),
             return_exceptions=True,
