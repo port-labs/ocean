@@ -11,7 +11,9 @@ from aws.core.exporters.codedeploy.application.actions import (
 
 class TestGetCodeDeployApplicationDetailsAction:
     @pytest.fixture
-    def action(self, ) -> GetCodeDeployApplicationDetailsAction:
+    def action(
+        self,
+    ) -> GetCodeDeployApplicationDetailsAction:
         """Create a GetCodeDeployApplicationDetailsAction instance for testing."""
         return GetCodeDeployApplicationDetailsAction(AsyncMock())
 
@@ -56,7 +58,7 @@ class TestGetCodeDeployApplicationDetailsAction:
         # Assert
         assert result == []
         action.client.batch_get_applications.assert_called_once_with(
-            applicationNames=resources['applications']
+            applicationNames=resources["applications"]
         )
 
 
@@ -97,7 +99,9 @@ class TestGetCodeDeployApplicationTagsAction:
 
         action.client.list_tags_for_resource.assert_has_calls(
             calls=[
-                call(ResourceArn=f"arn:aws:codedeploy:{resources['extras']['region']}:{resources['extras']['account_id']}:application:{name}")
-                for name in resources['applications']
+                call(
+                    ResourceArn=f"arn:aws:codedeploy:{resources['extras']['region']}:{resources['extras']['account_id']}:application:{name}"
+                )
+                for name in resources["applications"]
             ]
         )
