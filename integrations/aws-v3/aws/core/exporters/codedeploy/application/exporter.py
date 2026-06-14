@@ -31,7 +31,7 @@ class CodeDeployApplicationExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"ApplicationName": options.application_name}], options.include
+                [{"applications": [options.application_name], "extras": {"region": options.region, "account_id": options.account_id}}], options.include
             )
             return response[0] if response else {}
 
