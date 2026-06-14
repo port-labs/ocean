@@ -49,18 +49,14 @@ class CodeDeployApplicationExporter(IResourceExporter):
             paginator = proxy.get_paginator("list_applications", "applications")
 
             async for applications in paginator.paginate():
-                if applications:
-                    action_result = await inspector.inspect(
-                        {
-                            "applications": sorted(applications),
-                            "extras": {"region": options.region, "account_id": options.account_id},
-                        },
-                        options.include,
-                        extra_context={
-                            "AccountId": options.account_id,
-                            "Region": options.region,
-                        },
-                    )
-                    yield action_result
-                else:
-                    yield []
+                yield await inspector.inspect(
+                    {
+                        "applications": sorted(applications),
+                        "extras": {"region": options.region, "account_id": options.account_id},
+                    },
+                    options.include,
+                    extra_context={
+                        "AccountId": options.account_id,
+                        "Region": options.region,
+                    },
+                ) if applications else []
