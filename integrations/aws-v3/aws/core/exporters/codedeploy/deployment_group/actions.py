@@ -1,14 +1,16 @@
-from typing import Any, Type, cast, Dict, List, TypedDict
+from dataclasses import dataclass
+from typing import Any, Type, cast, Dict, List
 from aws.core.interfaces.action import Action, ActionMap
-from aws.core.helpers.utils import is_recoverable_aws_exception
 from loguru import logger
 import asyncio
 
 
-class DeploymentGroupActionInput(TypedDict):
+@dataclass
+class DeploymentGroupActionInput:
     app_name: str
     groups: list[str]
-    extras: dict[str, str]
+    account_id: str
+    region: str
 
 
 class GetDeploymentGroupDetailsAction(Action):
@@ -19,8 +21,8 @@ class GetDeploymentGroupDetailsAction(Action):
     ) -> List[Dict[str, Any]]:
         results = (
             await self.client.batch_get_deployment_groups(
-                applicationName=groups_data["app_name"],
-                deploymentGroupNames=groups_data["groups"],
+                applicationName=groups_data.app_name,
+                deploymentGroupNames=groups_data.groups,
             )
         ).get("deploymentGroupsInfo", [])
         logger.info(
@@ -36,12 +38,12 @@ class GetDeploymentGroupTags(Action):
         tags = await asyncio.gather(
             *(
                 self._fetch_tags(
-                    app_name=groups_data["app_name"],
+                    app_name=groups_data.app_name,
                     group_name=group,
-                    region=groups_data["extras"]["region"],
-                    account_id=groups_data["extras"]["account_id"],
+                    region=groups_data.region,
+                    account_id=groups_data.account_id,
                 )
-                for group in groups_data["groups"]
+                for group in groups_data.groups
             ),
             return_exceptions=True,
         )
@@ -50,7 +52,7 @@ class GetDeploymentGroupTags(Action):
         for idx, tag_result in enumerate(tags):
             if isinstance(tag_result, Exception):
                 logger.error(
-                    f"Error fetching tags for DeploymentGroup '{groups_data['app_name']}/{groups_data['groups'][idx]}': {tag_result}"
+                    f"Error fetching tags for DeploymentGroup '{groups_data.app_name}/{groups_data.groups[idx]}': {tag_result}"
                 )
                 results.append({})
                 continue

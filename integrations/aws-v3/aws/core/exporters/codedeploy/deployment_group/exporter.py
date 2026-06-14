@@ -1,7 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.codedeploy.deployment_group.actions import (
-    CodeDeployDeploymentGroupActionsMap,
+    CodeDeployDeploymentGroupActionsMap, DeploymentGroupActionInput,
 )
 from aws.core.exporters.codedeploy.deployment_group.models import (
     CodeDeployDeploymentGroup,
@@ -33,16 +33,13 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            # Create the deployment group info for the inspector
-            deployment_group_info = [
-                {
-                    "ApplicationName": options.application_name,
-                    "DeploymentGroupName": options.deployment_group_name,
-                }
-            ]
-
             response = await inspector.inspect(
-                deployment_group_info,
+                DeploymentGroupActionInput(
+                    app_name=options.application_name,
+                    groups=[options.deployment_group_name],
+                    region=options.region,
+                    account_id=options.account_id,
+                ),
                 options.include,
                 extra_context={
                     "AccountId": options.account_id,
@@ -74,14 +71,12 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
                     async for groups in group_paginator.paginate(applicationName=app):
                         yield (
                             await inspector.inspect(
-                                {
-                                    "app_name": app,
-                                    "groups": groups,
-                                    "extras": {
-                                        "region": options.region,
-                                        "account_id": options.account_id,
-                                    },
-                                },
+                                DeploymentGroupActionInput(
+                                    app_name=app,
+                                    groups=groups,
+                                    region=options.region,
+                                    account_id=options.account_id,
+                                ),
                                 options.include,
                                 extra_context={
                                     "AccountId": options.account_id,
