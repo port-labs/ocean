@@ -1,11 +1,17 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Generic, TypeVar, TypedDict
 from abc import ABC, abstractmethod
 from aiobotocore.client import AioBaseClient
 from typing import Type, Protocol
 from loguru import logger
 
+class IdentifiersDict(TypedDict):
+    identifiers: list[Any]
 
-class Action(ABC):
+
+T = TypeVar("T", bound=list | IdentifiersDict)
+
+
+class Action(ABC, Generic[T]):
 
     def __init__(self, client: AioBaseClient) -> None:
         """aiobotocore's concrete clients provide methods like `get_bucket_tagging`
@@ -15,16 +21,15 @@ class Action(ABC):
         """
         self.client: Any = client
 
-    async def execute(self, identifiers: List[Any]) -> List[Dict[str, Any]]:
-        logger.info(
-            f"Executing {self.__class__.__name__} on {len(identifiers)} resources"
-        )
+    async def execute(self, identifiers: T) -> List[Dict[str, Any]]:
+        count = len(identifiers) if isinstance(identifiers, list) else len(identifiers["identifiers"])
+        logger.info(f"Executing {self.__class__.__name__} on {count} resources")
         response = await self._execute(identifiers)
-        logger.info(f"Successfully executed {self.__class__.__name__} on {len(response)} resources")
+        logger.info(f"{self.__class__.__name__} fetched {len(response)} resources")
         return response
 
     @abstractmethod
-    async def _execute(self, identifiers: List[Any]) -> List[Dict[str, Any]]: ...
+    async def _execute(self, identifiers: T) -> List[Dict[str, Any]]: ...
 
 
 class ActionMap(Protocol):
