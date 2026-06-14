@@ -118,23 +118,6 @@ from github.enrichments.included_files import (
 MAX_CONCURRENT_REPOS = 10
 
 
-def _tag_repo_fetch_errors(
-    org_name: str,
-    repo_name: str,
-    iterator: ASYNC_GENERATOR_RESYNC_TYPE,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async def _wrapped() -> ASYNC_GENERATOR_RESYNC_TYPE:
-        try:
-            async for batch in iterator:
-                yield batch
-        except Exception as exc:
-            raise type(exc)(
-                f"pull requests for {org_name}/{repo_name}: {exc}"
-            ) from exc
-
-    return _wrapped()
-
-
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
     github_host = ocean.integration_config["github_host"]
     webhook_secret = ocean.integration_config["webhook_secret"]
@@ -480,21 +463,17 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 tasks = []
                 for repo in repos:
                     tasks.append(
-                        _tag_repo_fetch_errors(
-                            org_name,
-                            repo["name"],
-                            pull_request_exporter.get_paginated_resources(
-                                ListPullRequestOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    states=list(config.selector.states),
-                                    max_results=config.selector.max_results,
-                                    updated_after=config.selector.updated_after,
-                                    enrich_with_first_commit=config.selector.enrich_with_first_commit,
-                                    repo=repo if is_graphql_api else None,
-                                    exclude_graphql_fields=config.selector.exclude_graphql_fields,
-                                )
-                            ),
+                        pull_request_exporter.get_paginated_resources(
+                            ListPullRequestOptions(
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                states=list(config.selector.states),
+                                max_results=config.selector.max_results,
+                                updated_after=config.selector.updated_after,
+                                enrich_with_first_commit=config.selector.enrich_with_first_commit,
+                                repo=repo if is_graphql_api else None,
+                                exclude_graphql_fields=config.selector.exclude_graphql_fields,
+                            )
                         )
                     )
 
