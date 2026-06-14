@@ -50,9 +50,7 @@ from aws.core.exporters.codebuild import (
 from aws.core.exporters.codedeploy import (
     CodeDeployApplicationExporter,
     PaginatedCodeDeployApplicationRequest,
-)
-from aws.core.exporters.codedeploy import CodeDeployDeploymentGroupExporter
-from aws.core.exporters.codedeploy.deployment_group.models import (
+    CodeDeployDeploymentGroupExporter,
     PaginatedCodeDeployDeploymentGroupRequest,
 )
 from aws.core.helpers.utils import is_access_denied_exception
