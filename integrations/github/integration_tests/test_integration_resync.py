@@ -243,14 +243,14 @@ class TestGithubHappyPath(BaseIntegrationTest):
                 "identifier": "test-github",
                 "type": "github",
                 "config": {
-                    "githubHost": "https://api.github.com",
-                    "githubToken": "test-value",
-                    "githubAppId": "12345",
-                    "githubAppInstallationId": "placeholder",
-                    "githubAppPrivateKey": "test-value",
-                    "githubOrganization": ORG_LOGIN,
-                    "webhookSecret": "test-value",
-                    "skipWebhookPatching": True,
+                    "github_host": "https://api.github.com",
+                    "github_token": "test-value",
+                    "github_app_id": "12345",
+                    "github_app_installation_id": "placeholder",
+                    "github_app_private_key": "test-value",
+                    "github_organization": ORG_LOGIN,
+                    "webhook_secret": "test-value",
+                    "skip_webhook_patching": True,
                 },
             }
         }
