@@ -1,17 +1,3 @@
-"""Happy-path integration test for the GitHub integration.
-
-Exercises the basic resync flow end-to-end:
-  - GitHub App auth (installation lookup -> access token)
-  - Organization fetch
-  - Repository listing with included files (README, CODEOWNERS)
-  - Pull request listing (open PRs only)
-
-Expected output:
-  - 1 githubOrganization entity
-  - 2 githubRepository entities (related to the org, README content populated)
-  - 2 githubPullRequest entities (one per repo, related to the repo)
-"""
-
 import base64
 import os
 from typing import Any
@@ -88,6 +74,20 @@ def _pull_response(repo_name: str, pr_id: int) -> dict[str, Any]:
 
 
 class TestGithubHappyPath(BaseIntegrationTest):
+    """Happy-path integration test for the GitHub integration.
+
+    Exercises the basic resync flow end-to-end:
+    - GitHub App auth (installation lookup -> access token)
+    - Organization fetch
+    - Repository listing with included files (README, CODEOWNERS)
+    - Pull request listing (open PRs only)
+
+    Expected output:
+    - 1 githubOrganization entity
+    - 2 githubRepository entities (related to the org, README content populated)
+    - 2 githubPullRequest entities (one per repo, related to the repo)
+    """
+
     integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
     def create_third_party_transport(self) -> InterceptTransport:
