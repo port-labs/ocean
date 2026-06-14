@@ -95,6 +95,11 @@ ignore = ["E501"]
 target-version = "py312"
 
 
+[tool.ruff.lint.per-file-ignores]
+# Ignore unused imports in __init__ files
+"**/__init__.py" = ["F401"]
+
+
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
