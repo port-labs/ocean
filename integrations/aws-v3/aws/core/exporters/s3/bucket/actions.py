@@ -163,12 +163,12 @@ class GetBucketTaggingAction(Action[list[dict[str, Any]]]):
                 raise
 
 
-class S3BucketActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+class S3BucketActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: List[Type[Action[list[dict[str, Any]]]]] = [
         GetBucketTaggingAction,
         ListBucketsAction,
     ]
-    options: List[Type[Action]] = [
+    options: List[Type[Action[list[dict[str, Any]]]]] = [
         GetPublicAccessBlockAction,
         GetBucketOwnershipControlsAction,
         GetBucketEncryptionAction,

@@ -11,8 +11,8 @@ class ListClustersAction(Action[list[dict[str, Any]]]):
         return clusters
 
 
-class MskClusterActionsMap(ActionMap):
+class MskClusterActionsMap(ActionMap[list[dict[str, Any]]]):
     """Groups all actions for MSK cluster resources."""
 
-    defaults: List[Type[Action]] = [ListClustersAction]
-    options: List[Type[Action]] = []
+    defaults: List[Type[Action[list[dict[str, Any]]]]] = [ListClustersAction]
+    options: List[Type[Action[list[dict[str, Any]]]]] = []

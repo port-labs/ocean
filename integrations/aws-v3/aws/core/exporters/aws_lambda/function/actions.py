@@ -47,10 +47,10 @@ class ListTagsAction(Action[list[dict[str, Any]]]):
         return [{"Tags": response["Tags"]}]
 
 
-class LambdaFunctionActionsMap(ActionMap):
-    defaults: list[Type[Action]] = [
+class LambdaFunctionActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [
         ListFunctionsAction,
     ]
-    options: list[Type[Action]] = [
+    options: list[Type[Action[list[dict[str, Any]]]]] = [
         ListTagsAction,
     ]

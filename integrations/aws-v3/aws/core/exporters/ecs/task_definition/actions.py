@@ -29,9 +29,9 @@ class DescribeTaskDefinitionsAction(Action[list[str]]):
         return task_definition
 
 
-class EcsTaskDefinitionActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+class EcsTaskDefinitionActionsMap(ActionMap[list[str]]):
+    defaults: List[Type[Action[list[str]]]] = [
         ListTaskDefinitionsAction,
         DescribeTaskDefinitionsAction,
     ]
-    options: List[Type[Action]] = []
+    options: List[Type[Action[list[str]]]] = []

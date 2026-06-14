@@ -17,8 +17,8 @@ class DescribeClustersAction(Action[list[str]]):
         return clusters
 
 
-class EcsClusterActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+class EcsClusterActionsMap(ActionMap[list[str]]):
+    defaults: List[Type[Action[list[str]]]] = [
         DescribeClustersAction,
     ]
-    options: List[Type[Action]] = []
+    options: List[Type[Action[list[str]]]] = []

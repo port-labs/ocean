@@ -89,11 +89,11 @@ class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
         return {"Tags": tags}
 
 
-class OrganizationsAccountActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+class OrganizationsAccountActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: List[Type[Action[list[dict[str, Any]]]]] = [
         ListAccountsAction,
     ]
-    options: List[Type[Action]] = [
+    options: List[Type[Action[list[dict[str, Any]]]]] = [
         ListParentsAction,
         ListTagsForResourceAction,
     ]

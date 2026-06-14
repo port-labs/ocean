@@ -38,8 +38,8 @@ class DescribeClusterAction(Action[list[str]]):
         return response["cluster"]
 
 
-class EksClusterActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+class EksClusterActionsMap(ActionMap[list[str]]):
+    defaults: List[Type[Action[list[str]]]] = [
         DescribeClusterAction,
     ]
-    options: List[Type[Action]] = []
+    options: List[Type[Action[list[str]]]] = []

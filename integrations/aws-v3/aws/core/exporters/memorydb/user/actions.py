@@ -27,6 +27,6 @@ class ListTagsForMemoryDbUserAction(Action[list[dict[str, Any]]]):
         return {"TagList": response["TagList"]}
 
 
-class MemoryDbUserActionsMap(ActionMap):
-    defaults: list[Type[Action]] = [DescribeMemoryDbUsersAction]
-    options: list[Type[Action]] = [ListTagsForMemoryDbUserAction]
+class MemoryDbUserActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [DescribeMemoryDbUsersAction]
+    options: list[Type[Action[list[dict[str, Any]]]]] = [ListTagsForMemoryDbUserAction]

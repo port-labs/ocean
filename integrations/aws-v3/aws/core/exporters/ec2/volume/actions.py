@@ -28,8 +28,8 @@ class DescribeVolumeAttributeAction(Action[list[dict[str, Any]]]):
         return {"AutoEnableIO": response["AutoEnableIO"]["Value"]}
 
 
-class EbsVolumeActionsMap(ActionMap):
+class EbsVolumeActionsMap(ActionMap[list[dict[str, Any]]]):
     """Groups all actions for EBS volumes."""
 
-    defaults: list[Type[Action]] = [DescribeVolumesAction]
-    options: list[Type[Action]] = [DescribeVolumeAttributeAction]
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [DescribeVolumesAction]
+    options: list[Type[Action[list[dict[str, Any]]]]] = [DescribeVolumeAttributeAction]

@@ -9,6 +9,6 @@ class ListMskServerlessClustersAction(Action[list[dict[str, Any]]]):
         return clusters
 
 
-class MskServerlessClusterActionsMap(ActionMap):
-    defaults: list[Type[Action]] = [ListMskServerlessClustersAction]
-    options: list[Type[Action]] = []
+class MskServerlessClusterActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [ListMskServerlessClustersAction]
+    options: list[Type[Action[list[dict[str, Any]]]]] = []

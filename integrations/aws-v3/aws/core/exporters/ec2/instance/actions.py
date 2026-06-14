@@ -46,6 +46,6 @@ class DescribeInstancesAction(Action[list[dict[str, Any]]]):
         return instances
 
 
-class EC2InstanceActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [DescribeInstancesAction]
-    options: List[Type[Action]] = [DescribeInstanceStatusAction]
+class EC2InstanceActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: List[Type[Action[list[dict[str, Any]]]]] = [DescribeInstancesAction]
+    options: List[Type[Action[list[dict[str, Any]]]]] = [DescribeInstanceStatusAction]

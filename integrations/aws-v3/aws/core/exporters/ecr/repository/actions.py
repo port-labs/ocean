@@ -84,13 +84,13 @@ class DescribeRepositoriesAction(Action[list[dict[str, Any]]]):
         return repositories
 
 
-class EcrRepositoryActionsMap(ActionMap):
+class EcrRepositoryActionsMap(ActionMap[list[dict[str, Any]]]):
     """Groups all actions for ECR repositories."""
 
-    defaults: list[Type[Action]] = [
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [
         DescribeRepositoriesAction,
     ]
-    options: list[Type[Action]] = [
+    options: list[Type[Action[list[dict[str, Any]]]]] = [
         GetRepositoryPolicyAction,
         GetLifecyclePolicyAction,
         ListTagsForResourceAction,

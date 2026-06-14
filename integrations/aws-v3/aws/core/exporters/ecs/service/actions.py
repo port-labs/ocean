@@ -27,9 +27,9 @@ class DescribeServicesAction(Action[list[str]]):
         return response["services"]
 
 
-class EcsServiceActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+class EcsServiceActionsMap(ActionMap[list[str]]):
+    defaults: List[Type[Action[list[str]]]] = [
         ListServicesAction,
         DescribeServicesAction,
     ]
-    options: List[Type[Action]] = []
+    options: List[Type[Action[list[str]]]] = []

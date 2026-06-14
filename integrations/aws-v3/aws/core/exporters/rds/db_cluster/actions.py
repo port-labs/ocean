@@ -28,10 +28,10 @@ class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
         return {"TagList": response["TagList"]}
 
 
-class RdsDbClusterActionsMap(ActionMap):
-    defaults: list[Type[Action]] = [
+class RdsDbClusterActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [
         DescribeDBClustersAction,
     ]
-    options: list[Type[Action]] = [
+    options: list[Type[Action[list[dict[str, Any]]]]] = [
         ListTagsForResourceAction,
     ]

@@ -53,10 +53,10 @@ class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
         return [{"Tags": response["TagList"]}]
 
 
-class RdsDbInstanceActionsMap(ActionMap):
-    defaults: list[Type[Action]] = [
+class RdsDbInstanceActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [
         DescribeDBInstancesAction,
     ]
-    options: list[Type[Action]] = [
+    options: list[Type[Action[list[dict[str, Any]]]]] = [
         ListTagsForResourceAction,
     ]

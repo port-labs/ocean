@@ -87,8 +87,8 @@ class ListQueuesAction(Action[list[str]]):
         return [{"QueueUrl": queue_url} for queue_url in queues]
 
 
-class SqsQueueActionsMap(ActionMap):
+class SqsQueueActionsMap(ActionMap[list[str]]):
     """Groups all actions for SQS queues."""
 
-    defaults: list[Type[Action]] = [ListQueuesAction, GetQueueAttributesAction]
-    options: list[Type[Action]] = [ListQueueTagsAction]
+    defaults: list[Type[Action[list[str]]]] = [ListQueuesAction, GetQueueAttributesAction]
+    options: list[Type[Action[list[str]]]] = [ListQueueTagsAction]

@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Generic, TypeVar, TypedDict
+from typing import Dict, Any, List, TypedDict
 from abc import ABC, abstractmethod
 from aiobotocore.client import AioBaseClient
 from typing import Type, Protocol
@@ -8,10 +8,10 @@ class IdentifiersDict(TypedDict):
     identifiers: list[Any]
 
 
-T = TypeVar("T", bound=list | IdentifiersDict)
+type ActionInput[Bound: list[Any] | IdentifiersDict] = Bound
 
 
-class Action(ABC, Generic[T]):
+class Action[ActionInput](ABC):
 
     def __init__(self, client: AioBaseClient) -> None:
         """aiobotocore's concrete clients provide methods like `get_bucket_tagging`
@@ -21,7 +21,7 @@ class Action(ABC, Generic[T]):
         """
         self.client: Any = client
 
-    async def execute(self, identifiers: T) -> List[Dict[str, Any]]:
+    async def execute(self, identifiers: ActionInput) -> List[Dict[str, Any]]:
         count = len(identifiers) if isinstance(identifiers, list) else len(identifiers["identifiers"])
         logger.info(f"Executing {self.__class__.__name__} on {count} resources")
         response = await self._execute(identifiers)
@@ -29,14 +29,14 @@ class Action(ABC, Generic[T]):
         return response
 
     @abstractmethod
-    async def _execute(self, identifiers: T) -> List[Dict[str, Any]]: ...
+    async def _execute(self, identifiers: ActionInput) -> List[Dict[str, Any]]: ...
 
 
-class ActionMap(Protocol):
-    defaults: List[Type[Action]]
-    options: List[Type[Action]]
+class ActionMap[ActionInput](Protocol):
+    defaults: List[Type[Action[ActionInput]]]
+    options: List[Type[Action[ActionInput]]]
 
-    def merge(self, include: List[str]) -> List[Type[Action]]:
+    def merge(self, include: List[str]) -> List[Type[Action[ActionInput]]]:
         # Always include all defaults, and any options whose class name is in include
         logger.debug(
             f"Merging actions. Defaults: {[action.__name__ for action in self.defaults]}, Options: {[action.__name__ for action in self.options]}, Include: {include}"

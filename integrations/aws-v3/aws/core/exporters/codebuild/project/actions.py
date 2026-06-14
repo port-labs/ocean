@@ -14,10 +14,10 @@ class GetProjectDetailsAction(Action[list[str]]):
         return projects
 
 
-class CodeBuildProjectActionsMap(ActionMap):
+class CodeBuildProjectActionsMap(ActionMap[list[str]]):
     """Groups all actions for CodeBuild project resource type."""
 
-    defaults: List[Type[Action]] = [
+    defaults: List[Type[Action[list[str]]]] = [
         GetProjectDetailsAction,
     ]
-    options: List[Type[Action]] = []
+    options: List[Type[Action[list[str]]]] = []

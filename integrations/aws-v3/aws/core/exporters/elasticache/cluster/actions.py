@@ -53,10 +53,10 @@ class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
         return [{"TagList": response.get("TagList", [])}]
 
 
-class ElastiCacheClusterActionsMap(ActionMap):
-    defaults: list[Type[Action]] = [
+class ElastiCacheClusterActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [
         DescribeCacheClustersAction,
     ]
-    options: list[Type[Action]] = [
+    options: list[Type[Action[list[dict[str, Any]]]]] = [
         ListTagsForResourceAction,
     ]
