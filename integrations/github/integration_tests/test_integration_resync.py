@@ -11,6 +11,7 @@ Expected output:
   - 2 githubRepository entities (related to the org, README content populated)
   - 2 githubPullRequest entities (one per repo, related to the repo)
 """
+
 import base64
 import os
 from typing import Any
@@ -87,9 +88,7 @@ def _pull_response(repo_name: str, pr_id: int) -> dict[str, Any]:
 
 
 class TestGithubHappyPath(BaseIntegrationTest):
-    integration_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "../")
-    )
+    integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
     def create_third_party_transport(self) -> InterceptTransport:
         t = InterceptTransport(strict=False)
@@ -98,7 +97,10 @@ class TestGithubHappyPath(BaseIntegrationTest):
         t.add_route(
             "GET",
             f"/users/{ORG_LOGIN}/installation",
-            {"status_code": 200, "json": {"id": INSTALLATION_ID, "account": _org_response()}},
+            {
+                "status_code": 200,
+                "json": {"id": INSTALLATION_ID, "account": _org_response()},
+            },
         )
         t.add_route(
             "POST",
