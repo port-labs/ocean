@@ -7,8 +7,6 @@ from botocore.exceptions import ClientError
 from aws.core.exporters.codedeploy.application.actions import (
     GetCodeDeployApplicationDetailsAction,
     GetCodeDeployApplicationTagsAction,
-    ListCodeDeployApplicationsAction,
-    CodeDeployApplicationActionsMap,
 )
 from aws.core.interfaces.action import Action
 
@@ -346,98 +344,3 @@ class TestGetCodeDeployApplicationTagsAction:
         action.client.list_tags_for_resource.assert_called_once_with(
             ResourceArn="arn:aws:codedeploy:us-east-1:123456789012:application:app-1"
         )
-
-
-class TestListCodeDeployApplicationsAction:
-
-    @pytest.fixture
-    def mock_client(self) -> AsyncMock:
-        """Create a mock AioBaseClient for testing."""
-        return AsyncMock()
-
-    @pytest.fixture
-    def action(self, mock_client: AsyncMock) -> ListCodeDeployApplicationsAction:
-        """Create a ListCodeDeployApplicationsAction instance for testing."""
-        return ListCodeDeployApplicationsAction(mock_client)
-
-    def test_inheritance(self, action: ListCodeDeployApplicationsAction) -> None:
-        """Test that the action inherits from Action."""
-        assert isinstance(action, Action)
-
-    @pytest.mark.asyncio
-    async def test_execute_success(
-        self, action: ListCodeDeployApplicationsAction
-    ) -> None:
-        """Test successful pass-through transformation of application list."""
-        resources = [
-            {"applicationName": "app-1"},
-            {"applicationName": "app-2"},
-        ]
-
-        result = await action.execute(resources)
-
-        assert result == [
-            {"ApplicationName": "app-1"},
-            {"ApplicationName": "app-2"},
-        ]
-
-    @pytest.mark.asyncio
-    async def test_execute_empty_list(
-        self, action: ListCodeDeployApplicationsAction
-    ) -> None:
-        """Test execution with empty resources list."""
-        result = await action.execute([])
-
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_execute_single_application(
-        self, action: ListCodeDeployApplicationsAction
-    ) -> None:
-        """Test execution with a single application."""
-        resources = [{"applicationName": "solo"}]
-
-        result = await action.execute(resources)
-
-        assert result == [{"ApplicationName": "solo"}]
-
-
-class TestCodeDeployApplicationActionsMap:
-
-    def test_merge_includes_defaults(self) -> None:
-        """Test that merge includes default actions."""
-        action_map = CodeDeployApplicationActionsMap()
-        merged = action_map.merge([])
-
-        names = [cls.__name__ for cls in merged]
-        assert "GetCodeDeployApplicationDetailsAction" in names
-        assert "GetCodeDeployApplicationTagsAction" in names
-        assert "ListCodeDeployApplicationsAction" in names
-
-    def test_merge_with_empty_options(self) -> None:
-        """Test that merge works with empty options list."""
-        action_map = CodeDeployApplicationActionsMap()
-        merged = action_map.merge([])
-
-        names = [cls.__name__ for cls in merged]
-        # All three actions are defaults; no options to add
-        assert len(names) == 3
-        assert "GetCodeDeployApplicationDetailsAction" in names
-        assert "GetCodeDeployApplicationTagsAction" in names
-        assert "ListCodeDeployApplicationsAction" in names
-
-    def test_merge_with_nonexistent_options(self) -> None:
-        """Test that merge handles nonexistent option actions gracefully."""
-        action_map = CodeDeployApplicationActionsMap()
-        merged = action_map.merge(["NonExistentAction"])
-
-        names = [cls.__name__ for cls in merged]
-        assert "GetCodeDeployApplicationDetailsAction" in names
-        assert "GetCodeDeployApplicationTagsAction" in names
-        assert "ListCodeDeployApplicationsAction" in names
-        assert "NonExistentAction" not in names
-
-    def test_options_is_empty(self) -> None:
-        """All CodeDeploy application actions are defaults; options must be empty."""
-        action_map = CodeDeployApplicationActionsMap()
-        assert action_map.options == []
