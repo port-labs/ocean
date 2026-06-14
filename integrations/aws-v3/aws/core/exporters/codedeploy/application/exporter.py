@@ -53,7 +53,7 @@ class CodeDeployApplicationExporter(IResourceExporter):
                     action_result = await inspector.inspect(
                         {
                             "applications": sorted(applications),
-                            "extras": {"region": options.region, "account_id": options.account_id}
+                            "extras": {"region": options.region, "account_id": options.account_id},
                         },
                         options.include,
                         extra_context={
