@@ -57,18 +57,12 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
             app_paginator = proxy.get_paginator("list_applications", "applications")
             group_paginator = proxy.get_paginator("list_deployment_groups", "deploymentGroups")
 
-            app_names: list[str] = []
             async for application_names in app_paginator.paginate():
                 for app in application_names:
-                    app_names.append(app)
-
-            if not app_names:
-                yield []
-            else:
-                for app in app_names:
                     async for groups in group_paginator.paginate(applicationName=app):
                         yield await inspector.inspect(
-                            {'app_name': app, 'groups': groups, 'extras': {'region': options.region, 'account_id': options.account_id}},
+                            {'app_name': app, 'groups': groups,
+                             'extras': {'region': options.region, 'account_id': options.account_id}},
                             options.include,
                             extra_context={
                                 "AccountId": options.account_id,
