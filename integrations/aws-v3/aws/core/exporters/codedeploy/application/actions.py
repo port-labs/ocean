@@ -12,26 +12,39 @@ class CodeDeployApplicationActionInput(TypedDict):
 class GetCodeDeployApplicationDetailsAction(Action):
     """Fetches detailed information about CodeDeploy applications."""
 
-    async def _execute(self, resources: CodeDeployApplicationActionInput) -> List[Dict[str, Any]]:
-        response = (await self.client.batch_get_applications(applicationNames=resources['applications'])).get('applicationsInfo', [])
+    async def _execute(
+        self, resources: CodeDeployApplicationActionInput
+    ) -> List[Dict[str, Any]]:
+        response = (
+            await self.client.batch_get_applications(
+                applicationNames=resources["applications"]
+            )
+        ).get("applicationsInfo", [])
 
-        logger.info(f"Successfully fetched details for {len(response)} CodeDeploy applications")
+        logger.info(
+            f"Successfully fetched details for {len(response)} CodeDeploy applications"
+        )
         return sorted(response, key=lambda app_info: app_info["applicationName"])
 
 
 class GetCodeDeployApplicationTagsAction(Action):
     """Fetches tags for CodeDeploy applications."""
 
-    async def _execute(self, resources: CodeDeployApplicationActionInput) -> List[Dict[str, Any]]:
+    async def _execute(
+        self, resources: CodeDeployApplicationActionInput
+    ) -> List[Dict[str, Any]]:
         tags = await asyncio.gather(
-            *(self._fetch_application_tags(application, resources['extras']) for application in resources['applications']),
+            *(
+                self._fetch_application_tags(application, resources["extras"])
+                for application in resources["applications"]
+            ),
             return_exceptions=True,
         )
 
         results: List[Dict[str, Any]] = []
         for idx, tag_result in enumerate(tags):
             if isinstance(tag_result, Exception):
-                app_name = resources['applications'][idx]
+                app_name = resources["applications"][idx]
                 logger.error(
                     f"Error fetching tags for CodeDeploy application '{app_name}': {tag_result}"
                 )
@@ -40,7 +53,9 @@ class GetCodeDeployApplicationTagsAction(Action):
             results.append(cast(Dict[str, Any], tag_result))
         return results
 
-    async def _fetch_application_tags(self, app_name: str, extras: dict[str, str]) -> Dict[str, Any]:
+    async def _fetch_application_tags(
+        self, app_name: str, extras: dict[str, str]
+    ) -> Dict[str, Any]:
         app_arn = f"arn:aws:codedeploy:{extras['region']}:{extras['account_id']}:application:{app_name}"
         return await self.client.list_tags_for_resource(ResourceArn=app_arn)
 

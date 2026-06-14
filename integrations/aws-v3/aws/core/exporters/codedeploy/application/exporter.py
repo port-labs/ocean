@@ -31,7 +31,16 @@ class CodeDeployApplicationExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"applications": [options.application_name], "extras": {"region": options.region, "account_id": options.account_id}}], options.include
+                [
+                    {
+                        "applications": [options.application_name],
+                        "extras": {
+                            "region": options.region,
+                            "account_id": options.account_id,
+                        },
+                    }
+                ],
+                options.include,
             )
             return response[0] if response else {}
 
@@ -49,14 +58,21 @@ class CodeDeployApplicationExporter(IResourceExporter):
             paginator = proxy.get_paginator("list_applications", "applications")
 
             async for applications in paginator.paginate():
-                yield await inspector.inspect(
-                    {
-                        "applications": sorted(applications),
-                        "extras": {"region": options.region, "account_id": options.account_id},
-                    },
-                    options.include,
-                    extra_context={
-                        "AccountId": options.account_id,
-                        "Region": options.region,
-                    },
-                ) if applications else []
+                yield (
+                    await inspector.inspect(
+                        {
+                            "applications": sorted(applications),
+                            "extras": {
+                                "region": options.region,
+                                "account_id": options.account_id,
+                            },
+                        },
+                        options.include,
+                        extra_context={
+                            "AccountId": options.account_id,
+                            "Region": options.region,
+                        },
+                    )
+                    if applications
+                    else []
+                )

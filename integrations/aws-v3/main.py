@@ -47,7 +47,10 @@ from aws.core.exporters.codebuild import (
     CodeBuildProjectExporter,
     PaginatedCodeBuildProjectRequest,
 )
-from aws.core.exporters.codedeploy import CodeDeployApplicationExporter, PaginatedCodeDeployApplicationRequest
+from aws.core.exporters.codedeploy import (
+    CodeDeployApplicationExporter,
+    PaginatedCodeDeployApplicationRequest,
+)
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
