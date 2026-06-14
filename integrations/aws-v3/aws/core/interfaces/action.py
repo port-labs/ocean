@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Dict, Any, List, TypedDict
 from abc import ABC, abstractmethod
 from aiobotocore.client import AioBaseClient
@@ -5,11 +6,12 @@ from typing import Type, Protocol
 from loguru import logger
 
 
-class IdentifiersDict(TypedDict):
+@dataclass
+class BaseActionInput(TypedDict):
     identifiers: list[Any]
 
 
-type ActionInput[Bound: list[Any] | IdentifiersDict] = Bound
+type ActionInput[Bound: list[Any] | BaseActionInput] = Bound
 
 
 class Action[ActionInput](ABC):
