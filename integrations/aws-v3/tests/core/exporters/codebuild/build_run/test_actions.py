@@ -1,3 +1,5 @@
+from typing import cast
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from aws.core.exporters.codebuild.build_run.actions import (
@@ -18,7 +20,7 @@ async def test_get_build_details_action() -> None:
     resources = [MagicMock()]
 
     # Act
-    result = await action._execute(resources)
+    result = await action._execute(cast(list[str], resources))
 
     # Assert
     assert len(result) == 1
@@ -37,7 +39,7 @@ async def test_list_builds_action() -> None:
     ]
 
     # Act
-    result = await action._execute(resources)
+    result = await action._execute(cast(list[str], resources))
 
     # Assert
     assert result == [
