@@ -6,7 +6,7 @@ import asyncio
 
 
 @dataclass
-class CodeDeployApplicationActionInput(BaseActionInput):
+class CodeDeployApplicationActionInput(BaseActionInput[str]):
     region: str
     account_id: str
 
