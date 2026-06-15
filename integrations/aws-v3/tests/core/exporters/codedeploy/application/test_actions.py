@@ -81,11 +81,13 @@ class TestGetCodeDeployApplicationTagsAction:
             account_id="account_id",
         )
 
+        tag_one = {"Tags": [{"Key": "Environment", "Value": "production"}]}
+        tag_two = {"Tags": [{"Key": "Environment", "Value": "staging"}]}
         def mock_list_tags(ResourceArn: str, **kwargs: Any) -> dict[str, Any]:
             if ResourceArn.endswith(resources.items[0]):
-                return {"Tags": [{"Key": "Environment", "Value": "production"}]}
+                return tag_one
             elif ResourceArn.endswith(resources.items[1]):
-                return {"Tags": [{"Key": "Environment", "Value": "staging"}]}
+                return tag_two
             raise Exception
 
         action.client.list_tags_for_resource.side_effect = mock_list_tags
@@ -94,11 +96,7 @@ class TestGetCodeDeployApplicationTagsAction:
         result = await action._execute(resources)
 
         # Assert
-        assert result == [
-            {"Tags": [{"Key": "Environment", "Value": "production"}]},
-            {"Tags": [{"Key": "Environment", "Value": "staging"}]},
-            {},
-        ]
+        assert result == [tag_one, tag_two, {},]
 
         action.client.list_tags_for_resource.assert_has_calls(
             calls=[
