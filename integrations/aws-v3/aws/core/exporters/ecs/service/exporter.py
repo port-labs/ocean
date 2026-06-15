@@ -12,7 +12,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class EcsServiceExporter(IResourceExporter):
+class EcsServiceExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "ecs"
     _model_cls: Type[Service] = Service
     _actions_map: Type[EcsServiceActionsMap] = EcsServiceActionsMap

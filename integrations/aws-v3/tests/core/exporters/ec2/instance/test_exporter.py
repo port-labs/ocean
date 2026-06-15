@@ -68,7 +68,7 @@ class TestEC2InstanceExporter:
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ec2")
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            ["i-1234567890abcdef0"], ["GetInstanceStatusAction"]
+            [{"InstanceId": "i-1234567890abcdef0"}], ["GetInstanceStatusAction"]
         )
 
     @pytest.mark.asyncio
@@ -270,7 +270,7 @@ class TestEC2InstanceExporter:
         assert result["Properties"]["InstanceId"] == "i-55"
         assert result["Type"] == "AWS::EC2::Instance"
 
-        mock_inspector.inspect.assert_called_once_with(["i-55"], [])
+        mock_inspector.inspect.assert_called_once_with([{"InstanceId": "i-55"}], [])
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ec2")
         mock_proxy_class.return_value.__aenter__.assert_called_once()
         mock_proxy_class.return_value.__aexit__.assert_called_once()
