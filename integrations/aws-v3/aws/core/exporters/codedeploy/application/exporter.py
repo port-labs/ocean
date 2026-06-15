@@ -1,7 +1,9 @@
 from typing import Any, AsyncGenerator, Type
+
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.codedeploy.application.actions import (
     CodeDeployApplicationActionsMap,
+    CodeDeployApplicationActionInput,
 )
 from aws.core.exporters.codedeploy.application.models import CodeDeployApplication
 from aws.core.exporters.codedeploy.application.models import (
@@ -13,7 +15,9 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class CodeDeployApplicationExporter(IResourceExporter):
+class CodeDeployApplicationExporter(
+    IResourceExporter[CodeDeployApplicationActionInput]
+):
     _service_name: SupportedServices = "codedeploy"
     _model_cls: Type[CodeDeployApplication] = CodeDeployApplication
     _actions_map: Type[CodeDeployApplicationActionsMap] = (
@@ -31,15 +35,11 @@ class CodeDeployApplicationExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [
-                    {
-                        "applications": [options.application_name],
-                        "extras": {
-                            "region": options.region,
-                            "account_id": options.account_id,
-                        },
-                    }
-                ],
+                CodeDeployApplicationActionInput(
+                    items=[options.application_name],
+                    region=options.region,
+                    account_id=options.account_id,
+                ),
                 options.include,
             )
             return response[0] if response else {}
@@ -60,13 +60,11 @@ class CodeDeployApplicationExporter(IResourceExporter):
             async for applications in paginator.paginate():
                 yield (
                     await inspector.inspect(
-                        {
-                            "applications": sorted(applications),
-                            "extras": {
-                                "region": options.region,
-                                "account_id": options.account_id,
-                            },
-                        },
+                        CodeDeployApplicationActionInput(
+                            items=sorted(applications),
+                            region=options.region,
+                            account_id=options.account_id,
+                        ),
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
