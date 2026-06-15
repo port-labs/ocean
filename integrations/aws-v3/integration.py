@@ -224,6 +224,13 @@ class AWSCodeBuildProjectResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeBuildBuildRunResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeBuild::BuildRun"] = Field(
+        title="AWS CodeBuild BuildRun",
+        description="AWS CodeBuild BuildRun resource kind.",
+    )
+
+
 class AWSCodeDeployApplicationResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodeDeploy::Application"] = Field(
         title="AWS CodeDeploy Application",
@@ -259,6 +266,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
         | AWSCodeBuildProjectResourceConfig
+        | AWSCodeBuildBuildRunResourceConfig
         | AWSCodeDeployApplicationResourceConfig
         | AWSCodeDeployDeploymentGroupResourceConfig
     ] = Field(

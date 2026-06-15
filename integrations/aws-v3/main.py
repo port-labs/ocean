@@ -46,6 +46,8 @@ from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
 from aws.core.exporters.codebuild import (
     CodeBuildProjectExporter,
     PaginatedCodeBuildProjectRequest,
+    CodeBuildBuildRunExporter,
+    PaginatedBuildRunRequest,
 )
 from aws.core.exporters.codedeploy import (
     CodeDeployApplicationExporter,
@@ -280,6 +282,18 @@ async def resync_ec2_volume(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_codebuild_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, CodeBuildProjectExporter, PaginatedCodeBuildProjectRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.CODEBUILD_BUILD_RUN)
+async def resync_codebuild_project_build_run(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind,
+        CodeBuildBuildRunExporter,
+        PaginatedBuildRunRequest,
+        regional=True,
     )
     async for batch in service:
         yield batch
