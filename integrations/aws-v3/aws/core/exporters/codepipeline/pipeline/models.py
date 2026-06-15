@@ -6,13 +6,17 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 class PipelineProperties(BaseModel):
     artifactStore: Optional[dict[str, Any]] = Field(default=None, alias="ArtifactStore")
-    artifactStores: Optional[Dict[str, dict[str, Any]]] = Field(default=None, alias="ArtifactStores")
+    artifactStores: Optional[Dict[str, dict[str, Any]]] = Field(
+        default=None, alias="ArtifactStores"
+    )
     created: Optional[datetime] = Field(default=None, alias="Created")
     executionMode: Optional[str] = Field(default=None, alias="ExecutionMode")
     name: str = Field(default_factory=str, alias="Name")
     pipelineArn: Optional[str] = Field(default=None, alias="PipelineArn")
     pipelineType: Optional[str] = Field(default=None, alias="PipelineType")
-    pollingDisabledAt: Optional[datetime] = Field(default=None, alias="PollingDisabledAt")
+    pollingDisabledAt: Optional[datetime] = Field(
+        default=None, alias="PollingDisabledAt"
+    )
     roleArn: Optional[str] = Field(default=None, alias="RoleArn")
     stages: List[dict[str, Any]] = Field(default_factory=list, alias="Stages")
     tags: list[Dict[str, str]] = Field(default_factory=list, alias="Tags")
