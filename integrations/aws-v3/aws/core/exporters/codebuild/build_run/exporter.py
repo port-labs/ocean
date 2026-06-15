@@ -13,7 +13,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class CodeBuildBuildRunExporter(IResourceExporter):
+class CodeBuildBuildRunExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "codebuild"
     _model_cls: Type[BuildRun] = BuildRun
     _actions_map: Type[BuildRunActionsMap] = BuildRunActionsMap
