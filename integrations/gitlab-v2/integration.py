@@ -570,7 +570,7 @@ class BranchResourceConfig(ResourceConfig):
 
 
 class GitlabDeploymentQueryParams(BaseModel):
-    """Shared API query params that filters returned deployments."""
+    """GitLab API query params that filters returned deployments."""
 
     class Config:
         allow_population_by_field_name = True
@@ -596,7 +596,7 @@ class GitlabDeploymentQueryParams(BaseModel):
             "Return deployments updated after this datetime (ISO 8601 with timezone, "
             "e.g. 2024-01-15T10:00:00Z). "
             "Without this filter, every resync walks the full deployment history for all "
-            "projects ordered by id; strongly recommended for production instances. "
+            "projects ordered by id — strongly recommended for production instances. "
             "Applies to resync only; live webhook events are not filtered by this field."
         ),
         regex=ISO_8601_DATETIME_REGEX,
@@ -612,13 +612,51 @@ class GitlabDeploymentQueryParams(BaseModel):
         ),
         regex=ISO_8601_DATETIME_REGEX,
     )
+    finished_after: str | None = Field(
+        default=None,
+        alias="finishedAfter",
+        title="Finished After",
+        description=(
+            "Return deployments whose CI job finished after this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-01-01T00:00:00Z). "
+            "Requires status to be 'success' — GitLab API constraint."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    finished_before: str | None = Field(
+        default=None,
+        alias="finishedBefore",
+        title="Finished Before",
+        description=(
+            "Return deployments whose CI job finished before this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-06-01T00:00:00Z). "
+            "Requires status to be 'success' — GitLab API constraint."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+
+    @validator("finished_before", always=True)
+    def _finished_at_window_requires_success_status(
+        cls,
+        finished_before: str | None,
+        values: dict[str, Any],
+    ) -> str | None:
+        if not (values.get("finished_after") or finished_before):
+            return finished_before
+        if values.get("status") != GitLabDeploymentStatus.SUCCESS:
+            raise ValueError(
+                "status must be 'success' when finishedAfter or finishedBefore is set"
+            )
+        return finished_before
 
     def generate_query_params(self) -> dict[str, Any]:
-        return self.dict(exclude_unset=True, exclude_none=True)
+        params = self.dict(exclude_unset=True, exclude_none=True)
+        if "finished_after" in params or "finished_before" in params:
+            params["order_by"] = "finished_at"
+        return params
 
 
-class GitlabDeploymentBaseSelector(Selector):
-
+class GitlabDeploymentSelector(Selector):
     include_only_active_projects: bool | None = Field(
         default=None,
         alias="includeOnlyActiveProjects",
@@ -631,69 +669,13 @@ class GitlabDeploymentBaseSelector(Selector):
         default=None,
         alias="apiQueryParams",
         title="API Query Params",
-        description="Shared query parameters applied to the GitLab deployments API.",
+        description="Query parameters applied to the GitLab deployments API.",
     )
 
     def generate_query_params(self) -> dict[str, Any]:
         if self.query_params:
             return self.query_params.generate_query_params()
         return {}
-
-
-class GitlabDeploymentSelector(GitlabDeploymentBaseSelector):
-    finished_after: str | None = Field(
-        alias="finishedAfter",
-        default=None,
-        title="Finished After",
-        description=(
-            "Return deployments whose CI job finished after this datetime "
-            "(ISO 8601 with timezone, e.g. 2024-01-01T00:00:00Z). "
-            "Requires apiQueryParams.status to be 'success'."
-        ),
-        regex=ISO_8601_DATETIME_REGEX,
-    )
-    finished_before: str | None = Field(
-        alias="finishedBefore",
-        default=None,
-        title="Finished Before",
-        description=(
-            "Return deployments whose CI job finished before this datetime "
-            "(ISO 8601 with timezone, e.g. 2024-06-01T00:00:00Z). "
-            "Requires apiQueryParams.status to be 'success'."
-        ),
-        regex=ISO_8601_DATETIME_REGEX,
-    )
-
-    @validator("finished_before", always=True)
-    def _finished_at_window_requires_success_status(
-        cls,
-        finished_before: str | None,
-        values: dict[str, Any],
-    ) -> str | None:
-        uses_finished_at_window = values.get("finished_after") or finished_before
-        if not uses_finished_at_window:
-            return finished_before
-        query_params: GitlabDeploymentQueryParams | None = values.get("query_params")
-        if (
-            query_params is None
-            or query_params.status != GitLabDeploymentStatus.SUCCESS
-        ):
-            raise ValueError(
-                "apiQueryParams.status must be 'success' when finishedAfter or "
-                "finishedBefore is set"
-            )
-        return finished_before
-
-    def generate_query_params(self) -> dict[str, Any]:
-        params: dict[str, Any] = super().generate_query_params()
-        if self.finished_after or self.finished_before:
-            # GitLab API requires order_by=finished_at when filtering by a finished time window.
-            params["order_by"] = "finished_at"
-            if self.finished_after:
-                params["finished_after"] = self.finished_after
-            if self.finished_before:
-                params["finished_before"] = self.finished_before
-        return params
 
 
 class GitlabDeploymentResourceConfig(ResourceConfig):
