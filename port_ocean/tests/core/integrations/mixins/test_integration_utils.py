@@ -24,6 +24,9 @@ from port_ocean.core.integrations.mixins.utils import (
     is_lakehouse_data_enabled,
     resync_function_wrapper,
     resync_generator_wrapper,
+    selector_hash_from_query,
+    selector_hash_from_resource,
+    selector_query_from_resource,
 )
 from port_ocean.core.models import LakehouseOperation
 
@@ -71,6 +74,93 @@ class TestBuildLakehouseDataEntry:
         )
 
         assert "environment_data" not in entry
+
+
+class TestSelectorHashHelpers:
+    def test_selector_query_from_resource_returns_trimmed_query(self) -> None:
+        resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query="  .foo | .bar  "),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+
+        assert selector_query_from_resource(resource) == ".foo | .bar"
+
+    def test_selector_query_from_resource_returns_none_for_whitespace(self) -> None:
+        resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query="   "),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+
+        assert selector_query_from_resource(resource) is None
+
+    def test_selector_hash_from_query_uses_sha256_hex(self) -> None:
+        assert (
+            selector_hash_from_query(".foo")
+            == "013b54afaf52ac0983a4ac123b01e809ab7ac8862e67a50f09fcce1293d265c3"
+        )
+
+    def test_selector_hash_from_resource_returns_hash_for_trimmed_query(self) -> None:
+        resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query="  .foo  "),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+
+        assert (
+            selector_hash_from_resource(resource)
+            == "013b54afaf52ac0983a4ac123b01e809ab7ac8862e67a50f09fcce1293d265c3"
+        )
+
+    def test_selector_hash_from_resource_returns_none_for_empty_query(self) -> None:
+        resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query=" "),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+
+        assert selector_hash_from_resource(resource) is None
 
 
 class TestExtractJqDeletionPathRevised:
