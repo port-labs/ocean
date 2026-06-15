@@ -171,7 +171,6 @@ ignore = ["E501"]
 exclude = ['venv', '.venv', 'integrations', 'port_ocean/cli/cookiecutter']
 target-version = "py311"
 
-
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
