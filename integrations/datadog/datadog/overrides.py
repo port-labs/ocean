@@ -241,6 +241,13 @@ class RoleResourceConfig(ResourceConfig):
     )
 
 
+class OrgResourceConfig(ResourceConfig):
+    kind: Literal["org"] = Field(
+        title="Datadog Organization",
+        description="Datadog organization resource kind.",
+    )
+
+
 class DataDogPortAppConfig(PortAppConfig):
     resources: list[
         ServiceDependencyResourceConfig
@@ -253,6 +260,7 @@ class DataDogPortAppConfig(PortAppConfig):
         | ServiceResourceConfig
         | UserResourceConfig
         | RoleResourceConfig
+        | OrgResourceConfig
     ] = Field(
         default_factory=list,
         alias="resources",

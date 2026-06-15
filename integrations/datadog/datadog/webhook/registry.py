@@ -10,6 +10,9 @@ from datadog.webhook.webhook_processors.audit_trails.monitor.monitor_webhook_pro
 from datadog.webhook.webhook_processors.audit_trails.monitor.monitor_restriction_policy_webhook_processor import (
     MonitorRestrictionPolicyWebhookProcessor,
 )
+from datadog.webhook.webhook_processors.audit_trails.org_webhook_processor import (
+    OrgWebhookProcessor,
+)
 from datadog.webhook.webhook_processors.audit_trails.role_webhook_processor import (
     RoleWebhookProcessor,
 )
@@ -53,3 +56,4 @@ def register_live_events_webhooks() -> None:
         AUDIT_TRAIL_WEBHOOK_PATH, SloRestrictionPolicyWebhookProcessor
     )
     ocean.add_webhook_processor(AUDIT_TRAIL_WEBHOOK_PATH, RoleWebhookProcessor)
+    ocean.add_webhook_processor(AUDIT_TRAIL_WEBHOOK_PATH, OrgWebhookProcessor)

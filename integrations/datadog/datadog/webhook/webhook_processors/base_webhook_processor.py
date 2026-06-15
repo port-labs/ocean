@@ -23,9 +23,7 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
         org_id = payload.get("org_id")
         return str(org_id) if org_id is not None else None
 
-    def _get_client_for_payload(
-        self, payload: EventPayload
-    ) -> DatadogClient | None:
+    def _get_client_for_payload(self, payload: EventPayload) -> DatadogClient | None:
         """Select the Datadog client responsible for the org that emitted the event.
 
         Delegates to the client manager: single-org installs always use their sole
