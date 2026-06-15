@@ -1,13 +1,14 @@
 from typing import TYPE_CHECKING
 
 import httpx
+
+from port_ocean.context.event import EventType, event
+from port_ocean.exceptions.context import EventContextNotFoundError
 from loguru import logger
-from werkzeug.local import LocalProxy, LocalStack
+from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.clients.port.retry_transport import TokenRetryTransport
-from port_ocean.context.event import EventType, event
 from port_ocean.context.ocean import ocean
-from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.ssl import resolve_verify_param
 
@@ -91,7 +92,7 @@ def handle_port_status_code(
 ) -> None:
     if should_log and response.is_error:
         escaped_response_text = response.text.replace("{", "{{").replace("}", "}}")
-        error_message = f"Request failed with status code: {response.status_code}, Error: {escaped_response_text}, url: {response.url}"
+        error_message = f"Request failed with status code: {response.status_code}, Error: {escaped_response_text}"
         if response.status_code >= 500 and response.headers.get("x-trace-id"):
             logger.error(
                 error_message,
