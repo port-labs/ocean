@@ -4,14 +4,14 @@ from aws.core.helpers.utils import execute_concurrent_aws_operations
 from aws.core.interfaces.action import Action, ActionMap
 
 
-class DescribeMemoryDbUsersAction(Action):
+class DescribeMemoryDbUsersAction(Action[list[dict[str, Any]]]):
     """Pass-through of user dicts returned from the describe_users paginator."""
 
     async def _execute(self, users: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return users
 
 
-class ListTagsForMemoryDbUserAction(Action):
+class ListTagsForMemoryDbUserAction(Action[list[dict[str, Any]]]):
     """Fetches tags for MemoryDB users via a separate list_tags call."""
 
     async def _execute(self, users: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -27,6 +27,6 @@ class ListTagsForMemoryDbUserAction(Action):
         return {"TagList": response["TagList"]}
 
 
-class MemoryDbUserActionsMap(ActionMap):
-    defaults: list[Type[Action]] = [DescribeMemoryDbUsersAction]
-    options: list[Type[Action]] = [ListTagsForMemoryDbUserAction]
+class MemoryDbUserActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [DescribeMemoryDbUsersAction]
+    options: list[Type[Action[list[dict[str, Any]]]]] = [ListTagsForMemoryDbUserAction]

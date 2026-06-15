@@ -11,11 +11,11 @@ if TYPE_CHECKING:
     from aiobotocore.client import AioBaseClient
 
 
-class IResourceExporter(ABC):
+class IResourceExporter[ActionInput](ABC):
 
     _service_name: SupportedServices
     _model: Type[ResourceBuilder[ResourceModel[BaseModel], Any]]
-    _actions_map: Type[ActionMap]
+    _actions_map: Type[ActionMap[ActionInput]]
     _supported_regions: frozenset[str] | None = None
 
     def __init__(self, session: AioSession) -> None:
