@@ -6,8 +6,6 @@ from aws.core.exporters.codepipeline.pipeline.exporter import PipelineExporter
 from aws.core.exporters.codepipeline.pipeline.models import (
     SinglePipelineRequest,
     PaginatedPipelineRequest,
-    Pipeline,
-    PipelineProperties,
 )
 
 patch_prefix = "aws.core.exporters.codepipeline.pipeline.exporter"
