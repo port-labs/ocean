@@ -1,4 +1,3 @@
-from typing import Any
 from unittest.mock import AsyncMock
 import pytest
 from botocore.exceptions import ClientError
@@ -49,19 +48,19 @@ class TestGetPipelineDetailsAction:
                                     "category": "Source",
                                     "owner": "AWS",
                                     "provider": "S3",
-                                    "version": "1"
+                                    "version": "1",
                                 },
                                 "runOrder": 1,
                                 "configuration": {
                                     "S3Bucket": "test-bucket",
-                                    "S3ObjectKey": "source.zip"
+                                    "S3ObjectKey": "source.zip",
                                 },
-                                "outputArtifacts": [{"name": "SourceOutput"}]
+                                "outputArtifacts": [{"name": "SourceOutput"}],
                             }
-                        ]
+                        ],
                     },
                     {
-                        "name": "Build", 
+                        "name": "Build",
                         "actions": [
                             {
                                 "name": "BuildAction",
@@ -69,18 +68,16 @@ class TestGetPipelineDetailsAction:
                                     "category": "Build",
                                     "owner": "AWS",
                                     "provider": "CodeBuild",
-                                    "version": "1"
+                                    "version": "1",
                                 },
                                 "runOrder": 1,
-                                "configuration": {
-                                    "ProjectName": "test-project"
-                                },
+                                "configuration": {"ProjectName": "test-project"},
                                 "inputArtifacts": [{"name": "SourceOutput"}],
-                                "outputArtifacts": [{"name": "BuildOutput"}]
+                                "outputArtifacts": [{"name": "BuildOutput"}],
                             }
-                        ]
-                    }
-                ]
+                        ],
+                    },
+                ],
             }
         }
 
@@ -91,7 +88,7 @@ class TestGetPipelineDetailsAction:
 
         # Verify the results
         assert len(result) == 2  # Should have 2 actions extracted
-        
+
         # Check first action (Source)
         source_action = result[0]
         assert source_action["ActionName"] == "SourceAction"
@@ -99,7 +96,7 @@ class TestGetPipelineDetailsAction:
         assert source_action["StageName"] == "Source"
         assert source_action["ActionTypeId"]["Category"] == "Source"
         assert source_action["ActionTypeId"]["Provider"] == "S3"
-        
+
         # Check second action (Build)
         build_action = result[1]
         assert build_action["ActionName"] == "BuildAction"
@@ -112,7 +109,9 @@ class TestGetPipelineDetailsAction:
         action.client.get_pipeline.assert_called_once_with(name="test-pipeline")
 
     @pytest.mark.asyncio
-    async def test_execute_empty_pipeline_list(self, action: GetPipelineDetailsAction) -> None:
+    async def test_execute_empty_pipeline_list(
+        self, action: GetPipelineDetailsAction
+    ) -> None:
         """Test execution with empty pipeline list."""
         result = await action._execute([])
         assert result == []
@@ -122,7 +121,9 @@ class TestGetPipelineDetailsAction:
     async def test_execute_client_error(self, action: GetPipelineDetailsAction) -> None:
         """Test execution with client error."""
         action.client.get_pipeline.side_effect = ClientError(
-            error_response={"Error": {"Code": "PipelineNotFound", "Message": "Pipeline not found"}},
+            error_response={
+                "Error": {"Code": "PipelineNotFound", "Message": "Pipeline not found"}
+            },
             operation_name="GetPipeline",
         )
 
@@ -147,7 +148,7 @@ class TestListPipelinesAction:
         pipeline_list = [
             {"name": "pipeline-1", "version": 1},
             {"name": "pipeline-2", "version": 2},
-            "pipeline-3"  # Test string format too
+            "pipeline-3",  # Test string format too
         ]
 
         result = await action._execute(pipeline_list)
@@ -168,7 +169,7 @@ class TestCodePipelineActionActionsMap:
         """Test that defaults contain expected actions."""
         actions_map = CodePipelineActionActionsMap()
         default_action_types = [type(action) for action in actions_map.defaults]
-        
+
         assert ListPipelinesAction in default_action_types
         assert GetPipelineDetailsAction in default_action_types
 
@@ -176,5 +177,5 @@ class TestCodePipelineActionActionsMap:
         """Test that options contain expected actions."""
         actions_map = CodePipelineActionActionsMap()
         option_action_types = [type(action) for action in actions_map.options]
-        
+
         assert GetPipelineExecutionDetailsAction in option_action_types

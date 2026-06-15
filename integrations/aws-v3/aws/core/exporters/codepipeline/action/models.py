@@ -15,14 +15,22 @@ class ActionTypeIdProperties(BaseModel):
 
 
 class CodePipelineActionProperties(BaseModel):
-    actionTypeId: ActionTypeIdProperties = Field(default_factory=ActionTypeIdProperties, alias="ActionTypeId")
+    actionTypeId: ActionTypeIdProperties = Field(
+        default_factory=ActionTypeIdProperties, alias="ActionTypeId"
+    )
     configuration: Optional[Dict[str, str]] = Field(default=None, alias="Configuration")
     commands: Optional[List[str]] = Field(default=None, alias="Commands")
-    environmentVariables: Optional[List[dict[str, Any]]] = Field(default=None, alias="EnvironmentVariables")
-    inputArtifacts: Optional[List[dict[str, Any]]] = Field(default=None, alias="InputArtifacts")
+    environmentVariables: Optional[List[dict[str, Any]]] = Field(
+        default=None, alias="EnvironmentVariables"
+    )
+    inputArtifacts: Optional[List[dict[str, Any]]] = Field(
+        default=None, alias="InputArtifacts"
+    )
     name: str = Field(default_factory=str, alias="Name")
     namespace: Optional[str] = Field(default=None, alias="Namespace")
-    outputArtifacts: Optional[List[dict[str, Any]]] = Field(default=None, alias="OutputArtifacts")
+    outputArtifacts: Optional[List[dict[str, Any]]] = Field(
+        default=None, alias="OutputArtifacts"
+    )
     outputVariables: Optional[List[str]] = Field(default=None, alias="OutputVariables")
     pipelineName: Optional[str] = Field(default=None, alias="PipelineName")
     pipelineArn: Optional[str] = Field(default=None, alias="PipelineArn")
@@ -40,14 +48,20 @@ class CodePipelineActionProperties(BaseModel):
 
 class CodePipelineAction(ResourceModel[CodePipelineActionProperties]):
     Type: str = "AWS::CodePipeline::Action"
-    Properties: CodePipelineActionProperties = Field(default_factory=CodePipelineActionProperties)
+    Properties: CodePipelineActionProperties = Field(
+        default_factory=CodePipelineActionProperties
+    )
 
 
 class SingleCodePipelineActionRequest(ResourceRequestModel):
     """Options for exporting a single CodePipeline action."""
 
-    pipeline_name: str = Field(..., description="The name of the pipeline containing the action")
-    stage_name: str = Field(..., description="The name of the stage containing the action")
+    pipeline_name: str = Field(
+        ..., description="The name of the pipeline containing the action"
+    )
+    stage_name: str = Field(
+        ..., description="The name of the stage containing the action"
+    )
     action_name: str = Field(..., description="The name of the action to export")
 
 
