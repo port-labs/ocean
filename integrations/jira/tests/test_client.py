@@ -2812,29 +2812,6 @@ class TestGetPaginatedComponentsForProject:
             assert component["componentBean"] is None
             assert component["__projectKey"] == "PROJECTKEY"
 
-    async def test_excludes_components_without_id(
-        self, mock_jira_client: JiraClient
-    ) -> None:
-        component_without_id = {"name": "Orphaned", "description": "No ID field"}
-        with patch.object(
-            mock_jira_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_req:
-            mock_req.return_value = {
-                "startAt": 0,
-                "maxResults": 50,
-                "total": 1,
-                "isLast": True,
-                "values": [MOCK_COMPONENT_WITH_ISSUE_COUNT, component_without_id],
-            }
-            results = []
-            async for batch in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.JIRA
-            ):
-                results.extend(batch)
-
-            assert len(results) == 1
-            assert results[0]["id"] == "10000"
-
     async def test_yields_nothing_when_project_has_no_components(
         self, mock_jira_client: JiraClient
     ) -> None:

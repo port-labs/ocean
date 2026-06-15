@@ -228,7 +228,7 @@ async def on_resync_components(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for projects_batch in client.get_paginated_projects():
         component_streams = [
             client.get_paginated_components_for_project(
-                project["key"],
+                project,
                 selector.component_source,
                 name_filter=selector.name_filter,
             )

@@ -407,15 +407,11 @@ class JiraClient(OAuthClient):
         ]
 
     @staticmethod
-    def _enrich_with_project_key(
-        components: list[dict[str, Any]], project_key: str
+    def _enrich_with_project(
+        entities: list[dict[str, Any]], project: dict[str, Any]
     ) -> list[dict[str, Any]]:
-        """Inject ``__projectKey`` into each component for relation mapping."""
-        return [
-            {**component, "__projectKey": project_key}
-            for component in components
-            if component.get("id")
-        ]
+        """Inject ``__project`` into each entity in the list for relation mapping."""
+        return [{**entity, "__project": project} for entity in entities]
 
     @staticmethod
     def _validate_existing_webhook(
@@ -979,7 +975,7 @@ class JiraClient(OAuthClient):
 
     async def get_paginated_components_for_project(
         self,
-        project_key: str,
+        project: dict[str, Any],
         component_source: ComponentSource,
         name_filter: str | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -987,10 +983,12 @@ class JiraClient(OAuthClient):
         params: dict[str, Any] = {"componentSource": component_source}
         if name_filter is not None:
             params["query"] = name_filter
-
+        # key would be present, any case it isn't, the API would return an error
+        # which is fine since we require the key to fetch components
+        project_key = project["key"]
         async for batch in self._get_paginated_data(
             f"{self.api_url}/project/{project_key}/component",
             "values",
             initial_params=params,
         ):
-            yield self._enrich_with_project_key(batch, project_key)
+            yield self._enrich_with_project(batch, project)
