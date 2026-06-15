@@ -1,27 +1,43 @@
+from dataclasses import dataclass
 from typing import Any, Type
 
 from aws.core.exporters.codepipeline.utils.base_pipeline_action import PipelineAction
-from aws.core.interfaces.action import Action, ActionMap
+from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 from loguru import logger
 import asyncio
 
 
-class GetPipelineActionsDetails(PipelineAction):
+@dataclass
+class CodePipelinePipelineActionInput(BaseActionInput[dict[str, Any]]):
+    region: str
+    account_id: str
+
+
+class GetPipelineActionsDetails(PipelineAction[CodePipelinePipelineActionInput]):
     """Fetches pipeline details to extract action information."""
 
-    async def _execute(self, pipeline_names: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    async def _execute(self, identifiers: CodePipelinePipelineActionInput) -> list[dict[str, Any]]:
         pipeline_actions = await asyncio.gather(
-            *(self._fetch_pipeline_actions(pipeline_name['name']) for pipeline_name in pipeline_names),
+            *(self._fetch_pipeline_actions(pipeline['name'], region=identifiers.region, account_id=identifiers.account_id) for pipeline in identifiers.items),
             return_exceptions=True,
         )
 
-        actions = [action for sublist in pipeline_actions for action in sublist]
+        results: list[dict[str, Any]] = []
+        for idx, detail_result in enumerate(pipeline_actions):
+            if isinstance(detail_result, list):
+                results.extend(detail_result)
+            else:
+                pipeline_name = identifiers.items[idx].get("name", "unknown")
+                logger.error(
+                    f"Error fetching details for pipeline '{pipeline_name}': {detail_result}"
+                )
+                results.append({})
 
-        logger.info(f"Successfully extracted {len(actions)} CodePipeline actions")
-        return actions
+        logger.info(f"Successfully extracted {len(results)} CodePipeline actions")
+        return results
 
-    async def _fetch_pipeline_actions(self, pipeline_name: str) -> list[dict[str, Any]]:
-        pipeline_data = await self._get_pipeline(pipeline_name)
+    async def _fetch_pipeline_actions(self, pipeline_name: str, region: str, account_id: str) -> list[dict[str, Any]]:
+        pipeline_data = await self._get_pipeline(pipeline_name, cache_keys={'region': region, 'account_id': account_id})
         logger.info(f"Successfully fetched pipeline details for {pipeline_name}")
 
         actions = []
@@ -46,10 +62,10 @@ class GetPipelineActionsDetails(PipelineAction):
         return actions
 
 
-class CodePipelineActionActionsMap(ActionMap):
+class CodePipelineActionActionsMap(ActionMap[CodePipelinePipelineActionInput]):
     """Groups all actions for CodePipeline actions."""
 
-    defaults: list[Type[Action]] = [
+    defaults: list[Type[Action[CodePipelinePipelineActionInput]]] = [
         GetPipelineActionsDetails,
     ]
-    options: list[Type[Action]] = []
+    options: list[Type[Action[CodePipelinePipelineActionInput]]] = []

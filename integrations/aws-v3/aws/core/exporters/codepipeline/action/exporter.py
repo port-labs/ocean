@@ -1,6 +1,6 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.codepipeline.action.actions import CodePipelineActionActionsMap
+from aws.core.exporters.codepipeline.action.actions import CodePipelineActionActionsMap, CodePipelinePipelineActionInput
 from aws.core.exporters.codepipeline.action.models import CodePipelineAction
 from aws.core.exporters.codepipeline.action.models import (
     SingleCodePipelineActionRequest,
@@ -11,7 +11,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class CodePipelineActionExporter(IResourceExporter):
+class CodePipelineActionExporter(IResourceExporter[CodePipelinePipelineActionInput]):
     _service_name: SupportedServices = "codepipeline"
     _model_cls: Type[CodePipelineAction] = CodePipelineAction
     _actions_map: Type[CodePipelineActionActionsMap] = CodePipelineActionActionsMap
@@ -27,7 +27,9 @@ class CodePipelineActionExporter(IResourceExporter):
 
             # For single action, we need to get the specific pipeline and extract the action
             response = await inspector.inspect(
-                [options.pipeline_name],
+                CodePipelinePipelineActionInput(items=[{'name': options.pipeline_name}],
+                                                region=options.region,
+                                                account_id=options.account_id),
                 options.include,
                 extra_context={
                     "AccountId": options.account_id,
@@ -61,7 +63,7 @@ class CodePipelineActionExporter(IResourceExporter):
             async for pipelines in paginator.paginate():
                 if pipelines:
                     action_result = await inspector.inspect(
-                        pipelines,
+                        CodePipelinePipelineActionInput(items=pipelines, region=options.region, account_id=options.account_id),
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
