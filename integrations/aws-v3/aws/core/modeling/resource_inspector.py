@@ -7,7 +7,7 @@ from aws.core.modeling.resource_models import ResourceModel
 from collections import defaultdict
 
 
-class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
+class ResourceInspector[ResourceModelT: ResourceModel[Any], ActionInput]:
     """
     Inspects AWS resources by executing a set of actions and aggregating their results
     into a strongly-typed resource model.
@@ -32,7 +32,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
     def __init__(
         self,
         client: Any,
-        actions_map: ActionMap,
+        actions_map: ActionMap[ActionInput],
         model_factory: Callable[[], ResourceModelT],
     ) -> None:
         """
@@ -49,7 +49,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
 
     async def inspect(
         self,
-        identifiers: Any,
+        identifiers: ActionInput,
         include: List[str],
         extra_context: Dict[str, Any] | None = None,
     ) -> List[Dict[str, Any]]:
@@ -101,7 +101,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         return resources
 
     async def _run_action(
-        self, action: "Action", identifiers: Any
+        self, action: Action[ActionInput], identifiers: ActionInput
     ) -> List[Dict[str, Any]]:
         """
         Execute a single action for the given identifiers, handling exceptions gracefully.
