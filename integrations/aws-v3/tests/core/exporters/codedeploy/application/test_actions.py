@@ -83,6 +83,7 @@ class TestGetCodeDeployApplicationTagsAction:
 
         tag_one = {"Tags": [{"Key": "Environment", "Value": "production"}]}
         tag_two = {"Tags": [{"Key": "Environment", "Value": "staging"}]}
+
         def mock_list_tags(ResourceArn: str, **kwargs: Any) -> dict[str, Any]:
             if ResourceArn.endswith(resources.items[0]):
                 return tag_one
@@ -96,7 +97,11 @@ class TestGetCodeDeployApplicationTagsAction:
         result = await action._execute(resources)
 
         # Assert
-        assert result == [tag_one, tag_two, {},]
+        assert result == [
+            tag_one,
+            tag_two,
+            {},
+        ]
 
         action.client.list_tags_for_resource.assert_has_calls(
             calls=[
