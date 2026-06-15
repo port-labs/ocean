@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.4.2-beta (2026-06-15)
+## 2.5.1-beta (2026-06-15)
 
 
 ### Improvements
@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added ruff ignore on unused imports in __init__ files to remove the need for __all__
 
 
-## 2.5.1-beta (2026-06-15)
+## 2.5.0-beta (2026-06-15)
 
 
 ### Features
