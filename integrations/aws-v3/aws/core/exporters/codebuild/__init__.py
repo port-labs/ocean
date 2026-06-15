@@ -4,10 +4,8 @@ from aws.core.exporters.codebuild.project import (
     SingleCodeBuildProjectRequest,
     PaginatedCodeBuildProjectRequest,
 )
-from aws.core.exporters.codebuild.build_run.exporter import (
+from aws.core.exporters.codebuild.build_run import (
     CodeBuildBuildRunExporter,
-)
-from aws.core.exporters.codebuild.build_run.models import (
     SingleBuildRunRequest,
     PaginatedBuildRunRequest,
 )
