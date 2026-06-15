@@ -223,9 +223,9 @@ class UserResourceConfig(ResourceConfig):
 
 
 class RoleSelector(Selector):
-    include_role_users: bool = Field(
+    include_users: bool = Field(
         default=False,
-        alias="includeRoleUsers",
+        alias="includeUsers",
         title="Enrich roles with users",
         description="When enabled, each role is enriched with the list of users assigned to it, available under the `__users` property. Enabling this makes an additional API request per role, which may slow down the resync.",
     )
