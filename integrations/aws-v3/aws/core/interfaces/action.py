@@ -7,11 +7,11 @@ from loguru import logger
 
 
 @dataclass
-class BaseActionInput:
-    items: list[Any]
+class BaseActionInput[T]:
+    items: list[T]
 
 
-type ActionInputType = list[Any] | BaseActionInput
+type ActionInputType = list[Any] | BaseActionInput[Any]
 
 
 class Action[ActionInput: ActionInputType](ABC):
