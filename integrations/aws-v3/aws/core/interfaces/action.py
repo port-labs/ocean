@@ -1,11 +1,20 @@
-from typing import Dict, Any, List
+from dataclasses import dataclass
+from typing import Dict, Any, List, TypedDict
 from abc import ABC, abstractmethod
 from aiobotocore.client import AioBaseClient
 from typing import Type, Protocol
 from loguru import logger
 
 
-class Action(ABC):
+@dataclass
+class BaseActionInput(TypedDict):
+    identifiers: list[Any]
+
+
+type ActionInput[Bound: list[Any] | BaseActionInput] = Bound
+
+
+class Action[ActionInput](ABC):
 
     def __init__(self, client: AioBaseClient) -> None:
         """aiobotocore's concrete clients provide methods like `get_bucket_tagging`
@@ -15,22 +24,31 @@ class Action(ABC):
         """
         self.client: Any = client
 
-    async def execute(self, identifiers: List[Any]) -> List[Dict[str, Any]]:
-        logger.info(
-            f"Executing {self.__class__.__name__} on {len(identifiers)} resources"
+    async def execute(self, identifiers: ActionInput) -> List[Dict[str, Any]]:
+        count: str | int = (
+            len(identifiers)
+            if isinstance(identifiers, list)
+            else (
+                len(identifiers["identifiers"])
+                if isinstance(identifiers, dict) and "identifiers" in identifiers
+                else "unknown"
+            )
         )
+
+        logger.info(f"Executing {self.__class__.__name__} on {count} resources")
         response = await self._execute(identifiers)
+        logger.info(f"{self.__class__.__name__} fetched {len(response)} resources")
         return response
 
     @abstractmethod
-    async def _execute(self, identifiers: List[Any]) -> List[Dict[str, Any]]: ...
+    async def _execute(self, identifiers: ActionInput) -> List[Dict[str, Any]]: ...
 
 
-class ActionMap(Protocol):
-    defaults: List[Type[Action]]
-    options: List[Type[Action]]
+class ActionMap[ActionInput](Protocol):
+    defaults: List[Type[Action[ActionInput]]]
+    options: List[Type[Action[ActionInput]]]
 
-    def merge(self, include: List[str]) -> List[Type[Action]]:
+    def merge(self, include: List[str]) -> List[Type[Action[ActionInput]]]:
         # Always include all defaults, and any options whose class name is in include
         logger.debug(
             f"Merging actions. Defaults: {[action.__name__ for action in self.defaults]}, Options: {[action.__name__ for action in self.options]}, Include: {include}"
