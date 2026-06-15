@@ -243,6 +243,7 @@ class LakehouseDataEntryMetadata(TypedDict):
     operation: LakehouseOperation
     resource_index: int
     extraction_timestamp: int
+    selector_hash: NotRequired[str | None]
 
 
 class LakehouseDataEntry(TypedDict):
