@@ -22,7 +22,7 @@ class ListRoleOptions(ListOptions["RoleResourceConfig"]):
     def from_resource_config(
         cls, resource_config: "RoleResourceConfig"
     ) -> "ListRoleOptions":
-        return cls(enrich_with_users=resource_config.selector.enrich_with_users)
+        return cls(enrich_with_users=resource_config.selector.include_role_users)
 
 
 class GetRoleOptions(GetOptions["RoleResourceConfig"]):
@@ -34,7 +34,7 @@ class GetRoleOptions(GetOptions["RoleResourceConfig"]):
     ) -> "GetRoleOptions":
         return cls(
             resource_id=resource_id,
-            enrich_with_users=resource_config.selector.enrich_with_users,
+            enrich_with_users=resource_config.selector.include_role_users,
         )
 
 

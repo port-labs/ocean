@@ -223,11 +223,11 @@ class UserResourceConfig(ResourceConfig):
 
 
 class RoleSelector(Selector):
-    enrich_with_users: bool = Field(
+    include_role_users: bool = Field(
         default=False,
-        alias="enrichWithUsers",
+        alias="includeRoleUsers",
         title="Enrich roles with users",
-        description="Enrich Datadog roles with all the users attached to the role.",
+        description="When enabled, each role is enriched with the list of users assigned to it, available under the `__users` property. Enabling this makes an additional API request per role, which may slow down the resync.",
     )
 
 
