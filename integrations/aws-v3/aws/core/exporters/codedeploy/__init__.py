@@ -1,11 +1,6 @@
-from aws.core.exporters.codedeploy.application import CodeDeployApplicationExporter
-from aws.core.exporters.codedeploy.application.models import (
+# mypy: implicit_reexport
+from aws.core.exporters.codedeploy.application import (
+    CodeDeployApplicationExporter,
     SingleCodeDeployApplicationRequest,
     PaginatedCodeDeployApplicationRequest,
 )
-
-__all__ = [
-    "CodeDeployApplicationExporter",
-    "SingleCodeDeployApplicationRequest",
-    "PaginatedCodeDeployApplicationRequest",
-]
