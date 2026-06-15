@@ -7,14 +7,14 @@ from loguru import logger
 
 
 @dataclass
-class BaseActionInput(TypedDict):
-    identifiers: list[Any]
+class BaseActionInput:
+    items: list[Any]
 
 
-type ActionInput[Bound: list[Any] | BaseActionInput] = Bound
+type ActionInputType = list[Any] | BaseActionInput
 
 
-class Action[ActionInput](ABC):
+class Action[ActionInput: ActionInputType](ABC):
 
     def __init__(self, client: AioBaseClient) -> None:
         """aiobotocore's concrete clients provide methods like `get_bucket_tagging`
@@ -25,15 +25,12 @@ class Action[ActionInput](ABC):
         self.client: Any = client
 
     async def execute(self, identifiers: ActionInput) -> List[Dict[str, Any]]:
-        count: str | int = (
-            len(identifiers)
-            if isinstance(identifiers, list)
-            else (
-                len(identifiers["identifiers"])
-                if isinstance(identifiers, dict) and "identifiers" in identifiers
-                else "unknown"
-            )
-        )
+        if isinstance(identifiers, list):
+            count = len(identifiers)
+        elif isinstance(identifiers, BaseActionInput):
+            count = len(identifiers.items)
+        else:
+            count = 'unknown'
 
         logger.info(f"Executing {self.__class__.__name__} on {count} resources")
         response = await self._execute(identifiers)
@@ -44,7 +41,7 @@ class Action[ActionInput](ABC):
     async def _execute(self, identifiers: ActionInput) -> List[Dict[str, Any]]: ...
 
 
-class ActionMap[ActionInput](Protocol):
+class ActionMap[ActionInput: ActionInputType](Protocol):
     defaults: List[Type[Action[ActionInput]]]
     options: List[Type[Action[ActionInput]]]
 
