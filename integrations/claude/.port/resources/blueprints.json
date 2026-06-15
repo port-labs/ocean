@@ -1,8 +1,348 @@
 [
   {
-    "identifier": "claude_usage_record",
-    "description": "Daily Claude AI API usage metrics",
-    "title": "Claude AI Usage Record",
+    "identifier": "claude_ai_user_activity",
+    "description": "Per-user Claude (chat) and Claude Code engagement metrics for a single day",
+    "title": "Claude AI User Activity",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "record_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Record Date (UTC)"
+        },
+        "user_id": {
+          "type": "string",
+          "title": "User ID"
+        },
+        "email": {
+          "type": "string",
+          "format": "user",
+          "title": "Email"
+        },
+        "chat_conversation_count": {
+          "type": "number",
+          "title": "Chat Conversations"
+        },
+        "chat_message_count": {
+          "type": "number",
+          "title": "Chat Messages"
+        },
+        "chat_thinking_message_count": {
+          "type": "number",
+          "title": "Chat Thinking Messages"
+        },
+        "chat_skills_used_count": {
+          "type": "number",
+          "title": "Chat Skills Used"
+        },
+        "chat_connectors_used_count": {
+          "type": "number",
+          "title": "Chat Connectors Used"
+        },
+        "code_session_count": {
+          "type": "number",
+          "title": "Claude Code Sessions"
+        },
+        "code_commit_count": {
+          "type": "number",
+          "title": "Claude Code Commits"
+        },
+        "code_pull_request_count": {
+          "type": "number",
+          "title": "Claude Code Pull Requests"
+        },
+        "lines_added": {
+          "type": "number",
+          "title": "Lines Added"
+        },
+        "lines_removed": {
+          "type": "number",
+          "title": "Lines Removed"
+        },
+        "edit_tool_accepted": {
+          "type": "number",
+          "title": "Edit Tool Accepted"
+        },
+        "edit_tool_rejected": {
+          "type": "number",
+          "title": "Edit Tool Rejected"
+        },
+        "write_tool_accepted": {
+          "type": "number",
+          "title": "Write Tool Accepted"
+        },
+        "write_tool_rejected": {
+          "type": "number",
+          "title": "Write Tool Rejected"
+        },
+        "web_search_count": {
+          "type": "number",
+          "title": "Web Search Count"
+        },
+        "chat_projects_used_count": {
+          "type": "number",
+          "title": "Chat Projects Used"
+        },
+        "chat_projects_created_count": {
+          "type": "number",
+          "title": "Chat Projects Created"
+        },
+        "chat_artifacts_created_count": {
+          "type": "number",
+          "title": "Chat Artifacts Created"
+        },
+        "chat_files_uploaded_count": {
+          "type": "number",
+          "title": "Chat Files Uploaded"
+        },
+        "chat_shared_conversations_viewed_count": {
+          "type": "number",
+          "title": "Chat Shared Conversations Viewed"
+        },
+        "multi_edit_tool_accepted": {
+          "type": "number",
+          "title": "Multi-Edit Tool Accepted"
+        },
+        "multi_edit_tool_rejected": {
+          "type": "number",
+          "title": "Multi-Edit Tool Rejected"
+        },
+        "notebook_edit_tool_accepted": {
+          "type": "number",
+          "title": "Notebook Edit Tool Accepted"
+        },
+        "notebook_edit_tool_rejected": {
+          "type": "number",
+          "title": "Notebook Edit Tool Rejected"
+        },
+        "office_session_count": {
+          "type": "number",
+          "title": "Office Sessions (Excel/PPT/Word/Outlook)"
+        },
+        "office_message_count": {
+          "type": "number",
+          "title": "Office Messages"
+        },
+        "cowork_session_count": {
+          "type": "number",
+          "title": "Cowork Sessions"
+        },
+        "cowork_message_count": {
+          "type": "number",
+          "title": "Cowork Messages"
+        },
+        "design_session_count": {
+          "type": "number",
+          "title": "Design Sessions"
+        },
+        "design_message_count": {
+          "type": "number",
+          "title": "Design Messages"
+        }
+      },
+      "required": [
+        "record_date"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "total_lines_changed": {
+        "title": "Total Lines Changed",
+        "calculation": ".properties.lines_added + .properties.lines_removed",
+        "type": "number"
+      },
+      "edit_acceptance_rate": {
+        "title": "Edit Acceptance Rate",
+        "calculation": "if (.properties.edit_tool_accepted + .properties.edit_tool_rejected) > 0 then (.properties.edit_tool_accepted / (.properties.edit_tool_accepted + .properties.edit_tool_rejected)) * 100 else 0 end",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "claude_ai_user_usage",
+    "description": "Per-user token usage across a date range",
+    "title": "Claude AI User Usage",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "record_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Range Start (UTC)"
+        },
+        "range_end": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Range End (UTC)"
+        },
+        "user_id": {
+          "type": "string",
+          "title": "User ID"
+        },
+        "user_name": {
+          "type": "string",
+          "title": "User Name"
+        },
+        "email": {
+          "type": "string",
+          "format": "user",
+          "title": "Email"
+        },
+        "deleted": {
+          "type": "boolean",
+          "title": "Deleted User"
+        },
+        "product": {
+          "type": "string",
+          "title": "Product"
+        },
+        "model": {
+          "type": "string",
+          "title": "Model"
+        },
+        "context_window": {
+          "type": "string",
+          "title": "Context Window"
+        },
+        "inference_geo": {
+          "type": "string",
+          "title": "Inference Geo"
+        },
+        "speed": {
+          "type": "string",
+          "title": "Speed"
+        },
+        "uncached_input_tokens": {
+          "type": "number",
+          "title": "Uncached Input Tokens"
+        },
+        "cache_creation_1h_tokens": {
+          "type": "number",
+          "title": "Cache Creation (1hr) Tokens"
+        },
+        "cache_creation_5m_tokens": {
+          "type": "number",
+          "title": "Cache Creation (5min) Tokens"
+        },
+        "cache_read_input_tokens": {
+          "type": "number",
+          "title": "Cache Read Input Tokens"
+        },
+        "output_tokens": {
+          "type": "number",
+          "title": "Output Tokens"
+        },
+        "total_tokens": {
+          "type": "number",
+          "title": "Total Tokens"
+        },
+        "web_search_requests": {
+          "type": "number",
+          "title": "Web Search Requests"
+        },
+        "requests": {
+          "type": "number",
+          "title": "Requests"
+        }
+      },
+      "required": [
+        "record_date"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "total_input_tokens": {
+        "title": "Total Input Tokens",
+        "description": "Sum of uncached input and cache read tokens",
+        "calculation": ".properties.uncached_input_tokens + .properties.cache_read_input_tokens",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "claude_ai_user_cost",
+    "description": "Per-user USD cost across a date range",
+    "title": "Claude AI User Cost",
+    "icon": "Claude",
+    "schema": {
+      "properties": {
+        "record_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Range Start (UTC)"
+        },
+        "range_end": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Range End (UTC)"
+        },
+        "user_id": {
+          "type": "string",
+          "title": "User ID"
+        },
+        "user_name": {
+          "type": "string",
+          "title": "User Name"
+        },
+        "email": {
+          "type": "string",
+          "format": "user",
+          "title": "Email"
+        },
+        "deleted": {
+          "type": "boolean",
+          "title": "Deleted User"
+        },
+        "product": {
+          "type": "string",
+          "title": "Product"
+        },
+        "model": {
+          "type": "string",
+          "title": "Model"
+        },
+        "currency": {
+          "type": "string",
+          "title": "Currency"
+        },
+        "amount": {
+          "type": "number",
+          "title": "Discounted Amount"
+        },
+        "list_amount": {
+          "type": "number",
+          "title": "List Amount"
+        },
+        "requests": {
+          "type": "number",
+          "title": "Requests"
+        }
+      },
+      "required": [
+        "record_date"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "discount_amount": {
+        "title": "Discount Amount",
+        "description": "List price minus discounted price",
+        "calculation": ".properties.list_amount - .properties.amount",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "claude_platform_usage_record",
+    "description": "Daily Claude Platform API usage metrics",
+    "title": "Claude Platform Usage Record",
     "icon": "Claude",
     "schema": {
       "properties": {
@@ -59,9 +399,9 @@
     "relations": {}
   },
   {
-    "identifier": "claude_cost_record",
-    "description": "Daily cost tracking for Claude API usage",
-    "title": "Claude AI Cost Record",
+    "identifier": "claude_platform_cost_record",
+    "description": "Daily cost tracking for Claude Platform API usage",
+    "title": "Claude Platform Cost Record",
     "icon": "Claude",
     "schema": {
       "properties": {
@@ -89,9 +429,9 @@
     "relations": {}
   },
   {
-    "identifier": "claude_workspace_usage",
+    "identifier": "claude_platform_workspace_usage",
     "description": "Usage metrics broken down by workspace",
-    "title": "Claude AI Workspace Usage",
+    "title": "Claude Platform Workspace Usage",
     "icon": "Claude",
     "schema": {
       "properties": {
@@ -146,9 +486,9 @@
     "relations": {}
   },
   {
-    "identifier": "claude_model_usage",
+    "identifier": "claude_platform_model_usage",
     "description": "Usage metrics broken down by Claude model type",
-    "title": "Claude AI Model Usage",
+    "title": "Claude Platform Model Usage",
     "icon": "Claude",
     "schema": {
       "properties": {
@@ -203,9 +543,9 @@
     "relations": {}
   },
   {
-    "identifier": "claude_code_analytics",
+    "identifier": "claude_platform_code_analytics",
     "description": "Daily Claude Code usage metrics including sessions, lines of code, commits, and PRs",
-    "title": "Claude Code Analytics",
+    "title": "Claude Platform Code Analytics",
     "icon": "Claude",
     "schema": {
       "properties": {

@@ -2,25 +2,26 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from core.exporters.abstract_exporter import AbstractClaudeExporter
-from core.options import ListClaudeUsageReportOptions
+from core.options import ListPlatformCostReportOptions
 
 
-class ClaudeUsageExporter(AbstractClaudeExporter):
+class ClaudePlatformCostExporter(AbstractClaudeExporter):
+    """Per-day spend from the Claude Platform cost report."""
+
+    ENDPOINT = "/v1/organizations/cost_report"
+
     async def get_paginated_resources(
-        self, options: ListClaudeUsageReportOptions
+        self, options: ListPlatformCostReportOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params = {
             "starting_at": options["starting_at"],
             "limit": options["limit"],
         }
+
         bucket_width = options.get("bucket_width")
         if bucket_width:
             params["bucket_width"] = bucket_width
 
-        group_by = options.get("group_by", [])
-        if group_by:
-            params["group_by[]"] = group_by
-
-        async for batch in self.client.get_usage_report_messages(params):
-            logger.debug(f"Fetched usage batch with {len(batch)} records")
+        async for batch in self.client.send_paginated_request(self.ENDPOINT, params):
+            logger.debug(f"Fetched platform cost batch with {len(batch)} records")
             yield batch
