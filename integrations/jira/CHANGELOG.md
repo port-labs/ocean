@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.42 (2026-06-15)
+
+
+### Improvements
+
+- Added support for the `component` kind, enabling syncing of project components into Port with issue counts, lead assignments, and assignee routing configuration.
+
+
+## 0.7.41 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 0.7.40 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.7.39 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
 ## 0.7.38 (2026-06-07)
 
 

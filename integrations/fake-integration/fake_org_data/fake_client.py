@@ -8,7 +8,7 @@ from .types import FakePerson
 from .static import FAKE_DEPARTMENTS
 
 
-API_URL = "http://localhost:8000/integration/department"
+API_URL = "http://localhost:8000/integration"
 USER_AGENT = "Ocean Framework Fake Integration (https://github.com/port-labs/ocean)"
 
 
@@ -66,10 +66,23 @@ def get_config() -> Tuple[List[int], int, int]:
     return batches, entity_kb_size_factor, latency_ms
 
 
+async def _fetch_integration_results(path: str) -> List[Dict[Any, Any]]:
+    url = f"{API_URL}{path}"
+    response = await http_async_client.get(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": USER_AGENT,
+        },
+    )
+    response.raise_for_status()
+    return response.json()["results"]
+
+
 async def get_fake_persons_batch(
     department_id: str, limit: int, entity_kb_size: int, latency_ms: int
 ) -> List[Dict[Any, Any]]:
-    url = f"{API_URL}/{department_id}/employees?limit={limit}&entity_kb_size={entity_kb_size}&latency={latency_ms}"
+    url = f"{API_URL}/department/{department_id}/employees?limit={limit}&entity_kb_size={entity_kb_size}&latency={latency_ms}"
     response = await http_async_client.get(
         url,
         headers={
@@ -124,3 +137,15 @@ async def get_departments() -> AsyncGenerator[List[Dict[Any, Any]], None]:
     )
 
     yield [department.dict() for department in departments]
+
+
+async def get_offices() -> AsyncGenerator[List[Dict[Any, Any]], None]:
+    yield await _fetch_integration_results("/offices")
+
+
+async def get_teams() -> AsyncGenerator[List[Dict[Any, Any]], None]:
+    yield await _fetch_integration_results("/teams")
+
+
+async def get_projects() -> AsyncGenerator[List[Dict[Any, Any]], None]:
+    yield await _fetch_integration_results("/projects")

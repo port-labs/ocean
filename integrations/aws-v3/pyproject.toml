@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "aws-v3"
-version = "2.2.41-beta"
+version = "2.5.2-beta"
 description = "AWS"
 authors = ["Shariff Mohammed <mohammed.s@getport.io>", "Michael Armah <mikeyarmah@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.43.15", extras = ["cli"]}
+port_ocean = {version = "^0.43.18", extras = ["cli"]}
 aiobotocore = "^2.25.0"
 boto3-stubs = {extras = ["sts"], version = "^1.39.3"}
 types-aiobotocore = {extras = ["sts"], version = "^2.25.0"}
@@ -93,6 +93,11 @@ disallow_untyped_defs = true
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
 target-version = "py312"
+
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore unused imports in __init__ files
+"**/__init__.py" = ["F401"]
 
 
 [tool.pydantic-mypy]
