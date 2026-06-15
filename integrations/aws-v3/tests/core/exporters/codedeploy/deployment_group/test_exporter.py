@@ -2,9 +2,6 @@ from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch, call
 import pytest
 
-from aws.core.exporters.codedeploy.deployment_group.actions import (
-    DeploymentGroupActionInput,
-)
 from aws.core.exporters.codedeploy.deployment_group.exporter import (
     CodeDeployDeploymentGroupExporter,
 )
@@ -12,6 +9,8 @@ from aws.core.exporters.codedeploy.deployment_group.models import (
     SingleCodeDeployDeploymentGroupRequest,
     PaginatedCodeDeployDeploymentGroupRequest,
 )
+
+patch_prefix = "aws.core.exporters.codedeploy.deployment_group.exporter"
 
 
 @pytest.fixture
@@ -39,11 +38,9 @@ def paginated_deployment_group_options() -> PaginatedCodeDeployDeploymentGroupRe
 
 
 @pytest.mark.asyncio
-@patch(
-    "aws.core.exporters.codedeploy.deployment_group.exporter.DeploymentGroupActionInput"
-)
-@patch("aws.core.exporters.codedeploy.deployment_group.exporter.AioBaseClientProxy")
-@patch("aws.core.exporters.codedeploy.deployment_group.exporter.ResourceInspector")
+@patch(f"{patch_prefix}.DeploymentGroupActionInput")
+@patch(f"{patch_prefix}.AioBaseClientProxy")
+@patch(f"{patch_prefix}.ResourceInspector")
 async def test_get_resource_success(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
@@ -66,7 +63,7 @@ async def test_get_resource_success(
     )
     mock_input.assert_called_once_with(
         app_name=single_deployment_group_options.application_name,
-        groups=[single_deployment_group_options.deployment_group_name],
+        items=[single_deployment_group_options.deployment_group_name],
         region=single_deployment_group_options.region,
         account_id=single_deployment_group_options.account_id,
     )
@@ -81,11 +78,9 @@ async def test_get_resource_success(
 
 
 @pytest.mark.asyncio
-@patch(
-    "aws.core.exporters.codedeploy.deployment_group.exporter.DeploymentGroupActionInput"
-)
-@patch("aws.core.exporters.codedeploy.deployment_group.exporter.AioBaseClientProxy")
-@patch("aws.core.exporters.codedeploy.deployment_group.exporter.ResourceInspector")
+@patch(f"{patch_prefix}.DeploymentGroupActionInput")
+@patch(f"{patch_prefix}.AioBaseClientProxy")
+@patch(f"{patch_prefix}.ResourceInspector")
 async def test_get_resource_empty_inspection_returns_empty_dict(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
@@ -117,11 +112,9 @@ async def test_get_resource_empty_inspection_returns_empty_dict(
 
 
 @pytest.mark.asyncio
-@patch(
-    "aws.core.exporters.codedeploy.deployment_group.exporter.DeploymentGroupActionInput"
-)
-@patch("aws.core.exporters.codedeploy.deployment_group.exporter.AioBaseClientProxy")
-@patch("aws.core.exporters.codedeploy.deployment_group.exporter.ResourceInspector")
+@patch(f"{patch_prefix}.DeploymentGroupActionInput")
+@patch(f"{patch_prefix}.AioBaseClientProxy")
+@patch(f"{patch_prefix}.ResourceInspector")
 async def test_get_paginated_resources_success(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
@@ -198,13 +191,13 @@ async def test_get_paginated_resources_success(
         [
             call(
                 app_name="app-a",
-                groups=["group-a1", "group-a2"],
+                items=["group-a1", "group-a2"],
                 region=paginated_deployment_group_options.region,
                 account_id=paginated_deployment_group_options.account_id,
             ),
             call(
                 app_name="app-b",
-                groups=["group-b1"],
+                items=["group-b1"],
                 region=paginated_deployment_group_options.region,
                 account_id=paginated_deployment_group_options.account_id,
             ),
@@ -233,8 +226,8 @@ async def test_get_paginated_resources_success(
 
 
 @pytest.mark.asyncio
-@patch("aws.core.exporters.codedeploy.deployment_group.exporter.AioBaseClientProxy")
-@patch("aws.core.exporters.codedeploy.deployment_group.exporter.ResourceInspector")
+@patch(f"{patch_prefix}.AioBaseClientProxy")
+@patch(f"{patch_prefix}.ResourceInspector")
 async def test_get_paginated_resources_empty(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
@@ -256,7 +249,11 @@ async def test_get_paginated_resources_empty(
             yield []
 
     def get_paginator(operation_name: str, *args: Any) -> Any:
-        return MockAppPaginator() if operation_name == 'list_applications' else MockGroupPaginator()
+        return (
+            MockAppPaginator()
+            if operation_name == "list_applications"
+            else MockGroupPaginator()
+        )
 
     mock_proxy.get_paginator = MagicMock(side_effect=get_paginator)
 
@@ -279,8 +276,8 @@ async def test_get_paginated_resources_empty(
 
 
 @pytest.mark.asyncio
-@patch("aws.core.exporters.codedeploy.deployment_group.exporter.AioBaseClientProxy")
-@patch("aws.core.exporters.codedeploy.deployment_group.exporter.ResourceInspector")
+@patch(f"{patch_prefix}.AioBaseClientProxy")
+@patch(f"{patch_prefix}.ResourceInspector")
 async def test_get_paginated_apps_empty(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
@@ -299,10 +296,14 @@ async def test_get_paginated_apps_empty(
         async def paginate(
             self, applicationName: str
         ) -> AsyncGenerator[list[str], None]:
-            yield ['random-group']
+            yield ["random-group"]
 
     def get_paginator(operation_name: str, *args: Any) -> Any:
-        return MockAppPaginator() if operation_name == 'list_applications' else MockGroupPaginator()
+        return (
+            MockAppPaginator()
+            if operation_name == "list_applications"
+            else MockGroupPaginator()
+        )
 
     mock_proxy.get_paginator = MagicMock(side_effect=get_paginator)
 

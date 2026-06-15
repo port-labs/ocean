@@ -22,10 +22,11 @@ class TestGetCodeDeployApplicationDetailsAction:
         self, action: GetCodeDeployApplicationDetailsAction
     ) -> None:
         # Arrange
-        resources: CodeDeployApplicationActionInput = {
-            "applications": ["a", "b"],
-            "extras": {"region": "region", "account_id": "account_id"},
-        }
+        resources = CodeDeployApplicationActionInput(
+            items=["a", "b"],
+            region="region",
+            account_id="account_id",
+        )
         mock_response_one = {"applicationName": "b"}
         mock_response_two = {"applicationName": "a"}
         action.client.batch_get_applications.return_value = {
@@ -38,7 +39,7 @@ class TestGetCodeDeployApplicationDetailsAction:
         # Assert
         assert result == [mock_response_two, mock_response_one]
         action.client.batch_get_applications.assert_called_once_with(
-            applicationNames=resources["applications"]
+            applicationNames=resources.items
         )
 
     @pytest.mark.asyncio
@@ -46,10 +47,11 @@ class TestGetCodeDeployApplicationDetailsAction:
         self, action: GetCodeDeployApplicationDetailsAction
     ) -> None:
         # Arrange
-        resources: CodeDeployApplicationActionInput = {
-            "applications": ["a", "b"],
-            "extras": {"region": "region", "account_id": "account_id"},
-        }
+        resources = CodeDeployApplicationActionInput(
+            items=["a", "b"],
+            region="region",
+            account_id="account_id",
+        )
         action.client.batch_get_applications.return_value = {}
 
         # Act
@@ -58,7 +60,7 @@ class TestGetCodeDeployApplicationDetailsAction:
         # Assert
         assert result == []
         action.client.batch_get_applications.assert_called_once_with(
-            applicationNames=resources["applications"]
+            applicationNames=resources.items
         )
 
 
@@ -73,16 +75,20 @@ class TestGetCodeDeployApplicationTagsAction:
         self, action: GetCodeDeployApplicationTagsAction
     ) -> None:
         # Arrange
-        resources: CodeDeployApplicationActionInput = {
-            "applications": ["a", "b", "c"],
-            "extras": {"region": "region", "account_id": "account_id"},
-        }
+        resources = CodeDeployApplicationActionInput(
+            items=["a", "b", "c"],
+            region="region",
+            account_id="account_id",
+        )
+
+        tag_one = {"Tags": [{"Key": "Environment", "Value": "production"}]}
+        tag_two = {"Tags": [{"Key": "Environment", "Value": "staging"}]}
 
         def mock_list_tags(ResourceArn: str, **kwargs: Any) -> dict[str, Any]:
-            if ResourceArn.endswith(resources["applications"][0]):
-                return {"Tags": [{"Key": "Environment", "Value": "production"}]}
-            elif ResourceArn.endswith(resources["applications"][1]):
-                return {"Tags": [{"Key": "Environment", "Value": "staging"}]}
+            if ResourceArn.endswith(resources.items[0]):
+                return tag_one
+            elif ResourceArn.endswith(resources.items[1]):
+                return tag_two
             raise Exception
 
         action.client.list_tags_for_resource.side_effect = mock_list_tags
@@ -91,17 +97,13 @@ class TestGetCodeDeployApplicationTagsAction:
         result = await action._execute(resources)
 
         # Assert
-        assert result == [
-            {"Tags": [{"Key": "Environment", "Value": "production"}]},
-            {"Tags": [{"Key": "Environment", "Value": "staging"}]},
-            {},
-        ]
+        assert result == [tag_one, tag_two, {}]
 
         action.client.list_tags_for_resource.assert_has_calls(
             calls=[
                 call(
-                    ResourceArn=f"arn:aws:codedeploy:{resources['extras']['region']}:{resources['extras']['account_id']}:application:{name}"
+                    ResourceArn=f"arn:aws:codedeploy:{resources.region}:{resources.account_id}:application:{name}"
                 )
-                for name in resources["applications"]
+                for name in resources.items
             ]
         )
