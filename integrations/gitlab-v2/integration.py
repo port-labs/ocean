@@ -594,8 +594,10 @@ class GitlabDeploymentQueryParams(BaseModel):
         title="Updated After",
         description=(
             "Return deployments updated after this datetime (ISO 8601 with timezone, "
-            "e.g. 2024-01-15T10:00:00Z). Recommended for incremental resyncs to avoid "
-            "fetching the full history every cycle."
+            "e.g. 2024-01-15T10:00:00Z). "
+            "Without this filter, every resync walks the full deployment history for all "
+            "projects ordered by id; strongly recommended for production instances. "
+            "Applies to resync only; live webhook events are not filtered by this field."
         ),
         regex=ISO_8601_DATETIME_REGEX,
     )
@@ -605,7 +607,8 @@ class GitlabDeploymentQueryParams(BaseModel):
         title="Updated Before",
         description=(
             "Return deployments updated before this datetime (ISO 8601 with timezone, "
-            "e.g. 2024-06-01T00:00:00Z)."
+            "e.g. 2024-06-01T00:00:00Z). "
+            "Applies to resync only; live webhook events are not filtered by this field."
         ),
         regex=ISO_8601_DATETIME_REGEX,
     )
