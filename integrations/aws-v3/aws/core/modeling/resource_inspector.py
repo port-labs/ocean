@@ -7,7 +7,9 @@ from aws.core.modeling.resource_models import ResourceModel
 from collections import defaultdict
 
 
-class ResourceInspector[ResourceModelT: ResourceModel[Any], ActionInput: ActionInputType]:
+class ResourceInspector[
+    ResourceModelT: ResourceModel[Any], ActionInput: ActionInputType
+]:
     """
     Inspects AWS resources by executing a set of actions and aggregating their results
     into a strongly-typed resource model.

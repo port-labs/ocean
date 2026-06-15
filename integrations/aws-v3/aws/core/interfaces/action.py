@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Any, List, TypedDict
+from typing import Dict, Any, List
 from abc import ABC, abstractmethod
 from aiobotocore.client import AioBaseClient
 from typing import Type, Protocol
@@ -30,7 +30,7 @@ class Action[ActionInput: ActionInputType](ABC):
         elif isinstance(identifiers, BaseActionInput):
             count = len(identifiers.items)
         else:
-            count = 'unknown'
+            count = "unknown"
 
         logger.info(f"Executing {self.__class__.__name__} on {count} resources")
         response = await self._execute(identifiers)
