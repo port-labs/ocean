@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import multiprocessing
 import os
 import re
@@ -56,6 +57,27 @@ def build_lakehouse_data_entry(
     if environment_data is not None:
         entry["environment_data"] = environment_data
     return entry
+
+
+def selector_query_from_resource(resource: Any) -> str | None:
+    query = getattr(getattr(resource, "selector", None), "query", None)
+    if not isinstance(query, str):
+        return None
+
+    trimmed = query.strip()
+    return trimmed if trimmed else None
+
+
+def selector_hash_from_query(query: str) -> str:
+    return hashlib.sha256(query.encode("utf-8")).hexdigest()
+
+
+def selector_hash_from_resource(resource: Any) -> str | None:
+    query = selector_query_from_resource(resource)
+    if not query:
+        return None
+
+    return selector_hash_from_query(query)
 
 
 async def is_lakehouse_data_enabled() -> bool:
