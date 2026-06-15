@@ -9,6 +9,8 @@ from aws.core.exporters.codedeploy.application.models import (
     PaginatedCodeDeployApplicationRequest,
 )
 
+patch_prefix = "aws.core.exporters.codedeploy.application.exporter."
+
 
 @pytest.fixture
 def exporter() -> CodeDeployApplicationExporter:
@@ -34,11 +36,13 @@ def paginated_application_options() -> PaginatedCodeDeployApplicationRequest:
 
 
 @pytest.mark.asyncio
-@patch("aws.core.exporters.codedeploy.application.exporter.AioBaseClientProxy")
-@patch("aws.core.exporters.codedeploy.application.exporter.ResourceInspector")
+@patch(f"{patch_prefix}CodeDeployApplicationActionInput")
+@patch(f"{patch_prefix}AioBaseClientProxy")
+@patch(f"{patch_prefix}ResourceInspector")
 async def test_get_resource_success(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
+    mock_input: MagicMock,
     exporter: CodeDeployApplicationExporter,
     single_application_options: SingleCodeDeployApplicationRequest,
 ) -> None:
@@ -55,26 +59,24 @@ async def test_get_resource_success(
     mock_proxy_class.assert_called_once_with(
         exporter.session, single_application_options.region, "codedeploy"
     )
+    mock_input.assert_called_once_with(
+        items=[single_application_options.application_name],
+        region=single_application_options.region,
+        account_id=single_application_options.account_id,
+    )
     mock_inspector.inspect.assert_called_once_with(
-        [
-            {
-                "applications": [single_application_options.application_name],
-                "extras": {
-                    "region": single_application_options.region,
-                    "account_id": single_application_options.account_id,
-                },
-            }
-        ],
-        single_application_options.include,
+        mock_input.return_value, single_application_options.include
     )
 
 
 @pytest.mark.asyncio
-@patch("aws.core.exporters.codedeploy.application.exporter.AioBaseClientProxy")
-@patch("aws.core.exporters.codedeploy.application.exporter.ResourceInspector")
+@patch(f"{patch_prefix}CodeDeployApplicationActionInput")
+@patch(f"{patch_prefix}AioBaseClientProxy")
+@patch(f"{patch_prefix}ResourceInspector")
 async def test_get_resource_empty_inspection_returns_empty_dict(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
+    mock_input: MagicMock,
     exporter: CodeDeployApplicationExporter,
     single_application_options: SingleCodeDeployApplicationRequest,
 ) -> None:
@@ -91,26 +93,25 @@ async def test_get_resource_empty_inspection_returns_empty_dict(
     mock_proxy_class.assert_called_once_with(
         exporter.session, single_application_options.region, "codedeploy"
     )
+    mock_input.assert_called_once_with(
+        items=[single_application_options.application_name],
+        region=single_application_options.region,
+        account_id=single_application_options.account_id,
+    )
     mock_inspector.inspect.assert_called_once_with(
-        [
-            {
-                "applications": [single_application_options.application_name],
-                "extras": {
-                    "region": single_application_options.region,
-                    "account_id": single_application_options.account_id,
-                },
-            }
-        ],
+        mock_input.return_value,
         single_application_options.include,
     )
 
 
 @pytest.mark.asyncio
-@patch("aws.core.exporters.codedeploy.application.exporter.AioBaseClientProxy")
-@patch("aws.core.exporters.codedeploy.application.exporter.ResourceInspector")
+@patch(f"{patch_prefix}CodeDeployApplicationActionInput")
+@patch(f"{patch_prefix}AioBaseClientProxy")
+@patch(f"{patch_prefix}ResourceInspector")
 async def test_get_paginated_resources_success(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
+    mock_input: MagicMock,
     exporter: CodeDeployApplicationExporter,
     paginated_application_options: PaginatedCodeDeployApplicationRequest,
 ) -> None:
@@ -153,16 +154,24 @@ async def test_get_paginated_resources_success(
     mock_proxy.get_paginator.assert_called_once_with(
         "list_applications", "applications"
     )
+    mock_input.assert_has_calls(
+        [
+            call(
+                items=["app-a", "app-b"],
+                region=paginated_application_options.region,
+                account_id=paginated_application_options.account_id,
+            ),
+            call(
+                items=["app-c"],
+                region=paginated_application_options.region,
+                account_id=paginated_application_options.account_id,
+            ),
+        ]
+    )
     mock_inspector.inspect.assert_has_calls(
         [
             call(
-                {
-                    "applications": ["app-a", "app-b"],
-                    "extras": {
-                        "region": paginated_application_options.region,
-                        "account_id": paginated_application_options.account_id,
-                    },
-                },
+                mock_input.return_value,
                 paginated_application_options.include,
                 extra_context={
                     "AccountId": paginated_application_options.account_id,
@@ -170,13 +179,7 @@ async def test_get_paginated_resources_success(
                 },
             ),
             call(
-                {
-                    "applications": ["app-c"],
-                    "extras": {
-                        "region": paginated_application_options.region,
-                        "account_id": paginated_application_options.account_id,
-                    },
-                },
+                mock_input.return_value,
                 paginated_application_options.include,
                 extra_context={
                     "AccountId": paginated_application_options.account_id,
@@ -188,11 +191,13 @@ async def test_get_paginated_resources_success(
 
 
 @pytest.mark.asyncio
-@patch("aws.core.exporters.codedeploy.application.exporter.AioBaseClientProxy")
-@patch("aws.core.exporters.codedeploy.application.exporter.ResourceInspector")
+@patch(f"{patch_prefix}CodeDeployApplicationActionInput")
+@patch(f"{patch_prefix}AioBaseClientProxy")
+@patch(f"{patch_prefix}ResourceInspector")
 async def test_get_paginated_resources_empty(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
+    mock_input: MagicMock,
     exporter: CodeDeployApplicationExporter,
     paginated_application_options: PaginatedCodeDeployApplicationRequest,
 ) -> None:
@@ -217,4 +222,5 @@ async def test_get_paginated_resources_empty(
     mock_proxy.get_paginator.assert_called_once_with(
         "list_applications", "applications"
     )
+    mock_input.assert_not_called()
     mock_inspector_class.return_value.inspect.assert_not_called()
