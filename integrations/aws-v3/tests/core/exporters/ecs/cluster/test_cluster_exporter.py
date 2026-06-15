@@ -83,9 +83,7 @@ class TestEcsClusterExporter:
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ecs")
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
-        mock_inspector.inspect.assert_called_once_with(
-            [{"clusterName": "test-cluster"}], []
-        )
+        mock_inspector.inspect.assert_called_once_with(["test-cluster"], [])
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
@@ -135,9 +133,7 @@ class TestEcsClusterExporter:
         mock_proxy_class.assert_called_once_with(exporter.session, "eu-west-1", "ecs")
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
-        mock_inspector.inspect.assert_called_once_with(
-            [{"clusterName": "prod-cluster"}], []
-        )
+        mock_inspector.inspect.assert_called_once_with(["prod-cluster"], [])
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
@@ -385,9 +381,7 @@ class TestEcsClusterExporter:
         assert result["Type"] == "AWS::ECS::Cluster"
 
         # Verify the inspector was called correctly
-        mock_inspector.inspect.assert_called_once_with(
-            [{"clusterName": "test-cluster"}], []
-        )
+        mock_inspector.inspect.assert_called_once_with(["test-cluster"], [])
 
         # Verify the context manager was used correctly (__aenter__ and __aexit__ were called)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ecs")
