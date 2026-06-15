@@ -11,7 +11,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class CodeBuildProjectExporter(IResourceExporter):
+class CodeBuildProjectExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "codebuild"
     _model_cls: Type[CodeBuildProject] = CodeBuildProject
     _actions_map: Type[CodeBuildProjectActionsMap] = CodeBuildProjectActionsMap
