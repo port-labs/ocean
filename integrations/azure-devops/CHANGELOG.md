@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.17 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.9.16 (2026-06-10)
+
+
+### Features
+
+- Added a new `area-path` kind.
+
+### Improvements
+
+- Added an `includeAreaPaths` option to the `team` kind.
+
+
 ## 0.9.15 (2026-06-10)
 
 

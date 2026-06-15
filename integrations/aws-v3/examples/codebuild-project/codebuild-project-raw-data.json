@@ -1,0 +1,139 @@
+{
+  "Type": "AWS::CodeBuild::Project",
+  "Properties": {
+    "Name": "sample-codebuild-project",
+    "Arn": "arn:aws:codebuild:us-east-1:123456789012:project/sample-codebuild-project",
+    "Description": "Sample CodeBuild project for building and testing applications",
+    "Source": {
+      "type": "GITHUB",
+      "location": "https://github.com/example/sample-app.git",
+      "gitCloneDepth": 1,
+      "buildspec": "buildspec.yml",
+      "reportBuildStatus": true,
+      "insecureSsl": false
+    },
+    "SecondarySources": [],
+    "SourceVersion": "main",
+    "SecondarySourceVersions": [],
+    "Artifacts": {
+      "type": "S3",
+      "location": "sample-build-artifacts-bucket",
+      "path": "artifacts/",
+      "namespaceType": "BUILD_ID",
+      "name": "sample-app-artifacts",
+      "packaging": "ZIP",
+      "overrideArtifactName": false,
+      "encryptionDisabled": false
+    },
+    "SecondaryArtifacts": [],
+    "Cache": {
+      "type": "S3",
+      "location": "sample-build-cache-bucket/cache"
+    },
+    "Environment": {
+      "type": "LINUX_CONTAINER",
+      "image": "aws/codebuild/amazonlinux2-x86_64-standard:3.0",
+      "computeType": "BUILD_GENERAL1_MEDIUM",
+      "environmentVariables": [
+        {
+          "name": "NODE_ENV",
+          "value": "production",
+          "type": "PLAINTEXT"
+        },
+        {
+          "name": "API_KEY",
+          "value": "sample-api-key-parameter",
+          "type": "PARAMETER_STORE"
+        }
+      ],
+      "privilegedMode": false,
+      "imagePullCredentialsType": "CODEBUILD"
+    },
+    "ServiceRole": "arn:aws:iam::123456789012:role/service-role/codebuild-sample-service-role",
+    "TimeoutInMinutes": 60,
+    "QueuedTimeoutInMinutes": 480,
+    "EncryptionKey": "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012",
+    "Tags": [
+      {
+        "key": "Environment",
+        "value": "Production"
+      },
+      {
+        "key": "Team",
+        "value": "DevOps"
+      },
+      {
+        "key": "Project",
+        "value": "SampleApp"
+      }
+    ],
+    "VpcConfig": {
+      "vpcId": "vpc-12345678",
+      "subnets": [
+        "subnet-12345678",
+        "subnet-87654321"
+      ],
+      "securityGroupIds": [
+        "sg-12345678"
+      ]
+    },
+    "Badge": {
+      "badgeEnabled": true,
+      "badgeRequestUrl": "https://codebuild.us-east-1.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiSampleEncryptedData"
+    },
+    "LogsConfig": {
+      "cloudWatchLogs": {
+        "status": "ENABLED",
+        "groupName": "/aws/codebuild/sample-codebuild-project",
+        "streamName": "sample-stream"
+      },
+      "s3Logs": {
+        "status": "ENABLED",
+        "location": "sample-build-logs-bucket/logs"
+      }
+    },
+    "FileSystemLocations": [],
+    "BuildBatchConfig": {
+      "serviceRole": "arn:aws:iam::123456789012:role/service-role/codebuild-sample-batch-service-role",
+      "combineArtifacts": false,
+      "restrictions": {
+        "maximumBuildsAllowed": 10,
+        "computeTypesAllowed": [
+          "BUILD_GENERAL1_SMALL",
+          "BUILD_GENERAL1_MEDIUM"
+        ]
+      },
+      "timeoutInMins": 120
+    },
+    "ConcurrentBuildLimit": 5,
+    "ProjectVisibility": "PRIVATE",
+    "PublicReadOnlyAccess": false,
+    "Created": "2023-01-15T10:30:00.000Z",
+    "LastModified": "2023-06-20T14:45:00.000Z",
+    "Webhook": {
+      "url": "https://codebuild.us-east-1.amazonaws.com/webhooks?12345",
+      "payloadUrl": "https://codebuild.us-east-1.amazonaws.com/webhooks?12345",
+      "secret": "webhook-secret-token",
+      "branchFilter": "main",
+      "filterGroups": [
+        [
+          {
+            "type": "EVENT",
+            "pattern": "PUSH"
+          },
+          {
+            "type": "HEAD_REF",
+            "pattern": "refs/heads/main"
+          }
+        ]
+      ],
+      "lastModifiedSecret": "2023-01-15T10:30:00.000Z"
+    }
+  },
+  "__Region": "us-east-1",
+  "__AccountId": "123456789012",
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}

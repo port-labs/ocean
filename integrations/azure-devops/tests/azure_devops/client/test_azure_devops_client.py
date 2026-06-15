@@ -10,7 +10,12 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from azure_devops.client.auth import PatAuthProvider
-from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.client.azure_devops_client import (
+    API_PARAMS,
+    AzureDevopsClient,
+    _flatten_area_path_tree,
+    _normalize_area_path,
+)
 from azure_devops.client.file_processing import PathDescriptor
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
@@ -5355,3 +5360,234 @@ async def test_get_test_runs_by_build_empty(
 
                 assert len(result) == 0
                 mock_enrich.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Area paths (Classification Nodes) and team field values
+# ---------------------------------------------------------------------------
+
+MOCK_AREA_TREE: Dict[str, Any] = {
+    "id": 1,
+    "identifier": "root-guid",
+    "name": "My Project",
+    "structureType": "area",
+    "hasChildren": True,
+    "path": "\\My Project\\Area",
+    "children": [
+        {
+            "id": 2,
+            "identifier": "backend-guid",
+            "name": "Backend",
+            "structureType": "area",
+            "hasChildren": True,
+            "path": "\\My Project\\Area\\Backend",
+            "children": [
+                {
+                    "id": 3,
+                    "identifier": "db-guid",
+                    "name": "Database",
+                    "structureType": "area",
+                    "hasChildren": False,
+                    "path": "\\My Project\\Area\\Backend\\Database",
+                }
+            ],
+        },
+        {
+            "id": 4,
+            "identifier": "frontend-guid",
+            "name": "Frontend",
+            "structureType": "area",
+            "hasChildren": False,
+            "path": "\\My Project\\Area\\Frontend",
+        },
+    ],
+}
+
+MOCK_TEAM_FIELD_VALUES: Dict[str, Any] = {
+    "field": {"referenceName": "System.AreaPath"},
+    "defaultValue": "My Project\\Backend",
+    "values": [
+        {"value": "My Project\\Backend", "includeChildren": True},
+        {"value": "My Project\\Frontend", "includeChildren": False},
+    ],
+}
+
+
+@pytest.mark.parametrize(
+    "raw_path, expected",
+    [
+        ("\\My Project\\Area", "My Project"),
+        ("\\My Project\\Area\\Backend", "My Project\\Backend"),
+        ("\\My Project\\Area\\Backend\\Database", "My Project\\Backend\\Database"),
+        # No structure-group segment present -> only the leading backslash is stripped
+        ("\\My Project", "My Project"),
+        ("", ""),
+    ],
+)
+def test_normalize_area_path(raw_path: str, expected: str) -> None:
+    assert _normalize_area_path(raw_path) == expected
+
+
+def test_flatten_area_path_tree_builds_parent_chain() -> None:
+    project = {"id": MOCK_PROJECT_ID, "name": MOCK_PROJECT_NAME}
+
+    nodes = _flatten_area_path_tree(MOCK_AREA_TREE, project, None)
+
+    # One entity per node, children stripped from each entity
+    assert len(nodes) == 4
+    assert all("children" not in node for node in nodes)
+
+    by_id = {node["identifier"]: node for node in nodes}
+
+    # Parent-GUID chain across multiple levels
+    assert by_id["root-guid"]["__parentIdentifier"] is None
+    assert by_id["backend-guid"]["__parentIdentifier"] == "root-guid"
+    assert by_id["db-guid"]["__parentIdentifier"] == "backend-guid"
+    assert by_id["frontend-guid"]["__parentIdentifier"] == "root-guid"
+
+    # Normalized paths match System.AreaPath format
+    assert by_id["root-guid"]["__normalizedPath"] == "My Project"
+    assert by_id["db-guid"]["__normalizedPath"] == "My Project\\Backend\\Database"
+
+    # Project context stamped on every node
+    assert all(node["__project"]["id"] == MOCK_PROJECT_ID for node in nodes)
+
+
+def test_flatten_area_path_tree_skips_non_area_nodes() -> None:
+    tree = {
+        "identifier": "root-guid",
+        "structureType": "area",
+        "path": "\\My Project\\Area",
+        "children": [
+            {
+                "identifier": "iteration-guid",
+                "structureType": "iteration",
+                "path": "\\My Project\\Iteration\\Sprint 1",
+            }
+        ],
+    }
+
+    nodes = _flatten_area_path_tree(tree, {"id": "p1", "name": "p"}, None)
+
+    identifiers = [node["identifier"] for node in nodes]
+    assert identifiers == ["root-guid"]
+
+
+@pytest.mark.asyncio
+async def test_generate_area_paths(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_generate_projects(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": MOCK_PROJECT_ID, "name": MOCK_PROJECT_NAME}]
+
+    with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(client, "send_request") as mock_send_request:
+            mock_send_request.return_value = Response(
+                status_code=200, json=MOCK_AREA_TREE
+            )
+            async with event_context("test_event"):
+                area_paths: List[Dict[str, Any]] = []
+                async for batch in client.generate_area_paths(depth=5):
+                    area_paths.extend(batch)
+
+    assert len(area_paths) == 4
+    identifiers = {node["identifier"] for node in area_paths}
+    assert identifiers == {"root-guid", "backend-guid", "db-guid", "frontend-guid"}
+
+    # Classification Nodes Areas endpoint hit with the depth selector
+    called_url = mock_send_request.call_args.args[1]
+    assert called_url.endswith(
+        f"/{MOCK_PROJECT_ID}/_apis/wit/classificationnodes/Areas"
+    )
+    assert mock_send_request.call_args.kwargs["params"]["$depth"] == 5
+
+
+@pytest.mark.asyncio
+async def test_generate_area_paths_without_depth_omits_depth_param(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_generate_projects(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": MOCK_PROJECT_ID, "name": MOCK_PROJECT_NAME}]
+
+    with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(client, "send_request") as mock_send_request:
+            mock_send_request.return_value = Response(
+                status_code=200, json=MOCK_AREA_TREE
+            )
+            async with event_context("test_event"):
+                async for _ in client.generate_area_paths():
+                    pass
+
+    params = mock_send_request.call_args.kwargs["params"]
+    assert "$depth" not in params
+    assert params == API_PARAMS
+
+
+@pytest.mark.asyncio
+async def test_get_team_field_values_returns_response() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    team = {"id": "team1", "projectId": "proj1", "name": "Team One"}
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json=MOCK_TEAM_FIELD_VALUES
+        )
+
+        result = await client.get_team_field_values(team)
+
+    assert result == MOCK_TEAM_FIELD_VALUES
+    called_url = mock_send_request.call_args.args[1]
+    assert called_url.endswith("/proj1/team1/_apis/work/teamsettings/teamfieldvalues")
+
+
+@pytest.mark.asyncio
+async def test_get_team_field_values_returns_none_on_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    team = {"id": "team1", "projectId": "proj1", "name": "Team One"}
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            result = await client.get_team_field_values(team)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_enrich_teams_with_area_paths() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    test_teams = [
+        {"id": "team1", "projectId": "proj1", "name": "Team One"},
+        {"id": "team2", "projectId": "proj1", "name": "Team Two"},
+    ]
+
+    async def mock_get_team_field_values(team: Dict[str, Any]) -> Dict[str, Any]:
+        if team["id"] == "team2":
+            raise HTTPStatusError(
+                "boom",
+                request=Request("GET", "https://google.com"),
+                response=Response(status_code=500),
+            )
+        return MOCK_TEAM_FIELD_VALUES
+
+    with patch.object(
+        client,
+        "get_team_field_values",
+        side_effect=mock_get_team_field_values,
+    ):
+        enriched_teams = await client.enrich_teams_with_area_paths(test_teams)
+
+    # Successful team gets its field values; a failing team does not break the batch
+    assert enriched_teams[0]["__areaPaths"] == MOCK_TEAM_FIELD_VALUES
+    assert enriched_teams[1]["__areaPaths"] is None

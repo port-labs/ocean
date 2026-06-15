@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2026-06-15)
+
+### Improvements
+
+- Removed beta suffix from version number
+
+
+## 0.1.140-beta (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
 ## 0.1.139-beta (2026-06-09)
 
 
