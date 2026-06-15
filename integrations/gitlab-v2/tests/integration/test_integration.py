@@ -225,7 +225,7 @@ def test_deployment_selector_generate_query_params_merges_query_params() -> None
 def test_deployment_query_params_sets_order_by_finished_at_for_finished_after() -> None:
     params = GitlabDeploymentQueryParams(
         status=GitLabDeploymentStatus.SUCCESS,
-        finishedAfter="2024-01-01T00:00:00Z",
+        finished_after="2024-01-01T00:00:00Z",
     ).generate_query_params()
     assert params["order_by"] == "finished_at"
     assert params["finished_after"] == "2024-01-01T00:00:00Z"
@@ -238,7 +238,7 @@ def test_deployment_query_params_sets_order_by_finished_at_for_finished_before()
 ):
     params = GitlabDeploymentQueryParams(
         status=GitLabDeploymentStatus.SUCCESS,
-        finishedBefore="2024-06-01T00:00:00Z",
+        finished_before="2024-06-01T00:00:00Z",
     ).generate_query_params()
     assert params["order_by"] == "finished_at"
     assert params["finished_before"] == "2024-06-01T00:00:00Z"
@@ -249,8 +249,8 @@ def test_deployment_query_params_merges_all_params_for_full_finished_window() ->
     params = GitlabDeploymentQueryParams(
         status=GitLabDeploymentStatus.SUCCESS,
         environment="production",
-        finishedAfter="2024-01-01T00:00:00Z",
-        finishedBefore="2024-06-01T00:00:00Z",
+        finished_after="2024-01-01T00:00:00Z",
+        finished_before="2024-06-01T00:00:00Z",
     ).generate_query_params()
     assert params["status"] == "success"
     assert params["environment"] == "production"
@@ -275,7 +275,7 @@ def test_deployment_query_params_accepts_finished_after_when_status_is_success()
 ):
     GitlabDeploymentQueryParams(
         status=GitLabDeploymentStatus.SUCCESS,
-        finishedAfter="2024-01-01T00:00:00Z",
+        finished_after="2024-01-01T00:00:00Z",
     )
 
 
@@ -285,14 +285,14 @@ def test_deployment_query_params_rejects_finished_after_when_status_is_not_succe
     with pytest.raises(ValidationError):
         GitlabDeploymentQueryParams(
             status=GitLabDeploymentStatus.FAILED,
-            finishedAfter="2024-01-01T00:00:00Z",
+            finished_after="2024-01-01T00:00:00Z",
         )
 
 
 def test_deployment_query_params_rejects_finished_after_when_status_is_absent() -> None:
     with pytest.raises(ValidationError):
         GitlabDeploymentQueryParams(
-            finishedAfter="2024-01-01T00:00:00Z",
+            finished_after="2024-01-01T00:00:00Z",
         )
 
 
@@ -300,5 +300,5 @@ def test_deployment_query_params_finished_after_rejects_missing_timezone() -> No
     with pytest.raises(ValidationError):
         GitlabDeploymentQueryParams(
             status=GitLabDeploymentStatus.SUCCESS,
-            finishedAfter="2024-01-01T00:00:00",
+            finished_after="2024-01-01T00:00:00",
         )

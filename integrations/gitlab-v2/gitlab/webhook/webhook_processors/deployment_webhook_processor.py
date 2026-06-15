@@ -65,7 +65,6 @@ class DeploymentWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 return WebhookEventRawResults(
                     updated_raw_results=[], deleted_raw_results=[]
                 )
-
             if (
                 selector.query_params.status
                 and payload.get("status") != selector.query_params.status
@@ -89,6 +88,40 @@ class DeploymentWebhookProcessor(_GitlabAbstractWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
+
+        if selector.query_params:
+            updated_at = deployment.get("updated_at", "")
+            if (
+                selector.query_params.updated_after
+                and updated_at < selector.query_params.updated_after
+            ):
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
+            if (
+                selector.query_params.updated_before
+                and updated_at > selector.query_params.updated_before
+            ):
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
+
+            finished_at = (deployment.get("deployable") or {}).get("finished_at", "")
+            if finished_at:
+                if (
+                    selector.query_params.finished_after
+                    and finished_at < selector.query_params.finished_after
+                ):
+                    return WebhookEventRawResults(
+                        updated_raw_results=[], deleted_raw_results=[]
+                    )
+                if (
+                    selector.query_params.finished_before
+                    and finished_at > selector.query_params.finished_before
+                ):
+                    return WebhookEventRawResults(
+                        updated_raw_results=[], deleted_raw_results=[]
+                    )
 
         deployment["__project"] = full_project
 

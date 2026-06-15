@@ -208,3 +208,265 @@ class TestDeploymentWebhookProcessorHandleEvent:
 
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
+
+    async def test_filters_deployment_whose_updated_at_is_before_updated_after_window(
+        self,
+        processor: DeploymentWebhookProcessor,
+        deployment_payload: dict[str, Any],
+        full_project: dict[str, Any],
+    ) -> None:
+        config = MagicMock()
+        config.selector = GitlabDeploymentSelector(
+            query="true",
+            apiQueryParams=GitlabDeploymentQueryParams(
+                updated_after="2024-06-01T00:00:00Z"
+            ),
+        )
+        deployment_before_window = {
+            "id": 15,
+            "status": "success",
+            "updated_at": "2024-01-01T00:00:00Z",  # before updated_after
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_project = AsyncMock(
+            return_value=full_project
+        )
+        processor._gitlab_webhook_client.get_single_deployment = AsyncMock(
+            return_value=deployment_before_window
+        )
+
+        result = await processor.handle_event(deployment_payload, config)
+
+        assert result.updated_raw_results == []
+
+    async def test_passes_deployment_whose_updated_at_is_after_updated_after_window(
+        self,
+        processor: DeploymentWebhookProcessor,
+        deployment_payload: dict[str, Any],
+        full_project: dict[str, Any],
+    ) -> None:
+        config = MagicMock()
+        config.selector = GitlabDeploymentSelector(
+            query="true",
+            apiQueryParams=GitlabDeploymentQueryParams(
+                updated_after="2024-01-01T00:00:00Z"
+            ),
+        )
+        deployment_within_window = {
+            "id": 15,
+            "status": "success",
+            "updated_at": "2024-06-01T00:00:00Z",  # after updated_after
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_project = AsyncMock(
+            return_value=full_project
+        )
+        processor._gitlab_webhook_client.get_single_deployment = AsyncMock(
+            return_value=deployment_within_window
+        )
+
+        result = await processor.handle_event(deployment_payload, config)
+
+        assert len(result.updated_raw_results) == 1
+
+    async def test_filters_deployment_whose_updated_at_is_after_updated_before_window(
+        self,
+        processor: DeploymentWebhookProcessor,
+        deployment_payload: dict[str, Any],
+        full_project: dict[str, Any],
+    ) -> None:
+        config = MagicMock()
+        config.selector = GitlabDeploymentSelector(
+            query="true",
+            apiQueryParams=GitlabDeploymentQueryParams(
+                updated_before="2024-01-01T00:00:00Z"
+            ),
+        )
+        deployment_after_window = {
+            "id": 15,
+            "status": "success",
+            "updated_at": "2024-06-01T00:00:00Z",  # after updated_before
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_project = AsyncMock(
+            return_value=full_project
+        )
+        processor._gitlab_webhook_client.get_single_deployment = AsyncMock(
+            return_value=deployment_after_window
+        )
+
+        result = await processor.handle_event(deployment_payload, config)
+
+        assert result.updated_raw_results == []
+
+    async def test_passes_deployment_whose_updated_at_is_before_updated_before_window(
+        self,
+        processor: DeploymentWebhookProcessor,
+        deployment_payload: dict[str, Any],
+        full_project: dict[str, Any],
+    ) -> None:
+        config = MagicMock()
+        config.selector = GitlabDeploymentSelector(
+            query="true",
+            apiQueryParams=GitlabDeploymentQueryParams(
+                updated_before="2024-06-01T00:00:00Z"
+            ),
+        )
+        deployment_within_window = {
+            "id": 15,
+            "status": "success",
+            "updated_at": "2024-01-01T00:00:00Z",  # before updated_before
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_project = AsyncMock(
+            return_value=full_project
+        )
+        processor._gitlab_webhook_client.get_single_deployment = AsyncMock(
+            return_value=deployment_within_window
+        )
+
+        result = await processor.handle_event(deployment_payload, config)
+
+        assert len(result.updated_raw_results) == 1
+
+    async def test_filters_deployment_whose_finished_at_is_before_finished_after_window(
+        self,
+        processor: DeploymentWebhookProcessor,
+        deployment_payload: dict[str, Any],
+        full_project: dict[str, Any],
+    ) -> None:
+        config = MagicMock()
+        config.selector = GitlabDeploymentSelector(
+            query="true",
+            apiQueryParams=GitlabDeploymentQueryParams(
+                status=GitLabDeploymentStatus.SUCCESS,
+                finished_after="2024-06-01T00:00:00Z",
+            ),
+        )
+        deployment_before_window = {
+            "id": 15,
+            "status": "success",
+            "updated_at": "2024-07-01T00:00:00Z",
+            "deployable": {
+                "finished_at": "2024-01-01T00:00:00Z"
+            },  # before finished_after
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_project = AsyncMock(
+            return_value=full_project
+        )
+        processor._gitlab_webhook_client.get_single_deployment = AsyncMock(
+            return_value=deployment_before_window
+        )
+
+        result = await processor.handle_event(deployment_payload, config)
+
+        assert result.updated_raw_results == []
+
+    async def test_passes_deployment_whose_finished_at_is_after_finished_after_window(
+        self,
+        processor: DeploymentWebhookProcessor,
+        deployment_payload: dict[str, Any],
+        full_project: dict[str, Any],
+    ) -> None:
+        config = MagicMock()
+        config.selector = GitlabDeploymentSelector(
+            query="true",
+            apiQueryParams=GitlabDeploymentQueryParams(
+                status=GitLabDeploymentStatus.SUCCESS,
+                finished_after="2024-01-01T00:00:00Z",
+            ),
+        )
+        deployment_within_window = {
+            "id": 15,
+            "status": "success",
+            "updated_at": "2024-06-01T00:00:00Z",
+            "deployable": {
+                "finished_at": "2024-06-01T00:00:00Z"
+            },  # after finished_after
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_project = AsyncMock(
+            return_value=full_project
+        )
+        processor._gitlab_webhook_client.get_single_deployment = AsyncMock(
+            return_value=deployment_within_window
+        )
+
+        result = await processor.handle_event(deployment_payload, config)
+
+        assert len(result.updated_raw_results) == 1
+
+    async def test_filters_deployment_whose_finished_at_is_after_finished_before_window(
+        self,
+        processor: DeploymentWebhookProcessor,
+        deployment_payload: dict[str, Any],
+        full_project: dict[str, Any],
+    ) -> None:
+        config = MagicMock()
+        config.selector = GitlabDeploymentSelector(
+            query="true",
+            apiQueryParams=GitlabDeploymentQueryParams(
+                status=GitLabDeploymentStatus.SUCCESS,
+                finished_before="2024-01-01T00:00:00Z",
+            ),
+        )
+        deployment_after_window = {
+            "id": 15,
+            "status": "success",
+            "updated_at": "2024-06-01T00:00:00Z",
+            "deployable": {
+                "finished_at": "2024-06-01T00:00:00Z"
+            },  # after finished_before
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_project = AsyncMock(
+            return_value=full_project
+        )
+        processor._gitlab_webhook_client.get_single_deployment = AsyncMock(
+            return_value=deployment_after_window
+        )
+
+        result = await processor.handle_event(deployment_payload, config)
+
+        assert result.updated_raw_results == []
+
+    async def test_skips_finished_at_filter_when_deployable_is_null(
+        self,
+        processor: DeploymentWebhookProcessor,
+        deployment_payload: dict[str, Any],
+        full_project: dict[str, Any],
+    ) -> None:
+        config = MagicMock()
+        config.selector = GitlabDeploymentSelector(
+            query="true",
+            apiQueryParams=GitlabDeploymentQueryParams(
+                status=GitLabDeploymentStatus.SUCCESS,
+                finished_after="2024-06-01T00:00:00Z",
+            ),
+        )
+        api_triggered_deployment = {
+            "id": 15,
+            "status": "success",
+            "updated_at": "2024-07-01T00:00:00Z",
+            "deployable": None,  # API-triggered deployments have no deployable
+        }
+
+        processor._gitlab_webhook_client = MagicMock()
+        processor._gitlab_webhook_client.get_project = AsyncMock(
+            return_value=full_project
+        )
+        processor._gitlab_webhook_client.get_single_deployment = AsyncMock(
+            return_value=api_triggered_deployment
+        )
+
+        result = await processor.handle_event(deployment_payload, config)
+
+        assert len(result.updated_raw_results) == 1
