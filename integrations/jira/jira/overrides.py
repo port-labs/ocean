@@ -326,9 +326,9 @@ class JiraComponentSelector(Selector):
         default=ComponentSource.JIRA,
         description=(
             "Filter by component source. "
-            "'JIRA' returns standard project components, "
-            "'COMPASS' returns Compass global components linked to this project, "
-            "'AUTO' returns both. "
+            "'jira' returns standard project components, "
+            "'compass' returns Compass global components linked to this project, "
+            "'auto' returns both. "
         ),
     )
     name_filter: str | None = Field(
