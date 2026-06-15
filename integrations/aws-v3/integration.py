@@ -224,6 +224,13 @@ class AWSCodeBuildProjectResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeBuildBuildRunResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeBuild::BuildRun"] = Field(
+        title="AWS CodeBuild BuildRun",
+        description="AWS CodeBuild BuildRun resource kind.",
+    )
+
+
 class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodePipeline::Pipeline"] = Field(
         title="AWS CodePipeline Pipeline",
@@ -252,6 +259,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
         | AWSCodeBuildProjectResourceConfig
+        | AWSCodeBuildBuildRunResourceConfig
         | AWSCodePipelinePipelineResourceConfig
     ] = Field(
         default_factory=list,
