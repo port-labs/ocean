@@ -35,7 +35,7 @@ class RoleWebhookProcessor(BaseAuditTrailProcessor):
     ) -> dict[str, Any] | None:
         return await RoleExporter(self.client).get_resource(
             GetRoleOptions.from_resource_config(
-                resource_config=cast(RoleResourceConfig, resource_config),
+                cast(RoleResourceConfig, resource_config),
                 resource_id=event.attributes.asset.id,
             )
         )
