@@ -40,7 +40,9 @@ class CodeBuildProjectExporter(IResourceExporter[list[str]]):
             )
             paginator = proxy.get_paginator("list_projects", "projects")
 
-            async for projects in paginator.paginate(batch_size=self._pagination_batch_size):
+            async for projects in paginator.paginate(
+                batch_size=self._pagination_batch_size
+            ):
                 if projects:
                     action_result = await inspector.inspect(
                         projects,
