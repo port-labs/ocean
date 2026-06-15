@@ -312,6 +312,13 @@ MOCK_EMPTY_PAGE = {
     "values": [],
 }
 
+MOCK_PROJECT_HSP = {"id": "10000", "key": "HSP", "name": "HSP Project"}
+MOCK_PROJECT_PROJECTKEY = {
+    "id": "10001",
+    "key": "PROJECTKEY",
+    "name": "Projectkey Project",
+}
+
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
@@ -2666,7 +2673,7 @@ class TestGetPaginatedComponentsForProject:
         ) as mock_req:
             mock_req.return_value = MOCK_EMPTY_PAGE
             async for _ in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.JIRA
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
             ):
                 pass
             assert mock_req.call_args[1]["params"]["componentSource"] == "jira"
@@ -2679,7 +2686,7 @@ class TestGetPaginatedComponentsForProject:
         ) as mock_req:
             mock_req.return_value = MOCK_EMPTY_PAGE
             async for _ in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.COMPASS
+                MOCK_PROJECT_HSP, ComponentSource.COMPASS
             ):
                 pass
             assert mock_req.call_args[1]["params"]["componentSource"] == "compass"
@@ -2692,7 +2699,7 @@ class TestGetPaginatedComponentsForProject:
         ) as mock_req:
             mock_req.return_value = MOCK_EMPTY_PAGE
             async for _ in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.JIRA, name_filter="Component"
+                MOCK_PROJECT_HSP, ComponentSource.JIRA, name_filter="Component"
             ):
                 pass
             assert mock_req.call_args[1]["params"]["query"] == "Component"
@@ -2705,12 +2712,12 @@ class TestGetPaginatedComponentsForProject:
         ) as mock_req:
             mock_req.return_value = MOCK_EMPTY_PAGE
             async for _ in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.JIRA
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
             ):
                 pass
             assert "query" not in mock_req.call_args[1]["params"]
 
-    async def test_injects_project_key_into_every_component(
+    async def test_injects_full_project_into_every_component(
         self, mock_jira_client: JiraClient
     ) -> None:
         with patch.object(
@@ -2719,10 +2726,10 @@ class TestGetPaginatedComponentsForProject:
             mock_req.return_value = MOCK_COMPONENTS_PAGE
             results = []
             async for batch in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.JIRA
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
             ):
                 results.extend(batch)
-            assert all(c["__projectKey"] == "HSP" for c in results)
+            assert all(c["__project"] == MOCK_PROJECT_HSP for c in results)
 
     async def test_preserves_all_top_level_component_fields(
         self, mock_jira_client: JiraClient
@@ -2736,7 +2743,7 @@ class TestGetPaginatedComponentsForProject:
             }
             results = []
             async for batch in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.JIRA
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
             ):
                 results.extend(batch)
 
@@ -2763,7 +2770,7 @@ class TestGetPaginatedComponentsForProject:
             }
             results = []
             async for batch in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.JIRA
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
             ):
                 results.extend(batch)
 
@@ -2783,7 +2790,7 @@ class TestGetPaginatedComponentsForProject:
             }
             results = []
             async for batch in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.JIRA
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
             ):
                 results.extend(batch)
 
@@ -2802,7 +2809,7 @@ class TestGetPaginatedComponentsForProject:
             }
             results = []
             async for batch in mock_jira_client.get_paginated_components_for_project(
-                "PROJECTKEY", ComponentSource.JIRA
+                MOCK_PROJECT_PROJECTKEY, ComponentSource.JIRA
             ):
                 results.extend(batch)
 
@@ -2810,7 +2817,7 @@ class TestGetPaginatedComponentsForProject:
             assert component["id"] == "10050"
             assert component["lead"] is None
             assert component["componentBean"] is None
-            assert component["__projectKey"] == "PROJECTKEY"
+            assert component["__project"]["key"] == "PROJECTKEY"
 
     async def test_yields_nothing_when_project_has_no_components(
         self, mock_jira_client: JiraClient
@@ -2821,7 +2828,7 @@ class TestGetPaginatedComponentsForProject:
             mock_req.return_value = MOCK_EMPTY_PAGE
             results = []
             async for batch in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.JIRA
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
             ):
                 results.extend(batch)
             assert results == []
@@ -2849,7 +2856,7 @@ class TestGetPaginatedComponentsForProject:
             mock_req.side_effect = [page_one, page_two]
             results = []
             async for batch in mock_jira_client.get_paginated_components_for_project(
-                "HSP", ComponentSource.JIRA
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
             ):
                 results.extend(batch)
             assert [r["id"] for r in results] == ["10000", "10050"]
