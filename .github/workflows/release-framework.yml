@@ -97,7 +97,7 @@ jobs:
 
       - name: Wait for package to be available on PyPI
         run: |
-          while ! curl -s https://pypi.org/pypi/port-ocean/json | jq -e ".releases | has(\"${{ env.VERSION }}\")" > /dev/null; do
+          while ! pip --no-cache-dir index versions port-ocean | grep -q "${{ env.VERSION }}"; do
             echo "Waiting for package ${{ env.VERSION }} to be available on PyPI..."
             sleep 2
           done

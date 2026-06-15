@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.35 (2026-06-05)
+## 0.7.38 (2026-06-15)
 
 
 ### Improvements
 
 - Added `deployment` and `deployment-status` kinds to sync CI/CD deployment records and their statuses into Port
+
+
+## 0.7.37 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.7.36 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.7.35 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
 
 
 ## 0.7.34 (2026-06-03)
