@@ -28,9 +28,6 @@ class GetPipelineDetailsAction(PipelineAction[CodePipelinePipelineActionInput]):
     async def _execute(
         self, resources: CodePipelinePipelineActionInput
     ) -> list[dict[str, Any]]:
-        if not resources:
-            return []
-
         details = await asyncio.gather(
             *(
                 self._fetch_pipeline_details(
@@ -74,9 +71,6 @@ class GetPipelineTagsAction(PipelineAction[CodePipelinePipelineActionInput]):
     async def _execute(
         self, resources: CodePipelinePipelineActionInput
     ) -> list[Dict[str, Any]]:
-        if not resources:
-            return []
-
         tags = await asyncio.gather(
             *(
                 self._fetch_pipeline_tags(
