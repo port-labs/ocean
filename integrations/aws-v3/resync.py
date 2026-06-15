@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from functools import partial
 from typing import Any, Callable, List, Type, AsyncIterator, cast, TYPE_CHECKING, Dict
