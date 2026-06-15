@@ -152,25 +152,30 @@ def cache_coroutine_result(
     async def my_coroutine_function():
         # Your code here
     ```
+
+    :param cache_keys: If defined, a list of cache keys that must be present as an object in the kwargs under the key
+        "cache_keys" in order to use the cache. This allows us to inject extra context that is relevant to the caching
+        mechanism, but not to the actual function call.
     """
 
     def decorator(func: AsyncCallable) -> AsyncCallable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            receieved_cached_keys = kwargs.pop("cache_keys", {})
+            received_cached_keys = kwargs.pop("cache_keys", {})
             if cache_keys:
-                if any(key not in receieved_cached_keys for key in cache_keys):
+                if any(key not in received_cached_keys for key in cache_keys):
                     logger.warning(
                         "Missing cache keys, cache will be skipped",
                         extra={
                             "expected_cache_keys": cache_keys,
-                            "receieved_cached_keys": receieved_cached_keys,
+                            "received_cached_keys": received_cached_keys,
                             "function_name": func.__name__,
                         },
                     )
                     return await func(*args, **kwargs)
 
-            cache_key = hash_func(func, *args, **receieved_cached_keys, **kwargs)
+            cache_key = hash_func(func, *args, **received_cached_keys, **kwargs)
+
             try:
                 if cache := await ocean.app.cache_provider.get(cache_key):
                     return cache

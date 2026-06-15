@@ -1,6 +1,9 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.codepipeline.pipeline.actions import PipelineActionsMap
+from aws.core.exporters.codepipeline.pipeline.actions import (
+    PipelineActionsMap,
+    CodePipelinePipelineActionInput,
+)
 from aws.core.exporters.codepipeline.pipeline.models import Pipeline
 from aws.core.exporters.codepipeline.pipeline.models import (
     SinglePipelineRequest,
@@ -11,7 +14,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class PipelineExporter(IResourceExporter):
+class PipelineExporter(IResourceExporter[CodePipelinePipelineActionInput]):
     _service_name: SupportedServices = "codepipeline"
     _model_cls: Type[Pipeline] = Pipeline
     _actions_map: Type[PipelineActionsMap] = PipelineActionsMap
@@ -25,7 +28,12 @@ class PipelineExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"name": options.pipeline_name}], options.include
+                CodePipelinePipelineActionInput(
+                    items=[{"name": options.pipeline_name}],
+                    region=options.region,
+                    account_id=options.account_id,
+                ),
+                options.include,
             )
             return response[0] if response else {}
 
@@ -45,10 +53,11 @@ class PipelineExporter(IResourceExporter):
             async for pipelines in paginator.paginate():
                 if pipelines:
                     action_result = await inspector.inspect(
-                        {
-                            "pipelines": pipelines,
-                            "cache_keys": {'region': options.region, "account_id": options.account_id}
-                        },
+                        CodePipelinePipelineActionInput(
+                            items=pipelines,
+                            region=options.region,
+                            account_id=options.account_id,
+                        ),
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,

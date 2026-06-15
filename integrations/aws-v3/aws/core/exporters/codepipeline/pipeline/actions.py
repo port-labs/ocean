@@ -1,46 +1,62 @@
+from dataclasses import dataclass
 from typing import Dict, Any, List, Type, cast
 
 from aws.core.exporters.codepipeline.utils.base_pipeline_action import PipelineAction
-from aws.core.interfaces.action import Action, ActionMap
+from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 from loguru import logger
 import asyncio
 
 
-class ListPipelinesAction(Action):
+@dataclass
+class CodePipelinePipelineActionInput(BaseActionInput[dict[str, Any]]):
+    region: str
+    account_id: str
+
+
+class ListPipelinesAction(Action[CodePipelinePipelineActionInput]):
     """Processes the initial list of pipelines from AWS."""
 
-    async def _execute(self, resources: dict[str, Any]) -> List[Dict[str, Any]]:
-        return resources['pipelines']
+    async def _execute(
+        self, resources: CodePipelinePipelineActionInput
+    ) -> list[dict[str, Any]]:
+        return resources.items
 
 
-class GetPipelineDetailsAction(PipelineAction):
+class GetPipelineDetailsAction(PipelineAction[CodePipelinePipelineActionInput]):
     """Fetches detailed information about CodePipeline pipelines."""
 
-    async def _execute(self, resources: dict[str, Any]) -> List[Dict[str, Any]]:
-        if not resources:
-            return []
-
+    async def _execute(
+        self, resources: CodePipelinePipelineActionInput
+    ) -> list[dict[str, Any]]:
         details = await asyncio.gather(
-            *(self._fetch_pipeline_details(resource, cache_keys=resources['cache_keys'])
-              for resource in resources['pipelines']),
+            *(
+                self._fetch_pipeline_details(
+                    resource, region=resources.region, account_id=resources.account_id
+                )
+                for resource in resources.items
+            ),
             return_exceptions=True,
         )
 
         results: List[Dict[str, Any]] = []
         for idx, detail_result in enumerate(details):
-            if isinstance(detail_result, Exception):
-                pipeline_name = resources['pipelines'][idx].get("name", "unknown")
+            if isinstance(detail_result, dict):
+                results.append(detail_result)
+            else:
+                pipeline_name = resources.items[idx].get("name", "unknown")
                 logger.error(
                     f"Error fetching details for pipeline '{pipeline_name}': {detail_result}"
                 )
                 results.append({})
-            else:
-                results.append(detail_result)
         return results
 
-    async def _fetch_pipeline_details(self, resource: Dict[str, Any], cache_keys: dict[str, str]) -> Dict[str, Any]:
+    async def _fetch_pipeline_details(
+        self, resource: Dict[str, Any], region: str, account_id: str
+    ) -> dict[str, Any]:
         pipeline_name = resource["name"]
-        response = await self._get_pipeline(pipeline_name, cache_keys=cache_keys)
+        response = await self._get_pipeline(
+            pipeline_name, cache_keys={"region": region, "account_id": account_id}
+        )
         logger.info(f"Successfully fetched details for pipeline {pipeline_name}")
 
         return {
@@ -49,22 +65,26 @@ class GetPipelineDetailsAction(PipelineAction):
         }
 
 
-class GetPipelineTagsAction(PipelineAction):
+class GetPipelineTagsAction(PipelineAction[CodePipelinePipelineActionInput]):
     """Fetches tags for CodePipeline pipelines."""
 
-    async def _execute(self, resources: dict[str, Any]) -> List[Dict[str, Any]]:
-        if not resources:
-            return []
-
+    async def _execute(
+        self, resources: CodePipelinePipelineActionInput
+    ) -> list[Dict[str, Any]]:
         tags = await asyncio.gather(
-            *(self._fetch_pipeline_tags(resource, cache_keys=resources['cache_keys']) for resource in resources['pipelines']),
+            *(
+                self._fetch_pipeline_tags(
+                    resource, region=resources.region, account_id=resources.account_id
+                )
+                for resource in resources.items
+            ),
             return_exceptions=True,
         )
 
         results: List[Dict[str, Any]] = []
         for idx, tag_result in enumerate(tags):
             if isinstance(tag_result, Exception):
-                pipeline_name = resources['pipelines'][idx].get("name", "unknown")
+                pipeline_name = resources.items[idx].get("name", "unknown")
                 logger.error(
                     f"Error fetching tags for pipeline '{pipeline_name}': {tag_result}"
                 )
@@ -73,8 +93,12 @@ class GetPipelineTagsAction(PipelineAction):
             results.append(cast(Dict[str, Any], tag_result))
         return results
 
-    async def _fetch_pipeline_tags(self, resource: Dict[str, Any], cache_keys: dict[str, str]) -> Dict[str, Any]:
-        pipeline_response = await self._get_pipeline(resource["name"], cache_keys=cache_keys)
+    async def _fetch_pipeline_tags(
+        self, resource: dict[str, Any], region: str, account_id: str
+    ) -> dict[str, Any]:
+        pipeline_response = await self._get_pipeline(
+            resource["name"], cache_keys={"region": region, "account_id": account_id}
+        )
         pipeline_arn = pipeline_response.get("metadata", {}).get("pipelineArn")
 
         response = await self.client.list_tags_for_resource(resourceArn=pipeline_arn)
@@ -82,12 +106,12 @@ class GetPipelineTagsAction(PipelineAction):
         return response
 
 
-class PipelineActionsMap(ActionMap):
+class PipelineActionsMap(ActionMap[CodePipelinePipelineActionInput]):
     """Groups all actions for CodePipeline pipeline resource type."""
 
-    defaults: List[Type[Action]] = [
+    defaults: List[Type[Action[CodePipelinePipelineActionInput]]] = [
         GetPipelineDetailsAction,
         GetPipelineTagsAction,
         ListPipelinesAction,
     ]
-    options: List[Type[Action]] = []
+    options: List[Type[Action[CodePipelinePipelineActionInput]]] = []

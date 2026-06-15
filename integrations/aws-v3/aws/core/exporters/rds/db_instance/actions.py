@@ -5,7 +5,7 @@ from loguru import logger
 import asyncio
 
 
-class DescribeDBInstancesAction(Action):
+class DescribeDBInstancesAction(Action[list[dict[str, Any]]]):
     """Describe DB instances as a pass-through function."""
 
     async def _execute(
@@ -15,7 +15,7 @@ class DescribeDBInstancesAction(Action):
         return db_instances
 
 
-class ListTagsForResourceAction(Action):
+class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
     """Fetches tags for RDS DB instances."""
 
     async def _execute(
@@ -53,10 +53,10 @@ class ListTagsForResourceAction(Action):
         return [{"Tags": response["TagList"]}]
 
 
-class RdsDbInstanceActionsMap(ActionMap):
-    defaults: list[Type[Action]] = [
+class RdsDbInstanceActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [
         DescribeDBInstancesAction,
     ]
-    options: list[Type[Action]] = [
+    options: list[Type[Action[list[dict[str, Any]]]]] = [
         ListTagsForResourceAction,
     ]

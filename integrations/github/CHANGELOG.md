@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.0.2 (2026-06-14)
+
+
+### Improvements
+
+- Add happy flow integration test
+
+
+## 6.0.1 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 6.0.0 (2026-06-10)
+
+
+### Improvements
+
+- Parse yaml files in the file kind with yaml spec 1.2 by default
+
+
+## 5.5.33 (2026-06-09)
+
+
+### Improvements
+
+- Added `statuses` selector to `workflow-run` kind to filter runs by status or conclusion. Accepts a list of values; each additional status results in one extra API call per workflow.
+- Added `since` selector to `workflow-run` kind to limit resync to runs created within the last N days.
+- Added `sinceDate` selector to `workflow-run` kind to limit resync to runs created on or after a fixed ISO 8601 date. Ignored if `since` is also set.
+
+
+## 5.5.32 (2026-06-09)
+
+
+### Bug Fixes
+
+- Fixed `workflow-run` webhook processor to treat `completed` events as upserts instead of deletions.
+
+
+## 5.5.31 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 5.5.30 (2026-06-08)
+
+
+### Improvements
+
+- Add reviews and statusCheckRollup to returned pull request kind in GraphQL-based exporter
+
+
+## 5.5.29 (2026-06-08)
+
+
+### Bug Fixes
+
+- Fixed sync failures from intermittent 500 errors on large pages by retrying with a smaller page size
+
+
+## 5.5.28 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 5.5.27 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
 ## 5.5.26 (2026-06-03)
 
 
@@ -21,6 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped version to 5.5.25
+
 
 ## 5.5.23 (2026-06-02)
 
