@@ -50,7 +50,6 @@ class ObjectKind(StrEnum):
     RELEASE = "release"
     BRANCH = "branch"
     DEPLOYMENT = "deployment"
-    DEPLOYMENT_STATUS = "deployment-status"
 
 
 def parse_file_content(

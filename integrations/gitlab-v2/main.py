@@ -32,7 +32,6 @@ from integration import (
     GitlabIssueResourceConfig,
     BranchResourceConfig,
     GitlabDeploymentResourceConfig,
-    GitlabDeploymentStatusResourceConfig,
 )
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
@@ -604,18 +603,6 @@ async def _resync_deployments(
 @ocean.on_resync(ObjectKind.DEPLOYMENT)
 async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(GitlabDeploymentResourceConfig, event.resource_config).selector
-    async for batch in _resync_deployments(
-        selector.include_only_active_projects,
-        selector.generate_query_params() or None,
-    ):
-        yield batch
-
-
-@ocean.on_resync(ObjectKind.DEPLOYMENT_STATUS)
-async def on_resync_deployment_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    selector = cast(
-        GitlabDeploymentStatusResourceConfig, event.resource_config
-    ).selector
     async for batch in _resync_deployments(
         selector.include_only_active_projects,
         selector.generate_query_params() or None,

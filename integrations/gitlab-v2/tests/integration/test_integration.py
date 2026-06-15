@@ -19,7 +19,6 @@ from integration import (
     PipelineQueryParams,
     GitlabDeploymentQueryParams,
     GitlabDeploymentSelector,
-    GitlabDeploymentStatusSelector,
 )
 
 
@@ -113,7 +112,6 @@ def test_gitlab_port_app_config_schema_generation_includes_all_resource_kinds() 
         "pipeline",
         "job",
         "deployment",
-        "deployment-status",
     }
 
     missing_kinds = {kind for kind in expected_kinds if kind not in schema_str}
@@ -321,25 +319,3 @@ def test_deployment_selector_finished_after_rejects_missing_timezone() -> None:
             query="true",
             finishedAfter="2024-01-01T00:00:00",
         )
-
-
-def test_deployment_status_selector_generate_query_params_returns_empty_when_no_query_params() -> (
-    None
-):
-    assert GitlabDeploymentStatusSelector(query="true").generate_query_params() == {}
-
-
-def test_deployment_status_selector_generate_query_params_delegates_to_query_params() -> (
-    None
-):
-    selector = GitlabDeploymentStatusSelector(
-        query="true",
-        apiQueryParams=GitlabDeploymentQueryParams(
-            status=GitLabDeploymentStatus.SUCCESS,
-            environment="production",
-        ),
-    )
-    assert selector.generate_query_params() == {
-        "status": "success",
-        "environment": "production",
-    }

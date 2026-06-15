@@ -1,4 +1,4 @@
-from typing import cast, Union
+from typing import cast
 
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -10,7 +10,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from integration import (
     GitlabDeploymentResourceConfig,
-    GitlabDeploymentStatusResourceConfig,
 )
 from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
@@ -25,7 +24,7 @@ class DeploymentWebhookProcessor(_GitlabAbstractWebhookProcessor):
     hooks = ["Deployment Hook"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.DEPLOYMENT, ObjectKind.DEPLOYMENT_STATUS]
+        return [ObjectKind.DEPLOYMENT]
 
     async def handle_event(
         self,
@@ -36,7 +35,7 @@ class DeploymentWebhookProcessor(_GitlabAbstractWebhookProcessor):
         project_id: int = payload["project"]["id"]
 
         selector = cast(
-            Union[GitlabDeploymentResourceConfig, GitlabDeploymentStatusResourceConfig],
+            GitlabDeploymentResourceConfig,
             resource_config,
         ).selector
 

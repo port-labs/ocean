@@ -693,15 +693,6 @@ class GitlabDeploymentSelector(GitlabDeploymentBaseSelector):
         return params
 
 
-class GitlabDeploymentStatusSelector(GitlabDeploymentBaseSelector):
-    """Selector for the deployment-status kind.
-
-    The deployment-status kind does not support finished-at time windows (those are deployment-specific).
-    """
-
-    pass
-
-
 class GitlabDeploymentResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.DEPLOYMENT] = Field(
         title="GitLab Deployment",
@@ -710,24 +701,6 @@ class GitlabDeploymentResourceConfig(ResourceConfig):
     selector: GitlabDeploymentSelector = Field(
         title="Deployment Selector",
         description="Selector for the GitLab deployment resource.",
-    )
-
-
-class GitlabDeploymentStatusResourceConfig(ResourceConfig):
-    kind: Literal[ObjectKind.DEPLOYMENT_STATUS] = Field(
-        title="GitLab Deployment Status",
-        description=(
-            "GitLab deployment status resource kind, representing the current status of a "
-            "CI/CD deployment. Unlike GitHub's deployment-status API (which exposes a full "
-            "status transition history), GitLab exposes a single status field per deployment. "
-            "This kind provides a status-focused view of the same deployment record — "
-            "not a separate status history. Customers expecting GitHub semantics should "
-            "be aware that only the current status is available."
-        ),
-    )
-    selector: GitlabDeploymentStatusSelector = Field(
-        title="Deployment Status Selector",
-        description="Selector for the GitLab deployment status resource.",
     )
 
 
@@ -754,7 +727,6 @@ class GitlabPortAppConfig(PortAppConfig):
         | JobResourceConfig
         | BranchResourceConfig
         | GitlabDeploymentResourceConfig
-        | GitlabDeploymentStatusResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
