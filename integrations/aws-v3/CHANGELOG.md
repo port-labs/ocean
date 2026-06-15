@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.5.1-beta (2026-06-15)
+
+
+### Features
+
+- Added support for AWS::CodeBuild::Build Run resource kind, enabling ingestion of CodeBuild Build Runs into the Port catalog
+
+
 ## 2.4.1-beta (2026-06-15)
 
 
