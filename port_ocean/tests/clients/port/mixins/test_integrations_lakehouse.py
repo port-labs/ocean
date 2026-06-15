@@ -77,6 +77,7 @@ async def test_post_integration_raw_data_default_operation(
         assert entry["response"] == {}
         assert entry["metadata"]["operation"] == "upsert"
         assert entry["metadata"]["resourceIndex"] == 0
+        assert entry["metadata"]["selectorHash"] is None
         assert "extractionTimestamp" in entry["metadata"]
         assert "resyncStartTime" not in body
         assert "eventId" not in body
@@ -505,3 +506,27 @@ async def test_post_integration_raw_data_batch_includes_environment_data(
     body = lakehouse_integration_client.client.post.call_args[1]["json"]
 
     assert body["data"][0]["environment_data"] == {"FOO": "bar", "MISSING": None}
+
+
+async def test_post_integration_raw_data_batch_includes_selector_hash(
+    lakehouse_integration_client: IntegrationClientMixin,
+) -> None:
+    raw_data = [{"name": "repo-one"}]
+    sync_id = "sync-selector-hash"
+    kind = "repository"
+
+    event = make_single_entry_lakehouse_batch(
+        raw_data,
+        kind=kind,
+        index=0,
+        selector_hash="abc123",
+    )
+
+    with patch("port_ocean.clients.port.mixins.integrations.handle_port_status_code"):
+        await lakehouse_integration_client.post_integration_raw_data_batch(
+            sync_id, event
+        )
+
+    lakehouse_integration_client.client.post.assert_called_once()
+    body = lakehouse_integration_client.client.post.call_args[1]["json"]
+    assert body["data"][0]["metadata"]["selectorHash"] == "abc123"
