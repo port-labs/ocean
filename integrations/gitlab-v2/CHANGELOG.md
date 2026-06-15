@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added `deployment` and `deployment-status` kinds to sync CI/CD deployment records and their statuses into Port
+- Added `deployment` kind to sync CI/CD deployment records into Port
 
 
 ## 0.7.37 (2026-06-11)

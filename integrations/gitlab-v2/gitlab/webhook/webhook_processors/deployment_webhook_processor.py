@@ -18,7 +18,7 @@ from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import
 
 
 class DeploymentWebhookProcessor(_GitlabAbstractWebhookProcessor):
-    """Processes GitLab Deployment Hook events for both deployment and deployment-status kinds."""
+    """Processes GitLab Deployment Hook events for both deployment."""
 
     events = ["deployment"]
     hooks = ["Deployment Hook"]
