@@ -1332,13 +1332,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.43.9"
+version = "0.43.17"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.43.9-py3-none-any.whl", hash = "sha256:0569dec1830e4c3e83f08fc838f5d75e6bdd3427c3b8532df0f52a2cfad366b4"},
-    {file = "port_ocean-0.43.9.tar.gz", hash = "sha256:135c54260177a4963e4540e928ff99a0ce9c82f6bc3aff4a22a8f5eb49f138b6"},
+    {file = "port_ocean-0.43.17-py3-none-any.whl", hash = "sha256:64be0c9963059ea0f498e054d4f11c420790fbc33f6156217b8d49558948bb76"},
+    {file = "port_ocean-0.43.17.tar.gz", hash = "sha256:561370190d976b4683a5ea3b59b8cf8fdc7d65df7fe6e6e060a44f896e041487"},
 ]
 
 [package.dependencies]
@@ -1817,6 +1817,23 @@ pygments = ">=2.13.0,<3.0.0"
 jupyter = ["ipywidgets (>=7.5.1,<9)"]
 
 [[package]]
+name = "ruamel-yaml"
+version = "0.19.1"
+description = "ruamel.yaml is a YAML parser/emitter that supports roundtrip preservation of comments, seq/map flow style, and map key order"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "ruamel_yaml-0.19.1-py3-none-any.whl", hash = "sha256:27592957fedf6e0b62f281e96effd28043345e0e66001f97683aa9a40c667c93"},
+    {file = "ruamel_yaml-0.19.1.tar.gz", hash = "sha256:53eb66cd27849eff968ebf8f0bf61f46cdac2da1d1f3576dd4ccee9b25c31993"},
+]
+
+[package.extras]
+docs = ["mercurial (>5.7)", "ryd"]
+jinja2 = ["ruamel.yaml.jinja2 (>=0.2)"]
+libyaml = ["ruamel.yaml.clibz (>=0.3.7)"]
+oldlibyaml = ["ruamel.yaml.clib"]
+
+[[package]]
 name = "ruff"
 version = "0.6.9"
 description = "An extremely fast Python linter and code formatter, written in Rust."
@@ -2121,4 +2138,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "ef43ab9fb4b9dc3690eb775fbf72289c8d1ffc39899315533ced32882470f997"
+content-hash = "24079382f4b30f5b78299febcd0337939bcaa58857fe12c94a9e8128abf1f5cb"

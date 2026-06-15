@@ -5,7 +5,7 @@ from loguru import logger
 import asyncio
 
 
-class GetQueueAttributesAction(Action):
+class GetQueueAttributesAction(Action[list[str]]):
     """Fetches detailed attributes for SQS queues."""
 
     async def _execute(self, queues: list[str]) -> list[dict[str, Any]]:
@@ -45,7 +45,7 @@ class GetQueueAttributesAction(Action):
         return response["Attributes"]
 
 
-class ListQueueTagsAction(Action):
+class ListQueueTagsAction(Action[list[str]]):
     """Lists tags for SQS queues."""
 
     async def _execute(self, queues: list[str]) -> list[dict[str, Any]]:
@@ -85,7 +85,7 @@ class ListQueueTagsAction(Action):
         return {"Tags": tags}
 
 
-class ListQueuesAction(Action):
+class ListQueuesAction(Action[list[str]]):
     """List queues as a pass-through function."""
 
     async def _execute(self, queues: list[str]) -> list[dict[str, Any]]:
@@ -93,8 +93,11 @@ class ListQueuesAction(Action):
         return [{"QueueUrl": queue_url} for queue_url in queues]
 
 
-class SqsQueueActionsMap(ActionMap):
+class SqsQueueActionsMap(ActionMap[list[str]]):
     """Groups all actions for SQS queues."""
 
-    defaults: list[Type[Action]] = [ListQueuesAction, GetQueueAttributesAction]
-    options: list[Type[Action]] = [ListQueueTagsAction]
+    defaults: list[Type[Action[list[str]]]] = [
+        ListQueuesAction,
+        GetQueueAttributesAction,
+    ]
+    options: list[Type[Action[list[str]]]] = [ListQueueTagsAction]

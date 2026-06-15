@@ -270,7 +270,7 @@ class TestEcrRepositoryActionsMap:
 
     @pytest.mark.asyncio
     async def test_merge_with_options(self, mock_logger: MagicMock) -> None:
-        class DummyAction(Action):
+        class DummyAction(Action[list[Any]]):
             async def _execute(self, identifiers: List[Any]) -> List[Dict[str, Any]]:
                 return [{"dummy": True}]
 

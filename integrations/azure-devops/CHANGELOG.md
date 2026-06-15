@@ -7,6 +7,114 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.17 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.9.16 (2026-06-10)
+
+
+### Features
+
+- Added a new `area-path` kind.
+
+### Improvements
+
+- Added an `includeAreaPaths` option to the `team` kind.
+
+
+## 0.9.15 (2026-06-10)
+
+
+### Bug Fixes
+
+- Added bounded concurrency to webhook subscription listing and creation to prevent TSTU budget exhaustion from unbounded parallel requests, which caused 429 errors that aborted webhook setup entirely.
+- Added bounded concurrency to `generate_pipeline_runs` and `_runs_for_project`.
+
+
+## 0.9.14 (2026-06-10)
+
+
+### Features
+
+- Renamed `excludeTagFilter` integration config field to `excludedTags` (the old key is still supported for backward compatibility).
+
+## 0.9.13 (2026-06-09)
+
+
+### Features
+
+- Added `excludeTagFilter` integration config field to exclude ADO projects from syncing based on project tags. Projects matching any specified tag are skipped during resync for all resource kinds.
+
+
+## 0.9.12 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.9.11 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.9.10 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.9.9 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.9.8 (2026-06-03)
+
+
+### Improvements
+
+- Added code coverage logs for test runs, including how many were processed and skipped when no build was linked.
+
+
+## 0.9.7 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.9.6 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.9.5 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
 ## 0.9.4 (2026-05-31)
 
 

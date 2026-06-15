@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import MagicMock, patch, AsyncMock
 
+import asyncio
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import Request, Response, HTTPStatusError
@@ -9,7 +10,12 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from azure_devops.client.auth import PatAuthProvider
-from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.client.azure_devops_client import (
+    API_PARAMS,
+    AzureDevopsClient,
+    _flatten_area_path_tree,
+    _normalize_area_path,
+)
 from azure_devops.client.file_processing import PathDescriptor
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
@@ -745,6 +751,115 @@ async def test_get_single_project() -> None:
             "GET",
             f"{MOCK_ORG_URL}/_apis/projects/{project_id}",
         )
+
+
+@pytest.mark.asyncio
+async def test_get_project_tags() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    expected_tags = [
+        {"name": "Microsoft.TeamFoundation.Project.Tag.tr:restricted", "value": "true"}
+    ]
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json={"count": 1, "value": expected_tags}
+        )
+
+        tags = await client.get_project_tags(MOCK_PROJECT_ID)
+
+        assert tags == expected_tags
+        mock_send_request.assert_called_once_with(
+            "GET",
+            f"{MOCK_ORG_URL}/_apis/projects/{MOCK_PROJECT_ID}/properties",
+            params={
+                "keys": "Microsoft.TeamFoundation.Project.Tag.*",
+                "api-version": "7.1-preview.1",
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_project_tags_returns_empty_on_404() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    with patch.object(client, "send_request", return_value=None):
+        tags = await client.get_project_tags(MOCK_PROJECT_ID)
+
+        assert tags == []
+
+
+@pytest.mark.asyncio
+async def test_filter_projects_by_excluded_tags_excludes_tagged_projects() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    projects = [
+        {"id": "proj1", "name": "Project One"},
+        {"id": "proj2", "name": "Project Two"},
+    ]
+
+    async def mock_get_project_tags(project_id: str) -> List[Dict[str, Any]]:
+        if project_id == "proj1":
+            return [
+                {
+                    "name": "Microsoft.TeamFoundation.Project.Tag.tr:restricted",
+                    "value": "true",
+                }
+            ]
+        return []
+
+    with patch.object(client, "get_project_tags", side_effect=mock_get_project_tags):
+        result = await client.filter_projects_by_excluded_tags(
+            projects, ["tr:restricted"]
+        )
+
+    assert result == [{"id": "proj2", "name": "Project Two"}]
+
+
+@pytest.mark.asyncio
+async def test_filter_projects_by_excluded_tags_allows_untagged_projects() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    projects = [
+        {"id": "proj1", "name": "Project One"},
+        {"id": "proj2", "name": "Project Two"},
+    ]
+
+    with patch.object(client, "get_project_tags", return_value=[]):
+        result = await client.filter_projects_by_excluded_tags(
+            projects, ["tr:restricted"]
+        )
+
+    assert result == projects
+
+
+@pytest.mark.asyncio
+async def test_filter_projects_by_excluded_tags_includes_project_on_fetch_error() -> (
+    None
+):
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    projects = [
+        {"id": "proj1", "name": "Project One"},
+        {"id": "proj2", "name": "Project Two"},
+    ]
+
+    async def mock_get_project_tags(project_id: str) -> List[Dict[str, Any]]:
+        if project_id == "proj1":
+            raise Exception("rate limit exceeded")
+        return [
+            {
+                "name": "Microsoft.TeamFoundation.Project.Tag.tr:restricted",
+                "value": "true",
+            }
+        ]
+
+    with patch.object(client, "get_project_tags", side_effect=mock_get_project_tags):
+        result = await client.filter_projects_by_excluded_tags(
+            projects, ["tr:restricted"]
+        )
+
+    assert result == [{"id": "proj1", "name": "Project One"}]
 
 
 @pytest.mark.asyncio
@@ -2007,6 +2122,95 @@ async def test_generate_pipeline_runs(mock_event_context: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_pipeline_runs_bounded_concurrency(
+    mock_event_context: MagicMock,
+) -> None:
+    from azure_devops.client.azure_devops_client import MAX_CONCURRENT_PROJECTS
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    num_projects = MAX_CONCURRENT_PROJECTS + 2
+    projects = [{"id": f"proj{i}", "name": f"Project {i}"} for i in range(num_projects)]
+
+    active = 0
+    peak_active = 0
+
+    async def mock_runs_for_project(
+        project: Dict[str, Any],
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        nonlocal active, peak_active
+        active += 1
+        peak_active = max(peak_active, active)
+        await asyncio.sleep(0)
+        yield [{"id": 1, "__project": project, "__pipeline": {"id": 1}}]
+        active -= 1
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield projects
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client, "_runs_for_project", side_effect=mock_runs_for_project
+            ):
+                runs: List[Dict[str, Any]] = []
+                async for batch in client.generate_pipeline_runs():
+                    runs.extend(batch)
+
+    assert peak_active <= MAX_CONCURRENT_PROJECTS
+    assert len(runs) == num_projects
+
+
+@pytest.mark.asyncio
+async def test_runs_for_project_bounded_concurrency(
+    mock_event_context: MagicMock,
+) -> None:
+    from azure_devops.client.azure_devops_client import MAX_CONCURRENT_PIPELINES
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    project = {"id": "proj1", "name": "Project One"}
+    num_pipelines = MAX_CONCURRENT_PIPELINES + 2
+    pipelines = [{"id": i, "name": f"Pipeline {i}"} for i in range(num_pipelines)]
+
+    active = 0
+    peak_active = 0
+
+    async def mock_paginate_pipeline_runs(
+        proj: Dict[str, Any], pipeline: Dict[str, Any]
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        nonlocal active, peak_active
+        active += 1
+        peak_active = max(peak_active, active)
+        await asyncio.sleep(0)
+        yield [{"id": pipeline["id"], "__project": proj, "__pipeline": pipeline}]
+        active -= 1
+
+    async def mock_paginate_pipelines(
+        project_id: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield pipelines
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "_paginate_pipelines", side_effect=mock_paginate_pipelines
+        ):
+            with patch.object(
+                client,
+                "_paginate_pipeline_runs",
+                side_effect=mock_paginate_pipeline_runs,
+            ):
+                runs: List[Dict[str, Any]] = []
+                async for batch in client._runs_for_project(project):
+                    runs.extend(batch)
+
+    assert peak_active <= MAX_CONCURRENT_PIPELINES
+    assert len(runs) == num_pipelines
+
+
+@pytest.mark.asyncio
 async def test_get_pull_request() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 
@@ -2234,6 +2438,64 @@ async def test_get_filtered_webhook_subscriptions_calls_per_event_type() -> None
             for call in mock_fetch.call_args_list
         }
         assert actual_filters == expected_filters
+
+
+@pytest.mark.asyncio
+async def test_get_filtered_webhook_subscriptions_bounded_concurrency() -> None:
+    from azure_devops.client.azure_devops_client import (
+        MAX_CONCURRENT_SUBSCRIPTION_REQUESTS,
+    )
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    active = 0
+    peak_active = 0
+
+    async def mock_fetch(
+        publisher_id: str, event_type: str
+    ) -> List[WebhookSubscription]:
+        nonlocal active, peak_active
+        active += 1
+        peak_active = max(peak_active, active)
+        await asyncio.sleep(0)
+        active -= 1
+        return []
+
+    with patch.object(
+        client,
+        "generate_subscriptions_webhook_events",
+        new_callable=AsyncMock,
+        side_effect=mock_fetch,
+    ):
+        await client.get_filtered_webhook_subscriptions()
+
+    assert peak_active <= MAX_CONCURRENT_SUBSCRIPTION_REQUESTS
+
+
+@pytest.mark.asyncio
+async def test_get_filtered_webhook_subscriptions_partial_failure() -> None:
+    from azure_devops.webhooks.events import PushEvents
+
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    good_sub = WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH)
+
+    async def mock_fetch(
+        publisher_id: str, event_type: str
+    ) -> List[WebhookSubscription]:
+        if event_type == PushEvents.PUSH:
+            return [good_sub]
+        raise Exception("429 rate limited")
+
+    with patch.object(
+        client,
+        "generate_subscriptions_webhook_events",
+        new_callable=AsyncMock,
+        side_effect=mock_fetch,
+    ):
+        result = await client.get_filtered_webhook_subscriptions()
+
+    assert good_sub in result
 
 
 @pytest.mark.asyncio
@@ -4126,6 +4388,121 @@ async def test_enrich_test_runs_without_build() -> None:
 
 
 @pytest.mark.asyncio
+async def test_enrich_test_runs_with_missing_or_null_build() -> None:
+    """Coverage is skipped (mapped to {}) when build is missing, null, or has no id, while runs with a build id are enriched - order preserved."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    test_runs = [
+        {
+            "id": 1,
+            "name": "With build",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "Null build",
+            "build": None,
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 3,
+            "name": "Build without id",
+            "build": {},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 4,
+            "name": "Missing build",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    from integration import CodeCoverageConfig
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        return {"coverageData": {"linesCovered": 100, "linesNotCovered": 50}}
+
+    with patch.object(
+        client,
+        "_fetch_code_coverage",
+        side_effect=mock_fetch_code_coverage,
+    ):
+        enriched_test_runs = await client._enrich_test_runs(
+            test_runs, "proj1", include_results=False, coverage_config=coverage_config
+        )
+
+    assert len(enriched_test_runs) == 4
+    assert (
+        enriched_test_runs[0]["__codeCoverage"]["coverageData"]["linesCovered"] == 100
+    )
+    assert enriched_test_runs[1]["__codeCoverage"] == {}
+    assert enriched_test_runs[2]["__codeCoverage"] == {}
+    assert enriched_test_runs[3]["__codeCoverage"] == {}
+
+
+@pytest.mark.asyncio
+async def test_enrich_test_runs_logs_coverage_summary() -> None:
+    """The coverage summary log reports both fetched and skipped counts."""
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    test_runs = [
+        {
+            "id": 1,
+            "name": "With build",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "With build",
+            "build": {"id": 124},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 3,
+            "name": "Manual run",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    from integration import CodeCoverageConfig
+    from loguru import logger
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        return {"coverageData": {"linesCovered": 100, "linesNotCovered": 50}}
+
+    messages: List[str] = []
+    sink_id = logger.add(messages.append, level="INFO")
+    try:
+        with patch.object(
+            client,
+            "_fetch_code_coverage",
+            side_effect=mock_fetch_code_coverage,
+        ):
+            await client._enrich_test_runs(
+                test_runs,
+                "proj1",
+                include_results=False,
+                coverage_config=coverage_config,
+            )
+    finally:
+        logger.remove(sink_id)
+
+    summary = "".join(messages)
+    assert "Fetched code coverage for 2 of 3 test runs" in summary
+    assert "Skipped 1 runs" in summary
+
+
+@pytest.mark.asyncio
 async def test_fetch_code_coverage() -> None:
     """Test fetching code coverage data."""
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
@@ -4983,3 +5360,234 @@ async def test_get_test_runs_by_build_empty(
 
                 assert len(result) == 0
                 mock_enrich.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Area paths (Classification Nodes) and team field values
+# ---------------------------------------------------------------------------
+
+MOCK_AREA_TREE: Dict[str, Any] = {
+    "id": 1,
+    "identifier": "root-guid",
+    "name": "My Project",
+    "structureType": "area",
+    "hasChildren": True,
+    "path": "\\My Project\\Area",
+    "children": [
+        {
+            "id": 2,
+            "identifier": "backend-guid",
+            "name": "Backend",
+            "structureType": "area",
+            "hasChildren": True,
+            "path": "\\My Project\\Area\\Backend",
+            "children": [
+                {
+                    "id": 3,
+                    "identifier": "db-guid",
+                    "name": "Database",
+                    "structureType": "area",
+                    "hasChildren": False,
+                    "path": "\\My Project\\Area\\Backend\\Database",
+                }
+            ],
+        },
+        {
+            "id": 4,
+            "identifier": "frontend-guid",
+            "name": "Frontend",
+            "structureType": "area",
+            "hasChildren": False,
+            "path": "\\My Project\\Area\\Frontend",
+        },
+    ],
+}
+
+MOCK_TEAM_FIELD_VALUES: Dict[str, Any] = {
+    "field": {"referenceName": "System.AreaPath"},
+    "defaultValue": "My Project\\Backend",
+    "values": [
+        {"value": "My Project\\Backend", "includeChildren": True},
+        {"value": "My Project\\Frontend", "includeChildren": False},
+    ],
+}
+
+
+@pytest.mark.parametrize(
+    "raw_path, expected",
+    [
+        ("\\My Project\\Area", "My Project"),
+        ("\\My Project\\Area\\Backend", "My Project\\Backend"),
+        ("\\My Project\\Area\\Backend\\Database", "My Project\\Backend\\Database"),
+        # No structure-group segment present -> only the leading backslash is stripped
+        ("\\My Project", "My Project"),
+        ("", ""),
+    ],
+)
+def test_normalize_area_path(raw_path: str, expected: str) -> None:
+    assert _normalize_area_path(raw_path) == expected
+
+
+def test_flatten_area_path_tree_builds_parent_chain() -> None:
+    project = {"id": MOCK_PROJECT_ID, "name": MOCK_PROJECT_NAME}
+
+    nodes = _flatten_area_path_tree(MOCK_AREA_TREE, project, None)
+
+    # One entity per node, children stripped from each entity
+    assert len(nodes) == 4
+    assert all("children" not in node for node in nodes)
+
+    by_id = {node["identifier"]: node for node in nodes}
+
+    # Parent-GUID chain across multiple levels
+    assert by_id["root-guid"]["__parentIdentifier"] is None
+    assert by_id["backend-guid"]["__parentIdentifier"] == "root-guid"
+    assert by_id["db-guid"]["__parentIdentifier"] == "backend-guid"
+    assert by_id["frontend-guid"]["__parentIdentifier"] == "root-guid"
+
+    # Normalized paths match System.AreaPath format
+    assert by_id["root-guid"]["__normalizedPath"] == "My Project"
+    assert by_id["db-guid"]["__normalizedPath"] == "My Project\\Backend\\Database"
+
+    # Project context stamped on every node
+    assert all(node["__project"]["id"] == MOCK_PROJECT_ID for node in nodes)
+
+
+def test_flatten_area_path_tree_skips_non_area_nodes() -> None:
+    tree = {
+        "identifier": "root-guid",
+        "structureType": "area",
+        "path": "\\My Project\\Area",
+        "children": [
+            {
+                "identifier": "iteration-guid",
+                "structureType": "iteration",
+                "path": "\\My Project\\Iteration\\Sprint 1",
+            }
+        ],
+    }
+
+    nodes = _flatten_area_path_tree(tree, {"id": "p1", "name": "p"}, None)
+
+    identifiers = [node["identifier"] for node in nodes]
+    assert identifiers == ["root-guid"]
+
+
+@pytest.mark.asyncio
+async def test_generate_area_paths(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_generate_projects(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": MOCK_PROJECT_ID, "name": MOCK_PROJECT_NAME}]
+
+    with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(client, "send_request") as mock_send_request:
+            mock_send_request.return_value = Response(
+                status_code=200, json=MOCK_AREA_TREE
+            )
+            async with event_context("test_event"):
+                area_paths: List[Dict[str, Any]] = []
+                async for batch in client.generate_area_paths(depth=5):
+                    area_paths.extend(batch)
+
+    assert len(area_paths) == 4
+    identifiers = {node["identifier"] for node in area_paths}
+    assert identifiers == {"root-guid", "backend-guid", "db-guid", "frontend-guid"}
+
+    # Classification Nodes Areas endpoint hit with the depth selector
+    called_url = mock_send_request.call_args.args[1]
+    assert called_url.endswith(
+        f"/{MOCK_PROJECT_ID}/_apis/wit/classificationnodes/Areas"
+    )
+    assert mock_send_request.call_args.kwargs["params"]["$depth"] == 5
+
+
+@pytest.mark.asyncio
+async def test_generate_area_paths_without_depth_omits_depth_param(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_generate_projects(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": MOCK_PROJECT_ID, "name": MOCK_PROJECT_NAME}]
+
+    with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(client, "send_request") as mock_send_request:
+            mock_send_request.return_value = Response(
+                status_code=200, json=MOCK_AREA_TREE
+            )
+            async with event_context("test_event"):
+                async for _ in client.generate_area_paths():
+                    pass
+
+    params = mock_send_request.call_args.kwargs["params"]
+    assert "$depth" not in params
+    assert params == API_PARAMS
+
+
+@pytest.mark.asyncio
+async def test_get_team_field_values_returns_response() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    team = {"id": "team1", "projectId": "proj1", "name": "Team One"}
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json=MOCK_TEAM_FIELD_VALUES
+        )
+
+        result = await client.get_team_field_values(team)
+
+    assert result == MOCK_TEAM_FIELD_VALUES
+    called_url = mock_send_request.call_args.args[1]
+    assert called_url.endswith("/proj1/team1/_apis/work/teamsettings/teamfieldvalues")
+
+
+@pytest.mark.asyncio
+async def test_get_team_field_values_returns_none_on_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    team = {"id": "team1", "projectId": "proj1", "name": "Team One"}
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            result = await client.get_team_field_values(team)
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_enrich_teams_with_area_paths() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    test_teams = [
+        {"id": "team1", "projectId": "proj1", "name": "Team One"},
+        {"id": "team2", "projectId": "proj1", "name": "Team Two"},
+    ]
+
+    async def mock_get_team_field_values(team: Dict[str, Any]) -> Dict[str, Any]:
+        if team["id"] == "team2":
+            raise HTTPStatusError(
+                "boom",
+                request=Request("GET", "https://google.com"),
+                response=Response(status_code=500),
+            )
+        return MOCK_TEAM_FIELD_VALUES
+
+    with patch.object(
+        client,
+        "get_team_field_values",
+        side_effect=mock_get_team_field_values,
+    ):
+        enriched_teams = await client.enrich_teams_with_area_paths(test_teams)
+
+    # Successful team gets its field values; a failing team does not break the batch
+    assert enriched_teams[0]["__areaPaths"] == MOCK_TEAM_FIELD_VALUES
+    assert enriched_teams[1]["__areaPaths"] is None

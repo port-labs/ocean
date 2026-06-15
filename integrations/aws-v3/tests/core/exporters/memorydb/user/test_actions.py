@@ -7,7 +7,6 @@ from aws.core.exporters.memorydb.user.actions import (
     ListTagsForMemoryDbUserAction,
 )
 
-
 SAMPLE_USERS = [
     {
         "Name": "alice",

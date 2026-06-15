@@ -7,6 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.2 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.5.1 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.5.0 (2026-06-08)
+
+
+### Features
+
+- Added dual-source live event ingestion for Datadog: monitor notifications (`/monitor-events`) and audit-trail forwarding (`/audit-trail`) with dedicated processors per source.
+- Added audit-trail processors for monitor, user, team, SLO, and role assets to handle CRUD/access-management updates in near real time.
+
+### Bug Fixes
+
+- Reworked Datadog live-event bootstrap to reliably create/update webhook configuration and to automatically provision monitor notification rules.
+
+
+## 0.4.4 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.4.3 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.4.2 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.4.1 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.4.0 (2026-06-02)
+
+
+### Improvements
+
+- Refactored the Datadog integration to use a modular exporter architecture, extracting resource-specific logic from the monolithic client into dedicated exporter classes
+- Added `role` resource kind support
+- Added optional restriction policy enrichment selector for monitors and SLOs
+
+
+## 0.3.161 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.3.160 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
 ## 0.3.159 (2026-05-31)
 
 

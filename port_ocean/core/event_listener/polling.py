@@ -9,7 +9,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
-from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
+from port_ocean.core.models import EventListenerType
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.utils.time import convert_str_to_utc_datetime
@@ -48,7 +48,6 @@ class PollingEventListener(BaseEventListener):
     ):
         super().__init__(events)
         self.event_listener_config = event_listener_config
-        self._is_resync_requests_polling_enabled: bool | None = None
 
     def should_resync(self, last_updated_at: str) -> bool:
         _last_updated_at = (
@@ -100,23 +99,6 @@ class PollingEventListener(BaseEventListener):
 
         return current_state_updated_at < resync_request_updated_at
 
-    async def is_resync_requests_polling_enabled(self) -> bool:
-        """
-        Check whether polling integration resync requests is enabled.
-
-        The result is loaded once from organization feature flags and cached for
-        subsequent polling iterations.
-        """
-        if self._is_resync_requests_polling_enabled is None:
-            organization_flags = (
-                await ocean.app.port_client.get_organization_feature_flags()
-            )
-            self._is_resync_requests_polling_enabled = (
-                IntegrationFeatureFlag.OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED
-                in organization_flags
-            )
-        return self._is_resync_requests_polling_enabled
-
     async def _start(self) -> None:
         """
         Starts the polling event listener.
@@ -148,7 +130,7 @@ class PollingEventListener(BaseEventListener):
             resync_reason = "Detected change in integration, resyncing"
             resync_request_updated_at = ""
 
-            if not should_resync and await self.is_resync_requests_polling_enabled():
+            if not should_resync:
                 try:
                     resync_request = (
                         await ocean.app.port_client.get_integration_resync_request()

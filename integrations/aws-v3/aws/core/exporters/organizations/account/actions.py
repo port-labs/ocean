@@ -10,13 +10,13 @@ from loguru import logger
 import asyncio
 
 
-class ListAccountsAction(Action):
+class ListAccountsAction(Action[list[dict[str, Any]]]):
     async def _execute(self, accounts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Return account identifiers as-is, normalized for downstream actions."""
         return accounts
 
 
-class ListParentsAction(Action):
+class ListParentsAction(Action[list[dict[str, Any]]]):
     async def _execute(self, accounts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         For each account, fetch all parent IDs using the Organizations paginator.
@@ -57,7 +57,7 @@ class ListParentsAction(Action):
         return {"Parents": parents}
 
 
-class ListTagsForResourceAction(Action):
+class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
     async def _execute(self, accounts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         tags_results = await asyncio.gather(
             *(self._fetch_tags(acc) for acc in accounts), return_exceptions=True
@@ -93,11 +93,11 @@ class ListTagsForResourceAction(Action):
         return {"Tags": tags}
 
 
-class OrganizationsAccountActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+class OrganizationsAccountActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: List[Type[Action[list[dict[str, Any]]]]] = [
         ListAccountsAction,
     ]
-    options: List[Type[Action]] = [
+    options: List[Type[Action[list[dict[str, Any]]]]] = [
         ListParentsAction,
         ListTagsForResourceAction,
     ]
