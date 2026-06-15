@@ -18,14 +18,14 @@ from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor import (
     WorkflowRunWebhookProcessor,
 )
-from integration import GithubWorkflowRunConfig, RepoSearchSelector
+from integration import GithubWorkflowRunConfig, GithubWorkflowRunSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
     return GithubWorkflowRunConfig(
         kind=ObjectKind.WORKFLOW_RUN,
-        selector=RepoSearchSelector(query="true"),
+        selector=GithubWorkflowRunSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -126,6 +126,68 @@ class TestWorkflowRunWebhookProcessor:
         assert isinstance(result, WebhookEventRawResults)
         assert result.updated_raw_results == [workflow_run]
         assert result.deleted_raw_results == []
+
+    @pytest.mark.parametrize(
+        "selector_status,run_status,run_conclusion,expect_deleted",
+        [
+            (["in_progress"], "in_progress", None, False),
+            (["failure"], "completed", "failure", False),
+            (["in_progress"], "completed", "success", True),
+            (["failure"], "in_progress", None, True),
+            (["in_progress", "completed"], "completed", None, False),
+            (["in_progress", "failure"], "completed", "success", True),
+        ],
+    )
+    async def test_handle_event_status_filter(
+        self,
+        workflow_webhook_processor: WorkflowRunWebhookProcessor,
+        selector_status: list[str],
+        run_status: str,
+        run_conclusion: str | None,
+        expect_deleted: bool,
+    ) -> None:
+        config = GithubWorkflowRunConfig(
+            kind=ObjectKind.WORKFLOW_RUN,
+            selector=GithubWorkflowRunSelector(query="true", statuses=selector_status),  # type: ignore[arg-type]
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"githubWorkflowRun"',
+                        properties={},
+                    )
+                )
+            ),
+        )
+        repo_data = {"id": 1, "name": "test-repo", "full_name": "test-org/test-repo"}
+        workflow_run = {
+            "id": 1,
+            "name": "test_workflow",
+            "status": run_status,
+            "conclusion": run_conclusion,
+        }
+        payload = {
+            "action": run_status,
+            "repository": repo_data,
+            "workflow_run": workflow_run,
+            "organization": {"login": "test-org"},
+        }
+
+        if expect_deleted:
+            result = await workflow_webhook_processor.handle_event(payload, config)
+            assert bool(result.updated_raw_results) is False
+            assert bool(result.deleted_raw_results) is True
+        else:
+            mock_exporter = AsyncMock()
+            mock_exporter.get_resource.return_value = workflow_run
+            with patch(
+                "github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor.RestWorkflowRunExporter",
+                return_value=mock_exporter,
+            ):
+                result = await workflow_webhook_processor.handle_event(payload, config)
+            assert bool(result.updated_raw_results) is True
+            assert bool(result.deleted_raw_results) is False
 
     @pytest.mark.parametrize(
         "payload,expected",

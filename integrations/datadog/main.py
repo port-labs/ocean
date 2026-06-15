@@ -6,6 +6,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
+from datadog.core.exporters.role_exporter import ListRoleOptions
 from initialize_client import init_client
 from integration import ObjectKind
 from datadog.webhook.webhook_client import DatadogWebhookClient
@@ -31,6 +32,7 @@ from datadog.core.exporters.service_dependency_exporter import (
     ListServiceDependencyOptions,
 )
 from datadog.overrides import (
+    RoleResourceConfig,
     TeamResourceConfig,
     MonitorResourceConfig,
     SLOResourceConfig,
@@ -58,9 +60,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        UserExporter(client).get_paginated_resources() for client in init_client()
-    )
+    tasks = (UserExporter(client).get_paginated_resources() for client in init_client())
 
     async for users in stream_async_iterators_tasks(*tasks):
         logger.info(f"Received batch with {len(users)} users")
@@ -69,9 +69,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.HOST)
 async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        HostExporter(client).get_paginated_resources() for client in init_client()
-    )
+    tasks = (HostExporter(client).get_paginated_resources() for client in init_client())
 
     async for hosts in stream_async_iterators_tasks(*tasks):
         logger.info(f"Received batch with {len(hosts)} hosts")
@@ -171,7 +169,12 @@ async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ROLE)
 async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     tasks = (
-        RoleExporter(client).get_paginated_resources() for client in init_client()
+        RoleExporter(client).get_paginated_resources(
+            ListRoleOptions.from_resource_config(
+                cast(RoleResourceConfig, event.resource_config)
+            )
+        )
+        for client in init_client()
     )
 
     async for roles in stream_async_iterators_tasks(*tasks):

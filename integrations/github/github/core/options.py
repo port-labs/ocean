@@ -113,6 +113,8 @@ class ListWorkflowRunOptions(RepositoryIdentifier):
 
     workflow_id: Required[int]
     max_runs: Required[int]
+    status: NotRequired[Optional[str]]
+    created: NotRequired[Optional[str]]
 
 
 class SingleWorkflowRunOptions(RepositoryIdentifier):
