@@ -16,7 +16,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class CodeDeployDeploymentGroupExporter(IResourceExporter):
+class CodeDeployDeploymentGroupExporter(IResourceExporter[DeploymentGroupActionInput]):
     _service_name: SupportedServices = "codedeploy"
     _model_cls: Type[CodeDeployDeploymentGroup] = CodeDeployDeploymentGroup
     _actions_map: Type[CodeDeployDeploymentGroupActionsMap] = (
@@ -37,7 +37,7 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
             response = await inspector.inspect(
                 DeploymentGroupActionInput(
                     app_name=options.application_name,
-                    groups=[options.deployment_group_name],
+                    items=[options.deployment_group_name],
                     region=options.region,
                     account_id=options.account_id,
                 ),
@@ -74,7 +74,7 @@ class CodeDeployDeploymentGroupExporter(IResourceExporter):
                             await inspector.inspect(
                                 DeploymentGroupActionInput(
                                     app_name=app,
-                                    groups=groups,
+                                    items=groups,
                                     region=options.region,
                                     account_id=options.account_id,
                                 ),

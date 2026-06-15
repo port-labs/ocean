@@ -1,19 +1,18 @@
 from dataclasses import dataclass
 from typing import Any, Type, cast, Dict, List
-from aws.core.interfaces.action import Action, ActionMap
+from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 from loguru import logger
 import asyncio
 
 
 @dataclass
-class DeploymentGroupActionInput:
+class DeploymentGroupActionInput(BaseActionInput):
     app_name: str
-    groups: list[str]
     account_id: str
     region: str
 
 
-class GetDeploymentGroupDetailsAction(Action):
+class GetDeploymentGroupDetailsAction(Action[DeploymentGroupActionInput]):
     """Fetches detailed information for CodeDeploy deployment groups."""
 
     async def _execute(
@@ -22,7 +21,7 @@ class GetDeploymentGroupDetailsAction(Action):
         results = (
             await self.client.batch_get_deployment_groups(
                 applicationName=groups_data.app_name,
-                deploymentGroupNames=groups_data.groups,
+                deploymentGroupNames=groups_data.items,
             )
         ).get("deploymentGroupsInfo", [])
         logger.info(
@@ -31,7 +30,7 @@ class GetDeploymentGroupDetailsAction(Action):
         return results
 
 
-class GetDeploymentGroupTags(Action):
+class GetDeploymentGroupTags(Action[DeploymentGroupActionInput]):
     async def _execute(
         self, groups_data: DeploymentGroupActionInput
     ) -> List[Dict[str, Any]]:
@@ -43,7 +42,7 @@ class GetDeploymentGroupTags(Action):
                     region=groups_data.region,
                     account_id=groups_data.account_id,
                 )
-                for group in groups_data.groups
+                for group in groups_data.items
             ),
             return_exceptions=True,
         )
@@ -52,7 +51,7 @@ class GetDeploymentGroupTags(Action):
         for idx, tag_result in enumerate(tags):
             if isinstance(tag_result, Exception):
                 logger.error(
-                    f"Error fetching tags for DeploymentGroup '{groups_data.app_name}/{groups_data.groups[idx]}': {tag_result}"
+                    f"Error fetching tags for DeploymentGroup '{groups_data.app_name}/{groups_data.items[idx]}': {tag_result}"
                 )
                 results.append({})
                 continue
@@ -66,11 +65,11 @@ class GetDeploymentGroupTags(Action):
         return await self.client.list_tags_for_resource(ResourceArn=arn)
 
 
-class CodeDeployDeploymentGroupActionsMap(ActionMap):
+class CodeDeployDeploymentGroupActionsMap(ActionMap[DeploymentGroupActionInput]):
     """Groups all actions for CodeDeploy deployment groups."""
 
-    defaults: List[Type[Action]] = [
+    defaults: List[Type[Action[DeploymentGroupActionInput]]] = [
         GetDeploymentGroupDetailsAction,
         GetDeploymentGroupTags,
     ]
-    options: List[Type[Action]] = []
+    options: List[Type[Action[DeploymentGroupActionInput]]] = []
