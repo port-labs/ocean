@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.4.2-beta (2026-06-15)
+
+
+### Improvements
+
+- Fix minor naming conflict in the 2.4.1 generics that caused the type to not be fully recognized in some cases
+
+
+## 2.4.1-beta (2026-06-15)
+
+
+### Improvements
+
+- Base Action class uses Generic[T] instead of list[Any] for typing, enabling more efficient data handling
+
+
 ## 2.4.0-beta (2026-06-11)
 
 

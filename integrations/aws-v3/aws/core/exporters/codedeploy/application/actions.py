@@ -1,15 +1,17 @@
-from typing import Dict, Any, List, Type, cast, TypedDict
-from aws.core.interfaces.action import Action, ActionMap
+from dataclasses import dataclass
+from typing import Dict, Any, List, Type, cast
+from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 from loguru import logger
 import asyncio
 
 
-class CodeDeployApplicationActionInput(TypedDict):
-    applications: list[str]
-    extras: dict[str, str]
+@dataclass
+class CodeDeployApplicationActionInput(BaseActionInput):
+    region: str
+    account_id: str
 
 
-class GetCodeDeployApplicationDetailsAction(Action):
+class GetCodeDeployApplicationDetailsAction(Action[CodeDeployApplicationActionInput]):
     """Fetches detailed information about CodeDeploy applications."""
 
     async def _execute(
@@ -17,7 +19,7 @@ class GetCodeDeployApplicationDetailsAction(Action):
     ) -> List[Dict[str, Any]]:
         response = (
             await self.client.batch_get_applications(
-                applicationNames=resources["applications"]
+                applicationNames=resources.items,
             )
         ).get("applicationsInfo", [])
 
@@ -27,7 +29,7 @@ class GetCodeDeployApplicationDetailsAction(Action):
         return sorted(response, key=lambda app_info: app_info["applicationName"])
 
 
-class GetCodeDeployApplicationTagsAction(Action):
+class GetCodeDeployApplicationTagsAction(Action[CodeDeployApplicationActionInput]):
     """Fetches tags for CodeDeploy applications."""
 
     async def _execute(
@@ -35,8 +37,10 @@ class GetCodeDeployApplicationTagsAction(Action):
     ) -> List[Dict[str, Any]]:
         tags = await asyncio.gather(
             *(
-                self._fetch_application_tags(application, resources["extras"])
-                for application in resources["applications"]
+                self._fetch_application_tags(
+                    application, resources.region, resources.account_id
+                )
+                for application in resources.items
             ),
             return_exceptions=True,
         )
@@ -45,7 +49,7 @@ class GetCodeDeployApplicationTagsAction(Action):
         for idx, tag_result in enumerate(tags):
             if isinstance(tag_result, Exception):
                 logger.error(
-                    f"Error fetching tags for CodeDeploy application '{resources["applications"][idx]}': {tag_result}"
+                    f"Error fetching tags for CodeDeploy application '{resources.items[idx]}': {tag_result}"
                 )
                 results.append({})
                 continue
@@ -53,17 +57,17 @@ class GetCodeDeployApplicationTagsAction(Action):
         return results
 
     async def _fetch_application_tags(
-        self, app_name: str, extras: dict[str, str]
+        self, app_name: str, region: str, account_id: str
     ) -> Dict[str, Any]:
-        app_arn = f"arn:aws:codedeploy:{extras['region']}:{extras['account_id']}:application:{app_name}"
+        app_arn = f"arn:aws:codedeploy:{region}:{account_id}:application:{app_name}"
         return await self.client.list_tags_for_resource(ResourceArn=app_arn)
 
 
-class CodeDeployApplicationActionsMap(ActionMap):
+class CodeDeployApplicationActionsMap(ActionMap[CodeDeployApplicationActionInput]):
     """Groups all actions for CodeDeploy applications."""
 
-    defaults: List[Type[Action]] = [
+    defaults: List[Type[Action[CodeDeployApplicationActionInput]]] = [
         GetCodeDeployApplicationDetailsAction,
         GetCodeDeployApplicationTagsAction,
     ]
-    options: List[Type[Action]] = []
+    options: List[Type[Action[CodeDeployApplicationActionInput]]] = []
