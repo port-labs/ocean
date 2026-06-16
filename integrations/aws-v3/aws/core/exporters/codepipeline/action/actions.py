@@ -63,7 +63,7 @@ class GetPipelineActionsDetails(PipelineAction[CodePipelinePipelineActionInput])
                 actions.append(
                     {
                         **action,
-                        "pipelineName": pipeline_info.get("name", ""),
+                        "pipelineName": pipeline_name,
                         "pipelineArn": pipeline_data.get("metadata", {}).get("pipelineArn", ""),
                         "pipelineVersion": pipeline_info.get("version", 0),
                         "stageName": stage_name,
