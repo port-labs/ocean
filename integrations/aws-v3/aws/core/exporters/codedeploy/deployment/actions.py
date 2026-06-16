@@ -8,9 +8,6 @@ class GetDeploymentAction(Action[list[str]]):
     """Fetches detailed information about CodeDeploy deployments."""
 
     async def _execute(self, deployments: list[str]) -> List[Dict[str, Any]]:
-        if not deployments:
-            return []
-
         deployment_details = await asyncio.gather(
             *(self._fetch_deployment_details(deployment) for deployment in deployments),
             return_exceptions=True,
