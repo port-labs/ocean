@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Literal
 from pydantic import Field, validator, BaseModel
 
@@ -308,6 +309,47 @@ class JiraWorklogResourceConfig(ResourceConfig):
     )
 
 
+class ComponentSource(StrEnum):
+    JIRA = "jira"
+    COMPASS = "compass"
+    AUTO = "auto"
+
+
+class JiraComponentSelector(Selector):
+    component_source: Literal[
+        ComponentSource.JIRA,
+        ComponentSource.COMPASS,
+        ComponentSource.AUTO,
+    ] = Field(
+        alias="componentSource",
+        title="Component Source",
+        default=ComponentSource.JIRA,
+        description=(
+            "Filter by component source. "
+            "'jira' returns standard project components, "
+            "'compass' returns Compass global components linked to this project, "
+            "'auto' returns both. "
+        ),
+    )
+    name_filter: str | None = Field(
+        default=None,
+        alias="nameFilter",
+        title="Name Filter",
+        description="Filter components by name or description prefix.",
+    )
+
+
+class JiraComponentResourceConfig(ResourceConfig):
+    kind: Literal["component"] = Field(
+        title="Jira Component",
+        description="Jira component resource kind, representing components within Jira projects.",
+    )
+    selector: JiraComponentSelector = Field(
+        title="Component Selector",
+        description="Selector for Jira component resources.",
+    )
+
+
 class JiraPortAppConfig(PortAppConfig):
     resources: list[
         TeamResourceConfig
@@ -320,6 +362,7 @@ class JiraPortAppConfig(PortAppConfig):
         | JiraBacklogResourceConfig
         | JiraEpicResourceConfig
         | JiraWorklogResourceConfig
+        | JiraComponentResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore[assignment]

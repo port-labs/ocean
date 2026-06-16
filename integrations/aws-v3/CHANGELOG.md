@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.5.3-beta (2026-06-16)
+
+
+### Improvements
+
+- Base Action class Generic had variable name override fixed, should now properly identify typing
+
 ## 2.5.2-beta (2026-06-15)
 
 
