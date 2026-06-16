@@ -387,6 +387,7 @@ class IntegrationClientMixin:
                     "operation": entry["metadata"]["operation"].value,
                     "extractionTimestamp": entry["metadata"]["extraction_timestamp"],
                     "resourceIndex": entry["metadata"]["resource_index"],
+                    "selectorHash": entry["metadata"].get("selector_hash"),
                 },
             }
             if environment_data := entry.get("environment_data"):

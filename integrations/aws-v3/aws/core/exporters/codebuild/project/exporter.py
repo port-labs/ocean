@@ -15,6 +15,7 @@ class CodeBuildProjectExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "codebuild"
     _model_cls: Type[CodeBuildProject] = CodeBuildProject
     _actions_map: Type[CodeBuildProjectActionsMap] = CodeBuildProjectActionsMap
+    _pagination_batch_size: int = 100  # Limit defined by AWS's API
 
     async def get_resource(
         self, options: SingleCodeBuildProjectRequest
@@ -39,7 +40,9 @@ class CodeBuildProjectExporter(IResourceExporter[list[str]]):
             )
             paginator = proxy.get_paginator("list_projects", "projects")
 
-            async for projects in paginator.paginate(batch_size=100):
+            async for projects in paginator.paginate(
+                batch_size=self._pagination_batch_size
+            ):
                 if projects:
                     action_result = await inspector.inspect(
                         projects,
