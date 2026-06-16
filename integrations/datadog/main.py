@@ -5,6 +5,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+from datadog.core.exporters.role_exporter import ListRoleOptions
 from initialize_client import init_client
 from integration import ObjectKind
 from datadog.webhook.webhook_client import DatadogWebhookClient
@@ -30,6 +31,7 @@ from datadog.core.exporters.service_dependency_exporter import (
     ListServiceDependencyOptions,
 )
 from datadog.overrides import (
+    RoleResourceConfig,
     TeamResourceConfig,
     MonitorResourceConfig,
     SLOResourceConfig,
@@ -157,7 +159,11 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
     role_exporter = RoleExporter(dd_client)
 
-    async for roles in role_exporter.get_paginated_resources():
+    async for roles in role_exporter.get_paginated_resources(
+        ListRoleOptions.from_resource_config(
+            cast(RoleResourceConfig, event.resource_config)
+        )
+    ):
         logger.info(f"Received batch with {len(roles)} roles")
         yield roles
 

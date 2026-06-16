@@ -148,6 +148,39 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
 ]
 
 
+def _normalize_area_path(path: str) -> str:
+    """Convert a classification-node path to work-item ``System.AreaPath`` format.
+
+    Example: ``\\Project\\Area\\L1\\L2`` → ``Project\\L1\\L2``.
+    """
+    segments = path.strip("\\").split("\\")
+    # segments[0] is the project name; segments[1] is the "Area" structure group.
+    if len(segments) >= 2 and segments[1] == "Area":
+        del segments[1]
+    return "\\".join(segments)
+
+
+def _flatten_area_path_tree(
+    node: dict[str, Any],
+    project: dict[str, Any],
+    parent_identifier: Optional[str],
+) -> list[dict[str, Any]]:
+    """Flatten a nested area tree into one dict per node, with project and parent context."""
+    if node.get("structureType") != "area":
+        return []
+
+    enriched = {
+        **{key: value for key, value in node.items() if key != "children"},
+        "__project": project,
+        "__parentIdentifier": parent_identifier,
+        "__normalizedPath": _normalize_area_path(node.get("path", "")),
+    }
+    result = [enriched]
+    for child in node.get("children", []):
+        result.extend(_flatten_area_path_tree(child, project, node.get("identifier")))
+    return result
+
+
 class AzureDevopsClient(HTTPBaseClient):
     def __init__(
         self,
@@ -412,6 +445,39 @@ class AzureDevopsClient(HTTPBaseClient):
 
         for team, members in zip(teams, members_results):
             team["__members"] = members
+
+        return teams
+
+    async def get_team_field_values(
+        self, team: dict[str, Any]
+    ) -> Optional[dict[str, Any]]:
+        """Get a team's configured area paths (Team Field Values)."""
+        field_values_url = (
+            f"{self._organization_base_url}/{team['projectId']}/{team['id']}"
+            f"/{API_URL_PREFIX}/work/teamsettings/teamfieldvalues"
+        )
+        response = await self.send_request("GET", field_values_url, params=API_PARAMS)
+        return response.json() if response else None
+
+    async def enrich_teams_with_area_paths(
+        self, teams: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        logger.debug(f"Fetching area paths for {len(teams)} teams")
+
+        team_tasks = [self.get_team_field_values(team) for team in teams]
+
+        field_values_results = await asyncio.gather(*team_tasks, return_exceptions=True)
+
+        for team, result in zip(teams, field_values_results):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to fetch area paths for team {team['id']} in project {team['projectId']}: {result}"
+                )
+                team["__areaPaths"] = None
+            else:
+                team["__areaPaths"] = result
 
         return teams
 
@@ -1014,10 +1080,8 @@ class AzureDevopsClient(HTTPBaseClient):
         team_id = team["id"]
         iterations_url = f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/teamsettings/iterations"
 
-        params = {"api-version": "7.1"}
-
         try:
-            response = await self.send_request("GET", iterations_url, params=params)
+            response = await self.send_request("GET", iterations_url, params=API_PARAMS)
             if not response:
                 return []
 
@@ -1037,6 +1101,51 @@ class AzureDevopsClient(HTTPBaseClient):
                 f"Failed to fetch iterations for team {team_id} in project {project_id}: {str(e)}"
             )
             return []
+
+    async def generate_area_paths(
+        self, depth: Optional[int] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate area paths (work item area classification nodes) for all
+        projects in the organization.
+        """
+        async for projects in self.generate_projects():
+            project_tasks = [
+                self._area_paths_for_project(project, depth) for project in projects
+            ]
+            async for batch in stream_async_iterators_tasks(*project_tasks):
+                yield batch
+
+    async def _area_paths_for_project(
+        self, project: dict[str, Any], depth: Optional[int] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield the flattened area-path tree for a single project."""
+        project_id = project["id"]
+        areas_url = (
+            f"{self._organization_base_url}/{project_id}"
+            f"/{API_URL_PREFIX}/wit/classificationnodes/Areas"
+        )
+        params: dict[str, Any] = {**API_PARAMS}
+        if depth is not None:
+            params["$depth"] = depth
+
+        try:
+            response = await self.send_request("GET", areas_url, params=params)
+            if not response:
+                return
+
+            area_paths = _flatten_area_path_tree(
+                node=response.json(), project=project, parent_identifier=None
+            )
+            if area_paths:
+                logger.info(
+                    f"Found {len(area_paths)} area paths for project {project['name']}"
+                )
+                yield area_paths
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch area paths for project {project_id}: {str(e)}"
+            )
 
     async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for batch in self._generate_environments_cached(
