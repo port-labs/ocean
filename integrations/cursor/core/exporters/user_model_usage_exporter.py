@@ -19,7 +19,6 @@ class CursorUserModelUsageExporter(AbstractCursorExporter):
                 "startDate": options["startDate"],
                 "endDate": options["endDate"],
             },
-            page_size=options["pageSize"],
         ):
             # `data` maps each user email to a list of their daily breakdowns;
             # flatten it into per-user-day records carrying the owning email.

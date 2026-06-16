@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import base64
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
@@ -48,20 +47,13 @@ class CursorClient:
         self,
         api_host: str,
         api_key: str,
+        page_size: int = DEFAULT_PAGE_SIZE,
         request_timeout_seconds: int = 30,
-        max_retries: int = 5,
-        backoff_seconds: float = 1.0,
     ) -> None:
-        if not api_host or not str(api_host).startswith(("http://", "https://")):
-            raise ValueError("cursor_api_host must be a valid http(s) URL")
-        if not api_key:
-            raise ValueError("cursor_api_key must be provided")
-
         self._client = http_async_client
         self._base_url = api_host.rstrip("/")
+        self._page_size = page_size
         self._request_timeout_seconds = request_timeout_seconds
-        self._max_retries = max_retries
-        self._backoff_seconds = backoff_seconds
         self._rate_limiters: dict[str, AsyncLimiter] = {}
         encoded_key = base64.b64encode(f"{api_key}:".encode()).decode()
         self._headers = {
@@ -105,9 +97,26 @@ class CursorClient:
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        response = await self._request_with_retry(
-            method, path, params=params, json_body=json_body
-        )
+        url = f"{self._base_url}{path}"
+        async with self._limiter_for(path):
+            response = await self._client.request(
+                method=method,
+                url=url,
+                headers=self._headers,
+                params=params,
+                json=json_body,
+                timeout=self._request_timeout_seconds,
+                extensions={"retryable": True},
+            )
+
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError:
+            logger.error(
+                f"HTTP {response.status_code} for {method} {url} with params={params}"
+            )
+            raise
+
         return self._parse_json(response, path)
 
     async def send_paginated_request(
@@ -116,14 +125,15 @@ class CursorClient:
         path: str,
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
-        page_size: int = DEFAULT_PAGE_SIZE,
+        page_size: int | None = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Yield each raw page payload for Cursor's standard pagination envelope.
 
-        `page`/`pageSize` are injected into the query string for GET requests and
-        into the JSON body for everything else. Pagination continues while the
-        response's `pagination.hasNextPage` flag is truthy.
+        Transient failures while listing pages are absorbed by Ocean's shared
+        RetryTransport. If a page still fails after retries, the error propagates. Ocean upserts the
+        pages already yielded and skips its delete phase. Existing entities are preserved and the remaining pages are picked up on the next resync.
         """
+        page_size = page_size or self._page_size
         page = DEFAULT_PAGE
 
         for _ in range(MAX_PAGES):
@@ -165,46 +175,3 @@ class CursorClient:
                 f"Cursor API returned a non-JSON response for {path}: {body_preview}"
             )
             raise
-
-    async def _request_with_retry(
-        self,
-        method: str,
-        path: str,
-        params: dict[str, Any] | None = None,
-        json_body: dict[str, Any] | None = None,
-    ) -> httpx.Response:
-        url = f"{self._base_url}{path}"
-        limiter = self._limiter_for(path)
-
-        for attempt in range(self._max_retries + 1):
-            async with limiter:
-                response = await self._client.request(
-                    method=method,
-                    url=url,
-                    headers=self._headers,
-                    params=params,
-                    json=json_body,
-                    timeout=self._request_timeout_seconds,
-                )
-
-            if response.status_code != 429:
-                try:
-                    response.raise_for_status()
-                except httpx.HTTPStatusError:
-                    logger.error(
-                        f"HTTP {response.status_code} for {method} {url} with params={params}"
-                    )
-                    raise
-                return response
-
-            if attempt == self._max_retries:
-                response.raise_for_status()
-
-            wait_seconds = self._backoff_seconds * (2**attempt)
-            logger.warning(
-                f"Cursor API rate limit hit on {method} {path}; retrying in {wait_seconds:.1f}s "
-                f"(attempt {attempt + 1}/{self._max_retries})"
-            )
-            await asyncio.sleep(wait_seconds)
-
-        raise RuntimeError("Exceeded retry attempts while calling Cursor API")

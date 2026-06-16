@@ -25,7 +25,7 @@ from integration import (
 )
 
 
-@ocean.on_resync(ObjectKind.CURSOR_TEAM_MODEL_USAGE.value)
+@ocean.on_resync(ObjectKind.CURSOR_TEAM_MODEL_USAGE)
 async def on_resync_team_model_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = create_team_model_usage_exporter()
     selector = cast(CursorTeamModelUsageResourceConfig, event.resource_config).selector
@@ -39,7 +39,7 @@ async def on_resync_team_model_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield page
 
 
-@ocean.on_resync(ObjectKind.CURSOR_USER_MODEL_USAGE.value)
+@ocean.on_resync(ObjectKind.CURSOR_USER_MODEL_USAGE)
 async def on_resync_user_model_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = create_user_model_usage_exporter()
     selector = cast(CursorUserModelUsageResourceConfig, event.resource_config).selector
@@ -53,7 +53,7 @@ async def on_resync_user_model_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield page
 
 
-@ocean.on_resync(ObjectKind.CURSOR_DAILY_USAGE.value)
+@ocean.on_resync(ObjectKind.CURSOR_DAILY_USAGE)
 async def on_resync_daily_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = create_daily_usage_exporter()
     selector = cast(CursorDailyUsageResourceConfig, event.resource_config).selector
@@ -65,7 +65,7 @@ async def on_resync_daily_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield page
 
 
-@ocean.on_resync(ObjectKind.CURSOR_USAGE_EVENT.value)
+@ocean.on_resync(ObjectKind.CURSOR_USAGE_EVENT)
 async def on_resync_usage_events(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter = create_usage_events_exporter()
     selector = cast(CursorUsageEventResourceConfig, event.resource_config).selector
@@ -78,12 +78,12 @@ async def on_resync_usage_events(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 _ANALYTICS_KINDS = {
-    ObjectKind.CURSOR_TEAM_MODEL_USAGE.value,
-    ObjectKind.CURSOR_USER_MODEL_USAGE.value,
+    ObjectKind.CURSOR_TEAM_MODEL_USAGE,
+    ObjectKind.CURSOR_USER_MODEL_USAGE,
 }
 _ADMIN_KINDS = {
-    ObjectKind.CURSOR_DAILY_USAGE.value,
-    ObjectKind.CURSOR_USAGE_EVENT.value,
+    ObjectKind.CURSOR_DAILY_USAGE,
+    ObjectKind.CURSOR_USAGE_EVENT,
 }
 
 
@@ -93,20 +93,11 @@ async def on_start() -> None:
 
     # A single API key may be scoped to only one of the Cursor APIs, so validate
     # connectivity only for the APIs backing the kinds the user actually enabled.
-    try:
-        app_config = (
-            await ocean.integration.port_app_config_handler.get_port_app_config()
-        )
-        configured_kinds = {resource.kind for resource in app_config.resources}
-    except Exception as exc:
-        logger.warning(
-            f"Could not load Port app config for startup validation, "
-            f"falling back to validating the Analytics API only: {exc}"
-        )
-        configured_kinds = set()
+    app_config = await ocean.integration.port_app_config_handler.get_port_app_config()
+    configured_kinds = {resource.kind for resource in app_config.resources}
 
     client = create_cursor_client()
-    if not configured_kinds or configured_kinds & _ANALYTICS_KINDS:
+    if configured_kinds & _ANALYTICS_KINDS:
         await client.validate_analytics_connection()
     if configured_kinds & _ADMIN_KINDS:
         await client.validate_admin_connection()

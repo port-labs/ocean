@@ -50,7 +50,11 @@ resources:
             max_mode: .maxMode
             requests_costs: .requestsCosts
             is_token_based_call: .isTokenBasedCall
-            token_usage: .tokenUsage
+            input_tokens: (if .tokenUsage then .tokenUsage.inputTokens else null end)
+            output_tokens: (if .tokenUsage then .tokenUsage.outputTokens else null end)
+            cache_read_tokens: (if .tokenUsage then .tokenUsage.cacheReadTokens else null end)
+            cache_write_tokens: (if .tokenUsage then .tokenUsage.cacheWriteTokens else null end)
+            token_cost: (if .tokenUsage.totalCents then (.tokenUsage.totalCents / 100) else null end)
             user_email: .userEmail
             cursor_token_fee: .cursorTokenFee
             is_headless: .isHeadless

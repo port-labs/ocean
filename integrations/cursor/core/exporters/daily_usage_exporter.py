@@ -17,7 +17,6 @@ class CursorDailyUsageExporter(AbstractCursorExporter):
                 "startDate": options["startDate"],
                 "endDate": options["endDate"],
             },
-            page_size=options["pageSize"],
         ):
             items = payload.get("data", []) or []
             if items:

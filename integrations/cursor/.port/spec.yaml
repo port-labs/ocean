@@ -24,3 +24,8 @@ configurations:
     type: url
     default: https://api.cursor.com
     description: Base URL of the Cursor API.
+  - name: cursorPageSize
+    required: false
+    type: integer
+    default: 500
+    description: Number of records fetched per page for paginated Cursor endpoints. Lower values reduce per-request load and tighten error scoping; higher values reduce sync duration.

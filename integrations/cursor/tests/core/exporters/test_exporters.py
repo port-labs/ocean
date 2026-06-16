@@ -13,14 +13,10 @@ from core.options import ListCursorAdminOptions, ListCursorAnalyticsOptions
 ANALYTICS_OPTIONS: ListCursorAnalyticsOptions = {
     "startDate": "30d",
     "endDate": "0d",
-    "page": 1,
-    "pageSize": 50,
 }
 ADMIN_OPTIONS: ListCursorAdminOptions = {
     "startDate": 1,
     "endDate": 2,
-    "page": 1,
-    "pageSize": 500,
 }
 
 

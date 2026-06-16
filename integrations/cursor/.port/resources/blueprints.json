@@ -139,9 +139,25 @@
           "type": "boolean",
           "title": "Token Based Call"
         },
-        "token_usage": {
-          "type": "object",
-          "title": "Token Usage"
+        "input_tokens": {
+          "type": "number",
+          "title": "Input Tokens"
+        },
+        "output_tokens": {
+          "type": "number",
+          "title": "Output Tokens"
+        },
+        "cache_read_tokens": {
+          "type": "number",
+          "title": "Cache Read Tokens"
+        },
+        "cache_write_tokens": {
+          "type": "number",
+          "title": "Cache Write Tokens"
+        },
+        "token_cost": {
+          "type": "number",
+          "title": "Token Cost (USD)"
         },
         "user_email": {
           "type": "string",
@@ -164,7 +180,14 @@
       "required": []
     },
     "mirrorProperties": {},
-    "calculationProperties": {},
+    "calculationProperties": {
+      "total_tokens": {
+        "title": "Total Tokens",
+        "description": "Sum of input, output, cache-read and cache-write tokens",
+        "calculation": "(.properties.input_tokens // 0) + (.properties.output_tokens // 0) + (.properties.cache_read_tokens // 0) + (.properties.cache_write_tokens // 0)",
+        "type": "number"
+      }
+    },
     "aggregationProperties": {},
     "relations": {}
   },

@@ -17,7 +17,6 @@ class CursorUsageEventsExporter(AbstractCursorExporter):
                 "startDate": options["startDate"],
                 "endDate": options["endDate"],
             },
-            page_size=options["pageSize"],
         ):
             items = payload.get("usageEvents", []) or []
             if items:
