@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.43.18 (2026-06-15)
+
+### Improvements
+
+- Added `selectorHash` to lakehouse raw-data metadata payloads. The value is computed from each resource selector query using trimmed-query SHA-256 (`selector.query.trim()`), and omitted when the selector query is empty.
+
 ## 0.43.17 (2026-06-11)
 
 ### Improvements
