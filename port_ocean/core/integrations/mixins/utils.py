@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import multiprocessing
 import os
 import re
@@ -10,6 +11,7 @@ from loguru import logger
 from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers import JQEntityProcessor
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -56,6 +58,27 @@ def build_lakehouse_data_entry(
     if environment_data is not None:
         entry["environment_data"] = environment_data
     return entry
+
+
+def selector_query_from_resource(resource: ResourceConfig) -> str | None:
+    query = getattr(getattr(resource, "selector", None), "query", None)
+    if not isinstance(query, str):
+        return None
+
+    trimmed = query.strip()
+    return trimmed if trimmed else None
+
+
+def selector_hash_from_query(query: str) -> str:
+    return hashlib.sha256(query.encode("utf-8")).hexdigest()
+
+
+def selector_hash_from_resource(resource: ResourceConfig) -> str | None:
+    query = selector_query_from_resource(resource)
+    if not query:
+        return None
+
+    return selector_hash_from_query(query)
 
 
 async def is_lakehouse_data_enabled() -> bool:

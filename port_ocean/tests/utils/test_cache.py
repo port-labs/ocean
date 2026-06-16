@@ -155,6 +155,40 @@ async def test_cache_coroutine_result(mock_ocean: Any, monkeypatch: Any) -> None
 
 
 @pytest.mark.asyncio
+async def test_cache_coroutine_result_with_cache_keys(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+
+    call_count = 0
+
+    @cache.cache_coroutine_result(cache_keys=["key"])
+    async def sample_coroutine(x: int) -> int:
+        nonlocal call_count
+        call_count += 1
+        await asyncio.sleep(0.1)
+        return x * 2
+
+    # Ensure caching with the same keys works
+    assert await sample_coroutine(2, cache_keys={"key": "value"}) == 4
+    assert call_count == 1
+
+    assert await sample_coroutine(2, cache_keys={"key": "value"}) == 4
+    assert call_count == 1
+
+    # Ensure a different key value results in a cache miss
+    assert await sample_coroutine(2, cache_keys={"key": "other_value"}) == 4
+    assert call_count == 2
+
+    # Ensure no cache keys mean the cache is ignored
+    assert await sample_coroutine(3) == 6
+    assert call_count == 3
+
+    assert await sample_coroutine(3) == 6
+    assert call_count == 4
+
+
+@pytest.mark.asyncio
 async def test_cache_coroutine_result_with_kwargs(
     mock_ocean: Any, monkeypatch: Any
 ) -> None:
