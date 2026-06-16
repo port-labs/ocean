@@ -40,7 +40,6 @@ class GetPipelineActionsDetails(PipelineAction[CodePipelinePipelineActionInput])
                 logger.error(
                     f"Error fetching details for pipeline '{pipeline_name}': {detail_result}"
                 )
-                results.append({})
 
         logger.info(f"Successfully extracted {len(results)} CodePipeline actions")
         return results
@@ -64,7 +63,9 @@ class GetPipelineActionsDetails(PipelineAction[CodePipelinePipelineActionInput])
                     {
                         **action,
                         "pipelineName": pipeline_name,
-                        "pipelineArn": pipeline_data.get("metadata", {}).get("pipelineArn", ""),
+                        "pipelineArn": pipeline_data.get("metadata", {}).get(
+                            "pipelineArn", ""
+                        ),
                         "pipelineVersion": pipeline_info.get("version", 0),
                         "stageName": stage_name,
                     }
