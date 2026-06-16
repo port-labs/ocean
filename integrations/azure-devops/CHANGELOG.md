@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.19 (2026-06-16)
+
+
+### Improvements
+
+- Add logger warning on json decode error of work items
+
+
 ## 0.9.18 (2026-06-15)
 
 
