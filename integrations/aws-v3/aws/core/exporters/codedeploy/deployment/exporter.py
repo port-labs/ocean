@@ -53,12 +53,8 @@ class CodeDeployDeploymentExporter(IResourceExporter):
 
             async for deployment_ids in paginator.paginate():
                 if deployment_ids:
-                    # Convert deployment IDs to the format expected by actions
-                    deployments = [
-                        {"deploymentId": dep_id} for dep_id in deployment_ids
-                    ]
                     action_result = await inspector.inspect(
-                        deployments,
+                        deployment_ids,
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
