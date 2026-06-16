@@ -580,7 +580,7 @@ class EntityClientMixin:
 
         deleted_entity_identifiers: list[str] = []
         for batch, result in zip(batches, batch_results):
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 logger.error(
                     f"Failed to bulk delete {len(batch)} entities of blueprint: {blueprint}"
                 )
