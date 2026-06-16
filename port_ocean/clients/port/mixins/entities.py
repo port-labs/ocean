@@ -548,7 +548,7 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> list[str] | None:
+    ) -> list[str]:
         """Delete multiple entities of a single blueprint.
 
         Splits entity_identifiers into batches of at most ENTITIES_BULK_DELETE_MAX_BATCH_SIZE
