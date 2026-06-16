@@ -1,6 +1,8 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.codedeploy.deployment.actions import CodeDeployDeploymentActionsMap
+from aws.core.exporters.codedeploy.deployment.actions import (
+    CodeDeployDeploymentActionsMap,
+)
 from aws.core.exporters.codedeploy.deployment.models import CodeDeployDeployment
 from aws.core.exporters.codedeploy.deployment.models import (
     SingleCodeDeployDeploymentRequest,
@@ -16,7 +18,9 @@ class CodeDeployDeploymentExporter(IResourceExporter):
     _model_cls: Type[CodeDeployDeployment] = CodeDeployDeployment
     _actions_map: Type[CodeDeployDeploymentActionsMap] = CodeDeployDeploymentActionsMap
 
-    async def get_resource(self, options: SingleCodeDeployDeploymentRequest) -> dict[str, Any]:
+    async def get_resource(
+        self, options: SingleCodeDeployDeploymentRequest
+    ) -> dict[str, Any]:
         """Fetch detailed attributes of a single CodeDeploy deployment."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
@@ -50,7 +54,9 @@ class CodeDeployDeploymentExporter(IResourceExporter):
             async for deployment_ids in paginator.paginate():
                 if deployment_ids:
                     # Convert deployment IDs to the format expected by actions
-                    deployments = [{"deploymentId": dep_id} for dep_id in deployment_ids]
+                    deployments = [
+                        {"deploymentId": dep_id} for dep_id in deployment_ids
+                    ]
                     action_result = await inspector.inspect(
                         deployments,
                         options.include,

@@ -20,19 +20,25 @@ class GetDeploymentAction(Action):
         for idx, detail_result in enumerate(deployment_details):
             if isinstance(detail_result, Exception):
                 deployment_id = deployments[idx].get("deploymentId", "unknown")
-                logger.error(f"Error fetching details for deployment '{deployment_id}': {detail_result}")
+                logger.error(
+                    f"Error fetching details for deployment '{deployment_id}': {detail_result}"
+                )
                 continue
             results.append(cast(Dict[str, Any], detail_result))
         return results
 
-    async def _fetch_deployment_details(self, deployment: Dict[str, Any]) -> Dict[str, Any]:
+    async def _fetch_deployment_details(
+        self, deployment: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Fetch detailed information about a single deployment."""
         response = await self.client.get_deployment(
             deploymentId=deployment["deploymentId"]
         )
 
         deployment_info = response["deploymentInfo"]
-        logger.info(f"Successfully fetched details for deployment {deployment['deploymentId']}")
+        logger.info(
+            f"Successfully fetched details for deployment {deployment['deploymentId']}"
+        )
 
         return {
             "ApplicationName": deployment_info.get("applicationName"),
@@ -46,16 +52,28 @@ class GetDeploymentAction(Action):
             "DeploymentOverview": deployment_info.get("deploymentOverview"),
             "Description": deployment_info.get("description"),
             "Creator": deployment_info.get("creator"),
-            "IgnoreApplicationStopFailures": deployment_info.get("ignoreApplicationStopFailures"),
-            "AutoRollbackConfiguration": deployment_info.get("autoRollbackConfiguration"),
-            "UpdateOutdatedInstancesOnly": deployment_info.get("updateOutdatedInstancesOnly"),
+            "IgnoreApplicationStopFailures": deployment_info.get(
+                "ignoreApplicationStopFailures"
+            ),
+            "AutoRollbackConfiguration": deployment_info.get(
+                "autoRollbackConfiguration"
+            ),
+            "UpdateOutdatedInstancesOnly": deployment_info.get(
+                "updateOutdatedInstancesOnly"
+            ),
             "RollbackInfo": deployment_info.get("rollbackInfo"),
             "DeploymentStyle": deployment_info.get("deploymentStyle"),
             "TargetInstances": deployment_info.get("targetInstances"),
-            "InstanceTerminationWaitTimeStarted": deployment_info.get("instanceTerminationWaitTimeStarted"),
-            "BlueGreenDeploymentConfiguration": deployment_info.get("blueGreenDeploymentConfiguration"),
+            "InstanceTerminationWaitTimeStarted": deployment_info.get(
+                "instanceTerminationWaitTimeStarted"
+            ),
+            "BlueGreenDeploymentConfiguration": deployment_info.get(
+                "blueGreenDeploymentConfiguration"
+            ),
             "LoadBalancerInfo": deployment_info.get("loadBalancerInfo"),
-            "AdditionalDeploymentStatusInfo": deployment_info.get("additionalDeploymentStatusInfo"),
+            "AdditionalDeploymentStatusInfo": deployment_info.get(
+                "additionalDeploymentStatusInfo"
+            ),
             "FileExistsBehavior": deployment_info.get("fileExistsBehavior"),
             "ExternalId": deployment_info.get("externalId"),
             "Revision": deployment_info.get("revision"),
@@ -78,7 +96,7 @@ class ListDeploymentsAction(Action):
 
 class CodeDeployDeploymentActionsMap(ActionMap):
     """Groups all actions for CodeDeploy Deployment resource type."""
-    
+
     defaults: List[Type[Action]] = [
         GetDeploymentAction,
         ListDeploymentsAction,

@@ -47,13 +47,17 @@ class CodeDeployDeployment(ResourceModel[CodeDeployDeploymentProperties]):
     """CodeDeploy Deployment resource model using the generic ResourceModel pattern."""
 
     Type: str = "AWS::CodeDeploy::Deployment"
-    Properties: CodeDeployDeploymentProperties = Field(default_factory=CodeDeployDeploymentProperties)
+    Properties: CodeDeployDeploymentProperties = Field(
+        default_factory=CodeDeployDeploymentProperties
+    )
 
 
 class SingleCodeDeployDeploymentRequest(ResourceRequestModel):
     """Options for exporting a single CodeDeploy deployment."""
 
-    deployment_id: str = Field(..., description="The ID of the CodeDeploy deployment to export")
+    deployment_id: str = Field(
+        ..., description="The ID of the CodeDeploy deployment to export"
+    )
 
 
 class PaginatedCodeDeployDeploymentRequest(ResourceRequestModel):
