@@ -29,6 +29,7 @@ class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
         )
 
         results: list[dict[str, Any]] = []
+        success_count = 0
         for idx, tag_result in enumerate(tag_results):
             if isinstance(tag_result, Exception):
                 instance_id = db_instances[idx].get("DBInstanceIdentifier", "unknown")
@@ -36,6 +37,7 @@ class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
                     logger.warning(
                         f"Skipping tags for DB instance '{instance_id}' : {tag_result}"
                     )
+                    results.append({})
                     continue
                 else:
                     logger.error(
@@ -43,7 +45,8 @@ class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
                     )
                     raise tag_result
             results.extend(cast(list[dict[str, Any]], tag_result))
-        logger.info(f"Successfully fetched tags for {len(results)} DB instances")
+            success_count += 1
+        logger.info(f"Successfully fetched tags for {success_count} DB instances")
         return results
 
     async def _fetch_tags(self, db_instance: dict[str, Any]) -> list[dict[str, Any]]:
