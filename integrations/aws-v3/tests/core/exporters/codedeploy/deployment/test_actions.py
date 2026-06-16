@@ -10,9 +10,7 @@ from aws.core.exporters.codedeploy.deployment.actions import (
 
 class TestGetDeploymentAction:
     @pytest.mark.asyncio
-    async def test_execute_success(
-        self
-    ) -> None:
+    async def test_execute_success(self) -> None:
         # Arrange
         action = GetDeploymentAction(AsyncMock())
         deployments = ["d-1", "d-2", "d-3"]

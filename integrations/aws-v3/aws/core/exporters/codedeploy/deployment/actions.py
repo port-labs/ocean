@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Type, cast
+from typing import Dict, Any, List, Type
 from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
 import asyncio
@@ -9,7 +9,6 @@ class ListDeploymentsAction(Action[list[str]]):
 
     async def _execute(self, deployments: list[str]) -> list[Dict[str, Any]]:
         return [{"deploymentId": deployment} for deployment in deployments]
-
 
 
 class GetDeploymentAction(Action[list[str]]):
@@ -27,7 +26,9 @@ class GetDeploymentAction(Action[list[str]]):
                 results.append(detail_result)
             else:
                 results.append({})
-                logger.error(f"Error fetching details for deployment '{deployments[idx]}': {detail_result}")
+                logger.error(
+                    f"Error fetching details for deployment '{deployments[idx]}': {detail_result}"
+                )
         return results
 
     async def _fetch_deployment_details(self, deployment: str) -> dict[str, Any]:
