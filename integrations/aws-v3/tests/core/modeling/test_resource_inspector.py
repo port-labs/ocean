@@ -18,6 +18,8 @@ from aws.core.interfaces.action import Action
 from aws.core.modeling.resource_inspector import ResourceInspector
 from aws.core.modeling.resource_models import ResourceModel
 
+_FakeActionInput = List[str]
+
 
 class _FakeProperties(BaseModel):
     class Config:
@@ -29,10 +31,14 @@ class _FakeResource(ResourceModel[_FakeProperties]):
     Properties: _FakeProperties = _FakeProperties()
 
 
-def _make_action_class(name: str, payloads: List[Dict[str, Any]]) -> Type[Action]:
+def _make_action_class(
+    name: str, payloads: List[Dict[str, Any]]
+) -> Type[Action[_FakeActionInput]]:
     """Build a one-off Action subclass that returns a canned payload list."""
 
-    async def _execute(self: Action, identifiers: List[Any]) -> List[Dict[str, Any]]:
+    async def _execute(
+        self: Action[_FakeActionInput], identifiers: _FakeActionInput
+    ) -> List[Dict[str, Any]]:
         return payloads
 
     return type(name, (Action,), {"_execute": _execute})
@@ -41,11 +47,11 @@ def _make_action_class(name: str, payloads: List[Dict[str, Any]]) -> Type[Action
 class _FakeActionMap:
     """Minimal ActionMap that returns the supplied action classes verbatim."""
 
-    def __init__(self, actions: List[Type[Action]]) -> None:
-        self.defaults: List[Type[Action]] = actions
-        self.options: List[Type[Action]] = []
+    def __init__(self, actions: List[Type[Action[_FakeActionInput]]]) -> None:
+        self.defaults: List[Type[Action[_FakeActionInput]]] = actions
+        self.options: List[Type[Action[_FakeActionInput]]] = []
 
-    def merge(self, include: List[str]) -> List[Type[Action]]:
+    def merge(self, include: List[str]) -> List[Type[Action[_FakeActionInput]]]:
         return list(self.defaults)
 
 
@@ -58,7 +64,7 @@ class TestResourceInspectorAlignment:
         action_a = _make_action_class("ActionA", [{"a": 1}, {"a": 2}, {"a": 3}])
         action_b = _make_action_class("ActionB", [{"b": 1}, {}, {"b": 3}])
 
-        inspector = ResourceInspector[_FakeResource](
+        inspector = ResourceInspector[_FakeResource, _FakeActionInput](
             AsyncMock(),
             _FakeActionMap([action_a, action_b]),
             _FakeResource,
@@ -89,7 +95,7 @@ class TestResourceInspectorAlignment:
         # error).
         action_b = _make_action_class("ActionB", [{"b": 1}, {"b": 3}])
 
-        inspector = ResourceInspector[_FakeResource](
+        inspector = ResourceInspector[_FakeResource, _FakeActionInput](
             AsyncMock(),
             _FakeActionMap([action_a, action_b]),
             _FakeResource,
