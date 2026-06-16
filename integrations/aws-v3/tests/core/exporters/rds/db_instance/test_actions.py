@@ -159,8 +159,12 @@ class TestListTagsForResourceAction:
 
         result = await action.execute(db_instances)
 
-        # Should only return results for successful calls
-        expected_result = [{"Tags": [{"Key": "Environment", "Value": "production"}]}]
+        # Recoverable failure must produce a placeholder so the result list
+        # stays positionally aligned with sibling actions' results.
+        expected_result = [
+            {"Tags": [{"Key": "Environment", "Value": "production"}]},
+            {},
+        ]
         assert result == expected_result
 
         # Verify warning logging for recoverable exception
@@ -172,6 +176,54 @@ class TestListTagsForResourceAction:
         # Verify success logging
         mock_logger.info.assert_called_once_with(
             "Successfully fetched tags for 1 DB instances"
+        )
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.rds.db_instance.actions.logger")
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, mock_logger: MagicMock, action: ListTagsForResourceAction
+    ) -> None:
+        """Middle DB instance fails recoverably; tag results stay aligned."""
+        db_instances = [
+            {
+                "DBInstanceIdentifier": "db-1",
+                "DBInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:db-1",
+            },
+            {
+                "DBInstanceIdentifier": "db-2",
+                "DBInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:db-2",
+            },
+            {
+                "DBInstanceIdentifier": "db-3",
+                "DBInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:db-3",
+            },
+        ]
+
+        def mock_list_tags_for_resource(
+            ResourceName: str, **kwargs: Any
+        ) -> dict[str, Any]:
+            if ResourceName.endswith("db-2"):
+                raise ClientError(
+                    {"Error": {"Code": "AccessDenied", "Message": "denied"}},
+                    "ListTagsForResource",
+                )
+            tag_value = "first" if ResourceName.endswith("db-1") else "third"
+            return {"TagList": [{"Key": "Owner", "Value": tag_value}]}
+
+        action.client.list_tags_for_resource.side_effect = mock_list_tags_for_resource
+
+        result = await action.execute(db_instances)
+
+        assert len(result) == 3
+        assert result[0] == {"Tags": [{"Key": "Owner", "Value": "first"}]}
+        assert result[1] == {}
+        assert result[2] == {"Tags": [{"Key": "Owner", "Value": "third"}]}
+
+        mock_logger.warning.assert_called_once()
+        warning_call = mock_logger.warning.call_args[0][0]
+        assert "Skipping tags for DB instance 'db-2'" in warning_call
+        mock_logger.info.assert_called_once_with(
+            "Successfully fetched tags for 2 DB instances"
         )
 
     @pytest.mark.asyncio
