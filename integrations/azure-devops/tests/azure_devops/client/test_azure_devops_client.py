@@ -1817,7 +1817,11 @@ async def test_generate_work_items_raises_on_malformed_batch(
             return Response(
                 status_code=200,
                 request=Request(method, url),
-                json={"value": [{"id": i, "fields": {"System.Title": f"Item {i}"}} for i in ids]},
+                json={
+                    "value": [
+                        {"id": i, "fields": {"System.Title": f"Item {i}"}} for i in ids
+                    ]
+                },
             )
         return Response(status_code=404, request=Request(method, url))
 
@@ -1826,12 +1830,16 @@ async def test_generate_work_items_raises_on_malformed_batch(
 
     async with event_context("test_event"):
         with (
-            patch.object(client, "generate_projects", side_effect=mock_generate_projects),
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
             patch.object(client, "send_request", side_effect=mock_send_request),
         ):
             collected_items: List[Dict[str, Any]] = []
             with pytest.raises(json.decoder.JSONDecodeError):
-                async for item_batch in client.generate_work_items(wiql=None, expand="All"):
+                async for item_batch in client.generate_work_items(
+                    wiql=None, expand="All"
+                ):
                     collected_items.extend(item_batch)
 
     assert len(collected_items) == 200
