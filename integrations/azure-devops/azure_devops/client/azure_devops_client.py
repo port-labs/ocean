@@ -1411,8 +1411,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 logger.warning(
                     f"Failed to decode work items response for project {project_id}, "
                     f"batch IDs {batch_ids[0]}-{batch_ids[-1]} ({len(batch_ids)} items): {e}. "
-                    f"Skipping batch."
+                    f"Aborting resync to prevent incorrect deletes of work items in incomplete batch."
                 )
+                raise
 
     def _add_project_details_to_work_items(
         self, work_items: list[dict[str, Any]], project: dict[str, Any]

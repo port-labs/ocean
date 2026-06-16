@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Add logger warning on json decode error of work items
+- Propagate `JSONDecodeError` on truncated work item batch response to abort the resync and prevent the delete phase from running on partial data
 
 
 ## 0.9.18 (2026-06-15)
