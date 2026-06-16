@@ -27,9 +27,7 @@ class GetDeploymentAction(Action[list[str]]):
             results.append(cast(Dict[str, Any], detail_result))
         return results
 
-    async def _fetch_deployment_details(
-        self, deployment: str
-    ) -> dict[str, Any]:
+    async def _fetch_deployment_details(self, deployment: str) -> dict[str, Any]:
         """Fetch detailed information about a single deployment."""
         response = await self.client.get_deployment(deploymentId=deployment)
         logger.info(f"Successfully fetched details for deployment {deployment}")
@@ -43,13 +41,11 @@ class ListDeploymentsAction(Action[list[str]]):
         return [{"deploymentId": deployment} for deployment in deployments]
 
 
-class CodeDeployDeploymentActionsMap(ActionMap):
+class CodeDeployDeploymentActionsMap(ActionMap[list[str]]):
     """Groups all actions for CodeDeploy Deployment resource type."""
 
-    defaults: List[Type[Action]] = [
+    defaults: List[Type[Action[list[str]]]] = [
         GetDeploymentAction,
         ListDeploymentsAction,
     ]
-    options: List[Type[Action]] = [
-        # Add optional actions here if needed in the future
-    ]
+    options: List[Type[Action[list[str]]]] = []

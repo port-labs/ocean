@@ -13,7 +13,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class CodeDeployDeploymentExporter(IResourceExporter):
+class CodeDeployDeploymentExporter(IResourceExporter[list[str]]):
     _service_name: SupportedServices = "codedeploy"
     _model_cls: Type[CodeDeployDeployment] = CodeDeployDeployment
     _actions_map: Type[CodeDeployDeploymentActionsMap] = CodeDeployDeploymentActionsMap
