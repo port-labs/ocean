@@ -29,7 +29,7 @@ class CodeDeployDeploymentExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"deploymentId": options.deployment_id}],
+                [options.deployment_id],
                 options.include,
                 extra_context={
                     "AccountId": options.account_id,
