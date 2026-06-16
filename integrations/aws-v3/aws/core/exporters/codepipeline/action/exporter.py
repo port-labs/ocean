@@ -50,10 +50,8 @@ class CodePipelineActionExporter(IResourceExporter[CodePipelinePipelineActionInp
             if response:
                 for action in response:
                     if (
-                        action.get("Properties", {}).get("StageName")
-                        == options.stage_name
-                        and action.get("Properties", {}).get("ActionName")
-                        == options.action_name
+                        action.get("stageName") == options.stage_name
+                        and action.get("name") == options.action_name
                     ):
                         return action
 
