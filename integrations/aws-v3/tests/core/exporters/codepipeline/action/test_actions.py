@@ -1,13 +1,11 @@
 from typing import Any
 from unittest.mock import AsyncMock, call
 import pytest
-from botocore.exceptions import ClientError
 
 from aws.core.exporters.codepipeline.action.actions import (
     GetPipelineActionsDetails,
     CodePipelinePipelineActionInput,
 )
-from aws.core.interfaces.action import Action
 
 
 class TestGetPipelineActionsDetails:
