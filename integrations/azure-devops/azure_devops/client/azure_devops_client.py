@@ -284,7 +284,17 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             if sync_default_team:
                 logger.info("Adding default team to projects")
-                tasks = [self.get_single_project(project["id"]) for project in projects]
+                semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+
+                async def get_project_with_semaphore(
+                    project_id: str,
+                ) -> dict[str, Any] | None:
+                    async with semaphore:
+                        return await self.get_single_project(project_id)
+
+                tasks = [
+                    get_project_with_semaphore(project["id"]) for project in projects
+                ]
                 projects_batch: list[dict[str, Any] | None] = await asyncio.gather(
                     *tasks
                 )
@@ -385,8 +395,15 @@ class AzureDevopsClient(HTTPBaseClient):
         self, teams: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching members for {len(teams)} teams")
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
 
-        team_tasks = [self.get_team_members(team) for team in teams]
+        async def get_members_with_semaphore(
+            team: dict[str, Any],
+        ) -> list[dict[str, Any]]:
+            async with semaphore:
+                return await self.get_team_members(team)
+
+        team_tasks = [get_members_with_semaphore(team) for team in teams]
 
         members_results = await asyncio.gather(*team_tasks)
 

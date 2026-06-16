@@ -27,6 +27,7 @@ class HTTPBaseClient:
                     LIMIT_RESET_HEADER,
                     LIMIT_RETRY_AFTER_HEADER,
                 ],
+                max_backoff_wait=300,
             ),
             timeout=ocean.config.client_timeout,
         )
@@ -69,6 +70,8 @@ class HTTPBaseClient:
                 )
                 raise e
         except httpx.HTTPError as e:
+            if isinstance(e, ReadTimeout):
+                await self._rate_limiter.signal_throttle(300)
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
         finally:

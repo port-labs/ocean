@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.19 (2026-06-15)
+
+### Bug Fixes
+
+- Added bounded concurrency (`BoundedSemaphore(5)`) to `defaultTeam` project enrichment and `includeMembers` team enrichment to prevent unbounded concurrent API calls that exhausted the ADO TSTU budget.
+- Raised `max_backoff_wait` from 60s to 300s so `Retry-After` and `X-RateLimit-Reset` headers are honored up to ADO's 5-minute rolling window instead of being clipped prematurely.
+- Added a shared throttle circuit-breaker to `AzureDevOpsRateLimiter`: a `ReadTimeout` now pauses all subsequent ADO requests for 300s, preventing continued retries against an already-throttled.
+
+
+## 0.9.18 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 0.9.17 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.9.16 (2026-06-10)
+
+
+### Features
+
+- Added a new `area-path` kind.
+
+### Improvements
+
+- Added an `includeAreaPaths` option to the `team` kind.
+
+
 ## 0.9.15 (2026-06-10)
 
 

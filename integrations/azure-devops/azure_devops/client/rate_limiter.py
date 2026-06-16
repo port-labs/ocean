@@ -39,6 +39,9 @@ class AzureDevOpsRateLimiter:
         self._remaining: Optional[int] = None
         self._reset_time: Optional[float] = None
 
+        # Throttle signal set on timeout - no headers available to read reset time
+        self._throttle_until: Optional[float] = None
+
     @property
     def seconds_until_reset(self) -> float:
         """Calculate seconds until rate limit window resets.
@@ -62,6 +65,19 @@ class AzureDevOpsRateLimiter:
             return max(0.0, wait_time)
         return 0.0
 
+    async def signal_throttle(self, seconds: float) -> None:
+        """Signal a throttle event — pause all subsequent requests for the given duration.
+
+        Used when throttling manifests as a timeout (no response headers available).
+        """
+        async with self._lock:
+            end = time.time() + seconds
+            if self._throttle_until is None or end > self._throttle_until:
+                self._throttle_until = end
+                logger.warning(
+                    f"ADO throttle signal: pausing all requests for {seconds:.0f}s"
+                )
+
     async def __aenter__(self) -> "AzureDevOpsRateLimiter":
         """Enter the async context manager.
 
@@ -70,6 +86,16 @@ class AzureDevOpsRateLimiter:
         await self._semaphore.acquire()
 
         async with self._lock:
+            # Check shared throttle signal from ReadTimeout (no headers)
+            if self._throttle_until is not None:
+                wait = self._throttle_until - time.time()
+                if wait > 0:
+                    logger.warning(
+                        f"ADO throttle cooldown: pausing {wait:.0f}s before next request"
+                    )
+                    await asyncio.sleep(wait)
+                self._throttle_until = None
+
             # Check if we need to wait due to previous rate limit
             retry_wait = self.should_wait_for_retry_after
             if retry_wait > 0:
