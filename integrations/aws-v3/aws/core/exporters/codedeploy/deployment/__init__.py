@@ -1,1 +1,8 @@
-# This file makes the deployment package importable
+# mypy: implicit_reexport
+from aws.core.exporters.codedeploy.deployment.exporter import (
+    CodeDeployDeploymentExporter,
+)
+from aws.core.exporters.codedeploy.deployment.models import (
+    SingleCodeDeployDeploymentRequest,
+    PaginatedCodeDeployDeploymentRequest,
+)
