@@ -1407,7 +1407,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 continue
             try:
                 yield work_items_response.json()["value"]
-            except json.JSONDecodeError as e:
+            except json.decoder.JSONDecodeError as e:
                 logger.warning(
                     f"Failed to decode work items response for project {project_id}, "
                     f"batch IDs {batch_ids[0]}-{batch_ids[-1]} ({len(batch_ids)} items): {e}. "
