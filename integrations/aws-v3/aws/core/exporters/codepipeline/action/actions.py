@@ -54,22 +54,18 @@ class GetPipelineActionsDetails(PipelineAction[CodePipelinePipelineActionInput])
         logger.info(f"Successfully fetched pipeline details for {pipeline_name}")
 
         actions = []
-        pipeline_arn = pipeline_data.get("metadata", {}).get("pipelineArn", "")
         pipeline_info = pipeline_data.get("pipeline", {})
-        pipeline_name = pipeline_info.get("name", "")
-        pipeline_version = pipeline_info.get("version", 0)
-        stages = pipeline_info.get("stages", [])
 
-        for stage in stages:
+        for stage in pipeline_info.get("stages", []):
             stage_name = stage.get("name", "")
 
             for action in stage.get("actions", []):
                 actions.append(
                     {
                         **action,
-                        "pipelineName": pipeline_name,
-                        "pipelineArn": pipeline_arn,
-                        "pipelineVersion": pipeline_version,
+                        "pipelineName": pipeline_info.get("name", ""),
+                        "pipelineArn": pipeline_data.get("metadata", {}).get("pipelineArn", ""),
+                        "pipelineVersion": pipeline_info.get("version", 0),
                         "stageName": stage_name,
                     }
                 )
