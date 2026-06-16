@@ -1,0 +1,88 @@
+  {
+    "identifier": "codeDeployDeployment",
+    "title": "CodeDeploy Deployment",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "deploymentId": {
+          "type": "string",
+          "title": "Deployment ID",
+          "description": "The unique ID of the deployment"
+        },
+        "applicationName": {
+          "type": "string",
+          "title": "Application Name",
+          "description": "The name of the application"
+        },
+        "deploymentGroupName": {
+          "type": "string",
+          "title": "Deployment Group",
+          "description": "The name of the deployment group"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the deployment",
+          "enum": [
+            "Created",
+            "Queued",
+            "InProgress",
+            "Succeeded",
+            "Failed",
+            "Stopped",
+            "Ready"
+          ]
+        },
+        "creator": {
+          "type": "string",
+          "title": "Creator",
+          "description": "The user who created the deployment"
+        },
+        "createTime": {
+          "type": "string",
+          "title": "Create Time",
+          "description": "The time the deployment was created",
+          "format": "date-time"
+        },
+        "startTime": {
+          "type": "string",
+          "title": "Start Time",
+          "description": "The time the deployment started",
+          "format": "date-time"
+        },
+        "completeTime": {
+          "type": "string",
+          "title": "Complete Time",
+          "description": "The time the deployment completed",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "A comment about the deployment"
+        },
+        "deploymentStyle": {
+          "type": "object",
+          "title": "Deployment Style",
+          "description": "Information about the type of deployment"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "AWS region where the deployment is located"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  }

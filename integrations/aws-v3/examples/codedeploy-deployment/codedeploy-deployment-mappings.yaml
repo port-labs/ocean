@@ -1,0 +1,26 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: AWS::CodeDeploy::Deployment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.DeploymentId
+          title: .Properties.ApplicationName + " - " + .Properties.DeploymentId
+          blueprint: '"codeDeployDeployment"'
+          properties:
+            deploymentId: .Properties.DeploymentId
+            applicationName: .Properties.ApplicationName
+            deploymentGroupName: .Properties.DeploymentGroupName
+            status: .Properties.Status
+            creator: .Properties.Creator
+            createTime: .Properties.CreateTime
+            startTime: .Properties.StartTime
+            completeTime: .Properties.CompleteTime
+            description: .Properties.Description
+            deploymentStyle: .Properties.DeploymentStyle
+            region: .__ExtraContext.Region
+          relations:
+            account: .__ExtraContext.AccountId
