@@ -5,6 +5,7 @@ import pytest
 from httpx import ReadTimeout
 
 from port_ocean.clients.port.mixins.entities import EntityClientMixin
+from port_ocean.clients.port.types import RequestOptions
 from port_ocean.core.models import Entity
 
 # Mock the ocean context at module level
@@ -21,12 +22,22 @@ all_entities: List[Entity] = [
     Entity(identifier=errored_entity_identifier, blueprint="a")
 ] + expected_result_entities
 
+BASE_API_URL = "https://api.getport.io/v1"
+TEST_BLUEPRINT = "service"
+BULK_DELETE_REQUEST_OPTIONS: RequestOptions = {
+    "delete_dependent_entities": False,
+    "merge": False,
+    "create_missing_related_entities": False,
+    "validation_only": False,
+}
+
 
 @pytest.fixture(autouse=True)
 def mock_ocean() -> Generator[MagicMock, None, None]:
     with patch("port_ocean.clients.port.mixins.entities.ocean") as mock_ocean:
         mock_ocean.config.upsert_entities_batch_max_length = 20
         mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024  # 1MB
+        mock_ocean.config.delete_entities_max_batch_size = 50
         yield mock_ocean
 
 
@@ -59,6 +70,16 @@ async def entity_client(monkeypatch: Any) -> EntityClientMixin:
     monkeypatch.setattr(entity_client, "upsert_entities_bulk", mock)
 
     return entity_client
+
+
+def make_bulk_delete_response(
+    deleted_ids: list[str], status_code: int = 200
+) -> MagicMock:
+    response = MagicMock()
+    response.is_error = status_code >= 400
+    response.status_code = status_code
+    response.json.return_value = {"ok": "true", "deletedEntities": deleted_ids}
+    return response
 
 
 def test_calculate_entities_batch_size_empty_list(
@@ -334,3 +355,212 @@ async def test_upsert_entities_in_batches_with_dictionary_identifier(
     success, result_entity = result[0]
     assert success is True
     assert result_entity.identifier == dictionary_identifier
+
+
+async def test_bulk_delete_entities_empty_list_returns_early(
+    entity_client: EntityClientMixin,
+) -> None:
+    result = await entity_client.bulk_delete_entities(
+        blueprint=TEST_BLUEPRINT,
+        entity_identifiers=[],
+        request_options=BULK_DELETE_REQUEST_OPTIONS,
+    )
+
+    assert result == []
+    entity_client.client.post.assert_not_called()
+
+
+async def test_bulk_delete_entities_single_batch(
+    entity_client: EntityClientMixin,
+    mock_ocean: MagicMock,
+) -> None:
+    mock_ocean.config.delete_entities_max_batch_size = 50
+    identifiers = [f"entity_{i}" for i in range(10)]
+    entity_client.client.post = AsyncMock(
+        return_value=make_bulk_delete_response(identifiers)
+    )
+    entity_client.auth.headers = AsyncMock(
+        return_value={"Authorization": "Bearer test"}
+    )
+    entity_client.auth.api_url = BASE_API_URL
+
+    result = await entity_client.bulk_delete_entities(
+        blueprint=TEST_BLUEPRINT,
+        entity_identifiers=identifiers,
+        request_options=BULK_DELETE_REQUEST_OPTIONS,
+    )
+
+    assert result == identifiers
+    entity_client.client.post.assert_called_once()
+
+
+async def test_bulk_delete_entities_splits_into_multiple_batches(
+    entity_client: EntityClientMixin,
+    monkeypatch: Any,
+) -> None:
+    with patch(
+        "port_ocean.clients.port.mixins.entities.ENTITIES_BULK_DELETE_MAX_BATCH_SIZE", 5
+    ):
+        identifiers = [f"entity_{i}" for i in range(12)]
+        mock_batch = AsyncMock(return_value=[])
+        monkeypatch.setattr(entity_client, "_bulk_delete_entities_batch", mock_batch)
+
+        await entity_client.bulk_delete_entities(
+            blueprint=TEST_BLUEPRINT,
+            entity_identifiers=identifiers,
+            request_options=BULK_DELETE_REQUEST_OPTIONS,
+        )
+
+        assert mock_batch.call_count == 3
+        assert len(mock_batch.call_args_list[0][0][1]) == 5
+        assert len(mock_batch.call_args_list[1][0][1]) == 5
+        assert len(mock_batch.call_args_list[2][0][1]) == 2
+
+
+async def test_bulk_delete_entities_caps_batch_size_at_port_api_limit(
+    entity_client: EntityClientMixin,
+    monkeypatch: Any,
+) -> None:
+    identifiers = [f"entity_{i}" for i in range(150)]
+    mock_batch = AsyncMock(return_value=[])
+    monkeypatch.setattr(entity_client, "_bulk_delete_entities_batch", mock_batch)
+
+    await entity_client.bulk_delete_entities(
+        blueprint=TEST_BLUEPRINT,
+        entity_identifiers=identifiers,
+        request_options=BULK_DELETE_REQUEST_OPTIONS,
+    )
+
+    # no single batch should ever exceed the API hard limit
+    for call in mock_batch.call_args_list:
+        assert len(call[0][1]) <= 100
+
+
+async def test_bulk_delete_entities_respects_config_batch_size_below_limit(
+    entity_client: EntityClientMixin,
+    monkeypatch: Any,
+    mock_ocean: MagicMock,
+) -> None:
+    mock_batch = AsyncMock(return_value=[])
+    monkeypatch.setattr(entity_client, "_bulk_delete_entities_batch", mock_batch)
+
+    # cap constant at 100, config at 5 -> min(5, 100) = 5
+    with patch(
+        "port_ocean.clients.port.mixins.entities.ENTITIES_BULK_DELETE_MAX_BATCH_SIZE",
+        100,
+    ):
+        mock_ocean.config.delete_entities_max_batch_size = 5
+        identifiers = [f"entity_{i}" for i in range(12)]
+        await entity_client.bulk_delete_entities(
+            blueprint=TEST_BLUEPRINT,
+            entity_identifiers=identifiers,
+            request_options=BULK_DELETE_REQUEST_OPTIONS,
+        )
+
+        # no single batch should ever exceed the config limit
+        for call in entity_client._bulk_delete_entities_batch.call_args_list:
+            assert len(call[0][1]) <= 5
+
+
+async def test_bulk_delete_entities_error_should_raise_false(
+    entity_client: EntityClientMixin,
+    mock_ocean: MagicMock,
+) -> None:
+    mock_ocean.config.delete_entities_max_batch_size = 50
+    entity_client.client.post = AsyncMock(side_effect=Exception("connection error"))
+    entity_client.auth.headers = AsyncMock(
+        return_value={"Authorization": "Bearer test"}
+    )
+    entity_client.auth.api_url = BASE_API_URL
+
+    result = await entity_client.bulk_delete_entities(
+        blueprint=TEST_BLUEPRINT,
+        entity_identifiers=["entity_1"],
+        request_options=BULK_DELETE_REQUEST_OPTIONS,
+        should_raise=False,
+    )
+
+    assert result == []
+
+
+async def test_bulk_delete_entities_error_should_raise_true(
+    entity_client: EntityClientMixin,
+    mock_ocean: MagicMock,
+) -> None:
+    mock_ocean.config.delete_entities_max_batch_size = 50
+    entity_client.client.post = AsyncMock(side_effect=Exception("connection error"))
+    entity_client.auth.headers = AsyncMock(
+        return_value={"Authorization": "Bearer test"}
+    )
+    entity_client.auth.api_url = BASE_API_URL
+
+    with pytest.raises(Exception, match="connection error"):
+        await entity_client.bulk_delete_entities(
+            blueprint=TEST_BLUEPRINT,
+            entity_identifiers=["entity_1"],
+            request_options=BULK_DELETE_REQUEST_OPTIONS,
+            should_raise=True,
+        )
+
+
+async def test_bulk_delete_entities_sends_correct_endpoint_and_payload(
+    entity_client: EntityClientMixin,
+    mock_ocean: MagicMock,
+) -> None:
+    mock_ocean.config.delete_entities_max_batch_size = 50
+    identifiers = ["entity_1", "entity_2"]
+    entity_client.client.post = AsyncMock(
+        return_value=make_bulk_delete_response(identifiers)
+    )
+    entity_client.auth.headers = AsyncMock(
+        return_value={"Authorization": "Bearer test"}
+    )
+    entity_client.auth.api_url = BASE_API_URL
+
+    with patch(
+        "port_ocean.clients.port.mixins.entities.get_event_context_params",
+        return_value={},
+    ):
+        await entity_client.bulk_delete_entities(
+            blueprint=TEST_BLUEPRINT,
+            entity_identifiers=identifiers,
+            request_options={
+                **BULK_DELETE_REQUEST_OPTIONS,
+                "delete_dependent_entities": True,
+            },
+        )
+
+    call = entity_client.client.post.call_args
+    assert (
+        call[0][0] == f"{BASE_API_URL}/blueprints/{TEST_BLUEPRINT}/bulk/entities/delete"
+    )
+    assert call[1]["json"] == {"entities": identifiers}
+    assert call[1]["params"]["delete_dependents"] == "true"
+
+
+async def test_bulk_delete_entities_partial_batch_failure_returns_successful_results(
+    entity_client: EntityClientMixin,
+    mock_ocean: MagicMock,
+) -> None:
+    # second batch fails — only first batch identifiers should be returned
+    mock_ocean.config.delete_entities_max_batch_size = 2
+    identifiers = ["entity_1", "entity_2", "entity_3", "entity_4"]
+    entity_client.client.post = AsyncMock(
+        side_effect=[
+            make_bulk_delete_response(["entity_1", "entity_2"]),
+            Exception("batch failed"),
+        ]
+    )
+    entity_client.auth.headers = AsyncMock(
+        return_value={"Authorization": "Bearer test"}
+    )
+    entity_client.auth.api_url = BASE_API_URL
+
+    result = await entity_client.bulk_delete_entities(
+        blueprint=TEST_BLUEPRINT,
+        entity_identifiers=identifiers,
+        request_options=BULK_DELETE_REQUEST_OPTIONS,
+        should_raise=False,
+    )
+
+    assert result == ["entity_1", "entity_2"]

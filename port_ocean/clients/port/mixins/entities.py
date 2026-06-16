@@ -26,6 +26,7 @@ ENTITIES_BULK_SAMPLES_SIZE = 10
 ENTITIES_BULK_ESTIMATED_SIZE_MULTIPLIER = 1.5
 ENTITIES_BULK_MINIMUM_BATCH_SIZE = 1
 ENTITIES_BULK_UPSERT_CONCURRENCY = 5
+ENTITIES_BULK_DELETE_MAX_BATCH_SIZE = 100
 
 
 class EntityClientMixin:
@@ -504,6 +505,92 @@ class EntityClientMixin:
             ),
             return_exceptions=True,
         )
+
+    async def _bulk_delete_entities_batch(
+        self,
+        blueprint: str,
+        entity_identifiers: list[str],
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
+    ) -> list[str]:
+        async with self.semaphore:
+            logger.debug(
+                f"Bulk deleting {len(entity_identifiers)} entities of blueprint: {blueprint}"
+            )
+            response = await self.client.post(
+                f"{self.auth.api_url}/blueprints/{blueprint}/bulk/entities/delete",
+                json={"entities": entity_identifiers},
+                headers=await self.auth.headers(user_agent_type),
+                params={
+                    "delete_dependents": str(
+                        request_options["delete_dependent_entities"]
+                    ).lower(),
+                    **get_event_context_params(),
+                },
+            )
+
+        if response.is_error:
+            logger.error(
+                f"Error bulk deleting {len(entity_identifiers)} entities of blueprint: {blueprint}"
+            )
+            handle_port_status_code(response, should_raise=True)
+
+        deleted_entities = response.json().get("deletedEntities", [])
+        logger.debug(
+            f"Successfully bulk deleted {len(deleted_entities)} entities of blueprint: {blueprint}"
+        )
+        return deleted_entities
+
+    async def bulk_delete_entities(
+        self,
+        blueprint: str,
+        entity_identifiers: list[str],
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
+        should_raise: bool = True,
+    ) -> list[str] | None:
+        """Delete multiple entities of a single blueprint.
+
+        Splits entity_identifiers into batches of at most ENTITIES_BULK_DELETE_MAX_BATCH_SIZE
+        and fires all batches concurrently. Returns the flat list of deleted entity identifiers.
+        """
+        if not entity_identifiers:
+            return []
+
+        batch_size_to_delete = min(
+            ocean.config.delete_entities_max_batch_size,
+            ENTITIES_BULK_DELETE_MAX_BATCH_SIZE,
+        )
+        batches = [
+            entity_identifiers[i : i + batch_size_to_delete]
+            for i in range(
+                0, len(entity_identifiers), ENTITIES_BULK_DELETE_MAX_BATCH_SIZE
+            )
+        ]
+
+        batch_results = await asyncio.gather(
+            *(
+                self._bulk_delete_entities_batch(
+                    blueprint, batch, request_options, user_agent_type
+                )
+                for batch in batches
+            ),
+            return_exceptions=True,
+        )
+
+        deleted_entity_identifiers: list[str] = []
+        for batch, result in zip(batches, batch_results):
+            if isinstance(result, Exception):
+                logger.error(
+                    f"Failed to bulk delete {len(batch)} entities of blueprint: {blueprint}"
+                )
+                if should_raise:
+                    raise result
+            else:
+                # we can have partial deletions in a batch, so we only extend with the successfully deleted ones returned by the API
+                deleted_entity_identifiers.extend(result)
+
+        return deleted_entity_identifiers
 
     async def search_entities(
         self,
