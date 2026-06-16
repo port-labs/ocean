@@ -4,6 +4,14 @@ from loguru import logger
 import asyncio
 
 
+class ListDeploymentsAction(Action[list[str]]):
+    """Processes the initial list of deployments from AWS."""
+
+    async def _execute(self, deployments: list[str]) -> list[Dict[str, Any]]:
+        return [{"deploymentId": deployment} for deployment in deployments]
+
+
+
 class GetDeploymentAction(Action[list[str]]):
     """Fetches detailed information about CodeDeploy deployments."""
 
@@ -27,13 +35,6 @@ class GetDeploymentAction(Action[list[str]]):
         response = await self.client.get_deployment(deploymentId=deployment)
         logger.info(f"Successfully fetched details for deployment {deployment}")
         return response["deploymentInfo"]
-
-
-class ListDeploymentsAction(Action[list[str]]):
-    """Processes the initial list of deployments from AWS."""
-
-    async def _execute(self, deployments: list[str]) -> list[Dict[str, Any]]:
-        return [{"deploymentId": deployment} for deployment in deployments]
 
 
 class CodeDeployDeploymentActionsMap(ActionMap[list[str]]):
