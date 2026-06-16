@@ -1,4 +1,5 @@
 import base64
+from typing import Any
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -18,7 +19,7 @@ def cursor_client() -> CursorClient:
     )
 
 
-def _ok_response(payload: dict) -> MagicMock:
+def _ok_response(payload: dict[str, Any]) -> MagicMock:
     response = MagicMock(spec=httpx.Response)
     response.status_code = 200
     response.raise_for_status.return_value = None
