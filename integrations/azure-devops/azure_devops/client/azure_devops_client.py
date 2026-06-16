@@ -507,26 +507,30 @@ class AzureDevopsClient(HTTPBaseClient):
         match = re.match(r"^\[(?P<project>.+?)\]\\", principal_name or "")
         return match.group("project") if match else None
 
+    async def _fetch_group_descriptors(
+        self, descriptor: str, semaphore: asyncio.BoundedSemaphore
+    ) -> list[str]:
+        async with semaphore:
+            memberships = await self._get_subject_memberships(descriptor, "Up")
+        if not memberships:
+            return []
+        return [
+            membership["containerDescriptor"]
+            for membership in memberships
+            if membership.get("containerDescriptor")
+        ]
+
     async def enrich_users_with_group_memberships(
         self, users: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """Enrich graph users with their direct group memberships."""
         semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_USER_MEMBERSHIPS)
-
-        async def fetch_group_descriptors(descriptor: str) -> list[str]:
-            async with semaphore:
-                memberships = await self._get_subject_memberships(descriptor, "Up")
-            if not memberships:
-                return []
-            return [
-                membership["containerDescriptor"]
-                for membership in memberships
-                if membership.get("containerDescriptor")
-            ]
-
         candidates = [user for user in users if user.get("descriptor")]
         results = await asyncio.gather(
-            *[fetch_group_descriptors(user["descriptor"]) for user in candidates],
+            *[
+                self._fetch_group_descriptors(user["descriptor"], semaphore)
+                for user in candidates
+            ],
             return_exceptions=True,
         )
 
@@ -552,7 +556,10 @@ class AzureDevopsClient(HTTPBaseClient):
         )
 
         for user in users:
-            descriptors = user_group_descriptors.get(user["descriptor"], [])
+            descriptor = user.get("descriptor")
+            descriptors = (
+                user_group_descriptors.get(descriptor, []) if descriptor else []
+            )
             groups = [
                 subject_details[descriptor]
                 for descriptor in descriptors
