@@ -1405,7 +1405,14 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             if not work_items_response:
                 continue
-            yield work_items_response.json()["value"]
+            try:
+                yield work_items_response.json()["value"]
+            except json.JSONDecodeError as e:
+                logger.warning(
+                    f"Failed to decode work items response for project {project_id}, "
+                    f"batch IDs {batch_ids[0]}-{batch_ids[-1]} ({len(batch_ids)} items): {e}. "
+                    f"Skipping batch."
+                )
 
     def _add_project_details_to_work_items(
         self, work_items: list[dict[str, Any]], project: dict[str, Any]
