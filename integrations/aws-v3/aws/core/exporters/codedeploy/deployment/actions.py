@@ -15,13 +15,11 @@ class GetDeploymentAction(Action[list[str]]):
 
         results: List[Dict[str, Any]] = []
         for idx, detail_result in enumerate(deployment_details):
-            if isinstance(detail_result, Exception):
-                deployment_id = deployments[idx]
-                logger.error(
-                    f"Error fetching details for deployment '{deployment_id}': {detail_result}"
-                )
-                continue
-            results.append(cast(Dict[str, Any], detail_result))
+            if isinstance(detail_result, dict):
+                results.append(detail_result)
+            else:
+                results.append({})
+                logger.error(f"Error fetching details for deployment '{deployments[idx]}': {detail_result}")
         return results
 
     async def _fetch_deployment_details(self, deployment: str) -> dict[str, Any]:
