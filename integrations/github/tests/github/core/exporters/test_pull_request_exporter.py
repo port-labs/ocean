@@ -379,8 +379,7 @@ class TestPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=None,
-                    updated_after=updated_after,
-                    use_close_date=True,
+                    closed_after=updated_after,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -436,8 +435,7 @@ class TestPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=2,
-                    updated_after=updated_after,
-                    use_close_date=True,
+                    closed_after=updated_after,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -517,8 +515,7 @@ class TestPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=None,
-                    updated_after=updated_after,
-                    use_close_date=True,
+                    closed_after=updated_after,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -534,7 +531,7 @@ class TestPullRequestExporter:
             {"query": "true", "states": ["closed"], "sinceDate": "2025-01-01"}
         )
         assert selector.effective_max_results is None
-        assert selector.updated_after == datetime(2025, 1, 1, tzinfo=UTC)
+        assert selector.closed_after == datetime(2025, 1, 1, tzinfo=UTC)
 
         exporter = RestPullRequestExporter(rest_client)
         page1 = [
@@ -591,7 +588,7 @@ class TestPullRequestExporter:
                     repo_name="repo1",
                     max_results=selector.effective_max_results,
                     updated_after=selector.updated_after,
-                    use_close_date=selector.since_date is not None,
+                    closed_after=selector.closed_after,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -871,7 +868,7 @@ class TestGraphQLPullRequestExporter:
                 side_effect=[mock_open(), mock_closed()],
             ) as mock_paginated,
             patch(
-                "github.core.exporters.pull_request_exporter.core.filter_prs_by_date",
+                "github.core.exporters.pull_request_exporter.utils.filter_prs_by_date",
                 side_effect=lambda prs, field, since: prs,
             ),
         ):
@@ -1022,7 +1019,7 @@ class TestGraphQLPullRequestExporter:
                 side_effect=mock_closed,
             ) as mock_paginated,
             patch(
-                "github.core.exporters.pull_request_exporter.core.filter_prs_by_date",
+                "github.core.exporters.pull_request_exporter.utils.filter_prs_by_date",
                 side_effect=lambda prs, field, updated_after: prs[:2],
             ) as mock_filter,
             patch.object(
@@ -1041,9 +1038,8 @@ class TestGraphQLPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=2,
-                    updated_after=mock_datetime.now(mock_datetime.UTC)
+                    closed_after=mock_datetime.now(mock_datetime.UTC)
                     - mock_datetime.timedelta(days=30),
-                    use_close_date=True,
                     repo={"name": "repo1"},
                 )
                 batches = [
@@ -1125,8 +1121,7 @@ class TestGraphQLPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=2,
-                    updated_after=updated_after,
-                    use_close_date=True,
+                    closed_after=updated_after,
                     repo={"name": "repo1"},
                 )
                 batches = [
@@ -1197,8 +1192,7 @@ class TestGraphQLPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=None,
-                    updated_after=updated_after,
-                    use_close_date=True,
+                    closed_after=updated_after,
                     repo={"name": "repo1"},
                 )
                 batches = [
@@ -1414,18 +1408,20 @@ def test_pull_request_selector_since_date_overrides_since_days() -> None:
     selector = GithubPullRequestSelector.parse_obj(
         {"query": "true", "sinceDate": "2025-01-01"}
     )
-    assert selector.updated_after == datetime(2025, 1, 1, tzinfo=UTC)
+    assert selector.closed_after == datetime(2025, 1, 1, tzinfo=UTC)
 
 
 def test_pull_request_selector_since_date_preserves_timezone() -> None:
     selector = GithubPullRequestSelector.parse_obj(
         {"query": "true", "sinceDate": "2025-01-01T00:00:00+02:00"}
     )
-    assert selector.updated_after.utcoffset() == timedelta(hours=2)
+    assert selector.closed_after is not None
+    assert selector.closed_after.utcoffset() == timedelta(hours=2)
 
 
 def test_pull_request_selector_updated_after_falls_back_to_since_days() -> None:
     selector = GithubPullRequestSelector.parse_obj({"query": "true", "since": 10})
+    assert selector.updated_after is not None
     delta = datetime.now(UTC) - selector.updated_after
     assert timedelta(days=9, hours=23) < delta < timedelta(days=10, minutes=1)
 

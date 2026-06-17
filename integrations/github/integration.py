@@ -343,7 +343,7 @@ class GithubPullRequestSelector(RepoSearchSelector):
         title="Closed PRs Since Date",
         alias="sinceDate",
         default=None,
-        description="Absolute cutoff (ISO-8601, e.g. 2025-01-01) for closed pull requests. Overrides the 'since' days lookback when set.",
+        description="Only ingest pull requests closed on or after this absolute date (ISO-8601, e.g. 2025-01-01). Filters by close date and overrides the 'since' days lookback when set.",
     )
     api: Literal["rest", "graphql"] = Field(
         title="API",
@@ -383,14 +383,20 @@ class GithubPullRequestSelector(RepoSearchSelector):
         return value
 
     @property
-    def updated_after(self) -> datetime:
-        if self.since_date:
-            return (
-                self.since_date
-                if self.since_date.tzinfo
-                else self.since_date.replace(tzinfo=timezone.utc)
-            )
+    def updated_after(self) -> Optional[datetime]:
+        if self.since_date is not None:
+            return None
         return datetime.now(timezone.utc) - timedelta(days=self.since)
+
+    @property
+    def closed_after(self) -> Optional[datetime]:
+        if self.since_date is None:
+            return None
+        return (
+            self.since_date
+            if self.since_date.tzinfo
+            else self.since_date.replace(tzinfo=timezone.utc)
+        )
 
     @property
     def effective_max_results(self) -> Optional[int]:

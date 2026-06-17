@@ -47,12 +47,16 @@ class SinglePullRequestOptions(RepositoryIdentifier):
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
-    """Options for listing pull requests."""
+    """Options for listing pull requests.
+
+    For closed PRs exactly one cutoff drives filtering: ``updated_after`` filters by
+    ``updated_at`` (days lookback); ``closed_after`` filters by ``closed_at`` (sinceDate).
+    """
 
     states: Required[list[str]]
     max_results: Required[Optional[int]]
-    updated_after: Required[datetime]
-    use_close_date: NotRequired[bool]
+    updated_after: NotRequired[Optional[datetime]]
+    closed_after: NotRequired[Optional[datetime]]
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
 
