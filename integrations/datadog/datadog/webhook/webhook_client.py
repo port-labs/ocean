@@ -13,9 +13,6 @@ DEFAULT_NOTIFICATION_RULE_SCOPE = "service:*"
 
 _PORT_MONITOR_NOTIFICATION_RULE_PREFIX = "Port Ocean Monitor Events"
 PORT_AUTH_HEADER_NAME = "X-Port-Ocean-Webhook-Secret"
-# Stamped onto each org's monitor webhook at creation so incoming monitor events
-# carry the org uuid (Datadog's monitor payload has no org-uuid template variable).
-PORT_DATADOG_ORG_HEADER_NAME = "X-Port-Datadog-Org-Uuid"
 
 _WEBHOOK_PAYLOAD_TEMPLATE: dict[str, str] = {
     "id": "$ID",
@@ -72,7 +69,7 @@ class DatadogWebhookClient:
             except Exception as e:
                 logger.error(
                     f"Failed to setup Datadog live events for org "
-                    f"'{client.org_uuid}': {str(e)}, skipping..."
+                    f"'{client.org_name}': {str(e)}, skipping..."
                 )
                 continue
 
@@ -88,7 +85,7 @@ class DatadogWebhookClient:
         )
         existing = await self._find_existing_webhook(client, webhook_name)
         desired_body = self._build_webhook_body(
-            target_url, webhook_secret, client.org_uuid, name=webhook_name
+            target_url, webhook_secret, name=webhook_name
         )
 
         if existing is None:
@@ -98,16 +95,12 @@ class DatadogWebhookClient:
             )
             return
 
-        if not self._webhook_needs_update(
-            existing, target_url, webhook_secret, client.org_uuid
-        ):
+        if not self._webhook_needs_update(existing, target_url, webhook_secret):
             logger.info(f"Datadog webhook '{webhook_name}' is up to date")
             return
 
         logger.info(f"Updating Datadog webhook '{webhook_name}'")
-        update_body = self._build_webhook_body(
-            target_url, webhook_secret, client.org_uuid
-        )
+        update_body = self._build_webhook_body(target_url, webhook_secret)
         await client.send_api_request(
             url=f"{webhooks_base}/{webhook_name}", method="PUT", json_data=update_body
         )
@@ -128,28 +121,19 @@ class DatadogWebhookClient:
         return response if isinstance(response, dict) else None
 
     @staticmethod
-    def _build_custom_headers(
-        webhook_secret: str | None, org_uuid: str | None
-    ) -> str | None:
-        """Build the webhook's custom_headers JSON: the auth secret (if set) plus the
-        org uuid (multi-org), so monitor events carry the org they originate from."""
-        headers: dict[str, str] = {}
-        if webhook_secret:
-            headers[PORT_AUTH_HEADER_NAME] = webhook_secret
-        if org_uuid:
-            headers[PORT_DATADOG_ORG_HEADER_NAME] = org_uuid
-        return json.dumps(headers) if headers else None
+    def _build_custom_headers(webhook_secret: str | None) -> str | None:
+        """Build the webhook's custom_headers JSON carrying the auth secret, if set."""
+        if not webhook_secret:
+            return None
+        return json.dumps({PORT_AUTH_HEADER_NAME: webhook_secret})
 
     @staticmethod
     def _webhook_needs_update(
         existing: dict[str, Any],
         target_url: str,
         webhook_secret: str | None,
-        org_uuid: str | None,
     ) -> bool:
-        expected_headers = DatadogWebhookClient._build_custom_headers(
-            webhook_secret, org_uuid
-        )
+        expected_headers = DatadogWebhookClient._build_custom_headers(webhook_secret)
         existing_payload = existing.get("payload")
         try:
             parsed_payload = json.loads(existing_payload) if existing_payload else None
@@ -165,7 +149,6 @@ class DatadogWebhookClient:
     def _build_webhook_body(
         target_url: str,
         webhook_secret: str | None,
-        org_uuid: str | None,
         name: str | None = None,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {
@@ -175,9 +158,7 @@ class DatadogWebhookClient:
         }
         if name:
             body["name"] = name
-        custom_headers = DatadogWebhookClient._build_custom_headers(
-            webhook_secret, org_uuid
-        )
+        custom_headers = DatadogWebhookClient._build_custom_headers(webhook_secret)
         if custom_headers:
             body["custom_headers"] = custom_headers
         return body

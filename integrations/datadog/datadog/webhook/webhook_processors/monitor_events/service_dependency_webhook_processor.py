@@ -9,6 +9,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
+from datadog.client import DatadogClient
 from datadog.core.exporters import ServiceDependencyExporter
 from datadog.core.exporters.service_dependency_exporter import (
     GetServiceDependencyOptions,
@@ -51,27 +52,26 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
         from datadog.overrides import ServiceDependencyResourceConfig
 
         service_ids = self.extract_service_ids(payload)
-
-        client = self._get_client_for_org_uuid(self._org_uuid_from_event_headers())
-        if client is None:
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        dep_exporter = ServiceDependencyExporter(client)
-        tasks = [
-            dep_exporter.get_resource(
-                GetServiceDependencyOptions.from_resource_config(
-                    cast(ServiceDependencyResourceConfig, resource_config),
-                    resource_id=service_id,
-                )
+        options = [
+            GetServiceDependencyOptions.from_resource_config(
+                cast(ServiceDependencyResourceConfig, resource_config),
+                resource_id=service_id,
             )
             for service_id in service_ids
         ]
-        results: list[dict[str, Any] | None] = await asyncio.gather(*tasks)
-        service_dependencies = [result for result in results if result]
+
+        async def fetch(client: DatadogClient) -> list[dict[str, Any]]:
+            dep_exporter = ServiceDependencyExporter(client)
+            results = await asyncio.gather(
+                *(dep_exporter.get_resource(opt) for opt in options)
+            )
+            return [result for result in results if result]
+
+        service_dependencies = await self._fetch_from_matching_client(
+            payload.get("org_name"), fetch
+        )
 
         return WebhookEventRawResults(
-            updated_raw_results=service_dependencies,
+            updated_raw_results=service_dependencies or [],
             deleted_raw_results=[],
         )

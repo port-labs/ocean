@@ -1,5 +1,6 @@
-from typing import Any
+from typing import Any, Awaitable, Callable, TypeVar
 
+from httpx import HTTPStatusError
 from loguru import logger
 from datadog.client import DatadogClient
 from client_manager import get_client_manager
@@ -9,10 +10,9 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
 
-from datadog.webhook.webhook_client import (
-    PORT_AUTH_HEADER_NAME,
-    PORT_DATADOG_ORG_HEADER_NAME,
-)
+from datadog.webhook.webhook_client import PORT_AUTH_HEADER_NAME
+
+T = TypeVar("T")
 
 
 class BaseWebhookProcessor(AbstractWebhookProcessor):
@@ -21,23 +21,42 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
         super().__init__(event)
         self._client_manager = get_client_manager()
 
-    def _get_client_for_org_uuid(
-        self, org_uuid: str | None
-    ) -> DatadogClient | None:
-        """Select the Datadog client responsible for the org with *org_uuid*.
+    async def _fetch_from_matching_client(
+        self,
+        org_name: str | None,
+        fetch: Callable[[DatadogClient], Awaitable[T]],
+    ) -> T | None:
+        """Run *fetch* against each client configured for *org_name*, returning the
+        first non-empty result.
 
-        Delegates to the client manager: single-org installs always use their sole
-        client; multi-org installs match the org uuid (the credential-map key)
-        against the configured orgs, returning None (so callers skip the event)
-        when nothing matches. The uuid is exposed differently per event family
-        (monitor webhooks carry it in a stamped header, audit-trail events in the
-        payload), so each family extracts it and calls here.
+        Org names aren't unique, so a name can map to several clients; the event
+        truly originates from whichever one can fetch its resource. A client whose
+        credentials don't own the resource raises an HTTP error (403/404) — we log
+        and try the next candidate. Returns None when no candidate yields data.
         """
-        return self._client_manager.get_client_by_org_uuid(org_uuid)
+        clients = self._client_manager.get_clients_by_org_name(org_name)
+        if not clients:
+            logger.warning(
+                f"No Datadog client configured for org '{org_name}'; skipping event"
+            )
+            return None
 
-    def _org_uuid_from_event_headers(self) -> str | None:
-        """Read the org uuid we stamp onto each org's monitor webhook at creation."""
-        return self._get_header_value(self.event.headers, PORT_DATADOG_ORG_HEADER_NAME)
+        for client in clients:
+            try:
+                result = await fetch(client)
+            except HTTPStatusError as e:
+                logger.warning(
+                    f"Candidate client for org '{org_name}' could not fetch the "
+                    f"event's resource ({e.response.status_code}); trying next"
+                )
+                continue
+            if result:
+                return result
+
+        logger.warning(
+            f"No configured Datadog client returned data for org '{org_name}'"
+        )
+        return None
 
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]

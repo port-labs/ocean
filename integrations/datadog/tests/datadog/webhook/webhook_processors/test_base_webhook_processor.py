@@ -105,25 +105,62 @@ async def test_authenticate_with_case_insensitive_custom_header(
     assert await processor.authenticate({}, headers) is True
 
 
-def test_get_client_for_org_uuid_delegates_to_manager(
+@pytest.mark.asyncio
+async def test_fetch_from_matching_client_returns_first_non_empty(
     processor: MockWebhookProcessor,
     mock_client_manager: MagicMock,
 ) -> None:
-    # The processor hands org-uuid resolution to the client manager.
-    resolved = processor._get_client_for_org_uuid("uuid-1")
+    c1, c2 = MagicMock(name="c1"), MagicMock(name="c2")
+    mock_client_manager.get_clients_by_org_name.return_value = [c1, c2]
 
-    mock_client_manager.get_client_by_org_uuid.assert_called_once_with("uuid-1")
-    assert resolved is mock_client_manager.get_client_by_org_uuid.return_value
+    async def fetch(client: Any) -> Any:
+        return {"id": "found"} if client is c2 else None
+
+    result = await processor._fetch_from_matching_client("My Org", fetch)
+
+    mock_client_manager.get_clients_by_org_name.assert_called_once_with("My Org")
+    assert result == {"id": "found"}
 
 
-def test_org_uuid_from_event_headers_reads_stamped_header() -> None:
-    from datadog.webhook.webhook_client import PORT_DATADOG_ORG_HEADER_NAME
+@pytest.mark.asyncio
+async def test_fetch_from_matching_client_skips_failing_candidate(
+    processor: MockWebhookProcessor,
+    mock_client_manager: MagicMock,
+) -> None:
+    import httpx
 
-    event = WebhookEvent(
-        trace_id="t",
-        payload={},
-        # header lookup is case-insensitive
-        headers={PORT_DATADOG_ORG_HEADER_NAME.lower(): "uuid-1"},
-    )
-    processor = MockWebhookProcessor(event)
-    assert processor._org_uuid_from_event_headers() == "uuid-1"
+    c1, c2 = MagicMock(name="c1"), MagicMock(name="c2")
+    mock_client_manager.get_clients_by_org_name.return_value = [c1, c2]
+    request = httpx.Request("GET", "https://api.datadoghq.com")
+
+    async def fetch(client: Any) -> Any:
+        if client is c1:
+            # wrong org's creds -> the resource isn't there
+            raise httpx.HTTPStatusError(
+                "forbidden",
+                request=request,
+                response=httpx.Response(403, request=request),
+            )
+        return {"id": "ok"}
+
+    result = await processor._fetch_from_matching_client("My Org", fetch)
+    assert result == {"id": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_fetch_from_matching_client_returns_none_without_candidates(
+    processor: MockWebhookProcessor,
+    mock_client_manager: MagicMock,
+) -> None:
+    mock_client_manager.get_clients_by_org_name.return_value = []
+    fetched = False
+
+    async def fetch(client: Any) -> Any:
+        nonlocal fetched
+        fetched = True
+        return {"id": "x"}
+
+    result = await processor._fetch_from_matching_client("missing", fetch)
+
+    assert result is None
+    assert fetched is False  # no candidates -> fetch never invoked

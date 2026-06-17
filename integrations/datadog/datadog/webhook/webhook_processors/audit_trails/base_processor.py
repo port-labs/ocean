@@ -1,7 +1,6 @@
 from abc import abstractmethod
 from typing import Any
 
-from httpx import HTTPStatusError
 from loguru import logger
 from pydantic import ValidationError
 
@@ -89,23 +88,11 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
                     deleted_raw_results=[deleted] if deleted else [],
                 )
 
-        org_uuid = event.attributes.org.uuid if event.attributes.org else None
-        client = self._get_client_for_org_uuid(org_uuid)
-        if client is None:
-            logger.warning(
-                f"Skipping audit-trail event for org uuid '{org_uuid}': "
-                "no matching Datadog client"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        resource = None
-        try:
-            resource = await self._fetch_resource(client, event, resource_config)
-        except HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning("Resource returned 404, skipping event", error=str(e))
+        org_name = event.attributes.org.name if event.attributes.org else None
+        resource = await self._fetch_from_matching_client(
+            org_name,
+            lambda client: self._fetch_resource(client, event, resource_config),
+        )
 
         return WebhookEventRawResults(
             updated_raw_results=[resource] if resource else [],

@@ -1,4 +1,4 @@
-from typing import Dict, NamedTuple, Optional
+from typing import List, NamedTuple, Optional
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +11,7 @@ class RestrictionPolicyResource(NamedTuple):
 class OrgCredentials(BaseModel):
     """Per-organization Datadog credentials as supplied in datadogCredentialMap."""
 
+    org_name: str = Field(..., alias="datadogOrgName")
     api_key: str = Field(..., alias="datadogApiKey")
     app_key: str = Field(..., alias="datadogApplicationKey")
     # Orgs can live on different Datadog sites (us3, eu, ...). Falls back to the
@@ -19,6 +20,10 @@ class OrgCredentials(BaseModel):
 
 
 class DatadogCredentialMap(BaseModel):
-    """The datadogCredentialMap JSON: org uuid -> that org's credentials."""
+    """The datadogCredentialMap JSON: a list of per-org credentials.
 
-    __root__: Dict[str, OrgCredentials]
+    A list (not a dict keyed by org) because org names aren't unique — several
+    entries may share a name, and routing tries each candidate in turn.
+    """
+
+    __root__: List[OrgCredentials]

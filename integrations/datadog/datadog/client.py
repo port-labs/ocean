@@ -34,7 +34,7 @@ class DatadogClient:
         api_key: str,
         app_key: str,
         access_token: Optional[str] = None,
-        org_uuid: Optional[str] = None,
+        org_name: Optional[str] = None,
     ):
         self.api_url = api_url
         self.dd_api_key = api_key
@@ -44,7 +44,7 @@ class DatadogClient:
             retry_config=_create_datadog_retry_config(),
             timeout=ocean.config.client_timeout,
         )
-        self.org_uuid = org_uuid
+        self.org_name = org_name
 
     @property
     def datadog_web_url(self) -> str:

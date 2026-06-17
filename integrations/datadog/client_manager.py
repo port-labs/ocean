@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Any, Iterator
 
 from loguru import logger
@@ -10,7 +11,7 @@ from port_ocean.context.ocean import ocean
 from datadog.exceptions import IntegrationMissingConfigError
 
 
-def get_credential_map(config: dict[str, Any]) -> dict[str, OrgCredentials]:
+def get_credential_map(config: dict[str, Any]) -> list[OrgCredentials]:
     credential_map_string = config.get("datadog_credential_map")
     if not credential_map_string:
         raise IntegrationMissingConfigError(
@@ -35,13 +36,12 @@ def init_client_single_org(config: dict[str, Any]) -> DatadogClient:
 
 
 def init_client_for_multi_org(config: dict[str, Any]) -> Iterator[DatadogClient]:
-    credential_map = get_credential_map(config)
-    for org_uuid, credentials in credential_map.items():
+    for credentials in get_credential_map(config):
         yield DatadogClient(
             credentials.base_url or config["datadog_base_url"],
             credentials.api_key,
             credentials.app_key,
-            org_uuid=org_uuid,
+            org_name=credentials.org_name,
         )
 
 
@@ -49,8 +49,8 @@ class DatadogClientManager:
     """Owns the set of Datadog clients for the integration.
 
     Builds one client per configured organization (a single client for
-    single-org installs) and resolves the right client for an incoming event by
-    org id. The config is read once at construction, so clients — and their
+    single-org installs) and resolves candidate clients for an incoming event by
+    org name. The config is read once at construction, so clients — and their
     underlying HTTP connection pools — are reused across resyncs and webhook
     events rather than rebuilt on every call.
     """
@@ -64,31 +64,41 @@ class DatadogClientManager:
             if self.is_multi_org
             else [init_client_single_org(config)]
         )
-        self._clients_by_org_uuid: dict[str | None, DatadogClient] = {
-            client.org_uuid: client for client in clients
-        }
+        # Org names aren't unique, so a name maps to a list of candidate clients.
+        # Datadog org names are case-insensitive, so the index is keyed by the
+        # lower-cased name (and looked up the same way).
+        self._clients_by_org_name: dict[str | None, list[DatadogClient]] = defaultdict(
+            list
+        )
+        for client in clients:
+            self._clients_by_org_name[self._normalize_org_name(client.org_name)].append(
+                client
+            )
+
+    @staticmethod
+    def _normalize_org_name(org_name: str | None) -> str | None:
+        return org_name.lower() if org_name is not None else None
 
     @property
     def clients(self) -> list[DatadogClient]:
-        return list(self._clients_by_org_uuid.values())
+        return [
+            client
+            for clients in self._clients_by_org_name.values()
+            for client in clients
+        ]
 
-    def get_client_by_org_uuid(self, org_uuid: str | None) -> DatadogClient | None:
-        """Return the client responsible for the org with *org_uuid*.
+    def get_clients_by_org_name(self, org_name: str | None) -> list[DatadogClient]:
+        """Return every client configured for the org named *org_name*.
 
-        Single-org installs always use their sole client. Multi-org installs match
-        the event's org uuid (the credential-map key) against the configured orgs,
-        returning None (so callers can skip the event) when nothing matches. The
-        uuid is globally unique and survives org renames, unlike the org name.
+        Single-org installs always use their sole client. Org names aren't unique,
+        so multi-org installs may return several candidates; the caller tries each
+        until one can fetch the event's resource. Matching is case-insensitive.
+        Returns an empty list when no configured org matches.
         """
         if not self.is_multi_org:
-            return next(iter(self._clients_by_org_uuid.values()))
+            return self.clients
 
-        client = self._clients_by_org_uuid.get(org_uuid)
-        if client is None:
-            logger.warning(
-                f"No Datadog client configured for org uuid '{org_uuid}'; skipping event"
-            )
-        return client
+        return self._clients_by_org_name.get(self._normalize_org_name(org_name), [])
 
 
 _client_manager: DatadogClientManager | None = None

@@ -19,10 +19,18 @@ BASE_URL = "https://api.datadoghq.com"
 
 def _credential_map_string() -> str:
     return json.dumps(
-        {
-            "org-1": {"datadogApiKey": "api-1", "datadogApplicationKey": "app-1"},
-            "org-2": {"datadogApiKey": "api-2", "datadogApplicationKey": "app-2"},
-        }
+        [
+            {
+                "datadogOrgName": "org-1",
+                "datadogApiKey": "api-1",
+                "datadogApplicationKey": "app-1",
+            },
+            {
+                "datadogOrgName": "org-2",
+                "datadogApiKey": "api-2",
+                "datadogApplicationKey": "app-2",
+            },
+        ]
     )
 
 
@@ -53,9 +61,9 @@ def patch_integration_config() -> Generator[Any, None, None]:
 def test_get_credential_map_parses_valid_json() -> None:
     config = {"datadog_credential_map": _credential_map_string()}
     result = get_credential_map(config)
-    assert set(result.keys()) == {"org-1", "org-2"}
-    assert result["org-1"].api_key == "api-1"
-    assert result["org-1"].app_key == "app-1"
+    assert [entry.org_name for entry in result] == ["org-1", "org-2"]
+    assert result[0].api_key == "api-1"
+    assert result[0].app_key == "app-1"
 
 
 def test_get_credential_map_missing_raises() -> None:
@@ -68,9 +76,10 @@ def test_get_credential_map_invalid_json_raises() -> None:
         get_credential_map({"datadog_credential_map": "{not valid json"})
 
 
-def test_get_credential_map_non_dict_json_raises() -> None:
+def test_get_credential_map_non_list_json_raises() -> None:
+    # The map must be a JSON array, not an object.
     with pytest.raises(IntegrationMissingConfigError):
-        get_credential_map({"datadog_credential_map": json.dumps(["a", "b"])})
+        get_credential_map({"datadog_credential_map": json.dumps({"a": "b"})})
 
 
 # --------------------------------------------------------------------------- #
@@ -78,7 +87,7 @@ def test_get_credential_map_non_dict_json_raises() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_init_client_for_multi_org_yields_client_per_org() -> None:
+def test_init_client_for_multi_org_yields_client_per_entry() -> None:
     config = {
         "datadog_base_url": BASE_URL,
         "datadog_credential_map": _credential_map_string(),
@@ -86,7 +95,7 @@ def test_init_client_for_multi_org_yields_client_per_org() -> None:
     clients = list(init_client_for_multi_org(config))
 
     assert len(clients) == 2
-    by_org = {c.org_uuid: c for c in clients}
+    by_org = {c.org_name: c for c in clients}
     assert by_org["org-1"].dd_api_key == "api-1"
     assert by_org["org-1"].dd_app_key == "app-1"
     assert by_org["org-2"].dd_api_key == "api-2"
@@ -96,7 +105,9 @@ def test_init_client_for_multi_org_yields_client_per_org() -> None:
 def test_init_client_for_multi_org_missing_inner_keys_raises() -> None:
     config = {
         "datadog_base_url": BASE_URL,
-        "datadog_credential_map": json.dumps({"org-1": {"datadogApiKey": "api-1"}}),
+        "datadog_credential_map": json.dumps(
+            [{"datadogOrgName": "org-1", "datadogApiKey": "api-1"}]
+        ),
     }
     with pytest.raises(IntegrationMissingConfigError):
         list(init_client_for_multi_org(config))
@@ -107,19 +118,24 @@ def test_init_client_for_multi_org_uses_per_org_base_url_with_fallback() -> None
     config = {
         "datadog_base_url": BASE_URL,
         "datadog_credential_map": json.dumps(
-            {
+            [
                 # no datadogBaseUrl -> falls back to the integration's base url
-                "org-1": {"datadogApiKey": "a1", "datadogApplicationKey": "p1"},
+                {
+                    "datadogOrgName": "org-1",
+                    "datadogApiKey": "a1",
+                    "datadogApplicationKey": "p1",
+                },
                 # overrides with its own site
-                "org-2": {
+                {
+                    "datadogOrgName": "org-2",
                     "datadogApiKey": "a2",
                     "datadogApplicationKey": "p2",
                     "datadogBaseUrl": other_url,
                 },
-            }
+            ]
         ),
     }
-    by_org = {c.org_uuid: c for c in init_client_for_multi_org(config)}
+    by_org = {c.org_name: c for c in init_client_for_multi_org(config)}
 
     assert by_org["org-1"].api_url == BASE_URL
     assert by_org["org-2"].api_url == other_url
@@ -142,7 +158,7 @@ def test_init_client_single_org_builds_one_client() -> None:
     assert client.dd_api_key == "api"
     assert client.dd_app_key == "app"
     assert client.access_token == "token"
-    assert client.org_uuid is None
+    assert client.org_name is None
 
 
 # --------------------------------------------------------------------------- #
@@ -159,7 +175,7 @@ def test_get_client_manager_single_org_branch(patch_integration_config: Any) -> 
     }
     clients = get_client_manager().clients
     assert len(clients) == 1
-    assert clients[0].org_uuid is None
+    assert clients[0].org_name is None
 
 
 def test_get_client_manager_multi_org_branch(patch_integration_config: Any) -> None:
@@ -168,7 +184,7 @@ def test_get_client_manager_multi_org_branch(patch_integration_config: Any) -> N
         "datadog_credential_map": _credential_map_string(),
     }
     clients = get_client_manager().clients
-    assert {c.org_uuid for c in clients} == {"org-1", "org-2"}
+    assert {c.org_name for c in clients} == {"org-1", "org-2"}
 
 
 def test_get_client_manager_is_cached(patch_integration_config: Any) -> None:
@@ -198,30 +214,70 @@ def _single_org_config() -> dict[str, Any]:
     }
 
 
-def _multi_org_config() -> dict[str, Any]:
+def _multi_org_config(credential_map: str | None = None) -> dict[str, Any]:
     return {
         "datadog_base_url": BASE_URL,
-        "datadog_credential_map": _credential_map_string(),
+        "datadog_credential_map": credential_map or _credential_map_string(),
     }
 
 
-def test_manager_single_org_resolves_sole_client_for_any_org() -> None:
+def test_manager_single_org_resolves_sole_client_for_any_name() -> None:
     manager = DatadogClientManager(_single_org_config())
     assert len(manager.clients) == 1
     sole = manager.clients[0]
-    assert manager.get_client_by_org_uuid("anything") is sole
-    assert manager.get_client_by_org_uuid(None) is sole
+    assert manager.get_clients_by_org_name("anything") == [sole]
+    assert manager.get_clients_by_org_name(None) == [sole]
 
 
-def test_manager_multi_org_resolves_by_org_uuid() -> None:
+def test_manager_multi_org_resolves_by_org_name() -> None:
     manager = DatadogClientManager(_multi_org_config())
-    assert {c.org_uuid for c in manager.clients} == {"org-1", "org-2"}
+    assert {c.org_name for c in manager.clients} == {"org-1", "org-2"}
 
-    resolved = manager.get_client_by_org_uuid("org-2")
-    assert resolved is not None and resolved.org_uuid == "org-2"
+    resolved = manager.get_clients_by_org_name("org-2")
+    assert [c.org_name for c in resolved] == ["org-2"]
 
 
-def test_manager_multi_org_no_match_returns_none() -> None:
+def test_manager_multi_org_no_match_returns_empty() -> None:
     manager = DatadogClientManager(_multi_org_config())
-    assert manager.get_client_by_org_uuid("missing") is None
-    assert manager.get_client_by_org_uuid(None) is None
+    assert manager.get_clients_by_org_name("missing") == []
+    assert manager.get_clients_by_org_name(None) == []
+
+
+def test_manager_multi_org_matches_org_name_case_insensitively() -> None:
+    credential_map = json.dumps(
+        [
+            {
+                "datadogOrgName": "DPN | Port",
+                "datadogApiKey": "a1",
+                "datadogApplicationKey": "p1",
+            }
+        ]
+    )
+    manager = DatadogClientManager(_multi_org_config(credential_map))
+
+    # Datadog org names are case-insensitive: a differently-cased event name matches.
+    resolved = manager.get_clients_by_org_name("dpn | port")
+    assert [c.org_name for c in resolved] == ["DPN | Port"]
+
+
+def test_manager_multi_org_duplicate_name_returns_all_candidates() -> None:
+    # Org names aren't unique: two entries share a name -> both are returned.
+    credential_map = json.dumps(
+        [
+            {
+                "datadogOrgName": "Shared Name",
+                "datadogApiKey": "a1",
+                "datadogApplicationKey": "p1",
+            },
+            {
+                "datadogOrgName": "Shared Name",
+                "datadogApiKey": "a2",
+                "datadogApplicationKey": "p2",
+            },
+        ]
+    )
+    manager = DatadogClientManager(_multi_org_config(credential_map))
+
+    candidates = manager.get_clients_by_org_name("Shared Name")
+    assert len(candidates) == 2
+    assert {c.dd_api_key for c in candidates} == {"a1", "a2"}

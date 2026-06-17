@@ -42,16 +42,12 @@ class MonitorWebhookProcessor(BaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        client = self._get_client_for_org_uuid(self._org_uuid_from_event_headers())
-        if client is None:
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        monitor = await MonitorExporter(client).get_resource(
-            GetMonitorOptions.from_resource_config(
-                cast(MonitorResourceConfig, resource_config), resource_id=monitor_id
-            )
+        options = GetMonitorOptions.from_resource_config(
+            cast(MonitorResourceConfig, resource_config), resource_id=monitor_id
+        )
+        monitor = await self._fetch_from_matching_client(
+            payload.get("org_name"),
+            lambda client: MonitorExporter(client).get_resource(options),
         )
 
         return WebhookEventRawResults(
