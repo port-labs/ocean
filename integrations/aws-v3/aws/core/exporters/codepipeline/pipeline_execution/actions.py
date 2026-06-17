@@ -16,9 +16,6 @@ class GetPipelineExecutionDetailsAction(Action):
     """Fetches detailed information about pipeline executions."""
 
     async def _execute(self, executions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        if not executions:
-            return []
-
         details = await asyncio.gather(
             *(self._fetch_pipeline_execution_details(execution) for execution in executions),
             return_exceptions=True,
