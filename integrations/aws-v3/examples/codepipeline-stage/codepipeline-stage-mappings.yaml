@@ -7,16 +7,14 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '(.Properties.PipelineName + "-" + .Properties.StageName)'
-          title: .Properties.StageName
+          identifier: (.Properties.PipelineArn + "/" + .Properties.Name)
+          title: (.Properties.PipelineName + "/" + .Properties.Name)
           blueprint: '"codePipelineStage"'
           properties:
             pipelineName: .Properties.PipelineName
             pipelineArn: .Properties.PipelineArn
-            stageName: .Properties.StageName
-            stageOrder: .Properties.StageOrder
+            name: .Properties.Name
+            order: .Properties.Order
             actions: .Properties.Actions
-            blockers: .Properties.Blockers
-            tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId

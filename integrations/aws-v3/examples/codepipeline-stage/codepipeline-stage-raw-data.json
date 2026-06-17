@@ -1,109 +1,38 @@
 {
-  "pipeline": {
-    "name": "my-app-pipeline",
-    "roleArn": "arn:aws:iam::123456789012:role/CodePipelineRole",
-    "artifactStore": {
-      "type": "S3",
-      "location": "my-app-pipeline-artifacts"
-    },
-    "stages": [
+  "Type": "AWS::CodePipeline::Stage",
+  "Properties": {
+    "Actions": [
       {
-        "name": "Source",
-        "actions": [
+        "name": "GitHub_Source",
+        "actionTypeId": {
+          "category": "Source",
+          "owner": "AWS",
+          "provider": "CodeStarSourceConnection",
+          "version": "1"
+        },
+        "runOrder": 1,
+        "configuration": {
+          "BranchName": "main",
+          "ConnectionArn": "arn:aws:codeconnections:eu-west-1:123456789012:connection/1fb190f1-18f2-47f5-9f19-35f6d26b6134",
+          "FullRepositoryId": "Org/Repo",
+          "OutputArtifactFormat": "CODEBUILD_CLONE_REF"
+        },
+        "outputArtifacts": [
           {
-            "name": "SourceAction",
-            "actionTypeId": {
-              "category": "Source",
-              "owner": "AWS",
-              "provider": "CodeCommit",
-              "version": "1"
-            },
-            "runOrder": 1,
-            "configuration": {
-              "RepositoryName": "my-app-repo",
-              "BranchName": "main"
-            },
-            "outputArtifacts": [
-              {
-                "name": "SourceOutput"
-              }
-            ],
-            "inputArtifacts": []
+            "name": "SourceArtifact"
           }
         ],
-        "blockers": []
-      },
-      {
-        "name": "Build",
-        "actions": [
-          {
-            "name": "BuildAction",
-            "actionTypeId": {
-              "category": "Build",
-              "owner": "AWS",
-              "provider": "CodeBuild",
-              "version": "1"
-            },
-            "runOrder": 1,
-            "configuration": {
-              "ProjectName": "my-app-build"
-            },
-            "outputArtifacts": [
-              {
-                "name": "BuildOutput"
-              }
-            ],
-            "inputArtifacts": [
-              {
-                "name": "SourceOutput"
-              }
-            ]
-          }
-        ],
-        "blockers": []
-      },
-      {
-        "name": "Deploy",
-        "actions": [
-          {
-            "name": "DeployAction",
-            "actionTypeId": {
-              "category": "Deploy",
-              "owner": "AWS",
-              "provider": "ECS",
-              "version": "1"
-            },
-            "runOrder": 1,
-            "configuration": {
-              "ClusterName": "my-app-cluster",
-              "ServiceName": "my-app-service"
-            },
-            "outputArtifacts": [],
-            "inputArtifacts": [
-              {
-                "name": "BuildOutput"
-              }
-            ]
-          }
-        ],
-        "blockers": []
+        "inputArtifacts": [],
+        "region": "eu-west-1"
       }
     ],
-    "version": 1
+    "Name": "Source",
+    "Order": 1,
+    "PipelineArn": "arn:aws:codepipeline:eu-west-1:123456789012:my-pipeline",
+    "PipelineName": "my-pipeline"
   },
-  "metadata": {
-    "pipelineArn": "arn:aws:codepipeline:us-east-1:123456789012:my-app-pipeline",
-    "created": "2024-01-15T10:00:00Z",
-    "updated": "2024-06-01T14:30:00Z"
-  },
-  "tags": [
-    {
-      "key": "Environment",
-      "value": "production"
-    },
-    {
-      "key": "Team",
-      "value": "platform"
-    }
-  ]
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
+  }
 }

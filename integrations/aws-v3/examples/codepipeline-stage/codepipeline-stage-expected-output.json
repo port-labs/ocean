@@ -1,109 +1,39 @@
-[
-  {
-    "Type": "AWS::CodePipeline::Stage",
-    "Properties": {
-      "PipelineName": "my-app-pipeline",
-      "PipelineArn": "arn:aws:codepipeline:us-east-1:123456789012:my-app-pipeline",
-      "StageName": "Source",
-      "StageOrder": 1,
-      "Actions": [
-        {
-          "name": "SourceAction",
-          "actionTypeId": {
-            "category": "Source",
-            "owner": "AWS",
-            "provider": "CodeCommit",
-            "version": "1"
-          },
-          "runOrder": 1,
-          "configuration": {
-            "RepositoryName": "my-app-repo",
-            "BranchName": "main"
-          },
-          "outputArtifacts": [{ "name": "SourceOutput" }],
-          "inputArtifacts": []
-        }
-      ],
-      "Blockers": [],
-      "Tags": [
-        { "key": "Environment", "value": "production" },
-        { "key": "Team", "value": "platform" }
-      ]
-    },
-    "__ExtraContext": {
-      "AccountId": "123456789012",
-      "Region": "us-east-1"
-    }
+{
+  "identifier": "arn:aws:codepipeline:eu-west-1:123456789012:my-pipeline/Source",
+  "title": "my-pipeline/Source",
+  "properties": {
+    "pipelineName": "my-pipeline",
+    "pipelineArn": "arn:aws:codepipeline:eu-west-1:1234589012:my-pipeline",
+    "actions": [
+      {
+        "name": "GitHub_Source",
+        "region": "eu-west-1",
+        "runOrder": 1,
+        "actionTypeId": {
+          "owner": "AWS",
+          "version": "1",
+          "category": "Source",
+          "provider": "CodeStarSourceConnection"
+        },
+        "configuration": {
+          "BranchName": "main",
+          "ConnectionArn": "arn:aws:codeconnections:eu-west-1:123456789012:connection/1fb190f1-18f2-47f5-9f19-35f6d26b6134",
+          "FullRepositoryId": "Org/Repo",
+          "OutputArtifactFormat": "CODEBUILD_CLONE_REF"
+        },
+        "inputArtifacts": [],
+        "outputArtifacts": [
+          {
+            "name": "SourceArtifact"
+          }
+        ]
+      }
+    ],
+    "name": "Source",
+    "order": 1
   },
-  {
-    "Type": "AWS::CodePipeline::Stage",
-    "Properties": {
-      "PipelineName": "my-app-pipeline",
-      "PipelineArn": "arn:aws:codepipeline:us-east-1:123456789012:my-app-pipeline",
-      "StageName": "Build",
-      "StageOrder": 2,
-      "Actions": [
-        {
-          "name": "BuildAction",
-          "actionTypeId": {
-            "category": "Build",
-            "owner": "AWS",
-            "provider": "CodeBuild",
-            "version": "1"
-          },
-          "runOrder": 1,
-          "configuration": {
-            "ProjectName": "my-app-build"
-          },
-          "outputArtifacts": [{ "name": "BuildOutput" }],
-          "inputArtifacts": [{ "name": "SourceOutput" }]
-        }
-      ],
-      "Blockers": [],
-      "Tags": [
-        { "key": "Environment", "value": "production" },
-        { "key": "Team", "value": "platform" }
-      ]
-    },
-    "__ExtraContext": {
-      "AccountId": "123456789012",
-      "Region": "us-east-1"
-    }
+  "relations": {
+    "account": "123456789012"
   },
-  {
-    "Type": "AWS::CodePipeline::Stage",
-    "Properties": {
-      "PipelineName": "my-app-pipeline",
-      "PipelineArn": "arn:aws:codepipeline:us-east-1:123456789012:my-app-pipeline",
-      "StageName": "Deploy",
-      "StageOrder": 3,
-      "Actions": [
-        {
-          "name": "DeployAction",
-          "actionTypeId": {
-            "category": "Deploy",
-            "owner": "AWS",
-            "provider": "ECS",
-            "version": "1"
-          },
-          "runOrder": 1,
-          "configuration": {
-            "ClusterName": "my-app-cluster",
-            "ServiceName": "my-app-service"
-          },
-          "outputArtifacts": [],
-          "inputArtifacts": [{ "name": "BuildOutput" }]
-        }
-      ],
-      "Blockers": [],
-      "Tags": [
-        { "key": "Environment", "value": "production" },
-        { "key": "Team", "value": "platform" }
-      ]
-    },
-    "__ExtraContext": {
-      "AccountId": "123456789012",
-      "Region": "us-east-1"
-    }
-  }
-]
+  "icon": "AWS"
+}

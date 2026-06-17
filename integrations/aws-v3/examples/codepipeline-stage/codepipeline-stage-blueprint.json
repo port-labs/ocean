@@ -14,16 +14,6 @@
         "title": "Pipeline ARN",
         "description": "The Amazon Resource Name (ARN) of the pipeline"
       },
-      "stageName": {
-        "type": "string",
-        "title": "Stage Name",
-        "description": "The name of the stage in the pipeline"
-      },
-      "stageOrder": {
-        "type": "number",
-        "title": "Stage Order",
-        "description": "The sequential order of the stage within the pipeline"
-      },
       "actions": {
         "type": "array",
         "title": "Actions",
@@ -32,21 +22,15 @@
           "type": "object"
         }
       },
-      "blockers": {
-        "type": "array",
-        "title": "Blockers",
-        "description": "The list of blockers (gates) defined for this stage",
-        "items": {
-          "type": "object"
-        }
+      "name": {
+        "type": "string",
+        "title": "Name",
+        "description": "The name of the stage in the pipeline"
       },
-      "tags": {
-        "type": "array",
-        "title": "Tags",
-        "description": "Tags associated with the pipeline",
-        "items": {
-          "type": "object"
-        }
+      "order": {
+        "type": "number",
+        "title": "Order",
+        "description": "The sequential order of the stage within the pipeline"
       }
     },
     "required": []
