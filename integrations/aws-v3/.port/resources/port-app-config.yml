@@ -63,22 +63,3 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
-  - kind: AWS::CodePipeline::Stage
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: '(.Properties.PipelineName + "-" + .Properties.StageName)'
-          title: .Properties.StageName
-          blueprint: '"codePipelineStage"'
-          properties:
-            pipelineName: .Properties.PipelineName
-            pipelineArn: .Properties.PipelineArn
-            stageName: .Properties.StageName
-            stageOrder: .Properties.StageOrder
-            actions: .Properties.Actions
-            blockers: .Properties.Blockers
-            tags: .Properties.Tags
-          relations:
-            account: .__ExtraContext.AccountId
