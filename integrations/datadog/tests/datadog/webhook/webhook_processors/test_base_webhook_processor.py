@@ -105,18 +105,25 @@ async def test_authenticate_with_case_insensitive_custom_header(
     assert await processor.authenticate({}, headers) is True
 
 
-def test_extract_org_id_returns_str_or_none() -> None:
-    assert BaseWebhookProcessor._extract_org_id({"org_id": 12345}) == "12345"
-    assert BaseWebhookProcessor._extract_org_id({"org_id": "abc"}) == "abc"
-    assert BaseWebhookProcessor._extract_org_id({}) is None
-
-
-def test_get_client_for_payload_delegates_to_manager(
+def test_get_client_for_org_uuid_delegates_to_manager(
     processor: MockWebhookProcessor,
     mock_client_manager: MagicMock,
 ) -> None:
-    # The processor extracts the org id and hands resolution to the client manager.
-    resolved = processor._get_client_for_payload({"org_id": 222})
+    # The processor hands org-uuid resolution to the client manager.
+    resolved = processor._get_client_for_org_uuid("uuid-1")
 
-    mock_client_manager.get_client_for_org.assert_called_once_with("222")
-    assert resolved is mock_client_manager.get_client_for_org.return_value
+    mock_client_manager.get_client_by_org_uuid.assert_called_once_with("uuid-1")
+    assert resolved is mock_client_manager.get_client_by_org_uuid.return_value
+
+
+def test_org_uuid_from_event_headers_reads_stamped_header() -> None:
+    from datadog.webhook.webhook_client import PORT_DATADOG_ORG_HEADER_NAME
+
+    event = WebhookEvent(
+        trace_id="t",
+        payload={},
+        # header lookup is case-insensitive
+        headers={PORT_DATADOG_ORG_HEADER_NAME.lower(): "uuid-1"},
+    )
+    processor = MockWebhookProcessor(event)
+    assert processor._org_uuid_from_event_headers() == "uuid-1"

@@ -8,6 +8,7 @@ from datadog.client import DatadogClient
 from datadog.webhook.webhook_client import (
     DatadogWebhookClient,
     PORT_AUTH_HEADER_NAME,
+    PORT_DATADOG_ORG_HEADER_NAME,
     _PORT_MONITOR_NOTIFICATION_RULE_PREFIX,
 )
 
@@ -228,6 +229,44 @@ async def test_create_webhook_without_secret_omits_custom_headers(
         webhook_call = mock_send.await_args_list[1].kwargs
         assert webhook_call["method"] == "POST"
         assert "custom_headers" not in webhook_call["json_data"]
+
+
+@pytest.mark.asyncio
+async def test_create_webhook_stamps_org_uuid_header_for_multi_org() -> None:
+    client = DatadogClient(
+        "https://api.datadoghq.com", "key", "app", org_uuid="uuid-1"
+    )
+    webhook_client = DatadogWebhookClient([client])
+    with patch.object(
+        client, "send_api_request", new_callable=AsyncMock
+    ) as mock_send:
+        request = httpx.Request(
+            "GET",
+            "https://api.datadoghq.com/api/v1/integration/webhooks/configuration/webhooks/org_123-dd-integration",
+        )
+        mock_send.side_effect = [
+            httpx.HTTPStatusError(
+                "not found",
+                request=request,
+                response=httpx.Response(404, request=request),
+            ),
+            {"status": "created"},
+            {"data": []},
+            {"status": "created"},
+        ]
+
+        await webhook_client.upsert_webhook_setup(
+            base_url="https://example.com",
+            webhook_secret="secret",
+            org_id="org_123",
+            integration_identifier="dd-integration",
+            notification_rule_scope="service:*",
+        )
+
+        webhook_call = mock_send.await_args_list[1].kwargs
+        headers = json.loads(webhook_call["json_data"]["custom_headers"])
+        assert headers[PORT_DATADOG_ORG_HEADER_NAME] == "uuid-1"
+        assert headers[PORT_AUTH_HEADER_NAME] == "secret"
 
 
 @pytest.mark.asyncio

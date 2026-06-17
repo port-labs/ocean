@@ -89,7 +89,8 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
                     deleted_raw_results=[deleted] if deleted else [],
                 )
 
-        client = self._get_client_for_payload(payload)
+        org_uuid = event.attributes.org.uuid if event.attributes.org else None
+        client = self._get_client_for_org_uuid(org_uuid)
         if client is None:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]

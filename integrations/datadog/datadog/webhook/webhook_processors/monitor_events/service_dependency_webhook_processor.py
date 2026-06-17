@@ -52,7 +52,7 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
 
         service_ids = self.extract_service_ids(payload)
 
-        client = self._get_client_for_payload(payload)
+        client = self._get_client_for_org_uuid(self._org_uuid_from_event_headers())
         if client is None:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]

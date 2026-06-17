@@ -30,10 +30,16 @@ class AuditTrailHttp(BaseModel):
     url_details: UrlDetails
 
 
+class AuditTrailOrg(BaseModel):
+    name: str
+    uuid: Optional[str] = None
+
+
 class AuditTrailAttributes(BaseModel):
     evt: AuditTrailEvt
     action: str
     asset: AuditTrailAsset
+    org: Optional[AuditTrailOrg] = None
     http: Optional[AuditTrailHttp] = None
 
     @validator("action", pre=True)

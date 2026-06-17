@@ -164,6 +164,39 @@ async def test_non_delete_action_returns_fetched_resource(
     assert result.deleted_raw_results == []
 
 
+# ---------------------------------------------------------------------------
+# Multi-org client routing by org name (audit payload shape)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_handle_event_routes_by_audit_org_uuid(
+    processor: _StubProcessor,
+    mock_client_manager: Any,
+) -> None:
+    raw = _raw("Stub", "modified", "stub", "s-1")
+    raw["attributes"]["org"] = {"name": "DPN | Port", "uuid": "uuid-1"}
+
+    await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
+
+    mock_client_manager.get_client_by_org_uuid.assert_called_once_with("uuid-1")
+
+
+@pytest.mark.asyncio
+async def test_handle_event_skips_when_no_client_for_org(
+    processor: _StubProcessor,
+    mock_client_manager: Any,
+) -> None:
+    mock_client_manager.get_client_by_org_uuid.return_value = None
+    raw = _raw("Stub", "modified", "stub", "s-1")
+    raw["attributes"]["org"] = {"name": "Unknown Org", "uuid": "uuid-unknown"}
+
+    result = await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
+
+    assert result.updated_raw_results == []
+    assert result.deleted_raw_results == []
+
+
 @pytest.mark.asyncio
 async def test_non_delete_with_missing_resource_returns_empty(
     processor: _StubProcessor,

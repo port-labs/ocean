@@ -37,7 +37,7 @@ configurations:
     type: string
     sensitive: true
   - name: datadogCredentialMap
-    description: "Datadog credential map as a json string. This enables fetching resources from multiple Datadog organizations example '{\"org_id\":{\"datadogApiKey\":\"apiKey\", \"datadogApplicationKey\":\"appKey\"}}'"
+    description: "Datadog credential map as a json string, keyed by Datadog organization UUID (the org's public_id, shown in the audit trail and org settings). This enables fetching resources from multiple Datadog organizations. Example '{\"dbb758e9-396e-11ef-800c-bea43249b5f6\":{\"datadogApiKey\":\"apiKey\", \"datadogApplicationKey\":\"appKey\"}}'"
     type: string
     sensitive: true
     required: false

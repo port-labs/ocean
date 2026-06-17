@@ -37,20 +37,20 @@ def init_client_single_org(config: dict[str, Any]) -> DatadogClient:
 
 def init_client_for_multi_org(config: dict[str, Any]) -> Iterator[DatadogClient]:
     credential_map = get_credential_map(config)
-    for org_id, credentials in credential_map.items():
+    for org_uuid, credentials in credential_map.items():
         try:
             api_key = credentials["datadogApiKey"]
             app_key = credentials["datadogApplicationKey"]
         except (KeyError, TypeError) as e:
             raise IntegrationMissingConfigError(
-                f"datadogCredentialMap entry for org '{org_id}' must include "
+                f"datadogCredentialMap entry for org '{org_uuid}' must include "
                 "'datadogApiKey' and 'datadogApplicationKey'"
             ) from e
         yield DatadogClient(
             config["datadog_base_url"],
             api_key,
             app_key,
-            org_id=org_id,
+            org_uuid=org_uuid,
         )
 
 
@@ -70,28 +70,29 @@ class DatadogClientManager:
             self._clients = list(init_client_for_multi_org(config))
         else:
             self._clients = [init_client_single_org(config)]
-        self._clients_by_org: dict[str | None, DatadogClient] = {
-            client.org_id: client for client in self._clients
+        self._clients_by_org_uuid: dict[str | None, DatadogClient] = {
+            client.org_uuid: client for client in self._clients
         }
 
     @property
     def clients(self) -> list[DatadogClient]:
         return self._clients
 
-    def get_client_for_org(self, org_id: str | None) -> DatadogClient | None:
-        """Return the client responsible for *org_id*.
+    def get_client_by_org_uuid(self, org_uuid: str | None) -> DatadogClient | None:
+        """Return the client responsible for the org with *org_uuid*.
 
-        Single-org installs always use their sole client. Multi-org installs
-        match the event's org id against the configured credential map, returning
-        None (so callers can skip the event) when nothing matches.
+        Single-org installs always use their sole client. Multi-org installs match
+        the event's org uuid (the credential-map key) against the configured orgs,
+        returning None (so callers can skip the event) when nothing matches. The
+        uuid is globally unique and survives org renames, unlike the org name.
         """
         if not self.is_multi_org:
             return self._clients[0]
 
-        client = self._clients_by_org.get(org_id)
+        client = self._clients_by_org_uuid.get(org_uuid)
         if client is None:
             logger.warning(
-                f"No Datadog client configured for org_id '{org_id}'; skipping event"
+                f"No Datadog client configured for org uuid '{org_uuid}'; skipping event"
             )
         return client
 
