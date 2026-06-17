@@ -7,7 +7,10 @@ from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.live_events_stream_key import (
     resolve_live_events_stream_key_from_base_url,
 )
-from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
+from port_ocean.consumers.redis_stream_consumer import (
+    RedisStreamConsumer,
+    _WebhookRequestAdapter,
+)
 
 
 class TestResolveLiveEventsStreamKey:
@@ -190,3 +193,95 @@ class TestRedisStreamConsumer:
 
         on_message.assert_not_called()
         consumer._ack.assert_awaited_once_with("1700000000000-0")
+
+    @pytest.mark.asyncio
+    async def test_handle_message_sets_original_request_when_body_present(
+        self,
+        redis_settings: LiveEventsRedisSettings,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        path = "/webhook"
+        on_message = AsyncMock()
+        raw_body = '{"action":"opened"}'
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=redis_settings,
+                stream_key="1111111/live-events/raw/event-stream",
+                on_message=on_message,
+                registered_paths={path},
+            )
+            consumer._ack = AsyncMock()  # type: ignore[method-assign]
+
+            await consumer._handle_message(
+                "1700000000000-0",
+                {
+                    "payload": json.dumps({"action": "opened"}),
+                    "headers": json.dumps({"x-hub-signature-256": "sha256=abc"}),
+                    "webhookPath": "integration/webhook",
+                    "body": raw_body,
+                },
+            )
+
+        on_message.assert_awaited_once()
+        event = on_message.await_args.args[1]
+        assert isinstance(event._original_request, _WebhookRequestAdapter)
+        assert await event._original_request.body() == raw_body.encode("utf-8")
+        assert event._original_request.headers["x-hub-signature-256"] == "sha256=abc"
+
+    @pytest.mark.asyncio
+    async def test_handle_message_original_request_is_none_when_body_absent(
+        self,
+        redis_settings: LiveEventsRedisSettings,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        path = "/webhook"
+        on_message = AsyncMock()
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=redis_settings,
+                stream_key="1111111/live-events/raw/event-stream",
+                on_message=on_message,
+                registered_paths={path},
+            )
+            consumer._ack = AsyncMock()  # type: ignore[method-assign]
+
+            await consumer._handle_message(
+                "1700000000000-0",
+                {
+                    "payload": json.dumps({"action": "opened"}),
+                    "headers": json.dumps({}),
+                    "webhookPath": "integration/webhook",
+                },
+            )
+
+        on_message.assert_awaited_once()
+        event = on_message.await_args.args[1]
+        assert event._original_request is None
+
+
+class TestWebhookRequestAdapter:
+    @pytest.mark.asyncio
+    async def test_body_returns_raw_bytes(self) -> None:
+        raw = b'{"action":"opened"}'
+        adapter = _WebhookRequestAdapter(raw_body=raw, headers={})
+        assert await adapter.body() == raw
+
+    @pytest.mark.asyncio
+    async def test_body_is_idempotent(self) -> None:
+        raw = b'{"x":1}'
+        adapter = _WebhookRequestAdapter(raw_body=raw, headers={})
+        assert await adapter.body() == await adapter.body()
+
+    def test_headers_accessible(self) -> None:
+        headers = {
+            "x-hub-signature-256": "sha256=abc",
+            "content-type": "application/json",
+        }
+        adapter = _WebhookRequestAdapter(raw_body=b"", headers=headers)
+        assert adapter.headers == headers

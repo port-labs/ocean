@@ -16,6 +16,26 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 
+
+class _WebhookRequestAdapter:
+    """Minimal read-only adapter that satisfies the interface expected by webhook
+    processors that call ``event._original_request.body()`` and access
+    ``event._original_request.headers`` for signature verification.
+
+    The real Starlette ``Request`` is only available during the original HTTP
+    call.  When events travel through the Redis ingestion path the raw body is
+    forwarded as a plain string field so that HMAC signatures can still be
+    verified without a live HTTP connection.
+    """
+
+    def __init__(self, raw_body: bytes, headers: dict[str, str]) -> None:
+        self._raw_body = raw_body
+        self.headers = headers
+
+    async def body(self) -> bytes:
+        return self._raw_body
+
+
 OnStreamMessage = Callable[[str, WebhookEvent], Awaitable[None]]
 
 
@@ -139,10 +159,19 @@ class RedisStreamConsumer:
                 self._parse_json_object_field(fields, "headers")
             )
 
+            original_request: _WebhookRequestAdapter | None = None
+            raw_body = self._get_field(fields, "body")
+            if raw_body is not None:
+                original_request = _WebhookRequestAdapter(
+                    raw_body=raw_body.encode("utf-8"),
+                    headers=headers,
+                )
+
             webhook_event = WebhookEvent(
                 trace_id=str(uuid4()),
                 payload=payload,
                 headers=headers,
+                original_request=original_request,  # type: ignore[arg-type]
             )
             webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
             await self._on_message(webhook_path, webhook_event)
