@@ -9,3 +9,8 @@ from aws.core.exporters.codepipeline.stage import (
     SingleCodePipelineStageRequest,
     PaginatedCodePipelineStageRequest,
 )
+from aws.core.exporters.codepipeline.action import (
+    CodePipelineActionExporter,
+    SingleCodePipelineActionRequest,
+    PaginatedCodePipelineActionRequest,
+)
