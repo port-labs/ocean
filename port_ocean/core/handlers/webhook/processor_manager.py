@@ -28,6 +28,11 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import LocalQueue
+from port_ocean.core.integrations.mixins.utils import is_redis_live_events_enabled
+from port_ocean.consumers.live_events_stream_key import (
+    resolve_live_events_stream_key_from_base_url,
+)
+from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
 
 # Cap JSON UTF-8 size before base64 when logging under events_debug_logging (1 MiB).
 _WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES = 1024 * 1024
@@ -59,6 +64,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         self._event_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
+        self._redis_consumer: RedisStreamConsumer | None = None
         signal_handler.register(self.shutdown)
 
     async def start_processing_event_messages(self) -> None:
@@ -67,85 +73,110 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         loop = asyncio.get_event_loop()
         config = ocean.integration.context.config
 
+        if await is_redis_live_events_enabled():
+            base_url = config.base_url or ocean.app.base_url
+            stream_key = resolve_live_events_stream_key_from_base_url(base_url)
+            self._redis_consumer = RedisStreamConsumer(
+                redis_settings=config.live_events.redis,
+                stream_key=stream_key,
+                on_message=self._on_redis_stream_message,
+                consumer_group=config.live_events.redis.consumer_group,
+                registered_paths=set(self._processors_classes.keys()),
+            )
+            await self._redis_consumer.start()
+            logger.info(
+                "Live events Redis stream consumer enabled",
+                stream_key=stream_key,
+            )
+            return
+
         for path in self._event_queues.keys():
             for worker_id in range(0, config.event_workers_count):
                 task = loop.create_task(self._process_webhook_events(path, worker_id))
                 self._event_processor_tasks.add(task)
                 task.add_done_callback(self._event_processor_tasks.discard)
 
+    async def _on_redis_stream_message(self, path: str, event: WebhookEvent) -> None:
+        await self._process_webhook_event(path, 0, event)
+
+    async def _process_webhook_event(
+        self, path: str, worker_id: int, event: WebhookEvent
+    ) -> None:
+        matching_processors: List[
+            Tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]
+        ] = []
+        try:
+            with logger.contextualize(
+                worker=worker_id,
+                webhook_path=path,
+                trace_id=event.trace_id,
+            ):
+                async with event_context(
+                    EventType.HTTP_REQUEST,
+                    trigger_type="machine",
+                ):
+
+                    await ocean.integration.port_app_config_handler.get_port_app_config(
+                        use_cache=False
+                    )
+                    matching_processors = await self._extract_matching_processors(
+                        event, path
+                    )
+
+                    processing_results = await asyncio.gather(
+                        *(
+                            self._process_single_event(proc, path, res, resource_index)
+                            for res, proc, resource_index in matching_processors
+                        ),
+                        return_exceptions=True,
+                    )
+
+                    successful_results: List[WebhookEventRawResults] = []
+                    failed_exceptions: List[Exception] = []
+
+                    for result in processing_results:
+                        if isinstance(result, WebhookEventRawResults):
+                            successful_results.append(result)
+                        elif isinstance(result, Exception):
+                            failed_exceptions.append(result)
+
+                    if successful_results:
+                        logger.info(
+                            "Successfully processed webhook events",
+                            success_count=len(successful_results),
+                            failure_count=len(failed_exceptions),
+                        )
+
+                    if failed_exceptions:
+                        logger.warning(
+                            "Some webhook events failed processing",
+                            failures=[str(e) for e in failed_exceptions],
+                        )
+
+                    await self.sync_raw_results(successful_results)
+
+        except asyncio.CancelledError:
+            logger.info(f"Worker {worker_id} for {path} shutting down")
+            for _, proc, _ in matching_processors:
+                await proc.cancel()
+                self._timestamp_event_error(proc.event)
+            raise
+        except Exception as e:
+            logger.exception(f"Unexpected error in worker {worker_id} for {path}: {e}")
+            for _, proc, _ in matching_processors:
+                self._timestamp_event_error(proc.event)
+
     async def _process_webhook_events(self, path: str, worker_id: int) -> None:
         """Process webhook events from the queue for a given path."""
         queue = self._event_queues[path]
         while True:
             event = None
-            matching_processors: List[
-                Tuple[ResourceConfig | None, AbstractWebhookProcessor, int | None]
-            ] = []
             try:
                 event = await queue.get()
-                with logger.contextualize(
-                    worker=worker_id,
-                    webhook_path=path,
-                    trace_id=event.trace_id,
-                ):
-                    async with event_context(
-                        EventType.HTTP_REQUEST,
-                        trigger_type="machine",
-                    ):
-
-                        await ocean.integration.port_app_config_handler.get_port_app_config(
-                            use_cache=False
-                        )
-                        matching_processors = await self._extract_matching_processors(
-                            event, path
-                        )
-
-                        processing_results = await asyncio.gather(
-                            *(
-                                self._process_single_event(
-                                    proc, path, res, resource_index
-                                )
-                                for res, proc, resource_index in matching_processors
-                            ),
-                            return_exceptions=True,
-                        )
-
-                        successful_results: List[WebhookEventRawResults] = []
-                        failed_exceptions: List[Exception] = []
-
-                        for result in processing_results:
-                            if isinstance(result, WebhookEventRawResults):
-                                successful_results.append(result)
-                            elif isinstance(result, Exception):
-                                failed_exceptions.append(result)
-
-                        if successful_results:
-                            logger.info(
-                                "Successfully processed webhook events",
-                                success_count=len(successful_results),
-                                failure_count=len(failed_exceptions),
-                            )
-
-                        if failed_exceptions:
-                            logger.warning(
-                                "Some webhook events failed processing",
-                                failures=[str(e) for e in failed_exceptions],
-                            )
-
-                        await self.sync_raw_results(successful_results)
-
+                await self._process_webhook_event(path, worker_id, event)
             except asyncio.CancelledError:
                 logger.info(f"Worker {worker_id} for {path} shutting down")
-                for _, proc, _ in matching_processors:
-                    await proc.cancel()
-                    self._timestamp_event_error(proc.event)
                 break
-            except Exception as e:
-                logger.exception(
-                    f"Unexpected error in worker {worker_id} for {path}: {e}"
-                )
-                for _, proc, _ in matching_processors:
-                    self._timestamp_event_error(proc.event)
             finally:
                 try:
                     if event is not None:
@@ -389,6 +420,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
     async def shutdown(self) -> None:
         """Gracefully shutdown all queue processors"""
         logger.warning("Shutting down webhook processor manager")
+
+        if self._redis_consumer is not None:
+            await self._redis_consumer.stop()
+            self._redis_consumer = None
 
         try:
             await asyncio.wait_for(

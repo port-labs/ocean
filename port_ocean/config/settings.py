@@ -112,6 +112,18 @@ class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
     workers_count: int = Field(default=1)
 
 
+class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
+    url: str = Field(default="redis://localhost:6379")
+    consumer_group: str | None = None
+    block_ms: int = Field(default=1000, ge=1)
+
+
+class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
+    redis: LiveEventsRedisSettings = Field(
+        default_factory=lambda: LiveEventsRedisSettings()
+    )
+
+
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     _integration_config_model: BaseModel | None = None
 
@@ -169,6 +181,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
     actions_processor: ActionsProcessorSettings = Field(
         default_factory=lambda: ActionsProcessorSettings()
+    )
+    live_events: LiveEventsSettings = Field(
+        default_factory=lambda: LiveEventsSettings()
     )
     ssl: SslSettings = Field(default_factory=SslSettings)
 
