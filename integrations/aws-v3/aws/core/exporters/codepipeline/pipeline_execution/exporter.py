@@ -24,13 +24,13 @@ class CodePipelinePipelineExecutionExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            
+
             # Create a mock execution object for the inspector
             mock_execution = {
                 "pipelineName": options.pipeline_name,
                 "pipelineExecutionId": options.pipeline_execution_id
             }
-            
+
             response = await inspector.inspect(
                 [mock_execution],
                 options.include,
@@ -52,50 +52,17 @@ class CodePipelinePipelineExecutionExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            # First, get all pipelines in the region
-            pipelines_response = await proxy.client.list_pipelines()
-            pipelines = pipelines_response.get("pipelines", [])
-            
-            # If a specific pipeline name is provided, filter to that pipeline
-            if options.pipeline_name:
-                pipelines = [p for p in pipelines if p["name"] == options.pipeline_name]
+            pipeline_paginator = proxy.get_paginator("list_pipelines", "pipelines")
+            execution_paginator = proxy.get_paginator("list_pipeline_executions", "pipelineExecutionSummaries")
 
-            # For each pipeline, get its executions
-            for pipeline in pipelines:
-                pipeline_name = pipeline["name"]
-                
-                # Use pagination for pipeline executions
-                paginator_kwargs = {
-                    "pipelineName": pipeline_name
-                }
-                if options.max_results:
-                    paginator_kwargs["maxResults"] = options.max_results
-
-                try:
-                    paginator = proxy.client.get_paginator("list_pipeline_executions")
-                    page_iterator = paginator.paginate(**paginator_kwargs)
-                    
-                    async for page in page_iterator:
-                        executions = page.get("pipelineExecutionSummaries", [])
-                        if executions:
-                            # Add pipeline name to each execution for context
-                            for execution in executions:
-                                execution["pipelineName"] = pipeline_name
-                            
-                            action_result = await inspector.inspect(
-                                executions,
-                                options.include,
-                                extra_context={
-                                    "AccountId": options.account_id,
-                                    "Region": options.region,
-                                },
-                            )
-                            yield action_result
-                        else:
-                            yield []
-                            
-                except Exception as e:
-                    # Log error and continue with next pipeline
-                    from loguru import logger
-                    logger.error(f"Error fetching executions for pipeline '{pipeline_name}': {e}")
-                    yield []
+            async for pipelines in pipeline_paginator.paginate():
+                for pipeline in pipelines:
+                    async for executions in execution_paginator.paginate(pipelineName=pipeline["name"]):
+                        yield await inspector.inspect(
+                            executions,
+                            options.include,
+                            extra_context={
+                                "AccountId": options.account_id,
+                                "Region": options.region,
+                            },
+                        )
