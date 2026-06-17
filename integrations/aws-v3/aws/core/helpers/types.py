@@ -26,6 +26,7 @@ class ObjectKind(StrEnum):
     CODEDEPLOY_APPLICATION = "AWS::CodeDeploy::Application"
     CODEDEPLOY_DEPLOYMENT_GROUP = "AWS::CodeDeploy::DeploymentGroup"
     CODEPIPELINE_PIPELINE = "AWS::CodePipeline::Pipeline"
+    CODEPIPELINE_ACTION = "AWS::CodePipeline::Action"
 
 
 SupportedServices = Literal[
