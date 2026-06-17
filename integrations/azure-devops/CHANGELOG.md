@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added warning log when a work item batch returns a malformed JSON response, including the project ID and batch ID range to aid diagnosis
+- Added error logging when the work items batch endpoint returns a malformed JSON response, including the project ID and batch ID range to aid diagnosis
 
 
 ## 0.9.18 (2026-06-15)
