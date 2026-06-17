@@ -48,19 +48,14 @@ class GetPipelineStagesAction(Action[list[str]]):
         self, pipeline_name: str
     ) -> List[Dict[str, Any]]:
         response = await self.client.get_pipeline(name=pipeline_name)
-        pipeline = response.get("pipeline", {})
-        metadata = response.get("metadata", {})
 
-        pipeline_arn = metadata.get("pipelineArn", "")
-        stages: List[Dict[str, Any]] = pipeline.get("stages", [])
-
-        stage_records: List[Dict[str, Any]] = []
-        for order, stage in enumerate(stages, start=1):
+        stage_records = []
+        for order, stage in enumerate(response.get("pipeline", {}).get("stages", []), start=1):
             stage_records.append(
                 {
                     **stage,
                     "pipelineName": pipeline_name,
-                    "pipelineArn": pipeline_arn,
+                    "pipelineArn": response.get("metadata", {}).get("pipelineArn", ""),
                     "order": order,
                 }
             )
