@@ -61,7 +61,10 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (UserExporter(client).get_paginated_resources() for client in get_client_manager().clients)
+    tasks = (
+        UserExporter(client).get_paginated_resources()
+        for client in get_client_manager().clients
+    )
 
     async for users in stream_async_iterators_tasks(*tasks):
         logger.info(f"Received batch with {len(users)} users")
@@ -70,7 +73,10 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.HOST)
 async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (HostExporter(client).get_paginated_resources() for client in get_client_manager().clients)
+    tasks = (
+        HostExporter(client).get_paginated_resources()
+        for client in get_client_manager().clients
+    )
 
     async for hosts in stream_async_iterators_tasks(*tasks):
         logger.info(f"Received batch with {len(hosts)} hosts")
@@ -127,7 +133,8 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SERVICE)
 async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     tasks = (
-        ServiceExporter(client).get_paginated_resources() for client in get_client_manager().clients
+        ServiceExporter(client).get_paginated_resources()
+        for client in get_client_manager().clients
     )
 
     async for services in stream_async_iterators_tasks(*tasks):
@@ -185,7 +192,10 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ORG)
 async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (OrgExporter(client).get_paginated_resources() for client in get_client_manager().clients)
+    tasks = (
+        OrgExporter(client).get_paginated_resources()
+        for client in get_client_manager().clients
+    )
 
     async for orgs in stream_async_iterators_tasks(*tasks):
         logger.info(f"Received batch with {len(orgs)} orgs")

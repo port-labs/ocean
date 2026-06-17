@@ -21,9 +21,7 @@ def get_credential_map(config: dict[str, Any]) -> list[OrgCredentials]:
         return DatadogCredentialMap.parse_raw(credential_map_string).__root__
     except ValidationError as e:
         logger.error(f"Failed to parse datadogCredentialMap: {e}")
-        raise IntegrationMissingConfigError(
-            f"Invalid datadogCredentialMap: {e}"
-        ) from e
+        raise IntegrationMissingConfigError(f"Invalid datadogCredentialMap: {e}") from e
 
 
 def init_client_single_org(config: dict[str, Any]) -> DatadogClient:
