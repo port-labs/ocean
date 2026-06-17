@@ -91,8 +91,9 @@ def resolve_analytics_range(
     )
     start = max(_parse_rfc3339(starting_at), earliest_allowed)
 
-    if end <= start:
-        end = now
+    # Guard against an inverted range. A future starting_at
+    if start >= end:
+        start = max(earliest_allowed, end - timedelta(days=ANALYTICS_MAX_RANGE_DAYS))
 
     # Keep the window within the allowed span.
     if end - start > timedelta(days=ANALYTICS_MAX_RANGE_DAYS):

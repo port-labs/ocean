@@ -21,6 +21,9 @@ class ClaudeDeployment(StrEnum):
 # otherwise loop forever.
 MAX_PAGES = 10_000
 
+# Cap how much of an error response body is logged (DEBUG only) to avoid bloating logs.
+MAX_LOGGED_BODY_CHARS = 2048
+
 
 class ClaudeClient:
     """Thin async HTTP client for the Anthropic API.
@@ -149,21 +152,23 @@ class ClaudeClient:
             return response
         except httpx.HTTPStatusError as error:
             status_code = error.response.status_code
+            # The body may contain large amounts of data, so only emit
+            # a truncated copy at DEBUG level rather than in the warning/error.
             body = error.response.text
+            truncated = body[:MAX_LOGGED_BODY_CHARS]
+            if len(body) > MAX_LOGGED_BODY_CHARS:
+                truncated += "… (truncated)"
+            logger.debug(f"Response body for {url} (HTTP {status_code}): {truncated}")
 
             if soft_fail_statuses and status_code in soft_fail_statuses:
                 logger.warning(
                     f"Received HTTP {status_code} for {url}. "
                     "This endpoint may not be available for your organisation "
-                    "or your API key may lack the required scope. Skipping. "
-                    f"Response body: {body}"
+                    "or your API key may lack the required scope. Skipping."
                 )
                 return None
 
-            logger.error(
-                f"HTTP {status_code} error for {url}: {error}. "
-                f"Response body: {body}"
-            )
+            logger.error(f"HTTP {status_code} error for {url}: {error}")
             raise
         except httpx.HTTPError as error:
             logger.error(

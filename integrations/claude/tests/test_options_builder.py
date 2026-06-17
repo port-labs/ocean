@@ -126,12 +126,29 @@ def test_resolve_range_respects_explicit_ending(frozen_now: None) -> None:
 
 
 def test_resolve_range_caps_span_to_31_days(frozen_now: None) -> None:
-    # A 60-day window with a recent end is trimmed back to 31 days.
+    # A short window with an explicit end is unchanged (and is within the 31-day cap).
     start, end = resolve_analytics_range("2026-02-20T00:00:00Z", "2026-02-25T00:00:00Z")
     # start (2026-02-20) is earlier than now-31d (2026-02-12T12) so it stays,
     # and the 5-day window is within the cap.
     assert start == "2026-02-20T00:00:00Z"
     assert end == "2026-02-25T00:00:00Z"
+
+
+def test_resolve_range_future_starting_at_stays_valid(frozen_now: None) -> None:
+    # A future startingAt must not produce an inverted range.
+    start, end = resolve_analytics_range("2026-09-01T00:00:00Z", None)
+    assert start < end
+    assert end == "2026-03-15T12:00:00Z"
+    # Falls back to a 31-day window ending at now.
+    assert start == "2026-02-12T12:00:00Z"
+
+
+def test_resolve_range_future_starting_at_with_explicit_ending(
+    frozen_now: None,
+) -> None:
+    start, end = resolve_analytics_range("2026-09-01T00:00:00Z", "2026-03-05T00:00:00Z")
+    assert start < end
+    assert end == "2026-03-05T00:00:00Z"
 
 
 # ---------------------------------------------------------------------------

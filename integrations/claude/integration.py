@@ -10,6 +10,10 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 
+# Default start for the Claude Platform usage/cost reports. This is a deliberate
+# Platform default and is intentionally independent of the Claude AI (Enterprise) min date.
+PLATFORM_DEFAULT_STARTING_DATE = "2025-01-01T00:00:00Z"
+
 
 class ObjectKind(StrEnum):
     # Claude Platform (api:admin scope)
@@ -33,9 +37,12 @@ class ObjectKind(StrEnum):
 class ClaudePlatformUsageSelector(Selector):
     starting_date: str = Field(
         alias="startingDate",
-        default="2026-01-01T00:00:00Z",
+        default=PLATFORM_DEFAULT_STARTING_DATE,
         title="Starting Date",
-        description="ISO-8601 UTC start date used as the starting_at query parameter.",
+        description=(
+            "ISO-8601 UTC start date used as the starting_at query parameter. "
+            "Defaults to 2025-01-01."
+        ),
         regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
     )
     bucket_width: Literal["1m", "1h", "1d"] = Field(
@@ -67,9 +74,12 @@ class ClaudePlatformUsageSelector(Selector):
 class ClaudePlatformCostSelector(Selector):
     starting_date: str = Field(
         alias="startingDate",
-        default="2026-01-01T00:00:00Z",
+        default=PLATFORM_DEFAULT_STARTING_DATE,
         title="Starting Date",
-        description="ISO-8601 UTC start date used as the starting_at query parameter.",
+        description=(
+            "ISO-8601 UTC start date used as the starting_at query parameter. "
+            "Defaults to 2025-01-01."
+        ),
         regex=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
     )
     bucket_width: Literal["1d"] = Field(

@@ -39,7 +39,7 @@ from integration import (
 # ---------------------------------------------------------------------------
 
 
-@ocean.on_resync(ObjectKind.CLAUDE_AI_USER_ACTIVITY.value)
+@ocean.on_resync(ObjectKind.CLAUDE_AI_USER_ACTIVITY)
 async def on_resync_user_activity(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if not is_deployment_enabled(ClaudeDeployment.ENTERPRISE, kind):
         return
@@ -67,7 +67,7 @@ async def on_resync_user_activity(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield page
 
 
-@ocean.on_resync(ObjectKind.CLAUDE_AI_USER_USAGE.value)
+@ocean.on_resync(ObjectKind.CLAUDE_AI_USER_USAGE)
 async def on_resync_user_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if not is_deployment_enabled(ClaudeDeployment.ENTERPRISE, kind):
         return
@@ -92,7 +92,7 @@ async def on_resync_user_usage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield page
 
 
-@ocean.on_resync(ObjectKind.CLAUDE_AI_USER_COST.value)
+@ocean.on_resync(ObjectKind.CLAUDE_AI_USER_COST)
 async def on_resync_user_cost(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if not is_deployment_enabled(ClaudeDeployment.ENTERPRISE, kind):
         return
@@ -122,8 +122,8 @@ async def on_resync_user_cost(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 # ---------------------------------------------------------------------------
 
 
-@ocean.on_resync(ObjectKind.CLAUDE_PLATFORM_USAGE_RECORD.value)
-@ocean.on_resync(ObjectKind.CLAUDE_USAGE_RECORD.value)
+@ocean.on_resync(ObjectKind.CLAUDE_PLATFORM_USAGE_RECORD)
+@ocean.on_resync(ObjectKind.CLAUDE_USAGE_RECORD)
 async def on_resync_platform_usage_records(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if not is_deployment_enabled(ClaudeDeployment.PLATFORM, kind):
         return
@@ -144,8 +144,8 @@ async def on_resync_platform_usage_records(kind: str) -> ASYNC_GENERATOR_RESYNC_
             yield page
 
 
-@ocean.on_resync(ObjectKind.CLAUDE_PLATFORM_COST_RECORD.value)
-@ocean.on_resync(ObjectKind.CLAUDE_COST_RECORD.value)
+@ocean.on_resync(ObjectKind.CLAUDE_PLATFORM_COST_RECORD)
+@ocean.on_resync(ObjectKind.CLAUDE_COST_RECORD)
 async def on_resync_platform_cost_records(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if not is_deployment_enabled(ClaudeDeployment.PLATFORM, kind):
         return
@@ -165,8 +165,8 @@ async def on_resync_platform_cost_records(kind: str) -> ASYNC_GENERATOR_RESYNC_T
             yield page
 
 
-@ocean.on_resync(ObjectKind.CLAUDE_PLATFORM_CODE_ANALYTICS.value)
-@ocean.on_resync(ObjectKind.CLAUDE_CODE_ANALYTICS.value)
+@ocean.on_resync(ObjectKind.CLAUDE_PLATFORM_CODE_ANALYTICS)
+@ocean.on_resync(ObjectKind.CLAUDE_CODE_ANALYTICS)
 async def on_resync_platform_code_analytics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if not is_deployment_enabled(ClaudeDeployment.PLATFORM, kind):
         return
