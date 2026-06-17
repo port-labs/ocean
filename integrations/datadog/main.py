@@ -4,7 +4,7 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.async_iterators import stream_independent_async_iterators
 
 from datadog.core.exporters.role_exporter import ListRoleOptions
 from client_manager import get_client_manager
@@ -54,7 +54,9 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for teams in stream_async_iterators_tasks(*tasks):
+    async for teams in stream_independent_async_iterators(
+        *tasks, context="Team exporter"
+    ):
         logger.info(f"Received batch with {len(teams)} teams")
         yield teams
 
@@ -66,7 +68,9 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for users in stream_async_iterators_tasks(*tasks):
+    async for users in stream_independent_async_iterators(
+        *tasks, context="User exporter"
+    ):
         logger.info(f"Received batch with {len(users)} users")
         yield users
 
@@ -78,7 +82,9 @@ async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for hosts in stream_async_iterators_tasks(*tasks):
+    async for hosts in stream_independent_async_iterators(
+        *tasks, context="Host exporter"
+    ):
         logger.info(f"Received batch with {len(hosts)} hosts")
         yield hosts
 
@@ -94,7 +100,9 @@ async def on_resync_monitors(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for monitors in stream_async_iterators_tasks(*tasks):
+    async for monitors in stream_independent_async_iterators(
+        *tasks, context="Monitor exporter"
+    ):
         logger.info(f"Received batch with {len(monitors)} monitors")
         yield monitors
 
@@ -110,7 +118,9 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for slos in stream_async_iterators_tasks(*tasks):
+    async for slos in stream_independent_async_iterators(
+        *tasks, context="SLO exporter"
+    ):
         logger.info(f"Received batch with {len(slos)} slos")
         yield slos
 
@@ -126,7 +136,9 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for histories in stream_async_iterators_tasks(*tasks):
+    async for histories in stream_independent_async_iterators(
+        *tasks, context="SLO history exporter"
+    ):
         yield histories
 
 
@@ -137,7 +149,9 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for services in stream_async_iterators_tasks(*tasks):
+    async for services in stream_independent_async_iterators(
+        *tasks, context="Service exporter"
+    ):
         logger.info(f"Received batch with {len(services)} services")
         yield services
 
@@ -153,7 +167,9 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for metrics in stream_async_iterators_tasks(*tasks):
+    async for metrics in stream_independent_async_iterators(
+        *tasks, context="Service metric exporter"
+    ):
         logger.info(f"Received batch with {len(metrics)} metrics")
         yield metrics
 
@@ -169,7 +185,9 @@ async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for dependencies in stream_async_iterators_tasks(*tasks):
+    async for dependencies in stream_independent_async_iterators(
+        *tasks, context="Service dependency exporter"
+    ):
         logger.info(f"Received batch with {len(dependencies)} dependencies")
         yield dependencies
 
@@ -185,7 +203,9 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for roles in stream_async_iterators_tasks(*tasks):
+    async for roles in stream_independent_async_iterators(
+        *tasks, context="Role exporter"
+    ):
         logger.info(f"Received batch with {len(roles)} roles")
         yield roles
 
@@ -197,7 +217,9 @@ async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for client in get_client_manager().clients
     )
 
-    async for orgs in stream_async_iterators_tasks(*tasks):
+    async for orgs in stream_independent_async_iterators(
+        *tasks, context="Organization exporter"
+    ):
         logger.info(f"Received batch with {len(orgs)} orgs")
         yield orgs
 
