@@ -32,6 +32,11 @@ async def async_mock_generator(items: list[Any]) -> AsyncGenerator[Any, None]:
         yield item
 
 
+async def async_raising_generator(error: Exception) -> AsyncGenerator[Any, None]:
+    raise error
+    yield  # pragma: no cover
+
+
 @pytest.mark.asyncio
 class TestGitLabClient:
     @pytest.fixture
@@ -2078,3 +2083,145 @@ class TestGitLabClient:
         mock_send_request.assert_called_once_with(
             "GET", "projects/group%2Fproject/deployments/42"
         )
+
+    async def test_enrich_project_resources_skips_project_on_status_code_in_skip_set(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 1, "path_with_namespace": "group/project"}
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "Environments are not available"}
+        error = httpx.HTTPStatusError(
+            "400", request=MagicMock(), response=mock_response
+        )
+
+        results = []
+        async for batch in client._enrich_project_resources(
+            project,
+            async_raising_generator(error),
+            full_project_enrichment=True,
+            skip_http_errors=frozenset({400}),
+        ):
+            results.extend(batch)
+
+        assert results == []
+
+    async def test_enrich_project_resources_reraises_when_status_code_not_in_skip_set(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 1, "path_with_namespace": "group/project"}
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "Environments are not available"}
+        error = httpx.HTTPStatusError(
+            "400", request=MagicMock(), response=mock_response
+        )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            async for _ in client._enrich_project_resources(
+                project,
+                async_raising_generator(error),
+                full_project_enrichment=True,
+                skip_http_errors=frozenset(),
+            ):
+                pass
+
+    async def test_enrich_project_resources_reraises_non_matching_status_code(
+        self, client: GitLabClient
+    ) -> None:
+        project = {"id": 1, "path_with_namespace": "group/project"}
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.json.return_value = {"message": "Internal Server Error"}
+        error = httpx.HTTPStatusError(
+            "500", request=MagicMock(), response=mock_response
+        )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            async for _ in client._enrich_project_resources(
+                project,
+                async_raising_generator(error),
+                full_project_enrichment=True,
+                skip_http_errors=frozenset({400}),
+            ):
+                pass
+
+    async def test_get_deployments_skips_project_without_environments_and_continues_with_others(
+        self, client: GitLabClient
+    ) -> None:
+        project_with_envs = {"id": 1, "path_with_namespace": "group/has-envs"}
+        project_without_envs = {"id": 2, "path_with_namespace": "group/no-envs"}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "404 Environment Not Found"}
+        error = httpx.HTTPStatusError(
+            "400", request=MagicMock(), response=mock_response
+        )
+
+        def side_effect(
+            project_id: str, resource_type: str, params: Any = None
+        ) -> AsyncGenerator[Any, None]:
+            if project_id == "2":
+                return async_raising_generator(error)
+            return async_mock_generator([[{"id": 10, "status": "success"}]])
+
+        with patch.object(
+            client.rest, "get_paginated_project_resource", side_effect=side_effect
+        ):
+            results = []
+            async for batch in client.get_deployments(
+                [project_with_envs, project_without_envs]
+            ):
+                results.extend(batch)
+
+        assert len(results) == 1
+        assert results[0]["id"] == 10
+        assert results[0]["__project"] == project_with_envs
+
+    async def test_get_deployments_returns_empty_when_all_projects_return_400(
+        self, client: GitLabClient
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"message": "404 Environment Not Found"}
+        error = httpx.HTTPStatusError(
+            "400", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            side_effect=lambda *a, **kw: async_raising_generator(error),
+        ):
+            results = []
+            async for batch in client.get_deployments(
+                [
+                    {"id": 1, "path_with_namespace": "group/a"},
+                    {"id": 2, "path_with_namespace": "group/b"},
+                ]
+            ):
+                results.extend(batch)
+
+        assert results == []
+
+    async def test_get_deployments_propagates_non_400_errors(
+        self, client: GitLabClient
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.json.return_value = {"message": "Internal Server Error"}
+        error = httpx.HTTPStatusError(
+            "500", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            side_effect=lambda *a, **kw: async_raising_generator(error),
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client.get_deployments(
+                    [{"id": 1, "path_with_namespace": "group/a"}]
+                ):
+                    pass

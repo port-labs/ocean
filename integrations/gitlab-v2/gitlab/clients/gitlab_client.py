@@ -324,6 +324,7 @@ class GitLabClient:
         project: dict[str, Any],
         resource_iterator: AsyncIterator[list[dict[str, Any]]],
         full_project_enrichment: bool = False,
+        skip_http_errors: frozenset[int] = frozenset(),
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Enrich resources with project information as they are fetched.
 
@@ -333,18 +334,32 @@ class GitLabClient:
         When full_project_enrichment is True, injects the full project object
         so the mapping layer can access any project field via .__project.<field>.
         """
-        async for batch in resource_iterator:
-            if batch:
-                yield [
-                    (
-                        {**resource, "__project": project}
-                        if full_project_enrichment
-                        else self.enrich_with_project_path(
-                            resource, project["path_with_namespace"]
+        try:
+            async for batch in resource_iterator:
+                if batch:
+                    yield [
+                        (
+                            {**resource, "__project": project}
+                            if full_project_enrichment
+                            else self.enrich_with_project_path(
+                                resource, project["path_with_namespace"]
+                            )
                         )
-                    )
-                    for resource in batch
-                ]
+                        for resource in batch
+                    ]
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in skip_http_errors:
+                try:
+                    error_detail = e.response.json().get("message")
+                except Exception:
+                    raise e
+                logger.warning(
+                    f"HTTP error {e.response.status_code} for project "
+                    f"{project.get('path_with_namespace', project.get('id'))}: {error_detail}. "
+                    f"Skipping enrichment of this resource."
+                )
+                return
+            raise
 
     def enrich_with_project_path(
         self, resource: dict[str, Any], project_path: str
@@ -358,6 +373,7 @@ class GitLabClient:
         max_concurrent: int = 10,
         params: Optional[dict[str, Any]] = None,
         full_project_enrichment: bool = False,
+        skip_http_errors: frozenset[int] = frozenset(),
     ) -> AsyncIterator[list[dict[str, Any]]]:
         semaphore = asyncio.Semaphore(max_concurrent)
         tasks = [
@@ -370,6 +386,7 @@ class GitLabClient:
                         str(project["id"]), resource_type, params=params
                     ),
                     full_project_enrichment,
+                    skip_http_errors,
                 ),
             )
             for project in projects_batch
@@ -981,6 +998,7 @@ class GitLabClient:
             max_concurrent,
             params=params,
             full_project_enrichment=True,
+            skip_http_errors=frozenset({400}),
         ):
             logger.info(f"Received batch with {len(batch)} deployments")
             yield batch
