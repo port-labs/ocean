@@ -1,0 +1,109 @@
+{
+  "pipeline": {
+    "name": "my-app-pipeline",
+    "roleArn": "arn:aws:iam::123456789012:role/CodePipelineRole",
+    "artifactStore": {
+      "type": "S3",
+      "location": "my-app-pipeline-artifacts"
+    },
+    "stages": [
+      {
+        "name": "Source",
+        "actions": [
+          {
+            "name": "SourceAction",
+            "actionTypeId": {
+              "category": "Source",
+              "owner": "AWS",
+              "provider": "CodeCommit",
+              "version": "1"
+            },
+            "runOrder": 1,
+            "configuration": {
+              "RepositoryName": "my-app-repo",
+              "BranchName": "main"
+            },
+            "outputArtifacts": [
+              {
+                "name": "SourceOutput"
+              }
+            ],
+            "inputArtifacts": []
+          }
+        ],
+        "blockers": []
+      },
+      {
+        "name": "Build",
+        "actions": [
+          {
+            "name": "BuildAction",
+            "actionTypeId": {
+              "category": "Build",
+              "owner": "AWS",
+              "provider": "CodeBuild",
+              "version": "1"
+            },
+            "runOrder": 1,
+            "configuration": {
+              "ProjectName": "my-app-build"
+            },
+            "outputArtifacts": [
+              {
+                "name": "BuildOutput"
+              }
+            ],
+            "inputArtifacts": [
+              {
+                "name": "SourceOutput"
+              }
+            ]
+          }
+        ],
+        "blockers": []
+      },
+      {
+        "name": "Deploy",
+        "actions": [
+          {
+            "name": "DeployAction",
+            "actionTypeId": {
+              "category": "Deploy",
+              "owner": "AWS",
+              "provider": "ECS",
+              "version": "1"
+            },
+            "runOrder": 1,
+            "configuration": {
+              "ClusterName": "my-app-cluster",
+              "ServiceName": "my-app-service"
+            },
+            "outputArtifacts": [],
+            "inputArtifacts": [
+              {
+                "name": "BuildOutput"
+              }
+            ]
+          }
+        ],
+        "blockers": []
+      }
+    ],
+    "version": 1
+  },
+  "metadata": {
+    "pipelineArn": "arn:aws:codepipeline:us-east-1:123456789012:my-app-pipeline",
+    "created": "2024-01-15T10:00:00Z",
+    "updated": "2024-06-01T14:30:00Z"
+  },
+  "tags": [
+    {
+      "key": "Environment",
+      "value": "production"
+    },
+    {
+      "key": "Team",
+      "value": "platform"
+    }
+  ]
+}

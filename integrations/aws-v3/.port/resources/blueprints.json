@@ -180,5 +180,70 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "codePipelineStage",
+    "title": "CodePipeline Stage",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "pipelineName": {
+          "type": "string",
+          "title": "Pipeline Name",
+          "description": "The name of the CodePipeline pipeline this stage belongs to"
+        },
+        "pipelineArn": {
+          "type": "string",
+          "title": "Pipeline ARN",
+          "description": "The Amazon Resource Name (ARN) of the pipeline"
+        },
+        "stageName": {
+          "type": "string",
+          "title": "Stage Name",
+          "description": "The name of the stage in the pipeline"
+        },
+        "stageOrder": {
+          "type": "number",
+          "title": "Stage Order",
+          "description": "The sequential order of the stage within the pipeline"
+        },
+        "actions": {
+          "type": "array",
+          "title": "Actions",
+          "description": "The list of actions that are part of this stage",
+          "items": {
+            "type": "object"
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "title": "Blockers",
+          "description": "The list of blockers (gates) defined for this stage",
+          "items": {
+            "type": "object"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the pipeline",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
