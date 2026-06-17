@@ -54,7 +54,7 @@ from aws.core.exporters.codedeploy import (
     PaginatedCodeDeployApplicationRequest,
     CodeDeployDeploymentGroupExporter,
     PaginatedCodeDeployDeploymentGroupRequest,
-CodeDeployDeploymentExporter,
+    CodeDeployDeploymentExporter,
     PaginatedCodeDeployDeploymentRequest,
 )
 from aws.core.exporters.codepipeline import (
@@ -329,6 +329,7 @@ async def resync_codedeploy_deployment_group(kind: str) -> ASYNC_GENERATOR_RESYN
     )
     async for batch in service:
         yield batch
+
 
 @ocean.on_resync(ObjectKind.CODEDEPLOY_DEPLOYMENT)
 async def resync_codedeploy_deployment(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
