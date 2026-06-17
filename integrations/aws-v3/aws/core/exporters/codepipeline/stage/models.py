@@ -4,15 +4,15 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 
 class StageProperties(BaseModel):
-    Actions: list[dict[str, Any]] | None = Field(default=None)
-    BeforeEntry: dict[str, Any] | None = Field(default=None)
-    Blockers: list[dict[str, Any]] | None = Field(default=None)
-    Name: str = Field(default_factory=str)
-    OnFailure: dict[str, Any] | None = Field(default=None)
-    OnSuccess: dict[str, Any] | None = Field(default=None)
-    Order: int | None = Field(default=None)
-    PipelineArn: str | None = Field(default=None)
-    PipelineName: str = Field(default_factory=str)
+    actions: list[dict[str, Any]] | None = Field(default=None, alias="Actions")
+    beforeEntry: dict[str, Any] | None = Field(default=None, alias="BeforeEntry")
+    blockers: list[dict[str, Any]] | None = Field(default=None, alias="Blockers")
+    name: str = Field(default_factory=str, alias="Name")
+    onFailure: dict[str, Any] | None = Field(default=None, alias="OnFailure")
+    onSuccess: dict[str, Any] | None = Field(default=None, alias="OnSuccess")
+    order: int | None = Field(default=None, alias="Order")
+    pipelineArn: str | None = Field(default=None, alias="PipelineArn")
+    pipelineName: str = Field(default_factory=str, alias="PipelineName")
 
     class Config:
         extra = "ignore"

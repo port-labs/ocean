@@ -59,13 +59,10 @@ class GetPipelineStagesAction(Action[list[str]]):
         for order, stage in enumerate(stages, start=1):
             stage_records.append(
                 {
-                    "PipelineName": pipeline_name,
-                    "PipelineArn": pipeline_arn,
-                    "StageName": stage.get("name", ""),
-                    "StageOrder": order,
-                    "Actions": stage.get("actions", []),
-                    "Blockers": stage.get("blockers", []),
-                    "Tags": tags,
+                    **stage,
+                    "pipelineName": pipeline_name,
+                    "pipelineArn": pipeline_arn,
+                    "order": order,
                 }
             )
 
