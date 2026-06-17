@@ -39,6 +39,9 @@ class AzureDevOpsRateLimiter:
         self._remaining: Optional[int] = None
         self._reset_time: Optional[float] = None
 
+        # Throttle signal set on timeout - no headers available to read reset time
+        self._throttle_until: Optional[float] = None
+
     @property
     def seconds_until_reset(self) -> float:
         """Calculate seconds until rate limit window resets.
@@ -62,6 +65,24 @@ class AzureDevOpsRateLimiter:
             return max(0.0, wait_time)
         return 0.0
 
+    async def signal_throttle(self, seconds: float) -> None:
+        """Signal a throttle event — pause all subsequent requests for the given duration.
+
+        Used when throttling manifests as a timeout (no response headers available).
+        """
+        async with self._lock:
+            throttle_end_time = time.time() + seconds
+            if self._throttle_until is None or throttle_end_time > self._throttle_until:
+                self._throttle_until = throttle_end_time
+                logger.warning(
+                    f"ADO rate limit: ReadTimeout detected, pausing all requests for {seconds:.0f} seconds"
+                )
+            else:
+                logger.debug(
+                    f"ADO rate limit: ReadTimeout received but existing throttle window already covers it "
+                    f"(expires in {self._throttle_until - time.time():.0f}s)"
+                )
+
     async def __aenter__(self) -> "AzureDevOpsRateLimiter":
         """Enter the async context manager.
 
@@ -70,6 +91,20 @@ class AzureDevOpsRateLimiter:
         await self._semaphore.acquire()
 
         async with self._lock:
+            # Check shared throttle signal from ReadTimeout (no headers)
+            if self._throttle_until is not None:
+                remaining_seconds = self._throttle_until - time.time()
+                if remaining_seconds > 0:
+                    logger.warning(
+                        f"ADO rate limit: holding request for {remaining_seconds:.0f} seconds while throttle window expires"
+                    )
+                    await asyncio.sleep(remaining_seconds)
+                else:
+                    logger.debug(
+                        "ADO rate limit: throttle window already expired, clearing and proceeding"
+                    )
+                self._throttle_until = None
+
             # Check if we need to wait due to previous rate limit
             retry_wait = self.should_wait_for_retry_after
             if retry_wait > 0:
