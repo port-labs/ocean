@@ -20,6 +20,8 @@ features:
       - kind: AWS::EC2::Volume
       - kind: AWS::CodeBuild::Project
       - kind: AWS::CodeBuild::BuildRun
+      - kind: AWS::CodeDeploy::Application
+      - kind: AWS::CodePipeline::Pipeline
 configurations:
   - name: credentialProviderPriority
     required: false
