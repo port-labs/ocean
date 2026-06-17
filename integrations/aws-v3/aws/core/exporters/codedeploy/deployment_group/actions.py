@@ -70,6 +70,7 @@ class CodeDeployDeploymentGroupActionsMap(ActionMap[DeploymentGroupActionInput])
 
     defaults: List[Type[Action[DeploymentGroupActionInput]]] = [
         GetDeploymentGroupDetailsAction,
+    ]
+    options: List[Type[Action[DeploymentGroupActionInput]]] = [
         GetDeploymentGroupTags,
     ]
-    options: List[Type[Action[DeploymentGroupActionInput]]] = []
