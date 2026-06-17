@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.7.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodePipeline::Pipeline resource kind, enabling ingestion of CodePipeline Pipelines into the Port catalog
+
+
+## 2.6.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodeDeploy::Application resource kind, enabling ingestion of CodeDeploy Applications into the Port catalog
+
+
 ## 2.5.4-beta (2026-06-16)
 
 
