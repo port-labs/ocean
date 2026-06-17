@@ -28,7 +28,6 @@ def mock_integration_config() -> Generator[dict[str, Any], None, None]:
     config: dict[str, Any] = {
         "datadog_service_dependency_env": "prod",
         "webhook_secret": "test_token",
-        "is_multi_org": False,
     }
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
@@ -43,10 +42,7 @@ def mock_integration_config_without_webhook_secret() -> (
     Generator[dict[str, Any], None, None]
 ):
     """Mock the ocean integration config."""
-    config: dict[str, Any] = {
-        "datadog_service_dependency_env": "prod",
-        "is_multi_org": False,
-    }
+    config: dict[str, Any] = {"datadog_service_dependency_env": "prod"}
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
         new_callable=PropertyMock,

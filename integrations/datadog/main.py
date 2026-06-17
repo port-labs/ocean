@@ -7,7 +7,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from datadog.core.exporters.role_exporter import ListRoleOptions
-from initialize_client import init_client
+from client_manager import get_client_manager
 from integration import ObjectKind
 from datadog.webhook.webhook_client import DatadogWebhookClient
 from datadog.webhook.registry import register_live_events_webhooks
@@ -51,7 +51,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 cast(TeamResourceConfig, event.resource_config)
             )
         )
-        for client in init_client()
+        for client in get_client_manager().clients
     )
 
     async for teams in stream_async_iterators_tasks(*tasks):
@@ -61,7 +61,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (UserExporter(client).get_paginated_resources() for client in init_client())
+    tasks = (UserExporter(client).get_paginated_resources() for client in get_client_manager().clients)
 
     async for users in stream_async_iterators_tasks(*tasks):
         logger.info(f"Received batch with {len(users)} users")
@@ -70,7 +70,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.HOST)
 async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (HostExporter(client).get_paginated_resources() for client in init_client())
+    tasks = (HostExporter(client).get_paginated_resources() for client in get_client_manager().clients)
 
     async for hosts in stream_async_iterators_tasks(*tasks):
         logger.info(f"Received batch with {len(hosts)} hosts")
@@ -85,7 +85,7 @@ async def on_resync_monitors(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 cast(MonitorResourceConfig, event.resource_config)
             )
         )
-        for client in init_client()
+        for client in get_client_manager().clients
     )
 
     async for monitors in stream_async_iterators_tasks(*tasks):
@@ -101,7 +101,7 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 cast(SLOResourceConfig, event.resource_config)
             )
         )
-        for client in init_client()
+        for client in get_client_manager().clients
     )
 
     async for slos in stream_async_iterators_tasks(*tasks):
@@ -117,7 +117,7 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 cast(SLOHistoryResourceConfig, event.resource_config)
             )
         )
-        for client in init_client()
+        for client in get_client_manager().clients
     )
 
     async for histories in stream_async_iterators_tasks(*tasks):
@@ -127,7 +127,7 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SERVICE)
 async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     tasks = (
-        ServiceExporter(client).get_paginated_resources() for client in init_client()
+        ServiceExporter(client).get_paginated_resources() for client in get_client_manager().clients
     )
 
     async for services in stream_async_iterators_tasks(*tasks):
@@ -143,7 +143,7 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 cast(ServiceMetricResourceConfig, event.resource_config)
             )
         )
-        for client in init_client()
+        for client in get_client_manager().clients
     )
 
     async for metrics in stream_async_iterators_tasks(*tasks):
@@ -159,7 +159,7 @@ async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 cast(ServiceDependencyResourceConfig, event.resource_config)
             )
         )
-        for client in init_client()
+        for client in get_client_manager().clients
     )
 
     async for dependencies in stream_async_iterators_tasks(*tasks):
@@ -175,7 +175,7 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 cast(RoleResourceConfig, event.resource_config)
             )
         )
-        for client in init_client()
+        for client in get_client_manager().clients
     )
 
     async for roles in stream_async_iterators_tasks(*tasks):
@@ -185,7 +185,7 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ORG)
 async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (OrgExporter(client).get_paginated_resources() for client in init_client())
+    tasks = (OrgExporter(client).get_paginated_resources() for client in get_client_manager().clients)
 
     async for orgs in stream_async_iterators_tasks(*tasks):
         logger.info(f"Received batch with {len(orgs)} orgs")
@@ -212,7 +212,7 @@ async def on_start() -> None:
             logger.warning("No organization ID found for webhook setup")
             return
 
-        webhook_client = DatadogWebhookClient(init_client())
+        webhook_client = DatadogWebhookClient(get_client_manager().clients)
         await webhook_client.upsert_webhook_setup(
             base_url=base_url,
             webhook_secret=webhook_secret,

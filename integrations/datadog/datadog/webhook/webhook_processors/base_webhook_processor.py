@@ -2,7 +2,7 @@ from typing import Any
 
 from loguru import logger
 from datadog.client import DatadogClient
-from initialize_client import get_client_manager
+from client_manager import get_client_manager
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,

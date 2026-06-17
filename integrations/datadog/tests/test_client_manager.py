@@ -4,12 +4,12 @@ from unittest.mock import PropertyMock, patch
 
 import pytest
 
-import initialize_client
+import client_manager
 from datadog.exceptions import IntegrationMissingConfigError
-from initialize_client import (
+from client_manager import (
     DatadogClientManager,
+    get_client_manager,
     get_credential_map,
-    init_client,
     init_client_for_multi_org,
     init_client_single_org,
 )
@@ -28,16 +28,16 @@ def _credential_map_string() -> str:
 
 @pytest.fixture(autouse=True)
 def reset_client_manager() -> Generator[None, None, None]:
-    """init_client()/get_client_manager() cache the manager process-wide; reset it
-    around each test so config patches take effect."""
-    initialize_client._client_manager = None
+    """get_client_manager() caches the manager process-wide; reset it around each
+    test so config patches take effect."""
+    client_manager._client_manager = None
     yield
-    initialize_client._client_manager = None
+    client_manager._client_manager = None
 
 
 @pytest.fixture
 def patch_integration_config() -> Generator[Any, None, None]:
-    """Patch ocean.integration_config so init_client() can read it."""
+    """Patch ocean.integration_config so the client manager can read it."""
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
         new_callable=PropertyMock,
@@ -54,7 +54,8 @@ def test_get_credential_map_parses_valid_json() -> None:
     config = {"datadog_credential_map": _credential_map_string()}
     result = get_credential_map(config)
     assert set(result.keys()) == {"org-1", "org-2"}
-    assert result["org-1"]["datadogApiKey"] == "api-1"
+    assert result["org-1"].api_key == "api-1"
+    assert result["org-1"].app_key == "app-1"
 
 
 def test_get_credential_map_missing_raises() -> None:
@@ -122,44 +123,42 @@ def test_init_client_single_org_builds_one_client() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# init_client (branch selection)
+# get_client_manager (branch selection + caching)
 # --------------------------------------------------------------------------- #
 
 
-def test_init_client_single_org_branch(patch_integration_config: Any) -> None:
+def test_get_client_manager_single_org_branch(patch_integration_config: Any) -> None:
     patch_integration_config.return_value = {
-        "is_multi_org": False,
         "datadog_base_url": BASE_URL,
         "datadog_api_key": "api",
         "datadog_application_key": "app",
         "datadog_access_token": "token",
     }
-    clients = list(init_client())
+    clients = get_client_manager().clients
     assert len(clients) == 1
     assert clients[0].org_uuid is None
 
 
-def test_init_client_multi_org_branch(patch_integration_config: Any) -> None:
+def test_get_client_manager_multi_org_branch(patch_integration_config: Any) -> None:
     patch_integration_config.return_value = {
-        "is_multi_org": True,
         "datadog_base_url": BASE_URL,
         "datadog_credential_map": _credential_map_string(),
     }
-    clients = list(init_client())
+    clients = get_client_manager().clients
     assert {c.org_uuid for c in clients} == {"org-1", "org-2"}
 
 
-def test_init_client_reuses_cached_clients(patch_integration_config: Any) -> None:
+def test_get_client_manager_is_cached(patch_integration_config: Any) -> None:
     patch_integration_config.return_value = {
-        "is_multi_org": False,
         "datadog_base_url": BASE_URL,
         "datadog_api_key": "api",
         "datadog_application_key": "app",
         "datadog_access_token": "token",
     }
-    # Two separate calls must hand back the same client instances (and their
-    # underlying HTTP pools), not freshly constructed ones.
-    assert list(init_client()) == list(init_client())
+    # Repeated calls must hand back the same manager (and the same client
+    # instances with their underlying HTTP pools), not freshly constructed ones.
+    assert get_client_manager() is get_client_manager()
+    assert get_client_manager().clients == get_client_manager().clients
 
 
 # --------------------------------------------------------------------------- #
@@ -169,7 +168,6 @@ def test_init_client_reuses_cached_clients(patch_integration_config: Any) -> Non
 
 def _single_org_config() -> dict[str, Any]:
     return {
-        "is_multi_org": False,
         "datadog_base_url": BASE_URL,
         "datadog_api_key": "api",
         "datadog_application_key": "app",
@@ -179,7 +177,6 @@ def _single_org_config() -> dict[str, Any]:
 
 def _multi_org_config() -> dict[str, Any]:
     return {
-        "is_multi_org": True,
         "datadog_base_url": BASE_URL,
         "datadog_credential_map": _credential_map_string(),
     }

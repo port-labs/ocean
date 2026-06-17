@@ -92,6 +92,10 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
         org_uuid = event.attributes.org.uuid if event.attributes.org else None
         client = self._get_client_for_org_uuid(org_uuid)
         if client is None:
+            logger.warning(
+                f"Skipping audit-trail event for org uuid '{org_uuid}': "
+                "no matching Datadog client"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )

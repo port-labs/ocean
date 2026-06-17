@@ -60,12 +60,6 @@ configurations:
     type: string
     required: false
     sensitive: true
-  - name: isMultiOrg
-    default: false
-    type: boolean
-    required: true
-    sensitive: false
-    description: Whether this exporter is set-up to export resources from multiple Datadog organizations. Setting this to true requires `datadogCredentialMap` to be set as well.
 
 saas:
   enabled: true

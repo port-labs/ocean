@@ -242,7 +242,7 @@ class RoleResourceConfig(ResourceConfig):
 
 
 class OrgResourceConfig(ResourceConfig):
-    kind: Literal["org"] = Field(
+    kind: Literal["organization"] = Field(
         title="Datadog Organization",
         description="Datadog organization resource kind.",
     )

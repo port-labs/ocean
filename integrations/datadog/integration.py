@@ -30,7 +30,7 @@ class ObjectKind(StrEnum):
     TEAM = "team"
     USER = "user"
     ROLE = "role"
-    ORG = "org"
+    ORG = "organization"
 
 
 class DatadogLiveEventsProcessorManager(LiveEventsProcessorManager):

@@ -1,29 +1,28 @@
-import json
 from typing import Any, Iterator
 
 from loguru import logger
+from pydantic import ValidationError
+
 from datadog.client import DatadogClient
+from datadog.types import DatadogCredentialMap, OrgCredentials
 from port_ocean.context.ocean import ocean
 
 from datadog.exceptions import IntegrationMissingConfigError
 
 
-def get_credential_map(config: dict[str, Any]) -> dict[str, Any]:
+def get_credential_map(config: dict[str, Any]) -> dict[str, OrgCredentials]:
     credential_map_string = config.get("datadog_credential_map")
-    if credential_map_string:
-        try:
-            parsed = json.loads(credential_map_string)
-            if isinstance(parsed, dict):
-                return parsed
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse datadogCredentialMap: {e}")
-            raise IntegrationMissingConfigError(
-                f"Invalid JSON in datadogCredentialMap: {e}"
-            ) from e
-
-    raise IntegrationMissingConfigError(
-        "datadogCredentialMap (JSON string) must be provided when isMultiOrg is enabled"
-    )
+    if not credential_map_string:
+        raise IntegrationMissingConfigError(
+            "datadogCredentialMap (JSON string) must be provided for multi-org setups"
+        )
+    try:
+        return DatadogCredentialMap.parse_raw(credential_map_string).__root__
+    except ValidationError as e:
+        logger.error(f"Failed to parse datadogCredentialMap: {e}")
+        raise IntegrationMissingConfigError(
+            f"Invalid datadogCredentialMap: {e}"
+        ) from e
 
 
 def init_client_single_org(config: dict[str, Any]) -> DatadogClient:
@@ -38,18 +37,10 @@ def init_client_single_org(config: dict[str, Any]) -> DatadogClient:
 def init_client_for_multi_org(config: dict[str, Any]) -> Iterator[DatadogClient]:
     credential_map = get_credential_map(config)
     for org_uuid, credentials in credential_map.items():
-        try:
-            api_key = credentials["datadogApiKey"]
-            app_key = credentials["datadogApplicationKey"]
-        except (KeyError, TypeError) as e:
-            raise IntegrationMissingConfigError(
-                f"datadogCredentialMap entry for org '{org_uuid}' must include "
-                "'datadogApiKey' and 'datadogApplicationKey'"
-            ) from e
         yield DatadogClient(
             config["datadog_base_url"],
-            api_key,
-            app_key,
+            credentials.api_key,
+            credentials.app_key,
             org_uuid=org_uuid,
         )
 
@@ -65,18 +56,21 @@ class DatadogClientManager:
     """
 
     def __init__(self, config: dict[str, Any]) -> None:
-        self.is_multi_org: bool = config["is_multi_org"]
-        if self.is_multi_org:
-            self._clients = list(init_client_for_multi_org(config))
-        else:
-            self._clients = [init_client_single_org(config)]
+        # Multi-org is inferred from the presence of a credential map rather than a
+        # separate flag: a configured map means multiple orgs, its absence a single one.
+        self.is_multi_org: bool = bool(config.get("datadog_credential_map"))
+        clients = (
+            init_client_for_multi_org(config)
+            if self.is_multi_org
+            else [init_client_single_org(config)]
+        )
         self._clients_by_org_uuid: dict[str | None, DatadogClient] = {
-            client.org_uuid: client for client in self._clients
+            client.org_uuid: client for client in clients
         }
 
     @property
     def clients(self) -> list[DatadogClient]:
-        return self._clients
+        return list(self._clients_by_org_uuid.values())
 
     def get_client_by_org_uuid(self, org_uuid: str | None) -> DatadogClient | None:
         """Return the client responsible for the org with *org_uuid*.
@@ -87,7 +81,7 @@ class DatadogClientManager:
         uuid is globally unique and survives org renames, unlike the org name.
         """
         if not self.is_multi_org:
-            return self._clients[0]
+            return next(iter(self._clients_by_org_uuid.values()))
 
         client = self._clients_by_org_uuid.get(org_uuid)
         if client is None:
@@ -106,8 +100,3 @@ def get_client_manager() -> DatadogClientManager:
     if _client_manager is None:
         _client_manager = DatadogClientManager(ocean.integration_config)
     return _client_manager
-
-
-def init_client() -> Iterator[DatadogClient]:
-    """Yield every configured Datadog client (one per org), reusing cached clients."""
-    return iter(get_client_manager().clients)
