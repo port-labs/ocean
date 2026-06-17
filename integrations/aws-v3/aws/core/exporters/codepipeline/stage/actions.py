@@ -53,7 +53,6 @@ class GetPipelineStagesAction(Action[list[str]]):
 
         pipeline_arn = metadata.get("pipelineArn", "")
         stages: List[Dict[str, Any]] = pipeline.get("stages", [])
-        tags = await self._fetch_pipeline_tags(pipeline_arn)
 
         stage_records: List[Dict[str, Any]] = []
         for order, stage in enumerate(stages, start=1):
@@ -70,22 +69,6 @@ class GetPipelineStagesAction(Action[list[str]]):
             f"Fetched {len(stage_records)} stages for pipeline '{pipeline_name}'"
         )
         return stage_records
-
-    async def _fetch_pipeline_tags(self, pipeline_arn: str) -> List[Dict[str, str]]:
-        if not pipeline_arn:
-            return []
-        try:
-            response = await self.client.list_tags_for_resource(
-                resourceArn=pipeline_arn
-            )
-            return response.get("tags", [])
-        except Exception as e:
-            if is_recoverable_aws_exception(e):
-                logger.warning(
-                    f"Skipping tags for pipeline '{pipeline_arn}': {e}"
-                )
-                return []
-            raise
 
 
 class CodePipelineStageActionsMap(ActionMap[list[str]]):
