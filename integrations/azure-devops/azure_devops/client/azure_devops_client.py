@@ -1009,9 +1009,16 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 async for builds_batch in self._generate_builds_for_project(project):
+                    semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PIPELINES)
+
+                    async def fetch_stages_with_semaphore(
+                        build: dict[str, Any],
+                    ) -> list[dict[str, Any]]:
+                        async with semaphore:
+                            return await self._fetch_stages_for_build(project, build)
+
                     stage_tasks = [
-                        self._fetch_stages_for_build(project, build)
-                        for build in builds_batch
+                        fetch_stages_with_semaphore(build) for build in builds_batch
                     ]
                     stage_results = await asyncio.gather(
                         *stage_tasks, return_exceptions=True
