@@ -5,12 +5,14 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 class StageProperties(BaseModel):
     Actions: list[dict[str, Any]] | None = Field(default=None)
+    BeforeEntry: dict[str, Any] | None = Field(default=None)
     Blockers: list[dict[str, Any]] | None = Field(default=None)
+    Name: str = Field(default_factory=str)
+    OnFailure: dict[str, Any] | None = Field(default=None)
+    OnSuccess: dict[str, Any] | None = Field(default=None)
+    Order: int | None = Field(default=None)
     PipelineArn: str | None = Field(default=None)
     PipelineName: str = Field(default_factory=str)
-    StageName: str = Field(default_factory=str)
-    StageOrder: int | None = Field(default=None)
-    Tags: list[dict[str, str]] | None = Field(default=None)
 
     class Config:
         extra = "ignore"
