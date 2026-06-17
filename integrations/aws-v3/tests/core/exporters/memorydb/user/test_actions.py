@@ -74,7 +74,7 @@ async def test_list_tags_for_memorydb_user_action_fetches_tags(
     )
 
 
-async def test_list_tags_for_memorydb_user_action_recoverable_error_is_skipped(
+async def test_list_tags_for_memorydb_user_action_recoverable_error_returns_placeholder(
     mock_client: MagicMock,
 ) -> None:
     from botocore.exceptions import ClientError
@@ -87,7 +87,7 @@ async def test_list_tags_for_memorydb_user_action_recoverable_error_is_skipped(
 
     action = ListTagsForMemoryDbUserAction(mock_client)
     result = await action._execute([SAMPLE_USERS[0]])
-    assert result == []
+    assert result == [{}]
 
 
 async def test_list_tags_for_memorydb_user_action_non_recoverable_error_raises(
