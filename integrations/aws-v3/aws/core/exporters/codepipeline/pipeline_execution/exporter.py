@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.codepipeline.pipeline_execution.actions import CodePipelinePipelineExecutionActionsMap
+from aws.core.exporters.codepipeline.pipeline_execution.actions import CodePipelinePipelineExecutionActionsMap, \
+    CodePipelineExecutionActionInput
 from aws.core.exporters.codepipeline.pipeline_execution.models import PipelineExecution
 from aws.core.exporters.codepipeline.pipeline_execution.models import (
     SinglePipelineExecutionRequest,
@@ -59,7 +60,7 @@ class CodePipelinePipelineExecutionExporter(IResourceExporter):
                 for pipeline in pipelines:
                     async for executions in execution_paginator.paginate(pipelineName=pipeline["name"]):
                         yield await inspector.inspect(
-                            executions,
+                            CodePipelineExecutionActionInput(items=executions, pipeline_name=pipeline["name"]),
                             options.include,
                             extra_context={
                                 "AccountId": options.account_id,
