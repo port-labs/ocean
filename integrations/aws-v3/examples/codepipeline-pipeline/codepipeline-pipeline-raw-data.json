@@ -1,0 +1,107 @@
+{
+  "Type": "AWS::CodePipeline::Pipeline",
+  "Properties": {
+    "Name": "SimpleSchedulePythonBuildService",
+    "Arn": "arn:aws:codepipeline:us-east-1:123456789012:pipeline/sample-codepipeline-pipeline",
+    "RoleArn": "arn:aws:iam::1234567890:role/CodePipelineStarterTempla-CodeConnectionsActionRole-abcD7EOOCwn8",
+    "ArtifactStore": {
+      "location": "codepipelinestartertempla-codepipelineartifactsbuc-xdz8gvyceuuh",
+      "type": "S3",
+      "encryptionKey": null
+    },
+    "ArtifactStores": {},
+    "Stages": [
+      {
+        "name": "Source",
+        "actions": [
+          {
+            "name": "CodeConnections",
+            "actionTypeId": {
+              "category": "Source",
+              "owner": "AWS",
+              "provider": "CodeStarSourceConnection",
+              "version": "1"
+            },
+            "runOrder": 1,
+            "configuration": {
+              "BranchName": "master",
+              "ConnectionArn": "arn:aws:codeconnections:eu-west-1:1234567890:connection/2fb507g1-18f8-47f5-9z19-47f6d22b6133",
+              "DetectChanges": "false",
+              "FullRepositoryId": "Organization/Repository"
+            },
+            "outputArtifacts": [
+              {
+                "name": "SourceOutput"
+              }
+            ],
+            "inputArtifacts": [],
+            "roleArn": "arn:aws:iam::1234567890:role/CodePipelineStarterTempla-CodeConnectionsActionRole-abcD7EOOCwn8"
+          }
+        ],
+        "blockers": []
+      },
+      {
+        "name": "PythonBuild",
+        "actions": [
+          {
+            "name": "CI_Python_Build",
+            "actionTypeId": {
+              "category": "Build",
+              "owner": "AWS",
+              "provider": "CodeBuild",
+              "version": "1"
+            },
+            "runOrder": 1,
+            "configuration": {
+              "ProjectName": "SimpleSchedulePythonBuildProject-0a8232e7e6e7"
+            },
+            "outputArtifacts": [],
+            "inputArtifacts": [
+              {
+                "name": "SourceOutput"
+              }
+            ],
+            "roleArn": "arn:aws:iam::1234567890:role/CodePipelineStarterTemplate-Sch-CodeBuildActionRole-aBcDEF2gqrVs"
+          },
+          {
+            "name": "Source_Code_Inspector_Scan",
+            "actionTypeId": {
+              "category": "Invoke",
+              "owner": "AWS",
+              "provider": "InspectorScan",
+              "version": "1"
+            },
+            "runOrder": 1,
+            "configuration": {
+              "CriticalThreshold": "0",
+              "InspectorRunMode": "SourceCodeScan"
+            },
+            "outputArtifacts": [
+              {
+                "name": "SBOMResult"
+              }
+            ],
+            "inputArtifacts": [
+              {
+                "name": "SourceOutput"
+              }
+            ]
+          }
+        ],
+        "blockers": []
+      }
+    ],
+    "Version": 1,
+    "ExecutionMode": "QUEUED",
+    "PipelineType": "V2",
+    "Variables": [],
+    "Triggers": [],
+    "Created": "2026-06-01T14:41:13.216000+03:00",
+    "Updated": "2026-06-01T14:41:13.216000+03:00",
+    "Tags": {}
+  },
+  "__ExtraContext": {
+    "AccountId": "1234567890",
+    "Region": "eu-west-1"
+  }
+}
