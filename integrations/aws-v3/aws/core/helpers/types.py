@@ -24,6 +24,7 @@ class ObjectKind(StrEnum):
     CODEBUILD_PROJECT = "AWS::CodeBuild::Project"
     CODEBUILD_BUILD_RUN = "AWS::CodeBuild::BuildRun"
     CODEDEPLOY_APPLICATION = "AWS::CodeDeploy::Application"
+    CODEPIPELINE_PIPELINE = "AWS::CodePipeline::Pipeline"
 
 
 SupportedServices = Literal[
@@ -41,4 +42,5 @@ SupportedServices = Literal[
     "elasticache",
     "codebuild",
     "codedeploy",
+    "codepipeline",
 ]
