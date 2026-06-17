@@ -8,7 +8,7 @@ resources:
       entity:
         mappings:
           identifier: .Properties.DeploymentId
-          title: .Properties.ApplicationName + " - " + .Properties.DeploymentId
+          title: .Properties.ApplicationName + "/" + .Properties.DeploymentGroupName + "/" + .Properties.DeploymentId
           blueprint: '"codeDeployDeployment"'
           properties:
             deploymentId: .Properties.DeploymentId
