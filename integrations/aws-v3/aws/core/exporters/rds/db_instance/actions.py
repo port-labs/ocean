@@ -5,7 +5,7 @@ from loguru import logger
 import asyncio
 
 
-class DescribeDBInstancesAction(Action):
+class DescribeDBInstancesAction(Action[list[dict[str, Any]]]):
     """Describe DB instances as a pass-through function."""
 
     async def _execute(
@@ -15,7 +15,7 @@ class DescribeDBInstancesAction(Action):
         return db_instances
 
 
-class ListTagsForResourceAction(Action):
+class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
     """Fetches tags for RDS DB instances."""
 
     async def _execute(
@@ -29,6 +29,7 @@ class ListTagsForResourceAction(Action):
         )
 
         results: list[dict[str, Any]] = []
+        success_count = 0
         for idx, tag_result in enumerate(tag_results):
             if isinstance(tag_result, Exception):
                 instance_id = db_instances[idx].get("DBInstanceIdentifier", "unknown")
@@ -36,6 +37,7 @@ class ListTagsForResourceAction(Action):
                     logger.warning(
                         f"Skipping tags for DB instance '{instance_id}' : {tag_result}"
                     )
+                    results.append({})
                     continue
                 else:
                     logger.error(
@@ -43,7 +45,8 @@ class ListTagsForResourceAction(Action):
                     )
                     raise tag_result
             results.extend(cast(list[dict[str, Any]], tag_result))
-        logger.info(f"Successfully fetched tags for {len(results)} DB instances")
+            success_count += 1
+        logger.info(f"Successfully fetched tags for {success_count} DB instances")
         return results
 
     async def _fetch_tags(self, db_instance: dict[str, Any]) -> list[dict[str, Any]]:
@@ -53,10 +56,10 @@ class ListTagsForResourceAction(Action):
         return [{"Tags": response["TagList"]}]
 
 
-class RdsDbInstanceActionsMap(ActionMap):
-    defaults: list[Type[Action]] = [
+class RdsDbInstanceActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: list[Type[Action[list[dict[str, Any]]]]] = [
         DescribeDBInstancesAction,
     ]
-    options: list[Type[Action]] = [
+    options: list[Type[Action[list[dict[str, Any]]]]] = [
         ListTagsForResourceAction,
     ]

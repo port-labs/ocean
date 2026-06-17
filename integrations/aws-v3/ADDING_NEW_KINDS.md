@@ -95,7 +95,7 @@ from loguru import logger
 import asyncio
 
 
-class GetResourceDetailsAction(Action):
+class GetResourceDetailsAction(Action[List[Dict[str, Any]]]):
     """Fetches detailed information about the resource."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -133,7 +133,7 @@ class GetResourceDetailsAction(Action):
         }
 
 
-class GetResourceTagsAction(Action):
+class GetResourceTagsAction(Action[List[Dict[str, Any]]]):
     """Fetches tags for the resource."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -167,7 +167,7 @@ class GetResourceTagsAction(Action):
                 raise
 
 
-class ListResourcesAction(Action):
+class ListResourcesAction(Action[List[Dict[str, Any]]]):
     """Processes the initial list of resources from AWS."""
 
     async def _execute(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

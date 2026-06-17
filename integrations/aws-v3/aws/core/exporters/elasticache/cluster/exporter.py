@@ -12,7 +12,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class ElastiCacheClusterExporter(IResourceExporter):
+class ElastiCacheClusterExporter(IResourceExporter[list[dict[str, Any]]]):
     _service_name: SupportedServices = "elasticache"
     _model_cls: Type[CacheCluster] = CacheCluster
     _actions_map: Type[ElastiCacheClusterActionsMap] = ElastiCacheClusterActionsMap

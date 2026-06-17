@@ -217,6 +217,34 @@ class AWSEC2VolumeResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeBuildProjectResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeBuild::Project"] = Field(
+        title="AWS CodeBuild Project",
+        description="AWS CodeBuild Project resource kind.",
+    )
+
+
+class AWSCodeBuildBuildRunResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeBuild::BuildRun"] = Field(
+        title="AWS CodeBuild BuildRun",
+        description="AWS CodeBuild BuildRun resource kind.",
+    )
+
+
+class AWSCodeDeployApplicationResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::Application"] = Field(
+        title="AWS CodeDeploy Application",
+        description="AWS CodeDeploy Application resource kind.",
+    )
+
+
+class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::Pipeline"] = Field(
+        title="AWS CodePipeline Pipeline",
+        description="AWS CodePipeline Pipeline resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -237,6 +265,10 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSElastiCacheClusterResourceConfig
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
+        | AWSCodeBuildProjectResourceConfig
+        | AWSCodeBuildBuildRunResourceConfig
+        | AWSCodeDeployApplicationResourceConfig
+        | AWSCodePipelinePipelineResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
