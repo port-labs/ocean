@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.0.4 (2026-06-17)
+
+
+### Improvements
+
+- Expanded team payload by fetching the external IdP group linked to each team via the GitHub EMU external groups API, using the new `include_external_group` selector field (default: `false`).
+
+
 ## 6.0.3 (2026-06-15)
 
 
