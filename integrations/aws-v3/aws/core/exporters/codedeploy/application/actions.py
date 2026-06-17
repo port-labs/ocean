@@ -68,7 +68,6 @@ class CodeDeployApplicationActionsMap(ActionMap[CodeDeployApplicationActionInput
 
     defaults: List[Type[Action[CodeDeployApplicationActionInput]]] = [
         GetCodeDeployApplicationDetailsAction,
-    ]
-    options: List[Type[Action[CodeDeployApplicationActionInput]]] = [
         GetCodeDeployApplicationTagsAction,
     ]
+    options: List[Type[Action[CodeDeployApplicationActionInput]]] = []
