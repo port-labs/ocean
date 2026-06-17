@@ -1,4 +1,4 @@
-from typing import Dict, NamedTuple
+from typing import Dict, NamedTuple, Optional
 
 from pydantic import BaseModel, Field
 
@@ -13,6 +13,9 @@ class OrgCredentials(BaseModel):
 
     api_key: str = Field(..., alias="datadogApiKey")
     app_key: str = Field(..., alias="datadogApplicationKey")
+    # Orgs can live on different Datadog sites (us3, eu, ...). Falls back to the
+    # integration's datadogBaseUrl when omitted.
+    base_url: Optional[str] = Field(None, alias="datadogBaseUrl")
 
 
 class DatadogCredentialMap(BaseModel):

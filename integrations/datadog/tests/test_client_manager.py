@@ -102,6 +102,29 @@ def test_init_client_for_multi_org_missing_inner_keys_raises() -> None:
         list(init_client_for_multi_org(config))
 
 
+def test_init_client_for_multi_org_uses_per_org_base_url_with_fallback() -> None:
+    other_url = "https://api.us3.datadoghq.com"
+    config = {
+        "datadog_base_url": BASE_URL,
+        "datadog_credential_map": json.dumps(
+            {
+                # no datadogBaseUrl -> falls back to the integration's base url
+                "org-1": {"datadogApiKey": "a1", "datadogApplicationKey": "p1"},
+                # overrides with its own site
+                "org-2": {
+                    "datadogApiKey": "a2",
+                    "datadogApplicationKey": "p2",
+                    "datadogBaseUrl": other_url,
+                },
+            }
+        ),
+    }
+    by_org = {c.org_uuid: c for c in init_client_for_multi_org(config)}
+
+    assert by_org["org-1"].api_url == BASE_URL
+    assert by_org["org-2"].api_url == other_url
+
+
 # --------------------------------------------------------------------------- #
 # init_client_single_org
 # --------------------------------------------------------------------------- #

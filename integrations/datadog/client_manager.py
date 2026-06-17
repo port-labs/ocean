@@ -38,7 +38,7 @@ def init_client_for_multi_org(config: dict[str, Any]) -> Iterator[DatadogClient]
     credential_map = get_credential_map(config)
     for org_uuid, credentials in credential_map.items():
         yield DatadogClient(
-            config["datadog_base_url"],
+            credentials.base_url or config["datadog_base_url"],
             credentials.api_key,
             credentials.app_key,
             org_uuid=org_uuid,
