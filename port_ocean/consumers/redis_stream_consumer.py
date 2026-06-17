@@ -158,21 +158,18 @@ class RedisStreamConsumer:
             headers = self._normalize_headers(
                 self._parse_json_object_field(fields, "headers")
             )
-
-            original_request: _WebhookRequestAdapter | None = None
-            raw_body = self._get_field(fields, "body")
-            if raw_body is not None:
-                original_request = _WebhookRequestAdapter(
-                    raw_body=raw_body.encode("utf-8"),
-                    headers=headers,
-                )
+            original_request = _WebhookRequestAdapter(
+                raw_body=fields.get("payload", "").encode("utf-8"),
+                headers=headers,
+            )
 
             webhook_event = WebhookEvent(
                 trace_id=str(uuid4()),
                 payload=payload,
                 headers=headers,
-                original_request=original_request,  # type: ignore[arg-type]
+                original_request=original_request,
             )
+
             webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
             await self._on_message(webhook_path, webhook_event)
         except Exception as error:
