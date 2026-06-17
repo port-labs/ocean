@@ -1,56 +1,60 @@
+from dataclasses import dataclass
 from typing import Dict, Any, List, Type
-from aws.core.interfaces.action import Action, ActionMap
-from aws.core.helpers.utils import is_recoverable_aws_exception
+
+from aws.core.exporters.codepipeline.utils.base_pipeline_action import PipelineAction
+from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 from loguru import logger
 import asyncio
 
 
-class GetPipelineStagesAction(Action[list[str]]):
+@dataclass
+class GetPipelineStagesInput(BaseActionInput[dict[str, Any]]):
+    region: str
+    account_id: str
+
+
+class GetPipelineStagesAction(PipelineAction[GetPipelineStagesInput]):
     """Fetches pipeline details and expands them into individual stage records.
 
     Takes a list of pipeline names and returns a flat list of stage records,
     one entry per stage across all pipelines.
     """
 
-    async def _execute(self, pipeline_names: list[str]) -> List[Dict[str, Any]]:
-        if not pipeline_names:
-            return []
-
+    async def _execute(self, resources: GetPipelineStagesInput) -> List[Dict[str, Any]]:
         pipeline_results = await asyncio.gather(
-            *(self._fetch_pipeline_stages(name) for name in pipeline_names),
+            *(
+                self._fetch_pipeline_stages(
+                    pipeline["name"],
+                    region=resources.region,
+                    account_id=resources.account_id,
+                )
+                for pipeline in resources.items
+            ),
             return_exceptions=True,
         )
 
         results: List[Dict[str, Any]] = []
-        success_count = 0
         for idx, result in enumerate(pipeline_results):
-            if isinstance(result, Exception):
-                name = pipeline_names[idx]
-                if is_recoverable_aws_exception(result):
-                    logger.warning(
-                        f"Skipping stages for pipeline '{name}': {result}"
-                    )
-                    continue
-                else:
-                    logger.error(
-                        f"Error fetching stages for pipeline '{name}': {result}"
-                    )
-                    raise result
-            results.extend(result)  # type: ignore[arg-type]
-            success_count += 1
+            if isinstance(result, list):
+                results.extend(result)
+            else:
+                logger.warning(
+                    f"Skipping stages for pipeline '{resources.items[idx]['name']}': {result}"
+                )
 
-        logger.info(
-            f"Successfully fetched stages for {success_count} CodePipeline pipelines"
-        )
         return results
 
     async def _fetch_pipeline_stages(
-        self, pipeline_name: str
+        self, pipeline_name: str, region: str, account_id: str
     ) -> List[Dict[str, Any]]:
-        response = await self.client.get_pipeline(name=pipeline_name)
+        response = await self._get_pipeline(
+            name=pipeline_name, cache_keys={"region": region, "account_id": account_id}
+        )
 
         stage_records = []
-        for order, stage in enumerate(response.get("pipeline", {}).get("stages", []), start=1):
+        for order, stage in enumerate(
+            response.get("pipeline", {}).get("stages", []), start=1
+        ):
             stage_records.append(
                 {
                     **stage,
@@ -66,10 +70,10 @@ class GetPipelineStagesAction(Action[list[str]]):
         return stage_records
 
 
-class CodePipelineStageActionsMap(ActionMap[list[str]]):
+class CodePipelineStageActionsMap(ActionMap[GetPipelineStagesInput]):
     """Groups all actions for CodePipeline Stage resource type."""
 
-    defaults: List[Type[Action[list[str]]]] = [
+    defaults: List[Type[Action[GetPipelineStagesInput]]] = [
         GetPipelineStagesAction,
     ]
-    options: List[Type[Action[list[str]]]] = []
+    options: List[Type[Action[GetPipelineStagesInput]]] = []

@@ -2,6 +2,7 @@ from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.codepipeline.stage.actions import (
     CodePipelineStageActionsMap,
+    GetPipelineStagesInput,
 )
 from aws.core.exporters.codepipeline.stage.models import CodePipelineStage
 from aws.core.exporters.codepipeline.stage.models import (
@@ -13,11 +14,10 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class CodePipelineStageExporter(IResourceExporter[list[str]]):
+class CodePipelineStageExporter(IResourceExporter[GetPipelineStagesInput]):
     _service_name: SupportedServices = "codepipeline"
     _model_cls: Type[CodePipelineStage] = CodePipelineStage
     _actions_map: Type[CodePipelineStageActionsMap] = CodePipelineStageActionsMap
-    _pagination_batch_size: int = 100  # Limit defined by AWS's API
 
     async def get_resource(
         self, options: SingleCodePipelineStageRequest
@@ -30,7 +30,11 @@ class CodePipelineStageExporter(IResourceExporter[list[str]]):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             results = await inspector.inspect(
-                [options.pipeline_name],
+                GetPipelineStagesInput(
+                    items=[{"name": options.pipeline_name}],
+                    region=options.region,
+                    account_id=options.account_id,
+                ),
                 options.include,
                 extra_context={
                     "AccountId": options.account_id,
@@ -39,8 +43,7 @@ class CodePipelineStageExporter(IResourceExporter[list[str]]):
             )
             # Filter to the specific stage requested
             for result in results:
-                props = result.get("Properties", {})
-                if props.get("StageName") == options.stage_name:
+                if result.get("name") == options.stage_name:
                     return result
             return {}
 
@@ -57,13 +60,14 @@ class CodePipelineStageExporter(IResourceExporter[list[str]]):
 
             paginator = proxy.get_paginator("list_pipelines", "pipelines")
 
-            async for pipelines in paginator.paginate(
-                batch_size=self._pagination_batch_size
-            ):
+            async for pipelines in paginator.paginate():
                 if pipelines:
-                    pipeline_names = [p["name"] for p in pipelines]
                     action_result = await inspector.inspect(
-                        pipeline_names,
+                        GetPipelineStagesInput(
+                            items=pipelines,
+                            region=options.region,
+                            account_id=options.account_id,
+                        ),
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
