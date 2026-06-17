@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Any
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
@@ -6,25 +6,24 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 class PipelineExecutionProperties(BaseModel):
     pipelineArn: str = Field(default_factory=str)
     pipelineName: str = Field(default_factory=str)
-    pipelineVersion: Optional[int] = None
+    pipelineVersion: int | None = None
     pipelineExecutionId: str = Field(default_factory=str)
-    status: Optional[str] = None
-    statusSummary: Optional[str] = None
-    artifactRevisions: List[dict[str, Any]] = Field(default_factory=list)
-    variableValues: Optional[Dict[str, str]] = None
-    trigger: Optional[Dict[str, Any]] = None
-    executionMode: Optional[str] = None
-    rollbackMetadata: Optional[Dict[str, Any]] = None
-    pipelineExecutionDisplayName: Optional[str] = None
-    stageStates: List[dict[str, Any]] = Field(default_factory=list)
-    tags: List[Dict[str, Any]] = Field(default_factory=list)
+    status: str | None = None
+    statusSummary: str = None
+    artifactRevisions: list[dict[str, Any]] = Field(default_factory=list)
+    variableValues: dict[str, str] = None
+    trigger: dict[str, Any] = None
+    executionMode: str | None = None
+    rollbackMetadata: dict[str, Any] = None
+    pipelineExecutionDisplayName: str | None = None
+    stageStates: list[dict[str, Any]] | None = Field(default=None)
     region: str = Field(default_factory=str)
-    createdAt: Optional[str] = None
-    updatedAt: Optional[str] = None
+    createdAt: str | None = None
+    updatedAt: str | None = None
 
     class Config:
         extra = "ignore"
-        populate_by_name = True
+        allow_population_by_field_name = True
 
 
 class PipelineExecution(ResourceModel[PipelineExecutionProperties]):
