@@ -2,6 +2,7 @@ import base64
 import os
 from typing import Any
 
+import httpx
 import pytest
 from port_ocean.integration_testing import (
     BaseIntegrationTest,
@@ -292,3 +293,127 @@ class TestGithubHappyPath(BaseIntegrationTest):
         for pr in prs:
             assert pr["properties"]["status"] == "open"
             assert pr["relations"]["repository"] in REPO_NAMES
+
+
+class TestGithubPullRequestResyncPartialRepoFailure(BaseIntegrationTest):
+    """When one repo's PR list request fails, others in the same page still export.
+
+    Exercises ``resync_pull_requests`` handling of ``ExceptionGroup`` from
+    ``stream_independent_async_iterators`` (e.g. intermittent 502 from GitHub).
+    The harness uses the intercepted transport without GitHub's retry wrapper,
+    so a single 502 response is enough to fail that repo's iterator quickly.
+    """
+
+    integration_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+
+    def create_third_party_transport(self) -> InterceptTransport:
+        t = InterceptTransport(strict=False)
+
+        t.add_route(
+            "GET",
+            f"/users/{ORG_LOGIN}/installation",
+            {
+                "status_code": 200,
+                "json": {"id": INSTALLATION_ID, "account": _org_response()},
+            },
+        )
+        t.add_route(
+            "POST",
+            f"/app/installations/{INSTALLATION_ID}/access_tokens",
+            {
+                "status_code": 201,
+                "json": {
+                    "token": "ghs_test_token",
+                    "expires_at": "2099-12-31T23:59:59Z",
+                    "permissions": {"contents": "read", "metadata": "read"},
+                    "repository_selection": "all",
+                },
+            },
+        )
+        t.add_route(
+            "GET",
+            f"/users/{ORG_LOGIN}",
+            {"status_code": 200, "json": _org_response()},
+        )
+
+        repos = [_repo_response(name, i) for i, name in enumerate(REPO_NAMES)]
+        t.add_route(
+            "GET",
+            f"/orgs/{ORG_LOGIN}/repos",
+            {"status_code": 200, "json": repos},
+        )
+
+        encoded_readme = base64.b64encode(README_TEXT.encode()).decode()
+        t.add_route(
+            "GET",
+            r"/repos/port-labs-testing/[^/]+/contents/README\.md",
+            {
+                "status_code": 200,
+                "json": {
+                    "name": "README.md",
+                    "path": "README.md",
+                    "type": "file",
+                    "encoding": "base64",
+                    "size": len(README_TEXT),
+                    "content": encoded_readme,
+                },
+            },
+        )
+        t.add_route(
+            "GET",
+            r"/repos/port-labs-testing/[^/]+/contents/CODEOWNERS",
+            {"status_code": 404},
+        )
+
+        failed_repo, ok_repo = REPO_NAMES[0], REPO_NAMES[1]
+        t.add_route(
+            "GET",
+            f"/repos/{ORG_LOGIN}/{failed_repo}/pulls",
+            {"status_code": 502, "json": {"message": "Bad Gateway"}},
+        )
+        t.add_route(
+            "GET",
+            f"/repos/{ORG_LOGIN}/{ok_repo}/pulls",
+            {"status_code": 200, "json": [_pull_response(ok_repo, 2)]},
+        )
+
+        return t
+
+    def create_mapping_config(self) -> dict[str, Any]:
+        return TestGithubHappyPath.create_mapping_config(self)
+
+    def create_integration_config(self) -> dict[str, Any]:
+        return TestGithubHappyPath.create_integration_config(self)
+
+    @pytest.mark.asyncio
+    async def test_pull_requests_still_exported_for_other_repos(self, resync: ResyncResult) -> None:
+        prs = [e for e in resync.upserted_entities if e.get("blueprint") == "githubPullRequest"]
+        assert len(prs) == 1
+        assert prs[0]["relations"]["repository"] == REPO_NAMES[1]
+
+        assert resync.reconciliation_success is False
+        assert resync.errors, f"Expected resync errors after repo PR fetch failure, got {resync.errors}"
+
+        def _walk_exceptions(exc: BaseException) -> list[BaseException]:
+            out: list[BaseException] = [exc]
+            if isinstance(exc, BaseExceptionGroup):
+                for sub in exc.exceptions:
+                    out.extend(_walk_exceptions(sub))
+            if exc.__cause__ is not None:
+                out.extend(_walk_exceptions(exc.__cause__))
+            return out
+
+        chain: list[BaseException] = []
+        for err in resync.errors:
+            chain.extend(_walk_exceptions(err))
+
+        status_errors = [e for e in chain if isinstance(e, httpx.HTTPStatusError)]
+        assert status_errors, f"Expected HTTPStatusError in __cause__ chain, got {chain!r}"
+        assert any(e.response.status_code == 502 for e in status_errors)
+
+        by_blueprint: dict[str, list[dict[str, Any]]] = {}
+        for entity in resync.upserted_entities:
+            by_blueprint.setdefault(entity["blueprint"], []).append(entity)
+
+        assert len(by_blueprint.get("githubOrganization", [])) == 1
+        assert len(by_blueprint.get("githubRepository", [])) == len(REPO_NAMES)

@@ -16,11 +16,26 @@ from port_ocean.integration_testing.transport import (
     InterceptTransport,
     RecordingTransport,
 )
-from port_ocean.utils.misc import get_spec_file, load_module
+from port_ocean.utils.misc import get_integration_class, get_spec_file, load_module
 
 # Cache config factories by integration path to avoid pydantic
 # "duplicate validator" errors when creating multiple Ocean instances
 _config_factory_cache: dict[str, Any] = {}
+
+# Cache the loaded integration class per path. Production `get_integration_class`
+# re-executes integration.py on every call, which re-registers its Pydantic
+# validators and crashes on the 2nd harness boot in the same process. The harness
+# is the only thing that boots more than once, so we cache here (test infra) and
+# leave production untouched.
+_integration_class_cache: dict[str, Any] = {}
+
+
+def _cached_get_integration_class(path: str) -> Any:
+    """``get_integration_class`` that executes integration.py at most once."""
+    key = str(Path(f"{path}/integration.py" if path else "integration.py").resolve())
+    if key not in _integration_class_cache:
+        _integration_class_cache[key] = get_integration_class(path)
+    return _integration_class_cache[key]
 
 
 def _flatten_exception_tree(exc: BaseException) -> list[Exception]:
@@ -115,13 +130,28 @@ class IntegrationTestHarness:
             **self.config_overrides,
         }
 
-        self._ocean = create_default_app(self.integration_path, config_factory, config)
-
-        # Now load main.py — this registers @ocean.on_resync handlers
+        # Import resolution for `get_integration_class` / `integration.py` (e.g. `github.*`)
+        # must work before `create_default_app` runs; the first test's shutdown removes this
+        # path from sys.path, so re-insert it here on every harness start.
         if self.integration_path not in sys.path:
             sys.path.insert(0, self.integration_path)
             self._inserted_sys_path = True
 
+        # Patch the production loader (called inside create_default_app) with a
+        # cached one, so integration.py is executed only once across all harness
+        # boots in this process. Kept in test infra so production stays untouched.
+        p_integration_class = patch(
+            "port_ocean.bootstrap.get_integration_class",
+            _cached_get_integration_class,
+        )
+        p_integration_class.start()
+        self._patches.append(p_integration_class)
+
+        self._ocean = create_default_app(self.integration_path, config_factory, config)
+
+        # Now load main.py — this registers @ocean.on_resync handlers. main.py
+        # must re-execute on every boot to re-register handlers on the fresh app,
+        # so it is loaded each time (not cached, unlike the integration class).
         main_path = f"{self.integration_path}/main.py"
         load_module(main_path)
 
