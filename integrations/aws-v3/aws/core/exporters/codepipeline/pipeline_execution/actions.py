@@ -33,23 +33,23 @@ class GetPipelineExecutionDetailsAction(Action):
                     )
                     raise detail_result
             results.append(cast(dict[str, Any], detail_result))
-        
+
         logger.info(f"Successfully fetched details for {len(results)} pipeline executions")
         return results
 
     async def _fetch_pipeline_execution_details(self, execution: dict[str, Any]) -> dict[str, Any]:
         pipeline_name = execution["pipelineName"]
         execution_id = execution["pipelineExecutionId"]
-        
+
         response = await self.client.get_pipeline_execution(
             pipelineName=pipeline_name,
             pipelineExecutionId=execution_id
         )
-        
+
         execution_detail = response["pipelineExecution"]
-        
+
         logger.info(f"Successfully fetched details for pipeline '{pipeline_name}' execution '{execution_id}'")
-        
+
         return {
             "pipelineArn": execution_detail.get("pipelineArn", ""),
             "pipelineName": execution_detail.get("pipelineName", ""),
@@ -96,71 +96,24 @@ class GetPipelineExecutionStagesAction(Action):
                     )
                     raise stage_result
             results.append(cast(dict[str, Any], stage_result))
-        
+
         logger.info(f"Successfully fetched stage details for {len(results)} pipeline executions")
         return results
 
     async def _fetch_pipeline_execution_stages(self, execution: dict[str, Any]) -> dict[str, Any]:
         pipeline_name = execution["pipelineName"]
         execution_id = execution["pipelineExecutionId"]
-        
+
         response = await self.client.list_stage_executions(
             pipelineName=pipeline_name,
             pipelineExecutionId=execution_id
         )
-        
+
         stages = response.get("stageExecutions", [])
-        
+
         logger.info(f"Successfully fetched stage details for pipeline '{pipeline_name}' execution '{execution_id}'")
-        
+
         return {"stageStates": stages}
-
-
-class GetPipelineTagsAction(Action):
-    """Fetches tags for pipelines."""
-
-    async def _execute(self, executions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        if not executions:
-            return []
-
-        tags = await asyncio.gather(
-            *(self._fetch_pipeline_tags(execution) for execution in executions),
-            return_exceptions=True,
-        )
-
-        results: list[dict[str, Any]] = []
-        for idx, tag_result in enumerate(tags):
-            if isinstance(tag_result, Exception):
-                pipeline_arn = executions[idx].get("pipelineArn", "unknown")
-                if is_recoverable_aws_exception(tag_result):
-                    logger.warning(
-                        f"Skipping tags for pipeline '{pipeline_arn}': {tag_result}"
-                    )
-                    results.append({"tags": []})
-                    continue
-                else:
-                    logger.error(f"Error fetching tags for pipeline '{pipeline_arn}': {tag_result}")
-                    raise tag_result
-            results.append(cast(dict[str, Any], tag_result))
-        
-        logger.info(f"Successfully fetched tags for {len(results)} pipelines")
-        return results
-
-    async def _fetch_pipeline_tags(self, execution: dict[str, Any]) -> dict[str, Any]:
-        pipeline_arn = execution.get("pipelineArn")
-        if not pipeline_arn:
-            return {"tags": []}
-        
-        try:
-            response = await self.client.list_tags_for_resource(
-                resourceArn=pipeline_arn
-            )
-            tags = response.get("tags", [])
-            return {"tags": tags}
-        except Exception as e:
-            # If tags are not available, return empty list
-            logger.debug(f"Could not fetch tags for pipeline '{pipeline_arn}': {e}")
-            return {"tags": []}
 
 
 class ListPipelineExecutionsAction(Action):
@@ -183,12 +136,10 @@ class ListPipelineExecutionsAction(Action):
 
 class CodePipelinePipelineExecutionActionsMap(ActionMap):
     """Groups all actions for CodePipeline pipeline executions."""
-    
+
     defaults: list[Type[Action]] = [
         ListPipelineExecutionsAction,
         GetPipelineExecutionDetailsAction,
         GetPipelineExecutionStagesAction,
     ]
-    options: list[Type[Action]] = [
-        GetPipelineTagsAction,
-    ]
+    options: list[Type[Action]] = []
