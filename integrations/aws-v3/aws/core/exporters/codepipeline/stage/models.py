@@ -1,16 +1,16 @@
-from typing import Optional, List, Dict, Any
+from typing import Any
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
 
 class StageProperties(BaseModel):
+    Actions: list[dict[str, Any]] | None = Field(default=None)
+    Blockers: list[dict[str, Any]] | None = Field(default=None)
+    PipelineArn: str | None = Field(default=None)
     PipelineName: str = Field(default_factory=str)
-    PipelineArn: Optional[str] = Field(default=None)
     StageName: str = Field(default_factory=str)
-    StageOrder: Optional[int] = Field(default=None)
-    Actions: List[Dict[str, Any]] = Field(default_factory=list)
-    Blockers: List[Dict[str, Any]] = Field(default_factory=list)
-    Tags: List[Dict[str, str]] = Field(default_factory=list)
+    StageOrder: int | None = Field(default=None)
+    Tags: list[dict[str, str]] | None = Field(default=None)
 
     class Config:
         extra = "ignore"
