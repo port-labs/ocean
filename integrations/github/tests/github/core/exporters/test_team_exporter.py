@@ -540,3 +540,64 @@ class TestGraphQLTeamWithMembersExporterExtrasEnrichment:
 
         assert "extra_field" not in teams[0]
         assert teams[1]["extra_field"] == "extra-value"
+
+
+EXTERNAL_GROUP = {
+    "group_id": "28836910a68075ab3dbe",
+    "group_name": "engineering",
+    "updated_at": "2024-01-01T00:00:00Z",
+}
+
+
+@pytest.mark.asyncio
+class TestRestTeamExporterExternalGroup:
+    async def test_enrich_teams_with_external_group(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestTeamExporter(rest_client)
+        teams: list[dict[str, Any]] = [
+            {"slug": "team-alpha", "__organization": "test-org"},
+            {"slug": "team-beta", "__organization": "test-org"},
+        ]
+
+        async def mock_send_api_request(url: str, **kwargs: Any) -> dict[str, Any]:
+            if "team-alpha" in url:
+                return {"groups": [EXTERNAL_GROUP]}
+            return {"groups": []}
+
+        with patch.object(
+            rest_client, "send_api_request", side_effect=mock_send_api_request
+        ):
+            result = await exporter.enrich_teams_with_external_group(teams, "test-org")
+
+        assert result[0]["__external_group"] == EXTERNAL_GROUP
+        assert result[1]["__external_group"] is None
+
+    async def test_enrich_teams_with_external_group_handles_api_failure(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestTeamExporter(rest_client)
+        teams: list[dict[str, Any]] = [{"slug": "team-alpha", "__organization": "test-org"}]
+
+        with patch.object(rest_client, "send_api_request", return_value=None):
+            result = await exporter.enrich_teams_with_external_group(teams, "test-org")
+
+        assert result[0]["__external_group"] is None
+
+    async def test_enrich_teams_with_external_group_calls_correct_url(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestTeamExporter(rest_client)
+        teams: list[dict[str, Any]] = [{"slug": "team-alpha", "__organization": "test-org"}]
+
+        with patch.object(
+            rest_client,
+            "send_api_request",
+            return_value={"groups": [EXTERNAL_GROUP]},
+        ) as mock_request:
+            await exporter.enrich_teams_with_external_group(teams, "test-org")
+
+        mock_request.assert_called_once_with(
+            f"{rest_client.base_url}/orgs/test-org/teams/team-alpha/external-groups",
+            ignored_errors=RestTeamExporter._EXTERNAL_GROUP_IGNORED_ERRORS,
+        )

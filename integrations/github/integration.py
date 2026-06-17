@@ -418,6 +418,11 @@ class GithubTeamSelector(IncludeSAMLEmailSelector):
         default=True,
         description="Include team members in the exported data.",
     )
+    include_external_group: bool = Field(
+        title="Include External IdP Group",
+        default=False,
+        description="Include the external IdP group linked to each team via GET /orgs/{org}/teams/{slug}/external-groups. Only available for organizations using GitHub Enterprise with managed user accounts and external SCIM.",
+    )
 
 
 class GithubTeamConfig(ResourceConfig):
