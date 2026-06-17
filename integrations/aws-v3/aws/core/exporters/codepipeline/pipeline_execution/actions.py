@@ -5,6 +5,13 @@ from loguru import logger
 import asyncio
 
 
+class ListPipelineExecutionsAction(Action):
+    """Processes the initial list of pipeline executions."""
+
+    async def _execute(self, executions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return executions
+
+
 class GetPipelineExecutionDetailsAction(Action):
     """Fetches detailed information about pipeline executions."""
 
@@ -66,24 +73,6 @@ class GetPipelineExecutionDetailsAction(Action):
             "createdAt": execution_detail.get("createdAt").isoformat() if execution_detail.get("createdAt") else None,
             "updatedAt": execution_detail.get("updatedAt").isoformat() if execution_detail.get("updatedAt") else None,
         }
-
-
-class ListPipelineExecutionsAction(Action):
-    """Processes the initial list of pipeline executions."""
-
-    async def _execute(self, executions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        results: list[dict[str, Any]] = []
-        for execution in executions:
-            data = {
-                "pipelineName": execution.get("pipelineName", ""),
-                "pipelineExecutionId": execution.get("pipelineExecutionId", ""),
-                "status": execution.get("status"),
-                "trigger": execution.get("trigger"),
-                "createdAt": execution.get("createdAt").isoformat() if execution.get("createdAt") else None,
-                "updatedAt": execution.get("updatedAt").isoformat() if execution.get("updatedAt") else None,
-            }
-            results.append(data)
-        return results
 
 
 class CodePipelinePipelineExecutionActionsMap(ActionMap):
