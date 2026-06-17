@@ -1,5 +1,6 @@
-from typing import Any
+from typing import Any, cast
 
+from datadog.overrides import RoleResourceConfig
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
@@ -33,5 +34,8 @@ class RoleWebhookProcessor(BaseAuditTrailProcessor):
         self, event: AuditTrailEvent, resource_config: ResourceConfig
     ) -> dict[str, Any] | None:
         return await RoleExporter(self.client).get_resource(
-            GetRoleOptions(resource_id=event.attributes.asset.id)
+            GetRoleOptions.from_resource_config(
+                cast(RoleResourceConfig, resource_config),
+                resource_id=event.attributes.asset.id,
+            )
         )

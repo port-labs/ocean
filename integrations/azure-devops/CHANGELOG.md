@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.9.19 (2026-06-16)
+
+
+### Improvements
+
+- Added error logging when the work items batch endpoint returns a malformed JSON response, including the project ID and batch ID range to aid diagnosis
+
+
+## 0.9.18 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
 ## 0.9.17 (2026-06-11)
 
 

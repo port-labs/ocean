@@ -1,0 +1,16 @@
+{
+  "Type": "AWS::CodeDeploy::Application",
+  "Properties": {
+    "ApplicationName": "example-application",
+    "ApplicationId": "f14523ba6-66e4-4849-bd12-42e0ea4d43c0",
+    "CreateTime": "2026-05-31T16:55:54.858000+03:00",
+    "LinkedToGitHub": false,
+    "GitHubAccountName": null,
+    "ComputePlatform": "Server",
+    "Tags": []
+  },
+  "__ExtraContext": {
+    "AccountId": "123465890",
+    "Region": "eu-west-1"
+  }
+}
