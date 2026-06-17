@@ -68,54 +68,6 @@ class GetPipelineExecutionDetailsAction(Action):
         }
 
 
-class GetPipelineExecutionStagesAction(Action):
-    """Fetches stage execution details for pipeline executions."""
-
-    async def _execute(self, executions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        if not executions:
-            return []
-
-        stages = await asyncio.gather(
-            *(self._fetch_pipeline_execution_stages(execution) for execution in executions),
-            return_exceptions=True,
-        )
-
-        results: list[dict[str, Any]] = []
-        for idx, stage_result in enumerate(stages):
-            if isinstance(stage_result, Exception):
-                execution_id = executions[idx].get("pipelineExecutionId", "unknown")
-                pipeline_name = executions[idx].get("pipelineName", "unknown")
-                if is_recoverable_aws_exception(stage_result):
-                    logger.warning(
-                        f"Skipping stage details for pipeline '{pipeline_name}' execution '{execution_id}': {stage_result}"
-                    )
-                    continue
-                else:
-                    logger.error(
-                        f"Error fetching stage details for pipeline '{pipeline_name}' execution '{execution_id}': {stage_result}"
-                    )
-                    raise stage_result
-            results.append(cast(dict[str, Any], stage_result))
-
-        logger.info(f"Successfully fetched stage details for {len(results)} pipeline executions")
-        return results
-
-    async def _fetch_pipeline_execution_stages(self, execution: dict[str, Any]) -> dict[str, Any]:
-        pipeline_name = execution["pipelineName"]
-        execution_id = execution["pipelineExecutionId"]
-
-        response = await self.client.list_stage_executions(
-            pipelineName=pipeline_name,
-            pipelineExecutionId=execution_id
-        )
-
-        stages = response.get("stageExecutions", [])
-
-        logger.info(f"Successfully fetched stage details for pipeline '{pipeline_name}' execution '{execution_id}'")
-
-        return {"stageStates": stages}
-
-
 class ListPipelineExecutionsAction(Action):
     """Processes the initial list of pipeline executions."""
 
@@ -140,6 +92,5 @@ class CodePipelinePipelineExecutionActionsMap(ActionMap):
     defaults: list[Type[Action]] = [
         ListPipelineExecutionsAction,
         GetPipelineExecutionDetailsAction,
-        GetPipelineExecutionStagesAction,
     ]
     options: list[Type[Action]] = []
