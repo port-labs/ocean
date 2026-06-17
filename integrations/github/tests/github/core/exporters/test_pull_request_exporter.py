@@ -528,7 +528,7 @@ class TestPullRequestExporter:
         self, rest_client: GithubRestClient
     ) -> None:
         selector = GithubPullRequestSelector.parse_obj(
-            {"query": "true", "states": ["closed"], "sinceDate": "2025-01-01"}
+            {"query": "true", "states": ["closed"], "closedSinceDate": "2025-01-01"}
         )
         assert selector.effective_max_results is None
         assert selector.closed_after == datetime(2025, 1, 1, tzinfo=UTC)
@@ -905,7 +905,8 @@ class TestGraphQLPullRequestExporter:
         )
         mock_paginated.assert_any_call(
             generate_list_pull_requests_gql(
-                PullRequestGraphQLOptions(enrich_with_first_commit=False)
+                PullRequestGraphQLOptions(enrich_with_first_commit=False),
+                order_by_field="UPDATED_AT",
             ),
             {
                 "organization": "test-org",
@@ -1406,14 +1407,14 @@ def test_pull_request_selector_accepts_exclude_graphql_fields_alias() -> None:
 
 def test_pull_request_selector_since_date_overrides_since_days() -> None:
     selector = GithubPullRequestSelector.parse_obj(
-        {"query": "true", "sinceDate": "2025-01-01"}
+        {"query": "true", "closedSinceDate": "2025-01-01"}
     )
     assert selector.closed_after == datetime(2025, 1, 1, tzinfo=UTC)
 
 
 def test_pull_request_selector_since_date_preserves_timezone() -> None:
     selector = GithubPullRequestSelector.parse_obj(
-        {"query": "true", "sinceDate": "2025-01-01T00:00:00+02:00"}
+        {"query": "true", "closedSinceDate": "2025-01-01T00:00:00+02:00"}
     )
     assert selector.closed_after is not None
     assert selector.closed_after.utcoffset() == timedelta(hours=2)
@@ -1431,12 +1432,12 @@ def test_pull_request_selector_effective_max_results() -> None:
     assert days.effective_max_results == 100
 
     since_date = GithubPullRequestSelector.parse_obj(
-        {"query": "true", "sinceDate": "2025-01-01"}
+        {"query": "true", "closedSinceDate": "2025-01-01"}
     )
     assert since_date.effective_max_results is None
 
     explicit_with_date = GithubPullRequestSelector.parse_obj(
-        {"query": "true", "sinceDate": "2025-01-01", "maxResults": 50}
+        {"query": "true", "closedSinceDate": "2025-01-01", "maxResults": 50}
     )
     assert explicit_with_date.effective_max_results == 50
 

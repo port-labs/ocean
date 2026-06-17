@@ -1,7 +1,7 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from fastapi import Request
 from loguru import logger
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import BaseModel, Field, root_validator
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -331,7 +331,7 @@ class GithubPullRequestSelector(RepoSearchSelector):
         alias="maxResults",
         default=None,
         ge=1,
-        description="Max number of merged pull requests. Defaults to 100 for the days lookback; with sinceDate set, leave empty to fetch all closed PRs back to the cutoff. Large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
+        description="Max number of merged pull requests. Defaults to 100 for the days lookback; with closedSinceDate set, leave empty to fetch all closed PRs back to the cutoff. Large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
     )
     since: int = Field(
         title="Closed PRs Lookback Days",
@@ -339,11 +339,11 @@ class GithubPullRequestSelector(RepoSearchSelector):
         ge=1,
         description="Numbers of days back for closed pull requests.",
     )
-    since_date: Optional[datetime] = Field(
+    closed_since_date: Optional[str] = Field(
         title="Closed PRs Since Date",
-        alias="sinceDate",
+        alias="closedSinceDate",
         default=None,
-        description="Only ingest pull requests closed on or after this absolute date (ISO-8601, e.g. 2025-01-01). Filters by close date and overrides the 'since' days lookback when set.",
+        description="Only ingest pull requests closed on or after this absolute date (ISO-8601, e.g. 2025-01-01 or 2025-01-01T00:00:00Z). Filters by close date and overrides the 'since' days lookback when set.",
     )
     api: Literal["rest", "graphql"] = Field(
         title="API",
@@ -372,37 +372,24 @@ class GithubPullRequestSelector(RepoSearchSelector):
         ),
     )
 
-    @validator("since_date", pre=True)
-    def _parse_since_date(cls, value: Any) -> Any:
-        if value is None or isinstance(value, datetime):
-            return value
-        if isinstance(value, date):
-            return datetime(value.year, value.month, value.day)
-        if isinstance(value, str):
-            return datetime.fromisoformat(value)
-        return value
-
     @property
     def updated_after(self) -> Optional[datetime]:
-        if self.since_date is not None:
+        if self.closed_since_date is not None:
             return None
         return datetime.now(timezone.utc) - timedelta(days=self.since)
 
     @property
     def closed_after(self) -> Optional[datetime]:
-        if self.since_date is None:
+        if self.closed_since_date is None:
             return None
-        return (
-            self.since_date
-            if self.since_date.tzinfo
-            else self.since_date.replace(tzinfo=timezone.utc)
-        )
+        parsed = datetime.fromisoformat(self.closed_since_date)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
     @property
     def effective_max_results(self) -> Optional[int]:
         if self.max_results is not None:
             return self.max_results
-        if self.since_date is not None:
+        if self.closed_since_date is not None:
             return None
         return 100
 

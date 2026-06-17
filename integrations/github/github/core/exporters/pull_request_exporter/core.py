@@ -133,6 +133,12 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             f"from {organization} with max_results={max_results}"
         )
 
+        cutoff, include_field = (
+            (closed_after, "closed_at")
+            if closed_after is not None
+            else (updated_after, "updated_at")
+        )
+
         def enrich(pr: dict[str, Any]) -> dict[str, Any]:
             return enrich_with_organization(
                 enrich_with_repository(pr, repo_name), organization
@@ -142,10 +148,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             self.client.send_paginated_request(endpoint, params),
             enrich=enrich,
             max_results=max_results,
-            updated_after=updated_after,
-            closed_after=closed_after,
-            updated_at_field="updated_at",
-            closed_at_field="closed_at",
+            cutoff=cutoff,
+            include_field=include_field,
+            stop_field="updated_at",
             log_prefix="[Rest]",
             repo_name=repo_name,
             organization=organization,
@@ -278,7 +283,6 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         pr_gql_options: PullRequestGraphQLOptions,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_name = repo["name"]
-        order_by_field = "UPDATED_AT" if closed_after is not None else "CREATED_AT"
         variables = {
             "organization": organization,
             "repo": repo_name,
@@ -288,6 +292,12 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         logger.info(f"[GraphQL] Fetching closed PRs from {organization}/{repo_name}")
 
+        cutoff, include_field = (
+            (closed_after, "closedAt")
+            if closed_after is not None
+            else (updated_after, "updatedAt")
+        )
+
         def enrich(pr: dict[str, Any]) -> dict[str, Any]:
             return self._normalize_pr_node(
                 pr, repo, organization, gql_options=pr_gql_options
@@ -296,16 +306,15 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         async for batch in paginate_closed_pull_requests(
             self.client.send_paginated_request(
                 generate_list_pull_requests_gql(
-                    pr_gql_options, order_by_field=order_by_field
+                    pr_gql_options, order_by_field="UPDATED_AT"
                 ),
                 variables,
             ),
             enrich=enrich,
             max_results=max_results,
-            updated_after=updated_after,
-            closed_after=closed_after,
-            updated_at_field="updatedAt",
-            closed_at_field="closedAt",
+            cutoff=cutoff,
+            include_field=include_field,
+            stop_field="updatedAt",
             log_prefix="[GraphQL]",
             repo_name=repo_name,
             organization=organization,

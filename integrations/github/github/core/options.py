@@ -50,7 +50,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
     """Options for listing pull requests.
 
     For closed PRs exactly one cutoff drives filtering: ``updated_after`` filters by
-    ``updated_at`` (days lookback); ``closed_after`` filters by ``closed_at`` (sinceDate).
+    ``updated_at`` (days lookback); ``closed_after`` filters by ``closed_at`` (closedSinceDate).
     """
 
     states: Required[list[str]]
