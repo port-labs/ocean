@@ -2,6 +2,7 @@ from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import MagicMock, patch, AsyncMock
 
 import asyncio
+import json
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from httpx import Request, Response, HTTPStatusError
@@ -1771,6 +1772,78 @@ async def test_generate_work_items_with_user_order_by_skips_pagination(
             assert (
                 wiql_call_count == 1
             ), "Should make only 1 WIQL call when user has ORDER BY"
+
+
+@pytest.mark.asyncio
+async def test_generate_work_items_raises_on_malformed_batch(
+    mock_event_context: MagicMock,
+) -> None:
+    """
+    When ADO returns a truncated/malformed JSON body on a 200 response, JSONDecodeError
+    should propagate so the framework skips the delete phase rather than running it
+    against a partial dataset.
+
+    Two batches of 200 IDs: first succeeds, second returns truncated JSON.
+    Asserts the error propagates and the 200 items from the good batch were already yielded.
+    """
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+    test_project = {"id": "proj1", "name": "Test Project"}
+
+    batch_call_count = 0
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        nonlocal batch_call_count
+        if "wit/wiql" in url:
+            # Return 400 IDs — two batches of 200
+            return Response(
+                status_code=200,
+                request=Request(method, url),
+                json={"workItems": [{"id": i} for i in range(1, 401)]},
+            )
+        if "wit/workitems" in url:
+            batch_call_count += 1
+            if batch_call_count == 2:
+                # Second batch: truncated body
+                return Response(
+                    status_code=200,
+                    request=Request(method, url),
+                    content=b'{"value": [{"id": 201, "fields": {"System.Title": "Item 201"',
+                    headers={"content-type": "application/json"},
+                )
+            params = kwargs.get("params", {})
+            ids = [int(x) for x in params.get("ids", "").split(",") if x]
+            return Response(
+                status_code=200,
+                request=Request(method, url),
+                json={
+                    "value": [
+                        {"id": i, "fields": {"System.Title": f"Item {i}"}} for i in ids
+                    ]
+                },
+            )
+        return Response(status_code=404, request=Request(method, url))
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [test_project]
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client, "send_request", side_effect=mock_send_request),
+        ):
+            collected_items: List[Dict[str, Any]] = []
+            with pytest.raises(json.decoder.JSONDecodeError):
+                async for item_batch in client.generate_work_items(
+                    wiql=None, expand="All"
+                ):
+                    collected_items.extend(item_batch)
+
+    assert len(collected_items) == 200
+    assert batch_call_count == 2
 
 
 @pytest.mark.asyncio

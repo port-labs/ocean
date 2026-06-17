@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 from jira.overrides import (
     JiraPortAppConfig,
     JiraBoardResourceConfig,
@@ -10,6 +11,9 @@ from jira.overrides import (
     JiraWorklogResourceConfig,
     JiraWorklogSelector,
     JiraEpicResourceConfig,
+    ComponentSource,
+    JiraComponentResourceConfig,
+    JiraComponentSelector,
 )
 
 
@@ -105,6 +109,18 @@ EPIC_MAPPING = {
     "relations": {
         "board": ".__boardId",
     },
+}
+
+COMPONENT_MAPPING = {
+    "entity": {
+        "mappings": {
+            "identifier": ".id | tostring",
+            "title": ".name",
+            "blueprint": '"jiraComponent"',
+            "properties": {},
+            "relations": {},
+        }
+    }
 }
 
 
@@ -948,3 +964,125 @@ def test_jira_backlog_selector_all_fields_combined() -> None:
     assert selector.jql == "project = PORT"
     assert selector.fields == ["id", "key", "summary"]
     assert selector.use_software_api is False
+
+
+def test_component_source_values_match_jira_api() -> None:
+    assert ComponentSource.JIRA == "jira"
+    assert ComponentSource.COMPASS == "compass"
+    assert ComponentSource.AUTO == "auto"
+
+
+def test_component_selector_component_source_defaults_to_jira() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "component",
+                    "selector": {"query": "true"},
+                    "port": COMPONENT_MAPPING,
+                }
+            ]
+        }
+    )
+    resource = config.resources[0]
+    assert isinstance(resource, JiraComponentResourceConfig)
+    assert resource.selector.component_source == ComponentSource.JIRA
+
+
+def test_component_selector_accepts_compass_source() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "component",
+                    "selector": {"query": "true", "componentSource": "compass"},
+                    "port": COMPONENT_MAPPING,
+                }
+            ]
+        }
+    )
+    resource = config.resources[0]
+    assert isinstance(resource, JiraComponentResourceConfig)
+    assert resource.selector.component_source == ComponentSource.COMPASS
+
+
+def test_component_selector_accepts_auto_source() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "component",
+                    "selector": {"query": "true", "componentSource": "auto"},
+                    "port": COMPONENT_MAPPING,
+                }
+            ]
+        }
+    )
+    resource = config.resources[0]
+    assert isinstance(resource, JiraComponentResourceConfig)
+    assert resource.selector.component_source == ComponentSource.AUTO
+
+
+def test_component_selector_rejects_invalid_component_source() -> None:
+    with pytest.raises(ValidationError):
+        JiraPortAppConfig.parse_obj(
+            {
+                "resources": [
+                    {
+                        "kind": "component",
+                        "selector": {"query": "true", "componentSource": "invalid"},
+                        "port": COMPONENT_MAPPING,
+                    }
+                ]
+            }
+        )
+
+
+def test_component_selector_name_filter_defaults_to_none() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "component",
+                    "selector": {"query": "true"},
+                    "port": COMPONENT_MAPPING,
+                }
+            ]
+        }
+    )
+    resource = config.resources[0]
+    assert isinstance(resource, JiraComponentResourceConfig)
+    assert resource.selector.name_filter is None
+
+
+def test_component_selector_accepts_name_filter() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "component",
+                    "selector": {"query": "true", "nameFilter": "backend"},
+                    "port": COMPONENT_MAPPING,
+                }
+            ]
+        }
+    )
+    resource = config.resources[0]
+    assert isinstance(resource, JiraComponentResourceConfig)
+    assert resource.selector.name_filter == "backend"
+
+
+def test_jira_port_app_config_resolves_component_resource_config() -> None:
+    config = JiraPortAppConfig.parse_obj(
+        {
+            "resources": [
+                {
+                    "kind": "component",
+                    "selector": {"query": "true"},
+                    "port": COMPONENT_MAPPING,
+                }
+            ]
+        }
+    )
+    assert isinstance(config.resources[0], JiraComponentResourceConfig)
+    assert isinstance(config.resources[0].selector, JiraComponentSelector)
