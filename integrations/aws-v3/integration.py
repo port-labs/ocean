@@ -231,6 +231,13 @@ class AWSCodeBuildBuildRunResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeDeployApplicationResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::Application"] = Field(
+        title="AWS CodeDeploy Application",
+        description="AWS CodeDeploy Application resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -253,6 +260,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSEC2VolumeResourceConfig
         | AWSCodeBuildProjectResourceConfig
         | AWSCodeBuildBuildRunResourceConfig
+        | AWSCodeDeployApplicationResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
