@@ -22,6 +22,7 @@ features:
       - kind: AWS::CodeBuild::BuildRun
       - kind: AWS::CodeDeploy::Application
       - kind: AWS::CodeDeploy::DeploymentGroup
+      - kind: AWS::CodePipeline::Pipeline
 configurations:
   - name: credentialProviderPriority
     required: false

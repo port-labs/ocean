@@ -16,6 +16,7 @@ class GetQueueAttributesAction(Action[list[str]]):
         )
 
         results: list[dict[str, Any]] = []
+        success_count = 0
         for idx, attr_result in enumerate(attributes):
             if isinstance(attr_result, Exception):
                 queue_url = queues[idx]
@@ -23,6 +24,7 @@ class GetQueueAttributesAction(Action[list[str]]):
                     logger.warning(
                         f"Skipping queue attributes for queue '{queue_url}': {attr_result}"
                     )
+                    results.append({})
                     continue
                 else:
                     logger.error(
@@ -30,7 +32,8 @@ class GetQueueAttributesAction(Action[list[str]]):
                     )
                     raise attr_result
             results.append(cast(dict[str, Any], attr_result))
-        logger.info(f"Successfully fetched attributes for {len(results)} SQS queues")
+            success_count += 1
+        logger.info(f"Successfully fetched attributes for {success_count} SQS queues")
         return results
 
     async def _fetch_queue_attributes(self, queue: str) -> dict[str, Any]:
@@ -55,6 +58,7 @@ class ListQueueTagsAction(Action[list[str]]):
         )
 
         results: list[dict[str, Any]] = []
+        success_count = 0
         for idx, tag_result in enumerate(tags):
             if isinstance(tag_result, Exception):
                 queue_url = queues[idx]
@@ -62,12 +66,14 @@ class ListQueueTagsAction(Action[list[str]]):
                     logger.warning(
                         f"Skipping tags for queue '{queue_url}': {tag_result}"
                     )
+                    results.append({})
                     continue
                 else:
                     logger.error(f"Error fetching tags for queue '{queue_url}'")
                     raise tag_result
             results.append(cast(dict[str, Any], tag_result))
-        logger.info(f"Successfully fetched tags for {len(results)} SQS queues")
+            success_count += 1
+        logger.info(f"Successfully fetched tags for {success_count} SQS queues")
         return results
 
     async def _fetch_queue_tags(self, queue: str) -> dict[str, Any]:

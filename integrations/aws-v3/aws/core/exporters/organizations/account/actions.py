@@ -33,12 +33,14 @@ class ListParentsAction(Action[list[dict[str, Any]]]):
                     logger.warning(
                         f"Administrator or management account has been denied access to list parents for account {accounts[idx]['Id']}, {result}, skipping ..."
                     )
+                    results.append({"Parents": []})
                     continue
                 elif is_resource_not_found_exception(result):
                     logger.warning(
                         f"Failed to list parents for account {accounts[idx]['Id']}: {result}"
                     )
                     results.append({"Parents": []})
+                    continue
                 else:
                     raise result
             results.append(cast(Dict[str, List[Dict[str, Any]]], result))
@@ -60,18 +62,20 @@ class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
         tags_results = await asyncio.gather(
             *(self._fetch_tags(acc) for acc in accounts), return_exceptions=True
         )
-        results = []
+        results: List[Dict[str, Any]] = []
         for idx, result in enumerate(tags_results):
             if isinstance(result, Exception):
                 if is_access_denied_exception(result):
                     logger.warning(
                         f"Administrator or management account has been denied access to list tags for account {accounts[idx]['Id']}, {result}, skipping ..."
                     )
+                    results.append({})
                     continue
                 elif is_resource_not_found_exception(result):
                     logger.warning(
                         f"Failed to list tags for account {accounts[idx]['Id']}: {result}"
                     )
+                    results.append({})
                     continue
                 else:
                     raise result
