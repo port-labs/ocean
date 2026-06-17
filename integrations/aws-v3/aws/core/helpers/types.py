@@ -24,6 +24,7 @@ class ObjectKind(StrEnum):
     CODEBUILD_PROJECT = "AWS::CodeBuild::Project"
     CODEBUILD_BUILD_RUN = "AWS::CodeBuild::BuildRun"
     CODEDEPLOY_APPLICATION = "AWS::CodeDeploy::Application"
+    CODEDEPLOY_DEPLOYMENT_GROUP = "AWS::CodeDeploy::DeploymentGroup"
     CODEPIPELINE_PIPELINE = "AWS::CodePipeline::Pipeline"
     CODEPIPELINE_STAGE = "AWS::CodePipeline::Stage"
     CODEPIPELINE_ACTION = "AWS::CodePipeline::Action"
