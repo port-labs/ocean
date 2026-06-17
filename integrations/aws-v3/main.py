@@ -56,7 +56,8 @@ from aws.core.exporters.codedeploy import (
 from aws.core.exporters.codepipeline import (
     PipelineExporter,
     PaginatedPipelineRequest,
-CodePipelineStageExporter, PaginatedCodePipelineStageRequest,
+    CodePipelineStageExporter,
+    PaginatedCodePipelineStageRequest,
     CodePipelineActionExporter,
     PaginatedCodePipelineActionRequest,
 )

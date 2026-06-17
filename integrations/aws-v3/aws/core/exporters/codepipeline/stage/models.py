@@ -27,9 +27,7 @@ class CodePipelineStage(ResourceModel[StageProperties]):
 class SingleCodePipelineStageRequest(ResourceRequestModel):
     """Options for exporting a single CodePipeline stage."""
 
-    pipeline_name: str = Field(
-        ..., description="The name of the CodePipeline pipeline"
-    )
+    pipeline_name: str = Field(..., description="The name of the CodePipeline pipeline")
     stage_name: str = Field(
         ..., description="The name of the stage within the pipeline"
     )

@@ -244,6 +244,7 @@ class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
         description="AWS CodePipeline Pipeline resource kind.",
     )
 
+
 class AWSCodePipelineStageResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodePipeline::Stage"] = Field(
         title="AWS CodePipeline Stage",
