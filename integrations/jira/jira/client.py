@@ -7,7 +7,11 @@ import re
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
-from jira.overrides import JiraEpicAPIQueryParams, JiraWorklogAPIQueryParams
+from jira.overrides import (
+    JiraEpicAPIQueryParams,
+    JiraWorklogAPIQueryParams,
+    ComponentSource,
+)
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -401,6 +405,13 @@ class JiraClient(OAuthClient):
         return [
             {**entity, "__boardId": board_id} for entity in entities if entity.get("id")
         ]
+
+    @staticmethod
+    def _enrich_with_project(
+        entities: list[dict[str, Any]], project: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Inject ``__project`` into each entity in the list for relation mapping."""
+        return [{**entity, "__project": project} for entity in entities]
 
     @staticmethod
     def _validate_existing_webhook(
@@ -961,3 +972,23 @@ class JiraClient(OAuthClient):
             url, "worklogs", initial_params=query_params
         ):
             yield [{**worklog, "__issueKey": issue_key} for worklog in batch]
+
+    async def get_paginated_components_for_project(
+        self,
+        project: dict[str, Any],
+        component_source: ComponentSource,
+        name_filter: str | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield paginated component batches for a single Jira project."""
+        params: dict[str, Any] = {"componentSource": component_source}
+        if name_filter is not None:
+            params["query"] = name_filter
+        # key would be present, any case it isn't, the API would return an error
+        # which is fine since we require the key to fetch components
+        project_key = project["key"]
+        async for batch in self._get_paginated_data(
+            f"{self.api_url}/project/{project_key}/component",
+            "values",
+            initial_params=params,
+        ):
+            yield self._enrich_with_project(batch, project)

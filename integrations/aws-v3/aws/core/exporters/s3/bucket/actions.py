@@ -6,7 +6,7 @@ from loguru import logger
 import asyncio
 
 
-class GetPublicAccessBlockAction(Action):
+class GetPublicAccessBlockAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         public_access_blocks = await asyncio.gather(
             *(self._fetch_public_access_block(bucket) for bucket in buckets),
@@ -20,6 +20,7 @@ class GetPublicAccessBlockAction(Action):
                 logger.error(
                     f"Error fetching bucket public access block for bucket '{bucket_name}': {pab_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], pab_result))
         return results
@@ -36,7 +37,7 @@ class GetPublicAccessBlockAction(Action):
         }
 
 
-class GetBucketOwnershipControlsAction(Action):
+class GetBucketOwnershipControlsAction(Action[list[dict[str, Any]]]):
 
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         ownership_controls = await asyncio.gather(
@@ -51,6 +52,7 @@ class GetBucketOwnershipControlsAction(Action):
                 logger.error(
                     f"Error fetching bucket ownership controls for bucket '{bucket_name}': {ownership_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], ownership_result))
         return results
@@ -65,7 +67,7 @@ class GetBucketOwnershipControlsAction(Action):
         return {"OwnershipControls": response["OwnershipControls"]}
 
 
-class GetBucketEncryptionAction(Action):
+class GetBucketEncryptionAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         encryptions = await asyncio.gather(
             *(self._fetch_encryption(bucket) for bucket in buckets),
@@ -79,6 +81,7 @@ class GetBucketEncryptionAction(Action):
                 logger.error(
                     f"Error fetching bucket encryption for bucket '{bucket_name}': {encryption_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], encryption_result))
         return results
@@ -91,7 +94,7 @@ class GetBucketEncryptionAction(Action):
         return {"BucketEncryption": response["ServerSideEncryptionConfiguration"]}
 
 
-class GetBucketLocationAction(Action):
+class GetBucketLocationAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
         locations = await asyncio.gather(
@@ -106,6 +109,7 @@ class GetBucketLocationAction(Action):
                 logger.error(
                     f"Error fetching bucket location for bucket '{bucket_name}': {location_result}"
                 )
+                results.append({})
                 continue
             results.append(cast(Dict[str, Any], location_result))
         return results
@@ -116,7 +120,7 @@ class GetBucketLocationAction(Action):
         return {"LocationConstraint": response["LocationConstraint"]}
 
 
-class ListBucketsAction(Action):
+class ListBucketsAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         for bucket in buckets:
@@ -131,7 +135,7 @@ class ListBucketsAction(Action):
         return results
 
 
-class GetBucketTaggingAction(Action):
+class GetBucketTaggingAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         tagging_results = await asyncio.gather(
@@ -143,6 +147,7 @@ class GetBucketTaggingAction(Action):
                 logger.error(
                     f"Error fetching bucket tagging for bucket '{bucket_name}': {tagging_result}"
                 )
+                results.append({})
                 continue
             else:
                 results.append(cast(Dict[str, Any], tagging_result))
@@ -163,12 +168,12 @@ class GetBucketTaggingAction(Action):
                 raise
 
 
-class S3BucketActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+class S3BucketActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: List[Type[Action[list[dict[str, Any]]]]] = [
         GetBucketTaggingAction,
         ListBucketsAction,
     ]
-    options: List[Type[Action]] = [
+    options: List[Type[Action[list[dict[str, Any]]]]] = [
         GetPublicAccessBlockAction,
         GetBucketOwnershipControlsAction,
         GetBucketEncryptionAction,

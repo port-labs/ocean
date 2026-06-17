@@ -27,6 +27,7 @@ from port_ocean.core.integrations.mixins.utils import (
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
     is_resource_supported,
+    selector_hash_from_resource,
     start_kind_tracking,
     stop_kind_tracking,
     unsupported_kind_response,
@@ -418,6 +419,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         resource_config: ResourceConfig,
         user_agent_type: UserAgentType,
         index: int,
+        dsp_enabled: bool = False,
     ) -> tuple[list[Entity], list[Exception]]:
         send_raw_data_examples_amount = (
             SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
@@ -446,6 +448,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     resync_start_time=event.attributes.get("resync_start_time"),
                     event_type=LakehouseEventType.RESYNC,
                     flush_interval_seconds=ocean.config.lakehouse_buffer_interval_seconds,
+                    max_buffer_count=ocean.config.lakehouse_buffer_max_count,
+                    fatal=dsp_enabled,
                 )
                 if lakehouse_data_enabled
                 else None
@@ -464,7 +468,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         if raw_results:
             if lakehouse_data_enabled and buffer:
-                metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
+                metadata = LakehouseDataEntryMetadata(
+                    operation=LakehouseOperation.UPSERT,
+                    resource_index=index,
+                    extraction_timestamp=int(datetime.now().timestamp() * 1000),
+                    selector_hash=selector_hash_from_resource(resource_config),
+                )
                 lakehouse_data_entry = build_lakehouse_data_entry(
                     items=raw_results,
                     metadata=metadata,
@@ -495,7 +504,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 async for items in generator:
                     batch_index += 1
                     if lakehouse_data_enabled and buffer:
-                        metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
+                        metadata = LakehouseDataEntryMetadata(
+                            operation=LakehouseOperation.UPSERT,
+                            resource_index=index,
+                            extraction_timestamp=int(datetime.now().timestamp() * 1000),
+                            selector_hash=selector_hash_from_resource(resource_config),
+                        )
                         lakehouse_data_entry = build_lakehouse_data_entry(
                             items=items,
                             metadata=metadata,
@@ -842,12 +856,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
 
             task = asyncio.create_task(
-                self._register_in_batches(resource, user_agent_type, index)
+                self._register_in_batches(resource, user_agent_type, index, dsp_enabled)
             )
             event.on_abort(lambda: task.cancel())
 
+            kind_results: tuple[list[Entity], list[Exception]] = ([], [])
             try:
-                kind_results: tuple[list[Entity], list[Exception]] = await task
+                kind_results = await task
                 if ocean.metrics.sync_state != SyncState.FAILED:
                     ocean.metrics.sync_state = SyncState.COMPLETED
             except asyncio.CancelledError:
@@ -860,6 +875,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         kind_identifier=resource_kind_id,
                     )
                 raise
+            except Exception as e:
+                logger.error(
+                    f"Resource {resource.kind} processing failed unexpectedly: {e}"
+                )
+                ocean.metrics.sync_state = SyncState.FAILED
+                kind_results = ([], [e])
             finally:
                 # Stop tracking and report resource usage metrics
                 stop_kind_tracking(resource_kind_id)
