@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.7.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodePipeline::Pipeline resource kind, enabling ingestion of CodePipeline Pipelines into the Port catalog
+
+
+## 2.6.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodeDeploy::Application resource kind, enabling ingestion of CodeDeploy Applications into the Port catalog
+
+
+## 2.5.4-beta (2026-06-16)
+
+
+### Bug Fixes
+
+- Fixed silent index-shift in concurrent action result merging that caused enrichment data (tags, encryption, etc.) to be applied to the wrong AWS resource when one resource's API call returned a recoverable error. All recoverable-skip paths in S3, SQS, RDS, Lambda, Organizations, and the shared `execute_concurrent_aws_operations` helper (used by ECR, ECS, EC2) now preserve list alignment via an empty placeholder.
+
 ## 2.5.3-beta (2026-06-16)
 
 
