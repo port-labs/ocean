@@ -24,7 +24,7 @@ class TestGetDeploymentGroupDetailsAction:
         # Arrange
         resources = DeploymentGroupActionInput(
             app_name="my-app",
-            groups=["group-a", "group-b"],
+            items=["group-a", "group-b"],
             region="region",
             account_id="account_id",
         )
@@ -42,7 +42,7 @@ class TestGetDeploymentGroupDetailsAction:
         assert result == [mock_response_one, mock_response_two]
         action.client.batch_get_deployment_groups.assert_called_once_with(
             applicationName=resources.app_name,
-            deploymentGroupNames=resources.groups,
+            deploymentGroupNames=resources.items,
         )
 
     @pytest.mark.asyncio
@@ -52,7 +52,7 @@ class TestGetDeploymentGroupDetailsAction:
         # Arrange
         resources: DeploymentGroupActionInput = DeploymentGroupActionInput(
             app_name="my-app",
-            groups=["group-a", "group-b"],
+            items=["group-a", "group-b"],
             region="region",
             account_id="account_id",
         )
@@ -65,7 +65,7 @@ class TestGetDeploymentGroupDetailsAction:
         assert result == []
         action.client.batch_get_deployment_groups.assert_called_once_with(
             applicationName=resources.app_name,
-            deploymentGroupNames=resources.groups,
+            deploymentGroupNames=resources.items,
         )
 
 
@@ -80,15 +80,15 @@ class TestGetDeploymentGroupTags:
         # Arrange
         resources: DeploymentGroupActionInput = DeploymentGroupActionInput(
             app_name="my-app",
-            groups=["group-a", "group-b", "group-c"],
+            items=["group-a", "group-b", "group-c"],
             region="region",
             account_id="account_id",
         )
 
         def mock_list_tags(ResourceArn: str) -> dict[str, Any]:
-            if ResourceArn.endswith(f"{resources.app_name}/{resources.groups[0]}"):
+            if ResourceArn.endswith(f"{resources.app_name}/{resources.items[0]}"):
                 return {"Tags": [{"Key": "Environment", "Value": "production"}]}
-            if ResourceArn.endswith(f"{resources.app_name}/{resources.groups[1]}"):
+            if ResourceArn.endswith(f"{resources.app_name}/{resources.items[1]}"):
                 return {"Tags": [{"Key": "Environment", "Value": "staging"}]}
             raise Exception
 
@@ -109,6 +109,6 @@ class TestGetDeploymentGroupTags:
                 call(
                     ResourceArn=f"arn:aws:codedeploy:{resources.region}:{resources.account_id}:deploymentgroup:{resources.app_name}/{group}"
                 )
-                for group in resources.groups
+                for group in resources.items
             ]
         )
