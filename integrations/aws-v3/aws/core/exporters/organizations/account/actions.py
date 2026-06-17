@@ -10,13 +10,13 @@ from loguru import logger
 import asyncio
 
 
-class ListAccountsAction(Action):
+class ListAccountsAction(Action[list[dict[str, Any]]]):
     async def _execute(self, accounts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Return account identifiers as-is, normalized for downstream actions."""
         return accounts
 
 
-class ListParentsAction(Action):
+class ListParentsAction(Action[list[dict[str, Any]]]):
     async def _execute(self, accounts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         For each account, fetch all parent IDs using the Organizations paginator.
@@ -33,12 +33,14 @@ class ListParentsAction(Action):
                     logger.warning(
                         f"Administrator or management account has been denied access to list parents for account {accounts[idx]['Id']}, {result}, skipping ..."
                     )
+                    results.append({"Parents": []})
                     continue
                 elif is_resource_not_found_exception(result):
                     logger.warning(
                         f"Failed to list parents for account {accounts[idx]['Id']}: {result}"
                     )
                     results.append({"Parents": []})
+                    continue
                 else:
                     raise result
             results.append(cast(Dict[str, List[Dict[str, Any]]], result))
@@ -55,23 +57,25 @@ class ListParentsAction(Action):
         return {"Parents": parents}
 
 
-class ListTagsForResourceAction(Action):
+class ListTagsForResourceAction(Action[list[dict[str, Any]]]):
     async def _execute(self, accounts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         tags_results = await asyncio.gather(
             *(self._fetch_tags(acc) for acc in accounts), return_exceptions=True
         )
-        results = []
+        results: List[Dict[str, Any]] = []
         for idx, result in enumerate(tags_results):
             if isinstance(result, Exception):
                 if is_access_denied_exception(result):
                     logger.warning(
                         f"Administrator or management account has been denied access to list tags for account {accounts[idx]['Id']}, {result}, skipping ..."
                     )
+                    results.append({})
                     continue
                 elif is_resource_not_found_exception(result):
                     logger.warning(
                         f"Failed to list tags for account {accounts[idx]['Id']}: {result}"
                     )
+                    results.append({})
                     continue
                 else:
                     raise result
@@ -89,11 +93,11 @@ class ListTagsForResourceAction(Action):
         return {"Tags": tags}
 
 
-class OrganizationsAccountActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+class OrganizationsAccountActionsMap(ActionMap[list[dict[str, Any]]]):
+    defaults: List[Type[Action[list[dict[str, Any]]]]] = [
         ListAccountsAction,
     ]
-    options: List[Type[Action]] = [
+    options: List[Type[Action[list[dict[str, Any]]]]] = [
         ListParentsAction,
         ListTagsForResourceAction,
     ]

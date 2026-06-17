@@ -224,6 +224,13 @@ class AWSCodeBuildProjectResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeBuildBuildRunResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeBuild::BuildRun"] = Field(
+        title="AWS CodeBuild BuildRun",
+        description="AWS CodeBuild BuildRun resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -245,6 +252,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
         | AWSCodeBuildProjectResourceConfig
+        | AWSCodeBuildBuildRunResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

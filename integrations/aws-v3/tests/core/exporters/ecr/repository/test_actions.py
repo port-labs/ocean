@@ -1,6 +1,7 @@
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.ecr.repository.actions import (
     DescribeRepositoriesAction,
@@ -216,6 +217,46 @@ class TestListTagsForResourceAction:
         assert result[1]["tags"] == [{"Key": "Environment", "Value": "dev"}]
         assert action.client.list_tags_for_resource.call_count == 2
 
+    @pytest.mark.asyncio
+    async def test_execute_preserves_index_alignment_with_middle_failure(
+        self, mock_logger: MagicMock, action: ListTagsForResourceAction
+    ) -> None:
+        """Middle repository fails recoverably; tag results stay aligned."""
+        repositories = [
+            {
+                "repositoryName": "repo1",
+                "repositoryArn": "arn:aws:ecr:us-east-1:123456789012:repository/repo1",
+            },
+            {
+                "repositoryName": "repo2",
+                "repositoryArn": "arn:aws:ecr:us-east-1:123456789012:repository/repo2",
+            },
+            {
+                "repositoryName": "repo3",
+                "repositoryArn": "arn:aws:ecr:us-east-1:123456789012:repository/repo3",
+            },
+        ]
+
+        def mock_list_tags_for_resource(
+            resourceArn: str, **kwargs: Any
+        ) -> Dict[str, Any]:
+            if "repo2" in resourceArn:
+                raise ClientError(
+                    {"Error": {"Code": "AccessDenied", "Message": "denied"}},
+                    "ListTagsForResource",
+                )
+            owner = "first" if "repo1" in resourceArn else "third"
+            return {"tags": [{"Key": "Owner", "Value": owner}]}
+
+        action.client.list_tags_for_resource.side_effect = mock_list_tags_for_resource
+
+        result = await action.execute(repositories)
+
+        assert len(result) == 3
+        assert result[0] == {"tags": [{"Key": "Owner", "Value": "first"}]}
+        assert result[1] == {}
+        assert result[2] == {"tags": [{"Key": "Owner", "Value": "third"}]}
+
 
 class TestEcrRepositoryActionsMap:
 
@@ -229,7 +270,7 @@ class TestEcrRepositoryActionsMap:
 
     @pytest.mark.asyncio
     async def test_merge_with_options(self, mock_logger: MagicMock) -> None:
-        class DummyAction(Action):
+        class DummyAction(Action[list[Any]]):
             async def _execute(self, identifiers: List[Any]) -> List[Dict[str, Any]]:
                 return [{"dummy": True}]
 

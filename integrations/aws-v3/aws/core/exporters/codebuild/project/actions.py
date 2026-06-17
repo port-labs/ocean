@@ -3,7 +3,7 @@ from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
 
 
-class GetProjectDetailsAction(Action):
+class GetProjectDetailsAction(Action[list[str]]):
     """Fetches detailed information about CodeBuild projects."""
 
     async def _execute(self, resources: List[str]) -> List[Dict[str, Any]]:
@@ -14,10 +14,10 @@ class GetProjectDetailsAction(Action):
         return projects
 
 
-class CodeBuildProjectActionsMap(ActionMap):
+class CodeBuildProjectActionsMap(ActionMap[list[str]]):
     """Groups all actions for CodeBuild project resource type."""
 
-    defaults: List[Type[Action]] = [
+    defaults: List[Type[Action[list[str]]]] = [
         GetProjectDetailsAction,
     ]
-    options: List[Type[Action]] = []
+    options: List[Type[Action[list[str]]]] = []
