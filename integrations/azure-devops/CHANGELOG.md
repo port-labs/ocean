@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added bounded concurrency to `defaultTeam` project enrichment and `includeMembers` team enrichment to prevent unbounded concurrent API calls that exhausted the ADO TSTU budget.
 - Raised `max_backoff_wait` from 60s to 300s so `Retry-After` and `X-RateLimit-Reset` headers are honored up to ADO's 5-minute rolling window instead of being clipped prematurely.
-- Added a shared throttle circuit-breaker to `AzureDevOpsRateLimiter`: a `ReadTimeout` now pauses all subsequent ADO requests for 300s, preventing continued retries against an already-throttled.
+- Added a shared throttle circuit-breaker to `AzureDevOpsRateLimiter`: a `ReadTimeout` now pauses all subsequent ADO requests for 300s, preventing continued retries against an already-throttled API.
 
 
 ## 0.9.18 (2026-06-15)

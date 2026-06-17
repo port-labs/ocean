@@ -71,11 +71,16 @@ class AzureDevOpsRateLimiter:
         Used when throttling manifests as a timeout (no response headers available).
         """
         async with self._lock:
-            end = time.time() + seconds
-            if self._throttle_until is None or end > self._throttle_until:
-                self._throttle_until = end
+            throttle_end_time = time.time() + seconds
+            if self._throttle_until is None or throttle_end_time > self._throttle_until:
+                self._throttle_until = throttle_end_time
                 logger.warning(
-                    f"ADO throttle signal: pausing all requests for {seconds:.0f}s"
+                    f"ADO rate limit: ReadTimeout detected, pausing all requests for {seconds:.0f} seconds"
+                )
+            else:
+                logger.debug(
+                    f"ADO rate limit: ReadTimeout received but existing throttle window already covers it "
+                    f"(expires in {self._throttle_until - time.time():.0f}s)"
                 )
 
     async def __aenter__(self) -> "AzureDevOpsRateLimiter":
@@ -88,12 +93,16 @@ class AzureDevOpsRateLimiter:
         async with self._lock:
             # Check shared throttle signal from ReadTimeout (no headers)
             if self._throttle_until is not None:
-                wait = self._throttle_until - time.time()
-                if wait > 0:
+                remaining_seconds = self._throttle_until - time.time()
+                if remaining_seconds > 0:
                     logger.warning(
-                        f"ADO throttle cooldown: pausing {wait:.0f}s before next request"
+                        f"ADO rate limit: holding request for {remaining_seconds:.0f} seconds while throttle window expires"
                     )
-                    await asyncio.sleep(wait)
+                    await asyncio.sleep(remaining_seconds)
+                else:
+                    logger.debug(
+                        "ADO rate limit: throttle window already expired, clearing and proceeding"
+                    )
                 self._throttle_until = None
 
             # Check if we need to wait due to previous rate limit

@@ -71,7 +71,11 @@ MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
+# Conservative concurrency caps to avoid exhausting the shared ADO TSTU budget.
+# ADO does not publish a per-connection limit; these values are empirically chosen
+# to keep concurrent fanout low enough that the TSTU window resets before exhaustion.
 MAX_CONCURRENT_PROJECTS = 5
+MAX_CONCURRENT_TEAMS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
 
@@ -428,7 +432,7 @@ class AzureDevopsClient(HTTPBaseClient):
         self, teams: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching members for {len(teams)} teams")
-        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TEAMS)
 
         async def get_members_with_semaphore(
             team: dict[str, Any],
