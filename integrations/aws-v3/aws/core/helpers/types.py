@@ -25,6 +25,7 @@ class ObjectKind(StrEnum):
     CODEBUILD_BUILD_RUN = "AWS::CodeBuild::BuildRun"
     CODEDEPLOY_APPLICATION = "AWS::CodeDeploy::Application"
     CODEPIPELINE_PIPELINE = "AWS::CodePipeline::Pipeline"
+    CODEPIPELINE_ACTION = "AWS::CodePipeline::Action"
 
 
 SupportedServices = Literal[

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.8.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodePipeline::Action resource kind, enabling ingestion of CodePipeline Actions into the Port catalog
+
+
 ## 2.7.0-beta (2026-06-17)
 
 

@@ -4,3 +4,8 @@ from aws.core.exporters.codepipeline.pipeline import (
     SinglePipelineRequest,
     PaginatedPipelineRequest,
 )
+from aws.core.exporters.codepipeline.action import (
+    CodePipelineActionExporter,
+    SingleCodePipelineActionRequest,
+    PaginatedCodePipelineActionRequest,
+)
