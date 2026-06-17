@@ -606,9 +606,36 @@
           "type": "number",
           "title": "Write Tool Rejected"
         },
-        "model_breakdown": {
+        "models_used": {
           "type": "array",
-          "title": "Model Breakdown"
+          "items": {
+            "type": "string"
+          },
+          "title": "Models Used"
+        },
+        "model_input_tokens": {
+          "type": "number",
+          "title": "Model Input Tokens"
+        },
+        "model_output_tokens": {
+          "type": "number",
+          "title": "Model Output Tokens"
+        },
+        "model_cache_read_tokens": {
+          "type": "number",
+          "title": "Model Cache Read Tokens"
+        },
+        "model_cache_creation_tokens": {
+          "type": "number",
+          "title": "Model Cache Creation Tokens"
+        },
+        "estimated_cost": {
+          "type": "number",
+          "title": "Estimated Cost (USD)"
+        },
+        "currency": {
+          "type": "string",
+          "title": "Currency"
         }
       },
       "required": [
