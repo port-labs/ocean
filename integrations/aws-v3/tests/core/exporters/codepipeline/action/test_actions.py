@@ -43,7 +43,7 @@ class TestGetPipelineActionsDetails:
             pipeline_with_no_actions,
         ]
 
-        def mock_get_pipeline(name: str):
+        def mock_get_pipeline(name: str) -> dict[str, Any]:
             return next(pipeline for pipeline in pipelines if pipeline["name"] == name)
 
         action.client.get_pipeline.side_effect = mock_get_pipeline
