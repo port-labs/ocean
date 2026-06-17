@@ -593,10 +593,10 @@ class GitlabDeploymentQueryParams(BaseModel):
         alias="updatedAfter",
         title="Updated After",
         description=(
-            "Return deployments updated after this datetime (ISO 8601 with timezone, "
-            "e.g. 2024-01-15T10:00:00Z). "
-            "Without this filter, every resync walks the full deployment history for all "
-            "projects ordered by id; strongly recommended for production instances."
+            "Limit synced deployments to those updated after this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-01-15T10:00:00Z). "
+            "This controls which deployments are synced into Port — deployments outside "
+            "this window will be removed from Port during reconciliation."
         ),
         regex=ISO_8601_DATETIME_REGEX,
     )
@@ -605,8 +605,9 @@ class GitlabDeploymentQueryParams(BaseModel):
         alias="updatedBefore",
         title="Updated Before",
         description=(
-            "Return deployments updated before this datetime (ISO 8601 with timezone, "
-            "e.g. 2024-06-01T00:00:00Z)."
+            "Limit synced deployments to those updated before this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-06-01T00:00:00Z). "
+            "Use together with updatedAfter to define a fixed sync window."
         ),
         regex=ISO_8601_DATETIME_REGEX,
     )
@@ -615,9 +616,10 @@ class GitlabDeploymentQueryParams(BaseModel):
         alias="finishedAfter",
         title="Finished After",
         description=(
-            "Return deployments whose CI job finished after this datetime "
+            "Limit synced deployments to those whose CI job finished after this datetime "
             "(ISO 8601 with timezone, e.g. 2024-01-01T00:00:00Z). "
-            "Requires status to be 'success'."
+            "Requires status to be 'success'. "
+            "Deployments outside this window will be removed from Port during reconciliation."
         ),
         regex=ISO_8601_DATETIME_REGEX,
     )
@@ -626,9 +628,10 @@ class GitlabDeploymentQueryParams(BaseModel):
         alias="finishedBefore",
         title="Finished Before",
         description=(
-            "Return deployments whose CI job finished before this datetime "
+            "Limit synced deployments to those whose CI job finished before this datetime "
             "(ISO 8601 with timezone, e.g. 2024-06-01T00:00:00Z). "
-            "Requires status to be 'success'."
+            "Requires status to be 'success'. "
+            "Use together with finishedAfter to define a fixed sync window."
         ),
         regex=ISO_8601_DATETIME_REGEX,
     )
