@@ -563,9 +563,7 @@ class EntityClientMixin:
         )
         batches = [
             entity_identifiers[i : i + batch_size_to_delete]
-            for i in range(
-                0, len(entity_identifiers), ENTITIES_BULK_DELETE_MAX_BATCH_SIZE
-            )
+            for i in range(0, len(entity_identifiers), batch_size_to_delete)
         ]
 
         batch_results = await asyncio.gather(
