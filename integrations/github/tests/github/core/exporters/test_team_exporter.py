@@ -577,7 +577,9 @@ class TestRestTeamExporterExternalGroup:
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestTeamExporter(rest_client)
-        teams: list[dict[str, Any]] = [{"slug": "team-alpha", "__organization": "test-org"}]
+        teams: list[dict[str, Any]] = [
+            {"slug": "team-alpha", "__organization": "test-org"}
+        ]
 
         with patch.object(rest_client, "send_api_request", return_value=None):
             result = await exporter.enrich_teams_with_external_group(teams, "test-org")
@@ -588,7 +590,9 @@ class TestRestTeamExporterExternalGroup:
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestTeamExporter(rest_client)
-        teams: list[dict[str, Any]] = [{"slug": "team-alpha", "__organization": "test-org"}]
+        teams: list[dict[str, Any]] = [
+            {"slug": "team-alpha", "__organization": "test-org"}
+        ]
 
         with patch.object(
             rest_client,
