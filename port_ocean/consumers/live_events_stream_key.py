@@ -1,6 +1,11 @@
 import re
 from urllib.parse import urlparse
 
+from port_ocean.exceptions.live_events import (
+    LiveEventsUuidNotFoundError,
+    MissingLiveEventsBaseUrlError,
+)
+
 _LIVE_EVENTS_UUID_PATTERN = re.compile(r"/live-events/([^/]+)")
 
 
@@ -13,16 +18,11 @@ def resolve_live_events_stream_key_from_base_url(base_url: str) -> str:
         -> 1111111/live-events/raw/event-stream
     """
     if not base_url:
-        raise ValueError(
-            "base_url is required to resolve the Redis live events stream key"
-        )
+        raise MissingLiveEventsBaseUrlError()
 
     path = urlparse(base_url).path
     match = _LIVE_EVENTS_UUID_PATTERN.search(path)
     if not match:
-        raise ValueError(
-            "base_url must include /live-events/{uuid} "
-            f"(e.g. https://host/live-events/your-uuid). Got: {base_url!r}"
-        )
+        raise LiveEventsUuidNotFoundError(base_url)
 
     return f"{match.group(1)}/live-events/raw/event-stream"

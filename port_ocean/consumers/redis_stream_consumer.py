@@ -15,6 +15,7 @@ from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.context.ocean import ocean
+from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
     LiveEventTimestamp,
     WebhookEvent,
@@ -63,7 +64,7 @@ class RedisStreamConsumer:
         self._redis: Redis | None = None
         self._ssl_cert_file: str | None = None
         self._ssl_key_file: str | None = None
-        self._running = False
+        self._is_running = False
         self._read_task: asyncio.Task[None] | None = None
         self._consumer_name = (
             f"{ocean.config.integration.identifier}-{socket.gethostname()}"
@@ -126,7 +127,7 @@ class RedisStreamConsumer:
     async def start(self) -> None:
         self._redis = Redis.from_url(self._settings.url, **self._redis_client_kwargs())
         await self._ensure_consumer_group()
-        self._running = True
+        self._is_running = True
         self._read_task = asyncio.create_task(self._read_loop())
 
         logger.info(
@@ -137,7 +138,7 @@ class RedisStreamConsumer:
         )
 
     async def stop(self) -> None:
-        self._running = False
+        self._is_running = False
         if self._read_task is not None:
             self._read_task.cancel()
             await asyncio.gather(self._read_task, return_exceptions=True)
@@ -168,7 +169,7 @@ class RedisStreamConsumer:
     async def _read_loop(self) -> None:
         assert self._redis is not None
 
-        while self._running:
+        while self._is_running:
             try:
                 response = await self._redis.xreadgroup(
                     groupname=self._consumer_group,
@@ -272,9 +273,7 @@ class RedisStreamConsumer:
             parsed = json.loads(parsed)
 
         if not isinstance(parsed, dict):
-            raise ValueError(
-                f"Redis stream {field_name} field must contain a JSON object"
-            )
+            raise InvalidLiveEventsRedisStreamFieldError(field_name)
         return parsed
 
     @staticmethod

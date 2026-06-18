@@ -10,6 +10,11 @@ from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.live_events_stream_key import (
     resolve_live_events_stream_key_from_base_url,
 )
+from port_ocean.exceptions.live_events import (
+    InvalidLiveEventsRedisStreamFieldError,
+    LiveEventsUuidNotFoundError,
+    MissingLiveEventsBaseUrlError,
+)
 from port_ocean.consumers.redis_stream_consumer import (
     RedisStreamConsumer,
     _WebhookRequestAdapter,
@@ -34,8 +39,14 @@ class TestResolveLiveEventsStreamKey:
             "abc-123/live-events/raw/event-stream"
         )
 
+    def test_raises_when_base_url_missing(self) -> None:
+        with pytest.raises(MissingLiveEventsBaseUrlError):
+            resolve_live_events_stream_key_from_base_url("")
+
     def test_raises_when_live_events_segment_missing(self) -> None:
-        with pytest.raises(ValueError, match="/live-events/\\{uuid\\}"):
+        with pytest.raises(
+            LiveEventsUuidNotFoundError, match="/live-events/\\{uuid\\}"
+        ):
             resolve_live_events_stream_key_from_base_url("https://host.example.com")
 
 
@@ -185,6 +196,12 @@ class TestRedisStreamConsumer:
         fields = {"payload": json.dumps(json.dumps(inner))}
 
         assert RedisStreamConsumer._parse_json_object_field(fields, "payload") == inner
+
+    def test_parse_json_object_field_raises_for_non_object_json(self) -> None:
+        fields = {"payload": json.dumps(["not", "an", "object"])}
+
+        with pytest.raises(InvalidLiveEventsRedisStreamFieldError, match="payload"):
+            RedisStreamConsumer._parse_json_object_field(fields, "payload")
 
     def test_get_field_is_case_insensitive(self) -> None:
         fields = {"Payload": "{}", "webhookPath": "/webhook"}
