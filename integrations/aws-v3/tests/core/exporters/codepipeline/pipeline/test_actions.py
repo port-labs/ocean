@@ -79,7 +79,7 @@ class TestGetPipelineTagsAction:
         result = await action.execute(data)
 
         # Assert
-        assert result == [tag_one, tag_two, {}]
+        assert result == [tag_one, tag_two]
 
         action.client.get_pipeline.assert_has_calls(
             [
