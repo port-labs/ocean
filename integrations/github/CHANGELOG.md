@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.0.4 (2026-06-18)
+
+
+### Bug Fixes
+
+- Fixed pull request resync stopping when only some repositories failed during parallel fetch; remaining repository pages are processed, failures are logged, and all errors are reported together when the resync completes
+
+
 ## 6.0.3 (2026-06-15)
 
 
