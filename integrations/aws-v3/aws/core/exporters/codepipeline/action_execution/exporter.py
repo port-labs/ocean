@@ -2,7 +2,6 @@ from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.codepipeline.action_execution.actions import (
     CodePipelineActionExecutionActionsMap,
-    CodePipelineActionExecutionInput,
 )
 from aws.core.exporters.codepipeline.action_execution.models import (
     CodePipelineActionExecution,
@@ -12,10 +11,11 @@ from aws.core.exporters.codepipeline.action_execution.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
+from tests.core.exporters.codepipeline import action_execution
 
 
 class CodePipelineActionExecutionExporter(
-    IResourceExporter[CodePipelineActionExecutionInput]
+    IResourceExporter[list[dict[str, Any]]]
 ):
     _service_name: SupportedServices = "codepipeline"
     _model_cls: Type[CodePipelineActionExecution] = CodePipelineActionExecution
@@ -34,26 +34,24 @@ class CodePipelineActionExecutionExporter(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            response = await inspector.inspect(
-                CodePipelineActionExecutionInput(
-                    items=[{"name": options.pipeline_name}],
-                    region=options.region,
-                    account_id=options.account_id,
-                ),
-                options.include,
-                extra_context={
-                    "AccountId": options.account_id,
-                    "Region": options.region,
-                },
-            )
+            paginator = proxy.get_paginator('list_action_executions', 'actionExecutionDetails')
+            response_actions = []
+            async for action_executions in paginator.paginate(pipelineName=options.pipeline_name):
+                response_actions.extend(await inspector.inspect(
+                    action_executions,
+                    options.include,
+                    extra_context={
+                        "AccountId": options.account_id,
+                        "Region": options.region,
+                    },
+                ))
 
-            if response:
-                for execution in response:
-                    if (
-                        execution.get("actionExecutionId")
-                        == options.action_execution_id
-                    ):
-                        return execution
+            for execution in response_actions:
+                if (
+                    execution.get("actionExecutionId")
+                    == options.action_execution_id
+                ):
+                    return execution
 
             return {}
 
@@ -68,22 +66,17 @@ class CodePipelineActionExecutionExporter(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            paginator = proxy.get_paginator("list_pipelines", "pipelines")
+            pipeline_paginator = proxy.get_paginator("list_pipelines", "pipelines")
+            action_paginator = proxy.get_paginator('list_action_executions', 'actionExecutionDetails')
 
-            async for pipelines in paginator.paginate():
-                if pipelines:
-                    action_result = await inspector.inspect(
-                        CodePipelineActionExecutionInput(
-                            items=pipelines,
-                            region=options.region,
-                            account_id=options.account_id,
-                        ),
-                        options.include,
-                        extra_context={
-                            "AccountId": options.account_id,
-                            "Region": options.region,
-                        },
-                    )
-                    yield action_result
-                else:
-                    yield []
+            async for pipelines in pipeline_paginator.paginate():
+                for pipeline in pipelines:
+                    async for action_executions in action_paginator.paginate(pipelineName=pipeline['name']):
+                        yield await inspector.inspect(
+                            action_executions,
+                            options.include,
+                            extra_context={
+                                "AccountId": options.account_id,
+                                "Region": options.region,
+                            },
+                        )
