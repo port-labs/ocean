@@ -15,7 +15,7 @@ from aws.core.exporters.codepipeline.action import (
     PaginatedCodePipelineActionRequest,
 )
 from aws.core.exporters.codepipeline.pipeline_execution import (
-CodePipelinePipelineExecutionExporter,
+    CodePipelinePipelineExecutionExporter,
     SinglePipelineExecutionRequest,
     PaginatedPipelineExecutionRequest,
 )

@@ -62,8 +62,8 @@ from aws.core.exporters.codepipeline import (
     PaginatedCodePipelineStageRequest,
     CodePipelineActionExporter,
     PaginatedCodePipelineActionRequest,
-CodePipelinePipelineExecutionExporter,
-PaginatedPipelineExecutionRequest
+    CodePipelinePipelineExecutionExporter,
+    PaginatedPipelineExecutionRequest,
 )
 from aws.core.helpers.utils import is_access_denied_exception
 
@@ -367,9 +367,14 @@ async def resync_codepipeline_action(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(ObjectKind.CODEPIPELINE_PIPELINE_EXECUTION)
-async def resync_codepipeline_pipeline_execution(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_codepipeline_pipeline_execution(
+    kind: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
-        kind, CodePipelinePipelineExecutionExporter, PaginatedPipelineExecutionRequest, regional=True
+        kind,
+        CodePipelinePipelineExecutionExporter,
+        PaginatedPipelineExecutionRequest,
+        regional=True,
     )
     async for batch in service:
         yield batch

@@ -1,7 +1,9 @@
 from typing import Any, AsyncGenerator, Type
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.codepipeline.pipeline_execution.actions import CodePipelinePipelineExecutionActionsMap, \
-    CodePipelineExecutionActionInput
+from aws.core.exporters.codepipeline.pipeline_execution.actions import (
+    CodePipelinePipelineExecutionActionsMap,
+    CodePipelineExecutionActionInput,
+)
 from aws.core.exporters.codepipeline.pipeline_execution.models import PipelineExecution
 from aws.core.exporters.codepipeline.pipeline_execution.models import (
     SinglePipelineExecutionRequest,
@@ -12,12 +14,18 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class CodePipelinePipelineExecutionExporter(IResourceExporter):
+class CodePipelinePipelineExecutionExporter(
+    IResourceExporter[CodePipelineExecutionActionInput]
+):
     _service_name: SupportedServices = "codepipeline"
     _model_cls: Type[PipelineExecution] = PipelineExecution
-    _actions_map: Type[CodePipelinePipelineExecutionActionsMap] = CodePipelinePipelineExecutionActionsMap
+    _actions_map: Type[CodePipelinePipelineExecutionActionsMap] = (
+        CodePipelinePipelineExecutionActionsMap
+    )
 
-    async def get_resource(self, options: SinglePipelineExecutionRequest) -> dict[str, Any]:
+    async def get_resource(
+        self, options: SinglePipelineExecutionRequest
+    ) -> dict[str, Any]:
         """Fetch detailed attributes of a single pipeline execution."""
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
@@ -29,7 +37,7 @@ class CodePipelinePipelineExecutionExporter(IResourceExporter):
             # Create a mock execution object for the inspector
             mock_execution = {
                 "pipelineName": options.pipeline_name,
-                "pipelineExecutionId": options.pipeline_execution_id
+                "pipelineExecutionId": options.pipeline_execution_id,
             }
 
             response = await inspector.inspect(
@@ -56,13 +64,19 @@ class CodePipelinePipelineExecutionExporter(IResourceExporter):
             )
 
             pipeline_paginator = proxy.get_paginator("list_pipelines", "pipelines")
-            execution_paginator = proxy.get_paginator("list_pipeline_executions", "pipelineExecutionSummaries")
+            execution_paginator = proxy.get_paginator(
+                "list_pipeline_executions", "pipelineExecutionSummaries"
+            )
 
             async for pipelines in pipeline_paginator.paginate():
                 for pipeline in pipelines:
-                    async for executions in execution_paginator.paginate(pipelineName=pipeline["name"]):
+                    async for executions in execution_paginator.paginate(
+                        pipelineName=pipeline["name"]
+                    ):
                         yield await inspector.inspect(
-                            CodePipelineExecutionActionInput(items=executions, pipeline_name=pipeline["name"]),
+                            CodePipelineExecutionActionInput(
+                                items=executions, pipeline_name=pipeline["name"]
+                            ),
                             options.include,
                             extra_context={
                                 "AccountId": options.account_id,
