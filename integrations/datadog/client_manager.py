@@ -54,17 +54,13 @@ class DatadogClientManager:
     """
 
     def __init__(self, config: dict[str, Any]) -> None:
-        # Multi-org is inferred from the presence of a credential map rather than a
-        # separate flag: a configured map means multiple orgs, its absence a single one.
         self.is_multi_org: bool = bool(config.get("datadog_credential_map"))
         clients = (
             init_client_for_multi_org(config)
             if self.is_multi_org
             else [init_client_single_org(config)]
         )
-        # Org names aren't unique, so a name maps to a list of candidate clients.
-        # Datadog org names are case-insensitive, so the index is keyed by the
-        # lower-cased name (and looked up the same way).
+
         self._clients_by_org_name: dict[str | None, list[DatadogClient]] = defaultdict(
             list
         )
