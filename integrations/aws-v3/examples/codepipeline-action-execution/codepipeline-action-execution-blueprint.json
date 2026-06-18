@@ -19,11 +19,6 @@
         "title": "Stage Name",
         "description": "The name of the stage containing the action"
       },
-      "pipelineName": {
-        "type": "string",
-        "title": "Pipeline Name",
-        "description": "The name of the pipeline"
-      },
       "pipelineExecutionId": {
         "type": "string",
         "title": "Pipeline Execution ID",
@@ -61,11 +56,6 @@
         "type": "object",
         "title": "Output",
         "description": "Output details for the action execution"
-      },
-      "region": {
-        "type": "string",
-        "title": "Region",
-        "description": "The AWS region where the action execution occurred"
       }
     },
     "required": []
