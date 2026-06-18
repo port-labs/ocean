@@ -23,6 +23,10 @@ class ObjectKind(StrEnum):
     EC2_VOLUME = "AWS::EC2::Volume"
     CODEBUILD_PROJECT = "AWS::CodeBuild::Project"
     CODEBUILD_BUILD_RUN = "AWS::CodeBuild::BuildRun"
+    CODEDEPLOY_APPLICATION = "AWS::CodeDeploy::Application"
+    CODEDEPLOY_DEPLOYMENT_GROUP = "AWS::CodeDeploy::DeploymentGroup"
+    CODEPIPELINE_PIPELINE = "AWS::CodePipeline::Pipeline"
+    CODEPIPELINE_ACTION = "AWS::CodePipeline::Action"
 
 
 SupportedServices = Literal[
@@ -39,4 +43,6 @@ SupportedServices = Literal[
     "kafka",
     "elasticache",
     "codebuild",
+    "codedeploy",
+    "codepipeline",
 ]
