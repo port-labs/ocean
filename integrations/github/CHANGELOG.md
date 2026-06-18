@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.0.5 (2026-06-18)
+
+
+### Features
+
+- Added a `closedSinceDate` pull request selector to ingest all closed PRs since an absolute date.
+
+
 ## 6.0.4 (2026-06-18)
 
 
