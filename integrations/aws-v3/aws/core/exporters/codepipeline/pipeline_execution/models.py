@@ -39,5 +39,4 @@ class SinglePipelineExecutionRequest(ResourceRequestModel):
 
 class PaginatedPipelineExecutionRequest(ResourceRequestModel):
     """Options for exporting all pipeline executions in a region."""
-    pipeline_name: Optional[str] = Field(None, description="Optional pipeline name filter")
-    max_results: Optional[int] = Field(100, description="Maximum number of results per page")
+    pass
