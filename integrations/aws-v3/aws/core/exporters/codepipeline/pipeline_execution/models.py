@@ -5,21 +5,21 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 
 class PipelineExecutionProperties(BaseModel):
-    artifactRevisions: list[dict[str, Any]] | None = None
-    executionMode: str | None = None
-    executionType: str | None = None
-    lastUpdateTime: datetime | None = None
-    pipelineExecutionId: str | None = None
-    pipelineName: str | None = None
-    pipelineVersion: int | None = None
-    rollbackMetadata: dict[str, Any] | None = None
-    sourceRevisions: list[dict[str, Any]] | None = None
-    startTime: datetime | None = None
-    status: str | None = None
-    statusSummary: str | None = None
-    stopTrigger: dict[str, Any] | None = None
-    trigger: dict[str, Any] | None = None
-    variables: list[dict[str, Any]] | None = None
+    artifactRevisions: list[dict[str, Any]] | None = Field(default=None, alias="ArtifactRevisions")
+    executionMode: str | None = Field(default=None, alias="ExecutionMode")
+    executionType: str | None = Field(default=None, alias="ExecutionType")
+    lastUpdateTime: datetime | None = Field(default=None, alias="LastUpdateTime")
+    pipelineExecutionId: str | None = Field(default=None, alias="PipelineExecutionId")
+    pipelineName: str | None = Field(default=None, alias="PipelineName")
+    pipelineVersion: int | None = Field(default=None, alias="PipelineVersion")
+    rollbackMetadata: dict[str, Any] | None = Field(default=None, alias="RollbackMetadata")
+    sourceRevisions: list[dict[str, Any]] | None = Field(default=None, alias="SourceRevisions")
+    startTime: datetime | None = Field(default=None, alias="StartTime")
+    status: str | None = Field(default=None, alias="Status")
+    statusSummary: str | None = Field(default=None, alias="StatusSummary")
+    stopTrigger: dict[str, Any] | None = Field(default=None, alias="StopTrigger")
+    trigger: dict[str, Any] | None = Field(default=None, alias="Trigger")
+    variables: list[dict[str, Any]] | None = Field(default=None, alias="Variables")
 
     class Config:
         extra = "ignore"
