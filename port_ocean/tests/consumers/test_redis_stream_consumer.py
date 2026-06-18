@@ -1,7 +1,10 @@
+import base64
 import json
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from redis.asyncio.connection import SSLConnection
 
 from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.live_events_stream_key import (
@@ -51,6 +54,129 @@ def mock_ocean_config() -> MagicMock:
     mock_ocean.config.integration.type = "test"
     mock_ocean.config.integration.identifier = "integration"
     return mock_ocean
+
+
+def _pem_b64(content: str) -> str:
+    return base64.b64encode(content.encode()).decode()
+
+
+class TestRedisStreamConsumerConnection:
+    def test_redis_client_kwargs_includes_username_and_password(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            username="redis-user",
+            password="redis-pass",
+        )
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+
+        assert consumer._redis_client_kwargs() == {
+            "decode_responses": True,
+            "username": "redis-user",
+            "password": "redis-pass",
+        }
+
+    def test_redis_client_kwargs_includes_tls_material(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        ca_pem = "-----BEGIN CERTIFICATE-----\nca\n-----END CERTIFICATE-----"
+        cert_pem = "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----"
+        key_pem = "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----"
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            enable_tls=True,
+            ca=_pem_b64(ca_pem),
+            cert=_pem_b64(cert_pem),
+            private_key=_pem_b64(key_pem),
+        )
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+
+        kwargs = consumer._redis_client_kwargs()
+
+        assert kwargs["connection_class"] is SSLConnection
+        assert kwargs["ssl_ca_data"] == ca_pem
+        assert kwargs["ssl_certfile"] == consumer._ssl_cert_file
+        assert kwargs["ssl_keyfile"] == consumer._ssl_key_file
+        with open(kwargs["ssl_certfile"], encoding="utf-8") as cert_file:
+            assert cert_file.read() == cert_pem
+        with open(kwargs["ssl_keyfile"], encoding="utf-8") as key_file:
+            assert key_file.read() == key_pem
+
+        consumer._cleanup_tls_files()
+
+    def test_redis_client_kwargs_uses_tls_for_rediss_url(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(url="rediss://localhost:6379")
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+
+        kwargs = consumer._redis_client_kwargs()
+
+        assert kwargs["connection_class"] is SSLConnection
+
+    @pytest.mark.asyncio
+    async def test_stop_cleans_up_tls_files(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="rediss://localhost:6379",
+            cert=_pem_b64(
+                "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----"
+            ),
+            private_key=_pem_b64(
+                "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----"
+            ),
+        )
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis_client_kwargs()
+            cert_path = consumer._ssl_cert_file
+            key_path = consumer._ssl_key_file
+
+            consumer._redis = AsyncMock()
+            consumer._read_task = None
+            await consumer.stop()
+
+        assert cert_path is not None
+        assert key_path is not None
+        assert not os.path.exists(cert_path)
+        assert not os.path.exists(key_path)
 
 
 class TestRedisStreamConsumer:

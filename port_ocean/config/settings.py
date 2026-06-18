@@ -114,6 +114,22 @@ class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
 
 class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
     url: str = Field(default="redis://localhost:6379")
+    username: str | None = None
+    password: str | None = Field(default=None, sensitive=True)
+    enable_tls: bool = False
+    ca: str | None = Field(
+        default=None,
+        description="Base64-encoded PEM CA certificate bundle for TLS verification.",
+    )
+    cert: str | None = Field(
+        default=None,
+        description="Base64-encoded PEM client certificate for mutual TLS.",
+    )
+    private_key: str | None = Field(
+        default=None,
+        sensitive=True,
+        description="Base64-encoded PEM private key for mutual TLS.",
+    )
     consumer_group: str | None = None
     block_ms: int = Field(default=1000, ge=1)
 

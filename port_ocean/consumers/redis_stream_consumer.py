@@ -1,12 +1,16 @@
 import asyncio
+import base64
 import json
+import os
 import socket
+import tempfile
 from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import uuid4
 
 from loguru import logger
 from redis.asyncio import Redis
+from redis.asyncio.connection import SSLConnection
 from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
@@ -57,6 +61,8 @@ class RedisStreamConsumer:
         self._consumer_group = consumer_group or self._resolve_consumer_group()
         self._registered_paths = registered_paths or set()
         self._redis: Redis | None = None
+        self._ssl_cert_file: str | None = None
+        self._ssl_key_file: str | None = None
         self._running = False
         self._read_task: asyncio.Task[None] | None = None
         self._consumer_name = (
@@ -67,8 +73,58 @@ class RedisStreamConsumer:
         integration = ocean.config.integration
         return f"{integration.type}.{integration.identifier}"
 
+    def _decode_base64_pem(self, value: str) -> str:
+        return base64.b64decode(value).decode()
+
+    def _materialize_client_tls_files(self) -> tuple[str | None, str | None]:
+        if not self._settings.cert or not self._settings.private_key:
+            return None, None
+
+        cert_pem = self._decode_base64_pem(self._settings.cert)
+        key_pem = self._decode_base64_pem(self._settings.private_key)
+
+        cert_fd, cert_path = tempfile.mkstemp(suffix=".pem", prefix="redis-cert-")
+        key_fd, key_path = tempfile.mkstemp(suffix=".pem", prefix="redis-key-")
+        with os.fdopen(cert_fd, "w") as cert_file:
+            cert_file.write(cert_pem)
+        with os.fdopen(key_fd, "w") as key_file:
+            key_file.write(key_pem)
+
+        self._ssl_cert_file = cert_path
+        self._ssl_key_file = key_path
+        return cert_path, key_path
+
+    def _cleanup_tls_files(self) -> None:
+        for path in (self._ssl_cert_file, self._ssl_key_file):
+            if path and os.path.exists(path):
+                os.unlink(path)
+        self._ssl_cert_file = None
+        self._ssl_key_file = None
+
+    def _redis_client_kwargs(self) -> dict[str, Any]:
+        """Connection kwargs for redis-py, including auth and TLS for cloud Redis."""
+        kwargs: dict[str, Any] = {"decode_responses": True}
+        if self._settings.username:
+            kwargs["username"] = self._settings.username
+        if self._settings.password is not None:
+            kwargs["password"] = self._settings.password
+
+        if not self._settings.enable_tls:
+            return kwargs
+
+        kwargs["connection_class"] = SSLConnection
+        if self._settings.ca:
+            kwargs["ssl_ca_data"] = self._decode_base64_pem(self._settings.ca)
+
+        cert_path, key_path = self._materialize_client_tls_files()
+        if cert_path and key_path:
+            kwargs["ssl_certfile"] = cert_path
+            kwargs["ssl_keyfile"] = key_path
+
+        return kwargs
+
     async def start(self) -> None:
-        self._redis = Redis.from_url(self._settings.url, decode_responses=True)
+        self._redis = Redis.from_url(self._settings.url, **self._redis_client_kwargs())
         await self._ensure_consumer_group()
         self._running = True
         self._read_task = asyncio.create_task(self._read_loop())
@@ -89,6 +145,7 @@ class RedisStreamConsumer:
         if self._redis is not None:
             await self._redis.aclose()
             self._redis = None
+        self._cleanup_tls_files()
 
     async def _ack(self, message_id: str) -> None:
         if self._redis is None:
@@ -101,7 +158,7 @@ class RedisStreamConsumer:
             await self._redis.xgroup_create(
                 self._stream_key,
                 self._consumer_group,
-                id="0",
+                id="$",
                 mkstream=True,
             )
         except ResponseError as error:
