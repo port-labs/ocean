@@ -180,5 +180,80 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "codedeployDeploymentTarget",
+    "title": "CodeDeploy Deployment Target",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "deploymentId": {
+          "type": "string",
+          "title": "Deployment ID",
+          "description": "The unique ID of the deployment"
+        },
+        "deploymentTargetType": {
+          "type": "string",
+          "title": "Deployment Target Type",
+          "description": "The deployment type that is specific to the deployment's compute platform",
+          "enum": [
+            "InstanceTarget",
+            "LambdaTarget",
+            "ECSTarget",
+            "CloudFormationTarget"
+          ]
+        },
+        "targetId": {
+          "type": "string",
+          "title": "Target ID",
+          "description": "The unique ID of a deployment target"
+        },
+        "targetArn": {
+          "type": "string",
+          "title": "Target ARN",
+          "description": "The Amazon Resource Name (ARN) of the target"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the deployment lifecycle event",
+          "enum": [
+            "Pending",
+            "InProgress",
+            "Succeeded",
+            "Failed",
+            "Skipped",
+            "Unknown",
+            "Ready"
+          ]
+        },
+        "lastUpdatedAt": {
+          "type": "string",
+          "title": "Last Updated At",
+          "description": "The date and time when the target was last updated",
+          "format": "date-time"
+        },
+        "lifecycleEvents": {
+          "type": "array",
+          "title": "Lifecycle Events",
+          "description": "The lifecycle events of the deployment to this target",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
