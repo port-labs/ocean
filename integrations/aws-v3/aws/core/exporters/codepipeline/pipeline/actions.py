@@ -88,7 +88,6 @@ class GetPipelineTagsAction(PipelineAction[CodePipelinePipelineActionInput]):
                 logger.error(
                     f"Error fetching tags for pipeline '{pipeline_name}': {tag_result}"
                 )
-                results.append({})
                 continue
             results.append(cast(Dict[str, Any], tag_result))
         return results
@@ -103,7 +102,7 @@ class GetPipelineTagsAction(PipelineAction[CodePipelinePipelineActionInput]):
 
         response = await self.client.list_tags_for_resource(resourceArn=pipeline_arn)
         logger.info(f"Successfully fetched tags for pipeline {resource["name"]}")
-        return response
+        return {'name': resource['name'], **response}
 
 
 class PipelineActionsMap(ActionMap[CodePipelinePipelineActionInput]):
