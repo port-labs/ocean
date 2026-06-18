@@ -2,9 +2,9 @@ import platform
 from typing import Any, Literal, Optional, Type
 
 from pydantic.v1 import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
-from pydantic.class_validators import root_validator, validator
-from pydantic.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
-from pydantic.main import BaseModel
+from pydantic.v1.class_validators import root_validator, validator
+from pydantic.v1.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
+from pydantic.v1.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import (

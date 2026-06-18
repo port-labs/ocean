@@ -7,8 +7,8 @@ import yaml
 from humps import decamelize
 from pathlib import Path
 from pydantic.v1 import BaseSettings
-from pydantic.env_settings import EnvSettingsSource, InitSettingsSource
-from pydantic.main import ModelMetaclass, BaseModel
+from pydantic.v1.env_settings import EnvSettingsSource, InitSettingsSource
+from pydantic.v1.main import ModelMetaclass, BaseModel
 
 PROVIDER_WRAPPER_PATTERN = r"{{ from (.*) }}"
 PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"

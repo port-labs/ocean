@@ -11,7 +11,7 @@ from pydantic.v1 import (
     parse_obj_as,
     validator,
 )
-from pydantic.fields import ModelField, Field
+from pydantic.v1.fields import ModelField, Field
 
 from port_ocean.config.base import BaseOceanModel
 
