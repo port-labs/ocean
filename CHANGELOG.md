@@ -7,6 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.43.21 (2026-06-18)
+
+### Improvements
+
+- Added Redis stream consumption for live events, gated by the `LIVE_EVENTS_REDIS_STREAM_ENABLED` organization feature flag. When enabled, `LiveEventsProcessorManager` consumes webhook events from a Redis stream derived from `base_url` and routes them through existing processors instead of in-process HTTP queues.
+- Added `live_events.redis` configuration for Redis URL, credentials, TLS/mTLS (base64-encoded PEM `ca`, `cert`, `private_key`), consumer group, and read block timeout.
+- Redis stream ingestion supports case-insensitive field names, double-encoded JSON `payload`/`headers`, webhook path normalization, and raw-body forwarding for HMAC signature verification.
+- Added domain-specific live events exceptions for Redis stream key resolution and invalid stream field validation.
+
 ## 0.43.18 (2026-06-15)
 
 ### Improvements
