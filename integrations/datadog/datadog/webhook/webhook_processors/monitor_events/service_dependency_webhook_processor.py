@@ -81,6 +81,7 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
                 continue
             service_dependencies = [result for result in results if result]
             if service_dependencies:
+                self._enrich_with_org_id(service_dependencies, client)
                 break
 
         return WebhookEventRawResults(

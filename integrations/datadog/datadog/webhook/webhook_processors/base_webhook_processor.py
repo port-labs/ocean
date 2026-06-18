@@ -8,6 +8,8 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
 
+from datadog.client import DatadogClient
+from datadog.utils import ORG_ID_ENRICHMENT_KEY, enrich_batch
 from datadog.webhook.webhook_client import PORT_AUTH_HEADER_NAME
 
 
@@ -16,6 +18,16 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
     def __init__(self, event: WebhookEvent) -> None:
         super().__init__(event)
         self._client_manager = get_client_manager()
+
+    def _enrich_with_org_id(
+        self, items: list[dict[str, Any]], client: DatadogClient
+    ) -> None:
+        if self._client_manager.is_multi_org:
+            enrich_batch(
+                items,
+                enrichment_key=ORG_ID_ENRICHMENT_KEY,
+                enrichment_data=client.org_id,
+            )
 
     async def authenticate(
         self, payload: EventPayload, headers: dict[str, Any]

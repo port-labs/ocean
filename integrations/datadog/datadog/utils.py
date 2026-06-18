@@ -4,6 +4,8 @@ from typing import Any
 
 from datadog.types import RestrictionPolicyResource
 
+ORG_ID_ENRICHMENT_KEY = "__org_id"
+
 
 def get_start_of_the_month_in_seconds_x_months_back(months_back: int) -> int:
     """

@@ -13,6 +13,7 @@ def mock_client_manager() -> Generator[MagicMock, None, None]:
     can be created without real Datadog credentials. By default the manager
     resolves any payload to a single mock client."""
     manager = MagicMock()
+    manager.is_multi_org = False
     manager.clients = [MagicMock()]
     manager.get_clients_by_org_name.return_value = [MagicMock()]
     manager.get_client_by_org_id.return_value = MagicMock()

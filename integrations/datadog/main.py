@@ -11,7 +11,7 @@ from port_ocean.utils.async_iterators import (
 )
 
 from datadog.client import DatadogClient
-from datadog.utils import enrich_batch
+from datadog.utils import ORG_ID_ENRICHMENT_KEY, enrich_batch
 from datadog.core.exporters.role_exporter import ListRoleOptions
 from client_manager import get_client_manager
 from integration import ObjectKind
@@ -50,7 +50,6 @@ from datadog.overrides import (
 
 
 MAX_CONCURRENT_CLIENTS = 100
-ORG_ID_ENRICHMENT_KEY = "__org_id"
 
 
 async def _resync_across_orgs(
@@ -59,6 +58,7 @@ async def _resync_across_orgs(
     enrich_with_org_id: bool = True,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     manager = get_client_manager()
+
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLIENTS)
 
     def build_org_iterator(

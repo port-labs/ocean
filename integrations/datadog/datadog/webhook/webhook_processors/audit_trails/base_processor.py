@@ -97,6 +97,8 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
             )
 
         resource = await self._fetch_resource(client, event, resource_config)
+        if resource:
+            self._enrich_with_org_id([resource], client)
 
         return WebhookEventRawResults(
             updated_raw_results=[resource] if resource else [],
