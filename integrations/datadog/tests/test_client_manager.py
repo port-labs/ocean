@@ -46,7 +46,7 @@ async def _build_enriched_manager(
     manager = DatadogClientManager(config)
     for client, (public_id, name) in zip(manager.clients, orgs):
         _stub_org(client, public_id, name)
-    await manager.validate_and_enrich()
+    await manager.validate_credentials()
     return manager
 
 
@@ -112,7 +112,7 @@ def test_init_client_for_multi_org_yields_client_per_entry() -> None:
 
     assert len(clients) == 2
     assert {c.dd_api_key for c in clients} == {"api-1", "api-2"}
-    # org identity is unknown until validate_and_enrich() runs
+    # org identity is unknown until validate_credentials() runs
     assert all(c.org_id is None and c.org_name is None for c in clients)
     assert all(c.api_url == BASE_URL for c in clients)
 
@@ -206,12 +206,12 @@ def test_get_client_manager_is_cached(patch_integration_config: Any) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# validate_and_enrich
+# validate_credentials
 # --------------------------------------------------------------------------- #
 
 
 @pytest.mark.asyncio
-async def test_validate_and_enrich_tags_clients_with_org_identity() -> None:
+async def test_validate_credentials_tags_clients_with_org_identity() -> None:
     manager = await _build_enriched_manager(
         [("uuid-1", "DPN | Port"), ("uuid-2", "Demo")]
     )
@@ -221,7 +221,7 @@ async def test_validate_and_enrich_tags_clients_with_org_identity() -> None:
 
 
 @pytest.mark.asyncio
-async def test_validate_and_enrich_drops_clients_with_invalid_keys() -> None:
+async def test_validate_credentials_drops_clients_with_invalid_keys() -> None:
     config = {
         "datadog_base_url": BASE_URL,
         "datadog_credential_map": _credential_map_string(),
@@ -236,14 +236,14 @@ async def test_validate_and_enrich_drops_clients_with_invalid_keys() -> None:
         )
     )
 
-    await manager.validate_and_enrich()
+    await manager.validate_credentials()
 
     assert [c.org_name for c in manager.clients] == ["Good Org"]
     assert manager.get_clients_by_org_id("uuid-good") == [good]
 
 
 @pytest.mark.asyncio
-async def test_validate_and_enrich_is_noop_for_single_org() -> None:
+async def test_validate_credentials_is_noop_for_single_org() -> None:
     config = {
         "datadog_base_url": BASE_URL,
         "datadog_api_key": "api",
@@ -254,7 +254,7 @@ async def test_validate_and_enrich_is_noop_for_single_org() -> None:
     sole = manager.clients[0]
     sole.send_api_request = AsyncMock()  # type: ignore[method-assign]
 
-    await manager.validate_and_enrich()
+    await manager.validate_credentials()
 
     sole.send_api_request.assert_not_called()
     assert manager.clients == [sole]

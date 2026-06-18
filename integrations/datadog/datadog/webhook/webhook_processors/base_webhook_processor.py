@@ -46,12 +46,9 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
             logger.warning("Webhook authentication failed: invalid secret")
         return is_valid
 
-    def _get_auth_header_value(self, headers: dict[str, Any]) -> str | None:
-        return self._get_header_value(headers, PORT_AUTH_HEADER_NAME)
-
     @staticmethod
-    def _get_header_value(headers: dict[str, Any], name: str) -> str | None:
-        expected_header_name = name.lower()
+    def _get_auth_header_value(headers: dict[str, Any]) -> str | None:
+        expected_header_name = PORT_AUTH_HEADER_NAME.lower()
         for header_name, value in headers.items():
             if header_name.lower() == expected_header_name:
                 return str(value)

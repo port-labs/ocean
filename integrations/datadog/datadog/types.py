@@ -12,7 +12,7 @@ class OrgCredentials(BaseModel):
     """Per-organization Datadog credentials as supplied in datadogCredentialMap.
 
     The org's identity (id/name) isn't configured — it's discovered from Datadog
-    at startup while validating the keys (see DatadogClientManager.validate_and_enrich).
+    at startup while validating the keys (see DatadogClientManager.validate_credentials).
     """
 
     api_key: str = Field(..., alias="datadogApiKey")
