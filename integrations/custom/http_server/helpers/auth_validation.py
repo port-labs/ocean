@@ -80,7 +80,7 @@ def validate_custom_auth_request_template_config(
                 CustomAuthRequestTemplateConfig, custom_auth_request_template_config
             )
     except CustomAuthRequestTemplateError:
-        # Re-raise CustomAuthRequestTemplateError as-is (from pydantic.v1 validator)
+        # Re-raise CustomAuthRequestTemplateError as-is (from pydantic validator)
         raise
     except Exception as e:
         # Wrap other parsing errors
