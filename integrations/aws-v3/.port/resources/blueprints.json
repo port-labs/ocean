@@ -115,6 +115,90 @@
     }
   },
   {
+    "identifier": "codePipelineActionExecution",
+    "title": "CodePipeline Action Execution",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "actionExecutionId": {
+          "type": "string",
+          "title": "Action Execution ID",
+          "description": "The unique ID of the action execution"
+        },
+        "actionName": {
+          "type": "string",
+          "title": "Action Name",
+          "description": "The name of the action"
+        },
+        "stageName": {
+          "type": "string",
+          "title": "Stage Name",
+          "description": "The name of the stage containing the action"
+        },
+        "pipelineName": {
+          "type": "string",
+          "title": "Pipeline Name",
+          "description": "The name of the pipeline"
+        },
+        "pipelineExecutionId": {
+          "type": "string",
+          "title": "Pipeline Execution ID",
+          "description": "The pipeline execution ID associated with this action execution"
+        },
+        "pipelineVersion": {
+          "type": "number",
+          "title": "Pipeline Version",
+          "description": "The version of the pipeline when the action was executed"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the action execution",
+          "enum": ["InProgress", "Abandoned", "Succeeded", "Failed"]
+        },
+        "startTime": {
+          "type": "string",
+          "title": "Start Time",
+          "description": "The start time of the action execution",
+          "format": "date-time"
+        },
+        "lastUpdateTime": {
+          "type": "string",
+          "title": "Last Update Time",
+          "description": "The last update time of the action execution",
+          "format": "date-time"
+        },
+        "input": {
+          "type": "object",
+          "title": "Input",
+          "description": "Input details for the action execution"
+        },
+        "output": {
+          "type": "object",
+          "title": "Output",
+          "description": "Output details for the action execution"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The AWS region where the action execution occurred"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "ecsCluster",
     "title": "ECS Cluster",
     "icon": "AWS",

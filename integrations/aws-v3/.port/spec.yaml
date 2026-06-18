@@ -24,6 +24,7 @@ features:
       - kind: AWS::CodeDeploy::DeploymentGroup
       - kind: AWS::CodePipeline::Pipeline
       - kind: AWS::CodePipeline::Action
+      - kind: AWS::CodePipeline::ActionExecution
 configurations:
   - name: credentialProviderPriority
     required: false
