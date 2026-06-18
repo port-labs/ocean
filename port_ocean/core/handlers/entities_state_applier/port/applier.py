@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 from loguru import logger
 
@@ -166,25 +167,41 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         logger.info(f"Deleting {len(entities)} entities")
-        delete_batch_size = ocean.config.delete_entities_max_batch_size
-        if event.port_app_config.delete_dependent_entities:
-            while entities:
-                batch = entities[:delete_batch_size]
-                await self.context.port_client.batch_delete_entities(
-                    batch,
-                    event.port_app_config.get_port_request_options(),
-                    user_agent_type,
-                    should_raise=False,
+        request_options = event.port_app_config.get_port_request_options()
+        delete_dependent_entities = event.port_app_config.delete_dependent_entities
+
+        ordered_entities = (
+            entities
+            if delete_dependent_entities
+            else EntityTopologicalSorter.order_by_entities_dependencies(entities)
+        )
+
+        blueprint_groups: dict[str, list[str]] = defaultdict(list)
+        for entity in ordered_entities:
+            blueprint_groups[entity.blueprint].append(entity.identifier)
+
+        if delete_dependent_entities:
+            # port cascades deletion of dependent entities, so we can delete in bulk
+            await asyncio.gather(
+                *(
+                    self.context.port_client.bulk_delete_entities(
+                        blueprint,
+                        identifiers,
+                        request_options,
+                        user_agent_type,
+                        should_raise=False,
+                    )
+                    for blueprint, identifiers in blueprint_groups.items()
                 )
-                entities = entities[delete_batch_size:]
-        else:
-            ordered_deleted_entities = (
-                EntityTopologicalSorter.order_by_entities_dependencies(entities)
             )
-            for entity in ordered_deleted_entities:
-                await self.context.port_client.delete_entity(
-                    entity,
-                    event.port_app_config.get_port_request_options(),
+        else:
+            # delete entities one by one in topological order to prevent deletion
+            # of entities that are still referenced by other entities
+            for entity in ordered_entities:
+                await self.context.port_client.bulk_delete_entities(
+                    entity.blueprint,
+                    [entity.identifier],
+                    request_options,
                     user_agent_type,
                     should_raise=False,
                 )
