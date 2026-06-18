@@ -6,6 +6,7 @@ from loguru import logger
 from pydantic import ValidationError
 
 from datadog.client import DatadogClient
+from datadog.core.exporters import OrgExporter
 from datadog.types import DatadogCredentialMap, OrgCredentials
 from port_ocean.context.ocean import ocean
 
@@ -61,8 +62,8 @@ class DatadogClientManager:
             if self.is_multi_org
             else [init_client_single_org(config)]
         )
-        self._clients_by_org_id: dict[str | None, list[DatadogClient]] = {}
-        self._clients_by_org_name: dict[str | None, list[DatadogClient]] = {}
+        self._clients_by_org_id: dict[str, DatadogClient] = {}
+        self._clients_by_org_name: dict[str, list[DatadogClient]] = {}
 
     @property
     def clients(self) -> list[DatadogClient]:
@@ -103,46 +104,44 @@ class DatadogClientManager:
     async def _fetch_org(client: DatadogClient) -> tuple[str, str] | None:
         """Return ``(org_id, org_name)`` for *client* by querying Datadog, or None
         when the keys are rejected or no org is returned."""
-        url = f"{client.api_url}/api/v1/org"
         try:
-            result = await client.send_api_request(url)
+            async for orgs in OrgExporter(client).get_paginated_resources():
+                for org in orgs:
+                    public_id, name = org.get("public_id"), org.get("name")
+                    if public_id and name:
+                        return public_id, name
         except HTTPStatusError as e:
             logger.warning(
                 f"Datadog rejected credentials for '{client.api_url}' "
                 f"({e.response.status_code})"
             )
-            return None
-
-        orgs = result.get("orgs") or []
-        if not orgs:
-            return None
-        org = orgs[0]
-        public_id, name = org.get("public_id"), org.get("name")
-        if not public_id or not name:
-            return None
-        return public_id, name
+        return None
 
     def _build_indexes(self) -> None:
-        by_id: dict[str | None, list[DatadogClient]] = defaultdict(list)
-        by_name: dict[str | None, list[DatadogClient]] = defaultdict(list)
+        by_id: dict[str, DatadogClient] = {}
+        by_name: dict[str, list[DatadogClient]] = defaultdict(list)
         for client in self._clients:
-            by_id[client.org_id].append(client)
-            by_name[self._normalize_org_name(client.org_name)].append(client)
+            org_id, org_name = client.org_id, client.org_name
+            if org_id is None or org_name is None:
+                continue
+            by_id[org_id] = client
+            by_name[self._normalize_org_name(org_name)].append(client)
         self._clients_by_org_id = by_id
         self._clients_by_org_name = by_name
 
     @staticmethod
-    def _normalize_org_name(org_name: str | None) -> str | None:
-        return org_name.lower() if org_name is not None else None
+    def _normalize_org_name(org_name: str) -> str:
+        return org_name.lower()
 
-    def get_clients_by_org_id(self, org_id: str | None) -> list[DatadogClient]:
-        """Return candidate clients for the org with *org_id* (audit-trail routing).
+    def get_client_by_org_id(self, org_id: str) -> DatadogClient | None:
+        """Return the client for the org with *org_id* (audit-trail routing), or None.
 
-        Single-org installs always use their sole client.
+        Datadog public ids are unique, so at most one client matches. Single-org
+        installs always use their sole client.
         """
         if not self.is_multi_org:
-            return self._clients
-        return self._clients_by_org_id.get(org_id, [])
+            return self._clients[0]
+        return self._clients_by_org_id.get(org_id)
 
     def get_clients_by_org_name(self, org_name: str | None) -> list[DatadogClient]:
         """Return candidate clients for the org named *org_name* (monitor routing).
@@ -153,6 +152,8 @@ class DatadogClientManager:
         """
         if not self.is_multi_org:
             return self._clients
+        if org_name is None:
+            return []
         return self._clients_by_org_name.get(self._normalize_org_name(org_name), [])
 
 

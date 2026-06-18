@@ -15,7 +15,7 @@ def mock_client_manager() -> Generator[MagicMock, None, None]:
     manager = MagicMock()
     manager.clients = [MagicMock()]
     manager.get_clients_by_org_name.return_value = [MagicMock()]
-    manager.get_clients_by_org_id.return_value = [MagicMock()]
+    manager.get_client_by_org_id.return_value = MagicMock()
     with patch(
         "datadog.webhook.webhook_processors.base_webhook_processor.get_client_manager",
         return_value=manager,

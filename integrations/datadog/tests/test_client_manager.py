@@ -242,7 +242,7 @@ async def test_validate_credentials_drops_clients_with_invalid_keys() -> None:
     await manager.validate_credentials()
 
     assert [c.org_name for c in manager.clients] == ["Good Org"]
-    assert manager.get_clients_by_org_id("uuid-good") == [good]
+    assert manager.get_client_by_org_id("uuid-good") == good
 
 
 @pytest.mark.asyncio
@@ -277,18 +277,19 @@ def test_single_org_resolves_sole_client_for_any_lookup() -> None:
     }
     manager = DatadogClientManager(config)
     sole = manager.clients[0]
-    assert manager.get_clients_by_org_id("anything") == [sole]
+    assert manager.get_client_by_org_id("anything") == sole
     assert manager.get_clients_by_org_name("anything") == [sole]
 
 
 @pytest.mark.asyncio
-async def test_get_clients_by_org_id_routes_audit_events() -> None:
+async def test_get_client_by_org_id_routes_audit_events() -> None:
     manager = await _build_enriched_manager(
         [("uuid-1", "Org One"), ("uuid-2", "Org Two")]
     )
-    resolved = manager.get_clients_by_org_id("uuid-2")
-    assert [c.org_name for c in resolved] == ["Org Two"]
-    assert manager.get_clients_by_org_id("missing") == []
+    resolved = manager.get_client_by_org_id("uuid-2")
+    assert resolved is not None
+    assert resolved.org_name == "Org Two"
+    assert manager.get_client_by_org_id("missing") is None
 
 
 @pytest.mark.asyncio
