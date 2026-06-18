@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Callable, cast
+from typing import List, Dict, Any, Callable
 from loguru import logger
 import asyncio
 from aws.core.interfaces.action import Action, ActionMap, ActionInputType
@@ -85,7 +85,9 @@ class ResourceInspector[
                     if self.action_id_key in result:
                         resource_data[result[self.action_id_key]] |= result
                     else:
-                        logger.warning(f"Missing key '{self.action_id_key}' in result: {result}, skipping ...")
+                        logger.warning(
+                            f"Missing key '{self.action_id_key}' in result: {result}, skipping ..."
+                        )
         else:
             for action_result in action_results:
                 for idx, item in enumerate(action_result):

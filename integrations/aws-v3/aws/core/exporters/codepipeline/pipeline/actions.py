@@ -102,7 +102,7 @@ class GetPipelineTagsAction(PipelineAction[CodePipelinePipelineActionInput]):
 
         response = await self.client.list_tags_for_resource(resourceArn=pipeline_arn)
         logger.info(f"Successfully fetched tags for pipeline {resource["name"]}")
-        return {'name': resource['name'], **response}
+        return {"name": resource["name"], **response}
 
 
 class PipelineActionsMap(ActionMap[CodePipelinePipelineActionInput]):

@@ -45,7 +45,10 @@ class PipelineExporter(IResourceExporter[CodePipelinePipelineActionInput]):
             self.session, options.region, self._service_name
         ) as proxy:
             inspector = ResourceInspector(
-                proxy.client, self._actions_map(), lambda: self._model_cls(), action_id_key='name'
+                proxy.client,
+                self._actions_map(),
+                lambda: self._model_cls(),
+                action_id_key="name",
             )
 
             paginator = proxy.get_paginator("list_pipelines", "pipelines")
