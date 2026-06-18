@@ -1,6 +1,6 @@
 from typing import ClassVar, Literal
 
-from pydantic import Field
+from pydantic.v1 import Field
 
 from kinds import ObjectKind
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig

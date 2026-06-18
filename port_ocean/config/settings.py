@@ -1,7 +1,7 @@
 import platform
 from typing import Any, Literal, Optional, Type
 
-from pydantic import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
+from pydantic.v1 import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
 from pydantic.env_settings import BaseSettings, EnvSettingsSource, InitSettingsSource
 from pydantic.main import BaseModel

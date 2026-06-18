@@ -1,9 +1,9 @@
 from typing import Any, AsyncGenerator, Dict
 from azure.core.credentials_async import AsyncTokenCredential
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
-from pydantic import Field, ConfigDict, Extra
+from pydantic.v1 import Field, ConfigDict, Extra
 
 
 class AzureRequest(BaseModel):

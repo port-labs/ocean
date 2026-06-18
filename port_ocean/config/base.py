@@ -6,7 +6,7 @@ from typing import Any
 import yaml
 from humps import decamelize
 from pathlib import Path
-from pydantic import BaseSettings
+from pydantic.v1 import BaseSettings
 from pydantic.env_settings import EnvSettingsSource, InitSettingsSource
 from pydantic.main import ModelMetaclass, BaseModel
 

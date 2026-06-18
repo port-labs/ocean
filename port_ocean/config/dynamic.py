@@ -2,7 +2,7 @@ import json
 from typing import Type, Any, Optional
 
 from humps import decamelize
-from pydantic import (
+from pydantic.v1 import (
     BaseConfig,
     BaseModel,
     AnyUrl,

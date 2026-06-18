@@ -2,7 +2,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter
 from loguru import logger
-from pydantic import AnyHttpUrl
+from pydantic.v1 import AnyHttpUrl
 from pydantic.fields import Field
 
 from port_ocean.context.ocean import ocean

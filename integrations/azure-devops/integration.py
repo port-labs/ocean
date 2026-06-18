@@ -1,7 +1,7 @@
 from typing import List, Literal, Optional, Union, Any
 from datetime import datetime, timedelta, timezone
 
-from pydantic import Field, BaseModel
+from pydantic.v1 import Field, BaseModel
 
 from azure_devops.gitops.file_entity_processor import GitManipulationHandler
 from azure_devops.misc import AzureDevopsFolderResourceConfig, Kind

@@ -158,7 +158,7 @@ Here is an example mapping configuration that uses the `itemsToParse` syntax wit
 ```yaml
   - kind: issue
     selector:
-      query: .item.name != 'test-item' and .issueType == 'Bug' 
+      query: .item.name != 'test-item' and .issueType == 'Bug'
     port:
       itemsToParse: .fields.comments
       entity:
@@ -277,7 +277,7 @@ root of the integration folder that contains the following:
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig, ResourceConfig, Selector
-from pydantic import Field
+from pydantic.v1 import Field
 
 
 class CustomResourceConfig(ResourceConfig):

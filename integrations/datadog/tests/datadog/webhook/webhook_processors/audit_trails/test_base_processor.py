@@ -63,7 +63,7 @@ def test_parse_event_normalizes_action_and_type() -> None:
 
 
 def test_parse_event_missing_required_field_raises() -> None:
-    from pydantic import ValidationError
+    from pydantic.v1 import ValidationError
 
     with pytest.raises(ValidationError):
         AuditTrailEvent.parse_obj(

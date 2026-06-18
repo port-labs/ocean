@@ -4,7 +4,7 @@ Custom authentication configuration validation helpers.
 
 from typing import Any
 
-from pydantic import parse_raw_as, parse_obj_as, ValidationError
+from pydantic.v1 import parse_raw_as, parse_obj_as, ValidationError
 
 from http_server.overrides import (
     CustomAuthRequestConfig,
@@ -80,7 +80,7 @@ def validate_custom_auth_request_template_config(
                 CustomAuthRequestTemplateConfig, custom_auth_request_template_config
             )
     except CustomAuthRequestTemplateError:
-        # Re-raise CustomAuthRequestTemplateError as-is (from Pydantic validator)
+        # Re-raise CustomAuthRequestTemplateError as-is (from pydantic.v1 validator)
         raise
     except Exception as e:
         # Wrap other parsing errors
