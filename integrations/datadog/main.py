@@ -1,11 +1,17 @@
-from typing import cast
+import asyncio
+import functools
+from typing import Callable, cast
 
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.utils.async_iterators import stream_independent_async_iterators
+from port_ocean.utils.async_iterators import (
+    semaphore_async_iterator,
+    stream_independent_async_iterators,
+)
 
+from datadog.client import DatadogClient
 from datadog.core.exporters.role_exporter import ListRoleOptions
 from client_manager import get_client_manager
 from integration import ObjectKind
@@ -43,184 +49,143 @@ from datadog.overrides import (
 )
 
 
-@ocean.on_resync(ObjectKind.TEAM)
-async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+MAX_CONCURRENT_CLIENTS = 100
+
+
+async def _resync_across_orgs(
+    build_iterator: Callable[[DatadogClient], ASYNC_GENERATOR_RESYNC_TYPE],
+    context: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLIENTS)
     tasks = (
-        TeamExporter(client).get_paginated_resources(
-            ListTeamOptions.from_resource_config(
-                cast(TeamResourceConfig, event.resource_config)
-            )
-        )
+        semaphore_async_iterator(semaphore, functools.partial(build_iterator, client))
         for client in get_client_manager().clients
     )
 
-    async for teams in stream_independent_async_iterators(
-        *tasks, context="Team exporter"
+    async for batch in stream_independent_async_iterators(*tasks, context=context):
+        logger.info(f"{context}: received batch with {len(batch)} items")
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    options = ListTeamOptions.from_resource_config(
+        cast(TeamResourceConfig, event.resource_config)
+    )
+    async for teams in _resync_across_orgs(
+        lambda client: TeamExporter(client).get_paginated_resources(options),
+        context="Team exporter",
     ):
-        logger.info(f"Received batch with {len(teams)} teams")
         yield teams
 
 
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        UserExporter(client).get_paginated_resources()
-        for client in get_client_manager().clients
-    )
-
-    async for users in stream_independent_async_iterators(
-        *tasks, context="User exporter"
+    async for users in _resync_across_orgs(
+        lambda client: UserExporter(client).get_paginated_resources(),
+        context="User exporter",
     ):
-        logger.info(f"Received batch with {len(users)} users")
         yield users
 
 
 @ocean.on_resync(ObjectKind.HOST)
 async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        HostExporter(client).get_paginated_resources()
-        for client in get_client_manager().clients
-    )
-
-    async for hosts in stream_independent_async_iterators(
-        *tasks, context="Host exporter"
+    async for hosts in _resync_across_orgs(
+        lambda client: HostExporter(client).get_paginated_resources(),
+        context="Host exporter",
     ):
-        logger.info(f"Received batch with {len(hosts)} hosts")
         yield hosts
 
 
 @ocean.on_resync(ObjectKind.MONITOR)
 async def on_resync_monitors(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        MonitorExporter(client).get_paginated_resources(
-            ListMonitorOptions.from_resource_config(
-                cast(MonitorResourceConfig, event.resource_config)
-            )
-        )
-        for client in get_client_manager().clients
+    options = ListMonitorOptions.from_resource_config(
+        cast(MonitorResourceConfig, event.resource_config)
     )
-
-    async for monitors in stream_independent_async_iterators(
-        *tasks, context="Monitor exporter"
+    async for monitors in _resync_across_orgs(
+        lambda client: MonitorExporter(client).get_paginated_resources(options),
+        context="Monitor exporter",
     ):
-        logger.info(f"Received batch with {len(monitors)} monitors")
         yield monitors
 
 
 @ocean.on_resync(ObjectKind.SLO)
 async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        SloExporter(client).get_paginated_resources(
-            ListSloOptions.from_resource_config(
-                cast(SLOResourceConfig, event.resource_config)
-            )
-        )
-        for client in get_client_manager().clients
+    options = ListSloOptions.from_resource_config(
+        cast(SLOResourceConfig, event.resource_config)
     )
-
-    async for slos in stream_independent_async_iterators(
-        *tasks, context="SLO exporter"
+    async for slos in _resync_across_orgs(
+        lambda client: SloExporter(client).get_paginated_resources(options),
+        context="SLO exporter",
     ):
-        logger.info(f"Received batch with {len(slos)} slos")
         yield slos
 
 
 @ocean.on_resync(ObjectKind.SLO_HISTORY)
 async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        SloHistoryExporter(client).get_paginated_resources(
-            ListSloHistoryOptions.from_resource_config(
-                cast(SLOHistoryResourceConfig, event.resource_config)
-            )
-        )
-        for client in get_client_manager().clients
+    options = ListSloHistoryOptions.from_resource_config(
+        cast(SLOHistoryResourceConfig, event.resource_config)
     )
-
-    async for histories in stream_independent_async_iterators(
-        *tasks, context="SLO history exporter"
+    async for histories in _resync_across_orgs(
+        lambda client: SloHistoryExporter(client).get_paginated_resources(options),
+        context="SLO history exporter",
     ):
         yield histories
 
 
 @ocean.on_resync(ObjectKind.SERVICE)
 async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        ServiceExporter(client).get_paginated_resources()
-        for client in get_client_manager().clients
-    )
-
-    async for services in stream_independent_async_iterators(
-        *tasks, context="Service exporter"
+    async for services in _resync_across_orgs(
+        lambda client: ServiceExporter(client).get_paginated_resources(),
+        context="Service exporter",
     ):
-        logger.info(f"Received batch with {len(services)} services")
         yield services
 
 
 @ocean.on_resync(ObjectKind.SERVICE_METRIC)
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        ServiceMetricExporter(client).get_paginated_resources(
-            ListServiceMetricOptions.from_resource_config(
-                cast(ServiceMetricResourceConfig, event.resource_config)
-            )
-        )
-        for client in get_client_manager().clients
+    options = ListServiceMetricOptions.from_resource_config(
+        cast(ServiceMetricResourceConfig, event.resource_config)
     )
-
-    async for metrics in stream_independent_async_iterators(
-        *tasks, context="Service metric exporter"
+    async for metrics in _resync_across_orgs(
+        lambda client: ServiceMetricExporter(client).get_paginated_resources(options),
+        context="Service metric exporter",
     ):
-        logger.info(f"Received batch with {len(metrics)} metrics")
         yield metrics
 
 
 @ocean.on_resync(ObjectKind.SERVICE_DEPENDENCY)
 async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        ServiceDependencyExporter(client).get_paginated_resources(
-            ListServiceDependencyOptions.from_resource_config(
-                cast(ServiceDependencyResourceConfig, event.resource_config)
-            )
-        )
-        for client in get_client_manager().clients
+    options = ListServiceDependencyOptions.from_resource_config(
+        cast(ServiceDependencyResourceConfig, event.resource_config)
     )
-
-    async for dependencies in stream_independent_async_iterators(
-        *tasks, context="Service dependency exporter"
+    async for dependencies in _resync_across_orgs(
+        lambda client: ServiceDependencyExporter(client).get_paginated_resources(
+            options
+        ),
+        context="Service dependency exporter",
     ):
-        logger.info(f"Received batch with {len(dependencies)} dependencies")
         yield dependencies
 
 
 @ocean.on_resync(ObjectKind.ROLE)
 async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        RoleExporter(client).get_paginated_resources(
-            ListRoleOptions.from_resource_config(
-                cast(RoleResourceConfig, event.resource_config)
-            )
-        )
-        for client in get_client_manager().clients
+    options = ListRoleOptions.from_resource_config(
+        cast(RoleResourceConfig, event.resource_config)
     )
-
-    async for roles in stream_independent_async_iterators(
-        *tasks, context="Role exporter"
+    async for roles in _resync_across_orgs(
+        lambda client: RoleExporter(client).get_paginated_resources(options),
+        context="Role exporter",
     ):
-        logger.info(f"Received batch with {len(roles)} roles")
         yield roles
 
 
 @ocean.on_resync(ObjectKind.ORG)
 async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tasks = (
-        OrgExporter(client).get_paginated_resources()
-        for client in get_client_manager().clients
-    )
-
-    async for orgs in stream_independent_async_iterators(
-        *tasks, context="Organization exporter"
+    async for orgs in _resync_across_orgs(
+        lambda client: OrgExporter(client).get_paginated_resources(),
+        context="Organization exporter",
     ):
-        logger.info(f"Received batch with {len(orgs)} orgs")
         yield orgs
 
 
@@ -241,7 +206,7 @@ async def on_start() -> None:
         )
         integration_identifier = ocean.config.integration.identifier
         current_integration = await ocean.port_client.get_current_integration()
-        org_id = str(current_integration.get("_orgId"))
+        org_id = current_integration.get("_orgId")
         if not org_id:
             logger.warning("No organization ID found for webhook setup")
             return
@@ -250,7 +215,7 @@ async def on_start() -> None:
         await webhook_client.upsert_webhook_setup(
             base_url=base_url,
             webhook_secret=webhook_secret,
-            org_id=org_id,
+            org_id=str(org_id),
             integration_identifier=integration_identifier,
             notification_rule_scope=notification_rule_scope,
         )
