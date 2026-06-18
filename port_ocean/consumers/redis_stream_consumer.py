@@ -28,9 +28,9 @@ class _WebhookRequestAdapter:
     ``event._original_request.headers`` for signature verification.
 
     The real Starlette ``Request`` is only available during the original HTTP
-    call.  When events travel through the Redis ingestion path the raw body is
-    forwarded as a plain string field so that HMAC signatures can still be
-    verified without a live HTTP connection.
+    call.  When events travel through the Redis ingestion path the raw payload
+    string is preserved so that HMAC signatures can still be verified without
+    a live HTTP connection.
     """
 
     def __init__(self, raw_body: bytes, headers: dict[str, str]) -> None:
@@ -216,10 +216,13 @@ class RedisStreamConsumer:
             headers = self._normalize_headers(
                 self._parse_json_object_field(fields, "headers")
             )
-            original_request = _WebhookRequestAdapter(
-                raw_body=fields.get("payload", "").encode("utf-8"),
-                headers=headers,
-            )
+            raw_payload = self._get_field(fields, "payload")
+            original_request = None
+            if raw_payload is not None:
+                original_request = _WebhookRequestAdapter(
+                    raw_body=raw_payload.encode("utf-8"),
+                    headers=headers,
+                )
 
             webhook_event = WebhookEvent(
                 trace_id=str(uuid4()),

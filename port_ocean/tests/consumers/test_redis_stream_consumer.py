@@ -134,11 +134,14 @@ class TestRedisStreamConsumerConnection:
 
         consumer._cleanup_tls_files()
 
-    def test_redis_client_kwargs_uses_tls_for_rediss_url(
+    def test_redis_client_kwargs_uses_tls_when_enabled(
         self,
         mock_ocean_config: MagicMock,
     ) -> None:
-        settings = LiveEventsRedisSettings(url="rediss://localhost:6379")
+        settings = LiveEventsRedisSettings(
+            url="rediss://localhost:6379",
+            enable_tls=True,
+        )
 
         with patch(
             "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
@@ -153,6 +156,23 @@ class TestRedisStreamConsumerConnection:
 
         assert kwargs["connection_class"] is SSLConnection
 
+    def test_redis_client_kwargs_does_not_enable_tls_for_rediss_url_without_flag(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(url="rediss://localhost:6379")
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+
+        assert consumer._redis_client_kwargs() == {"decode_responses": True}
+
     @pytest.mark.asyncio
     async def test_stop_cleans_up_tls_files(
         self,
@@ -160,6 +180,7 @@ class TestRedisStreamConsumerConnection:
     ) -> None:
         settings = LiveEventsRedisSettings(
             url="rediss://localhost:6379",
+            enable_tls=True,
             cert=_pem_b64(
                 "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----"
             ),
@@ -270,6 +291,7 @@ class TestRedisStreamConsumer:
             )
 
         on_message.assert_awaited_once()
+        assert on_message.await_args is not None
         assert on_message.await_args.args[0] == path
         assert on_message.await_args.args[1].payload == {"hello": "world"}
         assert on_message.await_args.args[1].headers == {"x-github-event": "push"}
@@ -338,14 +360,14 @@ class TestRedisStreamConsumer:
         consumer._ack.assert_awaited_once_with("1700000000000-0")
 
     @pytest.mark.asyncio
-    async def test_handle_message_sets_original_request_when_body_present(
+    async def test_handle_message_sets_original_request_from_payload(
         self,
         redis_settings: LiveEventsRedisSettings,
         mock_ocean_config: MagicMock,
     ) -> None:
         path = "/webhook"
         on_message = AsyncMock()
-        raw_body = '{"action":"opened"}'
+        raw_payload = json.dumps({"action": "opened"})
 
         with patch(
             "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
@@ -361,21 +383,21 @@ class TestRedisStreamConsumer:
             await consumer._handle_message(
                 "1700000000000-0",
                 {
-                    "payload": json.dumps({"action": "opened"}),
+                    "payload": raw_payload,
                     "headers": json.dumps({"x-hub-signature-256": "sha256=abc"}),
                     "webhookPath": "integration/webhook",
-                    "body": raw_body,
                 },
             )
 
         on_message.assert_awaited_once()
+        assert on_message.await_args is not None
         event = on_message.await_args.args[1]
         assert isinstance(event._original_request, _WebhookRequestAdapter)
-        assert await event._original_request.body() == raw_body.encode("utf-8")
+        assert await event._original_request.body() == raw_payload.encode("utf-8")
         assert event._original_request.headers["x-hub-signature-256"] == "sha256=abc"
 
     @pytest.mark.asyncio
-    async def test_handle_message_original_request_is_none_when_body_absent(
+    async def test_handle_message_original_request_is_none_when_payload_absent(
         self,
         redis_settings: LiveEventsRedisSettings,
         mock_ocean_config: MagicMock,
@@ -397,13 +419,13 @@ class TestRedisStreamConsumer:
             await consumer._handle_message(
                 "1700000000000-0",
                 {
-                    "payload": json.dumps({"action": "opened"}),
                     "headers": json.dumps({}),
                     "webhookPath": "integration/webhook",
                 },
             )
 
         on_message.assert_awaited_once()
+        assert on_message.await_args is not None
         event = on_message.await_args.args[1]
         assert event._original_request is None
 

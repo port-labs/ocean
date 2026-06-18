@@ -1,7 +1,8 @@
 from abc import ABC
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Any, Dict, Type, TypeAlias, Optional
+from typing import Any, Dict, Optional, Protocol, Type, TypeAlias
 from uuid import uuid4
 from fastapi import Request
 from loguru import logger
@@ -11,6 +12,15 @@ from port_ocean.core.ocean_types import RAW_ITEM
 
 EventPayload: TypeAlias = Dict[str, Any]
 EventHeaders: TypeAlias = Dict[str, str]
+
+
+class WebhookOriginalRequest(Protocol):
+    """Minimal request interface for webhook signature verification."""
+
+    @property
+    def headers(self) -> Mapping[str, Any]: ...
+
+    async def body(self) -> bytes: ...
 
 
 class LiveEventTimestamp(StrEnum):
@@ -50,7 +60,7 @@ class WebhookEvent(LiveEvent):
         trace_id: str,
         payload: EventPayload,
         headers: EventHeaders,
-        original_request: Request | None = None,
+        original_request: WebhookOriginalRequest | None = None,
         group_id: str | None = None,
         created_at: datetime | None = None,
     ) -> None:
