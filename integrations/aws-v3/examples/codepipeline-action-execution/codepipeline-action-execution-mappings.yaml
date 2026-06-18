@@ -8,7 +8,7 @@ resources:
       entity:
         mappings:
           identifier: .Properties.ActionExecutionId
-          title: (.Properties.PipelineName // "") + "/" + (.Properties.StageName // "") + "/" + (.Properties.ActionName // "")
+          title: .Properties.ActionName  + "/" + .Properties.ActionExecutionId
           blueprint: '"codePipelineActionExecution"'
           properties:
             actionExecutionId: .Properties.ActionExecutionId
