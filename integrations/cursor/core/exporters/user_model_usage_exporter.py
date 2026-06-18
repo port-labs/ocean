@@ -20,8 +20,6 @@ class CursorUserModelUsageExporter(AbstractCursorExporter):
                 "endDate": options["endDate"],
             },
         ):
-            # `data` maps each user email to a list of their daily breakdowns;
-            # flatten it into per-user-day records carrying the owning email.
             data: dict[str, Any] = payload.get("data", {}) or {}
             items = [
                 {"userEmail": email, **record}
