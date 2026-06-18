@@ -129,41 +129,79 @@ class CursorClient:
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Yield each raw page payload for Cursor's standard pagination envelope.
 
-        Transient failures while listing pages are absorbed by Ocean's shared
-        RetryTransport. If a page still fails after retries, the error propagates. Ocean upserts the
-        pages already yielded and skips its delete phase. Existing entities are preserved and the remaining pages are picked up on the next resync.
+        A page that still fails after Ocean's RetryTransport has
+        exhausted its retries does not abandon the rest of the listing. Once the
+        first page reports the total page count, the remaining pages are fetched
+        independently; pages that fail are logged and skipped, and the generator
+        raises once at the end.
         """
         page_size = page_size or self._page_size
-        page = DEFAULT_PAGE
 
-        for _ in range(MAX_PAGES):
+        async def _fetch_page(page: int) -> dict[str, Any]:
             page_params = dict(params or {})
             page_body = dict(json_body or {})
             if method.upper() == "GET":
                 page_params.update({"page": page, "pageSize": page_size})
             else:
                 page_body.update({"page": page, "pageSize": page_size})
-
-            payload = await self.send_api_request(
+            return await self.send_api_request(
                 method,
                 path,
                 params=page_params or None,
                 json_body=page_body or None,
             )
 
-            pagination = payload.get("pagination", {}) or {}
-            total_pages = pagination.get("totalPages") or pagination.get("numPages")
-            progress = f"{page}/{total_pages}" if total_pages else f"{page}"
-            logger.info(f"Cursor pagination {path}: fetched page {progress}")
+        # Fetch the first page. This must succeed as it tells us how many pages exist,
+        # and the rest of the pages are fetched independently.
+        first_payload = await _fetch_page(DEFAULT_PAGE)
+        pagination = first_payload.get("pagination", {}) or {}
+        total_pages = pagination.get("totalPages") or pagination.get("numPages")
+        logger.info(
+            f"Cursor pagination {path}: fetched page {DEFAULT_PAGE}"
+            + (f"/{total_pages}" if total_pages else "")
+        )
+        yield first_payload
 
+        ## If the first page doesn't report a total, we walk `hasNextPage` as fallback.
+        ## A failure here cannot be skipped (we'd lose the continuation cursor), so it propagates.
+        if not total_pages:
+            page = DEFAULT_PAGE
+            while bool(pagination.get("hasNextPage", False)):
+                page += 1
+                if page > MAX_PAGES:
+                    logger.warning(
+                        f"Cursor pagination {path}: reached MAX_PAGES cap "
+                        f"({MAX_PAGES})"
+                    )
+                    return
+                payload = await _fetch_page(page)
+                pagination = payload.get("pagination", {}) or {}
+                logger.info(f"Cursor pagination {path}: fetched page {page}")
+                yield payload
+            return
+
+        ## The Main loop when we know the total pages. Fetch the rest of the pages independently.
+        ## pages that fail are logged and skipped, and the generator raises once at the end.
+        failed_pages: list[int] = []
+        for page in range(DEFAULT_PAGE + 1, int(total_pages) + 1):
+            try:
+                payload = await _fetch_page(page)
+            except httpx.HTTPError as exc:
+                failed_pages.append(page)
+                logger.error(
+                    f"Cursor pagination {path}: page {page}/{total_pages} failed "
+                    f"after retries; skipping it and continuing with the remaining "
+                    f"pages: {exc}"
+                )
+                continue
+            logger.info(f"Cursor pagination {path}: fetched page {page}/{total_pages}")
             yield payload
 
-            if not bool(pagination.get("hasNextPage", False)):
-                break
-            page += 1
-        else:
-            logger.warning(
-                f"Cursor pagination {path}: reached MAX_PAGES safety cap ({MAX_PAGES})"
+        if failed_pages:
+            raise RuntimeError(
+                f"Cursor pagination {path}: {len(failed_pages)}/{total_pages} page(s) "
+                f"failed after retries ({failed_pages}). Raising so Ocean skips its "
+                "delete phase and preserves the affected entities until the next resync."
             )
 
     def _parse_json(self, response: httpx.Response, path: str) -> dict[str, Any]:

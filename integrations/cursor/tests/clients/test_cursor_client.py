@@ -150,12 +150,11 @@ async def test_send_paginated_request_walks_pages_via_has_next_page(
 
 
 @pytest.mark.asyncio
-async def test_send_paginated_request_propagates_exhausted_retry_error(
+async def test_send_paginated_request_propagates_error_without_total_pages(
     cursor_client: CursorClient,
 ) -> None:
-    # Once the shared RetryTransport has exhausted its attempts the error surfaces
-    # here. The pages already yielded stay upserted and Ocean skips its delete
-    # phase, so the tail is recovered on the next resync rather than being pruned.
+    # On the `hasNextPage` fallback (no total page count) a failed page can't be
+    # skipped safely, so the error propagates after the earlier pages are yielded.
     page1 = {"data": ["a"], "pagination": {"hasNextPage": True}}
     mock_send = AsyncMock(side_effect=[page1, httpx.ConnectError("down")])
 
@@ -170,3 +169,48 @@ async def test_send_paginated_request_propagates_exhausted_retry_error(
                 yielded.append(page)
 
     assert yielded == [page1]
+
+
+@pytest.mark.asyncio
+async def test_send_paginated_request_skips_failed_pages_then_raises(
+    cursor_client: CursorClient,
+) -> None:
+    # 3 total pages; the middle one exhausts its retries. The remaining pages
+    # must still be fetched and yielded, and the generator must raise at the end
+    page1 = {"data": ["a"], "pagination": {"totalPages": 3, "hasNextPage": True}}
+    page3 = {"data": ["c"], "pagination": {"totalPages": 3, "hasNextPage": False}}
+    mock_send = AsyncMock(side_effect=[page1, httpx.ConnectError("down"), page3])
+
+    yielded = []
+    with patch.object(cursor_client, "send_api_request", new=mock_send):
+        with pytest.raises(RuntimeError):
+            async for page in cursor_client.send_paginated_request(
+                "GET",
+                "/analytics/by-user/models",
+                params={"startDate": "30d", "endDate": "0d"},
+            ):
+                yielded.append(page)
+
+    assert yielded == [page1, page3]
+    assert mock_send.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_send_paginated_request_first_page_error_propagates(
+    cursor_client: CursorClient,
+) -> None:
+    # The first page must succeed to learn the total; if it fails there is
+    # nothing to salvage, so the error propagates immediately.
+    mock_send = AsyncMock(side_effect=httpx.ConnectError("down"))
+
+    yielded = []
+    with patch.object(cursor_client, "send_api_request", new=mock_send):
+        with pytest.raises(httpx.ConnectError):
+            async for page in cursor_client.send_paginated_request(
+                "GET",
+                "/analytics/by-user/models",
+                params={"startDate": "30d", "endDate": "0d"},
+            ):
+                yielded.append(page)
+
+    assert yielded == []
