@@ -33,7 +33,9 @@ class CodePipelinePipelineExecutionExporter(IResourceExporter):
             }
 
             response = await inspector.inspect(
-                [mock_execution],
+                CodePipelineExecutionActionInput(
+                    items=[mock_execution], pipeline_name=options.pipeline_name
+                ),
                 options.include,
                 extra_context={
                     "AccountId": options.account_id,
