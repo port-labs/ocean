@@ -443,6 +443,8 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else RestPullRequestExporter(rest_client)
     )
 
+    fetch_errors: list[Exception] = []
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -476,10 +478,28 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for pull_requests in stream_independent_async_iterators(
-                    *tasks, context=kind
-                ):
-                    yield pull_requests
+                try:
+                    async for pull_requests in stream_independent_async_iterators(
+                        *tasks, context=kind
+                    ):
+                        yield pull_requests
+                except ExceptionGroup as page_errors:
+                    fetch_errors.extend(page_errors.exceptions)
+                    logger.error(
+                        f"{len(page_errors.exceptions)} repo(s) failed fetching pull requests "
+                        f"in org {org_name} (batch of {len(repos)}), continuing with remaining pages",
+                        extra={
+                            "failed_repos": [
+                                str(error) for error in page_errors.exceptions
+                            ],
+                        },
+                    )
+
+    if fetch_errors:
+        raise ExceptionGroup(
+            f"{kind} failed with {len(fetch_errors)} error(s)",
+            fetch_errors,
+        )
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
