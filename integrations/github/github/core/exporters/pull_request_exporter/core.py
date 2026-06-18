@@ -14,6 +14,7 @@ from github.core.options import (
 from github.helpers.gql_queries import (
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
+    PR_ORDER_BY_UPDATED_AT,
 )
 from github.helpers.utils import (
     enrich_with_organization,
@@ -24,6 +25,17 @@ from github.core.exporters.pull_request_exporter.utils import (
     paginate_closed_pull_requests,
 )
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+
+# PR date-field names as they appear in each API's response payload.
+REST_CLOSED_AT_FIELD = "closed_at"
+REST_UPDATED_AT_FIELD = "updated_at"
+GRAPHQL_CLOSED_AT_FIELD = "closedAt"
+GRAPHQL_UPDATED_AT_FIELD = "updatedAt"
+
+# REST pulls-list ordering (GitHub REST API `sort`/`direction`); the REST equivalent
+# of the GraphQL UPDATED_AT desc ordering used for closed-PR pagination.
+REST_SORT_BY_UPDATED = "updated"
+REST_SORT_DIRECTION_DESC = "desc"
 
 
 class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
@@ -124,8 +136,8 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         endpoint = self._build_pull_request_paginated_endpoint(organization, repo_name)
         params = {
             "state": "closed",
-            "sort": "updated",
-            "direction": "desc",
+            "sort": REST_SORT_BY_UPDATED,
+            "direction": REST_SORT_DIRECTION_DESC,
         }
 
         logger.info(
@@ -134,9 +146,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
         cutoff, include_field = (
-            (closed_after, "closed_at")
+            (closed_after, REST_CLOSED_AT_FIELD)
             if closed_after is not None
-            else (updated_after, "updated_at")
+            else (updated_after, REST_UPDATED_AT_FIELD)
         )
 
         def enrich(pr: dict[str, Any]) -> dict[str, Any]:
@@ -150,7 +162,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             max_results=max_results,
             cutoff=cutoff,
             include_field=include_field,
-            stop_field="updated_at",
+            stop_field=REST_UPDATED_AT_FIELD,
             log_prefix="[Rest]",
             repo_name=repo_name,
             organization=organization,
@@ -293,9 +305,9 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         logger.info(f"[GraphQL] Fetching closed PRs from {organization}/{repo_name}")
 
         cutoff, include_field = (
-            (closed_after, "closedAt")
+            (closed_after, GRAPHQL_CLOSED_AT_FIELD)
             if closed_after is not None
-            else (updated_after, "updatedAt")
+            else (updated_after, GRAPHQL_UPDATED_AT_FIELD)
         )
 
         def enrich(pr: dict[str, Any]) -> dict[str, Any]:
@@ -306,7 +318,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         async for batch in paginate_closed_pull_requests(
             self.client.send_paginated_request(
                 generate_list_pull_requests_gql(
-                    pr_gql_options, order_by_field="UPDATED_AT"
+                    pr_gql_options, order_by_field=PR_ORDER_BY_UPDATED_AT
                 ),
                 variables,
             ),
@@ -314,7 +326,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             max_results=max_results,
             cutoff=cutoff,
             include_field=include_field,
-            stop_field="updatedAt",
+            stop_field=GRAPHQL_UPDATED_AT_FIELD,
             log_prefix="[GraphQL]",
             repo_name=repo_name,
             organization=organization,

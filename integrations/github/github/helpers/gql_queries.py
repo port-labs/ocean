@@ -1,5 +1,9 @@
 from github.core.options import PullRequestGraphQLOptions
 
+# GraphQL pullRequests orderBy field values.
+PR_ORDER_BY_CREATED_AT = "CREATED_AT"
+PR_ORDER_BY_UPDATED_AT = "UPDATED_AT"
+
 PAGE_INFO_FRAGMENT = """
 fragment PageInfoFields on PageInfo {
   hasNextPage
@@ -371,7 +375,7 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
 
 
 def generate_list_pull_requests_gql(
-    options: PullRequestGraphQLOptions, order_by_field: str = "CREATED_AT"
+    options: PullRequestGraphQLOptions, order_by_field: str = PR_ORDER_BY_CREATED_AT
 ) -> str:
     return f"""
 {PAGE_INFO_FRAGMENT}
