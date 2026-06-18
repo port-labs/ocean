@@ -1,0 +1,43 @@
+{
+  "Type": "AWS::CodeDeploy::DeploymentGroup",
+  "Properties": {
+    "ApplicationName": "MyApp",
+    "AutoScalingGroups": [],
+    "ComputePlatform": "Server",
+    "DeploymentConfigName": "CodeDeployDefault.OneAtATime",
+    "DeploymentGroupId": "d87f1777-7de0-47e2-8f89-f193c382ee6d",
+    "DeploymentGroupName": "MyGroup",
+    "DeploymentStyle": {
+      "deploymentType": "IN_PLACE",
+      "deploymentOption": "WITHOUT_TRAFFIC_CONTROL"
+    },
+    "Ec2TagFilters": [
+      {
+        "Key": "Environment",
+        "Value": "Production",
+        "Type": "KEY_AND_VALUE"
+      }
+    ],
+    "LastAttemptedDeployment": {
+      "deploymentId": "d-92GQ47BKJ",
+      "status": "Failed",
+      "endTime": "2026-06-03T16:10:48.108000+03:00",
+      "createTime": "2026-06-03T16:10:47.199000+03:00"
+    },
+    "OnPremisesInstanceTagFilters": [],
+    "OutdatedInstancesStrategy": "UPDATE",
+    "ServiceRoleArn": "arn:aws:iam::123456789012:role/service-role/Somebody",
+    "Tags": [
+      {
+        "Key": "Hum",
+        "Value": "Drum"
+      }
+    ],
+    "TerminationHookEnabled": false,
+    "TriggerConfigurations": []
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
+  }
+}
