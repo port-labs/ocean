@@ -80,22 +80,21 @@ class DatadogClientManager:
             return
 
         valid: list[DatadogClient] = []
-        for i in range(51):
-            for client in self._clients:
-                org = await self._fetch_org(client)
-                if org is None:
-                    logger.warning(
-                        f"Dropping Datadog credentials for base url '{client.api_url}': "
-                        "keys are invalid or org information is unavailable",
-                        application_key_prefix=client.dd_app_key[:5],
-                    )
-                    continue
-                client.org_id, client.org_name = org
-                valid.append(client)
-                logger.info(
-                    f"Validated Datadog credentials for org '{client.org_name}' "
-                    f"(id={client.org_id})"
+        for client in self._clients:
+            org = await self._fetch_org(client)
+            if org is None:
+                logger.warning(
+                    f"Dropping Datadog credentials for base url '{client.api_url}': "
+                    "keys are invalid or org information is unavailable",
+                    application_key_prefix=client.dd_app_key[:5],
                 )
+                continue
+            client.org_id, client.org_name = org
+            valid.append(client)
+            logger.info(
+                f"Validated Datadog credentials for org '{client.org_name}' "
+                f"(id={client.org_id})"
+            )
 
         self._clients = valid
         self._build_indexes()

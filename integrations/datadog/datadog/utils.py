@@ -1,5 +1,6 @@
 import time
 import datetime
+from typing import Any
 
 from datadog.types import RestrictionPolicyResource
 
@@ -53,3 +54,11 @@ def parse_restriction_policy_asset(asset_id: str) -> RestrictionPolicyResource |
         return None
     type, resource_id = asset_id.split(":", 1)
     return RestrictionPolicyResource(type=type, id=resource_id)
+
+
+def enrich_batch(
+    data: list[dict[str, Any]], *, enrichment_key: str, enrichment_data: Any
+) -> list[dict[str, Any]]:
+    for item in data:
+        item[enrichment_key] = enrichment_data
+    return data

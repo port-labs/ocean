@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.cache import cache_coroutine_result
 
 from datadog.core.exporters.base_exporter import (
     GetOptions,
@@ -35,7 +36,10 @@ class OrgExporter(PaginatedExporter[None], SingleResourceExporter[GetOrgOptions]
         if orgs:
             yield orgs
 
-    async def get_resource(self, options: GetOrgOptions) -> dict[str, Any] | None:
+    @cache_coroutine_result()
+    async def get_resource(  # type: ignore[override]
+        self, options: GetOrgOptions
+    ) -> dict[str, Any] | None:
         """Get a single organization by its public ID.
         Returns the org under the ``org`` key, matching the shape of each item
         in the list response.

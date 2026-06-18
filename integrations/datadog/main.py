@@ -1,5 +1,4 @@
 import asyncio
-import functools
 from typing import Callable, cast
 
 from loguru import logger
@@ -12,6 +11,7 @@ from port_ocean.utils.async_iterators import (
 )
 
 from datadog.client import DatadogClient
+from datadog.utils import enrich_batch
 from datadog.core.exporters.role_exporter import ListRoleOptions
 from client_manager import get_client_manager
 from integration import ObjectKind
@@ -50,16 +50,35 @@ from datadog.overrides import (
 
 
 MAX_CONCURRENT_CLIENTS = 100
+ORG_ID_ENRICHMENT_KEY = "__org_id"
 
 
 async def _resync_across_orgs(
     build_iterator: Callable[[DatadogClient], ASYNC_GENERATOR_RESYNC_TYPE],
     context: str,
+    enrich_with_org_id: bool = True,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    manager = get_client_manager()
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CLIENTS)
+
+    def build_org_iterator(
+        client: DatadogClient,
+    ) -> Callable[[], ASYNC_GENERATOR_RESYNC_TYPE]:
+        async def iterator() -> ASYNC_GENERATOR_RESYNC_TYPE:
+            async for batch in build_iterator(client):
+                if enrich_with_org_id and manager.is_multi_org:
+                    enrich_batch(
+                        batch,
+                        enrichment_key=ORG_ID_ENRICHMENT_KEY,
+                        enrichment_data=client.org_id,
+                    )
+                yield batch
+
+        return iterator
+
     tasks = (
-        semaphore_async_iterator(semaphore, functools.partial(build_iterator, client))
-        for client in get_client_manager().clients
+        semaphore_async_iterator(semaphore, build_org_iterator(client))
+        for client in manager.clients
     )
 
     async for batch in stream_independent_async_iterators(*tasks, context=context):
@@ -185,6 +204,7 @@ async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for orgs in _resync_across_orgs(
         lambda client: OrgExporter(client).get_paginated_resources(),
         context="Organization exporter",
+        enrich_with_org_id=False,
     ):
         yield orgs
 
