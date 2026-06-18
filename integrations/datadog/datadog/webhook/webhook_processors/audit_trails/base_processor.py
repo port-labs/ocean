@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import Any
 
+from httpx import HTTPStatusError
 from loguru import logger
 from pydantic import ValidationError
 
@@ -90,11 +91,21 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
 
         org_id = event.attributes.org.uuid if event.attributes.org else None
         clients = self._client_manager.get_clients_by_org_id(org_id)
-        resource = await self._fetch_from_clients(
-            clients,
-            lambda client: self._fetch_resource(client, event, resource_config),
-            context=f"org id '{org_id}'",
-        )
+        if not clients:
+            logger.warning(f"No Datadog client configured for org id '{org_id}'")
+
+        resource: dict[str, Any] | None = None
+        for client in clients:
+            try:
+                resource = await self._fetch_resource(client, event, resource_config)
+            except HTTPStatusError as e:
+                logger.warning(
+                    f"Client for org id '{org_id}' could not fetch resource "
+                    f"({e.response.status_code}); trying next"
+                )
+                continue
+            if resource:
+                break
 
         return WebhookEventRawResults(
             updated_raw_results=[resource] if resource else [],

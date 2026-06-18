@@ -1,6 +1,8 @@
 import asyncio
 from typing import Any, cast
 
+from httpx import HTTPStatusError
+from loguru import logger
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -9,7 +11,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from datadog.client import DatadogClient
 from datadog.core.exporters import ServiceDependencyExporter
 from datadog.core.exporters.service_dependency_exporter import (
     GetServiceDependencyOptions,
@@ -60,20 +61,29 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
             for service_id in service_ids
         ]
 
-        async def fetch(client: DatadogClient) -> list[dict[str, Any]]:
-            dep_exporter = ServiceDependencyExporter(client)
-            results = await asyncio.gather(
-                *(dep_exporter.get_resource(opt) for opt in options)
-            )
-            return [result for result in results if result]
-
         org_name = payload.get("org_name")
         clients = self._client_manager.get_clients_by_org_name(org_name)
-        service_dependencies = await self._fetch_from_clients(
-            clients, fetch, context=f"org '{org_name}'"
-        )
+        if not clients:
+            logger.warning(f"No Datadog client configured for org '{org_name}'")
+
+        service_dependencies: list[dict[str, Any]] = []
+        for client in clients:
+            dep_exporter = ServiceDependencyExporter(client)
+            try:
+                results = await asyncio.gather(
+                    *(dep_exporter.get_resource(opt) for opt in options)
+                )
+            except HTTPStatusError as e:
+                logger.warning(
+                    f"Client for org '{org_name}' could not fetch service "
+                    f"dependencies ({e.response.status_code}); trying next"
+                )
+                continue
+            service_dependencies = [result for result in results if result]
+            if service_dependencies:
+                break
 
         return WebhookEventRawResults(
-            updated_raw_results=service_dependencies or [],
+            updated_raw_results=service_dependencies,
             deleted_raw_results=[],
         )

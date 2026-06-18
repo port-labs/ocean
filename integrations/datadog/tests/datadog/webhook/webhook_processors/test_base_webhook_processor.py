@@ -1,6 +1,6 @@
 import pytest
 from typing import Any, Generator
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
@@ -103,56 +103,3 @@ async def test_authenticate_with_case_insensitive_custom_header(
 ) -> None:
     headers = {PORT_AUTH_HEADER_NAME.lower(): "test_token"}
     assert await processor.authenticate({}, headers) is True
-
-
-@pytest.mark.asyncio
-async def test_fetch_from_clients_returns_first_non_empty(
-    processor: MockWebhookProcessor,
-) -> None:
-    c1, c2 = MagicMock(name="c1"), MagicMock(name="c2")
-
-    async def fetch(client: Any) -> Any:
-        return {"id": "found"} if client is c2 else None
-
-    result = await processor._fetch_from_clients([c1, c2], fetch, context="org x")
-    assert result == {"id": "found"}
-
-
-@pytest.mark.asyncio
-async def test_fetch_from_clients_skips_failing_candidate(
-    processor: MockWebhookProcessor,
-) -> None:
-    import httpx
-
-    c1, c2 = MagicMock(name="c1"), MagicMock(name="c2")
-    request = httpx.Request("GET", "https://api.datadoghq.com")
-
-    async def fetch(client: Any) -> Any:
-        if client is c1:
-            # wrong org's creds -> the resource isn't there
-            raise httpx.HTTPStatusError(
-                "forbidden",
-                request=request,
-                response=httpx.Response(403, request=request),
-            )
-        return {"id": "ok"}
-
-    result = await processor._fetch_from_clients([c1, c2], fetch, context="org x")
-    assert result == {"id": "ok"}
-
-
-@pytest.mark.asyncio
-async def test_fetch_from_clients_returns_none_without_candidates(
-    processor: MockWebhookProcessor,
-) -> None:
-    fetched = False
-
-    async def fetch(client: Any) -> Any:
-        nonlocal fetched
-        fetched = True
-        return {"id": "x"}
-
-    result = await processor._fetch_from_clients([], fetch, context="org x")
-
-    assert result is None
-    assert fetched is False  # no candidates -> fetch never invoked

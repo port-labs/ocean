@@ -68,7 +68,7 @@ class DatadogClientManager:
     def clients(self) -> list[DatadogClient]:
         return self._clients
 
-    async def validate_and_enrich(self) -> None:
+    async def validate_credentials(self) -> None:
         """Validate each org's keys against Datadog and tag the client with the org
         id and name its keys belong to.
 
@@ -85,7 +85,8 @@ class DatadogClientManager:
             if org is None:
                 logger.warning(
                     f"Dropping Datadog credentials for base url '{client.api_url}': "
-                    "keys are invalid or org information is unavailable"
+                    "keys are invalid or org information is unavailable",
+                    application_key_prefix=client.dd_app_key[:5],
                 )
                 continue
             client.org_id, client.org_name = org
