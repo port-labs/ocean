@@ -28,12 +28,12 @@ configurations:
     default: "https://api.datadoghq.com"
   - name: datadogApiKey
     description: Datadog API key. To create an API key, see the <a target="_blank" href="https://docs.datadoghq.com/account_management/api-app-keys/#add-an-api-key-or-client-token">Datadog documentation</a>.
-    required: true
+    required: false
     type: string
     sensitive: true
   - name: datadogApplicationKey
     description: Datadog application key. To create an application key, see the <a target="_blank" href="https://docs.datadoghq.com/account_management/api-app-keys/#add-application-keys">Datadog documentation</a>.
-    required: true
+    required: false
     type: string
     sensitive: true
   - name: datadogCredentialMap
