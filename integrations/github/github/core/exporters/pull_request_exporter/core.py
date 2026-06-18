@@ -14,7 +14,6 @@ from github.core.options import (
 from github.helpers.gql_queries import (
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
-    PR_ORDER_BY_UPDATED_AT,
 )
 from github.helpers.utils import (
     enrich_with_organization,
@@ -29,13 +28,11 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 # PR date-field names as they appear in each API's response payload.
 REST_CLOSED_AT_FIELD = "closed_at"
 REST_UPDATED_AT_FIELD = "updated_at"
-GRAPHQL_CLOSED_AT_FIELD = "closedAt"
-GRAPHQL_UPDATED_AT_FIELD = "updatedAt"
-
-# REST pulls-list ordering (GitHub REST API `sort`/`direction`); the REST equivalent
-# of the GraphQL UPDATED_AT desc ordering used for closed-PR pagination.
 REST_SORT_BY_UPDATED = "updated"
 REST_SORT_DIRECTION_DESC = "desc"
+GRAPHQL_CLOSED_AT_FIELD = "closedAt"
+GRAPHQL_UPDATED_AT_FIELD = "updatedAt"
+GRAPHQL_ORDER_BY_UPDATED_AT = "UPDATED_AT"
 
 
 class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
@@ -318,7 +315,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         async for batch in paginate_closed_pull_requests(
             self.client.send_paginated_request(
                 generate_list_pull_requests_gql(
-                    pr_gql_options, order_by_field=PR_ORDER_BY_UPDATED_AT
+                    pr_gql_options, order_by_field=GRAPHQL_ORDER_BY_UPDATED_AT
                 ),
                 variables,
             ),
