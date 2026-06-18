@@ -31,17 +31,29 @@ def paginated_options() -> PaginatedCodePipelineActionExecutionRequest:
 
 
 @pytest.mark.asyncio
-@patch(f"{patch_prefix}.CodePipelineActionExecutionInput")
 @patch(f"{patch_prefix}.AioBaseClientProxy")
 @patch(f"{patch_prefix}.ResourceInspector")
 async def test_get_resource_success(
     mock_inspector_class: MagicMock,
-    mock_proxy: MagicMock,
-    mock_input: MagicMock,
+    mock_proxy_class: MagicMock,
     single_options: SingleCodePipelineActionExecutionRequest,
 ) -> None:
     # Arrange
     exporter = CodePipelineActionExecutionExporter(AsyncMock())
+    mock_proxy = AsyncMock()
+    mock_proxy.client = AsyncMock()
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+    page = [{"actionExecutionId": "other-exec-id"}]
+
+    class MockPaginator:
+        async def paginate(
+            self, pipelineName: str
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield page
+
+    mock_proxy.get_paginator = MagicMock(return_value=MockPaginator())
+
     mock_inspector = AsyncMock()
     mock_inspector_class.return_value = mock_inspector
 
@@ -64,16 +76,14 @@ async def test_get_resource_success(
 
     # Assert
     assert result == target_execution
-    mock_proxy.assert_called_once_with(
+    mock_proxy_class.assert_called_once_with(
         exporter.session, single_options.region, "codepipeline"
     )
-    mock_input.assert_called_once_with(
-        items=[{"name": single_options.pipeline_name}],
-        region=single_options.region,
-        account_id=single_options.account_id,
+    mock_proxy.get_paginator.assert_called_once_with(
+        "list_action_executions", "actionExecutionDetails"
     )
     mock_inspector.inspect.assert_called_once_with(
-        mock_input.return_value,
+        page,
         single_options.include,
         extra_context={
             "AccountId": single_options.account_id,
@@ -83,40 +93,12 @@ async def test_get_resource_success(
 
 
 @pytest.mark.asyncio
-@patch(f"{patch_prefix}.CodePipelineActionExecutionInput")
 @patch(f"{patch_prefix}.AioBaseClientProxy")
 @patch(f"{patch_prefix}.ResourceInspector")
 async def test_get_resource_not_found(
     mock_inspector_class: MagicMock,
-    mock_proxy: MagicMock,
-    mock_input: MagicMock,
-    single_options: SingleCodePipelineActionExecutionRequest,
-) -> None:
-    # Arrange
-    exporter = CodePipelineActionExecutionExporter(AsyncMock())
-    mock_inspector = AsyncMock()
-    mock_inspector_class.return_value = mock_inspector
-    mock_inspector.inspect.return_value = []
-
-    # Act
-    result = await exporter.get_resource(single_options)
-
-    # Assert
-    assert result == {}
-    mock_proxy.assert_called_once_with(
-        exporter.session, single_options.region, "codepipeline"
-    )
-
-
-@pytest.mark.asyncio
-@patch(f"{patch_prefix}.CodePipelineActionExecutionInput")
-@patch(f"{patch_prefix}.AioBaseClientProxy")
-@patch(f"{patch_prefix}.ResourceInspector")
-async def test_get_paginated_resources_success(
-    mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
-    mock_input: MagicMock,
-    paginated_options: PaginatedCodePipelineActionExecutionRequest,
+    single_options: SingleCodePipelineActionExecutionRequest,
 ) -> None:
     # Arrange
     exporter = CodePipelineActionExecutionExporter(AsyncMock())
@@ -125,12 +107,71 @@ async def test_get_paginated_resources_success(
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
     class MockPaginator:
+        async def paginate(
+            self, pipelineName: str
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [{"actionExecutionId": "other-exec-id"}]
+
+    mock_proxy.get_paginator = MagicMock(return_value=MockPaginator())
+
+    mock_inspector = AsyncMock()
+    mock_inspector_class.return_value = mock_inspector
+    mock_inspector.inspect.return_value = [{"actionExecutionId": "other-exec-id"}]
+
+    # Act
+    result = await exporter.get_resource(single_options)
+
+    # Assert
+    assert result == {}
+    mock_proxy_class.assert_called_once_with(
+        exporter.session, single_options.region, "codepipeline"
+    )
+
+
+@pytest.mark.asyncio
+@patch(f"{patch_prefix}.AioBaseClientProxy")
+@patch(f"{patch_prefix}.ResourceInspector")
+async def test_get_paginated_resources_success(
+    mock_inspector_class: MagicMock,
+    mock_proxy_class: MagicMock,
+    paginated_options: PaginatedCodePipelineActionExecutionRequest,
+) -> None:
+    # Arrange
+    exporter = CodePipelineActionExecutionExporter(AsyncMock())
+    mock_proxy = AsyncMock()
+    mock_proxy.client = AsyncMock()
+    mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+    pipeline_one_executions = [
+        {"actionExecutionId": "exec-1", "stageName": "Source"},
+        {"actionExecutionId": "exec-2", "stageName": "Build"},
+    ]
+    pipeline_two_executions = [
+        {"actionExecutionId": "exec-3", "stageName": "Deploy"},
+    ]
+
+    class MockPipelinePaginator:
         async def paginate(self) -> AsyncGenerator[list[dict[str, Any]], None]:
             yield [{"name": "pipeline-1"}, {"name": "pipeline-2"}]
-            yield [{"name": "pipeline-3"}]
 
-    paginator_instance = MockPaginator()
-    mock_proxy.get_paginator = MagicMock(return_value=paginator_instance)
+    class MockActionPaginator:
+        async def paginate(
+            self, pipelineName: str
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            if pipelineName == "pipeline-1":
+                yield pipeline_one_executions
+            else:
+                yield pipeline_two_executions
+
+    pipeline_paginator = MockPipelinePaginator()
+    action_paginator = MockActionPaginator()
+
+    def get_paginator(operation: str, key: str) -> Any:
+        if operation == "list_pipelines":
+            return pipeline_paginator
+        return action_paginator
+
+    mock_proxy.get_paginator = MagicMock(side_effect=get_paginator)
 
     mock_inspector = AsyncMock()
     mock_inspector_class.return_value = mock_inspector
@@ -154,25 +195,16 @@ async def test_get_paginated_resources_success(
     mock_proxy_class.assert_called_once_with(
         exporter.session, paginated_options.region, "codepipeline"
     )
-    mock_proxy.get_paginator.assert_called_once_with("list_pipelines", "pipelines")
-    mock_input.assert_has_calls(
+    mock_proxy.get_paginator.assert_has_calls(
         [
-            call(
-                items=[{"name": "pipeline-1"}, {"name": "pipeline-2"}],
-                region=paginated_options.region,
-                account_id=paginated_options.account_id,
-            ),
-            call(
-                items=[{"name": "pipeline-3"}],
-                region=paginated_options.region,
-                account_id=paginated_options.account_id,
-            ),
+            call("list_pipelines", "pipelines"),
+            call("list_action_executions", "actionExecutionDetails"),
         ]
     )
     mock_inspector.inspect.assert_has_calls(
         [
             call(
-                mock_input.return_value,
+                pipeline_one_executions,
                 paginated_options.include,
                 extra_context={
                     "AccountId": paginated_options.account_id,
@@ -180,7 +212,7 @@ async def test_get_paginated_resources_success(
                 },
             ),
             call(
-                mock_input.return_value,
+                pipeline_two_executions,
                 paginated_options.include,
                 extra_context={
                     "AccountId": paginated_options.account_id,
@@ -192,13 +224,11 @@ async def test_get_paginated_resources_success(
 
 
 @pytest.mark.asyncio
-@patch(f"{patch_prefix}.CodePipelineActionExecutionInput")
 @patch(f"{patch_prefix}.AioBaseClientProxy")
 @patch(f"{patch_prefix}.ResourceInspector")
 async def test_get_paginated_resources_empty(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
-    mock_input: MagicMock,
     paginated_options: PaginatedCodePipelineActionExecutionRequest,
 ) -> None:
     # Arrange
@@ -207,12 +237,25 @@ async def test_get_paginated_resources_empty(
     mock_proxy.client = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
-    class MockPaginator:
+    class MockPipelinePaginator:
         async def paginate(self) -> AsyncGenerator[list[dict[str, Any]], None]:
             yield []
 
-    paginator_instance = MockPaginator()
-    mock_proxy.get_paginator = MagicMock(return_value=paginator_instance)
+    class MockActionPaginator:
+        async def paginate(
+            self, pipelineName: str
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield [{"actionExecutionId": "exec-1"}]
+
+    pipeline_paginator = MockPipelinePaginator()
+    action_paginator = MockActionPaginator()
+
+    def get_paginator(operation: str, key: str) -> Any:
+        if operation == "list_pipelines":
+            return pipeline_paginator
+        return action_paginator
+
+    mock_proxy.get_paginator = MagicMock(side_effect=get_paginator)
 
     mock_inspector = AsyncMock()
     mock_inspector_class.return_value = mock_inspector
@@ -223,11 +266,9 @@ async def test_get_paginated_resources_empty(
         collected.append(page)
 
     # Assert
-    assert collected == [[]]
+    assert collected == []
 
     mock_proxy_class.assert_called_once_with(
         exporter.session, paginated_options.region, "codepipeline"
     )
-    mock_proxy.get_paginator.assert_called_once_with("list_pipelines", "pipelines")
-    mock_input.assert_not_called()
     mock_inspector.inspect.assert_not_called()
