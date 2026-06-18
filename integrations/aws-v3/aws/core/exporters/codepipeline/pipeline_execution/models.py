@@ -1,25 +1,25 @@
+from datetime import datetime
 from typing import Any
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
 
 class PipelineExecutionProperties(BaseModel):
-    pipelineArn: str = Field(default_factory=str)
-    pipelineName: str = Field(default_factory=str)
-    pipelineVersion: int | None = None
-    pipelineExecutionId: str = Field(default_factory=str)
-    status: str | None = None
-    statusSummary: str = None
-    artifactRevisions: list[dict[str, Any]] = Field(default_factory=list)
-    variableValues: dict[str, str] = None
-    trigger: dict[str, Any] = None
+    artifactRevisions: list[dict[str, Any]] | None = None
     executionMode: str | None = None
-    rollbackMetadata: dict[str, Any] = None
-    pipelineExecutionDisplayName: str | None = None
-    stageStates: list[dict[str, Any]] | None = Field(default=None)
-    region: str = Field(default_factory=str)
-    createdAt: str | None = None
-    updatedAt: str | None = None
+    executionType: str | None = None
+    lastUpdateTime: datetime | None = None
+    pipelineExecutionId: str | None = None
+    pipelineName: str | None = None
+    pipelineVersion: int | None = None
+    rollbackMetadata: dict[str, Any] | None = None
+    sourceRevisions: list[dict[str, Any]] | None = None
+    startTime: datetime | None = None
+    status: str | None = None
+    statusSummary: str | None = None
+    stopTrigger: dict[str, Any] | None = None
+    trigger: dict[str, Any] | None = None
+    variables: list[dict[str, Any]] | None = None
 
     class Config:
         extra = "ignore"
