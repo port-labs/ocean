@@ -212,11 +212,11 @@ class RedisStreamConsumer:
                 )
                 return
 
-            payload = self._parse_json_object_field(fields, "payload")
+            raw_payload = self._get_field(fields, "payload")
+            payload = self._parse_raw_json_to_dict(raw_payload, "payload")
             headers = self._normalize_headers(
                 self._parse_json_object_field(fields, "headers")
             )
-            raw_payload = self._get_field(fields, "payload")
             original_request = None
             if raw_payload is not None:
                 original_request = _WebhookRequestAdapter(
@@ -264,10 +264,9 @@ class RedisStreamConsumer:
         return None
 
     @classmethod
-    def _parse_json_object_field(
-        cls, fields: dict[str, str], field_name: str
+    def _parse_raw_json_to_dict(
+        cls, raw_value: str | None, field_name: str
     ) -> dict[str, Any]:
-        raw_value = cls._get_field(fields, field_name)
         if raw_value is None:
             return {}
 
@@ -278,6 +277,14 @@ class RedisStreamConsumer:
         if not isinstance(parsed, dict):
             raise InvalidLiveEventsRedisStreamFieldError(field_name)
         return parsed
+
+    @classmethod
+    def _parse_json_object_field(
+        cls, fields: dict[str, str], field_name: str
+    ) -> dict[str, Any]:
+        return cls._parse_raw_json_to_dict(
+            cls._get_field(fields, field_name), field_name
+        )
 
     @staticmethod
     def _normalize_headers(headers: dict[str, Any]) -> dict[str, str]:
