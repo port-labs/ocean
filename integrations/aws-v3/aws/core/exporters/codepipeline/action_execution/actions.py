@@ -66,7 +66,9 @@ class GetActionExecutionsAction(Action[CodePipelineActionExecutionInput]):
         return action_executions
 
 
-class CodePipelineActionExecutionActionsMap(ActionMap[CodePipelineActionExecutionInput]):
+class CodePipelineActionExecutionActionsMap(
+    ActionMap[CodePipelineActionExecutionInput]
+):
     """Groups all actions for CodePipeline action executions."""
 
     defaults: List[Type[Action[CodePipelineActionExecutionInput]]] = [

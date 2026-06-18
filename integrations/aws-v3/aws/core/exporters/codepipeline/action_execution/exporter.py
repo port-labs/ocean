@@ -19,9 +19,9 @@ class CodePipelineActionExecutionExporter(
 ):
     _service_name: SupportedServices = "codepipeline"
     _model_cls: Type[CodePipelineActionExecution] = CodePipelineActionExecution
-    _actions_map: Type[
+    _actions_map: Type[CodePipelineActionExecutionActionsMap] = (
         CodePipelineActionExecutionActionsMap
-    ] = CodePipelineActionExecutionActionsMap
+    )
 
     async def get_resource(
         self, options: SingleCodePipelineActionExecutionRequest
