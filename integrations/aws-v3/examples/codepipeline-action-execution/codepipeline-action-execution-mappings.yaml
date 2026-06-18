@@ -14,7 +14,6 @@ resources:
             actionExecutionId: .Properties.ActionExecutionId
             actionName: .Properties.ActionName
             stageName: .Properties.StageName
-            pipelineName: .Properties.PipelineName
             pipelineExecutionId: .Properties.PipelineExecutionId
             pipelineVersion: .Properties.PipelineVersion
             status: .Properties.Status
@@ -22,6 +21,5 @@ resources:
             lastUpdateTime: .Properties.LastUpdateTime
             input: .Properties.Input
             output: .Properties.Output
-            region: .__ExtraContext.Region
           relations:
             account: .__ExtraContext.AccountId
