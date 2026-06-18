@@ -165,12 +165,12 @@ async def test_non_delete_action_returns_fetched_resource(
 
 
 # ---------------------------------------------------------------------------
-# Multi-org client routing by org name (audit payload shape)
+# Multi-org client routing by org id (audit payload carries org.uuid)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_handle_event_routes_by_audit_org_name(
+async def test_handle_event_routes_by_audit_org_id(
     processor: _StubProcessor,
     mock_client_manager: Any,
 ) -> None:
@@ -179,7 +179,7 @@ async def test_handle_event_routes_by_audit_org_name(
 
     await processor.handle_event(raw, resource_config={})  # type: ignore[arg-type]
 
-    mock_client_manager.get_clients_by_org_name.assert_called_once_with("DPN | Port")
+    mock_client_manager.get_clients_by_org_id.assert_called_once_with("uuid-1")
 
 
 @pytest.mark.asyncio
@@ -187,7 +187,7 @@ async def test_handle_event_skips_when_no_client_for_org(
     processor: _StubProcessor,
     mock_client_manager: Any,
 ) -> None:
-    mock_client_manager.get_clients_by_org_name.return_value = []
+    mock_client_manager.get_clients_by_org_id.return_value = []
     raw = _raw("Stub", "modified", "stub", "s-1")
     raw["attributes"]["org"] = {"name": "Unknown Org", "uuid": "uuid-unknown"}
 

@@ -88,10 +88,12 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
                     deleted_raw_results=[deleted] if deleted else [],
                 )
 
-        org_name = event.attributes.org.name if event.attributes.org else None
-        resource = await self._fetch_from_matching_client(
-            org_name,
+        org_id = event.attributes.org.uuid if event.attributes.org else None
+        clients = self._client_manager.get_clients_by_org_id(org_id)
+        resource = await self._fetch_from_clients(
+            clients,
             lambda client: self._fetch_resource(client, event, resource_config),
+            context=f"org id '{org_id}'",
         )
 
         return WebhookEventRawResults(

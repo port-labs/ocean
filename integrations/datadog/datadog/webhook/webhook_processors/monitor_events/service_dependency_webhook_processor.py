@@ -67,8 +67,10 @@ class ServiceDependencyWebhookProcessor(BaseWebhookProcessor):
             )
             return [result for result in results if result]
 
-        service_dependencies = await self._fetch_from_matching_client(
-            payload.get("org_name"), fetch
+        org_name = payload.get("org_name")
+        clients = self._client_manager.get_clients_by_org_name(org_name)
+        service_dependencies = await self._fetch_from_clients(
+            clients, fetch, context=f"org '{org_name}'"
         )
 
         return WebhookEventRawResults(

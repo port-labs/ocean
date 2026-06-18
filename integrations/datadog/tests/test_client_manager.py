@@ -1,10 +1,12 @@
 import json
 from typing import Any, Generator
-from unittest.mock import PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+import httpx
 import pytest
 
 import client_manager
+from datadog.client import DatadogClient
 from datadog.exceptions import IntegrationMissingConfigError
 from client_manager import (
     DatadogClientManager,
@@ -20,18 +22,32 @@ BASE_URL = "https://api.datadoghq.com"
 def _credential_map_string() -> str:
     return json.dumps(
         [
-            {
-                "datadogOrgName": "org-1",
-                "datadogApiKey": "api-1",
-                "datadogApplicationKey": "app-1",
-            },
-            {
-                "datadogOrgName": "org-2",
-                "datadogApiKey": "api-2",
-                "datadogApplicationKey": "app-2",
-            },
+            {"datadogApiKey": "api-1", "datadogApplicationKey": "app-1"},
+            {"datadogApiKey": "api-2", "datadogApplicationKey": "app-2"},
         ]
     )
+
+
+def _stub_org(client: DatadogClient, public_id: str, name: str) -> None:
+    client.send_api_request = AsyncMock(  # type: ignore[method-assign]
+        return_value={"orgs": [{"public_id": public_id, "name": name}]}
+    )
+
+
+async def _build_enriched_manager(
+    orgs: list[tuple[str, str]],
+) -> DatadogClientManager:
+    """Build a multi-org manager whose clients resolve to the given (id, name) orgs."""
+    creds = [
+        {"datadogApiKey": f"api-{i}", "datadogApplicationKey": f"app-{i}"}
+        for i in range(len(orgs))
+    ]
+    config = {"datadog_base_url": BASE_URL, "datadog_credential_map": json.dumps(creds)}
+    manager = DatadogClientManager(config)
+    for client, (public_id, name) in zip(manager.clients, orgs):
+        _stub_org(client, public_id, name)
+    await manager.validate_and_enrich()
+    return manager
 
 
 @pytest.fixture(autouse=True)
@@ -61,9 +77,9 @@ def patch_integration_config() -> Generator[Any, None, None]:
 def test_get_credential_map_parses_valid_json() -> None:
     config = {"datadog_credential_map": _credential_map_string()}
     result = get_credential_map(config)
-    assert [entry.org_name for entry in result] == ["org-1", "org-2"]
-    assert result[0].api_key == "api-1"
+    assert [entry.api_key for entry in result] == ["api-1", "api-2"]
     assert result[0].app_key == "app-1"
+    assert result[0].base_url is None
 
 
 def test_get_credential_map_missing_raises() -> None:
@@ -95,19 +111,16 @@ def test_init_client_for_multi_org_yields_client_per_entry() -> None:
     clients = list(init_client_for_multi_org(config))
 
     assert len(clients) == 2
-    by_org = {c.org_name: c for c in clients}
-    assert by_org["org-1"].dd_api_key == "api-1"
-    assert by_org["org-1"].dd_app_key == "app-1"
-    assert by_org["org-2"].dd_api_key == "api-2"
+    assert {c.dd_api_key for c in clients} == {"api-1", "api-2"}
+    # org identity is unknown until validate_and_enrich() runs
+    assert all(c.org_id is None and c.org_name is None for c in clients)
     assert all(c.api_url == BASE_URL for c in clients)
 
 
 def test_init_client_for_multi_org_missing_inner_keys_raises() -> None:
     config = {
         "datadog_base_url": BASE_URL,
-        "datadog_credential_map": json.dumps(
-            [{"datadogOrgName": "org-1", "datadogApiKey": "api-1"}]
-        ),
+        "datadog_credential_map": json.dumps([{"datadogApiKey": "api-1"}]),
     }
     with pytest.raises(IntegrationMissingConfigError):
         list(init_client_for_multi_org(config))
@@ -119,15 +132,8 @@ def test_init_client_for_multi_org_uses_per_org_base_url_with_fallback() -> None
         "datadog_base_url": BASE_URL,
         "datadog_credential_map": json.dumps(
             [
-                # no datadogBaseUrl -> falls back to the integration's base url
+                {"datadogApiKey": "a1", "datadogApplicationKey": "p1"},
                 {
-                    "datadogOrgName": "org-1",
-                    "datadogApiKey": "a1",
-                    "datadogApplicationKey": "p1",
-                },
-                # overrides with its own site
-                {
-                    "datadogOrgName": "org-2",
                     "datadogApiKey": "a2",
                     "datadogApplicationKey": "p2",
                     "datadogBaseUrl": other_url,
@@ -135,10 +141,10 @@ def test_init_client_for_multi_org_uses_per_org_base_url_with_fallback() -> None
             ]
         ),
     }
-    by_org = {c.org_name: c for c in init_client_for_multi_org(config)}
+    by_key = {c.dd_api_key: c for c in init_client_for_multi_org(config)}
 
-    assert by_org["org-1"].api_url == BASE_URL
-    assert by_org["org-2"].api_url == other_url
+    assert by_key["a1"].api_url == BASE_URL
+    assert by_key["a2"].api_url == other_url
 
 
 # --------------------------------------------------------------------------- #
@@ -158,6 +164,7 @@ def test_init_client_single_org_builds_one_client() -> None:
     assert client.dd_api_key == "api"
     assert client.dd_app_key == "app"
     assert client.access_token == "token"
+    assert client.org_id is None
     assert client.org_name is None
 
 
@@ -173,9 +180,9 @@ def test_get_client_manager_single_org_branch(patch_integration_config: Any) -> 
         "datadog_application_key": "app",
         "datadog_access_token": "token",
     }
-    clients = get_client_manager().clients
-    assert len(clients) == 1
-    assert clients[0].org_name is None
+    manager = get_client_manager()
+    assert manager.is_multi_org is False
+    assert len(manager.clients) == 1
 
 
 def test_get_client_manager_multi_org_branch(patch_integration_config: Any) -> None:
@@ -183,8 +190,9 @@ def test_get_client_manager_multi_org_branch(patch_integration_config: Any) -> N
         "datadog_base_url": BASE_URL,
         "datadog_credential_map": _credential_map_string(),
     }
-    clients = get_client_manager().clients
-    assert {c.org_name for c in clients} == {"org-1", "org-2"}
+    manager = get_client_manager()
+    assert manager.is_multi_org is True
+    assert {c.dd_api_key for c in manager.clients} == {"api-1", "api-2"}
 
 
 def test_get_client_manager_is_cached(patch_integration_config: Any) -> None:
@@ -194,90 +202,104 @@ def test_get_client_manager_is_cached(patch_integration_config: Any) -> None:
         "datadog_application_key": "app",
         "datadog_access_token": "token",
     }
-    # Repeated calls must hand back the same manager (and the same client
-    # instances with their underlying HTTP pools), not freshly constructed ones.
     assert get_client_manager() is get_client_manager()
-    assert get_client_manager().clients == get_client_manager().clients
 
 
 # --------------------------------------------------------------------------- #
-# DatadogClientManager
+# validate_and_enrich
 # --------------------------------------------------------------------------- #
 
 
-def _single_org_config() -> dict[str, Any]:
-    return {
+@pytest.mark.asyncio
+async def test_validate_and_enrich_tags_clients_with_org_identity() -> None:
+    manager = await _build_enriched_manager(
+        [("uuid-1", "DPN | Port"), ("uuid-2", "Demo")]
+    )
+    by_key = {c.dd_api_key: c for c in manager.clients}
+    assert (by_key["api-0"].org_id, by_key["api-0"].org_name) == ("uuid-1", "DPN | Port")
+    assert (by_key["api-1"].org_id, by_key["api-1"].org_name) == ("uuid-2", "Demo")
+
+
+@pytest.mark.asyncio
+async def test_validate_and_enrich_drops_clients_with_invalid_keys() -> None:
+    config = {
+        "datadog_base_url": BASE_URL,
+        "datadog_credential_map": _credential_map_string(),
+    }
+    manager = DatadogClientManager(config)
+    good, bad = manager.clients
+    _stub_org(good, "uuid-good", "Good Org")
+    request = httpx.Request("GET", f"{BASE_URL}/api/v1/org")
+    bad.send_api_request = AsyncMock(  # type: ignore[method-assign]
+        side_effect=httpx.HTTPStatusError(
+            "forbidden", request=request, response=httpx.Response(403, request=request)
+        )
+    )
+
+    await manager.validate_and_enrich()
+
+    assert [c.org_name for c in manager.clients] == ["Good Org"]
+    assert manager.get_clients_by_org_id("uuid-good") == [good]
+
+
+@pytest.mark.asyncio
+async def test_validate_and_enrich_is_noop_for_single_org() -> None:
+    config = {
         "datadog_base_url": BASE_URL,
         "datadog_api_key": "api",
         "datadog_application_key": "app",
         "datadog_access_token": "token",
     }
-
-
-def _multi_org_config(credential_map: str | None = None) -> dict[str, Any]:
-    return {
-        "datadog_base_url": BASE_URL,
-        "datadog_credential_map": credential_map or _credential_map_string(),
-    }
-
-
-def test_manager_single_org_resolves_sole_client_for_any_name() -> None:
-    manager = DatadogClientManager(_single_org_config())
-    assert len(manager.clients) == 1
+    manager = DatadogClientManager(config)
     sole = manager.clients[0]
+    sole.send_api_request = AsyncMock()  # type: ignore[method-assign]
+
+    await manager.validate_and_enrich()
+
+    sole.send_api_request.assert_not_called()
+    assert manager.clients == [sole]
+
+
+# --------------------------------------------------------------------------- #
+# routing
+# --------------------------------------------------------------------------- #
+
+
+def test_single_org_resolves_sole_client_for_any_lookup() -> None:
+    config = {
+        "datadog_base_url": BASE_URL,
+        "datadog_api_key": "api",
+        "datadog_application_key": "app",
+        "datadog_access_token": "token",
+    }
+    manager = DatadogClientManager(config)
+    sole = manager.clients[0]
+    assert manager.get_clients_by_org_id("anything") == [sole]
     assert manager.get_clients_by_org_name("anything") == [sole]
-    assert manager.get_clients_by_org_name(None) == [sole]
 
 
-def test_manager_multi_org_resolves_by_org_name() -> None:
-    manager = DatadogClientManager(_multi_org_config())
-    assert {c.org_name for c in manager.clients} == {"org-1", "org-2"}
-
-    resolved = manager.get_clients_by_org_name("org-2")
-    assert [c.org_name for c in resolved] == ["org-2"]
-
-
-def test_manager_multi_org_no_match_returns_empty() -> None:
-    manager = DatadogClientManager(_multi_org_config())
-    assert manager.get_clients_by_org_name("missing") == []
-    assert manager.get_clients_by_org_name(None) == []
-
-
-def test_manager_multi_org_matches_org_name_case_insensitively() -> None:
-    credential_map = json.dumps(
-        [
-            {
-                "datadogOrgName": "DPN | Port",
-                "datadogApiKey": "a1",
-                "datadogApplicationKey": "p1",
-            }
-        ]
+@pytest.mark.asyncio
+async def test_get_clients_by_org_id_routes_audit_events() -> None:
+    manager = await _build_enriched_manager(
+        [("uuid-1", "Org One"), ("uuid-2", "Org Two")]
     )
-    manager = DatadogClientManager(_multi_org_config(credential_map))
+    resolved = manager.get_clients_by_org_id("uuid-2")
+    assert [c.org_name for c in resolved] == ["Org Two"]
+    assert manager.get_clients_by_org_id("missing") == []
 
-    # Datadog org names are case-insensitive: a differently-cased event name matches.
+
+@pytest.mark.asyncio
+async def test_get_clients_by_org_name_is_case_insensitive() -> None:
+    manager = await _build_enriched_manager([("uuid-1", "DPN | Port")])
     resolved = manager.get_clients_by_org_name("dpn | port")
     assert [c.org_name for c in resolved] == ["DPN | Port"]
 
 
-def test_manager_multi_org_duplicate_name_returns_all_candidates() -> None:
-    # Org names aren't unique: two entries share a name -> both are returned.
-    credential_map = json.dumps(
-        [
-            {
-                "datadogOrgName": "Shared Name",
-                "datadogApiKey": "a1",
-                "datadogApplicationKey": "p1",
-            },
-            {
-                "datadogOrgName": "Shared Name",
-                "datadogApiKey": "a2",
-                "datadogApplicationKey": "p2",
-            },
-        ]
+@pytest.mark.asyncio
+async def test_get_clients_by_org_name_returns_all_candidates_for_shared_name() -> None:
+    manager = await _build_enriched_manager(
+        [("uuid-1", "Shared Name"), ("uuid-2", "Shared Name")]
     )
-    manager = DatadogClientManager(_multi_org_config(credential_map))
-
     candidates = manager.get_clients_by_org_name("Shared Name")
-    assert len(candidates) == 2
-    assert {c.dd_api_key for c in candidates} == {"a1", "a2"}
+    assert {c.dd_api_key for c in candidates} == {"api-0", "api-1"}
+    assert manager.get_clients_by_org_name("missing") == []

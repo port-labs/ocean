@@ -9,13 +9,14 @@ class RestrictionPolicyResource(NamedTuple):
 
 
 class OrgCredentials(BaseModel):
-    """Per-organization Datadog credentials as supplied in datadogCredentialMap."""
+    """Per-organization Datadog credentials as supplied in datadogCredentialMap.
 
-    org_name: str = Field(..., alias="datadogOrgName")
+    The org's identity (id/name) isn't configured — it's discovered from Datadog
+    at startup while validating the keys (see DatadogClientManager.validate_and_enrich).
+    """
+
     api_key: str = Field(..., alias="datadogApiKey")
     app_key: str = Field(..., alias="datadogApplicationKey")
-    # Orgs can live on different Datadog sites (us3, eu, ...). Falls back to the
-    # integration's datadogBaseUrl when omitted.
     base_url: Optional[str] = Field(None, alias="datadogBaseUrl")
 
 

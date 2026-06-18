@@ -106,31 +106,25 @@ async def test_authenticate_with_case_insensitive_custom_header(
 
 
 @pytest.mark.asyncio
-async def test_fetch_from_matching_client_returns_first_non_empty(
+async def test_fetch_from_clients_returns_first_non_empty(
     processor: MockWebhookProcessor,
-    mock_client_manager: MagicMock,
 ) -> None:
     c1, c2 = MagicMock(name="c1"), MagicMock(name="c2")
-    mock_client_manager.get_clients_by_org_name.return_value = [c1, c2]
 
     async def fetch(client: Any) -> Any:
         return {"id": "found"} if client is c2 else None
 
-    result = await processor._fetch_from_matching_client("My Org", fetch)
-
-    mock_client_manager.get_clients_by_org_name.assert_called_once_with("My Org")
+    result = await processor._fetch_from_clients([c1, c2], fetch, context="org x")
     assert result == {"id": "found"}
 
 
 @pytest.mark.asyncio
-async def test_fetch_from_matching_client_skips_failing_candidate(
+async def test_fetch_from_clients_skips_failing_candidate(
     processor: MockWebhookProcessor,
-    mock_client_manager: MagicMock,
 ) -> None:
     import httpx
 
     c1, c2 = MagicMock(name="c1"), MagicMock(name="c2")
-    mock_client_manager.get_clients_by_org_name.return_value = [c1, c2]
     request = httpx.Request("GET", "https://api.datadoghq.com")
 
     async def fetch(client: Any) -> Any:
@@ -143,16 +137,14 @@ async def test_fetch_from_matching_client_skips_failing_candidate(
             )
         return {"id": "ok"}
 
-    result = await processor._fetch_from_matching_client("My Org", fetch)
+    result = await processor._fetch_from_clients([c1, c2], fetch, context="org x")
     assert result == {"id": "ok"}
 
 
 @pytest.mark.asyncio
-async def test_fetch_from_matching_client_returns_none_without_candidates(
+async def test_fetch_from_clients_returns_none_without_candidates(
     processor: MockWebhookProcessor,
-    mock_client_manager: MagicMock,
 ) -> None:
-    mock_client_manager.get_clients_by_org_name.return_value = []
     fetched = False
 
     async def fetch(client: Any) -> Any:
@@ -160,7 +152,7 @@ async def test_fetch_from_matching_client_returns_none_without_candidates(
         fetched = True
         return {"id": "x"}
 
-    result = await processor._fetch_from_matching_client("missing", fetch)
+    result = await processor._fetch_from_clients([], fetch, context="org x")
 
     assert result is None
     assert fetched is False  # no candidates -> fetch never invoked

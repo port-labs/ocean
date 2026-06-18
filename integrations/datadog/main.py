@@ -226,6 +226,8 @@ async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_start()
 async def on_start() -> None:
+    await get_client_manager().validate_and_enrich()
+
     if not ocean.app.config.event_listener.should_process_webhooks:
         logger.info(
             "Skipping webhook creation as it's not supported for this event listener"

@@ -1,6 +1,7 @@
 from collections import defaultdict
 from typing import Any, Iterator
 
+from httpx import HTTPStatusError
 from loguru import logger
 from pydantic import ValidationError
 
@@ -39,59 +40,118 @@ def init_client_for_multi_org(config: dict[str, Any]) -> Iterator[DatadogClient]
             credentials.base_url or config["datadog_base_url"],
             credentials.api_key,
             credentials.app_key,
-            org_name=credentials.org_name,
         )
 
 
 class DatadogClientManager:
     """Owns the set of Datadog clients for the integration.
 
-    Builds one client per configured organization (a single client for
-    single-org installs) and resolves candidate clients for an incoming event by
-    org name. The config is read once at construction, so clients — and their
-    underlying HTTP connection pools — are reused across resyncs and webhook
-    events rather than rebuilt on every call.
+    For multi-org installs the configured credentials are validated against
+    Datadog once at startup (``validate_and_enrich``): clients whose keys are
+    rejected are dropped, and each surviving client is tagged with the org_id
+    (public UUID) and org_name of the organization its keys belong to. Live events
+    are then routed to candidate clients by org_id (audit trail) or org_name
+    (monitor webhooks).
     """
 
     def __init__(self, config: dict[str, Any]) -> None:
         self.is_multi_org: bool = bool(config.get("datadog_credential_map"))
-        clients = (
-            init_client_for_multi_org(config)
+        self._clients: list[DatadogClient] = (
+            list(init_client_for_multi_org(config))
             if self.is_multi_org
             else [init_client_single_org(config)]
         )
+        self._clients_by_org_id: dict[str | None, list[DatadogClient]] = {}
+        self._clients_by_org_name: dict[str | None, list[DatadogClient]] = {}
 
-        self._clients_by_org_name: dict[str | None, list[DatadogClient]] = defaultdict(
-            list
-        )
-        for client in clients:
-            self._clients_by_org_name[self._normalize_org_name(client.org_name)].append(
-                client
+    @property
+    def clients(self) -> list[DatadogClient]:
+        return self._clients
+
+    async def validate_and_enrich(self) -> None:
+        """Validate each org's keys against Datadog and tag the client with the org
+        id and name its keys belong to.
+
+        Clients whose credentials are rejected (or whose org can't be resolved) are
+        dropped, so resyncs and live events only run against valid keys. No-op for
+        single-org installs, which keep their sole client untouched.
+        """
+        if not self.is_multi_org:
+            return
+
+        valid: list[DatadogClient] = []
+        for client in self._clients:
+            org = await self._fetch_org(client)
+            if org is None:
+                logger.warning(
+                    f"Dropping Datadog credentials for base url '{client.api_url}': "
+                    "keys are invalid or org information is unavailable"
+                )
+                continue
+            client.org_id, client.org_name = org
+            valid.append(client)
+            logger.info(
+                f"Validated Datadog credentials for org '{client.org_name}' "
+                f"(id={client.org_id})"
             )
+
+        self._clients = valid
+        self._build_indexes()
+
+    @staticmethod
+    async def _fetch_org(client: DatadogClient) -> tuple[str, str] | None:
+        """Return ``(org_id, org_name)`` for *client* by querying Datadog, or None
+        when the keys are rejected or no org is returned."""
+        url = f"{client.api_url}/api/v1/org"
+        try:
+            result = await client.send_api_request(url)
+        except HTTPStatusError as e:
+            logger.warning(
+                f"Datadog rejected credentials for '{client.api_url}' "
+                f"({e.response.status_code})"
+            )
+            return None
+
+        orgs = result.get("orgs") or []
+        if not orgs:
+            return None
+        org = orgs[0]
+        public_id, name = org.get("public_id"), org.get("name")
+        if not public_id or not name:
+            return None
+        return public_id, name
+
+    def _build_indexes(self) -> None:
+        by_id: dict[str | None, list[DatadogClient]] = defaultdict(list)
+        by_name: dict[str | None, list[DatadogClient]] = defaultdict(list)
+        for client in self._clients:
+            by_id[client.org_id].append(client)
+            by_name[self._normalize_org_name(client.org_name)].append(client)
+        self._clients_by_org_id = by_id
+        self._clients_by_org_name = by_name
 
     @staticmethod
     def _normalize_org_name(org_name: str | None) -> str | None:
         return org_name.lower() if org_name is not None else None
 
-    @property
-    def clients(self) -> list[DatadogClient]:
-        return [
-            client
-            for clients in self._clients_by_org_name.values()
-            for client in clients
-        ]
+    def get_clients_by_org_id(self, org_id: str | None) -> list[DatadogClient]:
+        """Return candidate clients for the org with *org_id* (audit-trail routing).
 
-    def get_clients_by_org_name(self, org_name: str | None) -> list[DatadogClient]:
-        """Return every client configured for the org named *org_name*.
-
-        Single-org installs always use their sole client. Org names aren't unique,
-        so multi-org installs may return several candidates; the caller tries each
-        until one can fetch the event's resource. Matching is case-insensitive.
-        Returns an empty list when no configured org matches.
+        Single-org installs always use their sole client.
         """
         if not self.is_multi_org:
-            return self.clients
+            return self._clients
+        return self._clients_by_org_id.get(org_id, [])
 
+    def get_clients_by_org_name(self, org_name: str | None) -> list[DatadogClient]:
+        """Return candidate clients for the org named *org_name* (monitor routing).
+
+        Single-org installs always use their sole client. Datadog org names are
+        case-insensitive and several orgs may share a name, so multi-org installs
+        may return multiple candidates; the caller tries each in turn.
+        """
+        if not self.is_multi_org:
+            return self._clients
         return self._clients_by_org_name.get(self._normalize_org_name(org_name), [])
 
 

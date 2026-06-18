@@ -21,24 +21,23 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
         super().__init__(event)
         self._client_manager = get_client_manager()
 
-    async def _fetch_from_matching_client(
+    async def _fetch_from_clients(
         self,
-        org_name: str | None,
+        clients: list[DatadogClient],
         fetch: Callable[[DatadogClient], Awaitable[T]],
+        *,
+        context: str,
     ) -> T | None:
-        """Run *fetch* against each client configured for *org_name*, returning the
-        first non-empty result.
+        """Run *fetch* against each candidate client, returning the first non-empty
+        result.
 
-        Org names aren't unique, so a name can map to several clients; the event
-        truly originates from whichever one can fetch its resource. A client whose
-        credentials don't own the resource raises an HTTP error (403/404) — we log
-        and try the next candidate. Returns None when no candidate yields data.
+        An org can map to several clients (shared names, or several key pairs for
+        one org), and the event truly originates from whichever one can fetch its
+        resource. A client whose credentials don't own the resource raises an HTTP
+        error (403/404) — we log and try the next. Returns None when none yield data.
         """
-        clients = self._client_manager.get_clients_by_org_name(org_name)
         if not clients:
-            logger.warning(
-                f"No Datadog client configured for org '{org_name}'; skipping event"
-            )
+            logger.warning(f"No Datadog client configured for {context}; skipping event")
             return None
 
         for client in clients:
@@ -46,16 +45,14 @@ class BaseWebhookProcessor(AbstractWebhookProcessor):
                 result = await fetch(client)
             except HTTPStatusError as e:
                 logger.warning(
-                    f"Candidate client for org '{org_name}' could not fetch the "
-                    f"event's resource ({e.response.status_code}); trying next"
+                    f"Candidate client for {context} could not fetch the event's "
+                    f"resource ({e.response.status_code}); trying next"
                 )
                 continue
             if result:
                 return result
 
-        logger.warning(
-            f"No configured Datadog client returned data for org '{org_name}'"
-        )
+        logger.warning(f"No configured Datadog client returned data for {context}")
         return None
 
     async def authenticate(

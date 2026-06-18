@@ -45,9 +45,12 @@ class MonitorWebhookProcessor(BaseWebhookProcessor):
         options = GetMonitorOptions.from_resource_config(
             cast(MonitorResourceConfig, resource_config), resource_id=monitor_id
         )
-        monitor = await self._fetch_from_matching_client(
-            payload.get("org_name"),
+        org_name = payload.get("org_name")
+        clients = self._client_manager.get_clients_by_org_name(org_name)
+        monitor = await self._fetch_from_clients(
+            clients,
             lambda client: MonitorExporter(client).get_resource(options),
+            context=f"org '{org_name}'",
         )
 
         return WebhookEventRawResults(
