@@ -89,7 +89,7 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
                     deleted_raw_results=[deleted] if deleted else [],
                 )
 
-        org_id = event.attributes.org.uuid if event.attributes.org else None
+        org_id = event.attributes.org.uuid
         clients = self._client_manager.get_clients_by_org_id(org_id)
         if not clients:
             logger.warning(f"No Datadog client configured for org id '{org_id}'")

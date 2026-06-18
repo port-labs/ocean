@@ -20,6 +20,7 @@ def _raw(
             "evt": {"name": evt_name},
             "action": action,
             "asset": {"type": asset_type, "id": asset_id},
+            "org": {"name": "DPN | Port", "uuid": "uuid-1"},
         }
     }
 
@@ -58,6 +59,7 @@ def test_parse_event_normalizes_action_and_type() -> None:
             "evt": {"name": "  Monitor  "},
             "action": "MODIFIED",
             "asset": {"type": "MONITOR", "id": "m-1"},
+            "org": {"name": "DPN | Port", "uuid": "uuid-1"},
         }
     }
     event = AuditTrailEvent.parse_obj(raw)

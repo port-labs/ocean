@@ -216,7 +216,10 @@ async def test_validate_credentials_tags_clients_with_org_identity() -> None:
         [("uuid-1", "DPN | Port"), ("uuid-2", "Demo")]
     )
     by_key = {c.dd_api_key: c for c in manager.clients}
-    assert (by_key["api-0"].org_id, by_key["api-0"].org_name) == ("uuid-1", "DPN | Port")
+    assert (by_key["api-0"].org_id, by_key["api-0"].org_name) == (
+        "uuid-1",
+        "DPN | Port",
+    )
     assert (by_key["api-1"].org_id, by_key["api-1"].org_name) == ("uuid-2", "Demo")
 
 

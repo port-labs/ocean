@@ -32,14 +32,14 @@ class AuditTrailHttp(BaseModel):
 
 class AuditTrailOrg(BaseModel):
     name: str
-    uuid: Optional[str] = None
+    uuid: str
 
 
 class AuditTrailAttributes(BaseModel):
     evt: AuditTrailEvt
     action: str
     asset: AuditTrailAsset
-    org: Optional[AuditTrailOrg] = None
+    org: AuditTrailOrg
     http: Optional[AuditTrailHttp] = None
 
     @validator("action", pre=True)
