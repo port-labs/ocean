@@ -73,7 +73,6 @@ class ResourceInspector[
         type = self.model_factory().Type
         action_results = await asyncio.gather(
             *(self._run_action(action, identifiers) for action in actions),
-            return_exceptions=True,
         )
 
         if not action_results or not any(action_results):
@@ -89,12 +88,7 @@ class ResourceInspector[
                         logger.warning(f"Missing key '{self.action_id_key}' in result: {result}, skipping ...")
         else:
             for action_result in action_results:
-                if isinstance(action_result, Exception):
-                    logger.warning(
-                        f"{action_result.__class__.__name__} failed: {action_result}, skipping ..."
-                    )
-                    continue
-                for idx, item in enumerate(cast(List[Dict[str, Any]], action_result)):
+                for idx, item in enumerate(action_result):
                     if item:
                         resource_data[idx] |= item
 
