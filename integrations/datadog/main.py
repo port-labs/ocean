@@ -180,7 +180,7 @@ async def on_resync_roles(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield roles
 
 
-@ocean.on_resync(ObjectKind.ORG)
+@ocean.on_resync(ObjectKind.ORGANIZATION)
 async def on_resync_orgs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for orgs in _resync_across_orgs(
         lambda client: OrgExporter(client).get_paginated_resources(),

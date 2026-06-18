@@ -91,7 +91,7 @@ async def test_should_process_event_false_unsupported_action(
 async def test_get_matching_kinds(processor: OrgWebhookProcessor) -> None:
     assert await processor.get_matching_kinds(
         WebhookEvent(trace_id="x", payload={}, headers={})
-    ) == [ObjectKind.ORG]
+    ) == [ObjectKind.ORGANIZATION]
 
 
 @pytest.mark.asyncio

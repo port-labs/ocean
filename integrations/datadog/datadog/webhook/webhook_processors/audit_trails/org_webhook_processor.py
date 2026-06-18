@@ -20,7 +20,7 @@ from datadog.webhook.webhook_processors.audit_trails.base_processor import (
 
 class OrgWebhookProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
-        return [ObjectKind.ORG]
+        return [ObjectKind.ORGANIZATION]
 
     async def _should_process(self, event: AuditTrailEvent) -> bool:
         # https://docs.datadoghq.com/account_management/audit_trail/events/#organization-management
