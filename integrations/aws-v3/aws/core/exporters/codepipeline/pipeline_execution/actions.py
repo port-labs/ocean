@@ -30,14 +30,14 @@ class GetPipelineExecutionDetailsAction(Action[CodePipelineExecutionActionInput]
 
         results: list[dict[str, Any]] = []
         for idx, detail_result in enumerate(details):
-            if isinstance(detail_result, Exception):
+            if isinstance(detail_result, dict):
+                results.append(detail_result)
+            else:
+                results.append({})
                 execution_id = resources.items[idx].get("pipelineExecutionId", "unknown")
                 logger.warning(
                     f"Skipping pipeline execution details for pipeline '{resources.pipeline_name}' execution '{execution_id}': {detail_result}"
                 )
-                results.append({})
-            else:
-                results.append(cast(dict[str, Any], detail_result))
 
         logger.info(f"Successfully fetched details for {len(results)} pipeline executions")
         return results
