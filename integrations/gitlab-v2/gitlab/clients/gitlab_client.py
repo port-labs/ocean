@@ -14,6 +14,7 @@ from wcmatch import glob
 
 from gitlab.helpers.utils import parse_file_content, build_search_query, is_bot_member
 
+from gitlab.clients.rate_limiter.utils import RateLimitInfo
 from gitlab.clients.rest_client import RestClient
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
@@ -1013,3 +1014,22 @@ class GitLabClient:
         if not deployment:
             return None
         return deployment
+
+    async def trigger_pipeline(
+        self,
+        project_id: str | int,
+        ref: str,
+        variables: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        """Trigger a CI/CD pipeline on the given project and ref."""
+        encoded_id = quote(str(project_id), safe="")
+        data: dict[str, Any] = {"ref": ref}
+        if variables:
+            data["variables"] = variables
+        return await self.rest.send_api_request(
+            "POST", f"projects/{encoded_id}/pipeline", data=data
+        )
+
+    def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
+        """Return the most-recently observed rate-limit info, or None if unknown."""
+        return self.rest._rate_limiter.rate_limit_info
