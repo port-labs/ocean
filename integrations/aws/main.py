@@ -1,6 +1,6 @@
 import json
 import typing
-from typing import Optional, Iterable, Callable, Any, AsyncIterator
+from typing import Optional, Iterable, Iterator, Callable, Any, AsyncIterator
 
 from fastapi import Response, status
 import fastapi
@@ -55,12 +55,15 @@ from aioboto3 import Session
 import functools
 
 
-def select_s3_region(allowed_regions: list[str]) -> str:
-    """Select the best region for S3 list_resources calls."""
+def select_s3_region(allowed_regions: list[str]) -> Iterator[str]:
+    """Yield regions for S3 list_resources calls, preferring standard regions over opt-in ones."""
+    opt_in_regions = []
     for region in allowed_regions:
-        if region not in OPT_IN_REGIONS:
-            return region
-    return allowed_regions[0]
+        if region in OPT_IN_REGIONS:
+            opt_in_regions.append(region)
+        else:
+            yield region
+    yield from opt_in_regions
 
 
 CONCURRENT_RESYNC_ACCOUNTS = 10
@@ -397,12 +400,9 @@ async def resync_s3(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
         )
         if allowed_regions:
-            s3_region = select_s3_region(allowed_regions)
-            async for session in credentials.create_session_for_each_region(
-                [s3_region]
-            ):
-                tasks.append(resync_s3_bucket(kind, session))
-                break  # Only one session per account for S3
+            tasks.append(
+                resync_s3_bucket(kind, credentials, select_s3_region(allowed_regions))
+            )
 
         if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):

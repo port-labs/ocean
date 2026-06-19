@@ -1,10 +1,11 @@
 import asyncio
 import json
-from typing import Any, Literal, List, Dict, Callable
+from typing import Any, Literal, List, Dict, Callable, Iterable
 import typing
 
 import aioboto3
 from loguru import logger
+from aws.aws_credentials import AwsCredentials
 from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
@@ -288,11 +289,42 @@ async def get_bucket_resource(
 
 async def resync_s3_bucket(
     kind: str,
+    credentials: AwsCredentials,
+    regions: Iterable[str],
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    account_id = credentials.account_id
+    for region in regions:
+        session = await credentials.create_session(region)
+        yielded_any = False
+        try:
+            async for batch in _resync_s3_bucket_in_region(kind, session, account_id):
+                yielded_any = True
+                yield batch
+            return
+        except ClientError as e:
+            if not is_access_denied_exception(e):
+                raise
+            if yielded_any:
+                logger.warning(
+                    f"Access denied while resyncing {kind} in region {region} in account {account_id} after partial results; stopping"
+                )
+                return
+            logger.warning(
+                f"Skipping region {region} for {kind} in account {account_id} due to missing access permissions; trying next region"
+            )
+
+    logger.warning(
+        f"Could not resync {kind} in account {account_id}: access was denied in all candidate regions"
+    )
+
+
+async def _resync_s3_bucket_in_region(
+    kind: str,
     session: aioboto3.Session,
+    account_id: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     region = session.region_name
-    account_id = await _session_manager.find_account_id_by_session(session)
 
     async with session.client(
         "cloudcontrol",
@@ -383,12 +415,12 @@ async def resync_s3_bucket(
             )
 
         except cloudcontrol.exceptions.ClientError as e:
-            if is_access_denied_exception(e):
-                logger.warning(
-                    f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
-                )
-            else:
+            if not is_access_denied_exception(e):
                 raise e
+            logger.warning(
+                f"Access denied resyncing {kind} in region {region} in account {account_id}"
+            )
+            raise
 
 
 async def fetch_group_resources(
