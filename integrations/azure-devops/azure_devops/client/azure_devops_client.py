@@ -4,6 +4,7 @@ import functools
 import json
 import httpx
 from collections import defaultdict
+from datetime import datetime, timezone
 from itertools import batched
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
@@ -151,6 +152,13 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         eventType=ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
     ),
 ]
+
+
+def _parse_change_timestamp(timestamp: str) -> datetime:
+    try:
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.max.replace(tzinfo=timezone.utc)
 
 
 def _normalize_area_path(path: str) -> str:
@@ -1004,7 +1012,10 @@ class AzureDevopsClient(HTTPBaseClient):
 
             timestamped = [change for change in changes if change.get("timestamp")]
             if timestamped:
-                earliest = min(timestamped, key=lambda change: change["timestamp"])
+                earliest = min(
+                    timestamped,
+                    key=lambda change: _parse_change_timestamp(change["timestamp"]),
+                )
                 build["__firstCommit"] = {
                     **earliest,
                     "__sha": earliest.get("id"),

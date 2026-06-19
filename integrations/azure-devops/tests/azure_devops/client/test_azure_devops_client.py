@@ -3855,6 +3855,40 @@ async def test_generate_builds_enriches_first_commit() -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_builds_first_commit_orders_by_time_not_string() -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_paginated(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if url.endswith("/changes"):
+            # Lexically "...00.5Z" < "...00Z", but 08:00:00 is the chronological earliest.
+            yield [
+                {"id": "sha-later", "timestamp": "2023-01-01T08:00:00.5Z"},
+                {"id": "sha-earliest", "timestamp": "2023-01-01T08:00:00Z"},
+            ]
+        else:
+            yield [{"id": 101, "buildNumber": "b1"}]
+
+    with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(
+            client,
+            "_get_paginated_by_top_and_continuation_token",
+            side_effect=mock_paginated,
+        ):
+            builds: List[Dict[str, Any]] = []
+            async for batch in client.generate_builds(enrich_with_first_commit=True):
+                builds.extend(batch)
+
+    first_commit = builds[0]["__firstCommit"]
+    assert first_commit["__sha"] == "sha-earliest"
+    assert first_commit["__timestamp"] == "2023-01-01T08:00:00Z"
+
+
+@pytest.mark.asyncio
 async def test_generate_builds_first_commit_falls_back_to_source_version() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 
