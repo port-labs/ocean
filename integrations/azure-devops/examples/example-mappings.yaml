@@ -212,9 +212,9 @@ resources:
             requestedFor: .requestedFor.displayName
             leadTimeHours: >-
               if .__firstCommit.__timestamp and .finishTime then
-                ((.finishTime | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601)
-                 - (.__firstCommit.__timestamp | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601))
-                / 3600
+                ((((.finishTime | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601)
+                   - (.__firstCommit.__timestamp | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601))
+                   / 3600) * 100 | floor) / 100
               else null end
           relations:
             project: .__project.id | gsub(" "; "")
