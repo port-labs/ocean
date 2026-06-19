@@ -70,6 +70,7 @@ MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
 MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
+MAX_CONCURRENT_BUILDS_FOR_FIRST_COMMIT = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
 # Conservative concurrency caps to avoid exhausting the shared ADO TSTU budget.
 # ADO does not publish a per-connection limit; these values are empirically chosen
@@ -987,7 +988,64 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield self._enrich_builds_with_project_data(builds, project)
 
-    async def generate_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def _attach_first_commit(
+        self, build: dict[str, Any], project_id: str
+    ) -> dict[str, Any]:
+        changes_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/build/builds/{build['id']}/changes"
+        )
+        try:
+            changes: list[dict[str, Any]] = []
+            async for batch in self._get_paginated_by_top_and_continuation_token(
+                changes_url
+            ):
+                changes.extend(batch)
+
+            timestamped = [change for change in changes if change.get("timestamp")]
+            if timestamped:
+                earliest = min(timestamped, key=lambda change: change["timestamp"])
+                build["__firstCommit"] = {
+                    **earliest,
+                    "__sha": earliest.get("id"),
+                    "__timestamp": earliest["timestamp"],
+                    "__commitCount": len(changes),
+                }
+                return build
+
+            source_version = build.get("sourceVersion")
+            repository_id = (build.get("repository") or {}).get("id")
+            if source_version and repository_id:
+                commit = await self.get_commit(
+                    project_id, repository_id, source_version
+                )
+                committer = commit.get("committer", {})
+                if committer.get("date"):
+                    build["__firstCommit"] = {
+                        **commit,
+                        "__sha": commit.get("commitId") or source_version,
+                        "__timestamp": committer["date"],
+                        "__commitCount": 1,
+                    }
+        except Exception as e:
+            logger.warning(
+                f"First-commit enrichment failed for build {build['id']}: {e}"
+            )
+        return build
+
+    async def _enrich_builds_with_first_commit(
+        self, project_id: str, builds: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        return await process_in_queue(
+            builds,
+            self._attach_first_commit,
+            project_id,
+            concurrency=MAX_CONCURRENT_BUILDS_FOR_FIRST_COMMIT,
+        )
+
+    async def generate_builds(
+        self, enrich_with_first_commit: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate builds across all projects in the organization.
 
         Uses continuation token pagination as per Azure DevOps Builds API.
@@ -996,6 +1054,10 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             tasks = [self._generate_builds_for_project(project) for project in projects]
             async for batch in stream_async_iterators_tasks(*tasks):
+                if enrich_with_first_commit and batch:
+                    batch = await self._enrich_builds_with_first_commit(
+                        batch[0]["__projectId"], batch
+                    )
                 yield batch
 
     async def generate_pipeline_stages(
@@ -2106,6 +2168,13 @@ class AzureDevopsClient(HTTPBaseClient):
         except Exception as e:
             logger.error(f"Failed to commit changes from {url}: {str(e)}")
             raise
+
+    async def get_commit(
+        self, project_id: str, repository_id: str, commit_id: str
+    ) -> dict[str, Any]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/commits/{commit_id}"
+        response = await self.send_request("GET", url, params=API_PARAMS)
+        return response.json() if response else {}
 
     async def create_webhook_subscriptions(
         self,
