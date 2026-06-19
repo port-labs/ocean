@@ -1,10 +1,11 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
-from azure_devops.misc import extract_branch_name_from_ref
+from azure_devops.client.client_manager import AzureDevopsClientManager
+from azure_devops.misc import ORG_URL_FIELD, extract_branch_name_from_ref
 
 FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"
@@ -26,8 +27,26 @@ class GitManipulationHandler(JQEntityProcessor):
 
         return await super()._search(data, pattern, field)
 
+    def _get_client_for_entity(
+        self, data: Dict[str, Any]
+    ) -> Optional[AzureDevopsClient]:
+        """Resolve the per-org client from __organizationUrl on the entity."""
+        org_url: Optional[str] = data.get(ORG_URL_FIELD)
+        if not org_url:
+            logger.warning("Skipping file search: entity has no __organizationUrl")
+            return None
+        manager = AzureDevopsClientManager.create_from_ocean_config_no_cache()
+        client = manager.get_client_for_org(org_url)
+        if not client:
+            logger.warning(
+                f"Skipping file search: no configured client for org '{org_url}'"
+            )
+        return client
+
     async def _search_by_file(self, data: Dict[str, Any], pattern: str) -> Any:
-        client = AzureDevopsClient.create_from_ocean_config_no_cache()
+        client = self._get_client_for_entity(data)
+        if not client:
+            return None
         repository_id, branch = parse_repository_payload(data)
         file_path = pattern.replace(FILE_PROPERTY_PREFIX, "")
         file_raw_content = await client.get_file_by_branch(

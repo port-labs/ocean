@@ -1,0 +1,170 @@
+[
+  {
+    "identifier": "elasticacheCluster",
+    "title": "ElastiCache Cluster",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the cluster"
+        },
+        "cacheClusterId": {
+          "type": "string",
+          "title": "Cluster ID",
+          "description": "The unique identifier of the cache cluster"
+        },
+        "cacheClusterStatus": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the cluster",
+          "enum": ["available", "creating", "deleted", "deleting", "incompatible-network", "modifying", "rebooting cluster nodes", "restore-failed", "snapshotting"]
+        },
+        "cacheNodeType": {
+          "type": "string",
+          "title": "Node Type",
+          "description": "The compute and memory capacity of the nodes (e.g., cache.t4g.micro, cache.r6g.large)"
+        },
+        "engine": {
+          "type": "string",
+          "title": "Engine",
+          "description": "The cache engine (redis or memcached)"
+        },
+        "engineVersion": {
+          "type": "string",
+          "title": "Engine Version",
+          "description": "The version of the cache engine"
+        },
+        "numCacheNodes": {
+          "type": "number",
+          "title": "Number of Nodes",
+          "description": "The number of cache nodes in the cluster"
+        },
+        "preferredAvailabilityZone": {
+          "type": "string",
+          "title": "Availability Zone",
+          "description": "The preferred availability zone for the cluster"
+        },
+        "cacheClusterCreateTime": {
+          "type": "string",
+          "title": "Created At",
+          "description": "The date and time when the cluster was created",
+          "format": "date-time"
+        },
+        "preferredMaintenanceWindow": {
+          "type": "string",
+          "title": "Maintenance Window",
+          "description": "The weekly time range for maintenance"
+        },
+        "cacheParameterGroup": {
+          "type": "object",
+          "title": "Parameter Group",
+          "description": "The cache parameter group associated with the cluster"
+        },
+        "cacheSubnetGroupName": {
+          "type": "string",
+          "title": "Subnet Group",
+          "description": "The name of the cache subnet group"
+        },
+        "cacheNodes": {
+          "type": "array",
+          "title": "Cache Nodes",
+          "description": "The list of cache nodes in the cluster",
+          "items": {
+            "type": "object"
+          }
+        },
+        "autoMinorVersionUpgrade": {
+          "type": "boolean",
+          "title": "Auto Minor Version Upgrade",
+          "description": "Whether minor version upgrades are applied automatically"
+        },
+        "securityGroups": {
+          "type": "array",
+          "title": "Security Groups",
+          "description": "The VPC security groups associated with the cluster",
+          "items": {
+            "type": "object"
+          }
+        },
+        "replicationGroupId": {
+          "type": "string",
+          "title": "Replication Group ID",
+          "description": "The replication group this cluster belongs to"
+        },
+        "snapshotRetentionLimit": {
+          "type": "number",
+          "title": "Snapshot Retention Limit",
+          "description": "Number of days snapshots are retained (0 means backups are disabled)"
+        },
+        "snapshotWindow": {
+          "type": "string",
+          "title": "Snapshot Window",
+          "description": "The daily time range for automatic snapshots"
+        },
+        "authTokenEnabled": {
+          "type": "boolean",
+          "title": "Auth Token Enabled",
+          "description": "Whether Redis AUTH is enabled"
+        },
+        "transitEncryptionEnabled": {
+          "type": "boolean",
+          "title": "Transit Encryption",
+          "description": "Whether in-transit encryption is enabled"
+        },
+        "atRestEncryptionEnabled": {
+          "type": "boolean",
+          "title": "At-Rest Encryption",
+          "description": "Whether at-rest encryption is enabled"
+        },
+        "networkType": {
+          "type": "string",
+          "title": "Network Type",
+          "description": "The network type (ipv4, ipv6, or dual_stack)"
+        },
+        "ipDiscovery": {
+          "type": "string",
+          "title": "IP Discovery",
+          "description": "The IP discovery type"
+        },
+        "logDeliveryConfigurations": {
+          "type": "array",
+          "title": "Log Delivery Configurations",
+          "description": "The log delivery configurations",
+          "items": {
+            "type": "object"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the cluster",
+          "items": {
+            "type": "object",
+            "properties": {
+              "Key": {
+                "type": "string"
+              },
+              "Value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

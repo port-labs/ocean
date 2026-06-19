@@ -213,6 +213,38 @@ async def test_search_entities_uses_datasource_route_when_query_is_none(
     assert sent_json["datasource_suffix"] == "/test-identifier/sync"
 
 
+async def test_search_entities_passes_before_to_datasource_route(
+    entity_client: EntityClientMixin,
+) -> None:
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"entities": [], "next": None}
+    mock_response.is_error = False
+    mock_response.status_code = 200
+    mock_response.headers = {}
+    entity_client.client.post = AsyncMock(return_value=mock_response)  # type: ignore
+    entity_client.auth.headers = AsyncMock(  # type: ignore
+        return_value={"Authorization": "Bearer test"}
+    )
+
+    entity_client.auth.integration_type = "test-integration"
+    entity_client.auth.integration_identifier = "test-identifier"
+    entity_client.auth.api_url = "https://api.getport.io/v1"
+
+    mock_user_agent_type = MagicMock()
+    mock_user_agent_type.value = "sync"
+    before = "2026-03-03T12:00:00+00:00"
+
+    await entity_client.search_entities(
+        user_agent_type=mock_user_agent_type,
+        query=None,
+        before=before,
+    )
+
+    call_args = entity_client.client.post.call_args
+    sent_json = call_args[1]["json"]
+    assert sent_json["before"] == before
+
+
 async def test_search_entities_uses_datasource_route_when_query_is_none_two_pages(
     entity_client: EntityClientMixin,
 ) -> None:

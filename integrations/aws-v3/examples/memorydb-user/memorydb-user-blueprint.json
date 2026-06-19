@@ -1,0 +1,64 @@
+[
+  {
+    "identifier": "memoryDbUser",
+    "title": "MemoryDB User",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the MemoryDB user"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the user (active, modifying, or deleting)"
+        },
+        "accessString": {
+          "type": "string",
+          "title": "Access String",
+          "description": "Access permissions string used for this user account"
+        },
+        "aclNames": {
+          "type": "array",
+          "title": "ACL Names",
+          "description": "The names of the Access Control Lists (ACLs) the user belongs to",
+          "items": {
+            "type": "string"
+          }
+        },
+        "minimumEngineVersion": {
+          "type": "string",
+          "title": "Minimum Engine Version",
+          "description": "The minimum engine version supported for the user"
+        },
+        "authentication": {
+          "type": "object",
+          "title": "Authentication",
+          "description": "The authentication mode for the user"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the MemoryDB user",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

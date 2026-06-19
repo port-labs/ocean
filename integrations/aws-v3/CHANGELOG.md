@@ -7,6 +7,420 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.9.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodeDeploy::Deployment Group resource kind, enabling ingestion of CodeDeploy Deployment Groups into the Port catalog
+
+
+## 2.8.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodePipeline::Action resource kind, enabling ingestion of CodePipeline Actions into the Port catalog
+
+
+## 2.7.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodePipeline::Pipeline resource kind, enabling ingestion of CodePipeline Pipelines into the Port catalog
+
+
+## 2.6.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodeDeploy::Application resource kind, enabling ingestion of CodeDeploy Applications into the Port catalog
+
+
+## 2.5.4-beta (2026-06-16)
+
+
+### Bug Fixes
+
+- Fixed silent index-shift in concurrent action result merging that caused enrichment data (tags, encryption, etc.) to be applied to the wrong AWS resource when one resource's API call returned a recoverable error. All recoverable-skip paths in S3, SQS, RDS, Lambda, Organizations, and the shared `execute_concurrent_aws_operations` helper (used by ECR, ECS, EC2) now preserve list alignment via an empty placeholder.
+
+## 2.5.3-beta (2026-06-16)
+
+
+### Improvements
+
+- Base Action class Generic had variable name override fixed, should now properly identify typing
+
+## 2.5.2-beta (2026-06-15)
+
+
+### Improvements
+
+- Added ruff ignore on unused imports in __init__ files to remove the need for __all__
+
+
+## 2.5.1-beta (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 2.5.0-beta (2026-06-15)
+
+
+### Features
+
+- Added support for AWS::CodeBuild::Build Run resource kind, enabling ingestion of CodeBuild Build Runs into the Port catalog
+
+
+## 2.4.1-beta (2026-06-15)
+
+
+### Improvements
+
+- Base Action class uses Generic[T] instead of list[Any] for typing, enabling more efficient data handling
+
+
+## 2.4.0-beta (2026-06-11)
+
+
+### Features
+
+- Added support for AWS::CodeBuild::Project resource kind, enabling ingestion of CodeBuild projects into the Port catalog
+
+
+## 2.3.1-beta (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 2.3.0-beta (2026-06-10)
+
+
+### Features
+
+- Extended `ouId` to support multiple AWS Organizational Units via comma-separated values (e.g. `ou-abc,ou-def`).
+
+
+## 2.2.42-beta (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 2.2.41-beta (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 2.2.40-beta (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 2.2.39-beta (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 2.2.38-beta (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 2.2.37-beta (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 2.2.36-beta (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 2.2.35-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 2.2.34-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 2.2.33-beta (2026-05-31)
+
+
+### Features
+
+- Added support for AWS::MSK::ServerlessCluster resource kind, enabling ingestion of MSK serverless clusters into the Port catalog with attributes such as cluster state, creation time, VPC configuration, client authentication, and tags.
+
+
+## 2.2.32-beta (2026-05-31)
+
+
+### Features
+
+- Added support for AWS::RDS::DBCluster resource kind, enabling ingestion of Aurora and multi-AZ RDS cluster entities into the Port catalog with attributes such as cluster members, engine mode, writer/reader endpoints, availability zones, and encryption settings.
+
+
+## 2.2.31-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 2.2.30-beta (2026-05-31)
+
+
+### Features
+
+- Added support for `AWS::MemoryDB::User` resource kind, enabling ingestion of MemoryDB users into the Port catalog with attributes such as status, access string, ACL names, authentication mode, and optional tags via `ListTagsForMemoryDbUserAction`.
+
+
+## 2.2.29-beta (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 2.2.28-beta (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
+## 2.2.27-beta (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+
+## 2.2.26-beta (2026-05-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+
+## 2.2.25-beta (2026-05-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+
+## 2.2.24-beta (2026-05-26)
+
+
+### Bug Fixes
+
+- Added `State` field to `AccountProperties` and changed `extra` to `allow` so AWS Organizations accounts are ingested correctly when the new `State` field (introduced Sept 2025) is present alongside the deprecated `Status` field
+
+
+## 2.2.23-beta (2026-05-26)
+
+
+### Bug Fixes
+
+- Fixed ARN validation in Organizations strategy to support AWS GovCloud (`arn:aws-us-gov:iam::`) and China (`arn:aws-cn:iam::`) partitions, which were previously rejected by a hardcoded commercial-partition prefix check. Also fixed role ARN construction to preserve the correct partition when building member account role ARNs.
+
+
+## 2.2.22-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+
+## 2.2.21-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+
+## 2.2.20-beta (2026-05-25)
+
+
+### Improvements
+
+- Added explicit Literal kind definitions per AWS resource kind
+
+
+## 2.2.19-beta (2026-05-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+
+## 2.2.18-beta (2026-05-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+
+## 2.2.17-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+
+## 2.2.16-beta (2026-05-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+
+## 2.2.15-beta (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+
+## 2.2.14-beta (2026-05-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+
+## 2.2.13-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+
+## 2.2.12-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+
+## 2.2.11-beta (2026-05-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+
+## 2.2.10-beta (2026-05-17)
+
+
+### Bug Fixes
+
+- Update docs embed link to match install path
+
+
+## 2.2.9-beta (2026-05-17)
+
+
+### Features
+
+- Added support for MSK (Amazon Managed Streaming for Apache Kafka) clusters
+
+
+## 2.2.8-beta (2026-05-17)
+
+
+### Features
+
+- Added support for AWS::ElastiCache::Cluster kind to sync ElastiCache clusters (Redis and Memcached) with optional tag enrichment via ListTagsForResourceAction
+
+
+## 2.2.7-beta (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+
+## 2.2.6-beta (2026-05-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+
+## 2.2.5-beta (2026-05-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+
+## 2.2.4-beta (2026-05-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+
 ## 2.2.3-beta (2026-05-07)
 
 
@@ -28,7 +442,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind. 
+- Added support for `AWS::EC2::Volume` (Elastic Block Store) as a new resource kind.
 
 
 ## 2.2.0-beta (2026-04-23)

@@ -1,6 +1,6 @@
 from typing import Literal, Any, Type, List, Optional
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
@@ -16,13 +16,17 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
-from gitlab.helpers.utils import GitlabAccessLevel
+from gitlab.helpers.utils import GitLabDeploymentStatus, GitlabAccessLevel, ObjectKind
 from gitlab.entity_processors.file_entity_processor import FileEntityProcessor
 from gitlab.entity_processors.search_entity_processor import SearchEntityProcessor
 from datetime import datetime, timedelta, timezone
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
+
+ISO_8601_DATETIME_REGEX = (
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$"
+)
 
 
 class SearchQuery(BaseModel):
@@ -38,6 +42,112 @@ class SearchQuery(BaseModel):
     query: str = Field(
         description="The search query string (e.g. filename:port.yml)",
     )
+
+
+class PipelineQueryParams(BaseModel):
+    """Gitlab API query params that filters returned pipelines"""
+
+    name: str | None = Field(
+        default=None,
+        title="Name",
+        description="Return pipelines with the specified name.",
+    )
+    scope: Literal["running", "pending", "finished", "branches", "tags"] | None = Field(
+        default=None,
+        title="Scope",
+        description="Limit pipelines to a lifecycle stage (running, pending, finished) or to those triggered for branches or tags.",
+    )
+    status: (
+        Literal[
+            "created",
+            "waiting_for_resource",
+            "preparing",
+            "pending",
+            "running",
+            "success",
+            "failed",
+            "canceled",
+            "skipped",
+            "manual",
+            "scheduled",
+        ]
+        | None
+    ) = Field(
+        default=None,
+        title="Status",
+        description="Return only pipelines currently in the given execution status.",
+    )
+    source: (
+        Literal[
+            "push",
+            "schedule",
+            "web",
+            "merge_request_event",
+            "api",
+            "chat",
+            "external",
+            "external_pull_request_event",
+            "ondemand_dast_scan",
+            "ondemand_dast_validation",
+            "parent_pipeline",
+            "pipeline",
+            "security_orchestration_policy",
+            "trigger",
+            "webide",
+        ]
+        | None
+    ) = Field(
+        default=None,
+        title="Source",
+        description="Return only pipelines triggered by the given source.",
+    )
+    ref: str | None = Field(
+        default=None,
+        title="Ref",
+        description="Return only pipelines that ran against the given branch or tag name.",
+    )
+    sha: str | None = Field(
+        default=None,
+        title="SHA",
+        description="Return only pipelines that ran against the given commit SHA.",
+    )
+    yaml_errors: bool | None = Field(
+        default=None,
+        title="YAML Errors",
+        description="If true, return only pipelines whose .gitlab-ci.yml configuration is invalid.",
+    )
+    username: str | None = Field(
+        default=None,
+        title="Username",
+        description="Return only pipelines triggered by the user with this GitLab username.",
+    )
+    updated_after: str | None = Field(
+        default=None,
+        title="Updated After",
+        description="Return only pipelines updated after this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    updated_before: str | None = Field(
+        default=None,
+        title="Updated Before",
+        description="Return only pipelines updated before this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    created_after: str | None = Field(
+        default=None,
+        title="Created After",
+        description="Return only pipelines created after this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    created_before: str | None = Field(
+        default=None,
+        title="Created Before",
+        description="Return only pipelines created before this timestamp. Expected in ISO 8601 format (e.g. 2019-03-15T08:00:00Z).",
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+
+    def generate_query_params(self) -> dict[str, Any]:
+        return self.dict(exclude_none=True, exclude_unset=True)
 
 
 class GroupSelector(Selector):
@@ -102,6 +212,24 @@ class BranchSelector(Selector):
         alias="defaultBranchOnly",
         title="Default Branches Only",
         description="Only fetch default branches for each project",
+    )
+
+
+class PipelineSelector(ProjectSelector):
+    api_query_params: PipelineQueryParams | None = Field(
+        default=None,
+        alias="apiQueryParams",
+        title="Pipelines Query Params",
+        description="Query params for Gitlab's Pipeline's API",
+    )
+
+
+class JobsSelector(ProjectSelector):
+    pipeline_query_params: PipelineQueryParams | None = Field(
+        default=None,
+        alias="pipelineQueryParams",
+        title="Pipelines Query Params",
+        description="Query params for Gitlab's Pipeline's API",
     )
 
 
@@ -413,7 +541,7 @@ class PipelineResourceConfig(ResourceConfig):
         title="GitLab Pipeline",
         description="GitLab pipeline resource kind.",
     )
-    selector: ProjectSelector = Field(
+    selector: PipelineSelector = Field(
         title="Pipeline Selector",
         description="Selector for the GitLab pipeline resource.",
     )
@@ -424,7 +552,7 @@ class JobResourceConfig(ResourceConfig):
         title="GitLab Job",
         description="GitLab job resource kind.",
     )
-    selector: ProjectSelector = Field(
+    selector: JobsSelector = Field(
         title="Job Selector",
         description="Selector for the GitLab job resource.",
     )
@@ -438,6 +566,127 @@ class BranchResourceConfig(ResourceConfig):
     selector: BranchSelector = Field(
         title="Branch Selector",
         description="Selector for the GitLab branch resource.",
+    )
+
+
+class GitlabDeploymentQueryParams(BaseModel):
+    """GitLab API query params that filters returned deployments."""
+
+    class Config:
+        allow_population_by_field_name = True
+        use_enum_values = True
+
+    environment: str | None = Field(
+        default=None,
+        title="Environment",
+        description="Return only deployments for the given environment name.",
+    )
+    status: GitLabDeploymentStatus | None = Field(
+        default=None,
+        title="Status",
+        description=(
+            "Filter by deployment status. Omit to include all deployments regardless of status."
+        ),
+    )
+    updated_after: str | None = Field(
+        default=None,
+        alias="updatedAfter",
+        title="Updated After",
+        description=(
+            "Limit synced deployments to those updated after this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-01-15T10:00:00Z). "
+            "This controls which deployments are synced into Port — deployments outside "
+            "this window will be removed from Port during reconciliation."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    updated_before: str | None = Field(
+        default=None,
+        alias="updatedBefore",
+        title="Updated Before",
+        description=(
+            "Limit synced deployments to those updated before this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-06-01T00:00:00Z). "
+            "Use together with updatedAfter to define a fixed sync window."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    finished_after: str | None = Field(
+        default=None,
+        alias="finishedAfter",
+        title="Finished After",
+        description=(
+            "Limit synced deployments to those whose CI job finished after this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-01-01T00:00:00Z). "
+            "Requires status to be 'success'. "
+            "Deployments outside this window will be removed from Port during reconciliation."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+    finished_before: str | None = Field(
+        default=None,
+        alias="finishedBefore",
+        title="Finished Before",
+        description=(
+            "Limit synced deployments to those whose CI job finished before this datetime "
+            "(ISO 8601 with timezone, e.g. 2024-06-01T00:00:00Z). "
+            "Requires status to be 'success'. "
+            "Use together with finishedAfter to define a fixed sync window."
+        ),
+        regex=ISO_8601_DATETIME_REGEX,
+    )
+
+    @validator("finished_before", always=True)
+    def _finished_at_window_requires_success_status(
+        cls,
+        finished_before: str | None,
+        values: dict[str, Any],
+    ) -> str | None:
+        if not (values.get("finished_after") or finished_before):
+            return finished_before
+        if values.get("status") != GitLabDeploymentStatus.SUCCESS:
+            raise ValueError(
+                "status must be 'success' when finishedAfter or finishedBefore is set"
+            )
+        return finished_before
+
+    def generate_query_params(self) -> dict[str, Any]:
+        params = self.dict(exclude_unset=True, exclude_none=True)
+        if "finished_after" in params or "finished_before" in params:
+            params["order_by"] = "finished_at"
+        return params
+
+
+class GitlabDeploymentSelector(Selector):
+    include_only_active_projects: bool | None = Field(
+        default=None,
+        alias="includeOnlyActiveProjects",
+        title="Include Only Active Projects",
+        description=(
+            "If true, only include deployments from active (non-archived) projects. Defaults to None (no filter)."
+        ),
+    )
+    query_params: GitlabDeploymentQueryParams | None = Field(
+        default=None,
+        alias="apiQueryParams",
+        title="API Query Params",
+        description="Query parameters applied to the GitLab deployments API.",
+    )
+
+    def generate_query_params(self) -> dict[str, Any]:
+        if self.query_params:
+            return self.query_params.generate_query_params()
+        return {}
+
+
+class GitlabDeploymentResourceConfig(ResourceConfig):
+    kind: Literal[ObjectKind.DEPLOYMENT] = Field(
+        title="GitLab Deployment",
+        description="GitLab deployment resource kind, representing a CI/CD deployment to an environment.",
+    )
+    selector: GitlabDeploymentSelector = Field(
+        title="Deployment Selector",
+        description="Selector for the GitLab deployment resource.",
     )
 
 
@@ -463,6 +712,7 @@ class GitlabPortAppConfig(PortAppConfig):
         | PipelineResourceConfig
         | JobResourceConfig
         | BranchResourceConfig
+        | GitlabDeploymentResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

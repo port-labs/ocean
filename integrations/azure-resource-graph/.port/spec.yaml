@@ -1,6 +1,7 @@
 title: Azure Resource Graph
 description: Azure integration for Port Ocean based on ARG
 icon: Azure
+formMappingEnabled: true
 features:
   - type: exporter
     section: Cloud Providers

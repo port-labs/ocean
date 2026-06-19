@@ -5,6 +5,7 @@ from loguru import logger
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleTeamOptions, ListTeamOptions
+from github.helpers.utils import enrich_with_organization
 
 
 class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
@@ -25,7 +26,7 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
             return None
 
         logger.info(f"Fetched team {slug} from {organization}")
-        return response
+        return enrich_with_organization(response, organization)
 
     async def get_paginated_resources[
         ExporterOptionT: ListTeamOptions
@@ -35,7 +36,9 @@ class RestTeamExporter(AbstractGithubExporter[GithubRestClient]):
 
         async for teams in self.client.send_paginated_request(url):
             logger.info(f"Fetched {len(teams)} teams from {organization}")
-            yield teams
+
+            batch = [enrich_with_organization(team, organization) for team in teams]
+            yield batch
 
     async def get_team_repositories_by_slug[
         ExporterOptionT: SingleTeamOptions

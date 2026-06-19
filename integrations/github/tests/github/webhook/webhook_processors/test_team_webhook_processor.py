@@ -5,7 +5,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
 )
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, call
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
@@ -68,10 +68,11 @@ class TestTeamWebhookProcessor:
     @pytest.mark.parametrize(
         "action,is_deletion,include_members,expected_updated,expected_deleted",
         [
-            ("created", False, False, True, False),  # REST exporter
-            ("created", False, True, True, False),  # GraphQL exporter
-            ("added", False, True, True, False),  # GraphQL exporter
-            ("deleted", True, False, False, True),  # Deletion, no exporter needed
+            ("created", False, False, True, False),
+            ("created", False, True, True, False),
+            ("added", False, True, True, False),
+            ("deleted", True, False, False, True),
+            ("deleted", True, True, False, True),
         ],
     )
     async def test_handle_event_create_and_delete(
@@ -88,21 +89,7 @@ class TestTeamWebhookProcessor:
             "name": "test-repo",
             "slug": "test-team",
             "description": "Test team",
-        }
-
-        # Mocked GraphQL response structure
-        graphql_team_data = {
-            "data": {
-                "organization": {
-                    "team": {
-                        "id": 1,
-                        "name": "test-repo",
-                        "slug": "test-team",
-                        "description": "Test team",
-                        # In a real scenario, members data would be here
-                    }
-                }
-            }
+            "node_id": "NODE_1",
         }
 
         payload = {
@@ -130,33 +117,47 @@ class TestTeamWebhookProcessor:
         if is_deletion:
             result = await team_webhook_processor.handle_event(payload, resource_config)
         else:
-            mock_exporter = AsyncMock()
-            if include_members:
-                mock_exporter.get_resource.return_value = graphql_team_data["data"][
-                    "organization"
-                ]["team"]
-                exporter_path = "github.webhook.webhook_processors.team_webhook_processor.GraphQLTeamWithMembersExporter"
-                client_type = GithubClientType.GRAPHQL
-            else:
-                mock_exporter.get_resource.return_value = team_data
-                exporter_path = "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter"
-                client_type = GithubClientType.REST
+            rest_result = (
+                {**team_data, "existing": "keep"} if include_members else team_data
+            )
+            extras_result = {
+                "slug": "test-team",
+                "existing": "do-not-overwrite",
+                "extra_field": "extra-value",
+            }
+
+            mock_rest_get_resource = AsyncMock(return_value=rest_result)
+            mock_graphql_get_resource = AsyncMock(return_value=extras_result)
+
+            mock_rest_client = AsyncMock()
+            mock_graphql_client = AsyncMock()
+
+            def create_client_side_effect(client_type: GithubClientType) -> AsyncMock:
+                return (
+                    mock_graphql_client
+                    if client_type == GithubClientType.GRAPHQL
+                    else mock_rest_client
+                )
 
             with (
-                patch(exporter_path, return_value=mock_exporter),
                 patch(
                     "github.webhook.webhook_processors.team_webhook_processor.create_github_client"
                 ) as mock_create_client,
+                patch(
+                    "github.webhook.webhook_processors.team_webhook_processor.RestTeamExporter.get_resource",
+                    new=mock_rest_get_resource,
+                ),
+                patch(
+                    "github.webhook.webhook_processors.team_webhook_processor.GraphQLTeamWithMembersExporter.get_resource",
+                    new=mock_graphql_get_resource,
+                ),
             ):
+                mock_create_client.side_effect = create_client_side_effect
                 result = await team_webhook_processor.handle_event(
                     payload, resource_config
                 )
 
-                # Verify create_github_client was called with correct type
-                mock_create_client.assert_called_once_with(client_type)
-
-                # Verify exporter was called with correct team slug
-                mock_exporter.get_resource.assert_called_once_with(
+                mock_rest_get_resource.assert_awaited_once_with(
                     SingleTeamOptions(
                         organization="test-org",
                         slug="test-team",
@@ -164,21 +165,43 @@ class TestTeamWebhookProcessor:
                     )
                 )
 
+                if include_members:
+                    assert mock_create_client.call_args_list == [
+                        call(GithubClientType.REST),
+                        call(GithubClientType.GRAPHQL),
+                    ]
+                    mock_graphql_get_resource.assert_awaited_once_with(
+                        SingleTeamOptions(
+                            organization="test-org",
+                            slug="test-team",
+                            include_saml_email=False,
+                        )
+                    )
+                else:
+                    mock_create_client.assert_called_once_with(GithubClientType.REST)
+                    mock_graphql_get_resource.assert_not_awaited()
+
         assert isinstance(result, WebhookEventRawResults)
         assert bool(result.updated_raw_results) is expected_updated
         assert bool(result.deleted_raw_results) is expected_deleted
 
         if expected_updated:
-            # If GraphQL, the result will be the extracted team data from the graphql_team_data mock
             if include_members:
                 assert result.updated_raw_results == [
-                    graphql_team_data["data"]["organization"]["team"]
+                    {
+                        **team_data,
+                        "existing": "keep",
+                        "extra_field": "extra-value",
+                    }
                 ]
             else:
                 assert result.updated_raw_results == [team_data]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [team_data]
+            if include_members:
+                assert result.deleted_raw_results == [{**team_data, "id": "NODE_1"}]
+            else:
+                assert result.deleted_raw_results == [team_data]
 
     @pytest.mark.parametrize(
         "payload,expected",

@@ -1,7 +1,7 @@
 from typing import Literal
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, root_validator
 from port_ocean.core.handlers.port_app_config.models import Selector
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -69,13 +69,37 @@ class ClaudeCostSelector(Selector):
 
 
 class ClaudeCodeAnalyticsSelector(Selector):
-    starting_date: str = Field(
+    starting_date: str | None = Field(
         alias="startingDate",
-        default="2025-01-01",
+        default=None,
         title="Starting Date",
-        description="Start date for Claude Code analytics in YYYY-MM-DD format.",
+        description=(
+            "Start date in YYYY-MM-DD format. The integration calls the API once for "
+            "each day from this date to today. Mutually exclusive with timeFrame."
+        ),
         pattern=r"^\d{4}-\d{2}-\d{2}$",
     )
+    time_frame: int | None = Field(
+        alias="timeFrame",
+        default=None,
+        title="Time Frame (days)",
+        description=(
+            "Number of days to look back from today. The integration calls the API "
+            "once per day for each of the last N days. Mutually exclusive with startingDate."
+        ),
+        gt=0,
+    )
+
+    @root_validator
+    @classmethod
+    def validate_date_config(cls, values: dict[str, object]) -> dict[str, object]:
+        has_starting_date = values.get("starting_date") is not None
+        has_time_frame = values.get("time_frame") is not None
+        if not has_starting_date and not has_time_frame:
+            raise ValueError("Either 'startingDate' or 'timeFrame' must be provided")
+        if has_starting_date and has_time_frame:
+            raise ValueError("'startingDate' and 'timeFrame' are mutually exclusive")
+        return values
 
 
 class ClaudeUsageRecordResourceConfig(ResourceConfig):

@@ -28,7 +28,6 @@ from port_ocean.exceptions.context import (
 )
 from port_ocean.utils.misc import get_time
 
-
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import (
         ResourceConfig,

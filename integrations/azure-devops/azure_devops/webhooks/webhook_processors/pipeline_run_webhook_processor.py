@@ -11,7 +11,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from azure_devops.misc import Kind
 from azure_devops.webhooks.events import PipelineRunEvents
 from azure_devops.client.azure_devops_client import (
-    AzureDevopsClient,
     PIPELINES_PUBLISHER_ID,
 )
 
@@ -38,10 +37,10 @@ class PipelineRunWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         except (KeyError, ValueError):
             return False
 
-    async def handle_event(
+    async def _handle_webhook_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        client = AzureDevopsClient.create_from_ocean_config()
+        client = self._get_client_for_webhook(payload)
         pipeline_id = payload["resource"]["pipeline"]["id"]
         project_id = payload["resourceContainers"]["project"]["id"]
         run_id = payload["resource"]["run"]["id"]

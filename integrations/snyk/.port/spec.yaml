@@ -12,6 +12,7 @@ features:
       - kind: issue
       - kind: project
       - kind: target
+      - kind: policy
 configurations:
   - name: token
     required: true

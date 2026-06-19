@@ -70,7 +70,7 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         configured_visibility: str,
     ) -> Optional[dict[str, Any]]:
         # This search is designed to match exactly one repo and would not paginate through many
-        targeted_query = f"{query} AND {repo['name']} in:name"
+        targeted_query = f"{query} {repo['name']} in:name"
 
         search_options = ListRepositoryOptions(
             type=configured_visibility,
@@ -127,7 +127,6 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
 
 
 class CollaboratorEventValidator:
-
     async def validate_member_collaborator_payload(self, payload: EventPayload) -> bool:
         has_required_fields = not ({"action", "repository", "member"} - payload.keys())
 
@@ -144,7 +143,6 @@ class CollaboratorEventValidator:
     async def validate_membership_collaborator_payload(
         self, payload: EventPayload
     ) -> bool:
-
         has_required_fields = not (
             {"action", "organization", "team", "member"} - payload.keys()
         )
@@ -166,7 +164,6 @@ class CollaboratorEventValidator:
         )
 
     async def validate_team_collaborator_payload(self, payload: EventPayload) -> bool:
-
         has_required_fields = not (
             {"action", "repository", "organization", "team"} - payload.keys()
         )

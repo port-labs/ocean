@@ -24,17 +24,17 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Only process push events that contain workflow file changes."""
-
         if event.headers.get("x-github-event") != "push":
             return False
 
-        for commit in event.payload["commits"]:
-            for file in commit.get("modified", []):
-                if self._is_workflow_file(file):
-                    return True
-            for file in commit.get("added", []):
-                if self._is_workflow_file(file):
-                    return True
+        for commit in event.payload.get("commits", []):
+            changed_files = (
+                commit.get("added", [])
+                + commit.get("modified", [])
+                + commit.get("removed", [])
+            )
+            if any(self._is_workflow_file(file) for file in changed_files):
+                return True
 
         return False
 
@@ -61,17 +61,21 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         commit_diff = await fetch_commit_diff(
             rest_client, organization, repo_name, payload["before"], payload["after"]
         )
-        _, changed_workflow_files = extract_changed_files(commit_diff["files"])
+        deleted_workflow_files, changed_workflow_files = extract_changed_files(
+            commit_diff["files"]
+        )
 
         logger.info(
             f"Processing workflow changes in repository {repo_name} of organization: {organization}. "
+            f"Deleted workflow files: {list(deleted_workflow_files)} "
             f"Changed workflow files: {list(changed_workflow_files)}"
         )
 
         workflows_to_upsert = []
+        workflows_to_delete = []
         exporter = RestWorkflowExporter(rest_client)
 
-        for changed_file in changed_workflow_files:
+        for changed_file in changed_workflow_files | deleted_workflow_files:
             workflow_name = self._extract_file_name(changed_file)
             options = SingleWorkflowOptions(
                 organization=organization,
@@ -80,17 +84,22 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
             workflow = await exporter.get_resource(options)
-            if workflow:
+            if not workflow:
+                continue
+
+            if workflow["state"] == "deleted":
+                workflows_to_delete.append(workflow)
+            else:
                 workflows_to_upsert.append(workflow)
 
-        logger.info(
-            f"Fetched {len(workflows_to_upsert)} workflows from {repo_name} of organization: {organization} "
-            f"due to workflow file changes"
-        )
+            logger.info(
+                f"Fetched {len(workflows_to_upsert)} workflows to upsert and {len(workflows_to_delete)} workflows to delete from {repo_name} of organization: {organization} "
+                f"due to workflow file changes"
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=workflows_to_upsert,
-            deleted_raw_results=[],
+            deleted_raw_results=workflows_to_delete,
         )
 
     async def _validate_payload(self, payload: EventPayload) -> bool:

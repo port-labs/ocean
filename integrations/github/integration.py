@@ -45,7 +45,11 @@ class RepoSearchSelector(Selector):
     repo_search: Optional[RepoSearchParams] = Field(
         title="Repositories",
         alias="repoSearch",
-        description="Ingest specific repositories using <a target='_blank' href='https://docs.github.com/en/search-github/searching-on-github/searching-for-repositories'>Github repository search API</a>",
+        description=(
+            "Filter which repositories are ingested using GitHub's repository search API. "
+            "<b>Read the limitations before using this selector:</b> "
+            "<a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/capabilities/#limitations-1'>Port docs</a>."
+        ),
         default=None,
     )
 
@@ -89,6 +93,17 @@ class GitHubRepositoryRelationSelector(BaseModel):
         default=False,
         description="Include SBOM for the repository.",
     )
+    custom_properties: bool = Field(
+        title="Include Custom Properties",
+        alias="customProperties",
+        default=False,
+        description="Include organization custom property values for the repository.",
+    )
+    pages: bool = Field(
+        title="Include GitHub Pages",
+        default=False,
+        description="Include GitHub Pages configuration for the repository.",
+    )
 
     class Config:
         extra = "forbid"
@@ -104,6 +119,12 @@ class GitHubRepositoryRelationSelector(BaseModel):
 
         if self.sbom:
             result["sbom"] = {"include": self.sbom}
+
+        if self.custom_properties:
+            result["custom_properties"] = {"include": self.custom_properties}
+
+        if self.pages:
+            result["pages"] = {"include": self.pages}
 
         return result
 
@@ -128,7 +149,7 @@ class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
     included_relations: Optional[GitHubRepositoryRelationSelector] = Field(
         alias="includedRelations",
         title="Additional Repository Data",
-        description="Fetch additional data related to the repository api response. Accepted options: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>.",
+        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples/#repositories-with-multiple-relationships'>teams, collaborators, sbom, custom properties and pages</a>",
         default=None,
     )
 
@@ -305,18 +326,24 @@ class GithubPullRequestSelector(RepoSearchSelector):
         default=["open"],
         description="Filter pull requests by states (e.g. ['open']).",
     )
-    max_results: int = Field(
+    max_results: Optional[int] = Field(
         title="Max merged pull requests",
         alias="maxResults",
-        default=100,
+        default=None,
         ge=1,
-        description="Max number of merged pull requests. Note: large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
+        description="Max number of merged pull requests. Defaults to 100 for the days lookback; with closedSinceDate set, leave empty to fetch all closed PRs back to the cutoff. Large numbers may cause rate limits. Merged PRs are only retrieved when 'closed' is selected in the state selector.",
     )
     since: int = Field(
         title="Closed PRs Lookback Days",
         default=60,
         ge=1,
         description="Numbers of days back for closed pull requests.",
+    )
+    closed_since_date: Optional[str] = Field(
+        title="Closed PRs Since Date",
+        alias="closedSinceDate",
+        default=None,
+        description="Only ingest pull requests closed on or after this absolute date (ISO-8601, e.g. 2025-01-01 or 2025-01-01T00:00:00Z). Filters by close date and overrides the 'since' days lookback when set.",
     )
     api: Literal["rest", "graphql"] = Field(
         title="API",
@@ -334,11 +361,37 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "This option will be ignored if the api selector is set to rest."
         ),
     )
+    exclude_graphql_fields: list[str] = Field(
+        title="Exclude GraphQL Fields",
+        alias="excludeGraphqlFields",
+        default_factory=list,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, fields specified in this list will be omitted from the query. "
+            "This is useful as a workaround for GitHub GraphQL instability or to reduce rate limit cost. "
+            "This option will be ignored if the api selector is set to rest."
+        ),
+    )
 
     @property
-    def updated_after(self) -> datetime:
-        """Convert the since days to a timezone-aware datetime object."""
+    def updated_after(self) -> Optional[datetime]:
+        if self.closed_since_date is not None:
+            return None
         return datetime.now(timezone.utc) - timedelta(days=self.since)
+
+    @property
+    def closed_after(self) -> Optional[datetime]:
+        if self.closed_since_date is None:
+            return None
+        parsed = datetime.fromisoformat(self.closed_since_date)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+    @property
+    def effective_max_results(self) -> Optional[int]:
+        if self.max_results is not None:
+            return self.max_results
+        if self.closed_since_date is not None:
+            return None
+        return 100
 
 
 class GithubPullRequestConfig(ResourceConfig):
@@ -617,12 +670,59 @@ class GithubWorkflowConfig(ResourceConfig):
     )
 
 
+class GithubWorkflowRunSelector(RepoSearchSelector):
+    statuses: Optional[
+        list[
+            Literal[
+                "completed",
+                "action_required",
+                "cancelled",
+                "failure",
+                "neutral",
+                "skipped",
+                "stale",
+                "success",
+                "timed_out",
+                "in_progress",
+                "queued",
+                "requested",
+                "waiting",
+                "pending",
+            ]
+        ]
+    ] = Field(
+        title="Statuses",
+        default=None,
+        description="Filter workflow runs by status or conclusion. Accepts a list of values. Each additional status value results in one extra API call per workflow — keep the list small.",
+    )
+    since: Optional[int] = Field(
+        title="Lookback Days",
+        default=None,
+        ge=1,
+        description="Only fetch workflow runs created within the last N days. Takes precedence over sinceDate when both are set.",
+    )
+    since_date: Optional[str] = Field(
+        title="Since Date",
+        default=None,
+        description="Only fetch workflow runs created on or after this date. Accepts ISO 8601 format (e.g. 2024-01-01 or 2024-01-01T00:00:00Z). Ignored if since is set.",
+    )
+
+    @property
+    def created_after(self) -> Optional[str]:
+        if self.since is not None:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=self.since)
+            return f">={cutoff.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+        if self.since_date is not None:
+            return f">={self.since_date}"
+        return None
+
+
 class GithubWorkflowRunConfig(ResourceConfig):
     kind: Literal[ObjectKind.WORKFLOW_RUN] = Field(
         title="Github Workflow Run",
         description="Github workflow run resource kind.",
     )
-    selector: RepoSearchSelector = Field(
+    selector: GithubWorkflowRunSelector = Field(
         title="Workflow run selector",
         description="Selector for the workflow run resource.",
     )

@@ -168,6 +168,12 @@ class TeamSelector(Selector):
         title="Include Members",
         description="Whether to include the members of the team, defaults to false",
     )
+    include_area_paths: bool = Field(
+        alias="includeAreaPaths",
+        default=False,
+        title="Include Area Paths",
+        description="Whether to attach the team's configured area paths under __areaPaths (from the Team Field Values API), defaults to false",
+    )
 
 
 class AzureDevopsTeamResourceConfig(ResourceConfig):
@@ -295,12 +301,42 @@ class AzureDevopsRepositoryResourceConfig(ResourceConfig):
     )
 
 
+class AzureDevopsUserSelector(Selector):
+    include_fields: Optional[
+        list[Literal["license", "extensions", "projects", "groupRules"]]
+    ] = Field(
+        default=None,
+        alias="includeFields",
+        title="Include Fields",
+        description="List of additional properties to include in user entitlements.",
+    )
+    api_version: Optional[str] = Field(
+        default=None,
+        alias="apiVersion",
+        title="API Version",
+        description="API version for the User Entitlements endpoint. Override if your organization requires a specific version. Will use the default version if not provided.",
+    )
+
+    def to_params(self) -> dict[str, str]:
+        data = self.dict(
+            by_alias=True,
+            exclude_none=True,
+            exclude={"query", "api_version"},
+        )
+        if "includeFields" in data:
+            data["select"] = ",".join(data["includeFields"])
+            del data["includeFields"]
+        if self.api_version:
+            data["api-version"] = self.api_version
+        return data
+
+
 class AzureDevopsUserConfig(ResourceConfig):
     kind: Literal[Kind.USER] = Field(
         title="Azure Devops User",
         description="Azure Devops user resource kind.",
     )
-    selector: AzureDevopsSelector = Field(
+    selector: AzureDevopsUserSelector = Field(
         title="User selector",
         description="Selector for the user resource.",
     )
@@ -552,6 +588,26 @@ class AzureDevopsIterationConfig(ResourceConfig):
     )
 
 
+class AzureDevopsAreaPathSelector(Selector):
+    depth: Optional[int] = Field(
+        default=None,
+        alias="depth",
+        title="Depth",
+        description="How many levels of the area-path tree to fetch in a single call.",
+    )
+
+
+class AzureDevopsAreaPathResourceConfig(ResourceConfig):
+    kind: Literal[Kind.AREA_PATH] = Field(
+        title="Azure Devops Area Path",
+        description="Azure Devops area path resource kind.",
+    )
+    selector: AzureDevopsAreaPathSelector = Field(
+        title="Area path selector",
+        description="Selector for the area path resource.",
+    )
+
+
 class AzureDevopsGroupResourceConfig(ResourceConfig):
     kind: Literal[Kind.GROUP] = Field(
         title="Azure Devops Group",
@@ -605,6 +661,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsReleaseDeploymentConfig
         | AzureDevopsPipelineDeploymentConfig
         | AzureDevopsIterationConfig
+        | AzureDevopsAreaPathResourceConfig
         | AzureDevopsGroupResourceConfig
         | AzureDevopsGroupMemberResourceConfig
     ] = Field(

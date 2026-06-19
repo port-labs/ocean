@@ -1,6 +1,11 @@
 import asyncio
 from typing import Any, cast
-from snyk.overrides import TargetResourceConfig, VulnerabilityResourceConfig
+from snyk.overrides import (
+    PolicyResourceConfig,
+    ProjectResourceConfig,
+    TargetResourceConfig,
+    VulnerabilityResourceConfig,
+)
 from loguru import logger
 from IntegrationKind import IntegrationKind
 from initialize_client import init_client
@@ -8,7 +13,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-from snyk.overrides import ProjectResourceConfig
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.target_webhook_processor import TargetWebhookProcessor
@@ -31,7 +35,9 @@ async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     all_organizations = await snyk_client.get_organizations_in_groups()
     tasks = (
         snyk_client.get_paginated_targets(
-            org, attach_project_data=selector.attach_project_data
+            org,
+            attach_project_data=selector.attach_project_data,
+            api_params=selector.api_query_params,
         )
         for org in all_organizations
     )
@@ -120,6 +126,20 @@ async def on_vulnerability_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for issues_batch in stream_async_iterators_tasks(*tasks):
         logger.debug(f"Received batch with {len(issues_batch)} issues")
         yield issues_batch
+
+
+@ocean.on_resync(IntegrationKind.POLICY)
+async def on_policy_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    snyk_client = init_client()
+    selector = cast(PolicyResourceConfig, event.resource_config).selector
+    all_organizations = await snyk_client.get_organizations_in_groups()
+    tasks = (
+        snyk_client.get_paginated_policies(org, api_params=selector.api_query_params)
+        for org in all_organizations
+    )
+    async for policies in stream_async_iterators_tasks(*tasks):
+        logger.debug(f"Received batch with {len(policies)} policies")
+        yield policies
 
 
 @ocean.on_start()

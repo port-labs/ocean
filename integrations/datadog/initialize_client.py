@@ -1,4 +1,4 @@
-from client import DatadogClient
+from datadog.client import DatadogClient
 from port_ocean.context.ocean import ocean
 
 

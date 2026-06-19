@@ -15,6 +15,37 @@ import httpx
 # ============================================================================
 
 
+def _dict_response_has_next(
+    response_data: Dict[str, Any],
+    config: Dict[str, Any],
+    get_nested_value: Callable[[Dict[str, Any], str], Any],
+    *,
+    default_has_next: Callable[[Dict[str, Any]], bool],
+) -> bool:
+    """Determine whether more pages exist. Precedence:
+
+    - has_more_path: truthy resolved value means continue.
+    - last_page_path: truthy resolved value means stop (inverted).
+    - default_has_next: handler-specific heuristic fallback.
+
+    None (missing field) at any path falls through to the next check.
+    """
+    has_more_path = config.get("has_more_path", "")
+    last_page_path = config.get("last_page_path", "")
+
+    if has_more_path:
+        value = get_nested_value(response_data, has_more_path)
+        if value is not None:
+            return bool(value)
+
+    if last_page_path:
+        value = get_nested_value(response_data, last_page_path)
+        if value is not None:
+            return not bool(value)
+
+    return default_has_next(response_data)
+
+
 class PaginationHandler:
     """Base class for pagination handlers"""
 
@@ -86,9 +117,15 @@ class PagePagination(PaginationHandler):
         page_param = self.config.get("pagination_param", "page")
         size_param = self.config.get("size_param", "size")
         start_page = int(self.config.get("start_page", 1))
-        has_more_path = self.config.get("has_more_path", "")
 
         page = start_page
+
+        def _page_default_has_next(data: Dict[str, Any]) -> bool:
+            return (
+                data.get("next_page") is not None
+                or data.get("next") is not None
+                or data.get("hasMore", False)
+            )
 
         while True:
             current_params = {
@@ -107,14 +144,12 @@ class PagePagination(PaginationHandler):
 
             # Check for next page
             if isinstance(response_data, dict):
-                if has_more_path:
-                    has_next = self.get_nested_value(response_data, has_more_path)
-                else:
-                    has_next = (
-                        response_data.get("next_page") is not None
-                        or response_data.get("next") is not None
-                        or response_data.get("hasMore", False)
-                    )
+                has_next = _dict_response_has_next(
+                    response_data,
+                    self.config,
+                    self.get_nested_value,
+                    default_has_next=_page_default_has_next,
+                )
                 if not has_next:
                     break
             else:

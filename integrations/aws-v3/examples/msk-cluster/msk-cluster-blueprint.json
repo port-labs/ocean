@@ -1,0 +1,82 @@
+[
+  {
+    "identifier": "mskCluster",
+    "title": "MSK Cluster",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "clusterArn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the MSK cluster"
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "description": "The current state of the cluster",
+          "enum": [
+            "ACTIVE",
+            "CREATING",
+            "DELETING",
+            "FAILED",
+            "HEALING",
+            "MAINTENANCE",
+            "REBOOTING_BROKER",
+            "UPDATING"
+          ]
+        },
+        "kafkaVersion": {
+          "type": "string",
+          "title": "Kafka Version",
+          "description": "The version of Apache Kafka"
+        },
+        "numberOfBrokerNodes": {
+          "type": "number",
+          "title": "Number of Broker Nodes",
+          "description": "The number of broker nodes in the cluster"
+        },
+        "instanceType": {
+          "type": "string",
+          "title": "Instance Type",
+          "description": "The type of broker instances"
+        },
+        "enhancedMonitoring": {
+          "type": "string",
+          "title": "Enhanced Monitoring",
+          "description": "The level of enhanced monitoring"
+        },
+        "clientAuthentication": {
+          "type": "object",
+          "title": "Client Authentication",
+          "description": "Client authentication settings (IAM, SASL, TLS)"
+        },
+        "encryptionInTransit": {
+          "type": "string",
+          "title": "Encryption In Transit",
+          "description": "Encryption setting for data in transit between clients and brokers"
+        },
+        "creationTime": {
+          "type": "string",
+          "title": "Creation Time",
+          "description": "The time when the cluster was created",
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags",
+          "description": "Tags associated with the cluster"
+        }
+      },
+      "required": []
+    },
+    "calculationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

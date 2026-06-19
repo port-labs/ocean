@@ -1,7 +1,11 @@
-from port_ocean.core.event_listener.kafka import KafkaEventListenerSettings
-from port_ocean.core.models import EventListenerType
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from pydantic import ValidationError
+
+from port_ocean.core.event_listener.kafka import KafkaEventListener
+from port_ocean.core.event_listener.kafka import KafkaEventListenerSettings
+from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
 
 
 def test_default_kafka_settings() -> None:
@@ -75,3 +79,72 @@ def test_single_broker_array() -> None:
         type=EventListenerType.KAFKA, brokers='["single:9092"]'
     )
     assert config.brokers == "single:9092"
+
+
+def _build_listener() -> KafkaEventListener:
+    async def on_resync(_: dict[object, object]) -> bool:
+        return True
+
+    return KafkaEventListener(
+        events={"on_resync": on_resync},
+        event_listener_config=KafkaEventListenerSettings(type=EventListenerType.KAFKA),
+        org_id="org-1",
+        integration_identifier="integration-1",
+        integration_type="test-type",
+    )
+
+
+@pytest.mark.asyncio
+async def test_should_use_new_topic_consumer_when_feature_flag_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    listener = _build_listener()
+    mock_ocean = MagicMock()
+    mock_ocean.port_client.get_organization_feature_flags = AsyncMock(
+        return_value=[
+            IntegrationFeatureFlag.OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED
+        ]
+    )
+    monkeypatch.setattr("port_ocean.core.event_listener.kafka.ocean", mock_ocean)
+
+    assert await listener._should_use_integration_resync_requests_consumer() is True
+
+
+@pytest.mark.asyncio
+async def test_should_fallback_to_legacy_consumer_when_feature_flag_check_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    listener = _build_listener()
+    mock_ocean = MagicMock()
+    mock_ocean.port_client.get_organization_feature_flags = AsyncMock(
+        side_effect=Exception("boom")
+    )
+    monkeypatch.setattr("port_ocean.core.event_listener.kafka.ocean", mock_ocean)
+
+    assert await listener._should_use_integration_resync_requests_consumer() is False
+
+
+def test_should_process_integration_resync_requests_topic() -> None:
+    listener = _build_listener()
+
+    assert (
+        listener._should_be_processed(
+            {"context": {"integrationId": "integration-1"}},
+            "org-1.integration.resync.requests",
+        )
+        is True
+    )
+
+
+def test_should_not_process_integration_resync_requests_topic_for_other_integration() -> (
+    None
+):
+    listener = _build_listener()
+
+    assert (
+        listener._should_be_processed(
+            {"context": {"integrationId": "integration-2"}},
+            "org-1.integration.resync.requests",
+        )
+        is False
+    )

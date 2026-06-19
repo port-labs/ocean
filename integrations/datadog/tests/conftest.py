@@ -2,8 +2,20 @@ from typing import Generator
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from datadog.client import DatadogClient
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+
+
+@pytest.fixture(autouse=True)
+def mock_init_client() -> Generator[None, None, None]:
+    """Patch init_client at the point it is consumed so processor fixtures can be
+    created without real Datadog credentials."""
+    with patch(
+        "datadog.webhook.webhook_processors.base_webhook_processor.init_client",
+        return_value=MagicMock(),
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)
@@ -45,3 +57,12 @@ def mock_ocean_context(mock_integration_config: dict[str, str]) -> None | MagicM
         # Context already initialized, ignore
         pass
     return None
+
+
+@pytest.fixture
+def mock_datadog_client() -> DatadogClient:
+    return DatadogClient(
+        api_url="https://api.datadoghq.com",
+        api_key="test_api_key",
+        app_key="test_app_key",
+    )

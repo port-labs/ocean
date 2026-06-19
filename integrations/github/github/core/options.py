@@ -43,19 +43,33 @@ class SinglePullRequestOptions(RepositoryIdentifier):
 
     pr_number: Required[int]
     enrich_with_first_commit: NotRequired[bool]
+    exclude_graphql_fields: NotRequired[list[str]]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
-    """Options for listing pull requests."""
+    """Options for listing pull requests.
+
+    For closed PRs exactly one cutoff drives filtering: ``updated_after`` filters by
+    ``updated_at`` (days lookback); ``closed_after`` filters by ``closed_at`` (closedSinceDate).
+    """
 
     states: Required[list[str]]
-    max_results: Required[int]
-    updated_after: Required[datetime]
+    max_results: Required[Optional[int]]
+    updated_after: NotRequired[Optional[datetime]]
+    closed_after: NotRequired[Optional[datetime]]
     enrich_with_first_commit: NotRequired[bool]
+    exclude_graphql_fields: NotRequired[list[str]]
 
 
 class PullRequestGraphQLOptions(BaseModel):
     enrich_with_first_commit: bool = Field(default=False)
+    exclude_graphql_fields: list[str] = Field(
+        default_factory=list,
+        description=(
+            "List of PullRequest GraphQL fields to omit from the query. "
+            "Useful as a workaround for GitHub GraphQL instability around certain fields."
+        ),
+    )
 
 
 class SingleIssueOptions(RepositoryIdentifier):
@@ -104,6 +118,8 @@ class ListWorkflowRunOptions(RepositoryIdentifier):
 
     workflow_id: Required[int]
     max_runs: Required[int]
+    status: NotRequired[Optional[str]]
+    created: NotRequired[Optional[str]]
 
 
 class SingleWorkflowRunOptions(RepositoryIdentifier):

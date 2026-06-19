@@ -2,6 +2,7 @@ import pytest
 from typing import Any
 from unittest.mock import AsyncMock, patch
 from httpx import Response, ReadTimeout
+from azure_devops.client.auth import PatAuthProvider
 from azure_devops.client.base_client import (
     HTTPBaseClient,
     CONTINUATION_TOKEN_HEADER,
@@ -12,7 +13,7 @@ from port_ocean.context.ocean import PortOceanContext
 
 @pytest.fixture
 def mock_client(mock_context: PortOceanContext) -> HTTPBaseClient:
-    return HTTPBaseClient(personal_access_token="test_token")
+    return HTTPBaseClient(auth_provider=PatAuthProvider("test_token"))
 
 
 @pytest.mark.asyncio
@@ -283,6 +284,74 @@ async def test_get_paginated_by_top_with_max_results(
         assert captured_calls[0]["params"] == {"$top": PAGE_SIZE, "$skip": 0}
         # Second call
         assert captured_calls[1]["params"] == {"$top": 25, "$skip": PAGE_SIZE}
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_by_top_and_skip_custom_param_names(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """Test top_param/skip_param use legacy names (top/skip) and skip increments per page."""
+    mock_response_page1 = AsyncMock(spec=Response)
+    mock_response_page1.status_code = 200
+    mock_response_page1.json.return_value = {
+        "value": [{"id": idx} for idx in range(PAGE_SIZE)]
+    }
+
+    mock_response_page2 = AsyncMock(spec=Response)
+    mock_response_page2.status_code = 200
+    mock_response_page2.json.return_value = {
+        "value": [{"id": idx} for idx in range(25)]
+    }
+
+    mock_response_empty = AsyncMock(spec=Response)
+    mock_response_empty.status_code = 200
+    mock_response_empty.json.return_value = {"value": []}
+
+    captured_calls: list[dict[str, Any]] = []
+    responses = [mock_response_page1, mock_response_page2, mock_response_empty]
+
+    async def capture_and_return(*args: Any, **kwargs: Any) -> Response:
+        captured_calls.append(
+            {
+                "params": (
+                    kwargs.get("params", {}).copy() if kwargs.get("params") else {}
+                ),
+            }
+        )
+        return responses[len(captured_calls) - 1]
+
+    with patch.object(
+        mock_client,
+        "send_request",
+        side_effect=capture_and_return,
+    ):
+        generator = mock_client._get_paginated_by_top_and_skip(
+            "test_url",
+            params={"api-version": "4.1-preview.1"},
+            top_param="top",
+            skip_param="skip",
+        )
+        results = [item async for page in generator for item in page]
+
+    assert len(results) == PAGE_SIZE + 25
+    assert len(captured_calls) == 3
+    assert captured_calls[0]["params"] == {
+        "api-version": "4.1-preview.1",
+        "top": PAGE_SIZE,
+        "skip": 0,
+    }
+    assert captured_calls[1]["params"] == {
+        "api-version": "4.1-preview.1",
+        "top": PAGE_SIZE,
+        "skip": PAGE_SIZE,
+    }
+    assert captured_calls[2]["params"] == {
+        "api-version": "4.1-preview.1",
+        "top": PAGE_SIZE,
+        "skip": PAGE_SIZE + 25,
+    }
+    assert "$top" not in captured_calls[0]["params"]
+    assert "$skip" not in captured_calls[0]["params"]
 
 
 @pytest.mark.asyncio

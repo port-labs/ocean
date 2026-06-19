@@ -2,6 +2,7 @@ title: AWS Hosted by Port
 description: AWS integration for Port Ocean Hosted by Port
 icon: AWS
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3
+formMappingEnabled: true
 features:
   - type: exporter
     section: Cloud Providers
@@ -12,7 +13,17 @@ features:
       - kind: AWS::ECS::Cluster
       - kind: AWS::ECS::TaskDefinition
       - kind: AWS::ECR::Repository
+      - kind: AWS::MSK::ServerlessCluster
+      - kind: AWS::MemoryDB::User
+      - kind: AWS::RDS::DBCluster
+      - kind: AWS::MSK::Cluster
       - kind: AWS::EC2::Volume
+      - kind: AWS::CodeBuild::Project
+      - kind: AWS::CodeBuild::BuildRun
+      - kind: AWS::CodeDeploy::Application
+      - kind: AWS::CodeDeploy::DeploymentGroup
+      - kind: AWS::CodePipeline::Pipeline
+      - kind: AWS::CodePipeline::Action
 configurations:
   - name: credentialProviderPriority
     required: false
@@ -24,7 +35,7 @@ configurations:
     required: false
     type: string
     sensitive: false
-    description: AWS Organization Unit (OU) ID to discover active accounts from. When provided, the integration will only attempt to use discover active accounts from the specified OU.
+    description: AWS Organizational Unit (OU) ID(s) to discover active accounts from. Provide a single OU ID or multiple comma-separated OU IDs. When provided, the integration discovers active accounts from the specified OUs and their child OUs.
   - name: accountRoleArn
     required: false
     type: string
@@ -60,7 +71,7 @@ installationDocs:
   saas:
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installations?installation-method=single-account#installation-methods
+      docs: build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installation/hosted-by-port/?installation-method=single-account
 saas:
   enabled: true
   liveEvents:

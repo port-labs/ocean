@@ -7,153 +7,327 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.5 (2026-05-07)
+## 0.7.40 (2026-06-18)
 
+### Features
+
+- Added `trigger_pipeline` method to `GitLabClient` to trigger CI/CD pipelines via the GitLab API
+- Added `get_rate_limit_status` method to `GitLabClient` to expose current rate-limit state
+
+## 0.7.39 (2026-06-15)
+
+### Improvements
+
+- Added `deployment` kind to sync CI/CD deployment records into Port
+
+## 0.7.38 (2026-06-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+## 0.7.37 (2026-06-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+## 0.7.36 (2026-06-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+## 0.7.35 (2026-06-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+## 0.7.34 (2026-06-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+## 0.7.33 (2026-06-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+## 0.7.32 (2026-06-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+## 0.7.31 (2026-06-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+## 0.7.30 (2026-06-01)
+
+### Improvements
+
+- Add `apiQueryParams` and `pipelineQueryParams` to pipeline and jobs kinds to help filter fetched pipelines
+
+## 0.7.29 (2026-06-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+## 0.7.28 (2026-05-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+## 0.7.27 (2026-05-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+## 0.7.26 (2026-05-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+## 0.7.25 (2026-05-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+## 0.7.24 (2026-05-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+## 0.7.23 (2026-05-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.3
+
+## 0.7.22 (2026-05-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.2
+
+## 0.7.21 (2026-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.1
+
+## 0.7.20 (2026-05-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.43.0
+
+## 0.7.19 (2026-05-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.11
+
+## 0.7.18 (2026-05-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.10
+
+## 0.7.17 (2026-05-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.9
+
+## 0.7.16 (2026-05-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.8
+
+## 0.7.15 (2026-05-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.7
+
+## 0.7.14 (2026-05-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.6
+
+## 0.7.13 (2026-05-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.5
+
+## 0.7.12 (2026-05-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.4
+
+## 0.7.11 (2026-05-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.3
+
+## 0.7.10 (2026-05-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.2
+
+## 0.7.9 (2026-05-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.1
+
+## 0.7.8 (2026-05-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.42.0
+
+## 0.7.7 (2026-05-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.9
+
+## 0.7.6 (2026-05-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.41.8
+
+## 0.7.5 (2026-05-07)
 
 ### Improvements
 
 - Bumped ocean version to ^0.41.7
 
-
 ## 0.7.4 (2026-04-30)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.41.6
 
-
 ## 0.7.3 (2026-04-29)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.41.5
-
 
 ## 0.7.2 (2026-04-29)
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.41.5
 
-
 ## 0.7.1 (2026-04-23)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.41.4
 
-
 ## 0.7.0 (2026-04-23)
-
 
 ### Features
 
 - Added support for `branch` kind, enabling scheduled syncing of GitLab branches
 - Added live event updates for `branch` kind via webhooks
 
-
 ## 0.6.21 (2026-04-23)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.41.3
 
-
 ## 0.6.20 (2026-04-22)
-
 
 ### Improvements
 
 - Add 500 internal server errors to retry status codes
 
-
 ## 0.6.19 (2026-04-21)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.41.2
 
-
 ## 0.6.18 (2026-04-21)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.41.1
 
-
 ## 0.6.17 (2026-04-20)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.41.0
 
-
 ## 0.6.16 (2026-04-19)
-
 
 ### Features
 
 - Added support for project members (direct and inherited) via a new `project-with-members` kind, using GitLab's `/projects/:id/members` and `/projects/:id/members/all` API endpoints
 
-
 ## 0.6.15 (2026-04-16)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.40.7
 
-
 ## 0.6.14 (2026-04-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.40.6
 
-
 ## 0.6.13 (2026-04-12)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.40.5
 
-
 ## 0.6.12 (2026-04-09)
-
 
 ### Bug Fixes
 
 - Fix silent under-ingestion of projects and groups by reverting `includeOnlyActiveProjects` and `includeOnlyActiveGroups` selectors to default to unset (`None`) instead of `false`, which was causing unintended active-status filtering on GitLab API requests
 
-
 ## 0.6.11 (2026-04-09)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.40.4
 
-
 ## 0.6.10 (2026-04-08)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.40.3
 
-
 ## 0.6.9 (2026-04-07)
-
 
 ### Improvements
 
@@ -161,322 +335,242 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added title/description metadata to selector fields in GitlabPortAppConfig for improved schema validation compliance
 - Renamed field titles from "Attached files" and "Additional files" to "Included Files" for consistency across ProjectSelectorandGitLabFilesSelector
 
-
 ## 0.6.8 (2026-04-06)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.40.2
 
-
 ## 0.6.7 (2026-04-06)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.40.1
 
-
 ## 0.6.6 (2026-04-06)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.40.0
 
-
 ## 0.6.5 (2026-04-06)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.39.1
 
-
 ## 0.6.4 (2026-04-05)
-
 
 ### Improvements
 
 - Fall back to repository-level search when the `blobs` scope is unavailable for group search (e.g. when GitLab advanced search is not enabled)
 
-
 ## 0.6.3 (2026-04-05)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.39.0
 
-
 ## 0.6.2 (2026-03-30)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.27
 
-
 ## 0.6.1 (2026-03-25)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.24
 
-
 ## 0.6.0 (2026-03-24)
-
 
 ### Improvements
 
 - Renamed `included files` to `Additional files`
 
-
 ## 0.5.69 (2026-03-24)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.23
 
-
 ## 0.5.68 (2026-03-22)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.22
 
-
 ## 0.5.67 (2026-03-20)
-
 
 ### Bug Fixes
 
 - Fix search query for file kind
 
-
 ## 0.5.66 (2026-03-19)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.21
 
-
 ## 0.5.65 (2026-03-17)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.20
 
-
 ## 0.5.64 (2026-03-17)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.19
 
-
 ## 0.5.63 (2026-03-16)
-
 
 ### Improvements
 
 - Refactored includedFiles enrichment to use strategy-based architecture with dedicated enricher, fetcher, and strategy components for better maintainability and consistency with other integrations
 
-
 ## 0.5.62 (2026-03-16)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.18
 
-
 ## 0.5.61 (2026-03-16)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.17
 
-
 ## 0.5.60 (2026-03-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.16
 
-
 ## 0.5.59 (2026-03-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.14
 
-
 ## 0.5.58 (2026-03-12)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.12
 - Updated `_search` method signature to accept `field` to align with the base `JQEntityProcessor` interface
 
-
 ## 0.5.57 (2026-03-11)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.11
 
-
 ## 0.5.56 (2026-03-10)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.10
 
-
 ## 0.5.55 (2026-03-09)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.9
 
-
 ## 0.5.54 (2026-03-08)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.7
 
-
 ## 0.5.53 (2026-03-03)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.6
 
-
 ## 0.5.52 (2026-03-03)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.5
 
-
 ## 0.5.51 (2026-03-02)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.4
 
-
 ## 0.5.50 (2026-03-02)
-
 
 ### Improvements
 
 - Fall back to project-level file search when groups are inaccessible
 
-
 ## 0.5.49 (2026-03-01)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.3
 
-
 ## 0.5.48 (2026-03-01)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.2
 
-
 ## 0.5.47 (2026-02-26)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.1
 
-
 ## 0.5.46 (2026-02-26)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.38.0
 
-
 ## 0.5.45 (2026-02-25)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.37.3
 
-
 ## 0.5.44 (2026-02-24)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.37.2
 
-
 ## 0.5.43 (2026-02-22)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.37.1
 
-
 ## 0.5.42 (2026-02-22)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.37.0
 
-
 ## 0.5.41 (2026-02-17)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.36.0
 
-
 ## 0.5.40 (2026-02-17)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.35.8
 
-
 ## 0.5.39 (2026-02-15)
-
 
 ### Features
 
@@ -484,292 +578,220 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Results are stored under `__searchQueries[<name>]` as a boolean, accessible in JQ mappings
 - Added deprecation warning when using `search://` prefix in mappings; use `searchQueries` selector instead
 
-
 ## 0.5.38 (2026-02-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.35.7
 
-
 ## 0.5.37 (2026-02-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.35.6
 
-
 ## 0.5.36 (2026-02-12)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.35.5
 
-
 ## 0.5.35 (2026-02-09)
-
 
 ### Features
 
 - Added `includedFiles` selector for project entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__includedFiles` in the raw data
 - Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `includedFiles` selector
 
-
 ## 0.5.34 (2026-02-09)
-
 
 ### Improvements
 
 - Implemented `GitLabRateLimiter` with proactive rate limit tracking
 - Added support for GitLab rate limit response headers (`RateLimit-Remaining`, `RateLimit-Reset`, `RateLimit-Limit`)
 
-
 ## 0.5.33 (2026-02-02)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.35.4
 
-
 ## 0.5.32 (2026-02-02)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.35.3
 
-
 ## 0.5.31 (2026-02-01)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.35.1
 
-
 ## 0.5.30 (2026-02-01)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.35.0
 
-
 ## 0.5.29 (2026-01-29)
-
 
 ### Bug Fixes
 
 - Fixed null handling in port config mappings for language and project fields to prevent errors when fields are missing
 
-
 ## 0.5.28 (2026-01-29)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.34.0
 
-
 ## 0.5.27 (2026-01-27)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.33.1
 
-
 ## 0.5.26 (2026-01-27)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.33.0
 
-
 ## 0.5.25 (2026-01-26)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.17
 
-
 ## 0.5.24 (2026-01-22)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.16
 
-
 ## 0.5.23 (2026-01-21)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.15
 
-
 ## 0.5.22 (2026-01-20)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.14
 
-
 ## 0.5.21 (2026-01-16)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.13
 
-
 ## 0.5.20 (2026-01-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.12
 
-
 ## 0.5.19 (2026-01-14)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.11
 
-
 ## 0.5.18 (2026-01-11)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.10
 
-
 ## 0.5.17 (2026-01-07)
-
 
 ### Improvements
 
 - Enrich GROUP_WITH_MEMBERS kind with access level data
 
-
 ## 0.5.16 (2025-12-24)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.9
 
-
 ## 0.5.15 (2025-12-23)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.8
 
-
 ## 0.5.14 (2025-12-22)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.7
 
-
 ## 0.5.13 (2025-12-18)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.5
 
-
 ## 0.5.12 (2025-12-16)
-
 
 ### Improvements
 
 - Added codeowners property to service blueprint with file:// mapping to sync CODEOWNERS file content from repositories
 
-
 ## 0.5.11 (2025-12-16)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.4
 
-
 ## 0.5.10 (2025-12-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.3
 
-
 ## 0.5.9 (2025-12-14)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.2
 
-
 ## 0.5.8 (2025-12-10)
-
 
 ### Improvements
 
 - Removed codeowners mapping and blueprint from integration default resources
 - Removed folder kind from integration default
 
-
 ## 0.5.7 (2025-12-10)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.1
 
-
 ## 0.5.6 (2025-12-09)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.0
 
-
 ## 0.5.5 (2025-12-09)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.31.7
 
-
 ## 0.5.4 (2025-12-09)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.31.6
 
-
 ## 0.5.3 (2025-12-08)
-
 
 ### Features
 
@@ -779,187 +801,141 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extended `folder` kind to support `include_only_active_projects` selector
 - Extended `issue`, `group-with-members`, `file` and `merge-request` kinds to support `include_only_active_groups` selector
 
-
 ## 0.5.2 (2025-12-08)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.31.4
 
-
 ## 0.5.1 (2025-12-08)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.31.3
 
-
 ## 0.5.0 (2025-11-28)
-
 
 ### Improvements
 
 - Added support for syncing folders from specific repositories and branches
 - Added folder kind to integration default
 
-
 ## 0.4.4 (2025-12-07)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.31.2
 
-
 ## 0.4.3 (2025-12-04)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.31.1
 
-
 ## 0.4.2 (2025-12-04)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.31.0
 - Parse yaml with pyyaml, fix memory issue.
 
-
 ## 0.4.1 (2025-12-03)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.30.7
 
-
 ## 0.4.0 (2025-11-17)
-
 
 ### Improvements
 
 - Added support for ingesting CODEOWNERS files in the default mapping
 
-
 ## 0.3.28 (2025-12-01)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.30.6
 
-
 ## 0.3.27 (2025-11-27)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.30.5
 
-
 ## 0.3.26 (2025-11-26)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.30.4
 
-
 ## 0.3.25 (2025-11-25)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.30.3
 
-
 ## 0.3.24 (2025-11-24)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.30.2
 
-
 ## 0.3.23 (2025-11-23)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.30.1
 
-
 ## 0.3.22 (2025-11-23)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.30.0
 
-
 ## 0.3.21 (2025-11-23)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.10
 
-
 ## 0.3.20 (2025-11-20)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.9
 
-
 ## 0.3.19 (2025-11-19)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.8
 
-
 ## 0.3.18 (2025-11-18)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.7
 
-
 ## 0.3.17 (2025-11-17)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.6
 
-
 ## 0.3.16 (2025-11-10)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.5
 
-
 ## 0.3.15 (2025-11-10)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.4
 
-
 ## 0.3.14 (2025-11-09)
-
 
 ### Bug Fixes
 
@@ -967,29 +943,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.3.13 (2025-11-09)
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.29.3
 
 ## 0.3.12 (2025-11-09)
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.29.3
 
-
 ## 0.3.11 (2025-11-09)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.2
 
-
 ## 0.3.10 (2025-11-06)
-
 
 ### Bug Fixes
 
@@ -997,104 +967,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.3.9 (2025-11-06)
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.29.1
 
-
 ## 0.3.8 (2025-11-04)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.0
 
-
 ## 0.3.7 (2025-11-02)
-
 
 ### Bug Fixes
 
 - Fix pagination bug in get_parent_groups that was creating duplicate webhooks for child groups
 
-
-
 ## 0.3.6 (2025-11-02)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.19
 
-
 ## 0.3.5 (2025-10-27)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.18
 
-
 ## 0.3.4 (2025-10-26)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.17
 
-
 ## 0.3.3 (2025-10-21)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.16
 
-
 ## 0.3.2 (2025-10-20)
-
 
 ### Features
 
 - Added live events for `tag` and `release` kinds
 
-
 ## 0.3.1 (2025-10-20)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.15
 
-
 ## 0.3.0 (2025-10-16)
-
 
 ### Features
 
 - Added support for `releases` and `tags` kinds
 
-
 ## 0.2.38 (2025-10-15)
-
 
 ### Breaking change
 
 - Add memory optimizations and alignment with itemsToParse streaming for file kind
 - File kind mappings which previously assumed an object shape for file content, now to be updated to account for an array. See the updated examples for guidance - [GitLab v2 — Files and file contents](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/examples#files-and-file-contents)
 
-
 ## 0.2.37 (2025-10-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.14
 
-
 ## 0.2.36 (2025-09-30)
-
 
 ### Improvements
 
@@ -1102,86 +1046,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.35 (2025-09-30)
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.28.12
 
-
 ## 0.2.34 (2025-09-28)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.11
 
-
 ## 0.2.33 (2025-09-25)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.9
 
-
 ## 0.2.32 (2025-09-25)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.8
 
-
 ## 0.2.31 (2025-09-25)
-
 
 ### Improvements
 
 - You can now choose to include inherited members during ingestion by using the `includeInheritedMembers` selector.
 
-
 ## 0.2.30 (2025-09-17)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.7
 
-
 ## 0.2.29 (2025-09-16)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.5
 
-
 ## 0.2.28 (2025-09-10)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.4
 
-
 ## 0.2.27 (2025-09-08)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.3
 
-
 ## 0.2.26 (2025-09-05)
-
 
 ### Improvements
 
 - Enrich pipelines with project data when resyncing pipelines.
 
-
 ## 0.2.25 (2025-08-31)
-
 
 ### Features
 
@@ -1189,174 +1112,131 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced hardcoded `owned` parameter with flexible `params` system
 - Removed hardcoded `DEFAULT_MIN_ACCESS_LEVEL = 30`
 
-
 ## 0.2.24 (2025-08-28)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.2
 
-
 ## 0.2.23 (2025-08-27)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.1
 
-
 ## 0.2.22 (2025-08-25)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.0
 
-
 ## 0.2.21 (2025-08-24)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.10
 
-
 ## 0.2.20 (2025-08-20)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.9
 
-
 ## 0.2.19 (2025-08-18)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.8
 
-
 ## 0.2.18 (2025-08-17)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.7
 
-
 ## 0.2.17 (2025-08-13)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.6
 
-
 ## 0.2.16 (2025-08-13)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.5
 
-
 ## 0.2.15 (2025-08-11)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.3
 
-
 ## 0.2.14 (2025-08-11)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.2
 
-
 ## 0.2.13 (2025-08-07)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.1
 
-
 ## 0.2.12 (2025-08-05)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.27.0
 
-
 ## 0.2.11 (2025-08-04)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.26.3
 
-
 ## 0.2.10 (2025-08-03)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.26.2
 
-
 ## 0.2.9 (2025-07-20)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.26.1
 
-
 ## 0.2.8 (2025-07-16)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.25.5
 
-
 ## 0.2.7 (2025-07-07)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.25.0
 
-
 ## 0.2.6 (2025-07-02)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.22
 
-
 ## 0.2.5 (2025-06-26)
-
 
 ### Improvements
 
 - Implemented entity delete in port for file kind live events
 
-
 ## 0.2.4 (2025-06-30)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.21
-
 
 ## 0.2.3 (2025-06-26)
 
@@ -1364,174 +1244,130 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped ocean version to ^0.24.20
 
-
 ## 0.2.2 (2025-06-25)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.19
 
-
 ## 0.2.1 (2025-06-24)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.18
 
-
 ## 0.2.0 (2025-06-23)
-
 
 ### Features
 
 - Added support for Project Webhook Processor, enabling handling of project creation and deletion events via webhooks in the GitLab integration.
 
-
 ## 0.1.39 (2025-06-23)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.17
 
-
 ## 0.1.38 (2025-06-22)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.16
 
-
 ## 0.1.37 (2025-06-22)
-
 
 ### Improvements
 
 - Upgraded integration requests dependency (#1)
 
-
 ## 0.1.36 (2025-06-22)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.15
 
-
 ## 0.1.35 (2025-06-22)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.12
-
 
 ## 0.1.34 (2025-06-22)
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.24.12
 
-
 ## 0.1.33 (2025-06-17)
 
-
 ### Improvements
-
 
 - Added filtering for top-level groups in group search
 - Updated webhook creation to only fetch groups owned by the authenticated user
 
-
 ## 0.1.32 (2025-06-16)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.11
 
-
 ## 0.1.31 (2025-06-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.10
 
-
 ## 0.1.30 (2025-06-09)
-
 
 ### Improvements
 
 - Added support for ingesting merge requests in different states (opened, closed, merged) through a new state selector configuration, allowing users to specify which merge request states they want to track
 
-
 ## 0.1.29 (2025-06-11)
-
 
 ### Improvements
 
 - Changed job fetching to use pipeline context instead of project context to establish proper parent-child relationships between pipelines and jobs
 
-
 ## 0.1.28 (2025-06-11)
-
 
 ### Improvements
 
-
 - Bumped ocean version to ^0.24.8
 
-
 ## 0.1.27 (2025-06-11)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.7
 
-
 ## 0.1.26 (2025-06-09)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.6
 
-
 ## 0.1.25 (2025-06-09)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.5
 
-
 ## 0.1.24 (2025-06-09)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.4
 
-
 ## 0.1.23 (2025-06-08)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.3
 
-
 ## 0.1.22 (2025-06-05)
 
 - Graceful handling of HTTP error codes (401, 403, 404) to prevent resync failures
-
 
 ## 0.1.21 (2025-06-04)
 
@@ -1539,142 +1375,107 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped ocean version to ^0.24.2
 
-
 ## 0.1.20 (2025-06-03)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.1
 
-
 ## 0.1.19 (2025-06-03)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.24.0
 
-
 ## 0.1.18 (2025-06-01)
-
 
 ### Improvements
 
 - transfer the integration to GA phase
 
-
 ## 0.1.17 (2025-06-01)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.23.5
 
-
 ## 0.1.16 (2025-05-29)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.23.4
 
-
 ## 0.1.15 (2025-05-28)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.23.3
 
-
 ## 0.1.14 (2025-05-28)
-
 
 ### Improvements
 
 - Added Helm deployment method override configuration to spec.yaml
 
-
 ## 0.1.13 (2025-05-28)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.23.2
 
-
 ## 0.1.12 (2025-05-27)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.23.1
 
-
 ## 0.1.11 (2025-05-27)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.23.0
 
-
 ## 0.1.10 (2025-05-26)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.22.12
 
-
 ## 0.1.9 (2025-05-26)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.22.11
 
-
 ## 0.1.8 (2025-05-20)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.22.10
 
-
 ## 0.1.7 (2025-05-19)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.22.9
 
-
 ## 0.1.5 (2025-05-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.22.8
 
-
 ## 0.1.4 (2025-05-12)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.22.7
 
-
 ## 0.1.3 (2025-05-06)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.22.6
-
 
 ## 0.1.2 (2025-04-28)
 
@@ -1682,61 +1483,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added title to the integration to be viewed in the data sources page
 
-
 ## 0.1.1 (2025-04-27)
 
 ### Bug Fixes
 
 - Resolved "h11 accepts some malformed Chunked-Encoding bodies" h11 vulnerability
 
-
 ### Improvements
 
 - Bumped ocean version to ^0.22.5
 
-
 ## 0.1.0 (2025-23-04)
-
 
 ### Improvement
 
 - Bumped integration version from beta to GA
 
-
 ## 0.1.2-beta (2025-04-17)
-
 
 ### Improvements
 
 - Adds Groups, Members and Merge Requests to integration defaults
 
-
 ## 0.1.1-beta (2025-04-17)
-
 
 ### Bug Fixes
 
 - Fixed integration icon
 
-
 ## 0.1.0-beta (2025-04-15)
-
 
 ### Improvement
 
 - Bumped integration version from dev to beta
 
-
 ## 0.1.13-dev (2025-04-15)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.22.4
 
-
 ## 0.1.12-dev (2025-04-15)
-
 
 ### Improvements
 
@@ -1748,10 +1535,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - tier (enum with colors)
 - Removed description and defaultBranch fields from service blueprint
 
-
 ## 0.1.11-dev (2025-04-14)
-
-
 
 ### Improvements
 
@@ -1761,9 +1545,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed 'hook' class attribute to 'hooks' in file and folder webhook processors
 
-
 ## 0.1.10-dev (2025-04-14)
-
 
 ### Features
 
@@ -1773,33 +1555,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added email field to group member enrichment for better user identification
 
-
 ## 0.1.9-dev (2025-04-14)
-
 
 ### Features
 
 - Add support for gitlab members
 
-
 ## 0.1.8-dev (2025-04-14)
-
 
 ### Features
 
 - Added support for live events for folder kind
 
-
 ## 0.1.7-dev (2025-04-14)
-
 
 ### Improvements
 
 - Added support for resolving `file://` references in parsed JSON and YAML files.
 
-
 ## 0.1.6-dev (2025-04-09)
-
 
 ### Features
 
@@ -1815,49 +1589,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated default branch from "default" to "main" in FilesResourceConfig
 
-
 ## 0.1.5-dev (2025-04-09)
-
 
 ### Features
 
 - Added support for folder kind
 
-
 ## 0.1.4-dev (2025-04-08)
-
 
 ### Features
 
 - Added support for file kind
 
-
 ## 0.1.3-dev (2025-04-07)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.22.2
 
-
 ## 0.1.2-dev (2025-04-03)
-
 
 ### Features
 
 - Added support for live events
 
-
 ## 0.1.1-dev (2025-04-03)
-
 
 ### Improvements
 
 - Bumped ocean version to ^0.22.1
 
-
 ## 0.1.0-dev (2025-02-27)
-
 
 ### Features
 

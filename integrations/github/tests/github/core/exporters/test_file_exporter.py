@@ -122,6 +122,104 @@ class TestRestFileExporter:
                 params={"ref": "main"},
             )
 
+    async def test_get_resource_missing_content_field(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+
+        response = make_file_response()
+        response.pop("content", None)
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(return_value=response)
+        ):
+            file_data = await exporter.get_resource(
+                FileContentOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    file_path="test.txt",
+                    branch="main",
+                )
+            )
+
+        assert file_data is not None
+        assert file_data["content"] is None
+
+    async def test_get_resource_missing_encoding_field(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+
+        response = make_file_response()
+        response.pop("encoding", None)
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(return_value=response)
+        ):
+            file_data = await exporter.get_resource(
+                FileContentOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    file_path="test.txt",
+                    branch="main",
+                )
+            )
+
+        assert file_data is not None
+        assert file_data["content"] is None
+
+    async def test_get_resource_non_file_type(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+
+        response = {
+            "type": "symlink",
+            "size": 13,
+            "name": "README.md",
+            "path": "README.md",
+            "sha": "abc123",
+            "url": "https://api.github.com/repos/test-org/repo1/contents/README.md",
+        }
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(return_value=response)
+        ):
+            file_data = await exporter.get_resource(
+                FileContentOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    file_path="README.md",
+                    branch="main",
+                )
+            )
+
+        assert file_data is not None
+        assert file_data["content"] is None
+
+    async def test_get_resource_missing_type_still_decodes(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        exporter = RestFileExporter(rest_client)
+
+        response = make_file_response()
+        response.pop("type", None)
+
+        with patch.object(
+            rest_client, "send_api_request", AsyncMock(return_value=response)
+        ):
+            file_data = await exporter.get_resource(
+                FileContentOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    file_path="test.txt",
+                    branch="main",
+                )
+            )
+
+        assert file_data is not None
+        assert file_data["content"] == TEST_FILE_CONTENT
+
     async def test_get_resource_large_file(self, rest_client: GithubRestClient) -> None:
         large_file_response = {
             **TEST_FILE_RESPONSE,

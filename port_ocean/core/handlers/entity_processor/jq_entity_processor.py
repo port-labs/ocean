@@ -32,7 +32,6 @@ from port_ocean.core.utils.utils import (
 )
 from port_ocean.exceptions.core import EntityProcessorException
 
-
 # Set globals for multiprocessing of batch data. When a process forks, it inherits these globals by reference.
 # We will take advantage of COW to avoid pickling the data.
 _MULTIPROCESS_JQ_BATCH_DATA: list[dict[str, Any]] | None = None
