@@ -35,6 +35,11 @@ class CheckmarxOneClient:
             message="Resource not found at endpoint",
         ),
         IgnoredError(
+            status=500,
+            message="Internal Server Error — Checkmarx API server error, skipping resource",
+            type="INTERNAL_SERVER_ERROR",
+        ),
+        IgnoredError(
             status=502,
             message="Bad Gateway — transient upstream error",
             type="BAD_GATEWAY",
@@ -223,6 +228,8 @@ class CheckmarxOneClient:
 
             try:
                 response = await self.send_api_request(endpoint, params=page_params)
+                if not response:
+                    break
                 has_next_page = response.get("has_next", False)
                 next_page_number = response["next_page_number"]
                 items: List[dict[str, Any]] = response.get(

@@ -179,15 +179,31 @@ class TestCheckmarxOneClient:
                 await client.send_api_request("/test-endpoint")
 
     @pytest.mark.asyncio
-    async def test_send_api_request_other_http_error(
-        self, client: CheckmarxOneClient
-    ) -> None:
-        """Test API request with other HTTP error."""
+    async def test_send_api_request_500_error(self, client: CheckmarxOneClient) -> None:
+        """Test API request with 500 error is ignored."""
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.text = "Internal Server Error"
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "500 Internal Server Error", request=MagicMock(), response=mock_response
+        )
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            result = await client.send_api_request("/test-endpoint")
+
+            assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_send_api_request_other_http_error(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test API request with non-ignored HTTP error."""
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Bad Request"
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "400 Bad Request", request=MagicMock(), response=mock_response
         )
 
         with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
