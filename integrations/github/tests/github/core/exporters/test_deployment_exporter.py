@@ -106,3 +106,234 @@ class TestRestDeploymentExporter:
                     f"{rest_client.base_url}/repos/test-org/test-repo/deployments",
                     {},
                 )
+
+    async def test_get_paginated_resources_enriches_first_commit(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        deployments = [
+            {
+                "id": 1,
+                "environment": "production",
+                "sha": "deploy_new",
+                "created_at": "2024-03-20T11:00:00Z",
+            },
+            {
+                "id": 2,
+                "environment": "production",
+                "sha": "deploy_old",
+                "created_at": "2024-03-20T10:00:00Z",
+            },
+        ]
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield deployments
+
+        def mock_api(resource: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
+            if "/compare/" in resource:
+                return {
+                    "files": [],
+                    "total_commits": 2,
+                    "commits": [
+                        {
+                            "sha": "commit_late",
+                            "commit": {"committer": {"date": "2024-03-20T10:50:00Z"}},
+                        },
+                        {
+                            "sha": "commit_early",
+                            "commit": {"committer": {"date": "2024-03-20T10:10:00Z"}},
+                        },
+                    ],
+                }
+            return {
+                "sha": "deploy_old",
+                "commit": {"committer": {"date": "2024-03-20T09:00:00Z"}},
+            }
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            with patch.object(
+                rest_client,
+                "send_api_request",
+                new_callable=AsyncMock,
+                side_effect=mock_api,
+            ):
+                async with event_context("test_event"):
+                    options = ListDeploymentsOptions(
+                        organization="test-org",
+                        repo_name="test-repo",
+                        enrich_with_first_commit=True,
+                    )
+                    exporter = RestDeploymentExporter(rest_client)
+                    collected: list[dict[str, Any]] = []
+                    async for batch in exporter.get_paginated_resources(options):
+                        collected.extend(batch)
+
+        by_id = {deployment["id"]: deployment for deployment in collected}
+        # Newest deployment: compared against the predecessor sha -> earliest commit in range.
+        assert by_id[1]["__firstCommit"]["__sha"] == "commit_early"
+        assert by_id[1]["__firstCommit"]["__timestamp"] == "2024-03-20T10:10:00Z"
+        assert by_id[1]["__firstCommit"]["__commitCount"] == 2
+        # Oldest deployment in the environment: no predecessor -> falls back to its own commit.
+        assert by_id[2]["__firstCommit"]["__sha"] == "deploy_old"
+        assert by_id[2]["__firstCommit"]["__commitCount"] == 1
+
+    async def test_get_paginated_resources_without_first_commit_skips_compare(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield TEST_DEPLOYMENTS
+
+        api_mock = AsyncMock()
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            with patch.object(rest_client, "send_api_request", api_mock):
+                async with event_context("test_event"):
+                    options = ListDeploymentsOptions(
+                        organization="test-org", repo_name="test-repo"
+                    )
+                    exporter = RestDeploymentExporter(rest_client)
+                    collected: list[dict[str, Any]] = []
+                    async for batch in exporter.get_paginated_resources(options):
+                        collected.extend(batch)
+
+        assert all("__firstCommit" not in deployment for deployment in collected)
+        api_mock.assert_not_called()
+
+    async def test_first_commit_pairs_predecessor_regardless_of_order(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        # Deployments delivered oldest-first; pairing must still follow created_at order.
+        deployments = [
+            {
+                "id": 2,
+                "environment": "production",
+                "sha": "deploy_old",
+                "created_at": "2024-03-20T10:00:00Z",
+            },
+            {
+                "id": 1,
+                "environment": "production",
+                "sha": "deploy_new",
+                "created_at": "2024-03-20T11:00:00Z",
+            },
+        ]
+        compared: list[str] = []
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield deployments
+
+        def mock_api(resource: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
+            if "/compare/" in resource:
+                compared.append(resource)
+                return {
+                    "total_commits": 1,
+                    "commits": [
+                        {
+                            "sha": "c1",
+                            "commit": {"committer": {"date": "2024-03-20T10:30:00Z"}},
+                        }
+                    ],
+                }
+            return {
+                "sha": "deploy_old",
+                "commit": {"committer": {"date": "2024-03-20T09:00:00Z"}},
+            }
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            with patch.object(
+                rest_client,
+                "send_api_request",
+                new_callable=AsyncMock,
+                side_effect=mock_api,
+            ):
+                async with event_context("test_event"):
+                    options = ListDeploymentsOptions(
+                        organization="test-org",
+                        repo_name="test-repo",
+                        enrich_with_first_commit=True,
+                    )
+                    exporter = RestDeploymentExporter(rest_client)
+                    async for _ in exporter.get_paginated_resources(options):
+                        pass
+
+        # Exactly one compare, for the newer deployment against the older one's sha.
+        assert len(compared) == 1
+        assert "deploy_old...deploy_new" in compared[0]
+
+    async def test_first_commit_orders_by_time_not_string(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        deployments = [
+            {
+                "id": 1,
+                "environment": "production",
+                "sha": "deploy_new",
+                "created_at": "2024-03-20T11:00:00Z",
+            },
+            {
+                "id": 2,
+                "environment": "production",
+                "sha": "deploy_old",
+                "created_at": "2024-03-20T10:00:00Z",
+            },
+        ]
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield deployments
+
+        def mock_api(resource: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
+            if "/compare/" in resource:
+                # Lexically "...00.5Z" < "...00Z", but 10:00:00 is the chronological earliest.
+                return {
+                    "files": [],
+                    "total_commits": 2,
+                    "commits": [
+                        {
+                            "sha": "commit_later",
+                            "commit": {"committer": {"date": "2024-03-20T10:00:00.5Z"}},
+                        },
+                        {
+                            "sha": "commit_earliest",
+                            "commit": {"committer": {"date": "2024-03-20T10:00:00Z"}},
+                        },
+                    ],
+                }
+            return {
+                "sha": "deploy_old",
+                "commit": {"committer": {"date": "2024-03-20T09:00:00Z"}},
+            }
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            with patch.object(
+                rest_client,
+                "send_api_request",
+                new_callable=AsyncMock,
+                side_effect=mock_api,
+            ):
+                async with event_context("test_event"):
+                    options = ListDeploymentsOptions(
+                        organization="test-org",
+                        repo_name="test-repo",
+                        enrich_with_first_commit=True,
+                    )
+                    exporter = RestDeploymentExporter(rest_client)
+                    collected: list[dict[str, Any]] = []
+                    async for batch in exporter.get_paginated_resources(options):
+                        collected.extend(batch)
+
+        by_id = {deployment["id"]: deployment for deployment in collected}
+        assert by_id[1]["__firstCommit"]["__sha"] == "commit_earliest"

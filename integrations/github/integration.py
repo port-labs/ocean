@@ -543,6 +543,16 @@ class GithubDeploymentSelector(RepoSearchSelector):
         description="Filter deployments by environment name (e.g. staging, production).",
         default=None,
     )
+    enrich_with_first_commit: bool = Field(
+        title="Enrich with first commit",
+        alias="enrichWithFirstCommit",
+        default=False,
+        description=(
+            "When enabled, each deployment is enriched under __firstCommit with the earliest commit shipped "
+            "since the previous deployment to the same environment (__sha, __timestamp in UTC, __commitCount). "
+            "Defaults to false."
+        ),
+    )
 
 
 class GithubDeploymentConfig(ResourceConfig):

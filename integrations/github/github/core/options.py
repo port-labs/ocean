@@ -183,6 +183,7 @@ class ListDeploymentsOptions(RepositoryIdentifier):
 
     task: NotRequired[Optional[str]]
     environment: NotRequired[Optional[str]]
+    enrich_with_first_commit: NotRequired[bool]
 
 
 class SingleDeploymentStatusOptions(RepositoryIdentifier):
