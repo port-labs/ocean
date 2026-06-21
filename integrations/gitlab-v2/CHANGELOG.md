@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.41 (2026-06-21)
+
+### Features
+
+- Added `trigger_pipeline` workflow action node to trigger GitLab CI/CD pipelines from Port workflows and report pipeline completion status back to Port
+
 ## 0.7.40 (2026-06-18)
 
 ### Features
