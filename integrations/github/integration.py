@@ -755,9 +755,12 @@ class GithubPortAppConfig(PortAppConfig):
         title="Organizations",
         default_factory=list,
         description=(
-            "List of GitHub organization names (optional - if not provided, "
-            "will sync all organizations the personal access token user is a "
-            "member of) for Classic PAT authentication."
+            "Optional allow-list of GitHub organization names. "
+            "For Classic PAT authentication: limits sync to the specified orgs "
+            "instead of all orgs the token belongs to. "
+            "For GitHub App multi-org mode (no githubOrganization or "
+            "githubAppInstallationId configured): limits sync to the specified "
+            "subset of the App's installations."
         ),
     )
     include_authenticated_user: bool = Field(

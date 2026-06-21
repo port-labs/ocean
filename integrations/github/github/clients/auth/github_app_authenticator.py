@@ -1,6 +1,6 @@
 import asyncio
 import base64
-from typing import Any, Optional
+from typing import Any, AsyncIterator, Optional, Dict, List
 from loguru import logger
 from datetime import datetime, timedelta, timezone
 import jwt
@@ -14,13 +14,14 @@ from github.helpers.exceptions import AuthenticationException
 
 class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
     JWT_EXPIRY_MINUTES = 10
+    INSTALLATIONS_PAGE_SIZE = 100
 
     def __init__(
         self,
         app_id: str,
         private_key: str,
-        organization: str,
         github_host: str,
+        organization: Optional[str] = None,
         installation_id: Optional[str] = None,
     ):
         self.app_id = app_id
@@ -54,13 +55,34 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             logger.info("New GitHub App token acquired.")
             return self.cached_installation_token
 
-    async def get_headers(self, **kwargs: Any) -> GitHubHeaders:
-        token_response = await self.get_token(**kwargs)
+    async def get_headers(self, token: str) -> GitHubHeaders:
         return GitHubHeaders(
-            Authorization=f"Bearer {token_response.token}",
+            Authorization=f"Bearer {token}",
             Accept="application/vnd.github+json",
             X_GitHub_Api_Version="2022-11-28",
         )
+
+    async def list_installations(self) -> AsyncIterator[List[Dict[str, Any]]]:
+        """Yield pages of app installations using JWT auth.
+
+        Each installation dict contains at minimum ``id``, ``account.login``,
+        and ``account.type``.  Requires only the app credentials (no org /
+        installation token needed).
+        """
+        jwt_token = self._generate_jwt()
+        headers = await self.get_headers(jwt_token.token)
+        url = f"{self.github_host}/app/installations"
+
+        while url:
+            response = await self.client.get(
+                url, params={"per_page": self.INSTALLATIONS_PAGE_SIZE}, headers=headers
+            )
+            response.raise_for_status()
+            page: List[Dict[str, Any]] = response.json()
+            if page:
+                yield page
+            link_header = response.headers.get("Link", "")
+            url = _parse_next_link(link_header)
 
     async def _fetch_installation_id(self, jwt_token: str) -> str:
         try:
@@ -102,3 +124,13 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
 
         token = jwt.encode(payload, decoded_private_key, algorithm="RS256")
         return GitHubToken(token=token, expires_at=str(int(expires_at.timestamp())))
+
+
+def _parse_next_link(link_header: str) -> Optional[str]:
+    """Extract the ``next`` URL from a GitHub ``Link`` response header."""
+    for part in link_header.split(","):
+        part = part.strip()
+        if 'rel="next"' in part:
+            url_part = part.split(";")[0].strip()
+            return url_part.strip("<>")
+    return None

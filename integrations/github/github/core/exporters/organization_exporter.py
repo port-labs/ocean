@@ -35,14 +35,18 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         self, options: ListOrganizationOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
-        If the organization is provided, fetch a single organization.
-        If the organization is not provided, fetch all organizations.
-        If the organization is not provided and the token is not a classic PAT token, raise an error.
-        If the organization is provided and the token is not a classic PAT token, raise an error.
-        If the organization is not provided and the token is a classic PAT token, fetch all organizations.
-        If the organization is provided and the token is a classic PAT token, fetch a single organization.
+        Org discovery strategy:
 
-        - Optional: filter to allowed orgs + include personal account as pseudo-org
+        1. Single org (``organization`` set in options): fetch that one org directly.
+        2. Classic PAT multi-org: list all orgs the token belongs to via
+           ``GET /user/orgs``.
+
+        In App multi-org mode the caller (``GithubClientFactory.iter_org_clients``)
+        pre-scopes one client per installation and passes ``organization=<login>``
+        in options, so this always hits the single-org path for App auth.
+
+        Optional: filter to ``allowed_multi_organizations`` + include personal
+        account as pseudo-org (PAT only).
         """
         logger.info("Fetching organizations")
 

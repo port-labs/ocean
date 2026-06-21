@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Type, overload, Literal, Optional
+from typing import AsyncGenerator, Dict, List, Optional, Type, overload, Literal
 
 from port_ocean.context.ocean import ocean
 from github.clients.http.rest_client import GithubRestClient
@@ -24,7 +24,11 @@ def _reset_clients_after_fork() -> None:
     """
     for client in GithubClientFactory._instances.values():
         client.authenticator._http_client = None
+    for client in GithubClientFactory._per_org_clients.values():
+        client.authenticator._http_client = None
     GithubClientFactory._instances.clear()
+    GithubClientFactory._per_org_clients.clear()
+    GithubClientFactory._installation_map.clear()
     GitHubRateLimiterRegistry.reset_for_fork()
 
 
@@ -48,9 +52,9 @@ class GitHubAuthenticatorFactory:
             )
             return PersonalTokenAuthenticator(token)
 
-        if organization and app_id and private_key:
+        if app_id and private_key:
             logger.debug(
-                f"Creating GitHub App Authenticator for {organization} on {github_host}"
+                f"Creating GitHub App Authenticator for {organization or 'all installations'} on {github_host}"
             )
             return GitHubAppAuthenticator(
                 app_id=app_id,
@@ -64,74 +68,165 @@ class GitHubAuthenticatorFactory:
 
 
 class GithubClientFactory:
-    _instance = None
+    _instance: Optional["GithubClientFactory"] = None
     _clients: Dict[GithubClientType, Type[AbstractGithubClient]] = {
         GithubClientType.REST: GithubRestClient,
         GithubClientType.GRAPHQL: GithubGraphQLClient,
     }
     _instances: Dict[GithubClientType, AbstractGithubClient] = {}
+    _per_org_clients: Dict[tuple[GithubClientType, str], AbstractGithubClient] = {}
+    _installation_map: Dict[str, str] = {}  # org_login -> installation_id
 
     def __new__(cls) -> "GithubClientFactory":
         if cls._instance is None:
-            cls._instance = super(GithubClientFactory, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
         return cls._instance
 
-    def get_client(self, client_type: GithubClientType) -> AbstractGithubClient:
-        """Get or create a client instance from Ocean configuration.
+    @property
+    def _is_app_multi_org(self) -> bool:
+        cfg = ocean.integration_config
+        return bool(
+            cfg.get("github_app_id")
+            and cfg.get("github_app_private_key")
+            and not cfg.get("github_organization")
+            and not cfg.get("github_app_installation_id")
+        )
 
-        Args:
-            client_type: Type of client to create ("rest" or other supported types)
+    def get_client(
+        self,
+        client_type: GithubClientType,
+        *,
+        org_login: Optional[str] = None,
+        installation_id: Optional[str] = None,
+    ) -> AbstractGithubClient:
+        if client_type not in self._clients:
+            raise ValueError(f"Invalid client type: {client_type}")
 
-        Returns:
-            An instance of AbstractGithubClient
+        resolved_installation_id = installation_id or (
+            self._installation_map.get(org_login) if org_login else None
+        )
 
-        Raises:
-            ValueError: If client_type is invalid
-        """
+        if org_login and resolved_installation_id:
+            return self._get_per_org_client(client_type, org_login, resolved_installation_id)
 
+        return self._get_default_client(client_type, org_login)
+
+    def _get_per_org_client(
+        self,
+        client_type: GithubClientType,
+        org_login: str,
+        installation_id: str,
+    ) -> AbstractGithubClient:
+        key = (client_type, org_login)
+        if key not in self._per_org_clients:
+            cfg = ocean.integration_config
+            authenticator = GitHubAppAuthenticator(
+                app_id=cfg["github_app_id"],
+                private_key=cfg["github_app_private_key"],
+                organization=org_login,
+                installation_id=installation_id,
+                github_host=cfg["github_host"],
+            )
+            logger.info(f"Creating per-org {client_type} client for {org_login}.")
+            self._per_org_clients[key] = self._clients[client_type](
+                **integration_config(authenticator)
+            )
+        return self._per_org_clients[key]
+
+    def _get_default_client(
+        self,
+        client_type: GithubClientType,
+        org_login: Optional[str] = None,
+    ) -> AbstractGithubClient:
         if client_type not in self._instances:
-            if client_type not in self._clients:
-                logger.error(f"Invalid client type: {client_type}")
-                raise ValueError(f"Invalid client type: {client_type}")
-
+            cfg = ocean.integration_config
             authenticator = GitHubAuthenticatorFactory.create(
-                github_host=ocean.integration_config["github_host"],
-                organization=ocean.integration_config.get("github_organization"),
-                token=ocean.integration_config.get("github_token"),
-                app_id=ocean.integration_config.get("github_app_id"),
-                installation_id=ocean.integration_config.get(
-                    "github_app_installation_id"
-                ),
-                private_key=ocean.integration_config.get("github_app_private_key"),
+                github_host=cfg["github_host"],
+                organization=org_login or cfg.get("github_organization"),
+                token=cfg.get("github_token"),
+                app_id=cfg.get("github_app_id"),
+                installation_id=cfg.get("github_app_installation_id"),
+                private_key=cfg.get("github_app_private_key"),
             )
-
-            logger.info(f"instantiated new {client_type} client.")
-
+            logger.info(f"Creating {client_type} client.")
             self._instances[client_type] = self._clients[client_type](
-                **integration_config(authenticator),
+                **integration_config(authenticator)
             )
-
         return self._instances[client_type]
+
+    async def _discover_installations(self) -> None:
+        """Populate _installation_map via JWT by listing all app installations."""
+        cfg = ocean.integration_config
+        authenticator = GitHubAppAuthenticator(
+            app_id=cfg["github_app_id"],
+            private_key=cfg["github_app_private_key"],
+            github_host=cfg["github_host"],
+        )
+        async for page in authenticator.list_installations():
+            for installation in page:
+                login = installation.get("account", {}).get("login", "")
+                if login:
+                    self._installation_map[login] = str(installation["id"])
+
+    async def iter_org_clients(
+        self,
+        client_type: GithubClientType = GithubClientType.REST,
+        *,
+        allowed_orgs: Optional[List[str]] = None,
+    ) -> AsyncGenerator[tuple[AbstractGithubClient, Optional[str]], None]:
+        """Yield one (client, org_name) pair per organisation.
+
+        App multi-org: one scoped client per installation, filtered by allowed_orgs.
+        All other modes: a single (default_client, None) pair.
+        """
+        if not self._is_app_multi_org:
+            yield self.get_client(client_type), None
+            return
+
+        if not self._installation_map:
+            await self._discover_installations()
+
+        for org_login in list(self._installation_map):
+            if allowed_orgs and org_login not in allowed_orgs:
+                continue
+            yield self.get_client(client_type, org_login=org_login), org_login
 
 
 @overload
 def create_github_client(
-    client_type: Literal[GithubClientType.REST],
+    client_type: Literal[GithubClientType.REST] = ...,
+    *,
+    org_login: Optional[str] = None,
+    installation_id: Optional[str] = None,
 ) -> GithubRestClient: ...
 
 
 @overload
-def create_github_client(client_type: None = None) -> GithubRestClient: ...
+def create_github_client(
+    client_type: None,
+    *,
+    org_login: Optional[str] = None,
+    installation_id: Optional[str] = None,
+) -> GithubRestClient: ...
 
 
 @overload
 def create_github_client(
     client_type: Literal[GithubClientType.GRAPHQL],
+    *,
+    org_login: Optional[str] = None,
+    installation_id: Optional[str] = None,
 ) -> GithubGraphQLClient: ...
 
 
 def create_github_client(
     client_type: GithubClientType | None = GithubClientType.REST,
+    *,
+    org_login: Optional[str] = None,
+    installation_id: Optional[str] = None,
 ) -> AbstractGithubClient:
-    factory = GithubClientFactory()
-    return factory.get_client(client_type or GithubClientType.REST)
+    return GithubClientFactory().get_client(
+        client_type or GithubClientType.REST,
+        org_login=org_login,
+        installation_id=installation_id,
+    )
