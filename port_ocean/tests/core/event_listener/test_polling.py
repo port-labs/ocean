@@ -84,7 +84,7 @@ async def test_polling_resyncs_from_resync_requests_when_integration_unchanged(
 
 
 @pytest.mark.asyncio
-async def test_polling_resyncs_on_integration_change_without_resync_requests_lookup(
+async def test_polling_resyncs_on_integration_change_with_resync_request_lookup(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     port_client = MagicMock()
@@ -119,7 +119,7 @@ async def test_polling_resyncs_on_integration_change_without_resync_requests_loo
 
     await listener._start()
 
-    port_client.get_integration_resync_request.assert_not_called()
+    port_client.get_integration_resync_request.assert_called_once()
     resync_mock.assert_called_once_with({})
 
 

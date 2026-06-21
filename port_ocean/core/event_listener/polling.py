@@ -114,17 +114,6 @@ class PollingEventListener(BaseEventListener):
             logger.info(
                 f"Polling event listener iteration after {self.event_listener_config.interval}. Checking for changes"
             )
-            try:
-                integration = await ocean.app.port_client.get_current_integration(
-                    is_polling=True
-                )
-                last_updated_at = integration["updatedAt"]
-            except Exception as error:
-                logger.exception(
-                    "Failed to fetch current integration in polling listener, skipping iteration",
-                    error=error,
-                )
-                return
 
             resync_request_updated_at = ""
             should_resync = False
@@ -147,6 +136,18 @@ class PollingEventListener(BaseEventListener):
                 )
 
             if should_resync:
+                try:
+                    integration = await ocean.app.port_client.get_current_integration(
+                        is_polling=True
+                    )
+                    last_updated_at = integration["updatedAt"]
+                except Exception as error:
+                    logger.exception(
+                        "Failed to fetch current integration in polling listener, skipping iteration",
+                        error=error,
+                    )
+                    return
+
                 logger.info(resync_reason)
                 ocean.app.resync_state_updater.last_integration_state_updated_at = (
                     last_updated_at
