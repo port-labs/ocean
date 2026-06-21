@@ -417,3 +417,58 @@ class IntegrationClientMixin:
         )
         handle_port_status_code(response, should_raise=False, should_log=True)
         logger.debug("Finished POST raw data batch request")
+
+    async def get_integration_cursor(self, kind: str, index: int) -> Optional[datetime]:
+        """Return the stored cursor for a (kind, index) pair, or None if not yet created."""
+        logger.debug("Fetching incremental cursor", kind=kind, index=index)
+        response = await self.client.get(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/cursor",
+            headers=await self.auth.headers(),
+            params={"kind": kind, "index": index},
+        )
+        if response.status_code == 404:
+            return None
+        handle_port_status_code(response)
+        raw = response.json().get("primary")
+        return datetime.fromisoformat(raw) if raw else None
+
+    async def upsert_integration_cursor(
+        self, kind: str, index: int, value: datetime
+    ) -> None:
+        """Create or update the cursor for a (kind, index) pair."""
+        logger.debug(
+            "Upserting incremental cursor",
+            kind=kind,
+            index=index,
+            value=value.isoformat(),
+        )
+        body = {"primary": value.isoformat()}
+        params = {"kind": kind, "index": index}
+        headers = await self.auth.headers()
+
+        put_response = await self.client.put(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/cursor",
+            headers=headers,
+            params=params,
+            json=body,
+        )
+        if put_response.status_code != 404:
+            handle_port_status_code(put_response)
+            return
+
+        post_response = await self.client.post(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/cursor",
+            headers=headers,
+            params=params,
+            json=body,
+        )
+        handle_port_status_code(post_response)
+
+    async def delete_integration_cursors(self) -> None:
+        """Delete all cursors for this integration (called on full resync or deletion)."""
+        logger.debug("Deleting all incremental cursors")
+        response = await self.client.delete(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/cursor",
+            headers=await self.auth.headers(),
+        )
+        handle_port_status_code(response)

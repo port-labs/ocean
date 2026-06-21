@@ -42,6 +42,7 @@ class EventType:
     START = "start"
     RESYNC = "resync"
     HTTP_REQUEST = "http_request"
+    INCREMENTAL_RESYNC = "incremental_resync"
 
 
 @dataclass
@@ -99,9 +100,11 @@ class EventContext:
 
     @property
     def port_app_config(self) -> "PortAppConfig":
-        if self._port_app_config is None:
-            raise ValueError("Port app config is not set")
-        return self._port_app_config
+        if self._port_app_config is not None:
+            return self._port_app_config
+        if self._parent_event is not None:
+            return self._parent_event.port_app_config
+        raise ValueError("Port app config is not set")
 
     @port_app_config.setter
     def port_app_config(self, value: "PortAppConfig") -> None:

@@ -133,6 +133,10 @@ class OnceEventListener(BaseEventListener):
     async def _start(self) -> None:
         """
         Starts the resync process, and exits the application once finished.
+
+        When ``incrementalSyncEnabled`` is set on the integration config the pod
+        runs ``sync_incremental`` instead of a full resync.  This is how the Helm
+        CronJob for incremental sync works: same ONCE listener, different routing.
         """
 
         # we use the `repeat_every` decorator to make sure the resync will be triggered, but won't stuck the application
@@ -141,7 +145,20 @@ class OnceEventListener(BaseEventListener):
         async def resync_and_exit() -> None:
             logger.info("Once event listener started")
             try:
-                await self._resync({})
+                integration_settings = ocean.config.integration
+                if integration_settings.incremental_sync_enabled:
+                    interval_seconds = (
+                        integration_settings.incremental_sync_interval * 60
+                    )
+                    logger.info(
+                        "Incremental sync mode — running sync_incremental",
+                        interval_seconds=interval_seconds,
+                    )
+                    await ocean.app.integration.sync_incremental(
+                        interval_seconds=interval_seconds
+                    )
+                else:
+                    await self._resync({})
             except Exception:
                 # we catch all exceptions here to make sure the application will exit gracefully
                 logger.exception("Error occurred while resyncing")
