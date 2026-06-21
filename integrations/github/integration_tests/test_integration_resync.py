@@ -5,10 +5,11 @@ from typing import Any
 import httpx
 import pytest
 from port_ocean.integration_testing import (
-    BaseIntegrationTest,
     InterceptTransport,
     ResyncResult,
 )
+
+from _base import GithubIntegrationTest
 
 
 # --- Fixtures ---------------------------------------------------------------
@@ -74,7 +75,7 @@ def _pull_response(repo_name: str, pr_id: int) -> dict[str, Any]:
 # --- Test -------------------------------------------------------------------
 
 
-class TestGithubHappyPath(BaseIntegrationTest):
+class TestGithubHappyPath(GithubIntegrationTest):
     """Happy-path integration test for the GitHub integration.
 
     Exercises the basic resync flow end-to-end:
@@ -295,7 +296,7 @@ class TestGithubHappyPath(BaseIntegrationTest):
             assert pr["relations"]["repository"] in REPO_NAMES
 
 
-class TestGithubPullRequestResyncPartialRepoFailure(BaseIntegrationTest):
+class TestGithubPullRequestResyncPartialRepoFailure(GithubIntegrationTest):
     """When one repo's PR list request fails, others in the same page still export.
 
     Exercises ``resync_pull_requests`` handling of ``ExceptionGroup`` from

@@ -82,6 +82,18 @@ class BaseIntegrationTest:
             }
         }
 
+    def reset_integration_state(self) -> None:
+        """Clear integration-specific caches before each test.
+
+        The harness resets Ocean-level state (singleton, HTTP clients, sys.path)
+        on shutdown, but it cannot see integration-internal singletons such as
+        HTTP client factories or registries. Override this on a per-integration
+        base class to clear those, and the harness fixture will call it
+        automatically before every harness boot. Default is a no-op for
+        integrations with no such state.
+        """
+        return None
+
     def get_port_search_entities_response(self) -> list[dict[str, Any]] | None:
         """Override to return entities that 'exist in Port' for reconciliation tests.
 
@@ -94,6 +106,7 @@ class BaseIntegrationTest:
     @pytest.fixture
     async def harness(self) -> AsyncGenerator[IntegrationTestHarness, None]:
         """Creates and starts a harness, shuts it down after the test."""
+        self.reset_integration_state()
         h = IntegrationTestHarness(
             integration_path=self.integration_path,
             port_mapping_config=self.create_mapping_config(),
