@@ -55,7 +55,8 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             logger.info("New GitHub App token acquired.")
             return self.cached_installation_token
 
-    async def get_headers(self, token: str) -> GitHubHeaders:
+    async def get_headers(self, **kwargs: Any) -> GitHubHeaders:
+        token = kwargs.get("token") or (await self.get_token()).token
         return GitHubHeaders(
             Authorization=f"Bearer {token}",
             Accept="application/vnd.github+json",
@@ -70,7 +71,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         installation token needed).
         """
         jwt_token = self._generate_jwt()
-        headers = await self.get_headers(jwt_token.token)
+        headers = await self.get_headers(token=jwt_token.token)
         url = f"{self.github_host}/app/installations"
 
         while url:
