@@ -71,7 +71,11 @@ MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
+# Conservative concurrency caps to avoid exhausting the shared ADO TSTU budget.
+# ADO does not publish a per-connection limit; these values are empirically chosen
+# to keep concurrent fanout low enough that the TSTU window resets before exhaustion.
 MAX_CONCURRENT_PROJECTS = 5
+MAX_CONCURRENT_TEAMS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
 
@@ -317,7 +321,17 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             if sync_default_team:
                 logger.info("Adding default team to projects")
-                tasks = [self.get_single_project(project["id"]) for project in projects]
+                semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+
+                async def get_project_with_semaphore(
+                    project_id: str,
+                ) -> dict[str, Any] | None:
+                    async with semaphore:
+                        return await self.get_single_project(project_id)
+
+                tasks = [
+                    get_project_with_semaphore(project["id"]) for project in projects
+                ]
                 projects_batch: list[dict[str, Any] | None] = await asyncio.gather(
                     *tasks
                 )
@@ -418,8 +432,15 @@ class AzureDevopsClient(HTTPBaseClient):
         self, teams: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching members for {len(teams)} teams")
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TEAMS)
 
-        team_tasks = [self.get_team_members(team) for team in teams]
+        async def get_members_with_semaphore(
+            team: dict[str, Any],
+        ) -> list[dict[str, Any]]:
+            async with semaphore:
+                return await self.get_team_members(team)
+
+        team_tasks = [get_members_with_semaphore(team) for team in teams]
 
         members_results = await asyncio.gather(*team_tasks)
 
@@ -988,9 +1009,16 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 async for builds_batch in self._generate_builds_for_project(project):
+                    semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PIPELINES)
+
+                    async def fetch_stages_with_semaphore(
+                        build: dict[str, Any],
+                    ) -> list[dict[str, Any]]:
+                        async with semaphore:
+                            return await self._fetch_stages_for_build(project, build)
+
                     stage_tasks = [
-                        self._fetch_stages_for_build(project, build)
-                        for build in builds_batch
+                        fetch_stages_with_semaphore(build) for build in builds_batch
                     ]
                     stage_results = await asyncio.gather(
                         *stage_tasks, return_exceptions=True
@@ -1405,7 +1433,15 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             if not work_items_response:
                 continue
-            yield work_items_response.json()["value"]
+            try:
+                yield work_items_response.json()["value"]
+            except json.decoder.JSONDecodeError as e:
+                logger.error(
+                    f"Failed to decode work items response for project {project_id}, "
+                    f"batch IDs {batch_ids[0]}-{batch_ids[-1]} ({len(batch_ids)} items): {e}. "
+                    f"Aborting resync to prevent incorrect deletes of work items in incomplete batch."
+                )
+                raise
 
     def _add_project_details_to_work_items(
         self, work_items: list[dict[str, Any]], project: dict[str, Any]
