@@ -141,7 +141,13 @@ class DatadogClientManager:
         """
         if not self.is_multi_org:
             return self._clients[0]
-        return self._clients_by_org_id.get(org_id)
+        client = self._clients_by_org_id.get(org_id)
+        if client is None:
+            logger.warning(
+                f"No client found for org id '{org_id}'. The credential for this "
+                f"org may not be configured or was deemed invalid during setup."
+            )
+        return client
 
     def get_clients_by_org_name(self, org_name: str | None) -> list[DatadogClient]:
         """Return candidate clients for the org named *org_name* (monitor routing).
@@ -154,7 +160,13 @@ class DatadogClientManager:
             return self._clients
         if org_name is None:
             return []
-        return self._clients_by_org_name.get(self._normalize_org_name(org_name), [])
+        clients = self._clients_by_org_name.get(self._normalize_org_name(org_name), [])
+        if not clients:
+            logger.warning(
+                f"No client found for org name '{org_name}'. The credential for this "
+                f"org may not be configured or was deemed invalid during setup."
+            )
+        return clients
 
 
 _client_manager: DatadogClientManager | None = None

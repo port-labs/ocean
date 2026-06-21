@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import Any
 
+from httpx import HTTPStatusError
 from loguru import logger
 from pydantic import ValidationError
 
@@ -96,7 +97,17 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        resource = await self._fetch_resource(client, event, resource_config)
+        try:
+            resource = await self._fetch_resource(client, event, resource_config)
+        except HTTPStatusError as e:
+            logger.warning(
+                f"Failed to fetch resource for org id '{org_id}' "
+                f"({e.response.status_code}): {e}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         if resource:
             self._enrich_with_org_id([resource], client)
 
