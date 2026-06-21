@@ -83,6 +83,25 @@ saas:
         githubOrganization: .oauthData.githubOrganization
 actionsProcessingEnabled: true
 actions:
+  - name: update_repo_external_properties
+    icon: Github
+    description: Update GitHub repository external (custom) properties based on Port entity changes
+    inputs:
+      - name: org
+        title: Organization
+        type: string
+        description: The GitHub organization that owns the repository
+        required: true
+      - name: repo
+        title: Repository
+        type: string
+        description: The name of the GitHub repository to update
+        required: true
+      - name: body
+        title: Body
+        type: object
+        description: Port audit log object
+        required: true
   - name: dispatch_workflow
     icon: GithubActions
     description: Dispatch a GitHub workflow

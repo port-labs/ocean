@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.1.0 (2026-06-21)
+
+
+### Features
+
+- Added `update_repo_external_properties` action executor that syncs changed Port entity properties back to GitHub as repository custom (external) properties via `PATCH /repos/{org}/{repo}/properties/values`.
+
+
 ## 6.0.5 (2026-06-18)
 
 
