@@ -1,4 +1,4 @@
-from typing import Any, cast, Optional
+from typing import Any, AsyncGenerator, cast, Dict, Optional
 
 from loguru import logger
 
@@ -23,11 +23,15 @@ from github.clients.client_factory import (
     GithubClientFactory,
     create_github_client,
 )
-from github.core.options import ListOrganizationOptions
 from github.webhook.clients.client_factory import GithubWebhookClientFactory
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.clients.utils import (
     get_github_organizations,
+)
+from github.helpers.resync import (
+    MAX_CONCURRENT_REPOS,
+    iter_per_org,
+    org_options_for,
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
@@ -85,7 +89,6 @@ from github.helpers.utils import (
     ObjectKind,
     GithubClientType,
     enrich_user_with_primary_email,
-    tag_batch_with_org,
 )
 
 from integration import (
@@ -117,31 +120,17 @@ from github.enrichments.included_files import (
     RepositoryIncludedFilesStrategy,
 )
 
-MAX_CONCURRENT_REPOS = 10
-
-
-def _org_options_for(
-    base: ListOrganizationOptions, org_name: Optional[str]
-) -> ListOrganizationOptions:
-    """Pin base options to a specific org for per-org scoped clients."""
-    if org_name is None:
-        return base
-    return cast(ListOrganizationOptions, {**base, "organization": org_name})
-
 
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
     github_host = ocean.integration_config["github_host"]
     webhook_secret = ocean.integration_config["webhook_secret"]
     skip_patching = ocean.integration_config["skip_webhook_patching"]
-    installation_id = GithubClientFactory._installation_map.get(
-        org_name
-    ) or ocean.integration_config.get("github_app_installation_id")
     authenticator = GitHubAuthenticatorFactory.create(
         github_host=github_host,
         organization=org_name,
         token=ocean.integration_config.get("github_token"),
         app_id=ocean.integration_config.get("github_app_id"),
-        installation_id=installation_id,
+        installation_id=ocean.integration_config.get("github_app_installation_id"),
         private_key=ocean.integration_config.get("github_app_private_key"),
     )
 
@@ -176,12 +165,13 @@ async def on_start() -> None:
 
     await ocean.integration.port_app_config_handler.get_port_app_config()
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
+    async for rest_client, org_name in GithubClientFactory().iter_org_clients(
+        GithubClientType.REST,
         allowed_orgs=org_base_options.get("allowed_multi_organizations")
     ):
         async for organizations in RestOrganizationExporter(
-            rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
+            rest_client  # type: ignore[arg-type]
+        ).get_paginated_resources(org_options_for(org_base_options, org_name)):
             logger.info(
                 f"Subscribing to GitHub webhooks for {len(organizations)} organizations"
             )
@@ -195,14 +185,14 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
-            rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            logger.info(f"Received {len(organizations)} batch {kind}s")
-            yield organizations
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        yield [org]
+
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
@@ -216,40 +206,40 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     included_files = repo_config.selector.included_files or []
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        included_files_enricher = (
+            IncludedFilesEnricher(
+                client=rest_client,
+                strategy=RepositoryIncludedFilesStrategy(
+                    included_files=included_files
+                ),
+            )
+            if included_files
+            else None
+        )
+        async for repositories in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                included_files_enricher = (
-                    IncludedFilesEnricher(
-                        client=rest_client,
-                        strategy=RepositoryIncludedFilesStrategy(
-                            included_files=included_files
-                        ),
-                    )
-                    if included_files
-                    else None
+        ).get_paginated_resources(
+            options=ListRepositoryOptions(
+                organization=org_login,
+                organization_type=org["type"],
+                type=port_app_config.repository_type,
+                included_relations=included_relations,
+                search_params=repo_config.selector.repo_search,
+            )
+        ):
+            if included_files_enricher:
+                repositories = await included_files_enricher.enrich_batch(
+                    repositories
                 )
-                async for repositories in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(
-                    options=ListRepositoryOptions(
-                        organization=org_name,
-                        organization_type=org["type"],
-                        type=port_app_config.repository_type,
-                        included_relations=included_relations,
-                        search_params=repo_config.selector.repo_search,
-                    )
-                ):
-                    if included_files_enricher:
-                        repositories = await included_files_enricher.enrich_batch(
-                            repositories
-                        )
-                    yield repositories
+            yield repositories
+
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.USER)
@@ -259,36 +249,27 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     config = cast(GithubUserConfig, event.resource_config)
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
-            rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            tasks = []
-            for org in organizations:
-                if org["type"] == "Organization":
-                    tasks.append(
-                        GraphQLUserExporter(
-                            create_github_client(
-                                GithubClientType.GRAPHQL, org_login=org["login"]
-                            )
-                        ).get_paginated_resources(
-                            options=ListUserOptions(
-                                organization=org["login"],
-                                include_saml_email=config.selector.include_saml_email,
-                            )
-                        )
-                    )
-                    continue
 
-                if not org.get("email"):
-                    org = await enrich_user_with_primary_email(rest_client, org)
-                yield [org]
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        if org["type"] == "Organization":
+            async for users in GraphQLUserExporter(
+                create_github_client(GithubClientType.GRAPHQL, org_login=org["login"])
+            ).get_paginated_resources(
+                options=ListUserOptions(
+                    organization=org["login"],
+                    include_saml_email=config.selector.include_saml_email,
+                )
+            ):
+                yield users
+        else:
+            if not org.get("email"):
+                org = await enrich_user_with_primary_email(rest_client, org)
+            yield [org]
 
-            if tasks:
-                async for users in stream_async_iterators_tasks(*tasks):
-                    yield users
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.TEAM)
@@ -300,42 +281,31 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = config.selector
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
-            rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            tasks = []
-            for org in organizations:
-                if org["type"] == "Organization":
-                    org_name = org["login"]
-                    tasks.append(
-                        tag_batch_with_org(
-                            org_name,
-                            RestTeamExporter(rest_client).get_paginated_resources(
-                                ListTeamOptions(organization=org_name)
-                            ),
-                        )
-                    )
 
-            if tasks:
-                async for org_name, teams in stream_async_iterators_tasks(*tasks):
-                    if selector.members:
-                        graphql_exporter = GraphQLTeamWithMembersExporter(
-                            create_github_client(
-                                GithubClientType.GRAPHQL, org_login=org_name
-                            )
-                        )
-                        teams = await graphql_exporter._enrich_team_with_extras(
-                            teams,
-                            ListTeamOptions(
-                                organization=org_name,
-                                include_saml_email=selector.include_saml_email,
-                            ),
-                        )
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        if org["type"] != "Organization":
+            return
+        org_login = org["login"]
+        async for teams in RestTeamExporter(rest_client).get_paginated_resources(
+            ListTeamOptions(organization=org_login)
+        ):
+            if selector.members:
+                graphql_exporter = GraphQLTeamWithMembersExporter(
+                    create_github_client(GithubClientType.GRAPHQL, org_login=org_login)
+                )
+                teams = await graphql_exporter._enrich_team_with_extras(
+                    teams,
+                    ListTeamOptions(
+                        organization=org_login,
+                        include_saml_email=selector.include_saml_email,
+                    ),
+                )
+            yield teams
 
-                    yield teams
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW)
@@ -347,39 +317,39 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubWorkflowConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
-            rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_exporter = RestRepositoryExporter(rest_client)
-                workflow_exporter = RestWorkflowExporter(rest_client)
 
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_exporter = RestRepositoryExporter(rest_client)
+        workflow_exporter = RestWorkflowExporter(rest_client)
+
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in repo_exporter.get_paginated_resources(
+            options=repo_options
+        ):
+            tasks = []
+            for repo in repositories:
+                tasks.append(
+                    workflow_exporter.get_paginated_resources(
+                        options=ListWorkflowOptions(
+                            organization=org_login, repo_name=repo["name"]
+                        )
+                    )
                 )
 
-                async for repositories in repo_exporter.get_paginated_resources(
-                    options=repo_options
-                ):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            workflow_exporter.get_paginated_resources(
-                                options=ListWorkflowOptions(
-                                    organization=org_name, repo_name=repo["name"]
-                                )
-                            )
-                        )
+            async for workflows in stream_async_iterators_tasks(*tasks):
+                yield workflows
 
-                    async for workflows in stream_async_iterators_tasks(*tasks):
-                        yield workflows
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW_RUN)
@@ -391,69 +361,69 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubWorkflowRunConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
-            rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_exporter = RestRepositoryExporter(rest_client)
-                workflow_exporter = RestWorkflowExporter(rest_client)
-                workflow_run_exporter = RestWorkflowRunExporter(rest_client)
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_exporter = RestRepositoryExporter(rest_client)
+        workflow_exporter = RestWorkflowExporter(rest_client)
+        workflow_run_exporter = RestWorkflowRunExporter(rest_client)
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in repo_exporter.get_paginated_resources(
+            options=repo_options
+        ):
+            tasks = []
+            for repo in repositories:
+                repo_name = repo["name"]
+                workflow_options = ListWorkflowOptions(
+                    organization=org_login, repo_name=repo_name
                 )
-
-                async for repositories in repo_exporter.get_paginated_resources(
-                    options=repo_options
+                async for (
+                    workflows
+                ) in workflow_exporter.get_paginated_resources(
+                    workflow_options
                 ):
-                    tasks = []
-                    for repo in repositories:
-                        repo_name = repo["name"]
-                        workflow_options = ListWorkflowOptions(
-                            organization=org_name, repo_name=repo_name
-                        )
-                        async for (
-                            workflows
-                        ) in workflow_exporter.get_paginated_resources(
-                            workflow_options
-                        ):
-                            if config.selector.statuses:
-                                tasks = [
-                                    workflow_run_exporter.get_paginated_resources(
-                                        ListWorkflowRunOptions(
-                                            organization=org_name,
-                                            repo_name=repo_name,
-                                            workflow_id=workflow["id"],
-                                            max_runs=100,
-                                            status=status,
-                                            created=config.selector.created_after,
-                                        )
-                                    )
-                                    for workflow in workflows
-                                    for status in config.selector.statuses
-                                ]
-                            else:
-                                tasks = [
-                                    workflow_run_exporter.get_paginated_resources(
-                                        ListWorkflowRunOptions(
-                                            organization=org_name,
-                                            repo_name=repo_name,
-                                            workflow_id=workflow["id"],
-                                            max_runs=100,
-                                            created=config.selector.created_after,
-                                        )
-                                    )
-                                    for workflow in workflows
-                                ]
+                    if config.selector.statuses:
+                        tasks = [
+                            workflow_run_exporter.get_paginated_resources(
+                                ListWorkflowRunOptions(
+                                    organization=org_login,
+                                    repo_name=repo_name,
+                                    workflow_id=workflow["id"],
+                                    max_runs=100,
+                                    status=status,
+                                    created=config.selector.created_after,
+                                )
+                            )
+                            for workflow in workflows
+                            for status in config.selector.statuses
+                        ]
+                    else:
+                        tasks = [
+                            workflow_run_exporter.get_paginated_resources(
+                                ListWorkflowRunOptions(
+                                    organization=org_login,
+                                    repo_name=repo_name,
+                                    workflow_id=workflow["id"],
+                                    max_runs=100,
+                                    created=config.selector.created_after,
+                                )
+                            )
+                            for workflow in workflows
+                        ]
 
-                        async for runs in stream_async_iterators_tasks(*tasks):
-                            yield runs
+                async for runs in stream_async_iterators_tasks(*tasks):
+                    yield runs
+
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
@@ -543,39 +513,39 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubIssueConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repos in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+        ).get_paginated_resources(options=repo_options):
+            tasks = []
+            for repo in repos:
+                tasks.append(
+                    RestIssueExporter(rest_client).get_paginated_resources(
+                        ListIssueOptions(
+                            organization=org_login,
+                            repo_name=repo["name"],
+                            state=config.selector.state,
+                            labels=config.selector.labels_str,
+                        )
+                    )
                 )
 
-                async for repos in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(options=repo_options):
-                    tasks = []
-                    for repo in repos:
-                        tasks.append(
-                            RestIssueExporter(rest_client).get_paginated_resources(
-                                ListIssueOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    state=config.selector.state,
-                                    labels=config.selector.labels_str,
-                                )
-                            )
-                        )
+            async for issues in stream_async_iterators_tasks(*tasks):
+                yield issues
 
-                    async for issues in stream_async_iterators_tasks(*tasks):
-                        yield issues
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.RELEASE)
@@ -587,36 +557,36 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubReleaseConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+        ).get_paginated_resources(repo_options):
+            tasks = []
+            for repo in repositories:
+                tasks.append(
+                    RestReleaseExporter(rest_client).get_paginated_resources(
+                        ListReleaseOptions(
+                            organization=org_login, repo_name=repo["name"]
+                        )
+                    )
                 )
 
-                async for repositories in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(repo_options):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            RestReleaseExporter(rest_client).get_paginated_resources(
-                                ListReleaseOptions(
-                                    organization=org_name, repo_name=repo["name"]
-                                )
-                            )
-                        )
+            async for releases in stream_async_iterators_tasks(*tasks):
+                yield releases
 
-                    async for releases in stream_async_iterators_tasks(*tasks):
-                        yield releases
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.TAG)
@@ -628,38 +598,38 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubTagConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+        ).get_paginated_resources(repo_options):
+            tasks = []
+            for repo in repositories:
+                tasks.append(
+                    RestTagExporter(rest_client).get_paginated_resources(
+                        ListTagOptions(
+                            organization=org_login,
+                            repo_name=repo["name"],
+                            repo=repo,
+                        )
+                    )
                 )
 
-                async for repositories in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(repo_options):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            RestTagExporter(rest_client).get_paginated_resources(
-                                ListTagOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    repo=repo,
-                                )
-                            )
-                        )
+            async for tags in stream_async_iterators_tasks(*tasks):
+                yield tags
 
-                    async for tags in stream_async_iterators_tasks(*tasks):
-                        yield tags
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.BRANCH)
@@ -671,48 +641,48 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(GithubBranchConfig, event.resource_config).selector
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=selector.repo_search,
+        )
+
+        async for repositories in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=selector.repo_search,
+        ).get_paginated_resources(repo_options):
+            tasks = []
+            for repo in repositories:
+                tasks.append(
+                    RestBranchExporter(rest_client).get_paginated_resources(
+                        ListBranchOptions(
+                            organization=org_login,
+                            repo_name=repo["name"],
+                            protection_rules=selector.protection_rules,
+                            detailed=selector.detailed,
+                            branch_names=selector.branch_names,
+                            default_branch_only=selector.default_branch_only,
+                            repo=repo,
+                        )
+                    )
                 )
 
-                async for repositories in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(repo_options):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            RestBranchExporter(rest_client).get_paginated_resources(
-                                ListBranchOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    protection_rules=selector.protection_rules,
-                                    detailed=selector.detailed,
-                                    branch_names=selector.branch_names,
-                                    default_branch_only=selector.default_branch_only,
-                                    repo=repo,
-                                )
-                            )
-                        )
+                if len(tasks) == MAX_CONCURRENT_REPOS:
+                    async for branches in stream_async_iterators_tasks(*tasks):
+                        yield branches
+                    tasks.clear()
 
-                        if len(tasks) == MAX_CONCURRENT_REPOS:
-                            async for branches in stream_async_iterators_tasks(*tasks):
-                                yield branches
-                            tasks.clear()
+            if tasks:
+                async for branches in stream_async_iterators_tasks(*tasks):
+                    yield branches
 
-                    if tasks:
-                        async for branches in stream_async_iterators_tasks(*tasks):
-                            yield branches
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.ENVIRONMENT)
@@ -724,39 +694,39 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubEnvironmentConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+        ).get_paginated_resources(repo_options):
+            tasks = []
+            for repo in repositories:
+                tasks.append(
+                    RestEnvironmentExporter(
+                        rest_client
+                    ).get_paginated_resources(
+                        ListEnvironmentsOptions(
+                            organization=org_login,
+                            repo_name=repo["name"],
+                        )
+                    )
                 )
 
-                async for repositories in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(repo_options):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            RestEnvironmentExporter(
-                                rest_client
-                            ).get_paginated_resources(
-                                ListEnvironmentsOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                )
-                            )
-                        )
+            async for environments in stream_async_iterators_tasks(*tasks):
+                yield environments
 
-                    async for environments in stream_async_iterators_tasks(*tasks):
-                        yield environments
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.DEPLOYMENT)
@@ -768,39 +738,39 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubDeploymentConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+        ).get_paginated_resources(repo_options):
+            tasks = []
+            for repo in repositories:
+                tasks.append(
+                    RestDeploymentExporter(rest_client).get_paginated_resources(
+                        ListDeploymentsOptions(
+                            organization=org_login,
+                            repo_name=repo["name"],
+                            task=config.selector.task,
+                            environment=config.selector.environment,
+                        )
+                    )
                 )
 
-                async for repositories in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(repo_options):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            RestDeploymentExporter(rest_client).get_paginated_resources(
-                                ListDeploymentsOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    task=config.selector.task,
-                                    environment=config.selector.environment,
-                                )
-                            )
-                        )
+            async for deployments in stream_async_iterators_tasks(*tasks):
+                yield deployments
 
-                    async for deployments in stream_async_iterators_tasks(*tasks):
-                        yield deployments
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.DEPLOYMENT_STATUS)
@@ -817,64 +787,66 @@ async def resync_deployment_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
-            rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                org_type = org["type"]
-                logger.debug(f"Processing organization: {org_name} (type={org_type})")
 
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org_type,
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        org_type = org["type"]
+        logger.debug(f"Processing organization: {org_login} (type={org_type})")
+
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org_type,
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in RestRepositoryExporter(
+            rest_client
+        ).get_paginated_resources(repo_options):
+            for repo in repositories:
+                repo_name = repo["name"]
+                logger.debug(
+                    f"Fetching deployments for {org_login}/{repo_name}"
+                )
+                deployment_options = ListDeploymentsOptions(
+                    organization=org_login,
+                    repo_name=repo_name,
+                    task=config.selector.task,
+                    environment=config.selector.environment,
                 )
 
-                async for repositories in RestRepositoryExporter(
+                async for deployments in RestDeploymentExporter(
                     rest_client
-                ).get_paginated_resources(repo_options):
-                    for repo in repositories:
-                        repo_name = repo["name"]
-                        logger.debug(f"Fetching deployments for {org_name}/{repo_name}")
-                        deployment_options = ListDeploymentsOptions(
-                            organization=org_name,
-                            repo_name=repo_name,
-                            task=config.selector.task,
-                            environment=config.selector.environment,
+                ).get_paginated_resources(deployment_options):
+                    logger.debug(
+                        f"Found {len(deployments)} deployments in {org_login}/{repo_name}"
+                    )
+                    tasks = []
+                    for deployment in deployments:
+                        deployment_id = str(deployment["id"])
+                        logger.debug(
+                            f"Fetching statuses for deployment {deployment_id} "
+                            f"(task={deployment['task']}, env={deployment['environment']})"
+                        )
+                        tasks.append(
+                            RestDeploymentStatusExporter(
+                                rest_client
+                            ).get_paginated_resources(
+                                ListDeploymentStatusesOptions(
+                                    organization=org_login,
+                                    repo_name=repo_name,
+                                    deployment_id=deployment_id,
+                                )
+                            )
                         )
 
-                        async for deployments in RestDeploymentExporter(
-                            rest_client
-                        ).get_paginated_resources(deployment_options):
-                            logger.debug(
-                                f"Found {len(deployments)} deployments in {org_name}/{repo_name}"
-                            )
-                            tasks = []
-                            for deployment in deployments:
-                                deployment_id = str(deployment["id"])
-                                logger.debug(
-                                    f"Fetching statuses for deployment {deployment_id} "
-                                    f"(task={deployment['task']}, env={deployment['environment']})"
-                                )
-                                tasks.append(
-                                    RestDeploymentStatusExporter(
-                                        rest_client
-                                    ).get_paginated_resources(
-                                        ListDeploymentStatusesOptions(
-                                            organization=org_name,
-                                            repo_name=repo_name,
-                                            deployment_id=deployment_id,
-                                        )
-                                    )
-                                )
+                    async for statuses in stream_async_iterators_tasks(*tasks):
+                        yield statuses
 
-                            async for statuses in stream_async_iterators_tasks(*tasks):
-                                yield statuses
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
@@ -886,42 +858,42 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubDependabotAlertConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+        ).get_paginated_resources(repo_options):
+            tasks = []
+            for repo in repositories:
+                tasks.append(
+                    RestDependabotAlertExporter(
+                        rest_client
+                    ).get_paginated_resources(
+                        ListDependabotAlertOptions(
+                            organization=org_login,
+                            repo_name=repo["name"],
+                            state=list(config.selector.states),
+                            severity=config.selector.severity_str,
+                            ecosystem=config.selector.ecosystems_str,
+                        )
+                    )
                 )
 
-                async for repositories in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(repo_options):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            RestDependabotAlertExporter(
-                                rest_client
-                            ).get_paginated_resources(
-                                ListDependabotAlertOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    state=list(config.selector.states),
-                                    severity=config.selector.severity_str,
-                                    ecosystem=config.selector.ecosystems_str,
-                                )
-                            )
-                        )
+            async for alerts in stream_async_iterators_tasks(*tasks):
+                yield alerts
 
-                    async for alerts in stream_async_iterators_tasks(*tasks):
-                        yield alerts
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.CODE_SCANNING_ALERT)
@@ -933,41 +905,41 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+        ).get_paginated_resources(repo_options):
+            tasks = []
+            for repo in repositories:
+                tasks.append(
+                    RestCodeScanningAlertExporter(
+                        rest_client
+                    ).get_paginated_resources(
+                        ListCodeScanningAlertOptions(
+                            organization=org_login,
+                            repo_name=repo["name"],
+                            state=config.selector.state,
+                            severity=config.selector.severity,
+                        )
+                    )
                 )
 
-                async for repositories in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(repo_options):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            RestCodeScanningAlertExporter(
-                                rest_client
-                            ).get_paginated_resources(
-                                ListCodeScanningAlertOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    state=config.selector.state,
-                                    severity=config.selector.severity,
-                                )
-                            )
-                        )
+            async for alerts in stream_async_iterators_tasks(*tasks):
+                yield alerts
 
-                    async for alerts in stream_async_iterators_tasks(*tasks):
-                        yield alerts
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
@@ -980,39 +952,42 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     should_enrich_with_included_files = any(
         folder_sel.included_files for folder_sel in selector.folders
     ) or bool(selector.included_files)
-
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
+
+    # The FolderPatternMappingBuilder handles org+repo discovery internally,
+    # so we iterate at the client level rather than the org level here.
+    async for rest_client, scoped_org in GithubClientFactory().iter_org_clients(
+        GithubClientType.REST,
         allowed_orgs=org_base_options.get("allowed_multi_organizations")
     ):
-        included_files_enricher = (
-            IncludedFilesEnricher(
-                client=rest_client,
-                strategy=FolderIncludedFilesStrategy(
-                    folder_selectors=selector.folders,
-                    global_included_files=selector.included_files,
-                ),
+        try:
+            enricher = (
+                IncludedFilesEnricher(
+                    client=rest_client,
+                    strategy=FolderIncludedFilesStrategy(
+                        folder_selectors=selector.folders,
+                        global_included_files=selector.included_files,
+                    ),
+                )
+                if should_enrich_with_included_files
+                else None
             )
-            if should_enrich_with_included_files
-            else None
-        )
-
-        org_exporter = RestOrganizationExporter(rest_client)
-        repo_exporter = RestRepositoryExporter(rest_client)
-
-        pattern_builder = FolderPatternMappingBuilder(
-            org_exporter=org_exporter,
-            repo_exporter=repo_exporter,
-            repo_type=app_config.repository_type,
-        )
-        repo_path_map = await pattern_builder.build(selector.folders)
-
-        async for folders in RestFolderExporter(rest_client).get_paginated_resources(
-            repo_path_map
-        ):
-            if included_files_enricher:
-                folders = await included_files_enricher.enrich_batch(folders)
-            yield folders
+            pattern_builder = FolderPatternMappingBuilder(
+                org_exporter=RestOrganizationExporter(rest_client),  # type: ignore[arg-type]
+                repo_exporter=RestRepositoryExporter(rest_client),  # type: ignore[arg-type]
+                repo_type=app_config.repository_type,
+            )
+            repo_path_map = await pattern_builder.build(selector.folders)
+            async for folders in RestFolderExporter(rest_client).get_paginated_resources(  # type: ignore[arg-type]
+                repo_path_map
+            ):
+                if enricher:
+                    folders = await enricher.enrich_batch(folders)
+                yield folders
+        except Exception:
+            logger.exception(
+                f"Skipping org {scoped_org or 'default'} due to an error"
+            )
 
 
 @ocean.on_resync(ObjectKind.FILE)
@@ -1023,38 +998,41 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubFileResourceConfig, event.resource_config)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
     should_enrich_with_included_files = bool(config.selector.included_files)
-
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
+
+    # The FilePatternMappingBuilder handles org+repo discovery internally,
+    # so we iterate at the client level rather than the org level here.
+    async for rest_client, scoped_org in GithubClientFactory().iter_org_clients(
+        GithubClientType.REST,
         allowed_orgs=org_base_options.get("allowed_multi_organizations")
     ):
-        included_files_enricher = (
-            IncludedFilesEnricher(
-                client=rest_client,
-                strategy=FileIncludedFilesStrategy(
-                    included_files=config.selector.included_files,
-                ),
+        try:
+            enricher = (
+                IncludedFilesEnricher(
+                    client=rest_client,
+                    strategy=FileIncludedFilesStrategy(
+                        included_files=config.selector.included_files,
+                    ),
+                )
+                if should_enrich_with_included_files
+                else None
             )
-            if should_enrich_with_included_files
-            else None
-        )
-
-        org_exporter = RestOrganizationExporter(rest_client)
-        repo_exporter = RestRepositoryExporter(rest_client)
-
-        pattern_builder = FilePatternMappingBuilder(
-            org_exporter=org_exporter,
-            repo_exporter=repo_exporter,
-            repo_type=app_config.repository_type,
-        )
-        repo_path_map = await pattern_builder.build(config.selector.files)
-
-        async for file_results in RestFileExporter(rest_client).get_paginated_resources(
-            repo_path_map
-        ):
-            if included_files_enricher:
-                file_results = await included_files_enricher.enrich_batch(file_results)
-            yield file_results
+            pattern_builder = FilePatternMappingBuilder(
+                org_exporter=RestOrganizationExporter(rest_client),  # type: ignore[arg-type]
+                repo_exporter=RestRepositoryExporter(rest_client),  # type: ignore[arg-type]
+                repo_type=app_config.repository_type,
+            )
+            repo_path_map = await pattern_builder.build(config.selector.files)
+            async for file_results in RestFileExporter(rest_client).get_paginated_resources(
+                repo_path_map
+            ):
+                if enricher:
+                    file_results = await enricher.enrich_batch(file_results)
+                yield file_results
+        except Exception:
+            logger.exception(
+                f"Skipping org {scoped_org or 'default'} due to an error"
+            )
 
 
 @ocean.on_resync(ObjectKind.COLLABORATOR)
@@ -1066,40 +1044,40 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubCollaboratorConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+        ).get_paginated_resources(repo_options):
+            tasks = []
+            for repo in repositories:
+                tasks.append(
+                    RestCollaboratorExporter(
+                        rest_client
+                    ).get_paginated_resources(
+                        ListCollaboratorOptions(
+                            organization=org_login,
+                            repo_name=repo["name"],
+                            affiliation=config.selector.affiliation,
+                        )
+                    )
                 )
 
-                async for repositories in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(repo_options):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            RestCollaboratorExporter(
-                                rest_client
-                            ).get_paginated_resources(
-                                ListCollaboratorOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    affiliation=config.selector.affiliation,
-                                )
-                            )
-                        )
+            async for collaborators in stream_async_iterators_tasks(*tasks):
+                yield collaborators
 
-                    async for collaborators in stream_async_iterators_tasks(*tasks):
-                        yield collaborators
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 @ocean.on_resync(ObjectKind.SECRET_SCANNING_ALERT)
@@ -1111,41 +1089,41 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     config = cast(GithubSecretScanningAlertConfig, event.resource_config)
 
     org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
-    ):
-        async for organizations in RestOrganizationExporter(
+
+    async def fetch_for_org(
+        rest_client: Any, org: Dict[str, Any]
+    ) -> AsyncGenerator[Any, None]:
+        org_login = org["login"]
+        repo_options = ListRepositoryOptions(
+            organization=org_login,
+            organization_type=org["type"],
+            type=port_app_config.repository_type,
+            search_params=config.selector.repo_search,
+        )
+
+        async for repositories in RestRepositoryExporter(
             rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
+        ).get_paginated_resources(repo_options):
+            tasks = []
+            for repo in repositories:
+                tasks.append(
+                    RestSecretScanningAlertExporter(
+                        rest_client
+                    ).get_paginated_resources(
+                        ListSecretScanningAlertOptions(
+                            organization=org_login,
+                            repo_name=repo["name"],
+                            state=config.selector.state,
+                            hide_secret=config.selector.hide_secret,
+                        )
+                    )
                 )
 
-                async for repositories in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(repo_options):
-                    tasks = []
-                    for repo in repositories:
-                        tasks.append(
-                            RestSecretScanningAlertExporter(
-                                rest_client
-                            ).get_paginated_resources(
-                                ListSecretScanningAlertOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    state=config.selector.state,
-                                    hide_secret=config.selector.hide_secret,
-                                )
-                            )
-                        )
+            async for alerts in stream_async_iterators_tasks(*tasks):
+                yield alerts
 
-                    async for alerts in stream_async_iterators_tasks(*tasks):
-                        yield alerts
+    async for result in iter_per_org(org_base_options, fetch_for_org):
+        yield result
 
 
 # Register webhook processors

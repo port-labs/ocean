@@ -798,6 +798,17 @@ class GithubPortAppConfig(PortAppConfig):
         default="all",
         description="Filter repositories by visibility.",
     )
+    max_concurrent_orgs: int = Field(
+        title="Max Concurrent Organizations",
+        alias="maxConcurrentOrgs",
+        default=3,
+        ge=1,
+        description=(
+            "Maximum number of organizations to sync concurrently. "
+            "Relevant only for multi-organization GitHub App installations or PAT credentials with access to more than one organization."
+            "Increasing this value will increase resource utilization."
+        ),
+    )
     resources: list[
         GithubRepositoryConfig
         | GithubPullRequestConfig

@@ -22,13 +22,15 @@ def _reset_clients_after_fork() -> None:
     """Clear cached clients after fork so children create fresh httpx connections
     and asyncio primitives (Semaphore, Lock) that are bound to the parent's event loop.
     """
+    if GithubClientFactory._auth_instance is not None:
+        GithubClientFactory._auth_instance._http_client = None
     for client in GithubClientFactory._instances.values():
         client.authenticator._http_client = None
     for client in GithubClientFactory._per_org_clients.values():
         client.authenticator._http_client = None
+    GithubClientFactory._auth_instance = None
     GithubClientFactory._instances.clear()
     GithubClientFactory._per_org_clients.clear()
-    GithubClientFactory._installation_map.clear()
     GitHubRateLimiterRegistry.reset_for_fork()
 
 
@@ -73,9 +75,9 @@ class GithubClientFactory:
         GithubClientType.REST: GithubRestClient,
         GithubClientType.GRAPHQL: GithubGraphQLClient,
     }
+    _auth_instance: Optional[AbstractGitHubAuthenticator] = None
     _instances: Dict[GithubClientType, AbstractGithubClient] = {}
-    _per_org_clients: Dict[tuple[GithubClientType, str], AbstractGithubClient] = {}
-    _installation_map: Dict[str, str] = {}  # org_login -> installation_id
+    _per_org_clients: Dict[tuple[GithubClientType, Optional[str]], AbstractGithubClient] = {}
 
     def __new__(cls) -> "GithubClientFactory":
         if cls._instance is None:
@@ -83,14 +85,18 @@ class GithubClientFactory:
         return cls._instance
 
     @property
-    def _is_app_multi_org(self) -> bool:
-        cfg = ocean.integration_config
-        return bool(
-            cfg.get("github_app_id")
-            and cfg.get("github_app_private_key")
-            and not cfg.get("github_organization")
-            and not cfg.get("github_app_installation_id")
-        )
+    def _authenticator(self) -> AbstractGitHubAuthenticator:
+        if GithubClientFactory._auth_instance is None:
+            cfg = ocean.integration_config
+            GithubClientFactory._auth_instance = GitHubAuthenticatorFactory.create(
+                github_host=cfg["github_host"],
+                organization=cfg.get("github_organization"),
+                token=cfg.get("github_token"),
+                app_id=cfg.get("github_app_id"),
+                installation_id=cfg.get("github_app_installation_id"),
+                private_key=cfg.get("github_app_private_key"),
+            )
+        return GithubClientFactory._auth_instance
 
     def get_client(
         self,
@@ -102,94 +108,46 @@ class GithubClientFactory:
         if client_type not in self._clients:
             raise ValueError(f"Invalid client type: {client_type}")
 
-        resolved_installation_id = installation_id or (
-            self._installation_map.get(org_login) if org_login else None
-        )
+        if org_login:
+            key: tuple[GithubClientType, Optional[str]] = (client_type, org_login)
+            if key not in self._per_org_clients:
+                per_org_authenticator = self._authenticator.create_org_scoped_authenticator(
+                    org_login, installation_id or ""
+                )
+                logger.info(f"Creating {client_type} client for org {org_login}.")
+                self._per_org_clients[key] = self._clients[client_type](
+                    **integration_config(per_org_authenticator)
+                )
+            return self._per_org_clients[key]
 
-        if org_login and resolved_installation_id:
-            return self._get_per_org_client(client_type, org_login, resolved_installation_id)
+        return self._get_default_client(client_type)
 
-        return self._get_default_client(client_type, org_login)
-
-    def _get_per_org_client(
-        self,
-        client_type: GithubClientType,
-        org_login: str,
-        installation_id: str,
-    ) -> AbstractGithubClient:
-        key = (client_type, org_login)
-        if key not in self._per_org_clients:
-            cfg = ocean.integration_config
-            authenticator = GitHubAppAuthenticator(
-                app_id=cfg["github_app_id"],
-                private_key=cfg["github_app_private_key"],
-                organization=org_login,
-                installation_id=installation_id,
-                github_host=cfg["github_host"],
-            )
-            logger.info(f"Creating per-org {client_type} client for {org_login}.")
-            self._per_org_clients[key] = self._clients[client_type](
-                **integration_config(authenticator)
-            )
-        return self._per_org_clients[key]
-
-    def _get_default_client(
-        self,
-        client_type: GithubClientType,
-        org_login: Optional[str] = None,
-    ) -> AbstractGithubClient:
+    def _get_default_client(self, client_type: GithubClientType) -> AbstractGithubClient:
         if client_type not in self._instances:
-            cfg = ocean.integration_config
-            authenticator = GitHubAuthenticatorFactory.create(
-                github_host=cfg["github_host"],
-                organization=org_login or cfg.get("github_organization"),
-                token=cfg.get("github_token"),
-                app_id=cfg.get("github_app_id"),
-                installation_id=cfg.get("github_app_installation_id"),
-                private_key=cfg.get("github_app_private_key"),
-            )
             logger.info(f"Creating {client_type} client.")
             self._instances[client_type] = self._clients[client_type](
-                **integration_config(authenticator)
+                **integration_config(self._authenticator)
             )
         return self._instances[client_type]
 
-    async def _discover_installations(self) -> None:
-        """Populate _installation_map via JWT by listing all app installations."""
-        cfg = ocean.integration_config
-        authenticator = GitHubAppAuthenticator(
-            app_id=cfg["github_app_id"],
-            private_key=cfg["github_app_private_key"],
-            github_host=cfg["github_host"],
-        )
-        async for page in authenticator.list_installations():
-            for installation in page:
-                login = installation.get("account", {}).get("login", "")
-                if login:
-                    self._installation_map[login] = str(installation["id"])
-
     async def iter_org_clients(
         self,
-        client_type: GithubClientType = GithubClientType.REST,
+        client_type: GithubClientType,
         *,
         allowed_orgs: Optional[List[str]] = None,
     ) -> AsyncGenerator[tuple[AbstractGithubClient, Optional[str]], None]:
-        """Yield one (client, org_name) pair per organisation.
-
-        App multi-org: one scoped client per installation, filtered by allowed_orgs.
-        All other modes: a single (default_client, None) pair.
-        """
-        if not self._is_app_multi_org:
-            yield self.get_client(client_type), None
-            return
-
-        if not self._installation_map:
-            await self._discover_installations()
-
-        for org_login in list(self._installation_map):
-            if allowed_orgs and org_login not in allowed_orgs:
-                continue
-            yield self.get_client(client_type, org_login=org_login), org_login
+        """Yield one (client, org_name) pair per accessible organisation."""
+        async for authenticator, org_name in self._authenticator.iter_org_authenticators(
+            allowed_orgs
+        ):
+            key: tuple[GithubClientType, Optional[str]] = (client_type, org_name)
+            if key not in self._per_org_clients:
+                if org_name:
+                    logger.info(f"Creating {client_type} client for org {org_name}.")
+                self._per_org_clients[key] = self._clients[client_type](
+                    **integration_config(authenticator)
+                )
+            yield self._per_org_clients[key], org_name
 
 
 @overload
