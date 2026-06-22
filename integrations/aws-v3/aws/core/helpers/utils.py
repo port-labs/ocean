@@ -71,7 +71,10 @@ async def execute_concurrent_aws_operations(
         operation_name: Name for logging (e.g., "repository policy")
 
     Returns:
-        List of successful operation results
+        One entry per input item, in the same order as ``input_items``. An empty
+        dict is returned for any item whose ``operation_func`` raised a
+        recoverable AWS exception, so callers can rely on positional alignment
+        when merging results with other concurrent operations.
     """
     operation_results = await asyncio.gather(
         *(operation_func(item) for item in input_items),
@@ -79,6 +82,7 @@ async def execute_concurrent_aws_operations(
     )
 
     results: list[dict[str, Any]] = []
+    success_count = 0
     for idx, result in enumerate(operation_results):
         if isinstance(result, Exception):
             resource_id = get_resource_identifier(input_items[idx])
@@ -86,6 +90,7 @@ async def execute_concurrent_aws_operations(
                 logger.warning(
                     f"Skipping {operation_name} for '{resource_id}': {result}"
                 )
+                results.append({})
                 continue
             else:
                 logger.error(
@@ -93,6 +98,7 @@ async def execute_concurrent_aws_operations(
                 )
                 raise result
         results.append(cast(dict[str, Any], result))
+        success_count += 1
 
-    logger.info(f"Successfully fetched {operation_name} for {len(results)} resources")
+    logger.info(f"Successfully fetched {operation_name} for {success_count} resources")
     return results

@@ -1,7 +1,7 @@
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
-from httpx import ReadTimeout, Response
+from httpx import ConnectTimeout, ReadTimeout, Response
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -17,6 +17,10 @@ PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 CONTINUATION_TOKEN_KEY = "continuationToken"
 MAX_TIMEMOUT_RETRIES = 3
+# ADO TSTU (Team Services Time Units) budget resets on a 5-minute rolling window.
+# Both the retry backoff cap and the ReadTimeout cooldown are set to this value so
+# the integration always waits out the full reset window before retrying.
+ADO_RATE_LIMIT_WINDOW_SECONDS = 300
 
 
 class HTTPBaseClient:
@@ -27,6 +31,7 @@ class HTTPBaseClient:
                     LIMIT_RESET_HEADER,
                     LIMIT_RETRY_AFTER_HEADER,
                 ],
+                max_backoff_wait=ADO_RATE_LIMIT_WINDOW_SECONDS,
             ),
             timeout=ocean.config.client_timeout,
         )
@@ -69,6 +74,8 @@ class HTTPBaseClient:
                 )
                 raise e
         except httpx.HTTPError as e:
+            if isinstance(e, (ReadTimeout, ConnectTimeout)):
+                await self._rate_limiter.signal_throttle(ADO_RATE_LIMIT_WINDOW_SECONDS)
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
         finally:
