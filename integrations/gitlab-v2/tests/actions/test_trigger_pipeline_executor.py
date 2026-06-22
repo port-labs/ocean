@@ -111,7 +111,9 @@ class TestTriggerPipelineExecutor:
         mock_response.json.return_value = {"message": "403 Forbidden"}
         executor.client.trigger_pipeline = AsyncMock(  # type: ignore[method-assign]
             side_effect=httpx.HTTPStatusError(
-                "403", request=MagicMock(), response=mock_response
+                "403",
+                request=MagicMock(),
+                response=mock_response,
             )
         )
         run = make_run({"project": "my-group/my-project", "ref": "main"})
