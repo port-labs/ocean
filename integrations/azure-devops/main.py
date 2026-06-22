@@ -66,6 +66,7 @@ from azure_devops.webhooks.webhook_processors.release_deployment_webhook_process
     ReleaseDeploymentWebhookProcessor,
 )
 from integration import (
+    AzureDevopsBuildConfig,
     AzureDevopsPipelineResourceConfig,
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
@@ -311,7 +312,10 @@ async def resync_release_definitions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kind.BUILD)
 async def resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for builds in resync.iter_builds():
+    config = cast(AzureDevopsBuildConfig, event.resource_config)
+    async for builds in resync.iter_builds(
+        enrich_with_first_commit=config.selector.enrich_with_first_commit
+    ):
         logger.info(f"Resyncing {len(builds)} builds")
         yield builds
 

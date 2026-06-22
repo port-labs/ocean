@@ -137,9 +137,13 @@ async def iter_release_definitions(
         yield batch
 
 
-async def iter_builds() -> AsyncGenerator[list[dict[str, Any]], None]:
+async def iter_builds(
+    enrich_with_first_commit: bool = False,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
     async for batch in iterate_per_organization(
-        lambda client: client.generate_builds()
+        lambda client: client.generate_builds(
+            enrich_with_first_commit=enrich_with_first_commit
+        )
     ):
         yield batch
 
