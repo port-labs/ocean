@@ -40,6 +40,7 @@ def _make_worker(redis: AsyncMock, **overrides) -> PELRequeueWorker:
         scan_interval_seconds=30.0,
         leader_ttl_ms=30_000,
         leader_heartbeat_seconds=10.0,
+        election_retry_seconds=0.05,
     )
     defaults.update(overrides)
     return PELRequeueWorker(**defaults)
@@ -174,7 +175,8 @@ class TestRedisLeaderElection:
 
 class TestPELRequeueWorkerLeaderElection:
     @pytest.mark.asyncio
-    async def test_worker_starts_only_when_leader(self) -> None:
+    async def test_lifecycle_task_always_starts(self) -> None:
+        """Every pod starts the lifecycle loop regardless of election outcome."""
         redis = _make_redis()
         redis.set = AsyncMock(return_value=True)  # wins election
 
@@ -182,19 +184,21 @@ class TestPELRequeueWorkerLeaderElection:
         await worker.start()
 
         assert worker._is_running is True
-        assert worker._worker_task is not None
+        assert worker._lifecycle_task is not None
         await worker.stop()
 
     @pytest.mark.asyncio
-    async def test_worker_does_not_start_when_not_leader(self) -> None:
+    async def test_lifecycle_task_starts_even_when_not_leader(self) -> None:
+        """Non-leader pods must keep the lifecycle task alive to retry later."""
         redis = _make_redis()
         redis.set = AsyncMock(return_value=None)  # loses election
 
-        worker = _make_worker(redis)
+        worker = _make_worker(redis, scan_interval_seconds=999.0)
         await worker.start()
 
-        assert worker._is_running is False
-        assert worker._worker_task is None
+        assert worker._is_running is True
+        assert worker._lifecycle_task is not None
+        await worker.stop()
 
     @pytest.mark.asyncio
     async def test_leader_key_uses_stream_key_prefix(self) -> None:
@@ -202,9 +206,12 @@ class TestPELRequeueWorkerLeaderElection:
         stream_key = "uuid123/live-events/raw/event-stream"
         worker = _make_worker(redis, stream_key=stream_key)
         await worker.start()
+        await asyncio.sleep(0.05)
 
         expected_key = f"{stream_key}:{_LEADER_KEY_SUFFIX}"
-        redis.set.assert_awaited_once_with(expected_key, "pod-abc", nx=True, px=30_000)
+        first_call = redis.set.await_args_list[0]
+        assert first_call.args[0] == expected_key
+        assert first_call.args[1] == "pod-abc"
         await worker.stop()
 
     @pytest.mark.asyncio
@@ -217,6 +224,37 @@ class TestPELRequeueWorkerLeaderElection:
         await worker.stop()
 
         redis.delete.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_follower_retries_election_after_leader_dies(self) -> None:
+        """Simulate leader dying: SET first returns None (locked), then True (expired)."""
+        redis = _make_redis()
+        call_count = 0
+
+        async def flipping_set(*args: object, **kwargs: object) -> object:
+            nonlocal call_count
+            call_count += 1
+            return None if call_count == 1 else True
+
+        redis.set = flipping_set  # type: ignore[assignment]
+        redis.get = AsyncMock(return_value="pod-abc")
+
+        scanned: list[bool] = []
+
+        worker = _make_worker(
+            redis, election_retry_seconds=0.05, scan_interval_seconds=999.0
+        )
+        worker._scan_and_requeue = AsyncMock(  # type: ignore[method-assign]
+            side_effect=lambda: scanned.append(True)
+        )
+        await worker.start()
+
+        # Allow: first attempt (loses) → sleep 0.05s → second attempt (wins) → scan
+        await asyncio.sleep(0.3)
+        await worker.stop()
+
+        assert call_count >= 2, "Expected at least two election attempts"
+        assert len(scanned) >= 1, "Expected at least one scan after winning election"
 
 
 # ---------------------------------------------------------------------------
@@ -412,9 +450,9 @@ class TestPELWorkerLoop:
         worker = _make_worker(redis, scan_interval_seconds=0.05)
         worker._scan_and_requeue = fake_scan  # type: ignore[method-assign]
         await worker.start()
-        await asyncio.sleep(0.15)
+        await asyncio.sleep(0.25)
         await worker.stop()
 
         assert len(scan_calls) >= 1
         assert worker._is_running is False
-        assert worker._worker_task is None
+        assert worker._lifecycle_task is None
