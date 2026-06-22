@@ -1,16 +1,15 @@
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
+from datadog.overrides import OrgResourceConfig
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-if TYPE_CHECKING:
-    from datadog.overrides import TeamResourceConfig
-
 from datadog.client import DatadogClient
-from datadog.core.exporters import TeamExporter
-from datadog.core.exporters.team_exporter import GetTeamOptions
+from datadog.core.exporters import OrgExporter
+from datadog.core.exporters.org_exporter import GetOrgOptions
 from datadog.webhook.consts import (
-    TEAM_ACTIONS,
+    ORG_ACTIONS,
+    AuditTrailAssetType,
     AuditTrailEventName,
 )
 from datadog.webhook.types import AuditTrailEvent
@@ -19,16 +18,17 @@ from datadog.webhook.webhook_processors.audit_trails.base_processor import (
 )
 
 
-class TeamWebhookProcessor(BaseAuditTrailProcessor):
+class OrgWebhookProcessor(BaseAuditTrailProcessor):
     async def get_matching_kinds(self, _: Any) -> list[str]:
-        return [ObjectKind.TEAM]
+        return [ObjectKind.ORGANIZATION]
 
     async def _should_process(self, event: AuditTrailEvent) -> bool:
-        # https://docs.datadoghq.com/account_management/audit_trail/events/#teams-management
+        # https://docs.datadoghq.com/account_management/audit_trail/events/#organization-management
         attrs = event.attributes
         return (
-            attrs.evt.name == AuditTrailEventName.TEAMS_MANAGEMENT
-            and attrs.action in TEAM_ACTIONS
+            attrs.evt.name == AuditTrailEventName.ORGANIZATION_MANAGEMENT
+            and attrs.asset.type == AuditTrailAssetType.ORGANIZATION
+            and attrs.action in ORG_ACTIONS
         )
 
     async def _fetch_resource(
@@ -37,9 +37,9 @@ class TeamWebhookProcessor(BaseAuditTrailProcessor):
         event: AuditTrailEvent,
         resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
-        return await TeamExporter(client).get_resource(
-            GetTeamOptions.from_resource_config(
-                cast("TeamResourceConfig", resource_config),
+        return await OrgExporter(client).get_resource(
+            GetOrgOptions.from_resource_config(
+                cast(OrgResourceConfig, resource_config),
                 resource_id=event.attributes.asset.id,
             )
         )
