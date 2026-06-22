@@ -72,7 +72,7 @@ class GitHubRetryTransport(RetryTransport):
         self._rate_limit_notifier = rate_limit_notifier
         self._token_refresher = token_refresher
 
-    async def _reduced_page_url(
+    async def _reduced_page_request(
         self, request: httpx.Request, response: Optional[httpx.Response]
     ) -> httpx.Request:
         """Shrink the page size when retrying a retryable 5xx.
@@ -155,7 +155,7 @@ class GitHubRetryTransport(RetryTransport):
         sleep_time: float,
         attempt: int,
     ) -> Optional[httpx.Request]:
-        request = await self._reduced_page_url(request, response)
+        request = await self._reduced_page_request(request, response)
 
         headers = dict(request.headers)
         if self._token_refresher is not None:
