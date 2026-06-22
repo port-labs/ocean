@@ -82,6 +82,10 @@ async def poll_pipeline_to_completion(
 
     try:
         for _attempt in range(max_attempts):
+            run = await ocean.port_client.find_run_by_external_id(external_id)
+            if run is None or not ocean.port_client.is_run_in_progress(run):
+                return
+
             try:
                 pipeline = await get_pipeline(project_id, pipeline_id)
             except Exception as exc:
@@ -95,10 +99,6 @@ async def poll_pipeline_to_completion(
                 continue
 
             status = pipeline.get("status", "")
-
-            run = await ocean.port_client.find_run_by_external_id(external_id)
-            if run is None or not ocean.port_client.is_run_in_progress(run):
-                return
 
             if status in TERMINAL_PIPELINE_STATUSES:
                 await complete_run_from_pipeline_status(

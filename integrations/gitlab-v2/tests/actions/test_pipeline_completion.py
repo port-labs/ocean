@@ -152,6 +152,7 @@ class TestPollPipelineToCompletion:
                 )
 
         mock_sleep.assert_not_called()
+        get_pipeline.assert_not_called()
         mock_ocean.port_client.report_run_completed.assert_not_called()
 
     async def test_exits_when_run_not_found(self) -> None:
@@ -172,6 +173,31 @@ class TestPollPipelineToCompletion:
                 )
 
         mock_sleep.assert_not_called()
+        get_pipeline.assert_not_called()
+        mock_ocean.port_client.report_run_completed.assert_not_called()
+
+    async def test_skips_gitlab_poll_after_webhook_completes_during_sleep(self) -> None:
+        run = make_run()
+        get_pipeline = AsyncMock(return_value={"status": "running"})
+        with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
+            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
+            mock_ocean.port_client.is_run_in_progress = MagicMock(
+                side_effect=[True, False]
+            )
+            mock_ocean.port_client.report_run_completed = AsyncMock()
+            with patch(
+                "gitlab.actions.pipeline_completion.asyncio.sleep", AsyncMock()
+            ) as mock_sleep:
+                await poll_pipeline_to_completion(
+                    external_id="gl_42_99",
+                    project_id=42,
+                    pipeline_id=99,
+                    get_pipeline=get_pipeline,
+                    timeout=60,
+                )
+
+        get_pipeline.assert_called_once_with(42, 99)
+        mock_sleep.assert_awaited_once()
         mock_ocean.port_client.report_run_completed.assert_not_called()
 
     async def test_retries_after_get_pipeline_error(self) -> None:
