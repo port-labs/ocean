@@ -2,6 +2,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
@@ -30,12 +31,19 @@ async def find_run_with_retry(
 
 
 async def complete_run_from_pipeline_status(
-    run: ActionRun | WorkflowNodeRun,
+    external_id: str,
     status: str,
     *,
     completion_source: str,
 ) -> bool:
-    """Report pipeline completion to Port based on GitLab status. Returns True if completed."""
+    """Report pipeline completion to Port. Returns True if this call completed the run."""
+    run = await ocean.port_client.find_run_by_external_id(external_id)
+    if run is None:
+        logger.debug(
+            f"No Port run for {external_id}, skipping {completion_source} update"
+        )
+        return False
+
     if not run.execution_properties.get("reportPipelineStatus", True):
         logger.info(f"reportPipelineStatus disabled for run {run.id}, skipping")
         return False
@@ -50,9 +58,17 @@ async def complete_run_from_pipeline_status(
     logger.info(
         f"Pipeline {completion_source} → run {run.id}: status={status} is_success={is_success}"
     )
-    await ocean.port_client.report_run_completed(
-        run, is_success, f"Pipeline completed: {status}"
-    )
+    try:
+        await ocean.port_client.report_run_completed(
+            run, is_success, f"Pipeline completed: {status}"
+        )
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 409:
+            logger.debug(
+                f"Run {run.id} already completed, skipping {completion_source} update"
+            )
+            return False
+        raise
     return True
 
 
@@ -88,12 +104,11 @@ async def _fetch_poll_state(
         )
         if isinstance(run_result, BaseException):
             raise run_result
-        run = run_result
-        if run is None or not ocean.port_client.is_run_in_progress(run):
+        if run_result is None or not ocean.port_client.is_run_in_progress(run_result):
             return None
         if isinstance(pipeline_result, BaseException):
             raise pipeline_result
-        return pipeline_result, run
+        return pipeline_result, run_result
 
     run = await ocean.port_client.find_run_by_external_id(external_id)
     if run is None or not ocean.port_client.is_run_in_progress(run):
@@ -137,10 +152,12 @@ async def poll_pipeline_to_completion(
             if state is None:
                 return
 
-            pipeline, run = state
+            pipeline, _run = state
             if pipeline.get("status", "") in TERMINAL_PIPELINE_STATUSES:
                 await complete_run_from_pipeline_status(
-                    run, pipeline["status"], completion_source="poll"
+                    external_id,
+                    pipeline["status"],
+                    completion_source="poll",
                 )
                 return
 

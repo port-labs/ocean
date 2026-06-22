@@ -56,7 +56,9 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
             )
 
         await complete_run_from_pipeline_status(
-            run, status, completion_source="webhook"
+            external_id,
+            status,
+            completion_source="webhook",
         )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])

@@ -77,7 +77,9 @@ class TestTriggerPipelineWebhookProcessor:
             await processor.handle_event(make_event("success").payload, resource_config)
 
             mock_complete.assert_called_once_with(
-                run, "success", completion_source="webhook"
+                "gl_42_99",
+                "success",
+                completion_source="webhook",
             )
 
     async def test_handle_event_no_run_skips(
