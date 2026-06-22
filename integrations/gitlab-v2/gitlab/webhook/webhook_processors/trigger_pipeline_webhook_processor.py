@@ -38,9 +38,9 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        project_id = payload["project"]["id"]
-        pipeline_id = payload["object_attributes"]["id"]
-        status = payload["object_attributes"]["status"]
+        project_id = payload.get("project", {}).get("id")
+        pipeline_id = payload.get("object_attributes", {}).get("id")
+        status = payload.get("object_attributes", {}).get("status")
 
         external_id = build_external_id(project_id, pipeline_id)
         run = await ocean.port_client.find_run_by_external_id(external_id)
