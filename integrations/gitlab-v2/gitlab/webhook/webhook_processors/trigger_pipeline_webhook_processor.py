@@ -11,7 +11,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from gitlab.actions.pipeline_completion import (
     TERMINAL_PIPELINE_STATUSES,
-    complete_run_if_in_progress,
+    complete_run_from_pipeline_status,
     find_run_with_retry,
 )
 from gitlab.actions.utils import build_external_id
@@ -55,6 +55,8 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        await complete_run_if_in_progress(run, status, completion_source="webhook")
+        await complete_run_from_pipeline_status(
+            run, status, completion_source="webhook"
+        )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])

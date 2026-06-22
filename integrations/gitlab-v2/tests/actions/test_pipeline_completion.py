@@ -1,10 +1,11 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from port_ocean.core.models import WorkflowNodeRun, WorkflowNodeRunStatus
 
 from gitlab.actions.pipeline_completion import (
-    complete_run_if_in_progress,
+    complete_run_from_pipeline_status,
     find_run_with_retry,
     poll_pipeline_to_completion,
 )
@@ -54,14 +55,14 @@ class TestFindRunWithRetry:
 
 
 @pytest.mark.asyncio
-class TestCompleteRunIfInProgress:
+class TestCompleteRunFromPipelineStatus:
     async def test_completes_successful_pipeline(self) -> None:
         run = make_run()
         with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
             mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
-            result = await complete_run_if_in_progress(
+            result = await complete_run_from_pipeline_status(
                 run, "success", completion_source="webhook"
             )
 
@@ -76,7 +77,7 @@ class TestCompleteRunIfInProgress:
             mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
-            result = await complete_run_if_in_progress(
+            result = await complete_run_from_pipeline_status(
                 run, "failed", completion_source="poll"
             )
 
@@ -90,7 +91,7 @@ class TestCompleteRunIfInProgress:
         with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
-            result = await complete_run_if_in_progress(
+            result = await complete_run_from_pipeline_status(
                 run, "success", completion_source="webhook"
             )
 
@@ -103,7 +104,7 @@ class TestCompleteRunIfInProgress:
             mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=False)
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
-            result = await complete_run_if_in_progress(
+            result = await complete_run_from_pipeline_status(
                 run, "success", completion_source="poll"
             )
 
@@ -172,3 +173,49 @@ class TestPollPipelineToCompletion:
 
         mock_sleep.assert_not_called()
         mock_ocean.port_client.report_run_completed.assert_not_called()
+
+    async def test_retries_after_get_pipeline_error(self) -> None:
+        run = make_run()
+        get_pipeline = AsyncMock(
+            side_effect=[
+                httpx.HTTPStatusError("503", request=MagicMock(), response=MagicMock()),
+                {"status": "success"},
+            ]
+        )
+        with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
+            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
+            mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+            mock_ocean.port_client.report_run_completed = AsyncMock()
+            with patch(
+                "gitlab.actions.pipeline_completion.asyncio.sleep", AsyncMock()
+            ) as mock_sleep:
+                await poll_pipeline_to_completion(
+                    external_id="gl_42_99",
+                    project_id=42,
+                    pipeline_id=99,
+                    get_pipeline=get_pipeline,
+                    timeout=60,
+                )
+
+        assert get_pipeline.await_count == 2
+        mock_sleep.assert_awaited_once()
+        mock_ocean.port_client.report_run_completed.assert_called_once()
+
+    async def test_reports_failure_on_unexpected_error(self) -> None:
+        run = make_run()
+        with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
+            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
+            mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+            mock_ocean.port_client.report_run_failure = AsyncMock()
+            with patch(
+                "gitlab.actions.pipeline_completion.complete_run_from_pipeline_status",
+                AsyncMock(side_effect=RuntimeError("boom")),
+            ):
+                await poll_pipeline_to_completion(
+                    external_id="gl_42_99",
+                    project_id=42,
+                    pipeline_id=99,
+                    get_pipeline=AsyncMock(return_value={"status": "success"}),
+                )
+
+        mock_ocean.port_client.report_run_failure.assert_called_once()

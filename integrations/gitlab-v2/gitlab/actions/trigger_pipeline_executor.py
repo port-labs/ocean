@@ -1,4 +1,3 @@
-import asyncio
 import json
 
 import httpx
@@ -7,7 +6,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
 
 from gitlab.actions.abstract_gitlab_executor import AbstractGitlabExecutor
-from gitlab.actions.pipeline_completion import poll_pipeline_to_completion
+from gitlab.actions.pipeline_completion import schedule_pipeline_poll
 from gitlab.actions.utils import build_external_id
 from gitlab.helpers.exceptions import (
     GitlabTriggerPipelineError,
@@ -89,11 +88,9 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
             )
             return
 
-        asyncio.create_task(
-            poll_pipeline_to_completion(
-                external_id=external_id,
-                project_id=int(pipeline["project_id"]),
-                pipeline_id=int(pipeline["id"]),
-                get_pipeline=self.client.get_pipeline,
-            )
+        schedule_pipeline_poll(
+            external_id=external_id,
+            project_id=int(pipeline["project_id"]),
+            pipeline_id=int(pipeline["id"]),
+            get_pipeline=self.client.get_pipeline,
         )

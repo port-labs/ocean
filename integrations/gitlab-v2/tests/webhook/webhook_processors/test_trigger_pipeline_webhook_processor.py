@@ -70,7 +70,7 @@ class TestTriggerPipelineWebhookProcessor:
                 AsyncMock(return_value=run),
             ),
             patch(
-                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.complete_run_if_in_progress",
+                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.complete_run_from_pipeline_status",
                 AsyncMock(return_value=True),
             ) as mock_complete,
         ):
@@ -90,7 +90,7 @@ class TestTriggerPipelineWebhookProcessor:
                 AsyncMock(return_value=None),
             ),
             patch(
-                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.complete_run_if_in_progress",
+                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.complete_run_from_pipeline_status",
                 AsyncMock(),
             ) as mock_complete,
         ):
