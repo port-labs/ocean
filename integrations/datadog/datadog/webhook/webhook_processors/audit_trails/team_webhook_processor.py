@@ -6,6 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 if TYPE_CHECKING:
     from datadog.overrides import TeamResourceConfig
 
+from datadog.client import DatadogClient
 from datadog.core.exporters import TeamExporter
 from datadog.core.exporters.team_exporter import GetTeamOptions
 from datadog.webhook.consts import (
@@ -31,9 +32,12 @@ class TeamWebhookProcessor(BaseAuditTrailProcessor):
         )
 
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
-        return await TeamExporter(self.client).get_resource(
+        return await TeamExporter(client).get_resource(
             GetTeamOptions.from_resource_config(
                 cast("TeamResourceConfig", resource_config),
                 resource_id=event.attributes.asset.id,
