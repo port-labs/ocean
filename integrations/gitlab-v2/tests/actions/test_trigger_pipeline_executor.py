@@ -97,9 +97,7 @@ class TestTriggerPipelineExecutor:
         with pytest.raises(MissingExecutionPropertyError, match="project is required"):
             await executor.execute(run)
 
-    async def test_missing_ref_raises(
-        self, executor: TriggerPipelineExecutor
-    ) -> None:
+    async def test_missing_ref_raises(self, executor: TriggerPipelineExecutor) -> None:
         run = make_run({"project": "my-group/my-project"})
         with pytest.raises(MissingExecutionPropertyError, match="ref is required"):
             await executor.execute(run)
