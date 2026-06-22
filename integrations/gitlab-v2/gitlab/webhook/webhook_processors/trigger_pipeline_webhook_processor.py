@@ -61,7 +61,7 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        if not ocean.port_client.is_run_in_progress(run):
+        if not await ocean.port_client.is_run_in_progress(run):
             logger.info(
                 f"Run {run.id} is already completed, skipping duplicate webhook"
             )
