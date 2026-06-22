@@ -6,6 +6,7 @@ if TYPE_CHECKING:
 from integration import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
+from datadog.client import DatadogClient
 from datadog.core.exporters import SloExporter
 from datadog.core.exporters.slo_exporter import GetSloOptions
 from datadog.webhook.consts import (
@@ -33,9 +34,12 @@ class SloWebhookProcessor(BaseAuditTrailProcessor):
         )
 
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
-        return await SloExporter(self.client).get_resource(
+        return await SloExporter(client).get_resource(
             GetSloOptions.from_resource_config(
                 cast("SLOResourceConfig", resource_config),
                 resource_id=event.attributes.asset.id,
