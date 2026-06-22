@@ -109,7 +109,7 @@ async def poll_pipeline_to_completion(
     get_pipeline: Callable[[int, int], Awaitable[dict[str, Any]]],
     *,
     interval: int = 5,
-    timeout: int = 60 * 60,
+    timeout: int = 30 * 60,
 ) -> None:
     """Poll GitLab for pipeline status until terminal, then complete the Port run."""
     max_attempts = timeout // interval
