@@ -83,7 +83,7 @@ class GitHubRetryTransport(RetryTransport):
         if response is None or response.status_code not in RETRYABLE_5XX_STATUS_CODES:
             return request
 
-        if "graphql" in str(request.url):
+        if self._is_graphql_request(request):
             return await self._reduce_page_for_graphql(request)
         return self._reduce_page_for_rest(request)
 
@@ -118,14 +118,11 @@ class GitHubRetryTransport(RetryTransport):
         )
 
     async def _reduce_page_for_graphql(self, request: httpx.Request) -> httpx.Request:
-        request_body = json.loads(await self._read_request_body(request))
-        current_page_size: Optional[int] = request_body.get("variables", {}).get(
-            "first"
-        )
+        current_page_size = self._graphql_first(request)
         if not current_page_size or current_page_size <= MIN_GRAPHQL_PAGE_SIZE:
             return request
-        new_page_size = current_page_size - GRAPHQL_REDUCTION_SIZE
-        request_body["variables"]["first"] = new_page_size
+        request_body = json.loads(await self._read_request_body(request))
+        request_body["variables"]["first"] = current_page_size - GRAPHQL_REDUCTION_SIZE
         # Drop the original Content-Length so httpx recomputes it for the smaller
         # body; copying it verbatim would describe the wrong byte count.
         headers = {
@@ -211,6 +208,15 @@ class GitHubRetryTransport(RetryTransport):
             return None
 
     @staticmethod
+    def _is_graphql_request(request: httpx.Request) -> bool:
+        """True for GitHub's GraphQL endpoint.
+
+        Matches on the path suffix rather than a substring of the full URL so a
+        stray `graphql` in a query value can't be mistaken for the endpoint.
+        """
+        return request.url.path.endswith("graphql")
+
+    @staticmethod
     def _graphql_first(request: httpx.Request) -> Optional[int]:
         """The `variables.first` of a GraphQL request body, or None if absent.
 
@@ -239,7 +245,7 @@ class GitHubRetryTransport(RetryTransport):
         except RuntimeError:
             # response carries no request.
             return False
-        if "graphql" in str(request.url):
+        if self._is_graphql_request(request):
             first = self._graphql_first(request)
             return first is not None and first <= MIN_GRAPHQL_PAGE_SIZE
         per_page = self._paginated_per_page(request.url)
