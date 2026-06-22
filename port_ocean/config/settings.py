@@ -132,6 +132,32 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
     )
     consumer_group: str | None = None
     block_ms: int = Field(default=1000, ge=1)
+    # PEL requeue worker settings
+    pel_stuck_timeout_seconds: int = Field(
+        default=180,
+        ge=1,
+        description="Seconds a PEL entry must be idle before the requeue worker reclaims it.",
+    )
+    pel_max_requeue_count: int = Field(
+        default=3,
+        ge=1,
+        description="Maximum number of times a message is requeued before being discarded.",
+    )
+    pel_scan_interval_seconds: int = Field(
+        default=30,
+        ge=1,
+        description="Seconds between successive PEL scans by the requeue worker.",
+    )
+    leader_election_ttl_ms: int = Field(
+        default=30_000,
+        ge=1000,
+        description="TTL in milliseconds for the Redis leader-election key.",
+    )
+    leader_election_heartbeat_seconds: int = Field(
+        default=10,
+        ge=1,
+        description="Interval in seconds at which the leader renews its lock TTL.",
+    )
 
 
 class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):

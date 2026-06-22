@@ -14,6 +14,7 @@ from redis.asyncio.connection import SSLConnection
 from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
+from port_ocean.consumers.pel_requeue_worker import PELRequeueWorker
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -69,6 +70,7 @@ class RedisStreamConsumer:
         self._consumer_name = (
             f"{ocean.config.integration.identifier}-{socket.gethostname()}"
         )
+        self._pel_worker: PELRequeueWorker | None = None
 
     def _resolve_consumer_group(self) -> str:
         integration = ocean.config.integration
@@ -130,6 +132,19 @@ class RedisStreamConsumer:
         self._is_running = True
         self._read_task = asyncio.create_task(self._read_loop())
 
+        self._pel_worker = PELRequeueWorker(
+            redis=self._redis,
+            stream_key=self._stream_key,
+            consumer_group=self._consumer_group,
+            pod_id=self._consumer_name,
+            stuck_timeout_ms=self._settings.pel_stuck_timeout_seconds * 1000,
+            max_requeue_count=self._settings.pel_max_requeue_count,
+            scan_interval_seconds=self._settings.pel_scan_interval_seconds,
+            leader_ttl_ms=self._settings.leader_election_ttl_ms,
+            leader_heartbeat_seconds=self._settings.leader_election_heartbeat_seconds,
+        )
+        await self._pel_worker.start()
+
         logger.info(
             "Started Redis stream consumer",
             stream_key=self._stream_key,
@@ -143,6 +158,9 @@ class RedisStreamConsumer:
             self._read_task.cancel()
             await asyncio.gather(self._read_task, return_exceptions=True)
             self._read_task = None
+        if self._pel_worker is not None:
+            await self._pel_worker.stop()
+            self._pel_worker = None
         if self._redis is not None:
             await self._redis.aclose()
             self._redis = None
