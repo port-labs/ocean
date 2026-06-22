@@ -152,7 +152,6 @@ class TestPollPipelineToCompletion:
                 )
 
         mock_sleep.assert_not_called()
-        get_pipeline.assert_not_called()
         mock_ocean.port_client.report_run_completed.assert_not_called()
 
     async def test_exits_when_run_not_found(self) -> None:
@@ -173,7 +172,6 @@ class TestPollPipelineToCompletion:
                 )
 
         mock_sleep.assert_not_called()
-        get_pipeline.assert_not_called()
         mock_ocean.port_client.report_run_completed.assert_not_called()
 
     async def test_skips_gitlab_poll_after_webhook_completes_during_sleep(self) -> None:

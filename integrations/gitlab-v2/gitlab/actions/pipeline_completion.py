@@ -67,6 +67,41 @@ async def fail_run_by_external_id(external_id: str, message: str) -> None:
         )
 
 
+async def _fetch_poll_state(
+    external_id: str,
+    project_id: int,
+    pipeline_id: int,
+    get_pipeline: Callable[[int, int], Awaitable[dict[str, Any]]],
+    *,
+    concurrent: bool,
+) -> tuple[dict[str, Any], ActionRun | WorkflowNodeRun] | None:
+    """Return pipeline + run to keep polling, or None if the run is done/missing.
+
+    On the first iteration both lookups run concurrently. Later iterations check
+    Port first so a webhook completion during sleep avoids an extra GitLab call.
+    """
+    if concurrent:
+        pipeline_result, run_result = await asyncio.gather(
+            get_pipeline(project_id, pipeline_id),
+            ocean.port_client.find_run_by_external_id(external_id),
+            return_exceptions=True,
+        )
+        if isinstance(run_result, BaseException):
+            raise run_result
+        run = run_result
+        if run is None or not ocean.port_client.is_run_in_progress(run):
+            return None
+        if isinstance(pipeline_result, BaseException):
+            raise pipeline_result
+        return pipeline_result, run
+
+    run = await ocean.port_client.find_run_by_external_id(external_id)
+    if run is None or not ocean.port_client.is_run_in_progress(run):
+        return None
+    pipeline = await get_pipeline(project_id, pipeline_id)
+    return pipeline, run
+
+
 async def poll_pipeline_to_completion(
     external_id: str,
     project_id: int,
@@ -76,33 +111,36 @@ async def poll_pipeline_to_completion(
     interval: int = 5,
     timeout: int = 60 * 60,
 ) -> None:
-    """Poll GitLab for pipeline status until terminal, then complete the Port run.
-    Exits early if the run is already completed (e.g. by a webhook)."""
+    """Poll GitLab for pipeline status until terminal, then complete the Port run."""
     max_attempts = timeout // interval
 
     try:
-        for _attempt in range(max_attempts):
-            run = await ocean.port_client.find_run_by_external_id(external_id)
-            if run is None or not ocean.port_client.is_run_in_progress(run):
-                return
-
+        for attempt in range(max_attempts):
             try:
-                pipeline = await get_pipeline(project_id, pipeline_id)
+                state = await _fetch_poll_state(
+                    external_id,
+                    project_id,
+                    pipeline_id,
+                    get_pipeline,
+                    concurrent=attempt == 0,
+                )
             except Exception as exc:
                 logger.warning(
                     f"Failed to poll pipeline {pipeline_id}, retrying",
                     external_id=external_id,
-                    attempt=_attempt + 1,
+                    attempt=attempt + 1,
                     error=str(exc),
                 )
                 await asyncio.sleep(interval)
                 continue
 
-            status = pipeline.get("status", "")
+            if state is None:
+                return
 
-            if status in TERMINAL_PIPELINE_STATUSES:
+            pipeline, run = state
+            if pipeline.get("status", "") in TERMINAL_PIPELINE_STATUSES:
                 await complete_run_from_pipeline_status(
-                    run, status, completion_source="poll"
+                    run, pipeline["status"], completion_source="poll"
                 )
                 return
 
