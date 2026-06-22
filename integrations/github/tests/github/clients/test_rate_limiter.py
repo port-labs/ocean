@@ -681,3 +681,74 @@ class TestBaseClientRateLimit403Mapping:
 
         with pytest.raises(httpx.HTTPStatusError):
             await client.make_request(resource, ignore_default_errors=False)
+
+
+class TestRateLimiterSemaphorePermitLeak:
+    @pytest.mark.asyncio
+    async def test_cancelled_sleep_during_aenter_releases_acquired_semaphore_permit(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=1, reset_time=int(time.time()) + 30
+        )
+        client.rate_limiter._initialized = True
+        mock_sleep.side_effect = asyncio.CancelledError()
+
+        permits_before_cancelled_aenter = client.rate_limiter._semaphore._value
+
+        with pytest.raises(asyncio.CancelledError):
+            await client.rate_limiter.__aenter__()
+
+        assert client.rate_limiter._semaphore._value == permits_before_cancelled_aenter
+
+    @pytest.mark.asyncio
+    async def test_ten_consecutive_cancelled_sleeps_leave_every_permit_acquirable_afterward(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        max_concurrent_slots = 10
+        config = GitHubRateLimiterConfig(
+            api_type="rest", max_concurrent=max_concurrent_slots
+        )
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+        mock_sleep.side_effect = asyncio.CancelledError()
+
+        for _ in range(max_concurrent_slots):
+            limiter.rate_limit_info = RateLimitInfo(
+                limit=1000, remaining=1, reset_time=int(time.time()) + 30
+            )
+            limiter._initialized = True
+            with pytest.raises(asyncio.CancelledError):
+                await limiter.__aenter__()
+
+        assert limiter._semaphore._value == max_concurrent_slots
+
+    @pytest.mark.asyncio
+    async def test_non_cancelled_exception_during_aenter_also_releases_acquired_semaphore_permit(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=1, reset_time=int(time.time()) + 30
+        )
+        client.rate_limiter._initialized = True
+        mock_sleep.side_effect = RuntimeError("simulated enforcement failure")
+
+        permits_before_failed_aenter = client.rate_limiter._semaphore._value
+
+        with pytest.raises(RuntimeError):
+            await client.rate_limiter.__aenter__()
+
+        assert client.rate_limiter._semaphore._value == permits_before_failed_aenter
+
+    @pytest.mark.asyncio
+    async def test_uncancelled_aenter_and_aexit_still_round_trips_permit_as_before(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        permits_before_context = client.rate_limiter._semaphore._value
+
+        async with client.rate_limiter:
+            assert client.rate_limiter._semaphore._value == permits_before_context - 1
+
+        assert client.rate_limiter._semaphore._value == permits_before_context
