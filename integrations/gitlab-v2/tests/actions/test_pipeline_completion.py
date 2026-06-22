@@ -23,9 +23,7 @@ class TestFindRunWithRetry:
     async def test_returns_run_on_first_try(self) -> None:
         run = make_run()
         with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(
-                return_value=run
-            )
+            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
             result = await find_run_with_retry("gl_42_99")
 
         assert result is run
@@ -49,9 +47,7 @@ class TestFindRunWithRetry:
             mock_ocean.port_client.find_run_by_external_id = AsyncMock(
                 return_value=None
             )
-            with patch(
-                "gitlab.actions.pipeline_completion.asyncio.sleep", AsyncMock()
-            ):
+            with patch("gitlab.actions.pipeline_completion.asyncio.sleep", AsyncMock()):
                 result = await find_run_with_retry("gl_42_99")
 
         assert result is None
@@ -121,9 +117,7 @@ class TestPollPipelineToCompletion:
         run = make_run()
         get_pipeline = AsyncMock(return_value={"status": "success"})
         with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(
-                return_value=run
-            )
+            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
             mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
@@ -143,9 +137,7 @@ class TestPollPipelineToCompletion:
         run = make_run()
         get_pipeline = AsyncMock(return_value={"status": "running"})
         with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(
-                return_value=run
-            )
+            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
             mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=False)
             mock_ocean.port_client.report_run_completed = AsyncMock()
             with patch(

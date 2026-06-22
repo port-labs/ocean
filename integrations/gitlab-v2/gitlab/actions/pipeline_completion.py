@@ -37,9 +37,7 @@ async def complete_run_if_in_progress(
 ) -> bool:
     """Report pipeline completion to Port. Returns True if the run was completed."""
     if not run.execution_properties.get("reportPipelineStatus", True):
-        logger.info(
-            f"reportPipelineStatus disabled for run {run.id}, skipping"
-        )
+        logger.info(f"reportPipelineStatus disabled for run {run.id}, skipping")
         return False
 
     if not ocean.port_client.is_run_in_progress(run):
@@ -80,9 +78,7 @@ async def poll_pipeline_to_completion(
             return
 
         if status in TERMINAL_PIPELINE_STATUSES:
-            await complete_run_if_in_progress(
-                run, status, completion_source="poll"
-            )
+            await complete_run_if_in_progress(run, status, completion_source="poll")
             return
 
         await asyncio.sleep(interval)
