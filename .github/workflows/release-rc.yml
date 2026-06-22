@@ -39,7 +39,7 @@ jobs:
           fi
 
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
@@ -109,7 +109,7 @@ jobs:
           python-version: '3.12'
 
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
 
@@ -194,7 +194,7 @@ jobs:
       contents: write
     steps:
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -253,7 +253,7 @@ jobs:
       matrix: ${{ steps.prepare-matrix.outputs.INTEGRATIONS_MATRIX }}
     steps:
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
 
@@ -334,7 +334,7 @@ jobs:
         integration: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     steps:
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
 
@@ -452,7 +452,7 @@ jobs:
     if: always()
     steps:
       - name: Check out branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
 
