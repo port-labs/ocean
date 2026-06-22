@@ -69,7 +69,7 @@ class TestTriggerPipelineWebhookProcessor:
             "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
         ) as mock_ocean:
             mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
-            mock_ocean.port_client.is_run_in_progress = AsyncMock(return_value=True)
+            mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
             payload = make_event("success").payload
@@ -89,7 +89,7 @@ class TestTriggerPipelineWebhookProcessor:
             "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
         ) as mock_ocean:
             mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
-            mock_ocean.port_client.is_run_in_progress = AsyncMock(return_value=True)
+            mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
             payload = make_event(status).payload
@@ -123,7 +123,7 @@ class TestTriggerPipelineWebhookProcessor:
             "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
         ) as mock_ocean:
             mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
-            mock_ocean.port_client.is_run_in_progress = AsyncMock(return_value=False)
+            mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=False)
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
             await processor.handle_event(make_event("success").payload, resource_config)

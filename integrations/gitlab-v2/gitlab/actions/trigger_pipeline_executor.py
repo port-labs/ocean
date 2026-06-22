@@ -7,7 +7,10 @@ from port_ocean.core.models import ActionRun, WorkflowNodeRun
 
 from gitlab.actions.abstract_gitlab_executor import AbstractGitlabExecutor
 from gitlab.actions.utils import build_external_id
-from gitlab.helpers.exceptions import GitlabTriggerPipelineError, MissingExecutionPropertyError
+from gitlab.helpers.exceptions import (
+    GitlabTriggerPipelineError,
+    MissingExecutionPropertyError,
+)
 from gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor import (
     TriggerPipelineWebhookProcessor,
 )
@@ -46,7 +49,9 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
                 message = str(e)
             raise GitlabTriggerPipelineError(f"Failed to trigger pipeline: {message}")
 
-        if not pipeline or not all(k in pipeline for k in ("id", "project_id", "web_url")):
+        if not pipeline or not all(
+            k in pipeline for k in ("id", "project_id", "web_url")
+        ):
             raise GitlabTriggerPipelineError(
                 "Failed to trigger pipeline: GitLab returned an empty or incomplete response"
             )
