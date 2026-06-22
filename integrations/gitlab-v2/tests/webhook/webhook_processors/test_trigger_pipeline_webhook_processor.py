@@ -54,7 +54,10 @@ class TestTriggerPipelineWebhookProcessor:
         event = WebhookEvent(
             trace_id="t",
             headers={"x-gitlab-event": "Job Hook"},
-            payload={"object_kind": "pipeline", "object_attributes": {"status": "success"}},
+            payload={
+                "object_kind": "pipeline",
+                "object_attributes": {"status": "success"},
+            },
         )
         assert await processor.should_process_event(event) is False
 

@@ -38,10 +38,8 @@ def make_run(execution_properties: dict[str, Any]) -> WorkflowNodeRun:
 def executor() -> TriggerPipelineExecutor:
     with patch("gitlab.actions.abstract_gitlab_executor.create_gitlab_client"):
         ex = TriggerPipelineExecutor()
-        ex.client = MagicMock()  # type: ignore[assignment]
-        ex.client.trigger_pipeline = AsyncMock(  # type: ignore[method-assign]
-            return_value=PIPELINE_RESPONSE
-        )
+        ex.client = MagicMock()
+        ex.client.trigger_pipeline = AsyncMock(return_value=PIPELINE_RESPONSE)
         return ex
 
 
