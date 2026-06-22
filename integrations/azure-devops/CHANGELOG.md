@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.1 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 0.10.0 (2026-06-22)
+
+
+### Improvements
+
+- Added an opt-in `enrichWithFirstCommit` flag to the `build` kind. When enabled, each build gains a `__firstCommit` field (`__sha`, `__timestamp`, `__commitCount`) for its earliest commit, powering the DORA Lead Time for Changes metric (`finishTime - __firstCommit.__timestamp`). Off by default; enabling it costs one extra API call per build.
+
+
+## 0.9.20 (2026-06-17)
+
+
+### Bug Fixes
+
+- Added bounded concurrency to `defaultTeam` project enrichment and `includeMembers` team enrichment to prevent unbounded concurrent API calls that exhausted the ADO TSTU budget.
+- Raised `max_backoff_wait` from 60s to 300s so `Retry-After` and `X-RateLimit-Reset` headers are honored up to ADO's 5-minute rolling window instead of being clipped prematurely.
+- Added a shared throttle circuit-breaker to `AzureDevOpsRateLimiter`: a `ReadTimeout` now pauses all subsequent ADO requests for 300s, preventing continued retries against an already-throttled API.
+
+
 ## 0.9.19 (2026-06-16)
 
 

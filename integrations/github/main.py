@@ -461,60 +461,77 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests in the organization's repositories."""
     logger.info(f"Starting resync for kind: {kind}")
 
+    rest_client = create_github_client()
+    graphql_client = create_github_client(GithubClientType.GRAPHQL)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repository_exporter = RestRepositoryExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubPullRequestConfig, event.resource_config)
 
     is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
+    pull_request_exporter: AbstractGithubExporter[Any] = (
+        GraphQLPullRequestExporter(graphql_client)
+        if is_graphql_api
+        else RestPullRequestExporter(rest_client)
+    )
 
-    org_base_options = get_github_organizations()
-    async for rest_client, client_org in GithubClientFactory().iter_org_clients(
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
+    fetch_errors: list[Exception] = []
+
+    async for organizations in org_exporter.get_paginated_resources(
+        get_github_organizations()
     ):
-        async for organizations in RestOrganizationExporter(
-            rest_client
-        ).get_paginated_resources(_org_options_for(org_base_options, client_org)):
-            for org in organizations:
-                org_name = org["login"]
-                pull_request_exporter: AbstractGithubExporter[Any] = (
-                    GraphQLPullRequestExporter(
-                        create_github_client(
-                            GithubClientType.GRAPHQL, org_login=org_name
-                        )
-                    )
-                    if is_graphql_api
-                    else RestPullRequestExporter(rest_client)
-                )
-                repo_options = ListRepositoryOptions(
-                    organization=org_name,
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    search_params=config.selector.repo_search,
-                )
+        for org in organizations:
+            org_name = org["login"]
+            repo_options = ListRepositoryOptions(
+                organization=org_name,
+                organization_type=org["type"],
+                type=port_app_config.repository_type,
+                search_params=config.selector.repo_search,
+            )
 
-                async for repos in RestRepositoryExporter(
-                    rest_client
-                ).get_paginated_resources(options=repo_options):
-                    tasks = []
-                    for repo in repos:
-                        tasks.append(
-                            pull_request_exporter.get_paginated_resources(
-                                ListPullRequestOptions(
-                                    organization=org_name,
-                                    repo_name=repo["name"],
-                                    states=list(config.selector.states),
-                                    max_results=config.selector.max_results,
-                                    updated_after=config.selector.updated_after,
-                                    enrich_with_first_commit=config.selector.enrich_with_first_commit,
-                                    repo=repo if is_graphql_api else None,
-                                    exclude_graphql_fields=config.selector.exclude_graphql_fields,
-                                )
+            async for repos in repository_exporter.get_paginated_resources(
+                options=repo_options
+            ):
+                tasks = []
+                for repo in repos:
+                    tasks.append(
+                        pull_request_exporter.get_paginated_resources(
+                            ListPullRequestOptions(
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                states=list(config.selector.states),
+                                max_results=config.selector.effective_max_results,
+                                updated_after=config.selector.updated_after,
+                                closed_after=config.selector.closed_after,
+                                enrich_with_first_commit=config.selector.enrich_with_first_commit,
+                                repo=repo if is_graphql_api else None,
+                                exclude_graphql_fields=config.selector.exclude_graphql_fields,
                             )
                         )
+                    )
 
+                try:
                     async for pull_requests in stream_independent_async_iterators(
                         *tasks, context=kind
                     ):
                         yield pull_requests
+                except ExceptionGroup as page_errors:
+                    fetch_errors.extend(page_errors.exceptions)
+                    logger.error(
+                        f"{len(page_errors.exceptions)} repo(s) failed fetching pull requests "
+                        f"in org {org_name} (batch of {len(repos)}), continuing with remaining pages",
+                        extra={
+                            "failed_repos": [
+                                str(error) for error in page_errors.exceptions
+                            ],
+                        },
+                    )
+
+    if fetch_errors:
+        raise ExceptionGroup(
+            f"{kind} failed with {len(fetch_errors)} error(s)",
+            fetch_errors,
+        )
 
 
 @ocean.on_resync(ObjectKind.ISSUE)

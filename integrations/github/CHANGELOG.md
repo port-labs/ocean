@@ -7,12 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.1.0 (2026-06-21)
+## 6.1.0 (2026-06-23)
 
-
-### Features
+### Improvements
 
 - Added multi-organization support for GitHub App authentication. When only `githubAppId` and `githubAppPrivateKey` are configured (no `githubOrganization` or `githubAppInstallationId`), the integration automatically discovers all app installations and syncs every installed organization. The `organizations` selector continues to act as an allow-list filter for both PAT and App multi-org modes.
+
+
+## 6.0.6 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 6.0.5 (2026-06-18)
+
+
+### Improvements
+
+- Added a `closedSinceDate` pull request selector to ingest all closed PRs since an absolute date.
+
+
+## 6.0.4 (2026-06-18)
+
+
+### Bug Fixes
+
+- Fixed pull request resync stopping when only some repositories failed during parallel fetch; remaining repository pages are processed, failures are logged, and all errors are reported together when the resync completes
 
 
 ## 6.0.3 (2026-06-15)
