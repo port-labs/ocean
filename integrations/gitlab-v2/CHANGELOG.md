@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.43 (2026-06-22)
+
+### Bug Fixes
+
+- Fixed workflow `trigger_pipeline` runs staying stuck in IN_PROGRESS when GitLab pipeline webhooks were missed or arrived before `externalRunId` was written
+- Added pipeline status polling fallback and Port run logs during trigger/wait phases so workflow runs show progress beyond "Pending polling"
+
 ## 0.7.42 (2026-06-22)
 
 
