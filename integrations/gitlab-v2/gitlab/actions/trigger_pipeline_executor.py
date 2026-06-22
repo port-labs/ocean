@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import httpx
@@ -6,6 +7,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
 
 from gitlab.actions.abstract_gitlab_executor import AbstractGitlabExecutor
+from gitlab.actions.pipeline_completion import poll_pipeline_to_completion
 from gitlab.actions.utils import build_external_id
 from gitlab.helpers.exceptions import (
     GitlabTriggerPipelineError,
@@ -40,6 +42,12 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
             for k, v in raw_variables.items()
         ]
 
+        await ocean.port_client.post_run_log(
+            run,
+            f"Triggering GitLab pipeline for {project} on ref {ref}",
+            should_raise=False,
+        )
+
         try:
             pipeline = await self.client.trigger_pipeline(project, ref, variables)
         except httpx.HTTPStatusError as e:
@@ -62,6 +70,11 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
             pipeline["web_url"],
             external_id,
         )
+        await ocean.port_client.post_run_log(
+            run,
+            f"Pipeline triggered: {pipeline['web_url']}",
+            should_raise=False,
+        )
         logger.info(
             f"Pipeline {pipeline['id']} triggered for project {project} on ref {ref}",
             pipeline_id=pipeline["id"],
@@ -71,9 +84,16 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
         )
 
         if not run.execution_properties.get("reportPipelineStatus", True):
-            logger.info(
-                f"reportPipelineStatus is disabled for run {run.id}, completing run immediately"
-            )
             await ocean.port_client.report_run_completed(
                 run, True, "Pipeline triggered successfully"
             )
+            return
+
+        asyncio.create_task(
+            poll_pipeline_to_completion(
+                external_id=external_id,
+                project_id=int(pipeline["project_id"]),
+                pipeline_id=int(pipeline["id"]),
+                get_pipeline=self.client.get_pipeline,
+            )
+        )

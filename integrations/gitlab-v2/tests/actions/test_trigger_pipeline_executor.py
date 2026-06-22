@@ -12,7 +12,6 @@ from gitlab.helpers.exceptions import (
     MissingExecutionPropertyError,
 )
 
-
 PIPELINE_RESPONSE = {
     "id": 99,
     "project_id": 42,
@@ -48,6 +47,7 @@ def mock_port_client() -> MagicMock:
     client = MagicMock()
     client.update_run_started = AsyncMock()
     client.report_run_completed = AsyncMock()
+    client.post_run_log = AsyncMock()
     return client
 
 
@@ -57,7 +57,12 @@ class TestTriggerPipelineExecutor:
         self, executor: TriggerPipelineExecutor, mock_port_client: MagicMock
     ) -> None:
         run = make_run({"project": "my-group/my-project", "ref": "main"})
-        with patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean:
+        with (
+            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
+            patch(
+                "gitlab.actions.trigger_pipeline_executor.asyncio.create_task"
+            ) as mock_create_task,
+        ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
@@ -70,6 +75,8 @@ class TestTriggerPipelineExecutor:
             "gl_42_99",
         )
         mock_port_client.report_run_completed.assert_not_called()
+        mock_port_client.post_run_log.assert_called()
+        mock_create_task.assert_called_once()
 
     async def test_report_pipeline_status_false_completes_immediately(
         self, executor: TriggerPipelineExecutor, mock_port_client: MagicMock
@@ -81,7 +88,12 @@ class TestTriggerPipelineExecutor:
                 "reportPipelineStatus": False,
             }
         )
-        with patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean:
+        with (
+            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
+            patch(
+                "gitlab.actions.trigger_pipeline_executor.asyncio.create_task"
+            ) as mock_create_task,
+        ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
@@ -89,6 +101,7 @@ class TestTriggerPipelineExecutor:
         mock_port_client.report_run_completed.assert_called_once_with(
             run, True, "Pipeline triggered successfully"
         )
+        mock_create_task.assert_not_called()
 
     async def test_missing_project_raises(
         self, executor: TriggerPipelineExecutor
@@ -115,8 +128,11 @@ class TestTriggerPipelineExecutor:
             ),
         )
         run = make_run({"project": "my-group/my-project", "ref": "main"})
-        with pytest.raises(GitlabTriggerPipelineError, match="403 Forbidden"):
-            await executor.execute(run)
+        with patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = MagicMock()
+            mock_ocean.port_client.post_run_log = AsyncMock()
+            with pytest.raises(GitlabTriggerPipelineError, match="403 Forbidden"):
+                await executor.execute(run)
 
     async def test_incomplete_response_raises(
         self, executor: TriggerPipelineExecutor
@@ -125,8 +141,11 @@ class TestTriggerPipelineExecutor:
             return_value={"id": 99},
         )
         run = make_run({"project": "my-group/my-project", "ref": "main"})
-        with pytest.raises(GitlabTriggerPipelineError, match="empty or incomplete"):
-            await executor.execute(run)
+        with patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean:
+            mock_ocean.port_client = MagicMock()
+            mock_ocean.port_client.post_run_log = AsyncMock()
+            with pytest.raises(GitlabTriggerPipelineError, match="empty or incomplete"):
+                await executor.execute(run)
 
     async def test_pipeline_variables_null_treated_as_empty(
         self, executor: TriggerPipelineExecutor, mock_port_client: MagicMock
@@ -138,7 +157,10 @@ class TestTriggerPipelineExecutor:
                 "pipelineVariables": None,
             }
         )
-        with patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean:
+        with (
+            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
+            patch("gitlab.actions.trigger_pipeline_executor.asyncio.create_task"),
+        ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
         executor.client.trigger_pipeline.assert_called_once_with(  # type: ignore[attr-defined]
@@ -171,7 +193,10 @@ class TestTriggerPipelineExecutor:
                 "pipelineVariables": {"ENV": "prod", "COUNT": 3, "FLAG": True},
             }
         )
-        with patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean:
+        with (
+            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
+            patch("gitlab.actions.trigger_pipeline_executor.asyncio.create_task"),
+        ):
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 

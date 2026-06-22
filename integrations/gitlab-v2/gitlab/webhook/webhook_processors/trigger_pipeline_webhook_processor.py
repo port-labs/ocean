@@ -1,5 +1,4 @@
 from loguru import logger
-from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
@@ -10,12 +9,15 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
+from gitlab.actions.pipeline_completion import (
+    TERMINAL_PIPELINE_STATUSES,
+    complete_run_if_in_progress,
+    find_run_with_retry,
+)
 from gitlab.actions.utils import build_external_id
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
-
-TERMINAL_PIPELINE_STATUSES = frozenset({"success", "failed", "canceled", "skipped"})
 
 
 class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
@@ -43,44 +45,18 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
         status = payload.get("object_attributes", {}).get("status")
 
         external_id = build_external_id(project_id, pipeline_id)
-        run = await ocean.port_client.find_run_by_external_id(external_id)
+        run = await find_run_with_retry(external_id)
 
         if run is None:
-            # No matching run means either the pipeline was not triggered by Port,
-            # or (rarely) the webhook arrived before update_run_started() finished
-            # writing the externalRunId. The latter is a known race condition shared
-            # with the GitHub executor; the window is the round-trip time of a single
-            # Port API call and is accepted as-is.
             logger.debug(
-                f"No Port run found for pipeline {pipeline_id} (project {project_id}), skipping"
+                f"No Port run for pipeline {pipeline_id} (project {project_id}), skipping"
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        if not run.execution_properties.get("reportPipelineStatus", True):
-            logger.info(
-                f"reportPipelineStatus is disabled for run {run.id}, skipping status update"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        if not ocean.port_client.is_run_in_progress(run):
-            logger.info(
-                f"Run {run.id} is already completed, skipping duplicate webhook"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        success = status == "success"
-        logger.info(
-            f"Reporting pipeline {pipeline_id} completion for run {run.id}: "
-            f"status={status}, success={success}"
-        )
-        await ocean.port_client.report_run_completed(
-            run, success, f"Pipeline completed: {status}"
+        await complete_run_if_in_progress(
+            run, status, completion_source="webhook"
         )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
