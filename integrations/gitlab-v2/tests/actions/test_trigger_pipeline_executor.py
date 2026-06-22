@@ -114,7 +114,7 @@ class TestTriggerPipelineExecutor:
                 "403",
                 request=MagicMock(),
                 response=mock_response,
-            )
+            ),
         )
         run = make_run({"project": "my-group/my-project", "ref": "main"})
         with pytest.raises(GitlabTriggerPipelineError, match="403 Forbidden"):
@@ -124,7 +124,7 @@ class TestTriggerPipelineExecutor:
         self, executor: TriggerPipelineExecutor
     ) -> None:
         executor.client.trigger_pipeline = AsyncMock(  # type: ignore[method-assign]
-            return_value={"id": 99}
+            return_value={"id": 99},
         )
         run = make_run({"project": "my-group/my-project", "ref": "main"})
         with pytest.raises(GitlabTriggerPipelineError, match="empty or incomplete"):
