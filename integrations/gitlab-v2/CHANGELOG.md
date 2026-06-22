@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `trigger_pipeline` workflow action node to trigger GitLab CI/CD pipelines from Port workflows and report pipeline completion status back to Port
 
+### Bug Fixes
+
+- Fixed 403/404 responses on non-GET requests being swallowed as empty dicts instead of raising
+- Fixed `pipelineVariables: null` and non-dict jq output causing crashes in `TriggerPipelineExecutor`
+- Fixed `reportPipelineStatus=false` leaving runs stuck in IN_PROGRESS indefinitely
+
 ## 0.7.40 (2026-06-18)
 
 ### Features
