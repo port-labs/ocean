@@ -46,6 +46,11 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
         run = await ocean.port_client.find_run_by_external_id(external_id)
 
         if run is None:
+            # No matching run means either the pipeline was not triggered by Port,
+            # or (rarely) the webhook arrived before update_run_started() finished
+            # writing the externalRunId. The latter is a known race condition shared
+            # with the GitHub executor; the window is the round-trip time of a single
+            # Port API call and is accepted as-is.
             logger.debug(
                 f"No Port run found for pipeline {pipeline_id} (project {project_id}), skipping"
             )
