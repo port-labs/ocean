@@ -29,7 +29,7 @@ def make_run(execution_properties: dict[str, Any]) -> WorkflowNodeRun:
             "config": {
                 "integrationInvocationType": "trigger_pipeline",
                 "integrationActionExecutionProperties": execution_properties,
-            }
+            },
         },
     )
 

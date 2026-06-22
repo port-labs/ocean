@@ -109,10 +109,14 @@ class TestTriggerPipelineWebhookProcessor:
         with patch(
             "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
         ) as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=None)
+            mock_ocean.port_client.find_run_by_external_id = AsyncMock(
+                return_value=None
+            )
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
-            result = await processor.handle_event(make_event("success").payload, resource_config)
+            result = await processor.handle_event(
+                make_event("success").payload, resource_config
+            )
 
             mock_ocean.port_client.report_run_completed.assert_not_called()
             assert result.updated_raw_results == []
