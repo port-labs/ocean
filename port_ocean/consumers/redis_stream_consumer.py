@@ -142,6 +142,7 @@ class RedisStreamConsumer:
             scan_interval_seconds=self._settings.pel_scan_interval_seconds,
             leader_ttl_ms=self._settings.leader_election_ttl_ms,
             leader_heartbeat_seconds=self._settings.leader_election_heartbeat_seconds,
+            election_retry_seconds=self._settings.leader_election_retry_seconds,
         )
         await self._pel_worker.start()
 

@@ -158,6 +158,11 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         ge=1,
         description="Interval in seconds at which the leader renews its lock TTL.",
     )
+    leader_election_retry_seconds: int = Field(
+        default=15,
+        ge=1,
+        description="Seconds a non-leader pod waits before retrying leader election.",
+    )
 
 
 class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
