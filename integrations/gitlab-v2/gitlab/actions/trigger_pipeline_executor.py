@@ -1,5 +1,4 @@
 import json
-from typing import Any
 
 import httpx
 from loguru import logger
