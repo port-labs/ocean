@@ -167,7 +167,7 @@ class SnykClient:
                 "scan_item.type": project["type"],
             },
         ):
-            if attach_ignore:
+            if attach_ignore and issues:
                 project_ignores = await self._get_project_ignore_data(org_id, project)
                 for issue in issues:
                     issue_key = issue["attributes"]["key"]
