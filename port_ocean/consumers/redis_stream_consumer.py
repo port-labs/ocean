@@ -104,6 +104,7 @@ class RedisStreamConsumer:
 
     def _redis_client_kwargs(self) -> dict[str, Any]:
         """Connection kwargs for redis-py, including auth and TLS for cloud Redis."""
+        self._cleanup_tls_files()
         kwargs: dict[str, Any] = {"decode_responses": True}
         if self._settings.username:
             kwargs["username"] = self._settings.username

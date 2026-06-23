@@ -134,6 +134,42 @@ class TestRedisStreamConsumerConnection:
 
         consumer._cleanup_tls_files()
 
+    def test_redis_client_kwargs_cleans_up_previous_tls_files_on_reconnect(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="rediss://localhost:6379",
+            enable_tls=True,
+            cert=_pem_b64(
+                "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----"
+            ),
+            private_key=_pem_b64(
+                "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----"
+            ),
+        )
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis_client_kwargs()
+            old_cert_path = consumer._ssl_cert_file
+            old_key_path = consumer._ssl_key_file
+
+            consumer._redis_client_kwargs()
+
+        assert old_cert_path is not None
+        assert old_key_path is not None
+        assert not os.path.exists(old_cert_path)
+        assert not os.path.exists(old_key_path)
+
+        consumer._cleanup_tls_files()
+
     def test_redis_client_kwargs_uses_tls_when_enabled(
         self,
         mock_ocean_config: MagicMock,
