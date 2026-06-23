@@ -71,7 +71,6 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
     feature_flags_cache_ttl_seconds: float = 300.0  # 5 minutes
-    ingest_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://ingest.getport.io")
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
@@ -159,6 +158,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
     lakehouse_buffer_interval_seconds: float = 10.0
+    lakehouse_buffer_max_count: int = 50
     processing_mode: ProcessingMode = ProcessingMode.ocean_core
     yield_items_to_parse_batch_size: int = 200
     process_in_queue_timeout: int = 120

@@ -32,6 +32,7 @@ class Kind(StrEnum):
     USER = "user"
     FOLDER = "folder"
     ITERATION = "iteration"
+    AREA_PATH = "area-path"
     BRANCH = "branch"
     ADVANCED_SECURITY_ALERT = "advanced-security-alert"
     GROUP = "group"

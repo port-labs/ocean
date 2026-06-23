@@ -8,20 +8,29 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import LakehouseDataEntry, LakehouseDataEntryBatch, LakehouseEventType
 
 _DEFAULT_MAX_SIZE_BYTES = 100 * 1024 * 1024  # 100 MB
+_DEFAULT_MAX_BUFFER_COUNT = 50
 
 
 class LakehouseBuffer:
     """Accumulates raw items per kind and flushes them to the lakehouse in
-    time-bounded, size-bounded batches.
+    time-bounded, size-bounded, and count-bounded batches.
 
     A single instance covers exactly one kind within one resync.  Items are
-    flushed automatically when either condition is met:
+    flushed automatically when any condition is met:
       - ``flush_interval_seconds`` have elapsed since the last flush, OR
-      - the estimated JSON size of the buffer reaches ``max_size_bytes``.
+      - the estimated JSON size of the buffer reaches ``max_size_bytes``, OR
+      - the number of buffered items reaches ``max_buffer_count``.
 
     Flushing is also forced unconditionally when ``flush()`` is called at the
     end of the kind.  Empty flushes are skipped so no unnecessary HTTP requests
     are made.
+
+    When ``fatal=False`` (the default, used in ocean-core / non-DSP mode) a
+    flush failure is logged as a warning and the buffer is discarded so the
+    resync can continue — lake writes are supplementary in this mode and entity
+    upserts still go through the standard ocean-core path.  Set ``fatal=True``
+    in DSP mode, where the lake write is the only data-delivery path and a
+    failure must propagate.
     """
 
     def __init__(
@@ -31,10 +40,13 @@ class LakehouseBuffer:
         resync_start_time: Any,
         flush_interval_seconds: float = 10.0,
         max_size_bytes: int = _DEFAULT_MAX_SIZE_BYTES,
+        max_buffer_count: int = _DEFAULT_MAX_BUFFER_COUNT,
         event_type: LakehouseEventType = LakehouseEventType.RESYNC,
+        fatal: bool = False,
     ) -> None:
         self._flush_interval = flush_interval_seconds
         self._max_size_bytes = max_size_bytes
+        self._max_buffer_count = max_buffer_count
         self._buffer: list[Any] = []
         self._current_size_bytes: int = 0
         self._last_flush_at: float | None = None
@@ -42,6 +54,7 @@ class LakehouseBuffer:
         self.kind = kind
         self.resync_start_time = resync_start_time
         self.event_type = event_type
+        self._fatal = fatal
 
     async def flush(self) -> None:
         if not self._buffer:
@@ -60,10 +73,18 @@ class LakehouseBuffer:
             extraction_timestamp=int(time.time() * 1000),
             data=self._buffer,
         )
-        await ocean.port_client.post_integration_raw_data_batch(
-            self.sync_id,
-            event,
-        )
+        try:
+            await ocean.port_client.post_integration_raw_data_batch(
+                self.sync_id,
+                event,
+            )
+        except Exception as e:
+            logger.warning(
+                f"Failed to flush lakehouse buffer for kind '{self.kind}': {e}. "
+                f"Discarding {len(self._buffer)} buffered items."
+            )
+            if self._fatal:
+                raise
         self._buffer = []
         self._current_size_bytes = 0
         self._last_flush_at = time.monotonic()
@@ -79,12 +100,18 @@ class LakehouseBuffer:
 
         interval_exceeded = now - self._last_flush_at >= self._flush_interval
         size_exceeded = self._current_size_bytes >= self._max_size_bytes
+        count_exceeded = len(self._buffer) >= self._max_buffer_count
 
-        if interval_exceeded or size_exceeded:
+        if interval_exceeded or size_exceeded or count_exceeded:
             if size_exceeded:
                 logger.debug(
                     f"Lakehouse buffer size cap reached"
                     f" ({self._current_size_bytes / (1024 * 1024):.1f} MB >= "
                     f"{self._max_size_bytes / (1024 * 1024):.0f} MB), flushing"
+                )
+            if count_exceeded:
+                logger.bind(local_only=True).info(
+                    f"Lakehouse buffer count cap reached"
+                    f" ({len(self._buffer)} >= {self._max_buffer_count}), flushing"
                 )
             await self.flush()

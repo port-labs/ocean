@@ -25,10 +25,14 @@ def mock_client_manager(monkeypatch: Any, mock_client: MagicMock) -> MagicMock:
     """Patch AzureDevopsClientManager.create_from_ocean_config in base_processor.
 
     Returns a mock manager whose get_client_for_org always returns *mock_client*.
+    Also configures get_clients to return the single mock client so that
+    _resolve_client's single-client fallback works correctly.
     All webhook processor tests should use this instead of patching AzureDevopsClient.
     """
     manager = MagicMock()
     manager.get_client_for_org.return_value = mock_client
+    mock_client._organization_base_url = MOCK_ORG_URL
+    manager.get_clients.return_value = [mock_client]
     monkeypatch.setattr(
         "azure_devops.webhooks.webhook_processors.base_processor"
         ".AzureDevopsClientManager.create_from_ocean_config",

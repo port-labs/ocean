@@ -1,12 +1,13 @@
+from typing import cast
 from loguru import logger
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.core.options import SingleWorkflowRunOptions
-from github.webhook.events import WORKFLOW_DELETE_EVENTS
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
 )
 from github.helpers.utils import enrich_with_organization, enrich_with_repository
+from integration import GithubWorkflowRunConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -32,20 +33,29 @@ class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        if action in WORKFLOW_DELETE_EVENTS:
-            logger.info(
-                f"Workflow run {workflow_run['name']} was deleted from organization: {organization}"
-            )
-
-            data_to_delete = enrich_with_organization(
-                enrich_with_repository(workflow_run, repo["name"], repo=repo),
-                organization,
-            )
-
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[data_to_delete]
-            )
-
+        selector_status = cast(
+            GithubWorkflowRunConfig, resource_config
+        ).selector.statuses
+        if selector_status:
+            if (
+                workflow_run["status"] not in selector_status
+                and workflow_run.get("conclusion") not in selector_status
+            ):
+                logger.info(
+                    f"Workflow run {workflow_run['name']} does not match status filter "
+                    f"'{selector_status}', removing from Port"
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[],
+                    deleted_raw_results=[
+                        enrich_with_organization(
+                            enrich_with_repository(
+                                workflow_run, repo["name"], repo=repo
+                            ),
+                            organization,
+                        )
+                    ],
+                )
         exporter = RestWorkflowRunExporter(create_github_client())
         options = SingleWorkflowRunOptions(
             organization=organization, repo_name=repo["name"], run_id=workflow_run["id"]

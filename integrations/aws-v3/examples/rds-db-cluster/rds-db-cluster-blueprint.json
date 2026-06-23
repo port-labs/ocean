@@ -1,0 +1,232 @@
+[
+  {
+    "identifier": "rdsDbCluster",
+    "title": "RDS DB Cluster",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "activityStreamStatus": {
+          "type": "string",
+          "title": "Activity Stream Status",
+          "description": "The status of the database activity stream"
+        },
+        "associatedRoles": {
+          "type": "array",
+          "title": "Associated Roles",
+          "description": "The IAM roles associated with the DB cluster",
+          "items": {
+            "type": "object"
+          }
+        },
+        "autoMinorVersionUpgrade": {
+          "type": "boolean",
+          "title": "Auto Minor Version Upgrade",
+          "description": "Whether minor version upgrades are applied automatically"
+        },
+        "availabilityZones": {
+          "type": "array",
+          "title": "Availability Zones",
+          "description": "The Availability Zones where the DB cluster is deployed",
+          "items": {
+            "type": "string"
+          }
+        },
+        "backupRetentionPeriod": {
+          "type": "number",
+          "title": "Backup Retention Period",
+          "description": "The number of days to retain automated backups"
+        },
+        "clusterCreateTime": {
+          "type": "string",
+          "title": "Cluster Create Time",
+          "description": "The time when the DB cluster was created"
+        },
+        "copyTagsToSnapshot": {
+          "type": "boolean",
+          "title": "Copy Tags To Snapshot",
+          "description": "Whether to copy tags to snapshots"
+        },
+        "crossAccountClone": {
+          "type": "boolean",
+          "title": "Cross Account Clone",
+          "description": "Whether cross-account cloning is enabled"
+        },
+        "databaseName": {
+          "type": "string",
+          "title": "Database Name",
+          "description": "The name of the initial database"
+        },
+        "dbClusterArn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the DB cluster"
+        },
+        "dbClusterIdentifier": {
+          "type": "string",
+          "title": "DB Cluster Identifier",
+          "description": "The unique identifier of the RDS DB cluster"
+        },
+        "dbClusterMembers": {
+          "type": "array",
+          "title": "DB Cluster Members",
+          "description": "The DB instances that belong to the cluster",
+          "items": {
+            "type": "object"
+          }
+        },
+        "dbClusterResourceId": {
+          "type": "string",
+          "title": "DB Cluster Resource ID",
+          "description": "The unique resource identifier for the DB cluster"
+        },
+        "deletionProtection": {
+          "type": "boolean",
+          "title": "Deletion Protection",
+          "description": "Whether deletion protection is enabled"
+        },
+        "earliestRestorableTime": {
+          "type": "string",
+          "title": "Earliest Restorable Time",
+          "description": "The earliest time to which the DB cluster can be restored"
+        },
+        "endpoint": {
+          "type": "string",
+          "title": "Writer Endpoint",
+          "description": "The writer endpoint for the DB cluster"
+        },
+        "engine": {
+          "type": "string",
+          "title": "Engine",
+          "description": "The database engine type (e.g., aurora-mysql, aurora-postgresql)"
+        },
+        "engineMode": {
+          "type": "string",
+          "title": "Engine Mode",
+          "description": "The engine mode of the DB cluster (e.g., provisioned, serverless)"
+        },
+        "engineVersion": {
+          "type": "string",
+          "title": "Engine Version",
+          "description": "The version of the database engine"
+        },
+        "globalWriteForwardingStatus": {
+          "type": "string",
+          "title": "Global Write Forwarding Status",
+          "description": "The status of write forwarding for a secondary cluster in a global database"
+        },
+        "httpEndpointEnabled": {
+          "type": "boolean",
+          "title": "HTTP Endpoint Enabled",
+          "description": "Whether the HTTP endpoint (Data API) is enabled for Aurora Serverless"
+        },
+        "iamDatabaseAuthenticationEnabled": {
+          "type": "boolean",
+          "title": "IAM Database Authentication Enabled",
+          "description": "Whether IAM database authentication is enabled"
+        },
+        "kmsKeyId": {
+          "type": "string",
+          "title": "KMS Key ID",
+          "description": "The KMS key identifier for encryption"
+        },
+        "latestRestorableTime": {
+          "type": "string",
+          "title": "Latest Restorable Time",
+          "description": "The latest time to which the DB cluster can be restored"
+        },
+        "masterUsername": {
+          "type": "string",
+          "title": "Master Username",
+          "description": "The master username for the DB cluster"
+        },
+        "multiAZ": {
+          "type": "boolean",
+          "title": "Multi-AZ",
+          "description": "Whether the DB cluster is deployed across multiple Availability Zones"
+        },
+        "networkType": {
+          "type": "string",
+          "title": "Network Type",
+          "description": "The network type for the DB cluster"
+        },
+        "port": {
+          "type": "number",
+          "title": "Port",
+          "description": "The port number for the DB cluster"
+        },
+        "preferredBackupWindow": {
+          "type": "string",
+          "title": "Preferred Backup Window",
+          "description": "The preferred backup window"
+        },
+        "preferredMaintenanceWindow": {
+          "type": "string",
+          "title": "Preferred Maintenance Window",
+          "description": "The preferred maintenance window"
+        },
+        "readerEndpoint": {
+          "type": "string",
+          "title": "Reader Endpoint",
+          "description": "The reader endpoint for load-balancing read connections across cluster members"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the DB cluster",
+          "enum": ["available", "backing-up", "creating", "deleting", "failing-over", "inaccessible-encryption-credentials", "maintenance", "migrating", "modifying", "promoting", "renaming", "resetting-master-credentials", "scaling", "starting", "stopped", "stopping", "upgrading"]
+        },
+        "storageEncrypted": {
+          "type": "boolean",
+          "title": "Storage Encrypted",
+          "description": "Whether the DB cluster storage is encrypted"
+        },
+        "storageType": {
+          "type": "string",
+          "title": "Storage Type",
+          "description": "The storage type of the DB cluster"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "The tags associated with the DB cluster",
+          "items": {
+            "type": "object",
+            "properties": {
+              "Key": {
+                "type": "string"
+              },
+              "Value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "vpcSecurityGroups": {
+          "type": "array",
+          "title": "VPC Security Groups",
+          "description": "The VPC security groups associated with the DB cluster",
+          "items": {
+            "type": "object"
+          }
+        },
+        "dbSubnetGroup": {
+          "type": "string",
+          "title": "DB Subnet Group",
+          "description": "The subnet group associated with the DB cluster"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

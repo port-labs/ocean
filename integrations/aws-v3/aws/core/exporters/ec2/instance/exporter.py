@@ -15,7 +15,7 @@ from aws.core.modeling.resource_inspector import ResourceInspector
 from loguru import logger
 
 
-class EC2InstanceExporter(IResourceExporter):
+class EC2InstanceExporter(IResourceExporter[list[dict[str, Any]]]):
     _service_name: SupportedServices = "ec2"
     _model_cls: Type[EC2Instance] = EC2Instance
     _actions_map: Type[EC2InstanceActionsMap] = EC2InstanceActionsMap
@@ -32,7 +32,9 @@ class EC2InstanceExporter(IResourceExporter):
                 self._actions_map(),
                 lambda: self._model_cls(),
             )
-            response = await inspector.inspect([options.instance_id], options.include)
+            response = await inspector.inspect(
+                [{"InstanceId": options.instance_id}], options.include
+            )
 
             return response[0] if response else {}
 

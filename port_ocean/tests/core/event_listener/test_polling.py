@@ -9,7 +9,7 @@ from port_ocean.core.event_listener.polling import (
     PollingEventListener,
     PollingEventListenerSettings,
 )
-from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
+from port_ocean.core.models import EventListenerType
 
 
 def _run_repeat_every_times(
@@ -35,17 +35,12 @@ def _run_repeat_every_times(
 
 
 @pytest.mark.asyncio
-async def test_polling_resyncs_from_resync_requests_when_feature_flag_enabled(
+async def test_polling_resyncs_from_resync_requests_when_integration_unchanged(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     port_client = MagicMock()
     port_client.get_current_integration = AsyncMock(
         return_value={"updatedAt": "2024-01-01T00:00:00Z"}
-    )
-    port_client.get_organization_feature_flags = AsyncMock(
-        return_value=[
-            IntegrationFeatureFlag.OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED
-        ]
     )
     port_client.get_integration_resync_request = AsyncMock(
         return_value={"id": "resync-1", "updatedAt": "2024-01-01T00:05:00Z"}
@@ -89,47 +84,6 @@ async def test_polling_resyncs_from_resync_requests_when_feature_flag_enabled(
 
 
 @pytest.mark.asyncio
-async def test_polling_does_not_fetch_resync_requests_when_feature_flag_disabled(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    port_client = MagicMock()
-    port_client.get_current_integration = AsyncMock(
-        return_value={"updatedAt": "2024-01-01T00:00:00Z"}
-    )
-    port_client.get_organization_feature_flags = AsyncMock(return_value=[])
-    port_client.get_integration_resync_request = AsyncMock(
-        return_value={"id": "resync-1", "updatedAt": "2024-01-01T00:05:00Z"}
-    )
-
-    app = SimpleNamespace(
-        port_client=port_client,
-        resync_state_updater=SimpleNamespace(
-            last_integration_state_updated_at="2024-01-01T00:00:00Z",
-            last_resync_request_updated_at=None,
-        ),
-    )
-    monkeypatch.setattr(polling_module, "ocean", SimpleNamespace(app=app))
-    monkeypatch.setattr(polling_module, "repeat_every", _run_repeat_every_times(1))
-    monkeypatch.setattr(
-        polling_module, "signal_handler", SimpleNamespace(register=lambda *_: None)
-    )
-
-    listener = PollingEventListener(
-        events={"on_resync": AsyncMock(return_value=True)},
-        event_listener_config=PollingEventListenerSettings(
-            type=EventListenerType.POLLING
-        ),
-    )
-    resync_mock = AsyncMock()
-    monkeypatch.setattr(listener, "_resync", resync_mock)
-
-    await listener._start()
-
-    port_client.get_integration_resync_request.assert_not_called()
-    resync_mock.assert_not_called()
-
-
-@pytest.mark.asyncio
 async def test_polling_resyncs_on_integration_change_without_resync_requests_lookup(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -137,11 +91,6 @@ async def test_polling_resyncs_on_integration_change_without_resync_requests_loo
     port_client.get_current_integration = AsyncMock(
         return_value={"updatedAt": "2024-01-01T00:05:00Z"}
     )
-    port_client.get_organization_feature_flags = AsyncMock(
-        return_value=[
-            IntegrationFeatureFlag.OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED
-        ]
-    )
     port_client.get_integration_resync_request = AsyncMock(
         return_value={"id": "resync-1", "updatedAt": "2024-01-01T00:05:00Z"}
     )
@@ -170,7 +119,6 @@ async def test_polling_resyncs_on_integration_change_without_resync_requests_loo
 
     await listener._start()
 
-    port_client.get_organization_feature_flags.assert_not_called()
     port_client.get_integration_resync_request.assert_not_called()
     resync_mock.assert_called_once_with({})
 
@@ -246,11 +194,6 @@ async def test_polling_does_not_resync_repeatedly_for_same_resync_request(
     port_client = MagicMock()
     port_client.get_current_integration = AsyncMock(
         return_value={"updatedAt": "2024-01-01T00:00:00Z"}
-    )
-    port_client.get_organization_feature_flags = AsyncMock(
-        return_value=[
-            IntegrationFeatureFlag.OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED
-        ]
     )
     port_client.get_integration_resync_request = AsyncMock(
         return_value={"id": "resync-1", "updatedAt": "2024-01-01T00:05:00Z"}

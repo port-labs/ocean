@@ -66,6 +66,7 @@ from azure_devops.webhooks.webhook_processors.release_deployment_webhook_process
     ReleaseDeploymentWebhookProcessor,
 )
 from integration import (
+    AzureDevopsBuildConfig,
     AzureDevopsPipelineResourceConfig,
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
@@ -78,6 +79,7 @@ from integration import (
     AzureDevopsAdvancedSecurityResourceConfig,
     AzureDevopsRepositoryResourceConfig,
     AzureDevopsUserConfig,
+    AzureDevopsAreaPathResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -95,8 +97,9 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.USER)
 async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsUserConfig, event.resource_config)
-    async for users in resync.iter_users(additional_params=config.selector.to_params()):
-        logger.info(f"Resyncing {len(users)} members")
+    source = config.selector.build_source()
+    async for users in resync.iter_users(source):
+        logger.info(f"Resyncing {len(users)} users")
         yield users
 
 
@@ -105,12 +108,12 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AzureDevopsTeamResourceConfig, event.resource_config).selector
     async for teams in resync.iter_teams():
         logger.info(f"Resyncing {len(teams)} teams")
-        if not selector.include_members:
+        if not (selector.include_members or selector.include_area_paths):
             yield teams
             continue
         org_url = teams[0].get(ORG_URL_FIELD) if teams else None
         if not org_url:
-            logger.warning("Skipping member enrichment: no org URL in teams batch")
+            logger.warning("Skipping team enrichment: no org URL in teams batch")
             yield teams
             continue
         client = AzureDevopsClientManager.create_from_ocean_config().get_client_for_org(
@@ -118,12 +121,17 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         if not client:
             logger.warning(
-                f"Skipping member enrichment: no client found for org '{org_url}'"
+                f"Skipping team enrichment: no client found for org '{org_url}'"
             )
             yield teams
             continue
-        logger.info(f"Enriching {len(teams)} teams with members")
-        yield await client.enrich_teams_with_members(teams)
+        if selector.include_members:
+            logger.info(f"Enriching {len(teams)} teams with members")
+            teams = await client.enrich_teams_with_members(teams)
+        if selector.include_area_paths:
+            logger.info(f"Enriching {len(teams)} teams with area paths")
+            teams = await client.enrich_teams_with_area_paths(teams)
+        yield teams
 
 
 @ocean.on_resync(Kind.MEMBER)
@@ -262,7 +270,8 @@ async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
     async for work_items in resync.iter_work_items(
-        wiql=config.selector.wiql, expand=config.selector.expand
+        wiql=config.selector.wiql,
+        expand=config.selector.expand,
     ):
         logger.info(f"Resyncing {len(work_items)} work items")
         yield work_items
@@ -304,7 +313,10 @@ async def resync_release_definitions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kind.BUILD)
 async def resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for builds in resync.iter_builds():
+    config = cast(AzureDevopsBuildConfig, event.resource_config)
+    async for builds in resync.iter_builds(
+        enrich_with_first_commit=config.selector.enrich_with_first_commit
+    ):
         logger.info(f"Resyncing {len(builds)} builds")
         yield builds
 
@@ -421,6 +433,14 @@ async def resync_iterations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for iterations in resync.iter_iterations():
         logger.info(f"Resyncing {len(iterations)} iterations")
         yield iterations
+
+
+@ocean.on_resync(Kind.AREA_PATH)
+async def resync_area_paths(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(AzureDevopsAreaPathResourceConfig, event.resource_config).selector
+    async for area_paths in resync.iter_area_paths(selector.depth):
+        logger.info(f"Resyncing {len(area_paths)} area paths")
+        yield area_paths
 
 
 @ocean.on_resync(Kind.ADVANCED_SECURITY_ALERT)

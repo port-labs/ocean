@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 from pydantic import BaseModel
 from pydantic.fields import Field
 
@@ -137,9 +137,6 @@ class EntityPortDiff:
 class IntegrationFeatureFlag(StrEnum):
     USE_PROVISIONED_DEFAULTS = "USE_PROVISIONED_DEFAULTS"
     LAKEHOUSE_ELIGIBLE = "LAKEHOUSE_ELIGIBLE"
-    OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED = (
-        "OCEAN_POLLING_INTEGRATION_RESYNC_REQUESTS_ENABLED"
-    )
     OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED = (
         "OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED"
     )
@@ -246,6 +243,7 @@ class LakehouseDataEntryMetadata(TypedDict):
     operation: LakehouseOperation
     resource_index: int
     extraction_timestamp: int
+    selector_hash: NotRequired[str | None]
 
 
 class LakehouseDataEntry(TypedDict):
@@ -253,6 +251,7 @@ class LakehouseDataEntry(TypedDict):
     response: dict[str, Any]
     metadata: LakehouseDataEntryMetadata
     items: list[Any]
+    environment_data: NotRequired[dict[str, str | None]]
 
 
 class LakehouseDataEntryBatch(TypedDict):

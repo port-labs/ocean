@@ -1,7 +1,7 @@
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
-from httpx import ReadTimeout, Response
+from httpx import ConnectTimeout, ReadTimeout, Response
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -17,6 +17,10 @@ PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 CONTINUATION_TOKEN_KEY = "continuationToken"
 MAX_TIMEMOUT_RETRIES = 3
+# ADO TSTU (Team Services Time Units) budget resets on a 5-minute rolling window.
+# Both the retry backoff cap and the ReadTimeout cooldown are set to this value so
+# the integration always waits out the full reset window before retrying.
+ADO_RATE_LIMIT_WINDOW_SECONDS = 300
 
 
 class HTTPBaseClient:
@@ -27,6 +31,7 @@ class HTTPBaseClient:
                     LIMIT_RESET_HEADER,
                     LIMIT_RETRY_AFTER_HEADER,
                 ],
+                max_backoff_wait=ADO_RATE_LIMIT_WINDOW_SECONDS,
             ),
             timeout=ocean.config.client_timeout,
         )
@@ -65,10 +70,12 @@ class HTTPBaseClient:
                         f"Couldn't access url {url}. Make sure the {self._auth_provider.auth_description} is valid!"
                     )
                 logger.error(
-                    f"Request with bad status code {response.status_code}: {method} to url {url}"
+                    f"Request with bad status code {response.status_code}: {method} to url {url}. Response body: {e.response.text}"
                 )
                 raise e
         except httpx.HTTPError as e:
+            if isinstance(e, (ReadTimeout, ConnectTimeout)):
+                await self._rate_limiter.signal_throttle(ADO_RATE_LIMIT_WINDOW_SECONDS)
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
         finally:
@@ -136,8 +143,14 @@ class HTTPBaseClient:
         url: str,
         params: Optional[dict[str, Any]] = None,
         max_results: Optional[int] = None,
+        top_param: Optional[str] = None,
+        skip_param: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        default_params = {"$top": PAGE_SIZE, "$skip": 0}
+        if not top_param:
+            top_param = "$top"
+        if not skip_param:
+            skip_param = "$skip"
+        default_params = {top_param: PAGE_SIZE, skip_param: 0}
         params = {**default_params, **(params or {})}
         timeout_retries = 0
         total_items_fetched = 0
@@ -145,8 +158,7 @@ class HTTPBaseClient:
             if max_results and total_items_fetched >= max_results:
                 break
             if max_results:
-                params["$top"] = min(PAGE_SIZE, max_results - total_items_fetched)
-
+                params[top_param] = min(PAGE_SIZE, max_results - total_items_fetched)
             try:
                 response = await self.send_request("GET", url, params=params)
                 if not response:
@@ -159,7 +171,7 @@ class HTTPBaseClient:
                     )
                     yield objects_page
                     total_items_fetched += len(objects_page)
-                    params["$skip"] += len(objects_page)
+                    params[skip_param] += len(objects_page)
                     timeout_retries = 0
                 else:
                     break

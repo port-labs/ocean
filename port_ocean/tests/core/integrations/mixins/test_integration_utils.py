@@ -14,12 +14,154 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.models import ProcessingMode
 from port_ocean.core.integrations.mixins.utils import (
+    build_lakehouse_data_entry,
+    collect_export_env_variables,
     extract_jq_deletion_path_revised,
     handle_items_to_parse,
+    is_dsp_mode_enabled,
+    is_lakehouse_data_enabled,
     resync_function_wrapper,
     resync_generator_wrapper,
+    selector_hash_from_query,
+    selector_hash_from_resource,
+    selector_query_from_resource,
 )
+from port_ocean.core.models import LakehouseOperation
+
+class TestCollectExportEnvVariables:
+    def test_returns_none_for_empty_list(self) -> None:
+        assert collect_export_env_variables([]) is None
+
+    def test_collects_requested_variables(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("FOO", "bar")
+        monkeypatch.delenv("MISSING", raising=False)
+
+        assert collect_export_env_variables(["FOO", "MISSING"]) == {
+            "FOO": "bar",
+            "MISSING": None,
+        }
+
+
+class TestBuildLakehouseDataEntry:
+    def test_includes_environment_data_when_configured(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("FOO", "bar")
+
+        entry = build_lakehouse_data_entry(
+            items=[{"id": "1"}],
+            metadata={
+                "operation": LakehouseOperation.UPSERT,
+                "resource_index": 0,
+                "extraction_timestamp": 123,
+            },
+            export_env_variables=["FOO"],
+        )
+
+        assert entry["environment_data"] == {"FOO": "bar"}
+
+    def test_omits_environment_data_when_not_configured(self) -> None:
+        entry = build_lakehouse_data_entry(
+            items=[{"id": "1"}],
+            metadata={
+                "operation": LakehouseOperation.UPSERT,
+                "resource_index": 0,
+                "extraction_timestamp": 123,
+            },
+            export_env_variables=[],
+        )
+
+        assert "environment_data" not in entry
+
+
+class TestSelectorHashHelpers:
+    def test_selector_query_from_resource_returns_trimmed_query(self) -> None:
+        resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query="  .foo | .bar  "),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+
+        assert selector_query_from_resource(resource) == ".foo | .bar"
+
+    def test_selector_query_from_resource_returns_none_for_whitespace(self) -> None:
+        resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query="   "),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+
+        assert selector_query_from_resource(resource) is None
+
+    def test_selector_hash_from_query_uses_sha256_hex(self) -> None:
+        assert (
+            selector_hash_from_query(".foo")
+            == "013b54afaf52ac0983a4ac123b01e809ab7ac8862e67a50f09fcce1293d265c3"
+        )
+
+    def test_selector_hash_from_resource_returns_hash_for_trimmed_query(self) -> None:
+        resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query="  .foo  "),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+
+        assert (
+            selector_hash_from_resource(resource)
+            == "013b54afaf52ac0983a4ac123b01e809ab7ac8862e67a50f09fcce1293d265c3"
+        )
+
+    def test_selector_hash_from_resource_returns_none_for_empty_query(self) -> None:
+        resource = ResourceConfig(
+            kind="test-kind",
+            selector=Selector(query=" "),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".id",
+                        title=".name",
+                        blueprint='"test"',
+                        properties={},
+                        relations={},
+                    )
+                )
+            ),
+        )
+
+        assert selector_hash_from_resource(resource) is None
+
 
 class TestExtractJqDeletionPathRevised:
     """Tests for extract_jq_deletion_path_revised function."""
@@ -731,3 +873,80 @@ class TestResyncGeneratorWrapperDoesNotMutateYieldedBatches:
                 [{"id": "2", "items": [{"sub_id": "b"}]}],
             )
             assert calls[1].kwargs == {"should_log": False}
+
+
+class TestProcessingModes:
+    @pytest.mark.asyncio
+    async def test_is_dsp_mode_enabled_uses_local_only_warning_for_missing_flags(
+        self,
+    ) -> None:
+        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
+            mock_ocean_context.config.processing_mode = ProcessingMode.dsp
+            mock_ocean_context.config.lakehouse_enabled = True
+            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
+                return_value=[]
+            )
+
+            with patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger:
+                mock_bound = mock_logger.bind.return_value
+                result = await is_dsp_mode_enabled()
+
+        assert result is False
+        mock_logger.bind.assert_called_with(local_only=True)
+        mock_bound.warning.assert_called_once()
+        assert "required feature flags are missing" in mock_bound.warning.call_args.args[0]
+
+    @pytest.mark.asyncio
+    async def test_is_dsp_mode_enabled_uses_local_only_warning_when_lakehouse_disabled(
+        self,
+    ) -> None:
+        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
+            mock_ocean_context.config.processing_mode = ProcessingMode.dsp
+            mock_ocean_context.config.lakehouse_enabled = False
+
+            with patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger:
+                mock_bound = mock_logger.bind.return_value
+                result = await is_dsp_mode_enabled()
+
+        assert result is False
+        mock_logger.bind.assert_called_with(local_only=True)
+        mock_bound.warning.assert_called_once()
+        assert "lakehouse_enabled is False" in mock_bound.warning.call_args.args[0]
+
+    @pytest.mark.asyncio
+    async def test_is_dsp_mode_enabled_uses_local_only_warning_on_exception(
+        self,
+    ) -> None:
+        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
+            mock_ocean_context.config.processing_mode = ProcessingMode.dsp
+            mock_ocean_context.config.lakehouse_enabled = True
+            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
+                side_effect=Exception("connection error")
+            )
+
+            with patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger:
+                mock_bound = mock_logger.bind.return_value
+                result = await is_dsp_mode_enabled()
+
+        assert result is False
+        mock_logger.bind.assert_called_with(local_only=True)
+        mock_bound.warning.assert_called_once()
+        assert "Failed to check DSP mode" in mock_bound.warning.call_args.args[0]
+
+    @pytest.mark.asyncio
+    async def test_is_lakehouse_data_enabled_uses_local_only_warning_on_exception(
+        self,
+    ) -> None:
+        with patch("port_ocean.core.integrations.mixins.utils.ocean") as mock_ocean_context:
+            mock_ocean_context.port_client.get_organization_feature_flags = AsyncMock(
+                side_effect=Exception("timeout")
+            )
+
+            with patch("port_ocean.core.integrations.mixins.utils.logger") as mock_logger:
+                mock_bound = mock_logger.bind.return_value
+                result = await is_lakehouse_data_enabled()
+
+        assert result is False
+        mock_logger.bind.assert_called_with(local_only=True)
+        mock_bound.warning.assert_called_once()
+        assert "Failed to check lakehouse feature flags" in mock_bound.warning.call_args.args[0]

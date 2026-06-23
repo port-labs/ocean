@@ -391,8 +391,9 @@ class Metrics:
         metric_name: Optional[str] = None,
         kinds: Optional[list[str]] = None,
         blueprints: Optional[list[Optional[str]]] = None,
+        dsp_enabled: bool = False,
     ) -> None:
-        if kinds is None:
+        if dsp_enabled or kinds is None:
             return None
 
         metrics = []
@@ -423,7 +424,10 @@ class Metrics:
         metric_name: Optional[str] = None,
         kind: Optional[str] = None,
         blueprint: Optional[str] = None,
+        dsp_enabled: bool = False,
     ) -> None:
+        if dsp_enabled:
+            return None
         metrics = self.generate_metrics(metric_name, kind, blueprint)
         if not metrics:
             return None

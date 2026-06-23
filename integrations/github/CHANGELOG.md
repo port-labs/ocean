@@ -7,6 +7,224 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.0.8 (2026-06-23)
+
+
+### Bug Fixes
+
+- Fix semaphore permit leak in `GitHubRateLimiter.__aenter__` on cancellation
+
+
+## 6.0.7 (2026-06-22)
+
+
+### Improvements
+
+- Retry timed-out Graphql paginated requests with lower page size.
+
+
+## 6.0.6 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 6.0.5 (2026-06-18)
+
+
+### Features
+
+- Added a `closedSinceDate` pull request selector to ingest all closed PRs since an absolute date.
+
+
+## 6.0.4 (2026-06-18)
+
+
+### Bug Fixes
+
+- Fixed pull request resync stopping when only some repositories failed during parallel fetch; remaining repository pages are processed, failures are logged, and all errors are reported together when the resync completes
+
+
+## 6.0.3 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 6.0.2 (2026-06-14)
+
+
+### Improvements
+
+- Add happy flow integration test
+
+
+## 6.0.1 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 6.0.0 (2026-06-10)
+
+
+### Improvements
+
+- Parse yaml files in the file kind with yaml spec 1.2 by default
+
+
+## 5.5.33 (2026-06-09)
+
+
+### Improvements
+
+- Added `statuses` selector to `workflow-run` kind to filter runs by status or conclusion. Accepts a list of values; each additional status results in one extra API call per workflow.
+- Added `since` selector to `workflow-run` kind to limit resync to runs created within the last N days.
+- Added `sinceDate` selector to `workflow-run` kind to limit resync to runs created on or after a fixed ISO 8601 date. Ignored if `since` is also set.
+
+
+## 5.5.32 (2026-06-09)
+
+
+### Bug Fixes
+
+- Fixed `workflow-run` webhook processor to treat `completed` events as upserts instead of deletions.
+
+
+## 5.5.31 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 5.5.30 (2026-06-08)
+
+
+### Improvements
+
+- Add reviews and statusCheckRollup to returned pull request kind in GraphQL-based exporter
+
+
+## 5.5.29 (2026-06-08)
+
+
+### Bug Fixes
+
+- Fixed sync failures from intermittent 500 errors on large pages by retrying with a smaller page size
+
+
+## 5.5.28 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 5.5.27 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 5.5.26 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 5.5.25 (2026-06-03)
+
+
+### Improvements
+
+- Bumped version to 5.5.25
+
+
+## 5.5.23 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 5.5.22 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 5.5.21 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 5.5.20 (2026-05-31)
+
+
+### Bug Fixes
+
+- Fixed asyncio event loop error when `repoManagedMapping` is enabled with multiple file resources.
+
+
+## 5.5.19 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 5.5.18 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 5.5.17 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 5.5.16 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 5.5.15 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
 ## 5.5.14 (2026-05-28)
 
 

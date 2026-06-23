@@ -185,6 +185,9 @@ class PortMockResponder:
                         "ingestId": "test-ingest",
                         "ingestUrl": "http://localhost:5555/logs/test",
                     },
+                    "ingestAttributes": {
+                        "ingestUrl": "http://localhost:5555/ingest/test",
+                    },
                 }
             }
         }

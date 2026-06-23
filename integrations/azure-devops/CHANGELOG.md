@@ -7,6 +7,226 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.10.2 (2026-06-23)
+
+
+### Features
+
+- The `user` kind now supports the Graph Users API via a `source` selector (`source: graph`, `vso.graph` scope); the default remains the Entitlements API (`source: entitlements`).
+
+
+## 0.10.1 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 0.10.0 (2026-06-22)
+
+
+### Improvements
+
+- Added an opt-in `enrichWithFirstCommit` flag to the `build` kind. When enabled, each build gains a `__firstCommit` field (`__sha`, `__timestamp`, `__commitCount`) for its earliest commit, powering the DORA Lead Time for Changes metric (`finishTime - __firstCommit.__timestamp`). Off by default; enabling it costs one extra API call per build.
+
+
+## 0.9.20 (2026-06-17)
+
+
+### Bug Fixes
+
+- Added bounded concurrency to `defaultTeam` project enrichment and `includeMembers` team enrichment to prevent unbounded concurrent API calls that exhausted the ADO TSTU budget.
+- Raised `max_backoff_wait` from 60s to 300s so `Retry-After` and `X-RateLimit-Reset` headers are honored up to ADO's 5-minute rolling window instead of being clipped prematurely.
+- Added a shared throttle circuit-breaker to `AzureDevOpsRateLimiter`: a `ReadTimeout` now pauses all subsequent ADO requests for 300s, preventing continued retries against an already-throttled API.
+
+
+## 0.9.19 (2026-06-16)
+
+
+### Improvements
+
+- Added error logging when the work items batch endpoint returns a malformed JSON response, including the project ID and batch ID range to aid diagnosis
+
+
+## 0.9.18 (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 0.9.17 (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
+## 0.9.16 (2026-06-10)
+
+
+### Features
+
+- Added a new `area-path` kind.
+
+### Improvements
+
+- Added an `includeAreaPaths` option to the `team` kind.
+
+
+## 0.9.15 (2026-06-10)
+
+
+### Bug Fixes
+
+- Added bounded concurrency to webhook subscription listing and creation to prevent TSTU budget exhaustion from unbounded parallel requests, which caused 429 errors that aborted webhook setup entirely.
+- Added bounded concurrency to `generate_pipeline_runs` and `_runs_for_project`.
+
+
+## 0.9.14 (2026-06-10)
+
+
+### Features
+
+- Renamed `excludeTagFilter` integration config field to `excludedTags` (the old key is still supported for backward compatibility).
+
+## 0.9.13 (2026-06-09)
+
+
+### Features
+
+- Added `excludeTagFilter` integration config field to exclude ADO projects from syncing based on project tags. Projects matching any specified tag are skipped during resync for all resource kinds.
+
+
+## 0.9.12 (2026-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.16
+
+
+## 0.9.11 (2026-06-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.15
+
+
+## 0.9.10 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.14
+
+
+## 0.9.9 (2026-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.13
+
+
+## 0.9.8 (2026-06-03)
+
+
+### Improvements
+
+- Added code coverage logs for test runs, including how many were processed and skipped when no build was linked.
+
+
+## 0.9.7 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.12
+
+
+## 0.9.6 (2026-06-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.11
+
+
+## 0.9.5 (2026-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.10
+
+
+## 0.9.4 (2026-05-31)
+
+
+### Bug Fixes
+
+- Fixed webhook setup failure on large Azure DevOps organizations where the unfiltered `GET /_apis/hooks/subscriptions` call would time out. Subscriptions are now fetched once per organization using parallel filtered requests (one per event type), eliminating both the timeout and the per-project redundant fetching.
+
+
+## 0.9.3 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.9
+
+
+## 0.9.2 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.8
+
+
+## 0.9.1 (2026-05-31)
+
+
+### Improvements
+
+- Route webhook events to the correct org client via subscription ID registry instead of parsing URLs from the payload
+
+
+## 0.9.0 (2026-05-31)
+
+### Improvements
+
+- Added a configurable `apiVersion` selector field (defaults to the latest supported version) for the User Entitlements endpoint, with automatic pagination strategy selection based on the version (top/skip for legacy versions < 7.x, continuation token for 7.x+)
+
+## 0.8.54 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.7
+
+
+## 0.8.53 (2026-05-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.6
+
+
+## 0.8.52 (2026-05-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.4
+
+
 ## 0.8.51 (2026-05-28)
 
 

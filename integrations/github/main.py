@@ -391,17 +391,34 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     async for workflows in workflow_exporter.get_paginated_resources(
                         workflow_options
                     ):
-                        tasks = [
-                            workflow_run_exporter.get_paginated_resources(
-                                ListWorkflowRunOptions(
-                                    organization=org_name,
-                                    repo_name=repo_name,
-                                    workflow_id=workflow["id"],
-                                    max_runs=100,
+                        if config.selector.statuses:
+                            tasks = [
+                                workflow_run_exporter.get_paginated_resources(
+                                    ListWorkflowRunOptions(
+                                        organization=org_name,
+                                        repo_name=repo_name,
+                                        workflow_id=workflow["id"],
+                                        max_runs=100,
+                                        status=status,
+                                        created=config.selector.created_after,
+                                    )
                                 )
-                            )
-                            for workflow in workflows
-                        ]
+                                for workflow in workflows
+                                for status in config.selector.statuses
+                            ]
+                        else:
+                            tasks = [
+                                workflow_run_exporter.get_paginated_resources(
+                                    ListWorkflowRunOptions(
+                                        organization=org_name,
+                                        repo_name=repo_name,
+                                        workflow_id=workflow["id"],
+                                        max_runs=100,
+                                        created=config.selector.created_after,
+                                    )
+                                )
+                                for workflow in workflows
+                            ]
 
                     async for runs in stream_async_iterators_tasks(*tasks):
                         yield runs
@@ -426,6 +443,8 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else RestPullRequestExporter(rest_client)
     )
 
+    fetch_errors: list[Exception] = []
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -449,8 +468,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 states=list(config.selector.states),
-                                max_results=config.selector.max_results,
+                                max_results=config.selector.effective_max_results,
                                 updated_after=config.selector.updated_after,
+                                closed_after=config.selector.closed_after,
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
@@ -458,10 +478,28 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-                async for pull_requests in stream_independent_async_iterators(
-                    *tasks, context=kind
-                ):
-                    yield pull_requests
+                try:
+                    async for pull_requests in stream_independent_async_iterators(
+                        *tasks, context=kind
+                    ):
+                        yield pull_requests
+                except ExceptionGroup as page_errors:
+                    fetch_errors.extend(page_errors.exceptions)
+                    logger.error(
+                        f"{len(page_errors.exceptions)} repo(s) failed fetching pull requests "
+                        f"in org {org_name} (batch of {len(repos)}), continuing with remaining pages",
+                        extra={
+                            "failed_repos": [
+                                str(error) for error in page_errors.exceptions
+                            ],
+                        },
+                    )
+
+    if fetch_errors:
+        raise ExceptionGroup(
+            f"{kind} failed with {len(fetch_errors)} error(s)",
+            fetch_errors,
+        )
 
 
 @ocean.on_resync(ObjectKind.ISSUE)

@@ -1,0 +1,24 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: AWS::CodePipeline::Pipeline
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.PipelineArn
+          title: .Properties.Name
+          blueprint: '"codePipeline"'
+          properties:
+            arn: .Properties.PipelineArn
+            roleArn: .Properties.RoleArn
+            executionMode: .Properties.ExecutionMode
+            pipelineType: .Properties.PipelineType
+            version: .Properties.Version
+            stages: .Properties.Stages
+            created: .Properties.Created
+            updated: .Properties.Updated
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId

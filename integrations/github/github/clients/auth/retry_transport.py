@@ -1,3 +1,4 @@
+import json
 from typing import Any, Callable, Coroutine, Dict, Iterable, Optional, Union
 import typing
 
@@ -8,6 +9,18 @@ from port_ocean.helpers.retry import RetryConfig, RetryTransport
 from github.clients.rate_limiter.utils import is_rate_limit_response
 
 
+# 5xx responses GitHub returns intermittently on large pages and that we recover
+# from by shrinking the page size before each retry. Both the reduction and the
+# "stop once we can't shrink further" check key off this same set.
+RETRYABLE_5XX_STATUS_CODES = (500, 502, 504)
+
+# Floors for the 5xx-recovery page-size backoff. We shrink the page on each retry
+# down to these sizes before giving up, since smaller pages reliably succeed.
+MIN_REST_PAGE_SIZE = 25
+MIN_GRAPHQL_PAGE_SIZE = 5
+GRAPHQL_REDUCTION_SIZE = 5
+
+
 class GitHubRetryTransport(RetryTransport):
     """
     Extends the default Ocean retry transport with GitHub-specific behaviour:
@@ -16,6 +29,13 @@ class GitHubRetryTransport(RetryTransport):
       response so the rate limiter acquires its lock inline before the retry sleep begins.
     - Refreshes auth headers via `token_refresher` in `before_retry_async` so long
       rate-limit sleeps never leave the retry carrying a stale or expired token.
+    - On a retryable 5xx (see RETRYABLE_5XX_STATUS_CODES), shrinks the request's
+      page size before each retry instead of replaying the identical doomed
+      request — halving REST `per_page` (repositioning `page` to the same offset)
+      or stepping down GraphQL `variables.first` — and stops retrying once the
+      page size reaches its floor. GitHub fails large pages deterministically, so
+      this avoids burning the full retry budget on requests that cannot succeed at
+      their current size.
     """
 
     def __init__(
@@ -52,18 +72,71 @@ class GitHubRetryTransport(RetryTransport):
         self._rate_limit_notifier = rate_limit_notifier
         self._token_refresher = token_refresher
 
-    async def before_retry_async(
-        self,
-        request: httpx.Request,
-        response: Optional[httpx.Response],
-        sleep_time: float,
-        attempt: int,
-    ) -> Optional[httpx.Request]:
-        if self._token_refresher is None:
-            return None
-        fresh_headers = await self._token_refresher()
-        fresh_lower = {k.lower(): v for k, v in fresh_headers.items()}
+    async def _reduced_page_request(
+        self, request: httpx.Request, response: Optional[httpx.Response]
+    ) -> httpx.Request:
+        """Shrink the page size when retrying a retryable 5xx.
 
+        Returns the request unchanged when this is not a retryable 5xx, when the
+        request is not paginated, or when the page size is already at the floor.
+        """
+        if response is None or response.status_code not in RETRYABLE_5XX_STATUS_CODES:
+            return request
+
+        if self._is_graphql_request(request):
+            return await self._reduce_page_for_graphql(request)
+        return self._reduce_page_for_rest(request)
+
+    def _reduce_page_for_rest(self, request: httpx.Request) -> httpx.Request:
+        per_page = self._paginated_per_page(request.url)
+        if per_page is None or per_page <= MIN_REST_PAGE_SIZE:
+            return request
+
+        try:
+            page = int(request.url.params.get("page", 1))
+        except ValueError:
+            return request
+
+        reduced_per_page = max(per_page // 2, MIN_REST_PAGE_SIZE)
+        # page N at size S covers the same items as page 2N-1 at size S/2, so the
+        # offset is preserved across the halving — no items skipped or repeated.
+        reduced_page = 2 * page - 1
+        logger.warning(
+            f"GitHub returned a server error for {request.method} "
+            f"{request.url.path} at page={page} per_page={per_page}; "
+            f"retrying at page={reduced_page} per_page={reduced_per_page}"
+        )
+        url = request.url.copy_merge_params(
+            {"per_page": str(reduced_per_page), "page": str(reduced_page)}
+        )
+        return httpx.Request(
+            method=request.method,
+            url=url,
+            headers=request.headers,
+            content=request.content,
+            extensions=request.extensions,
+        )
+
+    async def _reduce_page_for_graphql(self, request: httpx.Request) -> httpx.Request:
+        current_page_size = self._graphql_first(request)
+        if not current_page_size or current_page_size <= MIN_GRAPHQL_PAGE_SIZE:
+            return request
+        request_body = json.loads(await self._read_request_body(request))
+        request_body["variables"]["first"] = current_page_size - GRAPHQL_REDUCTION_SIZE
+        # Drop the original Content-Length so httpx recomputes it for the smaller
+        # body; copying it verbatim would describe the wrong byte count.
+        headers = {
+            k: v for k, v in request.headers.items() if k.lower() != "content-length"
+        }
+        return httpx.Request(
+            method=request.method,
+            url=request.url,
+            headers=headers,
+            content=json.dumps(request_body),
+            extensions=request.extensions,
+        )
+
+    async def _read_request_body(self, request: httpx.Request) -> bytes:
         try:
             content = request.content
         except httpx.RequestNotRead:
@@ -72,11 +145,28 @@ class GitHubRetryTransport(RetryTransport):
             else:
                 request.read()
             content = request.content
+
+        return content
+
+    async def before_retry_async(
+        self,
+        request: httpx.Request,
+        response: Optional[httpx.Response],
+        sleep_time: float,
+        attempt: int,
+    ) -> Optional[httpx.Request]:
+        request = await self._reduced_page_request(request, response)
+
+        headers = dict(request.headers)
+        if self._token_refresher is not None:
+            fresh_headers = await self._token_refresher()
+            headers.update({k.lower(): v for k, v in fresh_headers.items()})
+
         return httpx.Request(
             method=request.method,
             url=request.url,
-            headers={**dict(request.headers), **fresh_lower},
-            content=content,
+            headers=headers,
+            content=await self._read_request_body(request),
             extensions=request.extensions,
         )
 
@@ -109,10 +199,66 @@ class GitHubRetryTransport(RetryTransport):
             )
         super()._log_before_retry(request, sleep_time, response, error)
 
+    @staticmethod
+    def _paginated_per_page(url: httpx.URL) -> Optional[int]:
+        """The `per_page` of a paginated request URL, or None if not paginated."""
+        try:
+            return int(url.params["per_page"])
+        except (KeyError, ValueError):
+            return None
+
+    @staticmethod
+    def _is_graphql_request(request: httpx.Request) -> bool:
+        """True for GitHub's GraphQL endpoint.
+
+        Matches on the path suffix rather than a substring of the full URL so a
+        stray `graphql` in a query value can't be mistaken for the endpoint.
+        """
+        return request.url.path.endswith("graphql")
+
+    @staticmethod
+    def _graphql_first(request: httpx.Request) -> Optional[int]:
+        """The `variables.first` of a GraphQL request body, or None if absent.
+
+        GraphQL payloads are sent buffered (`json=`), so `request.content` is
+        available without re-reading the stream.
+        """
+        try:
+            first = json.loads(request.content).get("variables", {}).get("first")
+        except (httpx.RequestNotRead, ValueError, AttributeError):
+            return None
+        return first if isinstance(first, int) else None
+
+    def _page_reduction_exhausted(self, response: httpx.Response) -> bool:
+        """True for a retryable 5xx whose request is already at the page floor.
+
+        Once the page size is down to its floor there is nothing left to shrink,
+        so further retries would just replay the same failing request — stop and
+        let the 5xx propagate. Requests we can't shrink (non-paginated REST, or a
+        GraphQL request without `first`) are not exhausted here; they fall through
+        to the normal retry policy.
+        """
+        if response.status_code not in RETRYABLE_5XX_STATUS_CODES:
+            return False
+        try:
+            request = response.request
+        except RuntimeError:
+            # response carries no request.
+            return False
+        if self._is_graphql_request(request):
+            first = self._graphql_first(request)
+            return first is not None and first <= MIN_GRAPHQL_PAGE_SIZE
+        per_page = self._paginated_per_page(request.url)
+        return per_page is not None and per_page <= MIN_REST_PAGE_SIZE
+
     async def _should_retry_async(self, response: httpx.Response) -> bool:
+        if self._page_reduction_exhausted(response):
+            return False
         return await super()._should_retry_async(response) or is_rate_limit_response(
             response
         )
 
     def _should_retry(self, response: httpx.Response) -> bool:
+        if self._page_reduction_exhausted(response):
+            return False
         return super()._should_retry(response) or is_rate_limit_response(response)

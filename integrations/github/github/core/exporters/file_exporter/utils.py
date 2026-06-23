@@ -16,7 +16,7 @@ from typing import (
     Union,
 )
 
-import yaml
+from ruamel.yaml import YAML
 from loguru import logger
 from wcmatch import glob
 
@@ -96,7 +96,8 @@ def parse_content(content: str, file_path: str) -> Any:
         if file_path.endswith(JSON_FILE_SUFFIX):
             return json.loads(content)
         elif file_path.endswith(YAML_FILE_SUFFIX):
-            return yaml.safe_load(content)
+            yaml = YAML(typ="safe")
+            return yaml.load(content)
     except Exception as e:
         logger.error(f"Error parsing file: {e}")
 

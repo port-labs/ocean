@@ -318,6 +318,27 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
         ("comments", "comments { totalCount }"),
         ("reviewThreads", "reviewThreads { totalCount }"),
         (
+            "reviews",
+            """
+            reviews (first: 10) {
+              nodes {
+                state
+                body
+                createdAt
+                author {
+                  login
+                  avatarUrl
+                  url
+                  __typename
+
+                }
+
+              }
+            }
+        """,
+        ),
+        ("statusCheckRollup", "statusCheckRollup { state }"),
+        (
             "commits",
             (
                 PR_COMMITS_WITH_FIRST
@@ -349,7 +370,9 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
     )
 
 
-def generate_list_pull_requests_gql(options: PullRequestGraphQLOptions) -> str:
+def generate_list_pull_requests_gql(
+    options: PullRequestGraphQLOptions, order_by_field: str = "CREATED_AT"
+) -> str:
     return f"""
 {PAGE_INFO_FRAGMENT}
 query ListPullRequests(
@@ -364,7 +387,7 @@ query ListPullRequests(
       first: $first,
       after: $after,
       states: $states,
-      orderBy: {{ field: CREATED_AT, direction: DESC }}
+      orderBy: {{ field: {order_by_field}, direction: DESC }}
     ) {{
       nodes {{
 {generate_pr_fields(options)}
