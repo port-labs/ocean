@@ -156,10 +156,17 @@ class RedisStreamConsumer:
             return
         await self._redis.xack(self._stream_key, self._consumer_group, message_id)
 
+    def _require_redis(self) -> Redis:
+        if self._redis is None:
+            raise RuntimeError(
+                "Redis stream consumer has not been started or has been stopped"
+            )
+        return self._redis
+
     async def _ensure_consumer_group(self) -> None:
-        assert self._redis is not None
+        redis = self._require_redis()
         try:
-            await self._redis.xgroup_create(
+            await redis.xgroup_create(
                 self._stream_key,
                 self._consumer_group,
                 id="$",
@@ -170,11 +177,11 @@ class RedisStreamConsumer:
                 raise
 
     async def _read_loop(self) -> None:
-        assert self._redis is not None
+        redis = self._require_redis()
 
         while self._is_running:
             try:
-                response = await self._redis.xreadgroup(
+                response = await redis.xreadgroup(
                     groupname=self._consumer_group,
                     consumername=self._consumer_name,
                     streams={self._stream_key: ">"},
