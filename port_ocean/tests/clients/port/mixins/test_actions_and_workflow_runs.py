@@ -27,9 +27,12 @@ class TestFindRunWithRetry:
         self, actions_client: ActionsAndWorkflowRunsClientMixin
     ) -> None:
         run = make_run()
-        actions_client.find_run_by_external_id = AsyncMock(return_value=run)
-
-        result = await actions_client.find_run_with_retry(EXTERNAL_ID)
+        with patch.object(
+            actions_client,
+            "find_run_by_external_id",
+            AsyncMock(return_value=run),
+        ):
+            result = await actions_client.find_run_with_retry(EXTERNAL_ID)
 
         assert result is run
 
@@ -37,13 +40,17 @@ class TestFindRunWithRetry:
         self, actions_client: ActionsAndWorkflowRunsClientMixin
     ) -> None:
         run = make_run()
-        actions_client.find_run_by_external_id = AsyncMock(
-            side_effect=[None, None, run]
-        )
-        with patch(
-            "port_ocean.clients.port.mixins.actions_and_workflow_runs.asyncio.sleep",
-            AsyncMock(),
-        ) as mock_sleep:
+        with (
+            patch.object(
+                actions_client,
+                "find_run_by_external_id",
+                AsyncMock(side_effect=[None, None, run]),
+            ),
+            patch(
+                "port_ocean.clients.port.mixins.actions_and_workflow_runs.asyncio.sleep",
+                AsyncMock(),
+            ) as mock_sleep,
+        ):
             result = await actions_client.find_run_with_retry(EXTERNAL_ID)
 
         assert result is run
@@ -52,10 +59,16 @@ class TestFindRunWithRetry:
     async def test_returns_none_after_exhausting_retries(
         self, actions_client: ActionsAndWorkflowRunsClientMixin
     ) -> None:
-        actions_client.find_run_by_external_id = AsyncMock(return_value=None)
-        with patch(
-            "port_ocean.clients.port.mixins.actions_and_workflow_runs.asyncio.sleep",
-            AsyncMock(),
+        with (
+            patch.object(
+                actions_client,
+                "find_run_by_external_id",
+                AsyncMock(return_value=None),
+            ),
+            patch(
+                "port_ocean.clients.port.mixins.actions_and_workflow_runs.asyncio.sleep",
+                AsyncMock(),
+            ),
         ):
             result = await actions_client.find_run_with_retry(EXTERNAL_ID)
 
