@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.43.19 (2026-06-22)
+
+### Bug Fixes
+
+- Fix integration test harness import integration file multiple times by caching the integration class.
+
 ## 0.43.18 (2026-06-15)
 
 ### Improvements
