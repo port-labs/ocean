@@ -695,12 +695,18 @@ class TestRateLimiterSemaphorePermitLeak:
         client.rate_limiter._initialized = True
         mock_sleep.side_effect = asyncio.CancelledError()
 
-        permits_before_cancelled_aenter = client.rate_limiter._semaphore._value
-
         with pytest.raises(asyncio.CancelledError):
             await client.rate_limiter.__aenter__()
 
-        assert client.rate_limiter._semaphore._value == permits_before_cancelled_aenter
+        acquired_permits = [
+            await asyncio.wait_for(
+                client.rate_limiter._semaphore.acquire(), timeout=0.1
+            )
+            for _ in range(client_config.max_concurrent)
+        ]
+        assert len(acquired_permits) == client_config.max_concurrent
+        for _ in acquired_permits:
+            client.rate_limiter._semaphore.release()
 
     @pytest.mark.asyncio
     async def test_ten_consecutive_cancelled_sleeps_leave_every_permit_acquirable_afterward(
@@ -721,7 +727,13 @@ class TestRateLimiterSemaphorePermitLeak:
             with pytest.raises(asyncio.CancelledError):
                 await limiter.__aenter__()
 
-        assert limiter._semaphore._value == max_concurrent_slots
+        acquired_permits = [
+            await asyncio.wait_for(limiter._semaphore.acquire(), timeout=0.1)
+            for _ in range(max_concurrent_slots)
+        ]
+        assert len(acquired_permits) == max_concurrent_slots
+        for _ in acquired_permits:
+            limiter._semaphore.release()
 
     @pytest.mark.asyncio
     async def test_non_cancelled_exception_during_aenter_also_releases_acquired_semaphore_permit(
@@ -734,21 +746,48 @@ class TestRateLimiterSemaphorePermitLeak:
         client.rate_limiter._initialized = True
         mock_sleep.side_effect = RuntimeError("simulated enforcement failure")
 
-        permits_before_failed_aenter = client.rate_limiter._semaphore._value
-
         with pytest.raises(RuntimeError):
             await client.rate_limiter.__aenter__()
 
-        assert client.rate_limiter._semaphore._value == permits_before_failed_aenter
+        acquired_permits = [
+            await asyncio.wait_for(
+                client.rate_limiter._semaphore.acquire(), timeout=0.1
+            )
+            for _ in range(client_config.max_concurrent)
+        ]
+        assert len(acquired_permits) == client_config.max_concurrent
+        for _ in acquired_permits:
+            client.rate_limiter._semaphore.release()
 
     @pytest.mark.asyncio
     async def test_uncancelled_aenter_and_aexit_still_round_trips_permit_as_before(
         self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
     ) -> None:
         client = MockGitHubClient(github_host, client_config)
-        permits_before_context = client.rate_limiter._semaphore._value
 
         async with client.rate_limiter:
-            assert client.rate_limiter._semaphore._value == permits_before_context - 1
+            remaining_after_one_held_permit = [
+                await asyncio.wait_for(
+                    client.rate_limiter._semaphore.acquire(), timeout=0.1
+                )
+                for _ in range(client_config.max_concurrent - 1)
+            ]
+            assert (
+                len(remaining_after_one_held_permit) == client_config.max_concurrent - 1
+            )
+            with pytest.raises(asyncio.TimeoutError):
+                await asyncio.wait_for(
+                    client.rate_limiter._semaphore.acquire(), timeout=0.05
+                )
+            for _ in remaining_after_one_held_permit:
+                client.rate_limiter._semaphore.release()
 
-        assert client.rate_limiter._semaphore._value == permits_before_context
+        acquired_permits = [
+            await asyncio.wait_for(
+                client.rate_limiter._semaphore.acquire(), timeout=0.1
+            )
+            for _ in range(client_config.max_concurrent)
+        ]
+        assert len(acquired_permits) == client_config.max_concurrent
+        for _ in acquired_permits:
+            client.rate_limiter._semaphore.release()
