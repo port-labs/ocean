@@ -4,10 +4,7 @@ import httpx
 import pytest
 from port_ocean.core.models import WorkflowNodeRun, WorkflowNodeRunStatus
 
-from gitlab.actions.pipeline_completion import (
-    complete_run_from_pipeline_status,
-    find_run_with_retry,
-)
+from gitlab.actions.pipeline_completion import complete_run_from_pipeline_status
 
 EXTERNAL_ID = "gl_42_99"
 
@@ -18,41 +15,6 @@ def make_run(report_status: bool = True) -> MagicMock:
     run.status = WorkflowNodeRunStatus.IN_PROGRESS
     run.execution_properties = {"reportPipelineStatus": report_status}
     return run
-
-
-@pytest.mark.asyncio
-class TestFindRunWithRetry:
-    async def test_returns_run_on_first_try(self) -> None:
-        run = make_run()
-        with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
-            result = await find_run_with_retry(EXTERNAL_ID)
-
-        assert result is run
-
-    async def test_retries_until_found(self) -> None:
-        run = make_run()
-        with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(
-                side_effect=[None, None, run]
-            )
-            with patch(
-                "gitlab.actions.pipeline_completion.asyncio.sleep", AsyncMock()
-            ) as mock_sleep:
-                result = await find_run_with_retry(EXTERNAL_ID)
-
-        assert result is run
-        assert mock_sleep.await_count == 2
-
-    async def test_returns_none_after_exhausting_retries(self) -> None:
-        with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(
-                return_value=None
-            )
-            with patch("gitlab.actions.pipeline_completion.asyncio.sleep", AsyncMock()):
-                result = await find_run_with_retry(EXTERNAL_ID)
-
-        assert result is None
 
 
 @pytest.mark.asyncio

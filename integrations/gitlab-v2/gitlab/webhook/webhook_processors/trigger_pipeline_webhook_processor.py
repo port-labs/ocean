@@ -1,4 +1,5 @@
 from loguru import logger
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
@@ -12,7 +13,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from gitlab.actions.pipeline_completion import (
     TERMINAL_PIPELINE_STATUSES,
     complete_run_from_pipeline_status,
-    find_run_with_retry,
 )
 from gitlab.actions.utils import build_external_id
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
@@ -45,7 +45,7 @@ class TriggerPipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
         status = payload.get("object_attributes", {}).get("status")
 
         external_id = build_external_id(project_id, pipeline_id)
-        run = await find_run_with_retry(external_id)
+        run = await ocean.port_client.find_run_with_retry(external_id)
 
         if run is None:
             logger.debug(

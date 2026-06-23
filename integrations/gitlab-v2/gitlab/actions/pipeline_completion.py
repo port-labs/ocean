@@ -1,31 +1,8 @@
-import asyncio
-
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import ActionRun, WorkflowNodeRun
 
 TERMINAL_PIPELINE_STATUSES = frozenset({"success", "failed", "canceled", "skipped"})
-
-
-async def find_run_with_retry(
-    external_id: str,
-    *,
-    retries: int = 5,
-    initial_delay: float = 0.5,
-) -> ActionRun | WorkflowNodeRun | None:
-    """Look up a Port run by external ID, retrying with exponential backoff
-    to handle the race where the webhook arrives before update_run_started()
-    finishes writing. Default: 0.5s, 1s, 2s, 4s → ~7.5s total."""
-    delay = initial_delay
-    for attempt in range(retries):
-        run = await ocean.port_client.find_run_by_external_id(external_id)
-        if run is not None:
-            return run
-        if attempt < retries - 1:
-            await asyncio.sleep(delay)
-            delay *= 2
-    return None
 
 
 async def complete_run_from_pipeline_status(

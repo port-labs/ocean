@@ -66,14 +66,14 @@ class TestTriggerPipelineWebhookProcessor:
         resource_config = MagicMock()
         with (
             patch(
-                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.find_run_with_retry",
-                AsyncMock(return_value=run),
-            ),
+                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
+            ) as mock_ocean,
             patch(
                 "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.complete_run_from_pipeline_status",
                 AsyncMock(return_value=True),
             ) as mock_complete,
         ):
+            mock_ocean.port_client.find_run_with_retry = AsyncMock(return_value=run)
             await processor.handle_event(make_event("success").payload, resource_config)
 
             mock_complete.assert_called_once_with(
@@ -88,14 +88,14 @@ class TestTriggerPipelineWebhookProcessor:
         resource_config = MagicMock()
         with (
             patch(
-                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.find_run_with_retry",
-                AsyncMock(return_value=None),
-            ),
+                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
+            ) as mock_ocean,
             patch(
                 "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.complete_run_from_pipeline_status",
                 AsyncMock(),
             ) as mock_complete,
         ):
+            mock_ocean.port_client.find_run_with_retry = AsyncMock(return_value=None)
             result = await processor.handle_event(
                 make_event("success").payload, resource_config
             )
