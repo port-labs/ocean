@@ -109,7 +109,10 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
             action_run = None
         if action_run is not None:
             return action_run
-        return await self.get_wf_node_run_by_external_id(external_id)
+        try:
+            return await self.get_wf_node_run_by_external_id(external_id)
+        except Exception:
+            return None
 
     async def find_run_with_retry(
         self,
@@ -125,7 +128,10 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         """
         delay = initial_delay
         for attempt in range(retries):
-            run = await self.find_run_by_external_id(external_id)
+            try:
+                run = await self.find_run_by_external_id(external_id)
+            except httpx.HTTPError:
+                run = None
             if run is not None:
                 return run
             if attempt < retries - 1:

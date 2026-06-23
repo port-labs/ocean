@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from port_ocean.clients.port.mixins.actions_and_workflow_runs import (
     ActionsAndWorkflowRunsClientMixin,
@@ -71,5 +72,60 @@ class TestFindRunWithRetry:
             ),
         ):
             result = await actions_client.find_run_with_retry(EXTERNAL_ID)
+
+        assert result is None
+
+    async def test_retries_when_lookup_raises_http_error(
+        self, actions_client: ActionsAndWorkflowRunsClientMixin
+    ) -> None:
+        run = make_run()
+        response = MagicMock()
+        response.status_code = 404
+        http_error = httpx.HTTPStatusError(
+            "404",
+            request=MagicMock(),
+            response=response,
+        )
+        with (
+            patch.object(
+                actions_client,
+                "find_run_by_external_id",
+                AsyncMock(side_effect=[http_error, http_error, run]),
+            ),
+            patch(
+                "port_ocean.clients.port.mixins.actions_and_workflow_runs.asyncio.sleep",
+                AsyncMock(),
+            ) as mock_sleep,
+        ):
+            result = await actions_client.find_run_with_retry(EXTERNAL_ID)
+
+        assert result is run
+        assert mock_sleep.await_count == 2
+
+
+@pytest.mark.asyncio
+class TestFindRunByExternalId:
+    async def test_returns_none_when_wf_node_lookup_raises(
+        self, actions_client: ActionsAndWorkflowRunsClientMixin
+    ) -> None:
+        with (
+            patch.object(
+                actions_client,
+                "get_run_by_external_id",
+                AsyncMock(return_value=None),
+            ),
+            patch.object(
+                actions_client,
+                "get_wf_node_run_by_external_id",
+                AsyncMock(
+                    side_effect=httpx.HTTPStatusError(
+                        "404",
+                        request=MagicMock(),
+                        response=MagicMock(status_code=404),
+                    )
+                ),
+            ),
+        ):
+            result = await actions_client.find_run_by_external_id(EXTERNAL_ID)
 
         assert result is None
