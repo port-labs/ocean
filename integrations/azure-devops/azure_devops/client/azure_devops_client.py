@@ -2,6 +2,7 @@ from azure_devops.webhooks.events import AdvancedSecurityAlertEvents
 import asyncio
 import functools
 import json
+import re
 import httpx
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -57,6 +58,7 @@ if TYPE_CHECKING:
 API_URL_PREFIX = "_apis"
 PROJECT_TAG_PROPERTY_PREFIX = "Microsoft.TeamFoundation.Project.Tag."
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
+GRAPH_USERS_API_PARAMS = {"api-version": "7.1-preview.1"}
 ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
 PIPELINES_PUBLISHER_ID = "pipelines"
@@ -80,6 +82,7 @@ MAX_CONCURRENT_PROJECTS = 5
 MAX_CONCURRENT_TEAMS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
+MAX_CONCURRENT_USER_MEMBERSHIPS = 10
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -518,8 +521,97 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return base_url
 
-    async def generate_users(
-        self, additional_params: dict[str, str] | None = None
+    async def generate_graph_users(
+        self,
+        additional_params: dict[str, str] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        users_url = self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/users"
+        params = {**GRAPH_USERS_API_PARAMS, **(additional_params or {})}
+        async for users in self._get_paginated_by_top_and_continuation_token(
+            users_url, additional_params=params
+        ):
+            yield users
+
+    @staticmethod
+    def _parse_project_from_principal_name(principal_name: str) -> Optional[str]:
+        match = re.match(r"^\[(?P<project>.+?)\]\\", principal_name or "")
+        return match.group("project") if match else None
+
+    async def _fetch_group_descriptors(
+        self, descriptor: str, semaphore: asyncio.BoundedSemaphore
+    ) -> list[str]:
+        async with semaphore:
+            memberships = await self._get_subject_memberships(descriptor, "Up")
+        if not memberships:
+            return []
+        return [
+            membership["containerDescriptor"]
+            for membership in memberships
+            if membership.get("containerDescriptor")
+        ]
+
+    async def enrich_users_with_group_memberships(
+        self, users: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Enrich graph users with their direct group memberships."""
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_USER_MEMBERSHIPS)
+        candidates = [user for user in users if user.get("descriptor")]
+        results = await asyncio.gather(
+            *[
+                self._fetch_group_descriptors(user["descriptor"], semaphore)
+                for user in candidates
+            ],
+            return_exceptions=True,
+        )
+
+        user_group_descriptors: dict[str, list[str]] = {}
+        all_descriptors: set[str] = set()
+        for user, result in zip(candidates, results):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to fetch group memberships for user "
+                    f"'{user['descriptor']}': {result}"
+                )
+                user_group_descriptors[user["descriptor"]] = []
+                continue
+            user_group_descriptors[user["descriptor"]] = result
+            all_descriptors.update(result)
+
+        subject_details = (
+            await self._lookup_subjects(list(all_descriptors))
+            if all_descriptors
+            else {}
+        )
+
+        for user in users:
+            descriptor = user.get("descriptor")
+            descriptors = (
+                user_group_descriptors.get(descriptor, []) if descriptor else []
+            )
+            groups = [
+                subject_details[descriptor]
+                for descriptor in descriptors
+                if descriptor in subject_details
+            ]
+            projects = {
+                project
+                for group in groups
+                if (
+                    project := self._parse_project_from_principal_name(
+                        group.get("principalName", "")
+                    )
+                )
+            }
+            user["__groups"] = groups
+            user["__projects"] = sorted(projects)
+
+        return users
+
+    async def generate_entitlement_users(
+        self,
+        additional_params: dict[str, str] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         users_url = (
             self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
@@ -572,20 +664,30 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield groups
 
-    async def _get_group_direct_members(
-        self, group_descriptor: str
+    async def _get_subject_memberships(
+        self, descriptor: str, direction: str
     ) -> Optional[list[dict[str, Any]]]:
-        """Get direct members of a group."""
-        members_url = (
+        """Get memberships for a subject in the given direction.
+
+        direction='Down' yields the members contained by a group;
+        direction='Up' yields the groups a subject belongs to.
+        """
+        memberships_url = (
             self._format_service_url("vssps")
-            + f"/{API_URL_PREFIX}/graph/Memberships/{group_descriptor}"
+            + f"/{API_URL_PREFIX}/graph/memberships/{descriptor}"
         )
         response = await self.send_request(
-            "GET", members_url, params={"direction": "Down"}
+            "GET", memberships_url, params={"direction": direction}
         )
         if not response:
             return None
         return response.json()["value"]
+
+    async def _get_group_direct_members(
+        self, group_descriptor: str
+    ) -> Optional[list[dict[str, Any]]]:
+        """Get direct members of a group."""
+        return await self._get_subject_memberships(group_descriptor, "Down")
 
     async def _lookup_subjects(
         self, descriptors: list[str]
