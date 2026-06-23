@@ -15,10 +15,8 @@ from port_ocean.exceptions.live_events import (
     LiveEventsUuidNotFoundError,
     MissingLiveEventsBaseUrlError,
 )
-from port_ocean.consumers.redis_stream_consumer import (
-    RedisStreamConsumer,
-    _WebhookRequestAdapter,
-)
+from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
+from port_ocean.core.handlers.webhook.webhook_event import WebhookRequestAdapter
 
 
 class TestResolveLiveEventsStreamKey:
@@ -458,7 +456,7 @@ class TestRedisStreamConsumer:
         on_message.assert_awaited_once()
         assert on_message.await_args is not None
         event = on_message.await_args.args[1]
-        assert isinstance(event._original_request, _WebhookRequestAdapter)
+        assert isinstance(event._original_request, WebhookRequestAdapter)
         assert await event._original_request.body() == raw_payload.encode("utf-8")
         assert event._original_request.headers["x-hub-signature-256"] == "sha256=abc"
 
@@ -494,25 +492,3 @@ class TestRedisStreamConsumer:
         assert on_message.await_args is not None
         event = on_message.await_args.args[1]
         assert event._original_request is None
-
-
-class TestWebhookRequestAdapter:
-    @pytest.mark.asyncio
-    async def test_body_returns_raw_bytes(self) -> None:
-        raw = b'{"action":"opened"}'
-        adapter = _WebhookRequestAdapter(raw_body=raw, headers={})
-        assert await adapter.body() == raw
-
-    @pytest.mark.asyncio
-    async def test_body_is_idempotent(self) -> None:
-        raw = b'{"x":1}'
-        adapter = _WebhookRequestAdapter(raw_body=raw, headers={})
-        assert await adapter.body() == await adapter.body()
-
-    def test_headers_accessible(self) -> None:
-        headers = {
-            "x-hub-signature-256": "sha256=abc",
-            "content-type": "application/json",
-        }
-        adapter = _WebhookRequestAdapter(raw_body=b"", headers=headers)
-        assert adapter.headers == headers

@@ -19,28 +19,10 @@ from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldE
 from port_ocean.core.handlers.webhook.webhook_event import (
     LiveEventTimestamp,
     WebhookEvent,
+    WebhookRequestAdapter,
 )
 
 _INTEGRATION_PATH_PREFIX = "/integration/"
-
-
-class _WebhookRequestAdapter:
-    """Minimal read-only adapter that satisfies the interface expected by webhook
-    processors that call ``event._original_request.body()`` and access
-    ``event._original_request.headers`` for signature verification.
-
-    The real Starlette ``Request`` is only available during the original HTTP
-    call.  When events travel through the Redis ingestion path the raw payload
-    string is preserved so that HMAC signatures can still be verified without
-    a live HTTP connection.
-    """
-
-    def __init__(self, raw_body: bytes, headers: dict[str, str]) -> None:
-        self._raw_body = raw_body
-        self.headers = headers
-
-    async def body(self) -> bytes:
-        return self._raw_body
 
 
 OnStreamMessage = Callable[[str, WebhookEvent], Awaitable[None]]
@@ -228,7 +210,7 @@ class RedisStreamConsumer:
             )
             original_request = None
             if raw_payload is not None:
-                original_request = _WebhookRequestAdapter(
+                original_request = WebhookRequestAdapter(
                     raw_body=raw_payload.encode("utf-8"),
                     headers=headers,
                 )
