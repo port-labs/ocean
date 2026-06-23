@@ -31,7 +31,6 @@ from github.clients.utils import (
 from github.helpers.resync import (
     MAX_CONCURRENT_REPOS,
     iter_per_org,
-    org_options_for,
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
@@ -72,6 +71,7 @@ from github.core.options import (
     ListDeploymentStatusesOptions,
     ListEnvironmentsOptions,
     ListIssueOptions,
+    ListOrganizationOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
     ListTeamOptions,
@@ -166,12 +166,16 @@ async def on_start() -> None:
     await ocean.integration.port_app_config_handler.get_port_app_config()
     org_base_options = get_github_organizations()
     async for rest_client, org_name in GithubClientFactory().iter_org_clients(
-        GithubClientType.REST,
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
+        allowed_orgs=org_base_options.get("allowed_multi_organizations"),
     ):
+        org_options = (
+            ListOrganizationOptions(**org_base_options, organization=org_name)
+            if org_name
+            else org_base_options
+        )
         async for organizations in RestOrganizationExporter(
             rest_client  # type: ignore[arg-type]
-        ).get_paginated_resources(org_options_for(org_base_options, org_name)):
+        ).get_paginated_resources(org_options):
             logger.info(
                 f"Subscribing to GitHub webhooks for {len(organizations)} organizations"
             )
@@ -214,9 +218,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         included_files_enricher = (
             IncludedFilesEnricher(
                 client=rest_client,
-                strategy=RepositoryIncludedFilesStrategy(
-                    included_files=included_files
-                ),
+                strategy=RepositoryIncludedFilesStrategy(included_files=included_files),
             )
             if included_files
             else None
@@ -233,9 +235,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
         ):
             if included_files_enricher:
-                repositories = await included_files_enricher.enrich_batch(
-                    repositories
-                )
+                repositories = await included_files_enricher.enrich_batch(repositories)
             yield repositories
 
     async for result in iter_per_org(org_base_options, fetch_for_org):
@@ -385,9 +385,7 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 workflow_options = ListWorkflowOptions(
                     organization=org_login, repo_name=repo_name
                 )
-                async for (
-                    workflows
-                ) in workflow_exporter.get_paginated_resources(
+                async for workflows in workflow_exporter.get_paginated_resources(
                     workflow_options
                 ):
                     if config.selector.statuses:
@@ -525,9 +523,9 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             search_params=config.selector.repo_search,
         )
 
-        async for repos in RestRepositoryExporter(
-            rest_client
-        ).get_paginated_resources(options=repo_options):
+        async for repos in RestRepositoryExporter(rest_client).get_paginated_resources(
+            options=repo_options
+        ):
             tasks = []
             for repo in repos:
                 tasks.append(
@@ -712,9 +710,7 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             tasks = []
             for repo in repositories:
                 tasks.append(
-                    RestEnvironmentExporter(
-                        rest_client
-                    ).get_paginated_resources(
+                    RestEnvironmentExporter(rest_client).get_paginated_resources(
                         ListEnvironmentsOptions(
                             organization=org_login,
                             repo_name=repo["name"],
@@ -807,9 +803,7 @@ async def resync_deployment_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ).get_paginated_resources(repo_options):
             for repo in repositories:
                 repo_name = repo["name"]
-                logger.debug(
-                    f"Fetching deployments for {org_login}/{repo_name}"
-                )
+                logger.debug(f"Fetching deployments for {org_login}/{repo_name}")
                 deployment_options = ListDeploymentsOptions(
                     organization=org_login,
                     repo_name=repo_name,
@@ -876,9 +870,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             tasks = []
             for repo in repositories:
                 tasks.append(
-                    RestDependabotAlertExporter(
-                        rest_client
-                    ).get_paginated_resources(
+                    RestDependabotAlertExporter(rest_client).get_paginated_resources(
                         ListDependabotAlertOptions(
                             organization=org_login,
                             repo_name=repo["name"],
@@ -923,9 +915,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             tasks = []
             for repo in repositories:
                 tasks.append(
-                    RestCodeScanningAlertExporter(
-                        rest_client
-                    ).get_paginated_resources(
+                    RestCodeScanningAlertExporter(rest_client).get_paginated_resources(
                         ListCodeScanningAlertOptions(
                             organization=org_login,
                             repo_name=repo["name"],
@@ -957,8 +947,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     # The FolderPatternMappingBuilder handles org+repo discovery internally,
     # so we iterate at the client level rather than the org level here.
     async for rest_client, scoped_org in GithubClientFactory().iter_org_clients(
-        GithubClientType.REST,
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
+        allowed_orgs=org_base_options.get("allowed_multi_organizations"),
     ):
         try:
             enricher = (
@@ -985,9 +974,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     folders = await enricher.enrich_batch(folders)
                 yield folders
         except Exception:
-            logger.exception(
-                f"Skipping org {scoped_org or 'default'} due to an error"
-            )
+            logger.exception(f"Skipping org {scoped_org or 'default'} due to an error")
 
 
 @ocean.on_resync(ObjectKind.FILE)
@@ -1000,11 +987,8 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     should_enrich_with_included_files = bool(config.selector.included_files)
     org_base_options = get_github_organizations()
 
-    # The FilePatternMappingBuilder handles org+repo discovery internally,
-    # so we iterate at the client level rather than the org level here.
     async for rest_client, scoped_org in GithubClientFactory().iter_org_clients(
-        GithubClientType.REST,
-        allowed_orgs=org_base_options.get("allowed_multi_organizations")
+        allowed_orgs=org_base_options.get("allowed_multi_organizations"),
     ):
         try:
             enricher = (
@@ -1023,16 +1007,14 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 repo_type=app_config.repository_type,
             )
             repo_path_map = await pattern_builder.build(config.selector.files)
-            async for file_results in RestFileExporter(rest_client).get_paginated_resources(
-                repo_path_map
-            ):
+            async for file_results in RestFileExporter(
+                rest_client
+            ).get_paginated_resources(repo_path_map):
                 if enricher:
                     file_results = await enricher.enrich_batch(file_results)
                 yield file_results
         except Exception:
-            logger.exception(
-                f"Skipping org {scoped_org or 'default'} due to an error"
-            )
+            logger.exception(f"Skipping org {scoped_org or 'default'} due to an error")
 
 
 @ocean.on_resync(ObjectKind.COLLABORATOR)
@@ -1062,9 +1044,7 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             tasks = []
             for repo in repositories:
                 tasks.append(
-                    RestCollaboratorExporter(
-                        rest_client
-                    ).get_paginated_resources(
+                    RestCollaboratorExporter(rest_client).get_paginated_resources(
                         ListCollaboratorOptions(
                             organization=org_login,
                             repo_name=repo["name"],

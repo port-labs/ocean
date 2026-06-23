@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, AsyncIterator, Callable, Coroutine, Dict, List, Optional, Tuple
+from typing import Any, AsyncIterator, Callable, Coroutine, Dict, List, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
 from github.clients.auth.retry_transport import GitHubRetryTransport
@@ -46,6 +46,7 @@ class GitHubHeaders(BaseModel):
 
 
 class AbstractGitHubAuthenticator(ABC):
+    organization: Optional[str] = None
     _http_client: Optional[httpx.AsyncClient] = None
     _rate_limit_notifier: Optional[
         Callable[[httpx.Response], Coroutine[Any, Any, None]]
@@ -59,14 +60,6 @@ class AbstractGitHubAuthenticator(ABC):
     async def get_headers(self, **kwargs: Any) -> GitHubHeaders:
         pass
 
-    def supports_multi_org(self) -> bool:
-        """True when this authenticator can issue per-installation tokens for multiple orgs."""
-        return False
-
-    async def discover_org_installations(self) -> Dict[str, str]:
-        """Return {org_login: installation_id} for all reachable installations."""
-        return {}
-
     def create_org_scoped_authenticator(
         self, org_login: str, installation_id: str
     ) -> "AbstractGitHubAuthenticator":
@@ -75,13 +68,14 @@ class AbstractGitHubAuthenticator(ABC):
 
     async def iter_org_authenticators(
         self, allowed_orgs: Optional[List[str]] = None
-    ) -> AsyncIterator[Tuple["AbstractGitHubAuthenticator", Optional[str]]]:
-        """Yield (authenticator, org_name) pairs for every accessible organisation.
+    ) -> AsyncIterator["AbstractGitHubAuthenticator"]:
+        """Yield one authenticator per accessible organisation.
 
-        Single-org authenticators yield a single (self, None).
-        Multi-org authenticators yield one scoped authenticator per org.
+        Single-org authenticators yield self once.
+        Multi-org authenticators yield one scoped authenticator per org,
+        each carrying its org name in ``authenticator.organization``.
         """
-        yield self, None
+        yield self
 
     def set_rate_limit_notifier(
         self, notifier: Callable[[httpx.Response], Coroutine[Any, Any, None]]

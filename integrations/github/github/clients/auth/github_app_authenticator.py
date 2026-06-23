@@ -1,6 +1,6 @@
 import asyncio
 import base64
-from typing import Any, AsyncIterator, Optional, Dict, List, Tuple
+from typing import Any, AsyncIterator, Optional, Dict, List
 from loguru import logger
 from datetime import datetime, timedelta, timezone
 import jwt
@@ -64,14 +64,11 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             X_GitHub_Api_Version="2022-11-28",
         )
 
-    def supports_multi_org(self) -> bool:
-        return not self.organization and not self.installation_id
-
     async def discover_org_installations(self) -> Dict[str, str]:
         if not self._installation_map:
             async for page in self.list_installations():
                 for installation in page:
-                    login = installation.get("account", {}).get("login", "")
+                    login = installation.get("account", {}).get("login")
                     if login:
                         self._installation_map[login] = str(installation["id"])
         return self._installation_map
@@ -89,14 +86,16 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
 
     async def iter_org_authenticators(
         self, allowed_orgs: Optional[List[str]] = None
-    ) -> AsyncIterator[Tuple["GitHubAppAuthenticator", Optional[str]]]:
-        if not self.supports_multi_org():
-            yield self, None
+    ) -> AsyncIterator["GitHubAppAuthenticator"]:
+        if self.organization or self.installation_id:
+            yield self
             return
-        for org_login, installation_id in (await self.discover_org_installations()).items():
+        for org_login, installation_id in (
+            await self.discover_org_installations()
+        ).items():
             if allowed_orgs is not None and org_login not in allowed_orgs:
                 continue
-            yield self.create_org_scoped_authenticator(org_login, installation_id), org_login
+            yield self.create_org_scoped_authenticator(org_login, installation_id)
 
     async def list_installations(self) -> AsyncIterator[List[Dict[str, Any]]]:
         """Yield pages of app installations using JWT auth.

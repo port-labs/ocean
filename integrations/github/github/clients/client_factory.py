@@ -77,7 +77,9 @@ class GithubClientFactory:
     }
     _auth_instance: Optional[AbstractGitHubAuthenticator] = None
     _instances: Dict[GithubClientType, AbstractGithubClient] = {}
-    _per_org_clients: Dict[tuple[GithubClientType, Optional[str]], AbstractGithubClient] = {}
+    _per_org_clients: Dict[
+        tuple[GithubClientType, Optional[str]], AbstractGithubClient
+    ] = {}
 
     def __new__(cls) -> "GithubClientFactory":
         if cls._instance is None:
@@ -98,6 +100,31 @@ class GithubClientFactory:
             )
         return GithubClientFactory._auth_instance
 
+    def _get_or_create_org_client(
+        self,
+        client_type: GithubClientType,
+        authenticator: AbstractGitHubAuthenticator,
+    ) -> AbstractGithubClient:
+        org_name = authenticator.organization
+        key: tuple[GithubClientType, Optional[str]] = (client_type, org_name)
+        if key not in self._per_org_clients:
+            if org_name:
+                logger.info(f"Creating {client_type} client for org {org_name}.")
+            self._per_org_clients[key] = self._clients[client_type](
+                **integration_config(authenticator)
+            )
+        return self._per_org_clients[key]
+
+    def _get_default_client(
+        self, client_type: GithubClientType
+    ) -> AbstractGithubClient:
+        if client_type not in self._instances:
+            logger.info(f"Creating {client_type} client.")
+            self._instances[client_type] = self._clients[client_type](
+                **integration_config(self._authenticator)
+            )
+        return self._instances[client_type]
+
     def get_client(
         self,
         client_type: GithubClientType,
@@ -107,47 +134,23 @@ class GithubClientFactory:
     ) -> AbstractGithubClient:
         if client_type not in self._clients:
             raise ValueError(f"Invalid client type: {client_type}")
-
         if org_login:
-            key: tuple[GithubClientType, Optional[str]] = (client_type, org_login)
-            if key not in self._per_org_clients:
-                per_org_authenticator = self._authenticator.create_org_scoped_authenticator(
-                    org_login, installation_id or ""
-                )
-                logger.info(f"Creating {client_type} client for org {org_login}.")
-                self._per_org_clients[key] = self._clients[client_type](
-                    **integration_config(per_org_authenticator)
-                )
-            return self._per_org_clients[key]
-
-        return self._get_default_client(client_type)
-
-    def _get_default_client(self, client_type: GithubClientType) -> AbstractGithubClient:
-        if client_type not in self._instances:
-            logger.info(f"Creating {client_type} client.")
-            self._instances[client_type] = self._clients[client_type](
-                **integration_config(self._authenticator)
+            authenticator = self._authenticator.create_org_scoped_authenticator(
+                org_login, installation_id or ""
             )
-        return self._instances[client_type]
+            return self._get_or_create_org_client(client_type, authenticator)
+        return self._get_default_client(client_type)
 
     async def iter_org_clients(
         self,
-        client_type: GithubClientType,
+        client_type: GithubClientType = GithubClientType.REST,
         *,
         allowed_orgs: Optional[List[str]] = None,
     ) -> AsyncGenerator[tuple[AbstractGithubClient, Optional[str]], None]:
         """Yield one (client, org_name) pair per accessible organisation."""
-        async for authenticator, org_name in self._authenticator.iter_org_authenticators(
-            allowed_orgs
-        ):
-            key: tuple[GithubClientType, Optional[str]] = (client_type, org_name)
-            if key not in self._per_org_clients:
-                if org_name:
-                    logger.info(f"Creating {client_type} client for org {org_name}.")
-                self._per_org_clients[key] = self._clients[client_type](
-                    **integration_config(authenticator)
-                )
-            yield self._per_org_clients[key], org_name
+        async for authenticator in self._authenticator.iter_org_authenticators(allowed_orgs):
+            client = self._get_or_create_org_client(client_type, authenticator)
+            yield client, authenticator.organization
 
 
 @overload
