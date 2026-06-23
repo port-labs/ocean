@@ -13,6 +13,7 @@ from aiolimiter import AsyncLimiter
 from snyk.overrides import (
     SnykProjectAPIQueryParams,
     SnykPolicyAPIQueryParams,
+    SnykTargetAPIQueryParams,
     SnykVulnerabilityAPIQueryParams,
 )
 from snyk.utils import enrich_batch_with_data, parse_next_page_params
@@ -167,11 +168,10 @@ class SnykClient:
             },
         ):
             if attach_ignore:
+                project_ignores = await self._get_project_ignore_data(org_id, project)
                 for issue in issues:
                     issue_key = issue["attributes"]["key"]
-                    issue["__ignore_data"] = await self._extract_ignore_for_issue(
-                        issue_key, org_id, project
-                    )
+                    issue["__ignore_data"] = project_ignores.get(issue_key, [])
             yield enrich_batch_with_data(issues, project, enrichment_key="__project")
 
     async def get_paginated_issues(
@@ -216,12 +216,6 @@ class SnykClient:
                 url, query_params=query_params
             ):
                 yield enrich_batch_with_data(issues, org)
-
-    async def _extract_ignore_for_issue(
-        self, key: str, org_id: str, project: dict[str, Any]
-    ) -> list[dict[str, Any]]:
-        project_ignores = await self._get_project_ignore_data(org_id, project)
-        return project_ignores.get(key, [])
 
     def _get_projects_by_target(
         self,

@@ -238,10 +238,10 @@ async def test_get_project_vulnerabilities_attaches_ignore_data_when_flag_true(
     ) -> Any:
         yield mock_issues
 
-    async def mock_extract_ignore_for_issue(
-        key: str, org_id: str, project: dict[str, Any]
-    ) -> list[dict[str, Any]]:
-        return ignore_lookup[key]
+    async def mock_get_project_ignore_data(
+        org_id: str, project: dict[str, Any]
+    ) -> dict[str, Any]:
+        return ignore_lookup
 
     with (
         patch.object(
@@ -249,8 +249,8 @@ async def test_get_project_vulnerabilities_attaches_ignore_data_when_flag_true(
         ),
         patch.object(
             snyk_client,
-            "_extract_ignore_for_issue",
-            new=mock_extract_ignore_for_issue,
+            "_get_project_ignore_data",
+            new=mock_get_project_ignore_data,
         ),
     ):
         results = []
@@ -277,13 +277,13 @@ async def test_get_project_vulnerabilities_skips_ignore_lookup_when_flag_false(
     ) -> Any:
         yield mock_issues
 
-    extract_mock = AsyncMock(return_value=[])
+    ignore_data_mock = AsyncMock(return_value={})
 
     with (
         patch.object(
             snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
         ),
-        patch.object(snyk_client, "_extract_ignore_for_issue", new=extract_mock),
+        patch.object(snyk_client, "_get_project_ignore_data", new=ignore_data_mock),
     ):
         results = []
         async for batch in snyk_client.get_project_vulnerabilities(
@@ -293,7 +293,7 @@ async def test_get_project_vulnerabilities_skips_ignore_lookup_when_flag_false(
 
     assert len(results) == 1
     assert "__ignore_data" not in results[0]
-    extract_mock.assert_not_awaited()
+    ignore_data_mock.assert_not_awaited()
 
 
 @pytest.mark.asyncio
