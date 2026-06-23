@@ -1430,7 +1430,9 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for work_item_ids in self._fetch_work_item_id_batches(project, wiql):
             if not work_item_ids:
-                logger.debug(f"No work item IDs returned for project {project['name']}, skipping")
+                logger.debug(
+                    f"No work item IDs returned for project {project['name']}, skipping"
+                )
                 continue
             logger.info(
                 f"Fetched batch of {len(work_item_ids)} work item IDs for project {project['name']}"
@@ -1440,7 +1442,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 work_item_ids,
                 query_params={"$expand": expand},
             ):
-                logger.debug(f"Received {len(work_items_batch)} work items for project {project['name']}")
+                logger.debug(
+                    f"Received {len(work_items_batch)} work items for project {project['name']}"
+                )
                 yield self._add_project_details_to_work_items(work_items_batch, project)
 
     async def generate_work_items(
