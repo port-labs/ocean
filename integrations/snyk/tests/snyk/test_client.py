@@ -5,6 +5,7 @@ from snyk.client import SnykClient
 from snyk.overrides import (
     SnykPolicyAPIQueryParams,
     SnykProjectAPIQueryParams,
+    SnykTargetAPIQueryParams,
     SnykVulnerabilityAPIQueryParams,
 )
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -422,6 +423,55 @@ async def test_get_single_target_by_project_id_should_gracefully_handle_missing_
             mock_org, mocked_project_id, attach_project_data=False
         )
         assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_targets_without_api_params_only_sends_version(
+    snyk_client: SnykClient,
+) -> None:
+    captured_query_params: list[dict[str, Any]] = []
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        captured_query_params.append(query_params or {})
+        yield []
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        async for _ in snyk_client.get_paginated_targets(
+            org=MOCK_ORG, attach_project_data=False, api_params=None
+        ):
+            pass
+
+    assert len(captured_query_params) == 1
+    assert captured_query_params[0] == {"version": snyk_client.snyk_api_version}
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_targets_respects_explicit_exclude_empty_true(
+    snyk_client: SnykClient,
+) -> None:
+    captured_query_params: list[dict[str, Any]] = []
+
+    async def mock_get_paginated_resources(
+        url_path: str, query_params: Any = None
+    ) -> Any:
+        captured_query_params.append(query_params or {})
+        yield []
+
+    with patch.object(
+        snyk_client, "_get_paginated_resources", new=mock_get_paginated_resources
+    ):
+        api_params = SnykTargetAPIQueryParams(exclude_empty=True)
+        async for _ in snyk_client.get_paginated_targets(
+            org=MOCK_ORG, attach_project_data=False, api_params=api_params
+        ):
+            pass
+
+    assert len(captured_query_params) == 1
+    assert captured_query_params[0]["exclude_empty"] is True
 
 
 @pytest.mark.asyncio
