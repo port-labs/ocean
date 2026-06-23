@@ -57,12 +57,7 @@ class TestTriggerPipelineExecutor:
         self, executor: TriggerPipelineExecutor, mock_port_client: MagicMock
     ) -> None:
         run = make_run({"project": "my-group/my-project", "ref": "main"})
-        with (
-            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
-            patch(
-                "gitlab.actions.trigger_pipeline_executor.schedule_pipeline_poll"
-            ) as mock_schedule_poll,
-        ):
+        with patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
@@ -76,7 +71,6 @@ class TestTriggerPipelineExecutor:
         )
         mock_port_client.report_run_completed.assert_not_called()
         mock_port_client.post_run_log.assert_called()
-        mock_schedule_poll.assert_called_once()
 
     async def test_report_pipeline_status_false_completes_immediately(
         self, executor: TriggerPipelineExecutor, mock_port_client: MagicMock
@@ -88,12 +82,7 @@ class TestTriggerPipelineExecutor:
                 "reportPipelineStatus": False,
             }
         )
-        with (
-            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
-            patch(
-                "gitlab.actions.trigger_pipeline_executor.schedule_pipeline_poll"
-            ) as mock_schedule_poll,
-        ):
+        with patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
@@ -101,7 +90,6 @@ class TestTriggerPipelineExecutor:
         mock_port_client.report_run_completed.assert_called_once_with(
             run, True, "Pipeline triggered successfully"
         )
-        mock_schedule_poll.assert_not_called()
 
     async def test_missing_project_raises(
         self, executor: TriggerPipelineExecutor
@@ -157,10 +145,7 @@ class TestTriggerPipelineExecutor:
                 "pipelineVariables": None,
             }
         )
-        with (
-            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
-            patch("gitlab.actions.trigger_pipeline_executor.schedule_pipeline_poll"),
-        ):
+        with patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
         executor.client.trigger_pipeline.assert_called_once_with(  # type: ignore[attr-defined]
@@ -193,10 +178,7 @@ class TestTriggerPipelineExecutor:
                 "pipelineVariables": {"ENV": "prod", "COUNT": 3, "FLAG": True},
             }
         )
-        with (
-            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
-            patch("gitlab.actions.trigger_pipeline_executor.schedule_pipeline_poll"),
-        ):
+        with patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             await executor.execute(run)
 
