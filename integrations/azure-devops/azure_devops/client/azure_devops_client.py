@@ -479,8 +479,15 @@ class AzureDevopsClient(HTTPBaseClient):
         self, teams: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching area paths for {len(teams)} teams")
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TEAMS)
 
-        team_tasks = [self.get_team_field_values(team) for team in teams]
+        async def get_area_paths_with_semaphore(
+            team: dict[str, Any],
+        ) -> Optional[dict[str, Any]]:
+            async with semaphore:
+                return await self.get_team_field_values(team)
+
+        team_tasks = [get_area_paths_with_semaphore(team) for team in teams]
 
         field_values_results = await asyncio.gather(*team_tasks, return_exceptions=True)
 
@@ -1415,6 +1422,27 @@ class AzureDevopsClient(HTTPBaseClient):
             async for policies in stream_async_iterators_tasks(*tasks):
                 yield policies
 
+    async def _fetch_work_items_for_project(
+        self,
+        project: dict[str, Any],
+        wiql: Optional[str],
+        expand: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for work_item_ids in self._fetch_work_item_id_batches(project, wiql):
+            if not work_item_ids:
+                logger.debug(f"No work item IDs returned for project {project['name']}, skipping")
+                continue
+            logger.info(
+                f"Fetched batch of {len(work_item_ids)} work item IDs for project {project['name']}"
+            )
+            async for work_items_batch in self._fetch_work_items_in_batches(
+                project["id"],
+                work_item_ids,
+                query_params={"$expand": expand},
+            ):
+                logger.debug(f"Received {len(work_items_batch)} work items for project {project['name']}")
+                yield self._add_project_details_to_work_items(work_items_batch, project)
+
     async def generate_work_items(
         self,
         wiql: Optional[str],
@@ -1427,27 +1455,18 @@ class AzureDevopsClient(HTTPBaseClient):
         of 20,000 results per query.
         """
         async for projects in self.generate_projects():
-            for project in projects:
-                # Execute WIQL queries with ID-range pagination to get all work item IDs
-                async for work_item_ids in self._fetch_work_item_id_batches(
-                    project, wiql
-                ):
-                    if not work_item_ids:
-                        continue
-                    logger.info(
-                        f"Fetched batch of {len(work_item_ids)} work item IDs for project {project['name']}"
-                    )
-                    # Fetch work items using the IDs (in batches of 200 per API call)
-                    async for work_items_batch in self._fetch_work_items_in_batches(
-                        project["id"],
-                        work_item_ids,
-                        query_params={"$expand": expand},
-                    ):
-                        logger.debug(f"Received {len(work_items_batch)} work items")
-                        # Enrich each work item with project details before yielding
-                        yield self._add_project_details_to_work_items(
-                            work_items_batch, project
-                        )
+            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._fetch_work_items_for_project, project, wiql, expand
+                    ),
+                )
+                for project in projects
+            ]
+            async for work_items in stream_async_iterators_tasks(*tasks):
+                yield work_items
 
     def _parse_wiql_with_order_by(
         self, wiql: Optional[str]

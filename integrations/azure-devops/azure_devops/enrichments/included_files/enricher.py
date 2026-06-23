@@ -8,7 +8,7 @@ from azure_devops.enrichments.included_files.fetcher import (
     IncludedFilesFetcher,
 )
 from azure_devops.enrichments.included_files.strategies import IncludedFilesStrategy
-from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.client.azure_devops_client import AzureDevopsClient, MAX_CONCURRENT_FILE_DOWNLOADS
 from azure_devops.enrichments.included_files.utils import (
     IncludedFilesTarget,
     resolve_included_file_path,
@@ -90,4 +90,10 @@ class IncludedFilesEnricher:
         return entities
 
     async def _fetch_all(self, keys: list[IncludedFileFetchKey]) -> None:
-        await asyncio.gather(*(self._fetcher.get(k) for k in keys))
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_FILE_DOWNLOADS)
+
+        async def _fetch(key: IncludedFileFetchKey) -> None:
+            async with semaphore:
+                await self._fetcher.get(key)
+
+        await asyncio.gather(*(_fetch(k) for k in keys))
