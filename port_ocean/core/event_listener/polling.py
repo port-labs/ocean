@@ -49,7 +49,7 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
 
-    def should_resync(self, last_updated_at: str) -> bool:
+    def should_resync(self) -> bool:
         _last_updated_at = (
             ocean.app.resync_state_updater.last_integration_state_updated_at
         )
@@ -57,7 +57,7 @@ class PollingEventListener(BaseEventListener):
         if _last_updated_at is None:
             return self.event_listener_config.resync_on_start
 
-        return _last_updated_at != last_updated_at
+        return False
 
     def should_resync_from_resync_request(self, last_updated_at: str | None) -> bool:
         """
@@ -116,24 +116,23 @@ class PollingEventListener(BaseEventListener):
             )
 
             resync_request_updated_at = ""
-            should_resync = False
-            resync_reason = ""
+            should_resync = self.should_resync()
+            resync_reason = "First polling iteration, resyncing"
 
-            try:
-                resync_request = (
-                    await ocean.app.port_client.get_integration_resync_request()
-                )
-                resync_request_updated_at = resync_request.get("updatedAt", "")
-                should_resync = self.should_resync_from_resync_request(
-                    resync_request_updated_at
-                )
-                if should_resync:
-                    resync_reason = "Detected integration resync request"
-            except Exception as error:
-                logger.exception(
-                    "Failed to fetch integration resync request in polling listener, continuing without resync request signal",
-                    error=error,
-                )
+            if not should_resync:
+                try:
+                    resync_request = (
+                        await ocean.app.port_client.get_integration_resync_request()
+                    )
+                    should_resync = bool(resync_request)
+                    if should_resync:
+                        resync_reason = "Detected integration resync request"
+                        resync_request_updated_at = resync_request.get("updatedAt", "")
+                except Exception as error:
+                    logger.exception(
+                        "Failed to fetch integration resync request in polling listener, continuing without resync request signal",
+                        error=error,
+                    )
 
             if should_resync:
                 try:
