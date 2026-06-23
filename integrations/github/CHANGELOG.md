@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.0.8 (2026-06-23)
+
+
+### Bug Fixes
+
+- Fix semaphore permit leak in `GitHubRateLimiter.__aenter__` on cancellation
+
+
 ## 6.0.7 (2026-06-22)
 
 
