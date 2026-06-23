@@ -3,6 +3,7 @@ from typing import Any, Type, cast, Dict, List
 from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 from loguru import logger
 import asyncio
+from port_ocean.context.ocean import ocean
 
 
 @dataclass
@@ -61,7 +62,7 @@ class GetDeploymentGroupTags(Action[DeploymentGroupActionInput]):
     async def _fetch_tags(
         self, app_name: str, group_name: str, region: str, account_id: str
     ) -> List[Dict[str, Any]]:
-        arn = f"arn:aws:codedeploy:{region}:{account_id}:deploymentgroup:{app_name}/{group_name}"
+        arn = f"arn:{ocean.integration_config.get('aws_partition', 'aws')}:codedeploy:{region}:{account_id}:deploymentgroup:{app_name}/{group_name}"
         return await self.client.list_tags_for_resource(ResourceArn=arn)
 
 
