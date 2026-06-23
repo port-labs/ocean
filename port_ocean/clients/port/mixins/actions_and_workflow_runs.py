@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Literal
+from typing import Any, Literal, TypeGuard
 
 import httpx
 from port_ocean.clients.port.authentication import PortAuthentication
@@ -21,8 +21,23 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         WorkflowNodesClientMixin.__init__(self, auth, client)
         self._poll_wf_node: bool = False
 
-    def _is_wf_node_run(self, run: ActionRun | WorkflowNodeRun) -> bool:
+    def _is_wf_node_run(
+        self, run: ActionRun | WorkflowNodeRun
+    ) -> TypeGuard[WorkflowNodeRun]:
         return isinstance(run, WorkflowNodeRun)
+
+    @staticmethod
+    def _wf_node_completion_patch(
+        result: WorkflowNodeRunResult,
+        output: dict[str, Any],
+    ) -> dict[str, Any]:
+        patch: dict[str, Any] = {
+            "status": WorkflowNodeRunStatus.COMPLETED,
+            "result": result,
+        }
+        if output:
+            patch["output"] = output
+        return patch
 
     async def claim_pending_runs(
         self, limit: int, visibility_timeout_ms: int
@@ -83,10 +98,9 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
             )
             await self.patch_wf_node_run(
                 run.id,
-                {
-                    "status": WorkflowNodeRunStatus.COMPLETED,
-                    "result": WorkflowNodeRunResult.FAILED,
-                },
+                self._wf_node_completion_patch(
+                    WorkflowNodeRunResult.FAILED, run.output
+                ),
                 should_raise=should_raise,
             )
         else:
@@ -165,6 +179,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                     "output": output,
                 },
             )
+            run.output = output
         else:
             await self.patch_run(
                 run.id,
@@ -176,6 +191,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         run: ActionRun | WorkflowNodeRun,
         success: bool,
         message: str | None = None,
+        output: dict[str, Any] | None = None,
     ) -> None:
         """Report a run as completed with success or failure."""
         if self._is_wf_node_run(run):
@@ -194,10 +210,9 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 )
             await self.patch_wf_node_run(
                 run.id,
-                {
-                    "status": WorkflowNodeRunStatus.COMPLETED,
-                    "result": result,
-                },
+                self._wf_node_completion_patch(
+                    result, output if output is not None else run.output
+                ),
             )
         else:
             status = RunStatus.SUCCESS if success else RunStatus.FAILURE
