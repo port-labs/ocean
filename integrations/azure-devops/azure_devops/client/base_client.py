@@ -50,10 +50,10 @@ class HTTPBaseClient:
         auth_headers = await self._auth_provider.get_auth_headers()
         headers = {**(headers or {}), **auth_headers}
         self._client.follow_redirects = True
-        response: Optional[Response] = None
         rate_limit_retries = 0
 
         while True:
+            response: Optional[Response] = None
             try:
                 async with self._rate_limiter:
                     response = await self._client.request(
@@ -74,14 +74,18 @@ class HTTPBaseClient:
                             f"Request to {url} returned 429, throttling for {ADO_RATE_LIMIT_WINDOW_SECONDS}s and retrying "
                             f"(attempt {rate_limit_retries} of {MAX_RATE_LIMIT_RETRIES})"
                         )
-                        await self._rate_limiter.signal_throttle(ADO_RATE_LIMIT_WINDOW_SECONDS)
+                        await self._rate_limiter.signal_throttle(
+                            ADO_RATE_LIMIT_WINDOW_SECONDS
+                        )
                         continue
                     logger.error(
                         f"Request to {url} returned 429 and exhausted {MAX_RATE_LIMIT_RETRIES} retries, giving up"
                     )
                     raise e
                 if e.response.status_code == 404:
-                    logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
+                    logger.warning(
+                        f"Couldn't access url: {url}. Failed due to 404 error"
+                    )
                     return None
                 else:
                     if e.response.status_code == 401:
@@ -94,7 +98,9 @@ class HTTPBaseClient:
                     raise e
             except httpx.HTTPError as e:
                 if isinstance(e, (ReadTimeout, ConnectTimeout)):
-                    await self._rate_limiter.signal_throttle(ADO_RATE_LIMIT_WINDOW_SECONDS)
+                    await self._rate_limiter.signal_throttle(
+                        ADO_RATE_LIMIT_WINDOW_SECONDS
+                    )
                 logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
                 raise e
             finally:

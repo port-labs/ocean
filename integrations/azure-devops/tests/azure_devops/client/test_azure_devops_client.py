@@ -2065,9 +2065,7 @@ async def test_generate_work_items_multiple_projects_concurrent(
     client = AzureDevopsClient(
         "https://fake_org_url.com", PatAuthProvider("fake_pat"), "fake_username"
     )
-    projects = [
-        {"id": f"proj{i}", "name": f"Project {i}"} for i in range(1, 4)
-    ]
+    projects = [{"id": f"proj{i}", "name": f"Project {i}"} for i in range(1, 4)]
 
     def create_work_item(wi_id: int, proj_id: str) -> Dict[str, Any]:
         return {"id": wi_id, "fields": {"System.TeamProject": proj_id}}
@@ -2075,14 +2073,16 @@ async def test_generate_work_items_multiple_projects_concurrent(
     async def mock_send_request(
         method: str, url: str, **kwargs: Any
     ) -> Optional[Response]:
-        proj_id = next(
-            (p["id"] for p in projects if p["id"] in url), None
-        )
+        proj_id = next((p["id"] for p in projects if p["id"] in url), None)
         if "wit/wiql" in url and proj_id:
             return Response(
                 status_code=200,
                 request=Request(method, url),
-                json={"workItems": [{"id": int(proj_id[-1]) * 100 + i} for i in range(1, 4)]},
+                json={
+                    "workItems": [
+                        {"id": int(proj_id[-1]) * 100 + i} for i in range(1, 4)
+                    ]
+                },
             )
         if "wit/workitems" in url and proj_id:
             params = kwargs.get("params", {})

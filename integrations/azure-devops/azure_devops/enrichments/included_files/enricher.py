@@ -8,7 +8,10 @@ from azure_devops.enrichments.included_files.fetcher import (
     IncludedFilesFetcher,
 )
 from azure_devops.enrichments.included_files.strategies import IncludedFilesStrategy
-from azure_devops.client.azure_devops_client import AzureDevopsClient, MAX_CONCURRENT_FILE_DOWNLOADS
+from azure_devops.client.azure_devops_client import (
+    AzureDevopsClient,
+    MAX_CONCURRENT_FILE_DOWNLOADS,
+)
 from azure_devops.enrichments.included_files.utils import (
     IncludedFilesTarget,
     resolve_included_file_path,
