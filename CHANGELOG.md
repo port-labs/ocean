@@ -12,6 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Added `find_run_with_retry` to the Port client for looking up action/workflow runs by external ID with exponential backoff, handling races where webhooks arrive before `externalRunId` is written.
+- Skip action webhook results (no mapped resource) during live-events catalog sync and lakehouse export, so integrations no longer need custom `sync_raw_results` filtering.
 
 ## 0.43.19 (2026-06-22)
 
