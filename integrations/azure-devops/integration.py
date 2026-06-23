@@ -469,12 +469,24 @@ class AzureDevopsReleaseConfig(ResourceConfig):
     )
 
 
+class AzureDevopsBuildSelector(AzureDevopsSelector):
+    enrich_with_first_commit: bool = Field(
+        default=False,
+        alias="enrichWithFirstCommit",
+        title="Enrich With First Commit",
+        description=(
+            "When enabled, each build is enriched under __firstCommit with the earliest commit it "
+            "shipped (__sha, __timestamp in UTC, __commitCount). Defaults to false."
+        ),
+    )
+
+
 class AzureDevopsBuildConfig(ResourceConfig):
     kind: Literal[Kind.BUILD] = Field(
         title="Azure Devops Build",
         description="Azure Devops build resource kind.",
     )
-    selector: AzureDevopsSelector = Field(
+    selector: AzureDevopsBuildSelector = Field(
         title="Build selector",
         description="Selector for the build resource.",
     )

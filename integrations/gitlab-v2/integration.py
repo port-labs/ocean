@@ -774,3 +774,6 @@ class GitlabIntegration(BaseIntegration):
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
         )
+        self.context.app.execution_manager._webhook_manager = (
+            self.context.app.webhook_manager
+        )

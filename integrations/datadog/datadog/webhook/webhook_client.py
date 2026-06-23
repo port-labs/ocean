@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import Any
+from typing import Any, Iterable
 
 import httpx
 from loguru import logger
@@ -40,8 +40,8 @@ _WEBHOOK_PAYLOAD_TEMPLATE: dict[str, str] = {
 
 
 class DatadogWebhookClient:
-    def __init__(self, client: DatadogClient):
-        self.client = client
+    def __init__(self, clients: Iterable[DatadogClient]):
+        self.clients = clients
 
     async def upsert_webhook_setup(
         self,
@@ -55,31 +55,42 @@ class DatadogWebhookClient:
         webhook_target = self._build_webhook_target_url(
             base_url, f"/integration{MONITOR_WEBHOOK_PATH}"
         )
-        try:
-            await self._sync_webhook(webhook_name, webhook_target, webhook_secret)
-            await self._sync_notification_rule(
-                webhook_name,
-                notification_rule_scope=notification_rule_scope
-                or DEFAULT_NOTIFICATION_RULE_SCOPE,
-            )
-        except Exception as e:
-            logger.error(f"Failed to setup Datadog live events: {str(e)}, skipping...")
-            raise
+        for client in self.clients:
+            try:
+                await self._sync_webhook(
+                    client, webhook_name, webhook_target, webhook_secret
+                )
+                await self._sync_notification_rule(
+                    client,
+                    webhook_name,
+                    notification_rule_scope=notification_rule_scope
+                    or DEFAULT_NOTIFICATION_RULE_SCOPE,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to setup Datadog live events for org "
+                    f"'{client.org_name}': {str(e)}, skipping..."
+                )
+                continue
 
     async def _sync_webhook(
-        self, webhook_name: str, target_url: str, webhook_secret: str | None
+        self,
+        client: DatadogClient,
+        webhook_name: str,
+        target_url: str,
+        webhook_secret: str | None,
     ) -> None:
         webhooks_base = (
-            f"{self.client.api_url}/api/v1/integration/webhooks/configuration/webhooks"
+            f"{client.api_url}/api/v1/integration/webhooks/configuration/webhooks"
         )
-        existing = await self._find_existing_webhook(webhook_name)
+        existing = await self._find_existing_webhook(client, webhook_name)
         desired_body = self._build_webhook_body(
             target_url, webhook_secret, name=webhook_name
         )
 
         if existing is None:
             logger.info(f"Creating Datadog webhook '{webhook_name}'")
-            await self.client.send_api_request(
+            await client.send_api_request(
                 url=webhooks_base, method="POST", json_data=desired_body
             )
             return
@@ -90,17 +101,19 @@ class DatadogWebhookClient:
 
         logger.info(f"Updating Datadog webhook '{webhook_name}'")
         update_body = self._build_webhook_body(target_url, webhook_secret)
-        await self.client.send_api_request(
+        await client.send_api_request(
             url=f"{webhooks_base}/{webhook_name}", method="PUT", json_data=update_body
         )
 
-    async def _find_existing_webhook(self, webhook_name: str) -> dict[str, Any] | None:
+    async def _find_existing_webhook(
+        self, client: DatadogClient, webhook_name: str
+    ) -> dict[str, Any] | None:
         url = (
-            f"{self.client.api_url}/api/v1/integration/webhooks/configuration/webhooks"
+            f"{client.api_url}/api/v1/integration/webhooks/configuration/webhooks"
             f"/{webhook_name}"
         )
         try:
-            response = await self.client.send_api_request(url=url)
+            response = await client.send_api_request(url=url)
         except httpx.HTTPStatusError as err:
             if err.response.status_code == 404:
                 return None
@@ -108,16 +121,19 @@ class DatadogWebhookClient:
         return response if isinstance(response, dict) else None
 
     @staticmethod
+    def _build_custom_headers(webhook_secret: str | None) -> str | None:
+        """Build the webhook's custom_headers JSON carrying the auth secret, if set."""
+        if not webhook_secret:
+            return None
+        return json.dumps({PORT_AUTH_HEADER_NAME: webhook_secret})
+
+    @staticmethod
     def _webhook_needs_update(
         existing: dict[str, Any],
         target_url: str,
         webhook_secret: str | None,
     ) -> bool:
-        expected_headers = (
-            json.dumps({PORT_AUTH_HEADER_NAME: webhook_secret})
-            if webhook_secret
-            else None
-        )
+        expected_headers = DatadogWebhookClient._build_custom_headers(webhook_secret)
         existing_payload = existing.get("payload")
         try:
             parsed_payload = json.loads(existing_payload) if existing_payload else None
@@ -142,19 +158,21 @@ class DatadogWebhookClient:
         }
         if name:
             body["name"] = name
-        if webhook_secret:
-            body["custom_headers"] = json.dumps({PORT_AUTH_HEADER_NAME: webhook_secret})
+        custom_headers = DatadogWebhookClient._build_custom_headers(webhook_secret)
+        if custom_headers:
+            body["custom_headers"] = custom_headers
         return body
 
     async def _sync_notification_rule(
         self,
+        client: DatadogClient,
         webhook_name: str,
         notification_rule_scope: str,
     ) -> None:
-        rules_url = f"{self.client.api_url}/api/v2/monitor/notification_rule"
+        rules_url = f"{client.api_url}/api/v2/monitor/notification_rule"
         recipient = f"webhook-{webhook_name}"
 
-        rules_response = await self.client.send_api_request(url=rules_url)
+        rules_response = await client.send_api_request(url=rules_url)
         existing_rule = self._find_rule_by_scope_and_prefix(
             rules_response,
             scope=notification_rule_scope,
@@ -168,7 +186,7 @@ class DatadogWebhookClient:
             logger.info(
                 f"Creating monitor notification rule '{rule_name}' with scope '{notification_rule_scope}'"
             )
-            await self.client.send_api_request(
+            await client.send_api_request(
                 url=rules_url,
                 method="POST",
                 json_data=self._build_notification_rule_payload(
@@ -190,7 +208,7 @@ class DatadogWebhookClient:
         rule_name = attributes.get("name")
         updated_recipients = [*current_recipients, recipient]
         logger.info(f"Appending recipient to monitor notification rule '{rule_id}'")
-        await self.client.send_api_request(
+        await client.send_api_request(
             url=f"{rules_url}/{rule_id}",
             method="PATCH",
             json_data=self._build_notification_rule_payload(
