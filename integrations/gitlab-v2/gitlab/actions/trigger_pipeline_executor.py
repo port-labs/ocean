@@ -40,6 +40,12 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
             for k, v in raw_variables.items()
         ]
 
+        await ocean.port_client.post_run_log(
+            run,
+            f"Triggering GitLab pipeline for {project} on ref {ref}",
+            should_raise=False,
+        )
+
         try:
             pipeline = await self.client.trigger_pipeline(project, ref, variables)
         except httpx.HTTPStatusError as e:
@@ -62,6 +68,11 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
             pipeline["web_url"],
             external_id,
         )
+        await ocean.port_client.post_run_log(
+            run,
+            f"Pipeline triggered: {pipeline['web_url']}",
+            should_raise=False,
+        )
         logger.info(
             f"Pipeline {pipeline['id']} triggered for project {project} on ref {ref}",
             pipeline_id=pipeline["id"],
@@ -71,9 +82,6 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
         )
 
         if not run.execution_properties.get("reportPipelineStatus", True):
-            logger.info(
-                f"reportPipelineStatus is disabled for run {run.id}, completing run immediately"
-            )
             await ocean.port_client.report_run_completed(
                 run, True, "Pipeline triggered successfully"
             )
