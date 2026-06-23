@@ -7,6 +7,7 @@ from port_ocean.core.models import ActionRun, WorkflowNodeRun
 
 from gitlab.actions.abstract_gitlab_executor import AbstractGitlabExecutor
 from gitlab.actions.utils import build_external_id
+from gitlab.helpers.utils import format_gitlab_api_error
 from gitlab.helpers.exceptions import (
     GitlabTriggerPipelineError,
     MissingExecutionPropertyError,
@@ -49,11 +50,10 @@ class TriggerPipelineExecutor(AbstractGitlabExecutor):
         try:
             pipeline = await self.client.trigger_pipeline(project, ref, variables)
         except httpx.HTTPStatusError as e:
-            try:
-                message = e.response.json().get("message", str(e))
-            except Exception:
-                message = str(e)
-            raise GitlabTriggerPipelineError(f"Failed to trigger pipeline: {message}")
+            detail = format_gitlab_api_error(e.response)
+            raise GitlabTriggerPipelineError(
+                f"Could not trigger pipeline for project '{project}' on ref '{ref}': {detail}"
+            )
 
         if not pipeline or not all(
             k in pipeline for k in ("id", "project_id", "web_url")

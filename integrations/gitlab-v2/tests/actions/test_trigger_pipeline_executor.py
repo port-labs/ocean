@@ -189,3 +189,27 @@ class TestTriggerPipelineExecutor:
         assert vars_by_key["ENV"] == "prod"
         assert vars_by_key["COUNT"] == json.dumps(3)
         assert vars_by_key["FLAG"] == json.dumps(True)
+
+    async def test_validation_error_message_is_human_readable(
+        self, executor: TriggerPipelineExecutor
+    ) -> None:
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "message": {"base": ["Reference not found"]},
+        }
+        executor.client.trigger_pipeline = AsyncMock(  # type: ignore[method-assign]
+            side_effect=httpx.HTTPStatusError(
+                "400",
+                request=MagicMock(),
+                response=mock_response,
+            ),
+        )
+        run = make_run({"project": "my-group/my-project", "ref": "missing-branch"})
+        with pytest.raises(
+            GitlabTriggerPipelineError,
+            match=(
+                r"Could not trigger pipeline for project 'my-group/my-project' "
+                r"on ref 'missing-branch': Reference not found"
+            ),
+        ):
+            await executor.execute(run)

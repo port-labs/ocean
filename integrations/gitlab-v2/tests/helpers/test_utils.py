@@ -1,6 +1,10 @@
+from unittest.mock import MagicMock
+
 from gitlab.helpers.utils import (
     build_search_query,
     enrich_resources_with_project,
+    format_gitlab_api_error,
+    format_gitlab_api_error_message,
 )
 
 
@@ -30,6 +34,24 @@ class TestUtils:
         assert result[1]["__project"]["path_with_namespace"] == "group/project-b"
         assert result[2]["id"] == 3
         assert result[2]["__project"]["path_with_namespace"] == "group/project-c"
+
+
+class TestFormatGitlabApiError:
+    def test_string_message(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {"message": "403 Forbidden"}
+        assert format_gitlab_api_error(response) == "403 Forbidden"
+
+    def test_validation_error_dict(self) -> None:
+        response = MagicMock()
+        response.json.return_value = {"message": {"base": ["Reference not found"]}}
+        assert format_gitlab_api_error(response) == "Reference not found"
+
+    def test_field_specific_validation_error(self) -> None:
+        assert (
+            format_gitlab_api_error_message({"ref": ["is missing"]})
+            == "ref: is missing"
+        )
 
 
 class TestBuildSearchQuery:
