@@ -91,9 +91,9 @@ async def test_send_api_request_rate_limit(snyk_client: SnykClient) -> None:
 
         elapsed_time = time.monotonic() - start_time
 
-        assert elapsed_time >= 1.0, (
-            "Rate limiter did not properly enforce the rate limit."
-        )
+        assert (
+            elapsed_time >= 1.0
+        ), "Rate limiter did not properly enforce the rate limit."
 
 
 @pytest.mark.asyncio
@@ -148,7 +148,10 @@ async def test_get_paginated_issues_with_project_params_fetches_issues_per_proje
         yield [mock_project]
 
     async def mock_get_project_vulnerabilities(
-        org_id: str, project: dict[str, Any], query_params: dict[str, Any]
+        org_id: str,
+        project: dict[str, Any],
+        query_params: dict[str, Any],
+        attach_ignore: bool = False,
     ) -> Any:
         yield mock_issues
 
@@ -192,7 +195,10 @@ async def test_get_paginated_issues_merges_api_params_with_base_version(
         yield [mock_project]
 
     async def mock_get_project_vulnerabilities(
-        org_id: str, project: dict[str, Any], query_params: dict[str, Any]
+        org_id: str,
+        project: dict[str, Any],
+        query_params: dict[str, Any],
+        attach_ignore: bool = False,
     ) -> Any:
         captured_query_params.append(query_params)
         yield []
