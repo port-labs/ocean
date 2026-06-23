@@ -12,7 +12,6 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
@@ -756,16 +755,7 @@ class GitlabHandlerMixin(HandlerMixin):
 
 
 class GitlabLiveEventsProcessorManager(LiveEventsProcessorManager, GitlabHandlerMixin):
-    async def sync_raw_results(
-        self, webhook_events_raw_result: list[WebhookEventRawResults]
-    ) -> None:
-        syncable_results = [
-            result
-            for result in webhook_events_raw_result
-            if result._resource is not None
-        ]
-        if syncable_results:
-            await super().sync_raw_results(syncable_results)
+    pass
 
 
 class GitlabIntegration(BaseIntegration):

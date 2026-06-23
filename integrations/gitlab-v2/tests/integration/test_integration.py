@@ -9,7 +9,6 @@ from port_ocean.core.handlers.port_app_config.validators import (
     validate_and_get_config_schema,
 )
 from pydantic import ValidationError
-from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gitlab.helpers.utils import GitLabDeploymentStatus
 from integration import (
@@ -90,28 +89,6 @@ async def test_gitlab_webhook_manager_uses_gitmanipulation_handler(
         # Assert
         assert isinstance(manager, GitlabLiveEventsProcessorManager)
         assert manager.EntityProcessorClass == GitManipulationHandler
-
-
-@pytest.mark.asyncio
-async def test_gitlab_webhook_manager_skips_action_results_without_resource(
-    mock_context: MagicMock, mock_signal_handler: AsyncMock
-) -> None:
-    with patch("integration.signal_handler", mock_signal_handler):
-        integration = GitlabIntegration(mock_context)
-        manager = integration.context.app.webhook_manager
-
-        with patch.object(
-            LiveEventsMixin, "sync_raw_results", AsyncMock()
-        ) as mock_super_sync:
-            action_result = WebhookEventRawResults([], [])
-            await manager.sync_raw_results([action_result])
-            mock_super_sync.assert_not_called()
-
-            catalog_result = WebhookEventRawResults([{"id": "1"}], [])
-            catalog_result._resource = MagicMock()
-            await manager.sync_raw_results([action_result, catalog_result])
-
-            mock_super_sync.assert_called_once_with([catalog_result])
 
 
 def test_gitlab_port_app_config_schema_generation_includes_all_resource_kinds() -> None:
