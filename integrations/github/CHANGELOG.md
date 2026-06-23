@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added multi-organization support for GitHub App authentication. When only `githubAppId` and `githubAppPrivateKey` are configured (no `githubOrganization` or `githubAppInstallationId`), the integration automatically discovers all app installations and syncs every installed organization. The `organizations` selector continues to act as an allow-list filter for both PAT and App multi-org modes.
 
 
+## 6.0.7 (2026-06-22)
+
+
+### Improvements
+
+- Retry timed-out Graphql paginated requests with lower page size.
+
+
 ## 6.0.6 (2026-06-22)
 
 
