@@ -57,7 +57,9 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
 
         repo_name, organization, params = parse_github_options(dict(options))
         enrich_first_commit = bool(params.pop("enrich_with_first_commit", False))
-        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/deployments"
+        endpoint = (
+            f"{self.client.base_url}/repos/{organization}/{repo_name}/deployments"
+        )
 
         if not enrich_first_commit:
             async for deployments in self.client.send_paginated_request(
