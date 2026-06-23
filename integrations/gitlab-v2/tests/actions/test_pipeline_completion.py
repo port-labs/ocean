@@ -119,7 +119,9 @@ class TestCompleteRunFromPipelineStatus:
 
     async def test_skips_when_run_not_found(self) -> None:
         with patch("gitlab.actions.pipeline_completion.ocean") as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=None)
+            mock_ocean.port_client.find_run_by_external_id = AsyncMock(
+                return_value=None
+            )
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
             result = await complete_run_from_pipeline_status(
@@ -277,9 +279,7 @@ class TestPollPipelineToCompletion:
                 side_effect=[True, False]
             )
             mock_ocean.port_client.report_run_completed = AsyncMock()
-            with patch(
-                "gitlab.actions.pipeline_completion.asyncio.sleep", AsyncMock()
-            ):
+            with patch("gitlab.actions.pipeline_completion.asyncio.sleep", AsyncMock()):
                 await poll_pipeline_to_completion(
                     external_id=EXTERNAL_ID,
                     project_id=42,
@@ -305,9 +305,7 @@ class TestPollPipelineToCompletion:
                 )
             )
             mock_ocean.port_client.report_run_failure = AsyncMock()
-            with patch(
-                "gitlab.actions.pipeline_completion.asyncio.sleep", AsyncMock()
-            ):
+            with patch("gitlab.actions.pipeline_completion.asyncio.sleep", AsyncMock()):
                 await poll_pipeline_to_completion(
                     external_id=EXTERNAL_ID,
                     project_id=42,
