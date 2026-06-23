@@ -66,6 +66,11 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+  - name: aws_partition
+    required: false
+    type: string
+    sensitive: false
+    description: AWS Partition, defaults to "aws" which is the standard global one (optional).
 disableDefaultInstallationMethods: true
 installationDocs:
   saas:
