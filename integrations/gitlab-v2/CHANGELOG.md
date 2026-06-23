@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Bumped ocean version to ^0.43.20
+- `trigger_pipeline` completion webhooks now use Ocean's `find_run_with_retry` instead of a single immediate run lookup
+- GitLab API validation errors when triggering a pipeline are surfaced as readable Port run messages (e.g. "Reference not found") without a stack trace
 
 ## 0.7.42 (2026-06-22)
 
