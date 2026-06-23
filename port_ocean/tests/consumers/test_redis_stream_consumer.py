@@ -282,23 +282,19 @@ class TestRedisStreamConsumerConnection:
 
 
 class TestRedisStreamConsumer:
-    def test_parse_json_object_field_handles_double_encoded_json(self) -> None:
+    def test_parse_raw_json_to_dict_parses_json_object(self) -> None:
         inner = {"action": "opened", "pull_request": {"number": 1}}
-        fields = {"payload": json.dumps(json.dumps(inner))}
 
-        assert RedisStreamConsumer._parse_json_object_field(fields, "payload") == inner
+        assert (
+            RedisStreamConsumer._parse_raw_json_to_dict(json.dumps(inner), "payload")
+            == inner
+        )
 
-    def test_parse_json_object_field_raises_for_non_object_json(self) -> None:
-        fields = {"payload": json.dumps(["not", "an", "object"])}
-
+    def test_parse_raw_json_to_dict_raises_for_non_object_json(self) -> None:
         with pytest.raises(InvalidLiveEventsRedisStreamFieldError, match="payload"):
-            RedisStreamConsumer._parse_json_object_field(fields, "payload")
-
-    def test_get_field_is_case_insensitive(self) -> None:
-        fields = {"Payload": "{}", "webhookPath": "/webhook"}
-
-        assert RedisStreamConsumer._get_field(fields, "payload") == "{}"
-        assert RedisStreamConsumer._get_field(fields, "webhookPath") == "/webhook"
+            RedisStreamConsumer._parse_raw_json_to_dict(
+                json.dumps(["not", "an", "object"]), "payload"
+            )
 
     def test_normalize_headers_lowercases_keys(self) -> None:
         assert RedisStreamConsumer._normalize_headers(

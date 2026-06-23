@@ -197,7 +197,7 @@ class RedisStreamConsumer:
 
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         try:
-            raw_webhook_path = self._get_field(fields, "webhookPath")
+            raw_webhook_path = fields.get("webhookPath")
             if not raw_webhook_path:
                 logger.warning(
                     "Redis stream message missing webhookPath, acknowledging",
@@ -214,10 +214,10 @@ class RedisStreamConsumer:
                 )
                 return
 
-            raw_payload = self._get_field(fields, "payload")
+            raw_payload = fields.get("payload")
             payload = self._parse_raw_json_to_dict(raw_payload, "payload")
             headers = self._normalize_headers(
-                self._parse_json_object_field(fields, "headers")
+                self._parse_raw_json_to_dict(fields.get("headers"), "headers")
             )
             original_request = None
             if raw_payload is not None:
@@ -256,13 +256,6 @@ class RedisStreamConsumer:
             path = f"/{path.split(_INTEGRATION_PATH_PREFIX, 1)[1]}"
         return path
 
-    @staticmethod
-    def _get_field(fields: dict[str, str], field_name: str) -> str | None:
-        for key, value in fields.items():
-            if key.lower() == field_name.lower():
-                return value
-        return None
-
     @classmethod
     def _parse_raw_json_to_dict(
         cls, raw_value: str | None, field_name: str
@@ -271,20 +264,9 @@ class RedisStreamConsumer:
             return {}
 
         parsed: Any = json.loads(raw_value)
-        while isinstance(parsed, str):
-            parsed = json.loads(parsed)
-
         if not isinstance(parsed, dict):
             raise InvalidLiveEventsRedisStreamFieldError(field_name)
         return parsed
-
-    @classmethod
-    def _parse_json_object_field(
-        cls, fields: dict[str, str], field_name: str
-    ) -> dict[str, Any]:
-        return cls._parse_raw_json_to_dict(
-            cls._get_field(fields, field_name), field_name
-        )
 
     @staticmethod
     def _normalize_headers(headers: dict[str, Any]) -> dict[str, str]:
