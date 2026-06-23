@@ -3,7 +3,6 @@ from azure.core.credentials_async import AsyncTokenCredential
 from pydantic.v1 import BaseModel, Field
 from typing import List, Optional
 from abc import ABC, abstractmethod
-from pydantic import ConfigDict
 
 
 class AzureRequest(BaseModel):
@@ -16,7 +15,8 @@ class AzureRequest(BaseModel):
     page_size: int = 100
     data_key: str = "data"
 
-    config: ConfigDict = ConfigDict(extra='forbid')
+    class Config:
+        extra = "forbid"
 
 
 class AbstractAzureClient(ABC):
