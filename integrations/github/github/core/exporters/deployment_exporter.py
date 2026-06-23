@@ -145,7 +145,6 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
         deployment: dict[str, Any],
         predecessor_sha: Optional[str],
     ) -> dict[str, Any]:
-        # Must never raise: a failure here would abort the whole gathered batch.
         deployment_sha = deployment.get("sha")
         if not deployment_sha:
             return deployment
@@ -192,8 +191,6 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
                     "__commitCount": comparison.get("total_commits") or len(commits),
                 }
 
-        # Fallback (first deployment in the environment, empty range, or unreachable
-        # predecessor): the deployed commit itself.
         commit = await self._get_commit(organization, repo_name, deployment_sha)
         committer = (commit.get("commit") or {}).get("committer") or {}
         if committer.get("date"):

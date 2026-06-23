@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added an opt-in `enrichWithFirstCommit` selector flag to the `deployment` kind that attaches the earliest commit shipped since the previous deployment to the same environment under `__firstCommit` (`__sha`, `__timestamp`, `__commitCount`), enabling the DORA Lead Time for Changes metric (`created_at - __firstCommit.__timestamp`). Defaults to false; when enabled it adds one extra API call per deployment.
+- Added an opt-in `enrichWithFirstCommit` flag to the `deployment` kind that attaches the earliest commit since the previous deployment under `__firstCommit`, powering the DORA Lead Time for Changes metric (defaults to false; adds one API call per deployment when enabled).
 
 
 ## 6.0.8 (2026-06-23)
