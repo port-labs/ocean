@@ -7,15 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.10.2 (2026-06-23)
-
-
-### Features
-
-- The `user` kind now supports the Graph Users API via a `source` selector (`source: graph`, `vso.graph` scope); the default remains the Entitlements API (`source: entitlements`).
-
-
-## 0.10.2 (2026-06-23)
+## 0.10.3 (2026-06-23)
 
 
 ### Bug Fixes
@@ -23,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed persistent 429 responses killing resync generators mid-stream after the transport exhausts its retry budget. When the ADO CDN/WAF rate-limits hard enough that all 10 transport retries still return 429, the response previously propagated as an unhandled exception causing incomplete syncs and silent data loss. It is now caught in `send_request` and retried up to 3 more times with the full ADO TSTU reset window (300s) before failing.
 - Fixed unbounded concurrent file downloads in `IncludedFilesEnricher`. File downloads triggered by `includedFiles` config previously fired all at once via `asyncio.gather` with no concurrency cap, causing 429 bursts on orgs with large repo counts.
 - Work item sync now processes projects concurrently using the same `BoundedSemaphore` fan-out pattern as major kinds.
+
+
+## 0.10.2 (2026-06-23)
+
+
+### Features
+
+- The `user` kind now supports the Graph Users API via a `source` selector (`source: graph`, `vso.graph` scope); the default remains the Entitlements API (`source: entitlements`).
 
 
 ## 0.10.1 (2026-06-22)
