@@ -21,6 +21,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 
+_INTEGRATION_PATH_PREFIX = "/integration/"
+
 
 class _WebhookRequestAdapter:
     """Minimal read-only adapter that satisfies the interface expected by webhook
@@ -176,7 +178,7 @@ class RedisStreamConsumer:
                     groupname=self._consumer_group,
                     consumername=self._consumer_name,
                     streams={self._stream_key: ">"},
-                    count=10,
+                    count=self._settings.read_count,
                     block=self._settings.block_ms,
                 )
                 if not response:
@@ -247,13 +249,11 @@ class RedisStreamConsumer:
         """Map ingestion HTTP paths to integration processor paths.
 
         Integrations register processors relative to the integration router
-        (e.g. ``/webhook``), while ingestion forwards the public URL suffix
         (e.g. ``integration/webhook``).
         """
         path = f"/{webhook_path.strip('/')}"
-        integration_marker = "/integration/"
-        if integration_marker in path:
-            path = f"/{path.split(integration_marker, 1)[1]}"
+        if _INTEGRATION_PATH_PREFIX in path:
+            path = f"/{path.split(_INTEGRATION_PATH_PREFIX, 1)[1]}"
         return path
 
     @staticmethod

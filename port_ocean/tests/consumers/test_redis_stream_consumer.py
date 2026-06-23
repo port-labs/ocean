@@ -246,6 +246,40 @@ class TestRedisStreamConsumerConnection:
         assert not os.path.exists(cert_path)
         assert not os.path.exists(key_path)
 
+    @pytest.mark.asyncio
+    async def test_read_loop_uses_configured_read_count(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            read_count=25,
+            block_ms=100,
+        )
+        mock_redis = AsyncMock()
+
+        async def stop_after_first_read(**_kwargs: object) -> list[object]:
+            consumer._is_running = False
+            return []
+
+        mock_redis.xreadgroup = AsyncMock(side_effect=stop_after_first_read)
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis = mock_redis
+            consumer._is_running = True
+
+            await consumer._read_loop()
+
+        mock_redis.xreadgroup.assert_awaited_once()
+        assert mock_redis.xreadgroup.await_args.kwargs["count"] == 25
+
 
 class TestRedisStreamConsumer:
     def test_parse_json_object_field_handles_double_encoded_json(self) -> None:

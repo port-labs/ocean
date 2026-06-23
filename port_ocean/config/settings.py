@@ -132,6 +132,11 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
     )
     consumer_group: str | None = None
     block_ms: int = Field(default=1000, ge=1)
+    read_count: int = Field(
+        default=10,
+        ge=1,
+        description="Maximum number of stream entries to return per XREADGROUP call.",
+    )
 
 
 class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
