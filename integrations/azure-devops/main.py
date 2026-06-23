@@ -97,8 +97,9 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.USER)
 async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(AzureDevopsUserConfig, event.resource_config)
-    async for users in resync.iter_users(additional_params=config.selector.to_params()):
-        logger.info(f"Resyncing {len(users)} members")
+    source = config.selector.build_source()
+    async for users in resync.iter_users(source):
+        logger.info(f"Resyncing {len(users)} users")
         yield users
 
 
