@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Callable, Coroutine, Dict, Optional
+from typing import Any, AsyncIterator, Callable, Coroutine, Dict, List, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
 from github.clients.auth.retry_transport import GitHubRetryTransport
@@ -46,6 +46,7 @@ class GitHubHeaders(BaseModel):
 
 
 class AbstractGitHubAuthenticator(ABC):
+    organization: Optional[str] = None
     _http_client: Optional[httpx.AsyncClient] = None
     _rate_limit_notifier: Optional[
         Callable[[httpx.Response], Coroutine[Any, Any, None]]
@@ -58,6 +59,23 @@ class AbstractGitHubAuthenticator(ABC):
     @abstractmethod
     async def get_headers(self, **kwargs: Any) -> GitHubHeaders:
         pass
+
+    def create_org_scoped_authenticator(
+        self, org_login: str, installation_id: str
+    ) -> "AbstractGitHubAuthenticator":
+        """Return an authenticator scoped to a specific org installation."""
+        return self
+
+    async def iter_org_authenticators(
+        self, allowed_orgs: Optional[List[str]] = None
+    ) -> AsyncIterator["AbstractGitHubAuthenticator"]:
+        """Yield one authenticator per accessible organisation.
+
+        Single-org authenticators yield self once.
+        Multi-org authenticators yield one scoped authenticator per org,
+        each carrying its org name in ``authenticator.organization``.
+        """
+        yield self
 
     def set_rate_limit_notifier(
         self, notifier: Callable[[httpx.Response], Coroutine[Any, Any, None]]

@@ -46,7 +46,14 @@ configurations:
     type: string
     required: false
     sensitive: false
-    description: Installation ID if you want the integration to interact with Github as an app. This is mandatory if githubAppId is passed in.
+    description: >-
+      Optional installation ID for GitHub App authentication. If omitted together with
+      githubOrganization, the integration automatically discovers all installations of
+      the App and operates across every org where it is installed. If only
+      githubOrganization is provided (without an installation ID), the installation ID
+      is looked up automatically. When both are provided, the installation ID takes
+      precedence for token generation; ensure they refer to the same installation to
+      avoid permission errors.
   - name: githubAppPrivateKey
     required: false
     type: string

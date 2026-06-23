@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.1.0 (2026-06-23)
+
+### Improvements
+
+- Added multi-organization support for GitHub App authentication. When only `githubAppId` and `githubAppPrivateKey` are configured (no `githubOrganization` or `githubAppInstallationId`), the integration automatically discovers all app installations and syncs every installed organization. The `organizations` selector continues to act as an allow-list filter for both PAT and App multi-org modes.
+
+
 ## 6.0.7 (2026-06-22)
 
 
@@ -26,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 6.0.5 (2026-06-18)
 
 
-### Features
+### Improvements
 
 - Added a `closedSinceDate` pull request selector to ingest all closed PRs since an absolute date.
 

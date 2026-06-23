@@ -777,9 +777,12 @@ class GithubPortAppConfig(PortAppConfig):
         title="Organizations",
         default_factory=list,
         description=(
-            "List of GitHub organization names (optional - if not provided, "
-            "will sync all organizations the personal access token user is a "
-            "member of) for Classic PAT authentication."
+            "Optional allow-list of GitHub organization names. "
+            "For Classic PAT authentication: limits sync to the specified orgs "
+            "instead of all orgs the token belongs to. "
+            "For GitHub App multi-org mode (no githubOrganization or "
+            "githubAppInstallationId configured): limits sync to the specified "
+            "subset of the App's installations."
         ),
     )
     include_authenticated_user: bool = Field(
@@ -794,6 +797,17 @@ class GithubPortAppConfig(PortAppConfig):
         enum=["all", "public", "private"],
         default="all",
         description="Filter repositories by visibility.",
+    )
+    max_concurrent_orgs: int = Field(
+        title="Max Concurrent Organizations",
+        alias="maxConcurrentOrgs",
+        default=3,
+        ge=1,
+        description=(
+            "Maximum number of organizations to sync concurrently. "
+            "Relevant only for multi-organization GitHub App installations or PAT credentials with access to more than one organization."
+            "Increasing this value will increase resource utilization."
+        ),
     )
     resources: list[
         GithubRepositoryConfig
