@@ -192,7 +192,6 @@ class RedisStreamConsumer:
                     "Unexpected error in Redis stream read loop",
                     error=str(error),
                 )
-                await asyncio.sleep(1)
 
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         try:
