@@ -27,7 +27,15 @@ class SingleAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                     "aws_session_token": token,
                 }
             session = await self.provider.get_session(**session_kwargs)
-            async with session.create_client("sts", region_name=None) as sts:
+
+            partition: str | None = self.config.get('aws_partition')
+            if partition:
+                # We don't really care about the region, we just need a valid one to fetch the identity
+                region = (await session.get_available_regions('sts', partition_name=partition))[0]
+            else:
+                region = None
+
+            async with session.create_client("sts", region_name=region) as sts:
                 identity = await sts.get_caller_identity()
                 self.account_id = identity["Account"]
                 logger.info(f"Validated single account: {self.account_id}")
