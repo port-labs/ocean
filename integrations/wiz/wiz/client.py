@@ -13,7 +13,7 @@ from port_ocean.utils.async_iterators import (
 )
 from port_ocean.utils import http_async_client
 from port_ocean.utils.misc import get_time
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic.v1 import BaseModel, Field, PrivateAttr
 from wiz.options import (
     IssueOptions,
     ProjectOptions,

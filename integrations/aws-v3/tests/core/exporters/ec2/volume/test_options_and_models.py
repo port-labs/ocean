@@ -1,6 +1,6 @@
 from datetime import datetime
 import pytest
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from aws.core.exporters.ec2.volume.models import (
     EbsVolume,
