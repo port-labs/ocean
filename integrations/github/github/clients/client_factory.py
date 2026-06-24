@@ -9,10 +9,11 @@ from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
     AuthScope,
 )
-from github.clients.auth.github_app_authenticator import (
-    GitHubAppAuthenticator,
+from github.clients.auth.github_app_installation_registry import (
+    GitHubAppInstallationRegistry,
     reset_installation_index,
 )
+from github.clients.auth.github_app_jwt_client import GitHubAppJwtClient
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
     reset_pat_instances,
@@ -75,7 +76,7 @@ async def _list_auth_scopes() -> list[AuthScope]:
     if config.get("github_token"):
         return await PersonalTokenAuthenticator.list_scopes(config)
     if config.get("github_app_id") and config.get("github_app_private_key"):
-        return await GitHubAppAuthenticator.list_scopes(config)
+        return await GitHubAppInstallationRegistry.list_scopes(config)
     raise MissingCredentials("No valid GitHub credentials provided.")
 
 
@@ -84,7 +85,11 @@ def _authenticator_for_org(organization: str | None) -> AbstractGitHubAuthentica
     if config.get("github_token"):
         return PersonalTokenAuthenticator.for_org(config, organization)
     if config.get("github_app_id") and config.get("github_app_private_key"):
-        return GitHubAppAuthenticator.for_org(config, organization)
+        if organization is None:
+            raise MissingCredentials(
+                "Organization is required for GitHub App authentication."
+            )
+        return GitHubAppInstallationRegistry.for_org(config, organization)
     raise MissingCredentials("No valid GitHub credentials provided.")
 
 
@@ -113,6 +118,25 @@ def _to_client_scope(scope: AuthScope) -> GithubClientScope:
 
 async def create_github_clients() -> list[GithubClientScope]:
     return [_to_client_scope(scope) for scope in await _list_auth_scopes()]
+
+
+def _actor_authenticator() -> AbstractGitHubAuthenticator:
+    config = _config()
+    if config.get("github_token"):
+        return PersonalTokenAuthenticator.for_org(config, None)
+    if config.get("github_app_id") and config.get("github_app_private_key"):
+        return GitHubAppJwtClient.from_config(config)
+    raise MissingCredentials("No valid GitHub credentials provided.")
+
+
+async def get_authenticated_actor() -> str:
+    return await _actor_authenticator().get_authenticated_actor()
+
+
+def create_github_app_jwt_client() -> GithubRestClient:
+    return _client_for(  # type: ignore[return-value]
+        GitHubAppJwtClient.from_config(_config()), GithubClientType.REST
+    )
 
 
 @overload

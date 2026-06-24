@@ -1,6 +1,8 @@
 from typing import Any
 
 from loguru import logger
+from port_ocean.context.ocean import ocean
+from port_ocean.utils.cache import cache_coroutine_result
 
 from github.clients.auth.abstract_authenticator import (
     AbstractGitHubAuthenticator,
@@ -53,3 +55,13 @@ class PersonalTokenAuthenticator(AbstractGitHubAuthenticator):
             Accept="application/vnd.github+json",
             X_GitHub_Api_Version="2022-11-28",
         )
+
+    @cache_coroutine_result()
+    async def get_authenticated_actor(self) -> str:
+        github_host = ocean.integration_config["github_host"]
+        response = await self.client.get(
+            f"{github_host}/user",
+            headers=(await self.get_headers()).as_dict(),
+        )
+        response.raise_for_status()
+        return response.json()["login"]

@@ -1074,8 +1074,8 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
                     async for alerts in stream_async_iterators_tasks(*tasks):
                         yield alerts
 
-    # Register webhook processors
-    register_live_events_webhooks()
+# Register webhook processors
+register_live_events_webhooks()
 
-    # Register actions executors
-    register_actions_executors()
+# Register actions executors
+register_actions_executors()

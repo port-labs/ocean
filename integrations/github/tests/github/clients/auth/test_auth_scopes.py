@@ -2,10 +2,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from github.clients.auth.github_app_authenticator import (
-    GitHubAppAuthenticator,
+from github.clients.auth.github_app_installation_registry import (
+    GitHubAppInstallationRegistry,
     reset_installation_index,
 )
+from github.clients.auth.github_app_jwt_client import GitHubAppJwtClient
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
@@ -57,7 +58,7 @@ class TestPersonalTokenAuthenticator:
         assert a is b
 
 
-class TestGitHubAppAuthenticator:
+class TestGitHubAppInstallationRegistry:
     @pytest.mark.asyncio
     async def test_list_scopes_uses_configured_installation(self) -> None:
         config = {
@@ -65,7 +66,7 @@ class TestGitHubAppAuthenticator:
             "github_app_installation_id": "123",
             "github_organization": "my-org",
         }
-        scopes = await GitHubAppAuthenticator.list_scopes(config)
+        scopes = await GitHubAppInstallationRegistry.list_scopes(config)
 
         assert len(scopes) == 1
         assert scopes[0].installation_id == "123"
@@ -80,11 +81,11 @@ class TestGitHubAppAuthenticator:
         }
 
         with patch.object(
-            GitHubAppAuthenticator,
+            GitHubAppJwtClient,
             "fetch_installation",
             AsyncMock(return_value=installation),
         ):
-            scopes = await GitHubAppAuthenticator.list_scopes(config)
+            scopes = await GitHubAppInstallationRegistry.list_scopes(config)
 
         assert len(scopes) == 1
         assert scopes[0].organization == "resolved-org"
@@ -104,19 +105,19 @@ class TestGitHubAppAuthenticator:
             },
         ]
         index = {
-            "org-a": GitHubAppAuthenticator._scope_from_installation(
+            "org-a": GitHubAppInstallationRegistry._scope_from_installation(
                 APP_CONFIG, installation_page[0]
             ),
-            "org-b": GitHubAppAuthenticator._scope_from_installation(
+            "org-b": GitHubAppInstallationRegistry._scope_from_installation(
                 APP_CONFIG, installation_page[1]
             ),
         }
 
         with patch.object(
-            GitHubAppAuthenticator,
+            GitHubAppInstallationRegistry,
             "_ensure_index",
             AsyncMock(return_value=index),
         ):
-            scopes = await GitHubAppAuthenticator.list_scopes(APP_CONFIG)
+            scopes = await GitHubAppInstallationRegistry.list_scopes(APP_CONFIG)
 
         assert {scope.organization for scope in scopes} == {"org-a", "org-b"}
