@@ -1,4 +1,5 @@
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from datetime import datetime
 from wcmatch import glob
 from enum import StrEnum
 from typing import (
@@ -123,6 +124,32 @@ async def fetch_commit_diff(
     )
 
     return response
+
+
+def parse_timestamp(timestamp: str) -> Optional[datetime]:
+    """Parse an ISO-8601 timestamp to an aware datetime, or None if it cannot be parsed."""
+    try:
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+async def get_commit(
+    client: "AbstractGithubClient",
+    organization: str,
+    repo_name: str,
+    sha: str,
+) -> Dict[str, Any]:
+    """Fetch a single commit from the GitHub API."""
+    resource = f"{client.base_url}/repos/{organization}/{repo_name}/commits/{sha}"
+    return await client.send_api_request(resource)
+
+
+def build_first_commit(
+    commit: Dict[str, Any], sha: Optional[str], timestamp: str
+) -> Dict[str, Any]:
+    """Build the __firstCommit payload: the raw commit plus normalized __sha/__timestamp keys."""
+    return {**commit, "__sha": sha, "__timestamp": timestamp}
 
 
 def extract_changed_files(

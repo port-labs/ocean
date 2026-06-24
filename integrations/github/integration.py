@@ -548,9 +548,9 @@ class GithubDeploymentSelector(RepoSearchSelector):
         alias="enrichWithFirstCommit",
         default=False,
         description=(
-            "When enabled, each deployment is enriched under __firstCommit with the earliest commit shipped "
-            "since the previous deployment to the same environment (__sha, __timestamp in UTC, __commitCount). "
-            "Defaults to false."
+            "When enabled, each deployment is enriched with the earliest commit shipped since the previous "
+            "deployment to the same environment: __firstCommit (__sha, __timestamp in UTC) plus a "
+            "deployment-level __commitCount. Defaults to false."
         ),
     )
 

@@ -1,4 +1,5 @@
 import asyncio
+import functools
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import cast, Any, Optional
@@ -9,8 +10,15 @@ from github.helpers.utils import (
     parse_github_options,
     enrich_with_organization,
     fetch_commit_diff,
+    get_commit,
+    parse_timestamp,
+    build_first_commit,
 )
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.utils.async_iterators import (
+    semaphore_async_iterator,
+    stream_async_iterators_tasks,
+)
 from loguru import logger
 from github.core.options import SingleDeploymentOptions, ListDeploymentsOptions
 
@@ -18,11 +26,21 @@ from github.core.options import SingleDeploymentOptions, ListDeploymentsOptions
 BATCH_CONCURRENCY_LIMIT = 10
 
 
-def _parse_timestamp(timestamp: str) -> datetime:
-    try:
-        return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-    except ValueError:
-        return datetime.max.replace(tzinfo=timezone.utc)
+def _created_at_sort_key(deployment: dict[str, Any]) -> datetime:
+    parsed = parse_timestamp(deployment.get("created_at", ""))
+    return parsed if parsed is not None else datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _earliest_commit(commits: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    earliest: Optional[dict[str, Any]] = None
+    earliest_at: Optional[datetime] = None
+    for commit in commits:
+        parsed = parse_timestamp(commit["commit"]["committer"]["date"])
+        if parsed is None:
+            continue
+        if earliest_at is None or parsed < earliest_at:
+            earliest_at, earliest = parsed, commit
+    return earliest
 
 
 class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
@@ -45,10 +63,7 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
         logger.info(
             f"Fetched deployment with identifier {deployment_id} from repository {repo_name} from {organization}"
         )
-
-        return enrich_with_organization(
-            enrich_with_repository(response, cast(str, repo_name)), organization
-        )
+        return self._enrich_deployment(response, cast(str, repo_name), organization)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListDeploymentsOptions
@@ -56,23 +71,19 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all deployments for a repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))
+        repo = cast(str, repo_name)
         enrich_first_commit = bool(params.pop("enrich_with_first_commit", False))
-        endpoint = (
-            f"{self.client.base_url}/repos/{organization}/{repo_name}/deployments"
-        )
+        endpoint = f"{self.client.base_url}/repos/{organization}/{repo}/deployments"
 
         if not enrich_first_commit:
             async for deployments in self.client.send_paginated_request(
                 endpoint, params
             ):
                 logger.info(
-                    f"Fetched batch of {len(deployments)} deployments from repository {repo_name} from {organization}"
+                    f"Fetched batch of {len(deployments)} deployments from repository {repo} from {organization}"
                 )
                 yield [
-                    enrich_with_organization(
-                        enrich_with_repository(deployment, cast(str, repo_name)),
-                        organization,
-                    )
+                    self._enrich_deployment(deployment, repo, organization)
                     for deployment in deployments
                 ]
             return
@@ -80,65 +91,70 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
         buffered: list[dict[str, Any]] = []
         async for batch in self.client.send_paginated_request(endpoint, params):
             buffered.extend(
-                enrich_with_organization(
-                    enrich_with_repository(deployment, cast(str, repo_name)),
-                    organization,
-                )
+                self._enrich_deployment(deployment, repo, organization)
                 for deployment in batch
             )
-        if buffered:
-            logger.info(
-                f"Enriching {len(buffered)} deployments with first commit from repository {repo_name} from {organization}"
-            )
-            yield await self._enrich_with_first_commit(
-                organization, cast(str, repo_name), buffered
-            )
+        if not buffered:
+            return
 
-    async def _enrich_with_first_commit(
-        self, organization: str, repo_name: str, deployments: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        # GitHub's compare API needs the predecessor sha, so each deployment is paired with the
-        # next-older deployment in the same environment. The list order GitHub returns is not
-        # contracted, so sort by created_at rather than trusting it.
+        logger.info(
+            f"Enriching {len(buffered)} deployments with first commit from repository {repo} from {organization}"
+        )
+        semaphore = asyncio.BoundedSemaphore(BATCH_CONCURRENCY_LIMIT)
+        streams = [
+            semaphore_async_iterator(
+                semaphore,
+                functools.partial(
+                    self._stream_first_commit,
+                    organization,
+                    repo,
+                    deployment,
+                    predecessor_sha,
+                ),
+            )
+            for deployment, predecessor_sha in self._pair_predecessors(buffered)
+        ]
+        async for enriched in stream_async_iterators_tasks(*streams):
+            yield enriched
+
+    def _enrich_deployment(
+        self, deployment: dict[str, Any], repo_name: str, organization: str
+    ) -> dict[str, Any]:
+        return enrich_with_organization(
+            enrich_with_repository(deployment, repo_name), organization
+        )
+
+    def _pair_predecessors(
+        self, deployments: list[dict[str, Any]]
+    ) -> list[tuple[dict[str, Any], Optional[str]]]:
         by_environment: dict[Any, list[dict[str, Any]]] = defaultdict(list)
         for deployment in deployments:
             by_environment[deployment.get("environment")].append(deployment)
 
-        semaphore = asyncio.Semaphore(BATCH_CONCURRENCY_LIMIT)
-        tasks = []
+        pairs: list[tuple[dict[str, Any], Optional[str]]] = []
         for environment_deployments in by_environment.values():
             ordered = sorted(
-                environment_deployments,
-                key=lambda deployment: _parse_timestamp(
-                    deployment.get("created_at", "")
-                ),
-                reverse=True,
+                environment_deployments, key=_created_at_sort_key, reverse=True
             )
             for index, deployment in enumerate(ordered):
                 predecessor = ordered[index + 1] if index + 1 < len(ordered) else None
-                tasks.append(
-                    self._run_first_commit_enrichment(
-                        organization,
-                        repo_name,
-                        deployment,
-                        predecessor.get("sha") if predecessor else None,
-                        semaphore,
-                    )
+                pairs.append(
+                    (deployment, predecessor.get("sha") if predecessor else None)
                 )
-        return await asyncio.gather(*tasks)
+        return pairs
 
-    async def _run_first_commit_enrichment(
+    async def _stream_first_commit(
         self,
         organization: str,
         repo_name: str,
         deployment: dict[str, Any],
         predecessor_sha: Optional[str],
-        semaphore: asyncio.Semaphore,
-    ) -> dict[str, Any]:
-        async with semaphore:
-            return await self._attach_first_commit(
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        yield [
+            await self._attach_first_commit(
                 organization, repo_name, deployment, predecessor_sha
             )
+        ]
 
     async def _attach_first_commit(
         self,
@@ -147,15 +163,18 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
         deployment: dict[str, Any],
         predecessor_sha: Optional[str],
     ) -> dict[str, Any]:
+        # Must never raise: a failure would abort the whole merged stream.
         deployment_sha = deployment.get("sha")
         if not deployment_sha:
             return deployment
         try:
-            first_commit = await self._resolve_first_commit(
+            resolved = await self._resolve_first_commit(
                 organization, repo_name, predecessor_sha, deployment_sha
             )
-            if first_commit:
+            if resolved:
+                first_commit, commit_count = resolved
                 deployment["__firstCommit"] = first_commit
+                deployment["__commitCount"] = commit_count
         except Exception as e:
             logger.warning(
                 f"First-commit enrichment failed for deployment {deployment.get('id')}: {e}"
@@ -168,46 +187,36 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name: str,
         predecessor_sha: Optional[str],
         deployment_sha: str,
-    ) -> Optional[dict[str, Any]]:
+    ) -> Optional[tuple[dict[str, Any], int]]:
         if predecessor_sha and predecessor_sha != deployment_sha:
             comparison = await fetch_commit_diff(
                 self.client, organization, repo_name, predecessor_sha, deployment_sha
             )
-            commits = comparison.get("commits") or []
-            timestamped = [
+            commits = [
                 commit
-                for commit in commits
-                if ((commit.get("commit") or {}).get("committer") or {}).get("date")
+                for commit in comparison.get("commits", [])
+                if commit.get("commit", {}).get("committer", {}).get("date")
             ]
-            if timestamped:
-                earliest = min(
-                    timestamped,
-                    key=lambda commit: _parse_timestamp(
-                        commit["commit"]["committer"]["date"]
-                    ),
-                )
-                return {
-                    **earliest,
-                    "__sha": earliest.get("sha"),
-                    "__timestamp": earliest["commit"]["committer"]["date"],
-                    "__commitCount": comparison.get("total_commits") or len(commits),
-                }
+            if len(commits):
+                earliest = _earliest_commit(commits)
+                if earliest is not None:
+                    count = comparison.get("total_commits") or len(commits)
+                    return (
+                        build_first_commit(
+                            earliest,
+                            earliest.get("sha"),
+                            earliest["commit"]["committer"]["date"],
+                        ),
+                        count,
+                    )
 
-        commit = await self._get_commit(organization, repo_name, deployment_sha)
-        committer = (commit.get("commit") or {}).get("committer") or {}
-        if committer.get("date"):
-            return {
-                **commit,
-                "__sha": commit.get("sha") or deployment_sha,
-                "__timestamp": committer["date"],
-                "__commitCount": 1,
-            }
+        # Fallback (first deployment in the environment, empty range, or unreachable predecessor):
+        # the deployed commit itself.
+        commit = await get_commit(self.client, organization, repo_name, deployment_sha)
+        date = (commit.get("commit") or {}).get("committer", {}).get("date")
+        if date and parse_timestamp(date) is not None:
+            return (
+                build_first_commit(commit, commit.get("sha") or deployment_sha, date),
+                1,
+            )
         return None
-
-    async def _get_commit(
-        self, organization: str, repo_name: str, sha: str
-    ) -> dict[str, Any]:
-        endpoint = (
-            f"{self.client.base_url}/repos/{organization}/{repo_name}/commits/{sha}"
-        )
-        return await self.client.send_api_request(endpoint)

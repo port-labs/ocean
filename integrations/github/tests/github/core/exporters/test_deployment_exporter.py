@@ -172,13 +172,12 @@ class TestRestDeploymentExporter:
                         collected.extend(batch)
 
         by_id = {deployment["id"]: deployment for deployment in collected}
-        # Newest deployment: compared against the predecessor sha -> earliest commit in range.
         assert by_id[1]["__firstCommit"]["__sha"] == "commit_early"
         assert by_id[1]["__firstCommit"]["__timestamp"] == "2024-03-20T10:10:00Z"
-        assert by_id[1]["__firstCommit"]["__commitCount"] == 2
-        # Oldest deployment in the environment: no predecessor -> falls back to its own commit.
+        assert by_id[1]["__commitCount"] == 2
+        assert "__commitCount" not in by_id[1]["__firstCommit"]
         assert by_id[2]["__firstCommit"]["__sha"] == "deploy_old"
-        assert by_id[2]["__firstCommit"]["__commitCount"] == 1
+        assert by_id[2]["__commitCount"] == 1
 
     async def test_get_paginated_resources_without_first_commit_skips_compare(
         self, rest_client: GithubRestClient
@@ -234,6 +233,7 @@ class TestRestDeploymentExporter:
             if "/compare/" in resource:
                 compared.append(resource)
                 return {
+                    "files": [],
                     "total_commits": 1,
                     "commits": [
                         {
@@ -263,12 +263,62 @@ class TestRestDeploymentExporter:
                         enrich_with_first_commit=True,
                     )
                     exporter = RestDeploymentExporter(rest_client)
-                    async for _ in exporter.get_paginated_resources(options):
-                        pass
+                    collected: list[dict[str, Any]] = []
+                    async for batch in exporter.get_paginated_resources(options):
+                        collected.extend(batch)
 
         # Exactly one compare, for the newer deployment against the older one's sha.
         assert len(compared) == 1
         assert "deploy_old...deploy_new" in compared[0]
+        by_id = {deployment["id"]: deployment for deployment in collected}
+        assert by_id[1]["__firstCommit"]["__sha"] == "c1"
+        assert by_id[1]["__commitCount"] == 1
+
+    async def test_first_commit_skips_unparsable_timestamp(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        deployments = [
+            {
+                "id": 1,
+                "environment": "production",
+                "sha": "deploy_sha",
+                "created_at": "2024-03-20T11:00:00Z",
+            }
+        ]
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield deployments
+
+        def mock_api(resource: str, *args: Any, **kwargs: Any) -> dict[str, Any]:
+            return {
+                "sha": "deploy_sha",
+                "commit": {"committer": {"date": "not-a-timestamp"}},
+            }
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ):
+            with patch.object(
+                rest_client,
+                "send_api_request",
+                new_callable=AsyncMock,
+                side_effect=mock_api,
+            ):
+                async with event_context("test_event"):
+                    options = ListDeploymentsOptions(
+                        organization="test-org",
+                        repo_name="test-repo",
+                        enrich_with_first_commit=True,
+                    )
+                    exporter = RestDeploymentExporter(rest_client)
+                    collected: list[dict[str, Any]] = []
+                    async for batch in exporter.get_paginated_resources(options):
+                        collected.extend(batch)
+
+        assert collected[0].get("__firstCommit") is None
+        assert "__commitCount" not in collected[0]
 
     async def test_first_commit_orders_by_time_not_string(
         self, rest_client: GithubRestClient
