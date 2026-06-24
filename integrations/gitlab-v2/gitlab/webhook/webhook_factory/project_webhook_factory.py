@@ -1,3 +1,5 @@
+import asyncio
+
 from loguru import logger
 
 from gitlab.webhook.events import ProjectEvents
@@ -34,8 +36,12 @@ class ProjectWebHook(BaseWebhookFactory[ProjectEvents]):
         logger.info("Creating project webhooks for personal namespace projects.")
 
         async for projects_batch in self._client.get_personal_namespace_projects():
-            for project in projects_batch:
-                await self.create_project_webhook(project["id"])
+            await asyncio.gather(
+                *(
+                    self.create_project_webhook(project["id"])
+                    for project in projects_batch
+                )
+            )
 
         logger.info(
             "Completed project webhooks creation for personal namespace projects."
