@@ -15,10 +15,8 @@ from port_ocean.exceptions.live_events import (
     LiveEventsUuidNotFoundError,
     MissingLiveEventsBaseUrlError,
 )
-from port_ocean.consumers.redis_stream_consumer import (
-    RedisStreamConsumer,
-    _WebhookRequestAdapter,
-)
+from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
+from port_ocean.core.handlers.webhook.webhook_event import WebhookRequestAdapter
 
 
 class TestResolveLiveEventsStreamKey:
@@ -134,6 +132,42 @@ class TestRedisStreamConsumerConnection:
 
         consumer._cleanup_tls_files()
 
+    def test_redis_client_kwargs_cleans_up_previous_tls_files_on_reconnect(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="rediss://localhost:6379",
+            enable_tls=True,
+            cert=_pem_b64(
+                "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----"
+            ),
+            private_key=_pem_b64(
+                "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----"
+            ),
+        )
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis_client_kwargs()
+            old_cert_path = consumer._ssl_cert_file
+            old_key_path = consumer._ssl_key_file
+
+            consumer._redis_client_kwargs()
+
+        assert old_cert_path is not None
+        assert old_key_path is not None
+        assert not os.path.exists(old_cert_path)
+        assert not os.path.exists(old_key_path)
+
+        consumer._cleanup_tls_files()
+
     def test_redis_client_kwargs_uses_tls_when_enabled(
         self,
         mock_ocean_config: MagicMock,
@@ -210,25 +244,55 @@ class TestRedisStreamConsumerConnection:
         assert not os.path.exists(cert_path)
         assert not os.path.exists(key_path)
 
+    @pytest.mark.asyncio
+    async def test_read_loop_uses_configured_read_count(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            read_count=25,
+            block_ms=100,
+        )
+        mock_redis = AsyncMock()
+
+        async def stop_after_first_read(**_kwargs: object) -> list[object]:
+            consumer._is_running = False
+            return []
+
+        mock_redis.xreadgroup = AsyncMock(side_effect=stop_after_first_read)
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            consumer._redis = mock_redis
+            consumer._is_running = True
+
+            await consumer._read_loop()
+
+        mock_redis.xreadgroup.assert_awaited_once()
+        assert mock_redis.xreadgroup.await_args.kwargs["count"] == 25
+
 
 class TestRedisStreamConsumer:
-    def test_parse_json_object_field_handles_double_encoded_json(self) -> None:
+    def test_parse_raw_json_to_dict_parses_json_object(self) -> None:
         inner = {"action": "opened", "pull_request": {"number": 1}}
-        fields = {"payload": json.dumps(json.dumps(inner))}
 
-        assert RedisStreamConsumer._parse_json_object_field(fields, "payload") == inner
+        assert (
+            RedisStreamConsumer._parse_raw_json_to_dict(json.dumps(inner), "payload")
+            == inner
+        )
 
-    def test_parse_json_object_field_raises_for_non_object_json(self) -> None:
-        fields = {"payload": json.dumps(["not", "an", "object"])}
-
+    def test_parse_raw_json_to_dict_raises_for_non_object_json(self) -> None:
         with pytest.raises(InvalidLiveEventsRedisStreamFieldError, match="payload"):
-            RedisStreamConsumer._parse_json_object_field(fields, "payload")
-
-    def test_get_field_is_case_insensitive(self) -> None:
-        fields = {"Payload": "{}", "webhookPath": "/webhook"}
-
-        assert RedisStreamConsumer._get_field(fields, "payload") == "{}"
-        assert RedisStreamConsumer._get_field(fields, "webhookPath") == "/webhook"
+            RedisStreamConsumer._parse_raw_json_to_dict(
+                json.dumps(["not", "an", "object"]), "payload"
+            )
 
     def test_normalize_headers_lowercases_keys(self) -> None:
         assert RedisStreamConsumer._normalize_headers(
@@ -392,7 +456,7 @@ class TestRedisStreamConsumer:
         on_message.assert_awaited_once()
         assert on_message.await_args is not None
         event = on_message.await_args.args[1]
-        assert isinstance(event._original_request, _WebhookRequestAdapter)
+        assert isinstance(event._original_request, WebhookRequestAdapter)
         assert await event._original_request.body() == raw_payload.encode("utf-8")
         assert event._original_request.headers["x-hub-signature-256"] == "sha256=abc"
 
@@ -428,25 +492,3 @@ class TestRedisStreamConsumer:
         assert on_message.await_args is not None
         event = on_message.await_args.args[1]
         assert event._original_request is None
-
-
-class TestWebhookRequestAdapter:
-    @pytest.mark.asyncio
-    async def test_body_returns_raw_bytes(self) -> None:
-        raw = b'{"action":"opened"}'
-        adapter = _WebhookRequestAdapter(raw_body=raw, headers={})
-        assert await adapter.body() == raw
-
-    @pytest.mark.asyncio
-    async def test_body_is_idempotent(self) -> None:
-        raw = b'{"x":1}'
-        adapter = _WebhookRequestAdapter(raw_body=raw, headers={})
-        assert await adapter.body() == await adapter.body()
-
-    def test_headers_accessible(self) -> None:
-        headers = {
-            "x-hub-signature-256": "sha256=abc",
-            "content-type": "application/json",
-        }
-        adapter = _WebhookRequestAdapter(raw_body=b"", headers=headers)
-        assert adapter.headers == headers

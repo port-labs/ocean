@@ -97,7 +97,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 task.add_done_callback(self._event_processor_tasks.discard)
 
     async def _on_redis_stream_message(self, path: str, event: WebhookEvent) -> None:
-        await self._process_webhook_event(path, 0, event)
+        await self._process_webhook_event(
+            path, 0, event
+        )  # event is processed by a redis consumer, for parallel processing multiple LE pods are required.
 
     async def _process_webhook_event(
         self, path: str, worker_id: int, event: WebhookEvent

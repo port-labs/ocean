@@ -18,9 +18,26 @@ class WebhookOriginalRequest(Protocol):
     """Minimal request interface for webhook signature verification."""
 
     @property
-    def headers(self) -> Mapping[str, Any]: ...
+    def headers(self) -> Mapping[str, str]: ...
 
     async def body(self) -> bytes: ...
+
+
+class WebhookRequestAdapter:
+    """Read-only adapter that satisfies :class:`WebhookOriginalRequest`.
+
+    The real Starlette ``Request`` is only available during the original HTTP
+    call. When events travel through the Redis ingestion path the raw payload
+    string is preserved so that HMAC signatures can still be verified without
+    a live HTTP connection.
+    """
+
+    def __init__(self, raw_body: bytes, headers: EventHeaders) -> None:
+        self._raw_body = raw_body
+        self.headers = headers
+
+    async def body(self) -> bytes:
+        return self._raw_body
 
 
 class LiveEventTimestamp(StrEnum):

@@ -20,26 +20,10 @@ from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldE
 from port_ocean.core.handlers.webhook.webhook_event import (
     LiveEventTimestamp,
     WebhookEvent,
+    WebhookRequestAdapter,
 )
 
-
-class _WebhookRequestAdapter:
-    """Minimal read-only adapter that satisfies the interface expected by webhook
-    processors that call ``event._original_request.body()`` and access
-    ``event._original_request.headers`` for signature verification.
-
-    The real Starlette ``Request`` is only available during the original HTTP
-    call.  When events travel through the Redis ingestion path the raw payload
-    string is preserved so that HMAC signatures can still be verified without
-    a live HTTP connection.
-    """
-
-    def __init__(self, raw_body: bytes, headers: dict[str, str]) -> None:
-        self._raw_body = raw_body
-        self.headers = headers
-
-    async def body(self) -> bytes:
-        return self._raw_body
+_INTEGRATION_PATH_PREFIX = "/integration/"
 
 
 OnStreamMessage = Callable[[str, WebhookEvent], Awaitable[None]]
@@ -106,6 +90,7 @@ class RedisStreamConsumer:
 
     def _redis_client_kwargs(self) -> dict[str, Any]:
         """Connection kwargs for redis-py, including auth and TLS for cloud Redis."""
+        self._cleanup_tls_files()
         kwargs: dict[str, Any] = {"decode_responses": True}
         if self._settings.username:
             kwargs["username"] = self._settings.username
@@ -172,10 +157,17 @@ class RedisStreamConsumer:
             return
         await self._redis.xack(self._stream_key, self._consumer_group, message_id)
 
+    def _require_redis(self) -> Redis:
+        if self._redis is None:
+            raise RuntimeError(
+                "Redis stream consumer has not been started or has been stopped"
+            )
+        return self._redis
+
     async def _ensure_consumer_group(self) -> None:
-        assert self._redis is not None
+        redis = self._require_redis()
         try:
-            await self._redis.xgroup_create(
+            await redis.xgroup_create(
                 self._stream_key,
                 self._consumer_group,
                 id="$",
@@ -186,15 +178,15 @@ class RedisStreamConsumer:
                 raise
 
     async def _read_loop(self) -> None:
-        assert self._redis is not None
+        redis = self._require_redis()
 
         while self._is_running:
             try:
-                response = await self._redis.xreadgroup(
+                response = await redis.xreadgroup(
                     groupname=self._consumer_group,
                     consumername=self._consumer_name,
                     streams={self._stream_key: ">"},
-                    count=10,
+                    count=self._settings.read_count,
                     block=self._settings.block_ms,
                 )
                 if not response:
@@ -210,11 +202,10 @@ class RedisStreamConsumer:
                     "Unexpected error in Redis stream read loop",
                     error=str(error),
                 )
-                await asyncio.sleep(1)
 
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         try:
-            raw_webhook_path = self._get_field(fields, "webhookPath")
+            raw_webhook_path = fields.get("webhookPath")
             if not raw_webhook_path:
                 logger.warning(
                     "Redis stream message missing webhookPath, acknowledging",
@@ -231,14 +222,14 @@ class RedisStreamConsumer:
                 )
                 return
 
-            raw_payload = self._get_field(fields, "payload")
+            raw_payload = fields.get("payload")
             payload = self._parse_raw_json_to_dict(raw_payload, "payload")
             headers = self._normalize_headers(
-                self._parse_json_object_field(fields, "headers")
+                self._parse_raw_json_to_dict(fields.get("headers"), "headers")
             )
             original_request = None
             if raw_payload is not None:
-                original_request = _WebhookRequestAdapter(
+                original_request = WebhookRequestAdapter(
                     raw_body=raw_payload.encode("utf-8"),
                     headers=headers,
                 )
@@ -266,21 +257,12 @@ class RedisStreamConsumer:
         """Map ingestion HTTP paths to integration processor paths.
 
         Integrations register processors relative to the integration router
-        (e.g. ``/webhook``), while ingestion forwards the public URL suffix
         (e.g. ``integration/webhook``).
         """
         path = f"/{webhook_path.strip('/')}"
-        integration_marker = "/integration/"
-        if integration_marker in path:
-            path = f"/{path.split(integration_marker, 1)[1]}"
+        if _INTEGRATION_PATH_PREFIX in path:
+            path = f"/{path.split(_INTEGRATION_PATH_PREFIX, 1)[1]}"
         return path
-
-    @staticmethod
-    def _get_field(fields: dict[str, str], field_name: str) -> str | None:
-        for key, value in fields.items():
-            if key.lower() == field_name.lower():
-                return value
-        return None
 
     @classmethod
     def _parse_raw_json_to_dict(
@@ -290,20 +272,9 @@ class RedisStreamConsumer:
             return {}
 
         parsed: Any = json.loads(raw_value)
-        while isinstance(parsed, str):
-            parsed = json.loads(parsed)
-
         if not isinstance(parsed, dict):
             raise InvalidLiveEventsRedisStreamFieldError(field_name)
         return parsed
-
-    @classmethod
-    def _parse_json_object_field(
-        cls, fields: dict[str, str], field_name: str
-    ) -> dict[str, Any]:
-        return cls._parse_raw_json_to_dict(
-            cls._get_field(fields, field_name), field_name
-        )
 
     @staticmethod
     def _normalize_headers(headers: dict[str, Any]) -> dict[str, str]:
