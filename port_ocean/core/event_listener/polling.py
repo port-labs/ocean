@@ -101,12 +101,12 @@ class PollingEventListener(BaseEventListener):
 
     async def _evaluate_resync_trigger(
         self,
-    ) -> tuple[bool, str, str]:
+    ) -> tuple[bool, str]:
         """
         Decide whether this polling iteration should trigger a resync.
 
         Returns:
-            A tuple of (should_resync, reason, resync_request_updated_at).
+            A tuple of (should_resync, resync_request_updated_at).
         """
         if self.should_resync():
             logger.info("First polling iteration, resyncing")
