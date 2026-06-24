@@ -25,6 +25,9 @@ from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_pr
     DispatchWorkflowWebhookProcessor,
 )
 from github.clients.http.rest_client import GithubRestClient
+from integrations.github.github.clients.client_factory import (
+    create_github_client_for_org,
+)
 from port_ocean.context.ocean import ocean
 
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
@@ -221,7 +224,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 "organization, repo and workflow are required"
             )
 
-        client = self.get_rest_client(organization)
+        client = create_github_client_for_org(organization)
         inputs: dict[str, str] = self._parse_inputs(
             run.execution_properties.get("workflowInputs", {})
         )
