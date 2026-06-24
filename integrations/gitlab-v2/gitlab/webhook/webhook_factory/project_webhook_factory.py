@@ -54,7 +54,9 @@ class ProjectWebHook(BaseWebhookFactory[ProjectEvents]):
                 if project.get("namespace", {}).get("kind") == "user":
                     await self.create_project_webhook(project["id"])
 
-        logger.info("Completed project webhooks creation for personal namespace projects.")
+        logger.info(
+            "Completed project webhooks creation for personal namespace projects."
+        )
 
     def webhook_events(self) -> ProjectEvents:
         return ProjectEvents()
