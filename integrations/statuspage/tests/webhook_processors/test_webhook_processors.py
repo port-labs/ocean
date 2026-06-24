@@ -77,7 +77,9 @@ class TestIncidentWebhookProcessor:
 
 
 class TestIncidentUpdateWebhookProcessor:
-    def _create_processor(self, payload: dict[str, Any]) -> IncidentUpdateWebhookProcessor:
+    def _create_processor(
+        self, payload: dict[str, Any]
+    ) -> IncidentUpdateWebhookProcessor:
         event = WebhookEvent(trace_id="test-trace-id", payload=payload, headers={})
         return IncidentUpdateWebhookProcessor(event)
 
