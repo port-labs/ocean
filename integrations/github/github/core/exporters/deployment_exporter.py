@@ -210,8 +210,6 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
                         count,
                     )
 
-        # Fallback (first deployment in the environment, empty range, or unreachable predecessor):
-        # the deployed commit itself.
         commit = await get_commit(self.client, organization, repo_name, deployment_sha)
         date = (commit.get("commit") or {}).get("committer", {}).get("date")
         if date and parse_timestamp(date) is not None:
