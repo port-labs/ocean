@@ -575,6 +575,45 @@ class TestRateLimiterLogging:
             mock_bound.debug.assert_called_once()
             mock_bound.warning.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_sleep_method_execution(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+
+        client.rate_limiter.rate_limit_info = None
+        await client.rate_limiter._sleep()
+        mock_sleep.assert_not_called()
+
+        reset_in = 5.0
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=0, reset_time=int(time.time()) + int(reset_in)
+        )
+        client.rate_limiter._initialized = True
+
+        await client.rate_limiter._sleep()
+
+        mock_sleep.assert_called_once()
+        assert mock_sleep.call_args[0][0] >= reset_in
+        assert client.rate_limiter._initialized is False
+
+    @pytest.mark.asyncio
+    async def test_aenter_uses_sleep_method_when_exhausted(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=1, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        async with client.rate_limiter:
+            pass
+
+        mock_sleep.assert_called_once()
+        assert client.rate_limiter._initialized is False
+
 
 class TestNotifyRateLimitedConcurrency:
     @pytest.mark.asyncio

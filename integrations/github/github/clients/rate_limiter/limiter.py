@@ -51,16 +51,21 @@ class GitHubRateLimiter:
             return
 
         if self.rate_limit_info.remaining <= 1:
-            delay = self.rate_limit_info.seconds_until_reset
-            if delay > 0:
-                logger.bind(api_type=self.api_type, delay=delay).warning(
-                    f"Requests paused for {delay:.1f}s due to rate limit"
-                )
-                await asyncio.sleep(delay)
-            self._initialized = False
+            await self._sleep()
             return
 
         self.rate_limit_info.remaining -= 1
+
+    async def _sleep(self) -> None:
+        if self.rate_limit_info is None:
+            return
+        delay = self.rate_limit_info.seconds_until_reset
+        if delay > 0:
+            logger.bind(api_type=self.api_type, delay=delay).warning(
+                f"Requests paused for {delay:.1f}s due to rate limit exhaustion."
+            )
+            await asyncio.sleep(delay)
+        self._initialized = False
 
     def is_rate_limit_response(self, response: httpx.Response) -> bool:
         return is_rate_limit_response(response)

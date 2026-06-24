@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.0.9 (2026-06-24)
+
+
+### Bug Fixes
+
+- Implemented rate limit reservation threshold to prevent resync deadlocks
+
 ## 6.0.8 (2026-06-23)
 
 
