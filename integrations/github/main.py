@@ -474,6 +474,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
+                                enrich_nested_fields_separately=config.selector.enrich_nested_fields_separately,
                             )
                         )
                     )
