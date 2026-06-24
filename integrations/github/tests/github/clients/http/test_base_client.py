@@ -428,10 +428,12 @@ class TestAbstractGithubClient:
         )
 
         with (
-            patch("github.clients.http.base_client.ocean") as mock_ocean,
+            patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean,
             patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
         ):
-            mock_ocean.integration_config = {"ratelimit_reservation_threshold": 95.0}
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": 95.0
+            }
 
             async with event_context(EventType.RESYNC, trigger_type="machine"):
                 await client._wait_if_resync_threshold_exceeded()
@@ -453,15 +455,71 @@ class TestAbstractGithubClient:
         )
 
         with (
-            patch("github.clients.http.base_client.ocean") as mock_ocean,
+            patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean,
             patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
         ):
-            mock_ocean.integration_config = {"ratelimit_reservation_threshold": 95.0}
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": 95.0
+            }
 
             async with event_context(EventType.RESYNC, trigger_type="machine"):
                 await client._wait_if_resync_threshold_exceeded()
 
             mock_sleep.assert_not_called()
+
+    async def test_non_numeric_threshold_falls_back_to_default(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = ConcreteGithubClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        # 98% utilization triggers a sleep when falling back to the 95% default
+        client.rate_limiter.rate_limit_info = MagicMock(
+            utilization_percentage=98.0, seconds_until_reset=10
+        )
+
+        with (
+            patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean,
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": "not-a-number"
+            }
+
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                await client._wait_if_resync_threshold_exceeded()
+
+            mock_sleep.assert_called_once_with(10)
+
+    async def test_negative_threshold_falls_back_to_default(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = ConcreteGithubClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        # 98% utilization triggers a sleep when falling back to the 95% default
+        client.rate_limiter.rate_limit_info = MagicMock(
+            utilization_percentage=98.0, seconds_until_reset=10
+        )
+
+        with (
+            patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean,
+            patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": -10.0
+            }
+
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                await client._wait_if_resync_threshold_exceeded()
+
+            mock_sleep.assert_called_once_with(10)
 
     async def test_wait_if_resync_threshold_ignored_for_non_resync(
         self, authenticator: AbstractGitHubAuthenticator

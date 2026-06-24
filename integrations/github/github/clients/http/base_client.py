@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
-import asyncio
 from port_ocean.exceptions.context import EventContextNotFoundError
-from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event, EventType
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
@@ -20,8 +18,6 @@ if TYPE_CHECKING:
     from github.clients.auth.abstract_authenticator import (
         AbstractGitHubAuthenticator,
     )
-
-_RATE_LIMIT_USAGE_THRESHOLD: float = 95.0
 
 
 class AbstractGithubClient(ABC):
@@ -209,7 +205,6 @@ class AbstractGithubClient(ABC):
 
     async def _wait_if_resync_threshold_exceeded(self) -> None:
         "Pause if we are running a resync and approaching the rate limit, saving the remaining budget for webhooks."
-
         try:
             if event.event_type != EventType.RESYNC:
                 logger.debug(
@@ -220,34 +215,4 @@ class AbstractGithubClient(ABC):
             # we are not in an event context, we assume this is a standard action/webhook and should not be throttled
             return
 
-        ratelimit_info = self.rate_limiter.rate_limit_info
-        if ratelimit_info is None:
-            logger.debug("No rate limit info available, cannot check threshold.")
-            return
-
-        ratelimit_threshold_value = ocean.integration_config.get(
-            "ratelimit_reservation_threshold", _RATE_LIMIT_USAGE_THRESHOLD
-        )
-
-        try:
-            ratelimit_threshold = float(ratelimit_threshold_value)
-        except (TypeError, ValueError):
-            logger.warning(
-                f"Invalid ratelimit_reservation_threshold value: {ratelimit_threshold_value}. Using default {_RATE_LIMIT_USAGE_THRESHOLD}%."
-            )
-            ratelimit_threshold = _RATE_LIMIT_USAGE_THRESHOLD
-
-        if ratelimit_info.utilization_percentage >= ratelimit_threshold:
-            delay = ratelimit_info.seconds_until_reset
-
-            if delay > 0:
-                logger.bind(
-                    api_type=self.rate_limiter.api_type,
-                    delay=delay,
-                    current_utilization=ratelimit_info.utilization_percentage,
-                    threshold=ratelimit_threshold,
-                ).warning(
-                    "Rate limit utilization exceeds threshold during resync. "
-                    "Pausing execution to save remaining budget for webhooks."
-                )
-                await asyncio.sleep(delay)
+        await self.rate_limiter.wait_if_resync_threshold_exceeded()
