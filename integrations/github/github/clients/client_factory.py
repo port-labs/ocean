@@ -1,137 +1,145 @@
 import os
-from typing import Dict, Type, overload, Literal, Optional
+from dataclasses import dataclass
+from typing import Dict, Literal, Type, overload
 
-from port_ocean.context.ocean import ocean
-from github.clients.http.rest_client import GithubRestClient
-from github.clients.http.graphql_client import GithubGraphQLClient
-from github.clients.http.base_client import AbstractGithubClient
 from loguru import logger
-from github.helpers.utils import GithubClientType
-from github.clients.utils import integration_config
+from port_ocean.context.ocean import ocean
 
-from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.auth.abstract_authenticator import (
+    AbstractGitHubAuthenticator,
+    AuthScope,
+)
+from github.clients.auth.github_app_authenticator import (
+    GitHubAppAuthenticator,
+    reset_installation_index,
+)
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
+    reset_pat_instances,
 )
-from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
-from github.helpers.exceptions import MissingCredentials
+from github.clients.http.base_client import AbstractGithubClient
+from github.clients.http.graphql_client import GithubGraphQLClient
+from github.clients.http.rest_client import GithubRestClient
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
+from github.clients.utils import integration_config
+from github.helpers.exceptions import MissingCredentials
+from github.helpers.utils import GithubClientType
+
+_CLIENT_CLASSES: Dict[GithubClientType, Type[AbstractGithubClient]] = {
+    GithubClientType.REST: GithubRestClient,
+    GithubClientType.GRAPHQL: GithubGraphQLClient,
+}
+_clients: Dict[tuple[str, GithubClientType], AbstractGithubClient] = {}
 
 
-def _reset_clients_after_fork() -> None:
-    """Clear cached clients after fork so children create fresh httpx connections
-    and asyncio primitives (Semaphore, Lock) that are bound to the parent's event loop.
-    """
-    for client in GithubClientFactory._instances.values():
+def _reset_after_fork() -> None:
+    for client in _clients.values():
         client.authenticator._http_client = None
-    GithubClientFactory._instances.clear()
+    _clients.clear()
+    reset_installation_index()
+    reset_pat_instances()
     GitHubRateLimiterRegistry.reset_for_fork()
 
 
 if hasattr(os, "register_at_fork"):
-    os.register_at_fork(after_in_child=_reset_clients_after_fork)
+    os.register_at_fork(after_in_child=_reset_after_fork)
 
 
-class GitHubAuthenticatorFactory:
-    @staticmethod
-    def create(
-        github_host: str,
-        organization: Optional[str] = None,
-        token: Optional[str] = None,
-        app_id: Optional[str] = None,
-        installation_id: Optional[str] = None,
-        private_key: Optional[str] = None,
-    ) -> AbstractGitHubAuthenticator:
-        if token:
-            logger.debug(
-                f"Creating Personal Token Authenticator for select organizations for PAT on {github_host}"
-            )
-            return PersonalTokenAuthenticator(token)
+@dataclass(frozen=True)
+class GithubClientScope:
+    organization: str | None
+    account_type: str | None
+    installation_id: str | None
+    authenticator: AbstractGitHubAuthenticator
 
-        if organization and app_id and private_key:
-            logger.debug(
-                f"Creating GitHub App Authenticator for {organization} on {github_host}"
-            )
-            return GitHubAppAuthenticator(
-                app_id=app_id,
-                installation_id=installation_id,
-                private_key=private_key,
-                organization=organization,
-                github_host=github_host,
-            )
+    @overload
+    def get_client(
+        self, client_type: Literal[GithubClientType.REST]
+    ) -> GithubRestClient: ...
 
-        raise MissingCredentials("No valid GitHub credentials provided.")
-
-
-class GithubClientFactory:
-    _instance = None
-    _clients: Dict[GithubClientType, Type[AbstractGithubClient]] = {
-        GithubClientType.REST: GithubRestClient,
-        GithubClientType.GRAPHQL: GithubGraphQLClient,
-    }
-    _instances: Dict[GithubClientType, AbstractGithubClient] = {}
-
-    def __new__(cls) -> "GithubClientFactory":
-        if cls._instance is None:
-            cls._instance = super(GithubClientFactory, cls).__new__(cls)
-        return cls._instance
+    @overload
+    def get_client(
+        self, client_type: Literal[GithubClientType.GRAPHQL]
+    ) -> GithubGraphQLClient: ...
 
     def get_client(self, client_type: GithubClientType) -> AbstractGithubClient:
-        """Get or create a client instance from Ocean configuration.
+        return _client_for(self.authenticator, client_type)
 
-        Args:
-            client_type: Type of client to create ("rest" or other supported types)
 
-        Returns:
-            An instance of AbstractGithubClient
+def _config() -> dict:
+    return ocean.integration_config
 
-        Raises:
-            ValueError: If client_type is invalid
-        """
 
-        if client_type not in self._instances:
-            if client_type not in self._clients:
-                logger.error(f"Invalid client type: {client_type}")
-                raise ValueError(f"Invalid client type: {client_type}")
+async def _list_auth_scopes() -> list[AuthScope]:
+    config = _config()
+    if config.get("github_token"):
+        return await PersonalTokenAuthenticator.list_scopes(config)
+    if config.get("github_app_id") and config.get("github_app_private_key"):
+        return await GitHubAppAuthenticator.list_scopes(config)
+    raise MissingCredentials("No valid GitHub credentials provided.")
 
-            authenticator = GitHubAuthenticatorFactory.create(
-                github_host=ocean.integration_config["github_host"],
-                organization=ocean.integration_config.get("github_organization"),
-                token=ocean.integration_config.get("github_token"),
-                app_id=ocean.integration_config.get("github_app_id"),
-                installation_id=ocean.integration_config.get(
-                    "github_app_installation_id"
-                ),
-                private_key=ocean.integration_config.get("github_app_private_key"),
-            )
 
-            logger.info(f"instantiated new {client_type} client.")
+def _authenticator_for_org(organization: str | None) -> AbstractGitHubAuthenticator:
+    config = _config()
+    if config.get("github_token"):
+        return PersonalTokenAuthenticator.for_org(config, organization)
+    if config.get("github_app_id") and config.get("github_app_private_key"):
+        return GitHubAppAuthenticator.for_org(config, organization)
+    raise MissingCredentials("No valid GitHub credentials provided.")
 
-            self._instances[client_type] = self._clients[client_type](
-                **integration_config(authenticator),
-            )
 
-        return self._instances[client_type]
+def _client_for(
+    authenticator: AbstractGitHubAuthenticator, client_type: GithubClientType
+) -> AbstractGithubClient:
+    cache_key = (authenticator.rate_limit_scope, client_type)
+    if cache_key not in _clients:
+        logger.info(
+            f"Instantiated new {client_type} client for scope {authenticator.rate_limit_scope}."
+        )
+        _clients[cache_key] = _CLIENT_CLASSES[client_type](
+            **integration_config(authenticator),
+        )
+    return _clients[cache_key]
+
+
+def _to_client_scope(scope: AuthScope) -> GithubClientScope:
+    return GithubClientScope(
+        scope.organization,
+        scope.account_type,
+        scope.installation_id,
+        scope.authenticator,
+    )
+
+
+async def create_github_clients() -> list[GithubClientScope]:
+    return [_to_client_scope(scope) for scope in await _list_auth_scopes()]
 
 
 @overload
-def create_github_client(
+def create_github_client_for_org(
+    organization: str | None,
     client_type: Literal[GithubClientType.REST],
 ) -> GithubRestClient: ...
 
 
 @overload
-def create_github_client(client_type: None = None) -> GithubRestClient: ...
+def create_github_client_for_org(
+    organization: str | None,
+    client_type: None = None,
+) -> GithubRestClient: ...
 
 
 @overload
-def create_github_client(
+def create_github_client_for_org(
+    organization: str | None,
     client_type: Literal[GithubClientType.GRAPHQL],
 ) -> GithubGraphQLClient: ...
 
 
-def create_github_client(
+def create_github_client_for_org(
+    organization: str | None,
     client_type: GithubClientType | None = GithubClientType.REST,
 ) -> AbstractGithubClient:
-    factory = GithubClientFactory()
-    return factory.get_client(client_type or GithubClientType.REST)
+    return _client_for(
+        _authenticator_for_org(organization), client_type or GithubClientType.REST
+    )

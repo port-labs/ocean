@@ -44,6 +44,8 @@ class _DummyHeaders:
 
 
 class _DummyAuthenticator:
+    rate_limit_scope = "dummy"
+
     def __init__(self, response: httpx.Response):
         self._response = response
         self.client = self

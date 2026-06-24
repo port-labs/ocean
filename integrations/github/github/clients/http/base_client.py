@@ -29,7 +29,9 @@ class AbstractGithubClient(ABC):
         self.authenticator = authenticator
         self.kwargs = kwargs
         self.rate_limiter: GitHubRateLimiter = GitHubRateLimiterRegistry.get_limiter(
-            host=github_host, config=self.rate_limiter_config
+            host=github_host,
+            config=self.rate_limiter_config,
+            scope=authenticator.rate_limit_scope,
         )
         self.authenticator.set_rate_limit_notifier(
             self.rate_limiter.notify_rate_limited

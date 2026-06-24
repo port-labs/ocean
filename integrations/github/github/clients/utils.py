@@ -1,9 +1,10 @@
 from typing import Any, Dict, cast, TYPE_CHECKING
+
 from github.core.options import ListOrganizationOptions
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-from port_ocean.context.event import event
 
 if TYPE_CHECKING:
     from integration import GithubPortAppConfig
@@ -16,9 +17,9 @@ def integration_config(authenticator: AbstractGitHubAuthenticator) -> Dict[str, 
     }
 
 
-def get_github_organizations() -> ListOrganizationOptions:
+def get_github_organizations(organization: str | None = None) -> ListOrganizationOptions:
     """Get the organizations from the integration config."""
-    organization = ocean.integration_config["github_organization"]
+    organization = organization or ocean.integration_config.get("github_organization")
     port_app_config = cast("GithubPortAppConfig", event.port_app_config)
 
     return ListOrganizationOptions(

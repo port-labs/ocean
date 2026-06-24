@@ -10,7 +10,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
 from port_ocean.core.handlers.entity_processor import JQEntityProcessor
 from datetime import datetime, timezone
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.helpers.exceptions import CheckRunsException
 
 
@@ -35,14 +35,12 @@ class MatchedFile:
 class CheckRuns:
     """Handles GitHub check run operations for file validation."""
 
-    def __init__(self) -> None:
-        self.client = create_github_client()
-
     async def create_validation_check(
         self, organization: str, repo_name: str, head_sha: str
     ) -> str:
         """Create a new check run for validation."""
-        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/check-runs"
+        client = create_github_client_for_org(organization)
+        endpoint = f"{client.base_url}/repos/{organization}/{repo_name}/check-runs"
 
         payload = {
             "name": "File Kind validation",
@@ -54,7 +52,7 @@ class CheckRuns:
             },
         }
 
-        response = await self.client.send_api_request(
+        response = await client.send_api_request(
             endpoint, method="POST", json_data=payload
         )
         if not response:
@@ -82,7 +80,8 @@ class CheckRuns:
         details: str,
     ) -> None:
         """Update check run with results."""
-        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/check-runs/{check_run_id}"
+        client = create_github_client_for_org(organization)
+        endpoint = f"{client.base_url}/repos/{organization}/{repo_name}/check-runs/{check_run_id}"
 
         payload = {
             "status": status,
@@ -91,7 +90,7 @@ class CheckRuns:
             "output": {"title": title, "summary": summary, "text": details},
         }
 
-        await self.client.send_api_request(endpoint, method="PATCH", json_data=payload)
+        await client.send_api_request(endpoint, method="PATCH", json_data=payload)
 
         logger.info(
             f"Updated check run {check_run_id} for {repo_name} with {conclusion} status of organization: {organization}"

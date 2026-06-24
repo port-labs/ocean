@@ -24,6 +24,7 @@ from github.helpers.exceptions import (
 from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_processor import (
     DispatchWorkflowWebhookProcessor,
 )
+from github.clients.http.rest_client import GithubRestClient
 from port_ocean.context.ocean import ocean
 
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
@@ -112,7 +113,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         """
         return run.execution_properties.get("workflow")
 
-    async def _get_default_ref(self, organization: str, repo_name: str) -> str:
+    async def _get_default_ref(
+        self, client: GithubRestClient, organization: str, repo_name: str
+    ) -> str:
         """
         Get the default branch name for a repository, using cache when available.
         """
@@ -126,7 +129,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             )
             return self._default_ref_cache[key]
 
-        repoExporter = RestRepositoryExporter(self.rest_client)
+        repoExporter = RestRepositoryExporter(client)
         repo = await repoExporter.get_resource(
             SingleRepositoryOptions(organization=organization, name=repo_name)
         )
@@ -150,7 +153,12 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         return self._default_ref_cache[key]
 
     async def _get_workflow_run(
-        self, organization: str, repo: str, ref: str, isoDate: str
+        self,
+        client: GithubRestClient,
+        organization: str,
+        repo: str,
+        ref: str,
+        isoDate: str,
     ) -> dict[str, Any]:
         """
         Get the workflow run for a given workflow.
@@ -159,8 +167,8 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         actor = await get_authenticated_actor()
         attempts_made = 0
         while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
-            response = await self.rest_client.send_api_request(
-                f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/runs",
+            response = await client.send_api_request(
+                f"{client.base_url}/repos/{organization}/{repo}/actions/runs",
                 params={
                     "actor": actor,
                     "event": "workflow_dispatch",
@@ -213,16 +221,17 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 "organization, repo and workflow are required"
             )
 
+        client = self.get_rest_client(organization)
         inputs: dict[str, str] = self._parse_inputs(
             run.execution_properties.get("workflowInputs", {})
         )
         ref = inputs.pop("ref", None)
         if not ref:
-            ref = await self._get_default_ref(organization, repo)
+            ref = await self._get_default_ref(client, organization, repo)
         try:
             isoDate = datetime.now(timezone.utc).isoformat()
-            await self.rest_client.make_request(
-                f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
+            await client.make_request(
+                f"{client.base_url}/repos/{organization}/{repo}/actions/workflows/{workflow}/dispatches",
                 method="POST",
                 json_data={
                     "ref": ref,
@@ -232,7 +241,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             )
 
             workflow_run = await self._get_workflow_run(
-                organization, repo, ref, isoDate
+                client, organization, repo, ref, isoDate
             )
             external_id = build_external_id(workflow_run)
 

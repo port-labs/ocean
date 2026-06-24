@@ -21,7 +21,7 @@ from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticat
 from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.helpers.utils import GithubClientType, ObjectKind
 from github.clients.http.base_client import AbstractGithubClient
 
@@ -69,13 +69,13 @@ def mock_ocean_context() -> None:
 @pytest.fixture
 def rest_client(mock_ocean_context: Any) -> AbstractGithubClient:
     """Provide a GitHubClient instance with mocked Ocean context."""
-    return create_github_client(GithubClientType.REST)
+    return create_github_client_for_org("test-org", GithubClientType.REST)
 
 
 @pytest.fixture
 def graphql_client(mock_ocean_context: Any) -> AbstractGithubClient:
     """Provide a GitHubClient instance with mocked Ocean context."""
-    return create_github_client(GithubClientType.GRAPHQL)
+    return create_github_client_for_org("test-org", GithubClientType.GRAPHQL)
 
 
 @pytest.fixture

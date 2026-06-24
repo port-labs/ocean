@@ -15,7 +15,7 @@ from github.webhook.events import ISSUE_DELETE_EVENTS, ISSUE_EVENTS
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.options import SingleIssueOptions
 from integration import GithubIssueConfig, GithubIssueSelector
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
@@ -73,7 +73,7 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[],
                 deleted_raw_results=[data_to_delete],
             )
-        exporter = RestIssueExporter(create_github_client())
+        exporter = RestIssueExporter(create_github_client_for_org(organization))
         data_to_upsert = await exporter.get_resource(
             SingleIssueOptions(
                 organization=organization,

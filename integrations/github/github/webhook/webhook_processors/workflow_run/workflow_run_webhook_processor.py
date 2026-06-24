@@ -2,7 +2,7 @@ from typing import cast
 from loguru import logger
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.core.options import SingleWorkflowRunOptions
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
 )
@@ -56,7 +56,7 @@ class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                         )
                     ],
                 )
-        exporter = RestWorkflowRunExporter(create_github_client())
+        exporter = RestWorkflowRunExporter(create_github_client_for_org(organization))
         options = SingleWorkflowRunOptions(
             organization=organization, repo_name=repo["name"], run_id=workflow_run["id"]
         )

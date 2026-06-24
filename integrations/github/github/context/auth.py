@@ -2,7 +2,7 @@ import asyncio
 from typing import Optional
 from pydantic import BaseModel
 
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from port_ocean.context.ocean import ocean
 
 
@@ -44,7 +44,7 @@ async def get_authenticated_app() -> AppAuthContext:
         return _app_auth_context
 
     async with _auth_lock:
-        client = create_github_client()
+        client = create_github_client_for_org(None)
         response = await client.send_api_request(
             resource=f"{client.base_url}/app",
             authenticator_headers_params={"return_jwt": True},
@@ -59,7 +59,7 @@ async def get_authenticated_user() -> UserAuthContext:
         return _user_auth_context
 
     async with _auth_lock:
-        client = create_github_client()
+        client = create_github_client_for_org(None)
         response = await client.send_api_request(f"{client.base_url}/user")
         _user_auth_context = UserAuthContext.parse_obj(response)
         return _user_auth_context

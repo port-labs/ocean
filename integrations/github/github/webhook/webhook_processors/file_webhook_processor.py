@@ -3,7 +3,7 @@ from typing import cast, Any
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.exporters.file_exporter.utils import (
     get_matching_files,
@@ -90,7 +90,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         if updated_raw_results and selector.included_files:
-            rest_client = create_github_client()
+            rest_client = create_github_client_for_org(organization)
             enricher = IncludedFilesEnricher(
                 client=rest_client,
                 strategy=FileIncludedFilesStrategy(
@@ -155,7 +155,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         logger.info(
             f"Fetching commit diff for repository {repo_name} of organization: {organization} from {before_sha} to {after_sha}"
         )
-        rest_client = create_github_client()
+        rest_client = create_github_client_for_org(organization)
         exporter = RestFileExporter(rest_client)
 
         diff_data = await exporter.fetch_commit_diff(

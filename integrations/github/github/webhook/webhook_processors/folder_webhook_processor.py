@@ -2,7 +2,7 @@ from typing import Any, cast
 
 from loguru import logger
 
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.folder_exporter import RestFolderExporter
 from github.core.options import (
     FolderSearchOptions,
@@ -62,7 +62,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             if config.selector.included_files or any(
                 sel.included_files for sel in config.selector.folders
             ):
-                client = create_github_client()
+                client = create_github_client_for_org(organization)
                 enricher = IncludedFilesEnricher(
                     client=client,
                     strategy=FolderIncludedFilesStrategy(
@@ -128,8 +128,8 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         branch: str,
         event_payload: EventPayload,
     ) -> list[dict[str, Any]]:
-        client = create_github_client()
         organization = self.get_webhook_payload_organization(event_payload)["login"]
+        client = create_github_client_for_org(organization)
 
         commit_diff = await fetch_commit_diff(
             client,

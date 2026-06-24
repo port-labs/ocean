@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from dataclasses import dataclass
 from typing import Any, Callable, Coroutine, Dict, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
@@ -50,6 +51,10 @@ class AbstractGitHubAuthenticator(ABC):
     _rate_limit_notifier: Optional[
         Callable[[httpx.Response], Coroutine[Any, Any, None]]
     ] = None
+
+    @property
+    def rate_limit_scope(self) -> str:
+        return type(self).__name__
 
     @abstractmethod
     async def get_token(self, **kwargs: Any) -> GitHubToken:
@@ -119,3 +124,13 @@ class AbstractGitHubAuthenticator(ABC):
                 "Failed to check if organization is personal, assuming it is not a personal org"
             )
             return False
+
+
+@dataclass(frozen=True)
+class AuthScope:
+    """One principal to sync against: a PAT, or one app installation."""
+
+    organization: str | None
+    account_type: str | None
+    installation_id: str | None
+    authenticator: AbstractGitHubAuthenticator

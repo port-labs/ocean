@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.1.0 (2026-06-23)
+
+
+### Features
+
+- Added installation-scoped GitHub client factory with `create_github_clients` and `create_github_client_for_org` for multi-installation app auth.
+
+
 ## 6.0.7 (2026-06-22)
 
 

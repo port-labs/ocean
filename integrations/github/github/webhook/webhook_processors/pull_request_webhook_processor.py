@@ -7,7 +7,7 @@ from github.helpers.utils import (
     enrich_with_organization,
     enrich_with_repository,
 )
-from github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client_for_org
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -74,9 +74,11 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
         exporter: AbstractGithubExporter[Any] = (
-            GraphQLPullRequestExporter(create_github_client(GithubClientType.GRAPHQL))
+            GraphQLPullRequestExporter(
+                create_github_client_for_org(organization, GithubClientType.GRAPHQL)
+            )
             if is_graphql_api
-            else RestPullRequestExporter(create_github_client())
+            else RestPullRequestExporter(create_github_client_for_org(organization))
         )
         data_to_upsert = await exporter.get_resource(
             SinglePullRequestOptions(

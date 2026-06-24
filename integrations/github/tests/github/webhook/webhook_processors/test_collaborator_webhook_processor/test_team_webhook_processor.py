@@ -189,7 +189,7 @@ class TestCollaboratorTeamWebhookProcessor:
         ]
 
         with patch(
-            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client"
+            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client_for_org"
         ) as mock_create_client:
             mock_client = MagicMock()
             mock_create_client.return_value = mock_client
@@ -221,7 +221,7 @@ class TestCollaboratorTeamWebhookProcessor:
                 ]
                 assert result.updated_raw_results == expected_team_data
 
-                mock_create_client.assert_called_once_with()
+                mock_create_client.assert_called_once_with("test-org")
             else:
                 # For unsupported events, no exporters should be called
                 mock_create_client.assert_not_called()
@@ -238,7 +238,7 @@ class TestCollaboratorTeamWebhookProcessor:
         resource_config.selector.affiliation = "direct"
 
         with patch(
-            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client"
+            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client_for_org"
         ) as mock_create_client:
             result = await team_webhook_processor.handle_event(payload, resource_config)
 
@@ -257,7 +257,7 @@ class TestCollaboratorTeamWebhookProcessor:
         payload["action"] = "added_to_repository"
 
         with patch(
-            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client"
+            "github.webhook.webhook_processors.collaborator_webhook_processor.team_webhook_processor.create_github_client_for_org"
         ) as mock_create_client:
             mock_client = MagicMock()
             mock_create_client.return_value = mock_client
@@ -276,4 +276,4 @@ class TestCollaboratorTeamWebhookProcessor:
             assert result.updated_raw_results == []
             assert result.deleted_raw_results == []
 
-            mock_create_client.assert_called_once_with()
+            mock_create_client.assert_called_once_with("test-org")
