@@ -1,17 +1,16 @@
 import asyncio
 import json
 import sys
-from asyncio import Task, ensure_future
+from asyncio import ensure_future, Task
 from typing import Any, Literal
 
 from confluent_kafka import Message
 from loguru import logger
-from pydantic import validator
 
 from port_ocean.consumers.kafka_consumer import (
-    IntegrationResyncRequestsKafkaConsumer,
     KafkaConsumer,
     KafkaConsumerConfig,
+    IntegrationResyncRequestsKafkaConsumer,
 )
 from port_ocean.context.ocean import (
     ocean,
@@ -21,6 +20,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
+from pydantic import validator
 from port_ocean.core.models import EventListenerType, IntegrationFeatureFlag
 
 
@@ -79,7 +79,6 @@ class KafkaEventListenerSettings(EventListenerSettings):
         }
 
 
-# TODO: do i need to change this? ask hadar
 class KafkaEventListener(BaseEventListener):
     """
     The `KafkaEventListener` specifically listens for messages from a Kafka consumer related to changes in an integration.
