@@ -7,11 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.43 (2026-06-24)
+## 0.7.44 (2026-06-24)
 
 ### Features
 
 - Added project-level webhook registration for GitLab projects in personal namespaces, enabling live events for projects not belonging to any group
+
+## 0.7.43 (2026-06-23)
+
+### Bug Fixes
+
+- Fixed workflow `trigger_pipeline` runs staying stuck in IN_PROGRESS when GitLab pipeline webhooks arrived before `externalRunId` was written
+- Added Port run logs during the trigger phase so workflow runs show progress beyond "Pending polling"
+
+### Improvements
+
+- `trigger_pipeline` completion webhooks now use Ocean's `find_run_with_retry` instead of a single immediate run lookup
+- GitLab API validation errors when triggering a pipeline are surfaced as readable Port run messages (e.g. "Reference not found") without a stack trace
 
 ## 0.7.42 (2026-06-22)
 

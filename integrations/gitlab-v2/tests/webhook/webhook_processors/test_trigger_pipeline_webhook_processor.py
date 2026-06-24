@@ -1,6 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 from gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor import (
@@ -25,17 +25,15 @@ def processor() -> TriggerPipelineWebhookProcessor:
     return TriggerPipelineWebhookProcessor(event=make_event("success"))
 
 
-def make_mock_run(in_progress: bool = True, report_status: bool = True) -> MagicMock:
+def make_mock_run() -> MagicMock:
     run = MagicMock()
     run.id = "run-1"
-    run.execution_properties = {"reportPipelineStatus": report_status}
+    run.execution_properties = {"reportPipelineStatus": True}
     return run
 
 
 @pytest.mark.asyncio
 class TestTriggerPipelineWebhookProcessor:
-    # --- should_process_event ---
-
     async def test_should_process_terminal_status(
         self, processor: TriggerPipelineWebhookProcessor
     ) -> None:
@@ -61,93 +59,46 @@ class TestTriggerPipelineWebhookProcessor:
         )
         assert await processor.should_process_event(event) is False
 
-    # --- handle_event ---
-
-    async def test_terminal_success_completes_run(
+    async def test_handle_event_completes_run(
         self, processor: TriggerPipelineWebhookProcessor
     ) -> None:
         run = make_mock_run()
         resource_config = MagicMock()
-        with patch(
-            "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
-        ) as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
-            mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-            mock_ocean.port_client.report_run_completed = AsyncMock()
+        with (
+            patch(
+                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
+            ) as mock_ocean,
+            patch(
+                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.complete_run_from_pipeline_status",
+                AsyncMock(return_value=True),
+            ) as mock_complete,
+        ):
+            mock_ocean.port_client.find_run_with_retry = AsyncMock(return_value=run)
+            await processor.handle_event(make_event("success").payload, resource_config)
 
-            payload = make_event("success").payload
-            await processor.handle_event(payload, resource_config)
-
-            mock_ocean.port_client.report_run_completed.assert_called_once_with(
-                run, True, "Pipeline completed: success"
+            mock_complete.assert_called_once_with(
+                "gl_42_99",
+                "success",
+                completion_source="webhook",
             )
 
-    @pytest.mark.parametrize("status", ["failed", "canceled", "skipped"])
-    async def test_terminal_non_success_fails_run(
-        self, processor: TriggerPipelineWebhookProcessor, status: str
-    ) -> None:
-        run = make_mock_run()
-        resource_config = MagicMock()
-        with patch(
-            "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
-        ) as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
-            mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
-            mock_ocean.port_client.report_run_completed = AsyncMock()
-
-            payload = make_event(status).payload
-            await processor.handle_event(payload, resource_config)
-
-            mock_ocean.port_client.report_run_completed.assert_called_once_with(
-                run, False, f"Pipeline completed: {status}"
-            )
-
-    async def test_no_matching_run_skips_silently(
+    async def test_handle_event_no_run_skips(
         self, processor: TriggerPipelineWebhookProcessor
     ) -> None:
         resource_config = MagicMock()
-        with patch(
-            "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
-        ) as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(
-                return_value=None
-            )
-            mock_ocean.port_client.report_run_completed = AsyncMock()
-
+        with (
+            patch(
+                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
+            ) as mock_ocean,
+            patch(
+                "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.complete_run_from_pipeline_status",
+                AsyncMock(),
+            ) as mock_complete,
+        ):
+            mock_ocean.port_client.find_run_with_retry = AsyncMock(return_value=None)
             result = await processor.handle_event(
                 make_event("success").payload, resource_config
             )
 
-            mock_ocean.port_client.report_run_completed.assert_not_called()
+            mock_complete.assert_not_called()
             assert result.updated_raw_results == []
-
-    async def test_duplicate_webhook_ignored(
-        self, processor: TriggerPipelineWebhookProcessor
-    ) -> None:
-        run = make_mock_run()
-        resource_config = MagicMock()
-        with patch(
-            "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
-        ) as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
-            mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=False)
-            mock_ocean.port_client.report_run_completed = AsyncMock()
-
-            await processor.handle_event(make_event("success").payload, resource_config)
-
-            mock_ocean.port_client.report_run_completed.assert_not_called()
-
-    async def test_report_pipeline_status_false_skips(
-        self, processor: TriggerPipelineWebhookProcessor
-    ) -> None:
-        run = make_mock_run(report_status=False)
-        resource_config = MagicMock()
-        with patch(
-            "gitlab.webhook.webhook_processors.trigger_pipeline_webhook_processor.ocean"
-        ) as mock_ocean:
-            mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
-            mock_ocean.port_client.report_run_completed = AsyncMock()
-
-            await processor.handle_event(make_event("success").payload, resource_config)
-
-            mock_ocean.port_client.report_run_completed.assert_not_called()

@@ -5,6 +5,7 @@ from enum import IntEnum
 from enum import StrEnum
 from typing import Any, Union
 
+import httpx
 from loguru import logger
 from yaml import YAMLError, safe_load
 
@@ -50,6 +51,43 @@ class ObjectKind(StrEnum):
     RELEASE = "release"
     BRANCH = "branch"
     DEPLOYMENT = "deployment"
+
+
+def format_gitlab_api_error_message(message: Any) -> str:
+    """Turn GitLab API error payloads into a human-readable string."""
+    if isinstance(message, str):
+        return message
+    if isinstance(message, list):
+        return "; ".join(format_gitlab_api_error_message(item) for item in message)
+    if isinstance(message, dict):
+        parts: list[str] = []
+        for key, value in message.items():
+            formatted = format_gitlab_api_error_message(value)
+            if key in ("base", "error", "message"):
+                parts.append(formatted)
+            else:
+                parts.append(f"{key}: {formatted}")
+        return "; ".join(parts)
+    return str(message)
+
+
+def format_gitlab_api_error(response: httpx.Response) -> str:
+    """Extract a readable error message from a GitLab API error response."""
+    try:
+        body = response.json()
+    except Exception:
+        text = response.text.strip()
+        return text or f"HTTP {response.status_code}"
+
+    if not isinstance(body, dict):
+        return str(body)
+
+    for key in ("message", "error_description", "error"):
+        if key in body and body[key] is not None:
+            return format_gitlab_api_error_message(body[key])
+
+    text = response.text.strip()
+    return text or f"HTTP {response.status_code}"
 
 
 def parse_file_content(
