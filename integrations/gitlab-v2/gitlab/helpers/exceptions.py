@@ -11,7 +11,9 @@ class GitlabTriggerPipelineError(Exception):
     """Raised when the GitLab API returns an error while triggering a pipeline."""
 
     @classmethod
-    def from_response(cls, response: httpx.Response, prefix: str) -> "GitlabTriggerPipelineError":
+    def from_response(
+        cls, response: httpx.Response, prefix: str
+    ) -> "GitlabTriggerPipelineError":
         return cls(f"{prefix}: {cls._response_detail(response)}")
 
     @staticmethod
