@@ -99,6 +99,53 @@ class PollingEventListener(BaseEventListener):
 
         return current_state_updated_at < resync_request_updated_at
 
+    async def _evaluate_resync_trigger(
+        self,
+    ) -> tuple[bool, str, str]:
+        """
+        Decide whether this polling iteration should trigger a resync.
+
+        Returns:
+            A tuple of (should_resync, reason, resync_request_updated_at).
+        """
+        if self.should_resync():
+            logger.info("First polling iteration, resyncing")
+            return True, ""
+
+        try:
+            resync_request = (
+                await ocean.app.port_client.get_integration_resync_request()
+            )
+            resync_request_updated_at = resync_request.get("updatedAt", "")
+            if self.should_resync_from_resync_request(resync_request_updated_at):
+                logger.info("Detected integration resync request")
+                return (
+                    True,
+                    resync_request_updated_at,
+                )
+        except Exception as error:
+            logger.exception(
+                "Failed to fetch integration resync request in polling listener, continuing without resync request signal",
+                error=error,
+            )
+
+        return False, ""
+
+    async def _perform_resync(self, resync_request_updated_at: str) -> None:
+        logger.info("Performing resync")
+
+        ocean.app.resync_state_updater.last_integration_state_updated_at = (
+            resync_request_updated_at
+        )
+        if resync_request_updated_at:
+            ocean.app.resync_state_updater.last_resync_request_updated_at = (
+                resync_request_updated_at
+            )
+
+        running_task: Task[Any] = get_event_loop().create_task(self._resync({}))
+        signal_handler.register(running_task.cancel)
+        await running_task
+
     async def _start(self) -> None:
         """
         Starts the polling event listener.
@@ -115,41 +162,12 @@ class PollingEventListener(BaseEventListener):
                 f"Polling event listener iteration after {self.event_listener_config.interval}. Checking for changes"
             )
 
-            resync_request_updated_at = ""
-            should_resync = self.should_resync()
-            resync_reason = "First polling iteration, resyncing"
-
-            if not should_resync:
-                try:
-                    resync_request = (
-                        await ocean.app.port_client.get_integration_resync_request()
-                    )
-                    resync_request_updated_at = resync_request.get("updatedAt", "")
-                    should_resync = self.should_resync_from_resync_request(
-                        resync_request_updated_at
-                    )
-                    if should_resync:
-                        resync_reason = "Detected integration resync request"
-                        resync_request_updated_at = resync_request.get("updatedAt", "")
-                except Exception as error:
-                    logger.exception(
-                        "Failed to fetch integration resync request in polling listener, continuing without resync request signal",
-                        error=error,
-                    )
-
+            (
+                should_resync,
+                resync_request_updated_at,
+            ) = await self._evaluate_resync_trigger()
             if should_resync:
-                logger.info(resync_reason)
-                ocean.app.resync_state_updater.last_integration_state_updated_at = (
-                    resync_request_updated_at
-                )
-                if resync_request_updated_at:
-                    ocean.app.resync_state_updater.last_resync_request_updated_at = (
-                        resync_request_updated_at
-                    )
-                running_task: Task[Any] = get_event_loop().create_task(self._resync({}))
-                signal_handler.register(running_task.cancel)
-
-                await running_task
+                await self._perform_resync(resync_request_updated_at)
 
         # Execute resync repeatedly task
         await resync()
