@@ -48,6 +48,18 @@ class GitLabClient:
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
 
+    async def get_current_user(self) -> dict[str, Any]:
+        return await self.rest.send_api_request("GET", "user")
+
+    async def get_user_projects(
+        self, user_id: int | str
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch projects in a user's personal namespace (group projects excluded)."""
+        async for projects_batch in self.rest.get_paginated_resource(
+            f"users/{user_id}/projects"
+        ):
+            yield projects_batch
+
     async def get_tag(self, project_id: int, tag_name: str) -> dict[str, Any]:
         return await self.rest.send_api_request(
             "GET", f"projects/{project_id}/repository/tags/{tag_name}"
