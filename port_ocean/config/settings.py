@@ -139,7 +139,7 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
     )
     # PEL requeue worker settings
     pel_stuck_timeout_seconds: int = Field(
-        default=180,
+        default=600,
         ge=1,
         description="Seconds a PEL entry must be idle before the requeue worker reclaims it.",
     )
