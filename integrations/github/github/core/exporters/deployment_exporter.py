@@ -88,17 +88,23 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
                 ]
             return
 
-        buffered: list[dict[str, Any]] = []
-        async for batch in self.client.send_paginated_request(endpoint, params):
-            buffered.extend(
-                self._enrich_deployment(deployment, repo, organization)
-                for deployment in batch
-            )
-        if not buffered:
+        deployments = [
+            self._enrich_deployment(deployment, repo, organization)
+            async for batch in self.client.send_paginated_request(endpoint, params)
+            for deployment in batch
+        ]
+        if not deployments:
             return
+        async for enriched in self._stream_first_commit_enrichment(
+            organization, repo, deployments
+        ):
+            yield enriched
 
+    async def _stream_first_commit_enrichment(
+        self, organization: str, repo_name: str, deployments: list[dict[str, Any]]
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(
-            f"Enriching {len(buffered)} deployments with first commit from repository {repo} from {organization}"
+            f"Enriching {len(deployments)} deployments with first commit from repository {repo_name} from {organization}"
         )
         semaphore = asyncio.BoundedSemaphore(BATCH_CONCURRENCY_LIMIT)
         streams = [
@@ -107,12 +113,12 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
                 functools.partial(
                     self._stream_first_commit,
                     organization,
-                    repo,
+                    repo_name,
                     deployment,
                     predecessor_sha,
                 ),
             )
-            for deployment, predecessor_sha in self._pair_predecessors(buffered)
+            for deployment, predecessor_sha in self._pair_predecessors(deployments)
         ]
         async for enriched in stream_async_iterators_tasks(*streams):
             yield enriched
