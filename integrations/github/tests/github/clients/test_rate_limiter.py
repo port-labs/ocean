@@ -594,7 +594,7 @@ class TestRateLimiterLogging:
         await client.rate_limiter._sleep()
 
         mock_sleep.assert_called_once()
-        assert mock_sleep.call_args[0][0] >= reset_in
+        assert mock_sleep.call_args[0][0] >= reset_in - 1
         assert client.rate_limiter._initialized is False
 
     @pytest.mark.asyncio

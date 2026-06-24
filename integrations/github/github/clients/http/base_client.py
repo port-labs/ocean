@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import asyncio
+from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event, EventType
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
@@ -215,7 +216,7 @@ class AbstractGithubClient(ABC):
                     "Not a resync event, no need to check rate limit threshold."
                 )
                 return
-        except Exception:
+        except EventContextNotFoundError:
             # we are not in an event context, we assume this is a standard action/webhook and should not be throttled
             return
 
@@ -224,9 +225,17 @@ class AbstractGithubClient(ABC):
             logger.debug("No rate limit info available, cannot check threshold.")
             return
 
-        ratelimit_threshold = ocean.integration_config.get(
+        ratelimit_threshold_value = ocean.integration_config.get(
             "ratelimit_reservation_threshold", _RATE_LIMIT_USAGE_THRESHOLD
         )
+
+        try:
+            ratelimit_threshold = float(ratelimit_threshold_value)
+        except (TypeError, ValueError):
+            logger.warning(
+                f"Invalid ratelimit_reservation_threshold value: {ratelimit_threshold_value}. Using default {_RATE_LIMIT_USAGE_THRESHOLD}%."
+            )
+            ratelimit_threshold = _RATE_LIMIT_USAGE_THRESHOLD
 
         if ratelimit_info.utilization_percentage >= ratelimit_threshold:
             delay = ratelimit_info.seconds_until_reset
