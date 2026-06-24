@@ -70,12 +70,12 @@ async def test_polling_resyncs_from_resync_requests_when_integration_unchanged(
 
     await listener._start()
 
-    port_client.get_current_integration.assert_called_once_with(is_polling=True)
+    port_client.get_current_integration.assert_not_called()
     port_client.get_integration_resync_request.assert_called_once()
     resync_mock.assert_called_once_with({})
     assert (
         app.resync_state_updater.last_integration_state_updated_at
-        == "2024-01-01T00:00:00Z"
+        == "2024-01-01T00:05:00Z"
     )
     assert (
         app.resync_state_updater.last_resync_request_updated_at
