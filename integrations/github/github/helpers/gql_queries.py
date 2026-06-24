@@ -183,6 +183,17 @@ commits(first: 1) {
   }
 """
 
+# Nested connections fetched separately when enrich_nested_fields_separately is set.
+# These are the heavy fields that drive the per-request resolver fan-out responsible
+# for GitHub's 10s GraphQL timeout on large orgs (see ticket 4399261).
+PR_NESTED_FIELDS_FETCHED_SEPARATELY = (
+    "assignees",
+    "reviewRequests",
+    "labels",
+    "reviews",
+    "statusCheckRollup",
+)
+
 
 def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
     required_fields = [
@@ -358,6 +369,8 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
     ]
 
     excluded = set(options.exclude_graphql_fields)
+    if options.enrich_nested_fields_separately:
+        excluded.update(PR_NESTED_FIELDS_FETCHED_SEPARATELY)
     filtered_optional_fields = [
         body for name, body in optional_fields if name not in excluded
     ]
@@ -368,6 +381,84 @@ def generate_pr_fields(options: PullRequestGraphQLOptions) -> str:
             *filtered_optional_fields,
         ]
     )
+
+
+def generate_pr_nested_fields_gql(options: PullRequestGraphQLOptions) -> str:
+    """Query that fetches only the nested connections deferred from the list query.
+
+    Used to enrich a single PR after the lean list query returned it, so each request
+    stays small enough to clear GitHub's 10s timeout on large orgs.
+    """
+    excluded = set(options.exclude_graphql_fields)
+    nested_blocks = {
+        "assignees": """assignees(first: 10) {
+    nodes {
+      login
+      avatarUrl
+      url
+      __typename
+    }
+  }""",
+        "reviewRequests": """reviewRequests(first: 10) {
+    nodes {
+      requestedReviewer {
+        __typename
+        ... on User {
+          login
+          avatarUrl
+          url
+          __typename
+        }
+        ... on Team {
+          name
+          slug
+        }
+      }
+    }
+  }""",
+        "labels": """labels(first: 10) {
+    nodes {
+      id
+      url
+      name
+      color
+      isDefault
+      description
+    }
+  }""",
+        "reviews": """reviews(first: 10) {
+    nodes {
+      state
+      body
+      createdAt
+      author {
+        login
+        avatarUrl
+        url
+        __typename
+      }
+    }
+  }""",
+        "statusCheckRollup": "statusCheckRollup { state }",
+    }
+    body = "\n".join(
+        block
+        for name, block in nested_blocks.items()
+        if name in PR_NESTED_FIELDS_FETCHED_SEPARATELY and name not in excluded
+    )
+    return f"""
+query PullRequestNestedFields(
+  $organization: String!,
+  $repo: String!,
+  $prNumber: Int!
+) {{
+  repository(owner: $organization, name: $repo) {{
+    pullRequest(number: $prNumber) {{
+{body}
+    }}
+  }}
+}}
+"""
 
 
 def generate_list_pull_requests_gql(
