@@ -33,10 +33,7 @@ class ProjectWebHook(BaseWebhookFactory[ProjectEvents]):
         """Create project-level webhooks for all projects in the authenticated user's personal namespace."""
         logger.info("Creating project webhooks for personal namespace projects.")
 
-        current_user = await self._client.get_current_user()
-        user_id = current_user["id"]
-
-        async for projects_batch in self._client.get_user_projects(user_id):
+        async for projects_batch in self._client.get_personal_namespace_projects():
             for project in projects_batch:
                 await self.create_project_webhook(project["id"])
 
