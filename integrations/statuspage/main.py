@@ -1,19 +1,17 @@
-from typing import Any
 from loguru import logger
 
-from client import StatusPageClient
+from initialize_client import init_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from webhook_processors.incident_update_webhook_processor import (
+    IncidentUpdateWebhookProcessor,
+)
+from webhook_processors.incident_webhook_processor import IncidentWebhookProcessor
+from webhook_processors.page_webhook_processor import PageWebhookProcessor
 
 from kinds import ObjectKind
 
-
-def init_client() -> StatusPageClient:
-    return StatusPageClient(
-        statuspage_host=ocean.integration_config["statuspage_host"],
-        statuspage_api_key=ocean.integration_config["statuspage_api_key"],
-        statuspage_ids=ocean.integration_config.get("statuspage_ids"),
-    )
+WEBHOOK_PATH = "/webhook"
 
 
 @ocean.on_resync(ObjectKind.PAGE)
@@ -64,30 +62,6 @@ async def resync_incident_updates(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield incident_updates
 
 
-@ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    """Handles incoming Statuspage webhook events, registers relevant data with ocean."""
-
-    logger.info(f"Received Statuspage webhook event: {data}")
-    client = init_client()
-
-    if "page" in data:
-        page_id = data["page"]["id"]
-        page = await client.get_page_by_id(page_id)
-        logger.debug(f"Received page: {page}")
-        await ocean.register_raw(ObjectKind.PAGE, [{**data["page"], **page}])
-
-    if "incident" in data:
-        await ocean.register_raw(ObjectKind.INCIDENT, [data["incident"]])
-
-        if "incident_updates" in data["incident"]:
-            await ocean.register_raw(
-                ObjectKind.INCIDENT_UPDATE, data["incident"]["incident_updates"]
-            )
-
-    return {"ok": True}
-
-
 @ocean.on_start()
 async def on_start() -> None:
     if ocean.event_listener_type == "ONCE":
@@ -108,3 +82,8 @@ async def on_start() -> None:
     logger.info(f"Page IDs: {page_ids}")
 
     await client.create_webhooks_for_all_pages(app_host)
+
+
+ocean.add_webhook_processor(WEBHOOK_PATH, PageWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, IncidentWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_PATH, IncidentUpdateWebhookProcessor)
