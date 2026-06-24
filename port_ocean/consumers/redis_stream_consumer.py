@@ -4,6 +4,7 @@ import json
 import os
 import socket
 import tempfile
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import uuid4
@@ -185,6 +186,8 @@ class RedisStreamConsumer:
                 )
 
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
+        start_time = time.monotonic()
+        webhook_path: str | None = None
         try:
             raw_webhook_path = fields.get("webhookPath")
             if not raw_webhook_path:
@@ -231,6 +234,13 @@ class RedisStreamConsumer:
                 error=str(error),
             )
         finally:
+            elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
+            logger.info(
+                "Redis stream message processed",
+                message_id=message_id,
+                webhook_path=webhook_path,
+                elapsed_ms=elapsed_ms,
+            )
             await self._ack(message_id)
 
     @staticmethod
