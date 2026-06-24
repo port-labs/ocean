@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.32 (2026-06-23)
+
+
+### Improvements
+
+- Added the `attachIgnoreData` selector to enrich vulnerabilities with their project ignore policies under `__ignore_data` (via the Snyk v1 ignores API)
+
+
+## 0.5.31 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
 ## 0.5.30 (2026-06-15)
 
 

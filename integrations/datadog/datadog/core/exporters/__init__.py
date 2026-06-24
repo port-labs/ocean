@@ -9,10 +9,12 @@ from datadog.core.exporters.service_metric_exporter import ServiceMetricExporter
 from datadog.core.exporters.service_dependency_exporter import ServiceDependencyExporter
 from datadog.core.exporters.role_exporter import RoleExporter
 from datadog.core.exporters.restriction_policy_exporter import RestrictionPolicyExporter
+from datadog.core.exporters.org_exporter import OrgExporter
 
 __all__ = [
     "HostExporter",
     "MonitorExporter",
+    "OrgExporter",
     "RestrictionPolicyExporter",
     "RoleExporter",
     "ServiceDependencyExporter",
