@@ -4,7 +4,10 @@ import pytest
 from port_ocean.context.event import event_context
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from newrelic_integration.overrides import NewRelicAlertResourceConfig, NewRelicPortAppConfig
+from newrelic_integration.overrides import (
+    NewRelicAlertResourceConfig,
+    NewRelicPortAppConfig,
+)
 from newrelic_integration.webhook.webhook_processors.issue_webhook_processor import (
     IssueWebhookProcessor,
 )

@@ -89,7 +89,8 @@ async def test_fetch_entities_for_resource_filters_by_type(
     assert entities[0]["__open_issues_count"] == 2
     assert entities[1]["__open_issues_count"] == 2
     assert (
-        mock_issues_cls.return_value.get_number_of_issues_by_entity_guid.await_count == 2
+        mock_issues_cls.return_value.get_number_of_issues_by_entity_guid.await_count
+        == 2
     )
 
 
