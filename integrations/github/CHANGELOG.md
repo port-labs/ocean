@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.0.10 (2026-06-25)
+
+
+### Improvements
+
+- Added a warning log when a GraphQL query's page size is reduced on retry
+
+
 ## 6.0.9 (2026-06-25)
 
 
