@@ -97,10 +97,10 @@ actions:
         type: string
         description: The name of the GitHub repository to update
         required: true
-      - name: body
-        title: Body
-        type: object
-        description: Port audit log object
+      - name: propertySync
+        title: Property sync
+        type: jqObject
+        description: 'Defines what to sync. `diff` is the Port audit log diff (JQ string or before/after object). Optional `propertyNames` limits which blueprint properties are pushed to GitHub. Example: { "diff": "{{ .event.diff }}", "propertyNames": ["lifecycle", "service_tier"] }'
         required: true
   - name: dispatch_workflow
     icon: GithubActions

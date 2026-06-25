@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added `update_repo_external_properties` action executor that syncs changed Port entity properties back to GitHub as repository custom (external) properties via `PATCH /repos/{org}/{repo}/properties/values`.
+- Added `update_repo_external_properties` action executor that syncs changed Port entity properties back to GitHub as repository custom (external) properties.
+- Added `propertySync` jqObject input with `diff` and optional `propertyNames` for selecting which blueprint properties to sync.
 
 
 ## 6.0.8 (2026-06-23)

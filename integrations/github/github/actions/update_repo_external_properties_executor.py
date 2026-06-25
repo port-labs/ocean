@@ -45,6 +45,16 @@ def _extract_changed_properties(
     return changed
 
 
+def _filter_by_property_names(
+    changed: dict[str, Any],
+    property_names: list[str] | None,
+) -> dict[str, Any]:
+    if not property_names:
+        return changed
+    allowed = set(property_names)
+    return {name: value for name, value in changed.items() if name in allowed}
+
+
 def _build_github_properties_payload(
     changed: dict[str, Any],
 ) -> list[ExternalProperty]:
@@ -58,6 +68,33 @@ def _build_github_properties_payload(
         )
         for name, value in changed.items()
     ]
+
+
+def _parse_property_sync_config(
+    config: Any,
+) -> tuple[dict[str, Any], list[str] | None]:
+    if not isinstance(config, dict):
+        raise InvalidActionParametersException(
+            "'propertySync' must be an object with 'diff' and optional 'propertyNames'"
+        )
+
+    diff = config.get("diff")
+    if not isinstance(diff, dict):
+        raise InvalidActionParametersException(
+            "'propertySync.diff' must be a Port audit log diff object"
+        )
+
+    property_names = config.get("propertyNames")
+    if property_names is None:
+        return diff, None
+    if not isinstance(property_names, list) or not all(
+        isinstance(name, str) for name in property_names
+    ):
+        raise InvalidActionParametersException(
+            "'propertySync.propertyNames' must be a list of property identifiers"
+        )
+
+    return diff, property_names
 
 
 class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
@@ -74,17 +111,21 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
 
         org: str | None = props.get("org")
         repo: str | None = props.get("repo")
-        diff: dict[str, Any] | None = props.get("diff")
+        property_sync: Any = props.get("propertySync")
 
-        if not org or not repo or not diff:
+        if not org or not repo or not property_sync:
             raise InvalidActionParametersException(
-                "'org', 'repo', and 'diff' are required execution properties"
+                "'org', 'repo', and 'propertySync' are required execution properties"
             )
+
+        diff, property_names = _parse_property_sync_config(property_sync)
 
         with logger.contextualize(org=org, repo=repo):
             logger.info("Processing external property update")
 
-            changed = _extract_changed_properties(diff)
+            changed = _filter_by_property_names(
+                _extract_changed_properties(diff), property_names
+            )
 
             if not changed:
                 logger.info(
