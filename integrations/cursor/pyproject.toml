@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cursor"
-version = "0.1.1"
+version = "0.1.2"
 description = "Cursor ocean integration"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
