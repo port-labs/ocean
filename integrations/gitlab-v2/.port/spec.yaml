@@ -17,7 +17,7 @@ configurations:
   - name: gitlabToken
     required: true
     type: string
-    description: 'The Gitlab token to authenticate with the Gitlab API.'
+    description: "The Gitlab token to authenticate with the Gitlab API."
     sensitive: true
   - name: gitlabHost
     required: false
@@ -29,12 +29,37 @@ saas:
   oauthConfiguration:
     requiredSecrets:
       - name: gitlabToken
-        value: '.oauthData.accessToken'
+        value: ".oauthData.accessToken"
         description: '"The Gitlab token to authenticate with the Gitlab API."'
     valuesOverride:
       integrationSpec:
         gitlabHost: '"https://gitlab.com"'
   liveEvents:
     enabled: true
+actionsProcessingEnabled: true
+actions:
+  - name: trigger_pipeline
+    icon: GitLab
+    description: Trigger a GitLab CI/CD pipeline
+    inputs:
+      - name: project
+        title: Project
+        type: string
+        description: GitLab project path (e.g., "my-group/my-project") or numeric ID
+        required: true
+      - name: ref
+        title: Ref
+        type: string
+        description: Branch name, tag, or commit SHA to run the pipeline on
+        required: true
+      - name: reportPipelineStatus
+        title: Report pipeline status
+        type: boolean
+        description: Whether to report pipeline completion status back to Port
+        default: true
+      - name: pipelineVariables
+        title: Pipeline variables
+        type: jqObject
+        description: Key-value pairs passed as CI/CD variables to the pipeline
 deploymentMethodOverride:
   - type: helm

@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.76 (2026-06-19)
+## 0.3.78 (2026-06-25)
 
 
 ### Bug Fixes
 
 - Fixed S3 buckets not syncing when the chosen region denied access; `resync_s3_bucket` now iterates allowed regions (standard regions first, then opt-in) and falls back to the next region when one returns an access-denied error
+
+
+## 0.3.77 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 0.3.76 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
 
 
 ## 0.3.75 (2026-06-15)

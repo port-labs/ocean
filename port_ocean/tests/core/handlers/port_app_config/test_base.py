@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 from typing import Any, Dict
 
 from port_ocean.context.ocean import PortOceanContext

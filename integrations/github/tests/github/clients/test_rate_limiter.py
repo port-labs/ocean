@@ -681,3 +681,113 @@ class TestBaseClientRateLimit403Mapping:
 
         with pytest.raises(httpx.HTTPStatusError):
             await client.make_request(resource, ignore_default_errors=False)
+
+
+class TestRateLimiterSemaphorePermitLeak:
+    @pytest.mark.asyncio
+    async def test_cancelled_sleep_during_aenter_releases_acquired_semaphore_permit(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=1, reset_time=int(time.time()) + 30
+        )
+        client.rate_limiter._initialized = True
+        mock_sleep.side_effect = asyncio.CancelledError()
+
+        with pytest.raises(asyncio.CancelledError):
+            await client.rate_limiter.__aenter__()
+
+        acquired_permits = [
+            await asyncio.wait_for(
+                client.rate_limiter._semaphore.acquire(), timeout=0.1
+            )
+            for _ in range(client_config.max_concurrent)
+        ]
+        assert len(acquired_permits) == client_config.max_concurrent
+        for _ in acquired_permits:
+            client.rate_limiter._semaphore.release()
+
+    @pytest.mark.asyncio
+    async def test_ten_consecutive_cancelled_sleeps_leave_every_permit_acquirable_afterward(
+        self, github_host: str, mock_sleep: Mock
+    ) -> None:
+        max_concurrent_slots = 10
+        config = GitHubRateLimiterConfig(
+            api_type="rest", max_concurrent=max_concurrent_slots
+        )
+        limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
+        mock_sleep.side_effect = asyncio.CancelledError()
+
+        for _ in range(max_concurrent_slots):
+            limiter.rate_limit_info = RateLimitInfo(
+                limit=1000, remaining=1, reset_time=int(time.time()) + 30
+            )
+            limiter._initialized = True
+            with pytest.raises(asyncio.CancelledError):
+                await limiter.__aenter__()
+
+        acquired_permits = [
+            await asyncio.wait_for(limiter._semaphore.acquire(), timeout=0.1)
+            for _ in range(max_concurrent_slots)
+        ]
+        assert len(acquired_permits) == max_concurrent_slots
+        for _ in acquired_permits:
+            limiter._semaphore.release()
+
+    @pytest.mark.asyncio
+    async def test_non_cancelled_exception_during_aenter_also_releases_acquired_semaphore_permit(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=1, reset_time=int(time.time()) + 30
+        )
+        client.rate_limiter._initialized = True
+        mock_sleep.side_effect = RuntimeError("simulated enforcement failure")
+
+        with pytest.raises(RuntimeError):
+            await client.rate_limiter.__aenter__()
+
+        acquired_permits = [
+            await asyncio.wait_for(
+                client.rate_limiter._semaphore.acquire(), timeout=0.1
+            )
+            for _ in range(client_config.max_concurrent)
+        ]
+        assert len(acquired_permits) == client_config.max_concurrent
+        for _ in acquired_permits:
+            client.rate_limiter._semaphore.release()
+
+    @pytest.mark.asyncio
+    async def test_uncancelled_aenter_and_aexit_still_round_trips_permit_as_before(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+
+        async with client.rate_limiter:
+            remaining_after_one_held_permit = [
+                await asyncio.wait_for(
+                    client.rate_limiter._semaphore.acquire(), timeout=0.1
+                )
+                for _ in range(client_config.max_concurrent - 1)
+            ]
+            assert (
+                len(remaining_after_one_held_permit) == client_config.max_concurrent - 1
+            )
+            with pytest.raises(asyncio.TimeoutError):
+                await asyncio.wait_for(
+                    client.rate_limiter._semaphore.acquire(), timeout=0.05
+                )
+            for _ in remaining_after_one_held_permit:
+                client.rate_limiter._semaphore.release()
+
+        acquired_permits = [
+            await asyncio.wait_for(
+                client.rate_limiter._semaphore.acquire(), timeout=0.1
+            )
+            for _ in range(client_config.max_concurrent)
+        ]
+        assert len(acquired_permits) == client_config.max_concurrent
+        for _ in acquired_permits:
+            client.rate_limiter._semaphore.release()

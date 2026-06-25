@@ -5,7 +5,7 @@ from typing import Optional, Iterable, Iterator, Callable, Any, AsyncIterator
 from fastapi import Response, status
 import fastapi
 from starlette import responses
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from aws.aws_credentials import AwsCredentials
 from port_ocean.core.models import Entity

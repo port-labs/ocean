@@ -4,6 +4,7 @@ from typing import cast, Any, Dict
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from gitlab.actions.registry import register_actions_executors
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -626,3 +627,5 @@ ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", BranchWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", DeploymentWebhookProcessor)
+
+register_actions_executors()
