@@ -849,11 +849,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             dsp_enabled = await is_dsp_mode_enabled()
 
-            await ocean.metrics.report_kind_sync_metrics(
-                kind=resource_kind_id,
-                blueprint=resource.port.entity.mappings.blueprint,
-                dsp_enabled=dsp_enabled,
-            )
+            report_sync_metrics = event.event_type != EventType.INCREMENTAL_RESYNC
+
+            if report_sync_metrics:
+                await ocean.metrics.report_kind_sync_metrics(
+                    kind=resource_kind_id,
+                    blueprint=resource.port.entity.mappings.blueprint,
+                    dsp_enabled=dsp_enabled,
+                )
 
             resync_id = ocean.metrics.event_id
             if dsp_enabled and resync_id:
@@ -896,12 +899,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 stop_kind_tracking(resource_kind_id)
                 await stop_monitoring()
 
-            await ocean.metrics.send_metrics_to_webhook(kind=resource_kind_id)
-            await ocean.metrics.report_kind_sync_metrics(
-                kind=resource_kind_id,
-                blueprint=resource.port.entity.mappings.blueprint,
-                dsp_enabled=dsp_enabled,
-            )
+            if report_sync_metrics:
+                await ocean.metrics.send_metrics_to_webhook(kind=resource_kind_id)
+                await ocean.metrics.report_kind_sync_metrics(
+                    kind=resource_kind_id,
+                    blueprint=resource.port.entity.mappings.blueprint,
+                    dsp_enabled=dsp_enabled,
+                )
 
             if dsp_enabled and resync_id:
                 if ocean.metrics.sync_state == SyncState.FAILED:
