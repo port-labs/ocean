@@ -6,7 +6,7 @@ from github.core.exporters.repository_exporter import (
     ENRICHMENT_BATCH_SIZE,
     RestRepositoryExporter,
 )
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 from github.core.options import ListRepositoryOptions, SingleRepositoryOptions
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context

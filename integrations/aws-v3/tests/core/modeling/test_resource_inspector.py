@@ -11,7 +11,7 @@ the wrong AWS resource).
 from typing import Any, Dict, List, Type
 
 import pytest
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from aws.core.interfaces.action import Action

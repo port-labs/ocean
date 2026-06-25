@@ -9,7 +9,7 @@ import os
 import re
 from typing import Dict, Any, Optional
 
-from pydantic import parse_raw_as
+from pydantic.v1 import parse_raw_as
 
 from http_server.client import HttpServerClient
 from http_server.exceptions import CustomAuthConfigError
