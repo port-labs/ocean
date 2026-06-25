@@ -14,7 +14,9 @@ from mocks.payloads import (
     code_scanning_alert_response,
     collaborator_response,
     dependabot_alert_response,
+    deployment_id_for_index,
     deployment_response,
+    deployment_status_response,
     environment_list_response,
     issue_response,
     org_response,
@@ -22,7 +24,9 @@ from mocks.payloads import (
     repo_response,
     secret_scanning_alert_response,
     tag_response,
+    workflow_id_for_index,
     workflow_list_response,
+    workflow_run_list_response,
 )
 
 
@@ -134,6 +138,34 @@ class GithubMockTransportBuilder:
 
     def with_deployment_routes(self) -> "GithubMockTransportBuilder":
         self._add_per_repo_route("deployments", deployment_response)
+        return self
+
+    def with_deployment_status_routes(self) -> "GithubMockTransportBuilder":
+        for i, name in enumerate(REPO_NAMES, start=1):
+            deployment_id = deployment_id_for_index(i)
+            self._transport.add_route(
+                "GET",
+                f"/repos/{ORG_LOGIN}/{name}/deployments/{deployment_id}/statuses",
+                {
+                    "status_code": 200,
+                    "json": deployment_status_response(name, i),
+                },
+            )
+        self._add_per_repo_route("deployments", deployment_response)
+        return self
+
+    def with_workflow_run_routes(self) -> "GithubMockTransportBuilder":
+        for i, name in enumerate(REPO_NAMES, start=1):
+            workflow_id = workflow_id_for_index(i)
+            self._transport.add_route(
+                "GET",
+                f"/repos/{ORG_LOGIN}/{name}/actions/workflows/{workflow_id}/runs",
+                {
+                    "status_code": 200,
+                    "json": workflow_run_list_response(name, i),
+                },
+            )
+        self._add_per_repo_route("actions/workflows", workflow_list_response)
         return self
 
     def with_collaborator_routes(self) -> "GithubMockTransportBuilder":

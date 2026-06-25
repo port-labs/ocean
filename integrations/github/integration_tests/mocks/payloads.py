@@ -90,7 +90,7 @@ def workflow_list_response(repo_name: str, workflow_id: int) -> dict[str, Any]:
         "total_count": 1,
         "workflows": [
             {
-                "id": 5000 + workflow_id,
+                "id": workflow_id_for_index(workflow_id),
                 "name": f"CI {workflow_id}",
                 "path": ".github/workflows/ci.yml",
                 "state": "active",
@@ -149,7 +149,7 @@ def secret_scanning_alert_response(repo_name: str, alert_id: int) -> dict[str, A
 def deployment_response(repo_name: str, deployment_id: int) -> dict[str, Any]:
     return [
         {
-            "id": 6000 + deployment_id,
+            "id": deployment_id_for_index(deployment_id),
             "task": "deploy",
             "environment": "production",
             "ref": "main",
@@ -157,6 +157,41 @@ def deployment_response(repo_name: str, deployment_id: int) -> dict[str, Any]:
             "description": f"Deployment {deployment_id} for {repo_name}",
         }
     ]
+
+
+def deployment_id_for_index(repo_index: int) -> int:
+    return 6000 + repo_index
+
+
+def workflow_id_for_index(repo_index: int) -> int:
+    return 5000 + repo_index
+
+
+def deployment_status_response(repo_name: str, status_id: int) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": 8000 + status_id,
+            "state": "success",
+            "description": f"Deployment status {status_id} for {repo_name}",
+            "environment": "production",
+        }
+    ]
+
+
+def workflow_run_list_response(repo_name: str, run_id: int) -> dict[str, Any]:
+    run_pk = 9000 + run_id
+    return {
+        "total_count": 1,
+        "workflow_runs": [
+            {
+                "id": run_pk,
+                "name": f"CI run {run_id} for {repo_name}",
+                "status": "completed",
+                "conclusion": "success",
+                "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/actions/runs/{run_pk}",
+            }
+        ],
+    }
 
 
 def collaborator_response(repo_name: str, collab_id: int) -> dict[str, Any]:

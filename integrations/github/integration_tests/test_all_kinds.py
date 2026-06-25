@@ -15,11 +15,13 @@ KIND_BLUEPRINTS: dict[str, str] = {
     "tag": "githubTag",
     "environment": "githubEnvironment",
     "workflow": "githubWorkflow",
+    "workflow-run": "githubWorkflowRun",
     "branch": "githubBranch",
     "dependabot-alert": "githubDependabotAlert",
     "code-scanning-alerts": "githubCodeScanningAlert",
     "secret-scanning-alerts": "githubSecretScanningAlert",
     "deployment": "githubDeployment",
+    "deployment-status": "githubDeploymentStatus",
     "collaborator": "githubCollaborator",
 }
 
@@ -29,11 +31,13 @@ KIND_BUILDERS: dict[str, str] = {
     "tag": "with_tag_routes",
     "environment": "with_environment_routes",
     "workflow": "with_workflow_routes",
+    "workflow-run": "with_workflow_run_routes",
     "branch": "with_branch_routes",
     "dependabot-alert": "with_dependabot_alert_routes",
     "code-scanning-alerts": "with_code_scanning_alert_routes",
     "secret-scanning-alerts": "with_secret_scanning_alert_routes",
     "deployment": "with_deployment_routes",
+    "deployment-status": "with_deployment_status_routes",
     "collaborator": "with_collaborator_routes",
 }
 

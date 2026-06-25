@@ -129,6 +129,27 @@ def mapping_for_kind(kind: str) -> dict[str, Any]:
             title=".task",
             properties={"environment": ".environment", "ref": ".ref"},
         ),
+        "deployment-status": _repo_scoped_mapping(
+            "deployment-status",
+            "githubDeploymentStatus",
+            identifier=".__deployment_id + (.id|tostring)",
+            title=".state",
+            properties={
+                "description": ".description",
+                "environment": ".environment",
+            },
+        ),
+        "workflow-run": _repo_scoped_mapping(
+            "workflow-run",
+            "githubWorkflowRun",
+            identifier=".__repository + (.id|tostring)",
+            title=".name",
+            properties={
+                "status": ".status",
+                "conclusion": ".conclusion",
+                "url": ".html_url",
+            },
+        ),
         "collaborator": _repo_scoped_mapping(
             "collaborator",
             "githubCollaborator",
