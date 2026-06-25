@@ -5,7 +5,7 @@ import pytest
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from webhook.webhook_processors.incident_events.incident_webhook_processor import (
+from webhook.webhook_processors.incident_webhook_processor import (
     IncidentWebhookProcessor,
 )
 

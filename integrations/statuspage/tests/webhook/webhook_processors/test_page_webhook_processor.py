@@ -6,9 +6,7 @@ import pytest
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from webhook.webhook_processors.page_events.page_webhook_processor import (
-    PageWebhookProcessor,
-)
+from webhook.webhook_processors.page_webhook_processor import PageWebhookProcessor
 
 
 class TestPageWebhookProcessor:

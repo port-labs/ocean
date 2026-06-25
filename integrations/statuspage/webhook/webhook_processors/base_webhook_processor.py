@@ -11,16 +11,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 
 class BaseWebhookProcessor(AbstractWebhookProcessor):
-    _client: StatusPageClient | None
-
     def __init__(self, event: WebhookEvent) -> None:
         super().__init__(event)
-        self._client = None
+        self._client = init_client()
 
     @property
     def client(self) -> StatusPageClient:
-        if self._client is None:
-            self._client = init_client()
         return self._client
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:

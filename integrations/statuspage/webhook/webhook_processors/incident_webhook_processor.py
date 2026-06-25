@@ -8,26 +8,20 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from webhook.consts import WebhookPayloadKey
-from webhook.webhook_processors.incident_events.base_processor import (
+from webhook.webhook_processors.incident_base_processor import (
     BaseIncidentWebhookProcessor,
 )
 
 
-class IncidentUpdateWebhookProcessor(BaseIncidentWebhookProcessor):
+class IncidentWebhookProcessor(BaseIncidentWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        incident = self.get_incident(event.payload)
-        return incident is not None and WebhookPayloadKey.INCIDENT_UPDATES in incident
+        return WebhookPayloadKey.INCIDENT in event.payload
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.INCIDENT_UPDATE]
+        return [ObjectKind.INCIDENT]
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        incident = self.get_incident(payload)
-        if incident is None:
-            return False
-
-        incident_updates = incident.get(WebhookPayloadKey.INCIDENT_UPDATES)
-        return isinstance(incident_updates, list) and len(incident_updates) > 0
+        return self.get_incident(payload) is not None
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -38,12 +32,11 @@ class IncidentUpdateWebhookProcessor(BaseIncidentWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        incident_updates = incident[WebhookPayloadKey.INCIDENT_UPDATES]
         logger.info(
-            f"Processing Statuspage incident update webhook with {len(incident_updates)} updates"
+            f"Processing Statuspage incident webhook for incident: {incident.get('id')}"
         )
 
         return WebhookEventRawResults(
-            updated_raw_results=incident_updates,
+            updated_raw_results=[incident],
             deleted_raw_results=[],
         )
