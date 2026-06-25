@@ -1209,7 +1209,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 trigger_type=trigger_type,
                 attributes={"incremental_cursor": cursor},
             ):
-                ocean.metrics.event_id = event.id
                 _, errors = await self.process_resource(resource, index, user_agent_type)
 
             if errors:
