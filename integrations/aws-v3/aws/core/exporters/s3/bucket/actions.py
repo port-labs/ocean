@@ -5,6 +5,8 @@ from loguru import logger
 
 import asyncio
 
+from port_ocean.context.ocean import ocean
+
 
 class GetPublicAccessBlockAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -123,13 +125,14 @@ class GetBucketLocationAction(Action[list[dict[str, Any]]]):
 class ListBucketsAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
+        partition = ocean.integration_config.get('aws_partition', 'aws')
         for bucket in buckets:
             data = {
                 "CreationDate": bucket[
                     "CreationDate"
                 ],  # ensure that every detail of the datetime string is preserved no rounding up or down
                 "BucketName": bucket["Name"],
-                "Arn": f"arn:aws:s3:::{bucket['Name']}",
+                "Arn": f"arn:{partition}:s3:::{bucket['Name']}",
             }
             results.append(data)
         return results
