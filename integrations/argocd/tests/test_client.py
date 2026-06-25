@@ -736,9 +736,7 @@ async def test_get_managed_resources_with_streaming_disabled() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_managed_resources_with_streaming_disabled_passes_app_namespace() -> (
-    None
-):
+async def test_get_managed_resources_streaming_disabled_passes_namespace() -> None:
     """Direct request path must also send appNamespace for namespaced applications."""
     client = ArgocdClient(
         token="test_token",
