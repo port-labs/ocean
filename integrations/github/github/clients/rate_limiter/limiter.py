@@ -110,10 +110,10 @@ class GitHubRateLimiter:
             return _DEFAULT_RATE_LIMIT_RESYNC_USAGE_THRESHOLD
         return threshold
 
-    async def _sleep_for_resync_threshold(self, threshold: float) -> bool:
+    async def _sleep_for_resync_threshold(self, threshold: float) -> None:
         if self.rate_limit_info is None:
             logger.debug("No rate limit info available, cannot check threshold.")
-            return False
+            return
 
         delay = self.rate_limit_info.seconds_until_reset
         if delay > 0:
