@@ -30,44 +30,112 @@ def integration_config() -> dict[str, Any]:
     }
 
 
+def _repo_scoped_mapping(
+    kind: str,
+    blueprint: str,
+    *,
+    identifier: str,
+    title: str,
+    properties: dict[str, str],
+    selector: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "kind": kind,
+        "selector": selector or {"query": "true"},
+        "port": {
+            "entity": {
+                "mappings": {
+                    "identifier": identifier,
+                    "title": title,
+                    "blueprint": f'"{blueprint}"',
+                    "properties": properties,
+                    "relations": {"repository": ".__repository"},
+                }
+            }
+        },
+    }
+
+
 def mapping_for_kind(kind: str) -> dict[str, Any]:
     resources: dict[str, dict[str, Any]] = {
-        "issue": {
-            "kind": "issue",
-            "selector": {"query": "true", "state": "open"},
-            "port": {
-                "entity": {
-                    "mappings": {
-                        "identifier": ".__repository + (.number|tostring)",
-                        "title": ".title",
-                        "blueprint": '"githubIssue"',
-                        "properties": {
-                            "status": ".state",
-                            "url": ".html_url",
-                        },
-                        "relations": {"repository": ".__repository"},
-                    }
-                }
-            },
-        },
-        "release": {
-            "kind": "release",
-            "selector": {"query": "true"},
-            "port": {
-                "entity": {
-                    "mappings": {
-                        "identifier": ".__repository + (.id|tostring)",
-                        "title": ".name",
-                        "blueprint": '"githubRelease"',
-                        "properties": {
-                            "tag": ".tag_name",
-                            "url": ".html_url",
-                        },
-                        "relations": {"repository": ".__repository"},
-                    }
-                }
-            },
-        },
+        "issue": _repo_scoped_mapping(
+            "issue",
+            "githubIssue",
+            identifier=".__repository + (.number|tostring)",
+            title=".title",
+            properties={"status": ".state", "url": ".html_url"},
+            selector={"query": "true", "state": "open"},
+        ),
+        "release": _repo_scoped_mapping(
+            "release",
+            "githubRelease",
+            identifier=".__repository + (.id|tostring)",
+            title=".name",
+            properties={"tag": ".tag_name", "url": ".html_url"},
+        ),
+        "tag": _repo_scoped_mapping(
+            "tag",
+            "githubTag",
+            identifier=".__repository + .name",
+            title=".name",
+            properties={"commitSha": ".commit.sha"},
+        ),
+        "environment": _repo_scoped_mapping(
+            "environment",
+            "githubEnvironment",
+            identifier=".__repository + .name",
+            title=".name",
+            properties={"url": ".html_url"},
+        ),
+        "workflow": _repo_scoped_mapping(
+            "workflow",
+            "githubWorkflow",
+            identifier=".__repository + (.id|tostring)",
+            title=".name",
+            properties={"path": ".path", "state": ".state"},
+        ),
+        "branch": _repo_scoped_mapping(
+            "branch",
+            "githubBranch",
+            identifier=".__repository + .name",
+            title=".name",
+            properties={"protected": ".protected"},
+        ),
+        "dependabot-alert": _repo_scoped_mapping(
+            "dependabot-alert",
+            "githubDependabotAlert",
+            identifier=".__repository + (.number|tostring)",
+            title=".security_advisory.summary",
+            properties={"state": ".state", "url": ".html_url"},
+        ),
+        "code-scanning-alerts": _repo_scoped_mapping(
+            "code-scanning-alerts",
+            "githubCodeScanningAlert",
+            identifier=".__repository + (.number|tostring)",
+            title=".rule.description",
+            properties={"state": ".state", "url": ".html_url"},
+        ),
+        "secret-scanning-alerts": _repo_scoped_mapping(
+            "secret-scanning-alerts",
+            "githubSecretScanningAlert",
+            identifier=".__repository + (.number|tostring)",
+            title=".secret_type",
+            properties={"state": ".state", "url": ".html_url"},
+        ),
+        "deployment": _repo_scoped_mapping(
+            "deployment",
+            "githubDeployment",
+            identifier=".__repository + (.id|tostring)",
+            title=".task",
+            properties={"environment": ".environment", "ref": ".ref"},
+        ),
+        "collaborator": _repo_scoped_mapping(
+            "collaborator",
+            "githubCollaborator",
+            identifier=".__repository + .login",
+            title=".login",
+            properties={"url": ".html_url"},
+        ),
     }
 
     if kind not in resources:

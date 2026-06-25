@@ -1,5 +1,4 @@
 import os
-from typing import Any
 
 import pytest
 
@@ -13,11 +12,29 @@ INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
 KIND_BLUEPRINTS: dict[str, str] = {
     "issue": "githubIssue",
     "release": "githubRelease",
+    "tag": "githubTag",
+    "environment": "githubEnvironment",
+    "workflow": "githubWorkflow",
+    "branch": "githubBranch",
+    "dependabot-alert": "githubDependabotAlert",
+    "code-scanning-alerts": "githubCodeScanningAlert",
+    "secret-scanning-alerts": "githubSecretScanningAlert",
+    "deployment": "githubDeployment",
+    "collaborator": "githubCollaborator",
 }
 
 KIND_BUILDERS: dict[str, str] = {
     "issue": "with_issue_routes",
     "release": "with_release_routes",
+    "tag": "with_tag_routes",
+    "environment": "with_environment_routes",
+    "workflow": "with_workflow_routes",
+    "branch": "with_branch_routes",
+    "dependabot-alert": "with_dependabot_alert_routes",
+    "code-scanning-alerts": "with_code_scanning_alert_routes",
+    "secret-scanning-alerts": "with_secret_scanning_alert_routes",
+    "deployment": "with_deployment_routes",
+    "collaborator": "with_collaborator_routes",
 }
 
 

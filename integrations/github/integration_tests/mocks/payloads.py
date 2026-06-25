@@ -59,3 +59,112 @@ def release_response(repo_name: str, release_id: int) -> dict[str, Any]:
         "draft": False,
         "prerelease": False,
     }
+
+
+def tag_response(repo_name: str, tag_id: int) -> dict[str, Any]:
+    name = f"v1.{tag_id}.0"
+    return {
+        "name": name,
+        "commit": {
+            "sha": f"sha{tag_id}",
+            "url": f"https://api.github.com/repos/{ORG_LOGIN}/{repo_name}/git/commits/sha{tag_id}",
+        },
+    }
+
+
+def environment_list_response(repo_name: str, env_id: int) -> dict[str, Any]:
+    return {
+        "total_count": 1,
+        "environments": [
+            {
+                "id": 4000 + env_id,
+                "name": f"production-{env_id}",
+                "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/settings/environments/production-{env_id}",
+            }
+        ],
+    }
+
+
+def workflow_list_response(repo_name: str, workflow_id: int) -> dict[str, Any]:
+    return {
+        "total_count": 1,
+        "workflows": [
+            {
+                "id": 5000 + workflow_id,
+                "name": f"CI {workflow_id}",
+                "path": ".github/workflows/ci.yml",
+                "state": "active",
+                "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/actions/workflows/ci.yml",
+            }
+        ],
+    }
+
+
+def branch_response(repo_name: str, branch_id: int) -> dict[str, Any]:
+    return [
+        {
+            "name": "main",
+            "commit": {
+                "sha": f"branch-sha-{branch_id}",
+                "url": f"https://api.github.com/repos/{ORG_LOGIN}/{repo_name}/commits/branch-sha-{branch_id}",
+            },
+            "protected": False,
+        }
+    ]
+
+
+def dependabot_alert_response(repo_name: str, alert_id: int) -> dict[str, Any]:
+    return [
+        {
+            "number": alert_id,
+            "state": "open",
+            "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/security/dependabot/{alert_id}",
+            "security_advisory": {"summary": f"Dependabot alert {alert_id}"},
+        }
+    ]
+
+
+def code_scanning_alert_response(repo_name: str, alert_id: int) -> dict[str, Any]:
+    return [
+        {
+            "number": alert_id,
+            "state": "open",
+            "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/security/code-scanning/{alert_id}",
+            "rule": {"description": f"Code scanning alert {alert_id}"},
+        }
+    ]
+
+
+def secret_scanning_alert_response(repo_name: str, alert_id: int) -> dict[str, Any]:
+    return [
+        {
+            "number": alert_id,
+            "state": "open",
+            "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/security/secret-scanning/{alert_id}",
+            "secret_type": "custom_pattern",
+        }
+    ]
+
+
+def deployment_response(repo_name: str, deployment_id: int) -> dict[str, Any]:
+    return [
+        {
+            "id": 6000 + deployment_id,
+            "task": "deploy",
+            "environment": "production",
+            "ref": "main",
+            "sha": f"deploy-sha-{deployment_id}",
+            "description": f"Deployment {deployment_id} for {repo_name}",
+        }
+    ]
+
+
+def collaborator_response(repo_name: str, collab_id: int) -> dict[str, Any]:
+    return [
+        {
+            "login": f"user-{collab_id}",
+            "id": 7000 + collab_id,
+            "type": "User",
+            "html_url": f"https://github.com/user-{collab_id}",
+        }
+    ]
