@@ -3,15 +3,10 @@ from loguru import logger
 from initialize_client import init_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from webhook_processors.incident_update_webhook_processor import (
-    IncidentUpdateWebhookProcessor,
-)
-from webhook_processors.incident_webhook_processor import IncidentWebhookProcessor
-from webhook_processors.page_webhook_processor import PageWebhookProcessor
+from webhook.registry import register_live_events_webhooks
+from webhook.webhook_client import StatuspageWebhookClient
 
 from kinds import ObjectKind
-
-WEBHOOK_PATH = "/webhook"
 
 
 @ocean.on_resync(ObjectKind.PAGE)
@@ -77,13 +72,12 @@ async def on_start() -> None:
         logger.error("App host is not provided. Skipping webhook creation.")
         return
     client = init_client()
+    webhook_client = StatuspageWebhookClient(client)
 
     logger.info(f"App host: {app_host}")
     logger.info(f"Page IDs: {page_ids}")
 
-    await client.create_webhooks_for_all_pages(app_host)
+    await webhook_client.create_webhooks_for_all_pages(app_host)
 
 
-ocean.add_webhook_processor(WEBHOOK_PATH, PageWebhookProcessor)
-ocean.add_webhook_processor(WEBHOOK_PATH, IncidentWebhookProcessor)
-ocean.add_webhook_processor(WEBHOOK_PATH, IncidentUpdateWebhookProcessor)
+register_live_events_webhooks()
