@@ -71,7 +71,8 @@ exclude = [
     'integration_tests',  # Requires local port_ocean with integration framework
 ]
 plugins = [
-    "pydantic.mypy"
+    "pydantic.mypy",
+    "pydantic.v1.mypy"
 ]
 
 follow_imports = "silent"
