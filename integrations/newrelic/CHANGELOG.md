@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Migrated New Relic live events from a direct `/events` endpoint to the standard webhook processor framework
+- Bumped ocean version to ^0.44.1
 
 
 ## 0.1.358 (2026-06-25)
