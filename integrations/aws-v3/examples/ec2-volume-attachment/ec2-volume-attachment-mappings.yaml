@@ -1,0 +1,19 @@
+resources:
+  - kind: AWS::EC2::VolumeAttachment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '(.Properties.VolumeId + "-" + .Properties.InstanceId)'
+          title: '(.Properties.VolumeId + " -> " + .Properties.InstanceId)'
+          blueprint: '"ec2VolumeAttachment"'
+          properties:
+            device: .Properties.Device
+            state: .Properties.State
+            attachTime: .Properties.AttachTime
+            deleteOnTermination: .Properties.DeleteOnTermination
+          relations:
+            volume: .Properties.VolumeId
+            instance: .Properties.InstanceId
+            account: .__ExtraContext.AccountId

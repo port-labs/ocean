@@ -1,0 +1,16 @@
+{
+  "identifier": "vol-09a13562b4dacdee2-i-0abcdef1234567890",
+  "title": "vol-09a13562b4dacdee2 -> i-0abcdef1234567890",
+  "blueprint": "ec2VolumeAttachment",
+  "properties": {
+    "device": "/dev/sda1",
+    "state": "attached",
+    "attachTime": "2024-04-17T20:10:00+00:00",
+    "deleteOnTermination": true
+  },
+  "relations": {
+    "volume": "vol-09a13562b4dacdee2",
+    "instance": "i-0abcdef1234567890",
+    "account": "123456789012"
+  }
+}

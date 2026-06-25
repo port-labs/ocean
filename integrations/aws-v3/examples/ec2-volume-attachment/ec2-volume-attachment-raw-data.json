@@ -1,0 +1,15 @@
+{
+  "Type": "AWS::EC2::VolumeAttachment",
+  "Properties": {
+    "VolumeId": "vol-09a13562b4dacdee2",
+    "InstanceId": "i-0abcdef1234567890",
+    "Device": "/dev/sda1",
+    "State": "attached",
+    "AttachTime": "2024-04-17T20:10:00+00:00",
+    "DeleteOnTermination": true
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
+  }
+}

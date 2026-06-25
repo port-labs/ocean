@@ -27,6 +27,7 @@ class ObjectKind(StrEnum):
     CODEDEPLOY_DEPLOYMENT_GROUP = "AWS::CodeDeploy::DeploymentGroup"
     CODEPIPELINE_PIPELINE = "AWS::CodePipeline::Pipeline"
     CODEPIPELINE_ACTION = "AWS::CodePipeline::Action"
+    EC2_VOLUME_ATTACHMENT = "AWS::EC2::VolumeAttachment"
 
 
 SupportedServices = Literal[
