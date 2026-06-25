@@ -429,7 +429,7 @@ class IntegrationClientMixin:
         if response.status_code == 404:
             return None
         handle_port_status_code(response)
-        raw = response.json().get("primary")
+        raw = response.json().get("cursor", {}).get("primary")
         return datetime.fromisoformat(raw) if raw else None
 
     async def upsert_integration_cursor(
