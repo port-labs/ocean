@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.0 (2026-06-25)
+
+### Bug Fixes
+
+- Update pydantic to v2
+
 ## 0.43.20 (2026-06-24)
 
 ### Improvements
