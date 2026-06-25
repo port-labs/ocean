@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from fastapi import APIRouter, FastAPI
 from loguru import logger
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 import pytest
 import httpx
 from port_ocean.clients.port.authentication import PortAuthentication

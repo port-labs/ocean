@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 
 class ListOrganizationOptions(TypedDict):
@@ -47,11 +47,16 @@ class SinglePullRequestOptions(RepositoryIdentifier):
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
-    """Options for listing pull requests."""
+    """Options for listing pull requests.
+
+    For closed PRs exactly one cutoff drives filtering: ``updated_after`` filters by
+    ``updated_at`` (days lookback); ``closed_after`` filters by ``closed_at`` (closedSinceDate).
+    """
 
     states: Required[list[str]]
-    max_results: Required[int]
-    updated_after: Required[datetime]
+    max_results: Required[Optional[int]]
+    updated_after: NotRequired[Optional[datetime]]
+    closed_after: NotRequired[Optional[datetime]]
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
 

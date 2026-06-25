@@ -1,7 +1,7 @@
 import time
 from typing import Optional, Dict, Literal
 from dataclasses import dataclass
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 import httpx
 
 from github.helpers.utils import has_exhausted_rate_limit_headers
