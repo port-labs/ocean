@@ -50,6 +50,24 @@ def mapping_for_kind(kind: str) -> dict[str, Any]:
                 }
             },
         },
+        "release": {
+            "kind": "release",
+            "selector": {"query": "true"},
+            "port": {
+                "entity": {
+                    "mappings": {
+                        "identifier": ".__repository + (.id|tostring)",
+                        "title": ".name",
+                        "blueprint": '"githubRelease"',
+                        "properties": {
+                            "tag": ".tag_name",
+                            "url": ".html_url",
+                        },
+                        "relations": {"repository": ".__repository"},
+                    }
+                }
+            },
+        },
     }
 
     if kind not in resources:

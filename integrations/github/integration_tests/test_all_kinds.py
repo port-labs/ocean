@@ -12,10 +12,12 @@ INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
 
 KIND_BLUEPRINTS: dict[str, str] = {
     "issue": "githubIssue",
+    "release": "githubRelease",
 }
 
 KIND_BUILDERS: dict[str, str] = {
     "issue": "with_issue_routes",
+    "release": "with_release_routes",
 }
 
 

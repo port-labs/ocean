@@ -11,6 +11,7 @@ from mocks.payloads import (
     REPO_NAMES,
     issue_response,
     org_response,
+    release_response,
     repo_response,
 )
 
@@ -64,6 +65,15 @@ class GithubMockTransportBuilder:
                 "GET",
                 f"/repos/{ORG_LOGIN}/{name}/issues",
                 {"status_code": 200, "json": [issue_response(name, i)]},
+            )
+        return self
+
+    def with_release_routes(self) -> "GithubMockTransportBuilder":
+        for i, name in enumerate(REPO_NAMES, start=1):
+            self._transport.add_route(
+                "GET",
+                f"/repos/{ORG_LOGIN}/{name}/releases",
+                {"status_code": 200, "json": [release_response(name, i)]},
             )
         return self
 

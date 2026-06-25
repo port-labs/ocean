@@ -47,3 +47,15 @@ def issue_response(repo_name: str, issue_number: int) -> dict[str, Any]:
         "state": "open",
         "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/issues/{issue_number}",
     }
+
+
+def release_response(repo_name: str, release_id: int) -> dict[str, Any]:
+    tag = f"v1.{release_id}.0"
+    return {
+        "id": 3000 + release_id,
+        "tag_name": tag,
+        "name": f"Release {release_id} for {repo_name}",
+        "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/releases/tag/{tag}",
+        "draft": False,
+        "prerelease": False,
+    }
