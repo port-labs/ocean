@@ -463,6 +463,7 @@ async def test_resync_s3_bucket_falls_back_to_next_region_on_access_denied() -> 
     assert credentials.created_regions == ["us-east-1", "eu-west-1"]
     assert len(results) == 1
     assert results[0]["Identifier"] == "my-bucket"
+    assert results[0]["__Region"] == "eu-west-1"
 
 
 @pytest.mark.asyncio
@@ -499,15 +500,20 @@ async def test_resync_s3_bucket_all_regions_denied_yields_nothing() -> None:
     )
 
     results = []
-    async for batch in resync_s3_bucket(
-        kind="AWS::S3::Bucket",
-        credentials=credentials,
-        regions=["us-east-1", "eu-west-1"],
-    ):
-        results.extend(batch)
+    with patch("utils.resources.logger") as mock_logger:
+        async for batch in resync_s3_bucket(
+            kind="AWS::S3::Bucket",
+            credentials=credentials,
+            regions=["us-east-1", "eu-west-1"],
+        ):
+            results.extend(batch)
 
     assert credentials.created_regions == ["us-east-1", "eu-west-1"]
     assert results == []
+    mock_logger.warning.assert_any_call(
+        "Could not resync AWS::S3::Bucket in account 123456789012: "
+        "access was denied in all candidate regions"
+    )
 
 
 @pytest.mark.asyncio
@@ -522,12 +528,14 @@ async def test_resync_s3_bucket_reraises_non_access_denied_error() -> None:
         account_id="123456789012",
     )
 
-    with pytest.raises(ClientError):
-        async for _ in resync_s3_bucket(
-            kind="AWS::S3::Bucket",
-            credentials=credentials,
-            regions=["us-east-1", "eu-west-1"],
-        ):
-            pass
+    with patch("utils.resources.logger") as mock_logger:
+        with pytest.raises(ClientError):
+            async for _ in resync_s3_bucket(
+                kind="AWS::S3::Bucket",
+                credentials=credentials,
+                regions=["us-east-1", "eu-west-1"],
+            ):
+                pass
 
     assert credentials.created_regions == ["us-east-1"]
+    mock_logger.warning.assert_not_called()
