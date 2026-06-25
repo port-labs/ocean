@@ -1,6 +1,6 @@
 from typing import Any, Self
 from aws.core.modeling.resource_models import ResourceModel
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from typing import Dict
 import json
 
