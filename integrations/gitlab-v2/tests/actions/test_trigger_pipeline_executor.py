@@ -48,6 +48,7 @@ def mock_port_client() -> MagicMock:
     client = MagicMock()
     client.update_run_started = AsyncMock()
     client.report_run_completed = AsyncMock()
+    client.post_run_log = AsyncMock()
     return client
 
 
@@ -69,6 +70,7 @@ class TestTriggerPipelineExecutor:
             PIPELINE_RESPONSE["web_url"],
             "gl_42_99",
         )
+        assert mock_port_client.post_run_log.await_count == 2
         mock_port_client.report_run_completed.assert_not_called()
 
     async def test_report_pipeline_status_false_completes_immediately(
@@ -115,7 +117,12 @@ class TestTriggerPipelineExecutor:
             ),
         )
         run = make_run({"project": "my-group/my-project", "ref": "main"})
-        with pytest.raises(GitlabTriggerPipelineError, match="403 Forbidden"):
+        with (
+            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
+            pytest.raises(GitlabTriggerPipelineError, match="403 Forbidden"),
+        ):
+            mock_ocean.port_client = MagicMock()
+            mock_ocean.port_client.post_run_log = AsyncMock()
             await executor.execute(run)
 
     async def test_incomplete_response_raises(
@@ -125,7 +132,13 @@ class TestTriggerPipelineExecutor:
             return_value={"id": 99},
         )
         run = make_run({"project": "my-group/my-project", "ref": "main"})
-        with pytest.raises(GitlabTriggerPipelineError, match="empty or incomplete"):
+        with (
+            patch("gitlab.actions.trigger_pipeline_executor.ocean") as mock_ocean,
+            pytest.raises(GitlabTriggerPipelineError, match="empty or incomplete"),
+        ):
+            mock_ocean.port_client = MagicMock()
+            mock_ocean.port_client.post_run_log = AsyncMock()
+            mock_ocean.port_client.update_run_started = AsyncMock()
             await executor.execute(run)
 
     async def test_pipeline_variables_null_treated_as_empty(

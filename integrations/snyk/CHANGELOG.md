@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.34 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 0.5.33 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 0.5.32 (2026-06-23)
+
+
+### Improvements
+
+- Added the `attachIgnoreData` selector to enrich vulnerabilities with their project ignore policies under `__ignore_data` (via the Snyk v1 ignores API)
+
+
 ## 0.5.31 (2026-06-22)
 
 
