@@ -122,7 +122,9 @@ class GitHubRetryTransport(RetryTransport):
         if not current_page_size or current_page_size <= MIN_GRAPHQL_PAGE_SIZE:
             return request
         request_body = json.loads(await self._read_request_body(request))
-        reduced_page_size = current_page_size - GRAPHQL_REDUCTION_SIZE
+        reduced_page_size = max(
+            current_page_size - GRAPHQL_REDUCTION_SIZE, MIN_GRAPHQL_PAGE_SIZE
+        )
         logger.warning(
             f"GitHub returned a server error for {request.method} "
             f"{request.url.path} at first={current_page_size}; "
