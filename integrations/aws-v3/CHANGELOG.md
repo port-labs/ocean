@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.9.4-beta (2026-06-25)
+
+
+### Improvements
+
+- Added base (and used in CodePipeline) to allow for Action merge by id rather than index
+
+
+## 2.9.3-beta (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 2.9.2-beta (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 2.9.1-beta (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
 ## 2.9.0-beta (2026-06-17)
 
 

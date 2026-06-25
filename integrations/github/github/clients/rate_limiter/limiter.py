@@ -22,8 +22,16 @@ class GitHubRateLimiter:
 
     async def __aenter__(self) -> "GitHubRateLimiter":
         await self._semaphore.acquire()
-        async with self._lock:
-            await self._enforce_rate_limit()
+        try:
+            async with self._lock:
+                await self._enforce_rate_limit()
+        except BaseException as ctx_error:
+            logger.debug(
+                "github:clients:rate_limiter:GitHubRateLimiter::Error occurred while enforcing rate limit: {error}",
+                error=ctx_error,
+            )
+            self._semaphore.release()
+            raise
         return self
 
     async def __aexit__(

@@ -3,7 +3,7 @@ import json
 from typing import Iterable, Any, TypeVar, Callable, Awaitable, AsyncGenerator, cast
 
 from loguru import logger
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 
 from port_ocean.clients.port.client import PortClient
