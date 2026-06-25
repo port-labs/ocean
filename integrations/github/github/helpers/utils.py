@@ -1,5 +1,5 @@
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from datetime import datetime
+from datetime import datetime, timezone
 from wcmatch import glob
 from enum import StrEnum
 from typing import (
@@ -150,6 +150,24 @@ def build_first_commit(
 ) -> Dict[str, Any]:
     """Build the __firstCommit payload: the raw commit plus normalized __sha/__timestamp keys."""
     return {**commit, "__sha": sha, "__timestamp": timestamp}
+
+
+def created_at_sort_key(deployment: Dict[str, Any]) -> datetime:
+    """Sort key for deployments by created_at; unparseable dates sort earliest."""
+    parsed = parse_timestamp(deployment.get("created_at", ""))
+    return parsed if parsed is not None else datetime.min.replace(tzinfo=timezone.utc)
+
+
+def earliest_commit(commits: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Return the chronologically earliest commit, skipping unparseable dates."""
+    dated: list[tuple[datetime, Dict[str, Any]]] = []
+    for commit in commits:
+        parsed = parse_timestamp(commit["commit"]["committer"]["date"])
+        if parsed is not None:
+            dated.append((parsed, commit))
+    if not dated:
+        return None
+    return min(dated, key=lambda item: item[0])[1]
 
 
 def extract_changed_files(
