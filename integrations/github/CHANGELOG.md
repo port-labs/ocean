@@ -8,12 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 6.0.11 (2026-06-25)
+## 6.0.13 (2026-06-25)
 
 
 ### Bug Fixes
 
 - Implemented rate limit reservation threshold to prevent resync deadlocks
+
+
+## 6.0.12 (2026-06-25)
+
+
+### Improvements
+
+- Reduce GraphQL API minimum page size to 1, add tests to formalize page-recovery behavior
+
+
+## 6.0.11 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
 
 
 ## 6.0.10 (2026-06-25)

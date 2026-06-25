@@ -28,3 +28,19 @@ class GroupEvents(EventConfig):
 
     def to_dict(self) -> dict[str, bool]:
         return asdict(self)
+
+
+@dataclass(frozen=True)
+class ProjectEvents(EventConfig):
+    merge_requests_events: bool = True
+    issues_events: bool = True
+    releases_events: bool = True
+    push_events: bool = True
+    tag_push_events: bool = True
+    pipeline_events: bool = True
+    job_events: bool = True
+    confidential_issues_events: bool = True
+    deployment_events: bool = True
+
+    def to_dict(self) -> dict[str, bool]:
+        return asdict(self)

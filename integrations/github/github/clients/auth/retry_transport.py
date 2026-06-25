@@ -17,7 +17,7 @@ RETRYABLE_5XX_STATUS_CODES = (500, 502, 504)
 # Floors for the 5xx-recovery page-size backoff. We shrink the page on each retry
 # down to these sizes before giving up, since smaller pages reliably succeed.
 MIN_REST_PAGE_SIZE = 25
-MIN_GRAPHQL_PAGE_SIZE = 5
+MIN_GRAPHQL_PAGE_SIZE = 1
 GRAPHQL_REDUCTION_SIZE = 5
 
 
