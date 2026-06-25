@@ -259,6 +259,13 @@ class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodePipelineStageResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::Stage"] = Field(
+        title="AWS CodePipeline Stage",
+        description="AWS CodePipeline Stage resource kind.",
+    )
+
+
 class AWSCodePipelineActionResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodePipeline::Action"] = Field(
         title="AWS CodePipeline Action",
@@ -292,6 +299,7 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodeDeployDeploymentGroupResourceConfig
         | AWSCodeDeployDeploymentResourceConfig
         | AWSCodePipelinePipelineResourceConfig
+        | AWSCodePipelineStageResourceConfig
         | AWSCodePipelineActionResourceConfig
     ] = Field(
         default_factory=list,
