@@ -277,7 +277,7 @@ root of the integration folder that contains the following:
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig, ResourceConfig, Selector
-from pydantic.v1 import Field
+from pydantic import Field
 
 
 class CustomResourceConfig(ResourceConfig):
