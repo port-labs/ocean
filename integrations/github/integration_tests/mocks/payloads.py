@@ -1,0 +1,49 @@
+from typing import Any
+
+ORG_LOGIN = "port-labs-testing"
+ORG_ID = 187526413
+INSTALLATION_ID = 101062864
+REPO_NAMES = ["test-repo-1", "test-repo-2"]
+
+
+def org_response() -> dict[str, Any]:
+    return {
+        "login": ORG_LOGIN,
+        "id": ORG_ID,
+        "node_id": "O_test",
+        "url": f"https://api.github.com/users/{ORG_LOGIN}",
+        "repos_url": f"https://api.github.com/users/{ORG_LOGIN}/repos",
+        "events_url": f"https://api.github.com/users/{ORG_LOGIN}/events",
+        "hooks_url": f"https://api.github.com/users/{ORG_LOGIN}/hooks",
+        "issues_url": f"https://api.github.com/users/{ORG_LOGIN}/issues",
+        "members_url": f"https://api.github.com/users/{ORG_LOGIN}/members",
+        "public_members_url": f"https://api.github.com/users/{ORG_LOGIN}/public_members",
+        "avatar_url": f"https://avatars.githubusercontent.com/u/{ORG_ID}",
+        "description": "Test organization",
+        "type": "Organization",
+    }
+
+
+def repo_response(name: str, idx: int) -> dict[str, Any]:
+    return {
+        "id": 1000 + idx,
+        "node_id": f"R_{name}",
+        "name": name,
+        "full_name": f"{ORG_LOGIN}/{name}",
+        "private": False,
+        "owner": {"login": ORG_LOGIN, "id": ORG_ID, "type": "Organization"},
+        "html_url": f"https://github.com/{ORG_LOGIN}/{name}",
+        "description": f"Test repository {name}",
+        "default_branch": "main",
+        "language": "Python",
+    }
+
+
+def issue_response(repo_name: str, issue_number: int) -> dict[str, Any]:
+    return {
+        "id": 2000 + issue_number,
+        "number": issue_number,
+        "title": f"Issue in {repo_name}",
+        "state": "open",
+        "html_url": f"https://github.com/{ORG_LOGIN}/{repo_name}/issues/{issue_number}",
+    }
