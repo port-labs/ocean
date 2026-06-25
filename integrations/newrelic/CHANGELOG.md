@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.359 (2026-06-25)
+
+
+### Improvements
+
+- Migrated New Relic live events from a direct `/events` endpoint to the standard webhook processor framework
+
+
 ## 0.1.358 (2026-06-25)
 
 
