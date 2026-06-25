@@ -24,7 +24,7 @@ classifiers = [
     "Operating System :: POSIX",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -39,7 +39,7 @@ requires = ["poetry-core>=1.0.0,<2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.13"
 pydantic = { version = "^1.10.26", extras = ["dotenv"] }
 python-dotenv = "^1.2.2"
 loguru = "^0.7.0"
@@ -169,7 +169,7 @@ disallow_untyped_defs = true
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
 exclude = ['venv', '.venv', 'integrations', 'port_ocean/cli/cookiecutter']
-target-version = "py311"
+target-version = "py313"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -179,7 +179,7 @@ warn_untyped_fields = true
 
 [tool.black]
 line-length = 88
-target-version = ['py312']
+target-version = ['py313']
 include = '\.pyi?$'
 exclude = '''
 /(
