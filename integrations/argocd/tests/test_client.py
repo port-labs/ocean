@@ -409,6 +409,36 @@ async def test_get_managed_resources(
 
 
 @pytest.mark.asyncio
+async def test_get_managed_resources_passes_app_namespace(
+    mock_argocd_client: ArgocdClient,
+) -> None:
+    """Applications outside the control-plane namespace must send appNamespace."""
+    application = {
+        "metadata": {"name": "test-app", "namespace": "test-namespace"},
+    }
+    response_data: dict[str, Any] = {
+        "items": [{"kind": "Service", "name": "svc1"}],
+    }
+
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
+        yield response_data["items"]
+
+    with patch.object(
+        mock_argocd_client.streaming_client,
+        "stream_json",
+        side_effect=mock_stream_json,
+    ) as mock_stream:
+        async for _ in mock_argocd_client.get_managed_resources(application):
+            pass
+
+        mock_stream.assert_called_with(
+            url=f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.APPLICATION}s/test-app/managed-resources",
+            target_items_path="items",
+            params={"appNamespace": "test-namespace"},
+        )
+
+
+@pytest.mark.asyncio
 async def test_get_clusters_with_only_available_clusters(
     mock_argocd_client: ArgocdClient,
 ) -> None:
@@ -703,6 +733,39 @@ async def test_get_managed_resources_with_streaming_disabled() -> None:
             assert len(resources) == 2
             # Verify application is added to each resource
             assert all("__application" in resource for resource in resources)
+
+
+@pytest.mark.asyncio
+async def test_get_managed_resources_with_streaming_disabled_passes_app_namespace() -> (
+    None
+):
+    """Direct request path must also send appNamespace for namespaced applications."""
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=False,
+        allow_insecure=True,
+        use_streaming=False,
+    )
+
+    application = {"metadata": {"name": "test-app", "namespace": "test-namespace"}}
+    response_data = {"items": [{"kind": "Service", "name": "svc1"}]}
+
+    with patch.object(client.streaming_client, "stream_json") as mock_stream:
+        with patch.object(
+            client,
+            "_send_api_request",
+            new_callable=AsyncMock,
+            return_value=response_data,
+        ) as mock_request:
+            async for _ in client.get_managed_resources(application):
+                pass
+
+            mock_request.assert_called_once_with(
+                url=f"{client.api_url}/applications/test-app/managed-resources",
+                query_params={"appNamespace": "test-namespace"},
+            )
+            mock_stream.assert_not_called()
 
 
 # Tests for custom HTTP headers
