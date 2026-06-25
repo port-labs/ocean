@@ -293,18 +293,18 @@ async def resync_s3_bucket(
     regions: Iterable[str],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     account_id = credentials.account_id
+    has_yielded_any = False
     for region in regions:
         session = await credentials.create_session(region)
-        yielded_any = False
         try:
             async for batch in _resync_s3_bucket_in_region(kind, session, account_id):
-                yielded_any = True
+                has_yielded_any = True
                 yield batch
             return
         except ClientError as e:
             if not is_access_denied_exception(e):
                 raise
-            if yielded_any:
+            if has_yielded_any:
                 logger.warning(
                     f"Access denied while resyncing {kind} in region {region} in account {account_id} after partial results; stopping"
                 )
@@ -323,7 +323,6 @@ async def _resync_s3_bucket_in_region(
     session: aioboto3.Session,
     account_id: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     region = session.region_name
 
     async with session.client(
@@ -416,8 +415,8 @@ async def _resync_s3_bucket_in_region(
 
         except cloudcontrol.exceptions.ClientError as e:
             if not is_access_denied_exception(e):
-                raise e
-            logger.warning(
+                raise
+            logger.debug(
                 f"Access denied resyncing {kind} in region {region} in account {account_id}"
             )
             raise

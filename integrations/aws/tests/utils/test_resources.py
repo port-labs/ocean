@@ -282,17 +282,17 @@ async def test_resync_resource_group(
 
 def test_select_s3_region_prefers_standard_regions() -> None:
     """Test that select_s3_region yields standard regions before opt-in regions."""
-    from main import select_s3_region
+    from main import get_available_regions
 
     # Standard regions should be yielded first, opt-in regions last
     regions = ["af-south-1", "us-east-1", "eu-west-1"]
-    ordered = list(select_s3_region(regions))
+    ordered = list(get_available_regions(regions))
     assert ordered == ["us-east-1", "eu-west-1", "af-south-1"]
     assert ordered[0] not in OPT_IN_REGIONS
 
     # If only opt-in regions, they are still all yielded in order
     opt_in_only = ["af-south-1", "ap-east-1"]
-    ordered = list(select_s3_region(opt_in_only))
+    ordered = list(get_available_regions(opt_in_only))
     assert ordered == ["af-south-1", "ap-east-1"]
 
 

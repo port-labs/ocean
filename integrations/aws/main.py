@@ -55,7 +55,7 @@ from aioboto3 import Session
 import functools
 
 
-def select_s3_region(allowed_regions: list[str]) -> Iterator[str]:
+def get_available_regions(allowed_regions: list[str]) -> Iterator[str]:
     """Yield regions for S3 list_resources calls, preferring standard regions over opt-in ones."""
     opt_in_regions = []
     for region in allowed_regions:
@@ -401,7 +401,9 @@ async def resync_s3(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         if allowed_regions:
             tasks.append(
-                resync_s3_bucket(kind, credentials, select_s3_region(allowed_regions))
+                resync_s3_bucket(
+                    kind, credentials, get_available_regions(allowed_regions)
+                )
             )
 
         if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
