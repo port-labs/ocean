@@ -218,6 +218,12 @@ class VulnerabilitySelector(Selector):
         alias="enrichWithProject",
         description="Enrich each vulnerability with its associated project data. For large orgs this is API and memory intensive — use projectQueryParams to limit scope.",
     )
+    attach_ignore_data: bool = Field(
+        default=False,
+        alias="attachIgnoreData",
+        title="Attach Ignore Data",
+        description="Attach the matching ignore policy to each vulnerability under `__ignore_data`. Requires a per-project lookup, so use projectQueryParams to limit scope on large orgs. This uses Snyk's v1 ignore API which may become deprecated in the future.",
+    )
 
 
 class PolicySelector(Selector):
