@@ -14,10 +14,7 @@ from newrelic_integration.webhook.issue_event_utils import (
     get_entity_kinds,
     get_issue_kinds,
 )
-from tests.webhook.test_webhook_processors import (
-    _entity_resource_config,
-    _port_app_config,
-)
+from tests.webhook.helpers import port_resource_config
 
 
 @pytest.mark.asyncio
@@ -39,9 +36,31 @@ async def test_enrich_issue_entity_relations() -> None:
     assert relations["entity_guids"] == ["entity-guid-1"]
 
 
+@pytest.fixture
+def entity_resource_config() -> NewRelicCustomResourceConfig:
+    return NewRelicCustomResourceConfig(
+        kind="newRelicService",
+        selector=NewRelicSelector(
+            query="true",
+            newRelicTypes=["APM_APPLICATION"],
+            entityQueryFilter="type = 'APM_APPLICATION'",
+            calculateOpenIssueCount=True,
+        ),
+        port=port_resource_config(),
+    )
+
+
+@pytest.fixture
+def port_app_config(
+    entity_resource_config: NewRelicCustomResourceConfig,
+) -> NewRelicPortAppConfig:
+    return NewRelicPortAppConfig(resources=[entity_resource_config])
+
+
 @pytest.mark.asyncio
-async def test_fetch_entities_for_resource_filters_by_type() -> None:
-    resource_config = _entity_resource_config()
+async def test_fetch_entities_for_resource_filters_by_type(
+    entity_resource_config: NewRelicCustomResourceConfig,
+) -> None:
     mock_http_client = AsyncMock(spec=httpx.AsyncClient)
 
     with (
@@ -62,7 +81,7 @@ async def test_fetch_entities_for_resource_filters_by_type() -> None:
 
         entities = await fetch_entities_for_resource(
             mock_http_client,
-            resource_config,
+            entity_resource_config,
             ["entity-guid-1", "entity-guid-2"],
         )
 
@@ -83,7 +102,7 @@ async def test_fetch_entities_for_resource_skips_non_matching_types() -> None:
             newRelicTypes=["HOST"],
             entityQueryFilter="type = 'HOST'",
         ),
-        port=_entity_resource_config().port,
+        port=port_resource_config(),
     )
     mock_http_client = AsyncMock(spec=httpx.AsyncClient)
 
@@ -108,6 +127,8 @@ def test_get_issue_kinds_defaults_to_new_relic_alert() -> None:
     assert get_issue_kinds(NewRelicPortAppConfig(resources=[])) == ["newRelicAlert"]
 
 
-def test_get_entity_kinds_excludes_resync_only_resources() -> None:
-    kinds = get_entity_kinds(_port_app_config())
+def test_get_entity_kinds_excludes_resync_only_resources(
+    port_app_config: NewRelicPortAppConfig,
+) -> None:
+    kinds = get_entity_kinds(port_app_config)
     assert kinds == ["newRelicService"]
