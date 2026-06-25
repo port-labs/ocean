@@ -4,6 +4,11 @@ from datetime import datetime, timedelta, timezone
 from pydantic.v1 import Field, BaseModel
 
 from azure_devops.gitops.file_entity_processor import GitManipulationHandler
+from azure_devops.client.user_sources import (
+    EntitlementsUserSource,
+    GraphUserSource,
+    UserSource,
+)
 from azure_devops.misc import AzureDevopsFolderResourceConfig, Kind
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -302,33 +307,49 @@ class AzureDevopsRepositoryResourceConfig(ResourceConfig):
 
 
 class AzureDevopsUserSelector(Selector):
+    source: Literal["graph", "entitlements"] = Field(
+        default="entitlements",
+        alias="source",
+        title="Source",
+        description="Where to read users from. 'graph' uses the read-only Graph Users API (vso.graph scope); 'entitlements' uses the Member Entitlement Management API, which also returns license data but requires an elevated scope.",
+    )
+    subject_types: Optional[list[str]] = Field(
+        default=None,
+        alias="subjectTypes",
+        title="Subject Types",
+        description="Graph source only. Filter users by subject subtype, e.g. 'aad', 'msa', 'svc', 'imp'.",
+    )
+    include_group_memberships: bool = Field(
+        default=False,
+        alias="includeGroupMemberships",
+        title="Include Group Memberships",
+        description="Graph source only. Enrich each user with their direct group memberships (__groups) and derived project entitlements (__projects).",
+    )
     include_fields: Optional[
         list[Literal["license", "extensions", "projects", "groupRules"]]
     ] = Field(
         default=None,
         alias="includeFields",
         title="Include Fields",
-        description="List of additional properties to include in user entitlements.",
+        description="Entitlements source only. List of additional properties to include in user entitlements.",
     )
     api_version: Optional[str] = Field(
         default=None,
         alias="apiVersion",
         title="API Version",
-        description="API version for the User Entitlements endpoint. Override if your organization requires a specific version. Will use the default version if not provided.",
+        description="Entitlements source only. API version for the User Entitlements endpoint. Override if your organization requires a specific version. Will use the default version if not provided.",
     )
 
-    def to_params(self) -> dict[str, str]:
-        data = self.dict(
-            by_alias=True,
-            exclude_none=True,
-            exclude={"query", "api_version"},
+    def build_source(self) -> UserSource:
+        if self.source == "graph":
+            return GraphUserSource(
+                subject_types=self.subject_types,
+                include_group_memberships=self.include_group_memberships,
+            )
+        return EntitlementsUserSource(
+            include_fields=self.include_fields,
+            api_version=self.api_version,
         )
-        if "includeFields" in data:
-            data["select"] = ",".join(data["includeFields"])
-            del data["includeFields"]
-        if self.api_version:
-            data["api-version"] = self.api_version
-        return data
 
 
 class AzureDevopsUserConfig(ResourceConfig):
