@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any, Literal, TypeGuard
 
 import httpx
@@ -123,35 +122,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
             action_run = None
         if action_run is not None:
             return action_run
-        try:
-            return await self.get_wf_node_run_by_external_id(external_id)
-        except Exception:
-            return None
-
-    async def find_run_with_retry(
-        self,
-        external_id: str,
-        *,
-        retries: int = 5,
-        initial_delay: float = 0.5,
-    ) -> ActionRun | WorkflowNodeRun | None:
-        """Look up a run by external ID, retrying with exponential backoff.
-
-        Handles the race where a webhook arrives before update_run_started()
-        finishes writing the externalRunId. Default delays: 0.5s, 1s, 2s, 4s → ~7.5s total.
-        """
-        delay = initial_delay
-        for attempt in range(retries):
-            try:
-                run = await self.find_run_by_external_id(external_id)
-            except httpx.HTTPError:
-                run = None
-            if run is not None:
-                return run
-            if attempt < retries - 1:
-                await asyncio.sleep(delay)
-                delay *= 2
-        return None
+        return await self.get_wf_node_run_by_external_id(external_id)
 
     def is_run_in_progress(self, run: ActionRun | WorkflowNodeRun) -> bool:
         """Check if a run is currently in progress."""
