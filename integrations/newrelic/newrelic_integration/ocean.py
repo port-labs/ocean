@@ -1,5 +1,4 @@
 from typing import Any
-import httpx
 import asyncio
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -43,75 +42,67 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
             return
         else:
-            async with httpx.AsyncClient() as http_client:
-                page_size = 100
-                counter = 0
-                entities = []
-                async for entity in EntitiesHandler(
-                    http_client
-                ).list_entities_by_resource_kind(kind):
-                    if port_resource_configuration.selector.calculate_open_issue_count:
-                        number_of_open_issues = await IssuesHandler(
-                            http_client
-                        ).get_number_of_issues_by_entity_guid(
-                            entity["guid"],
-                            issue_state=IssueState.ACTIVATED,
-                        )
-                        entity["__open_issues_count"] = number_of_open_issues
-                    counter += 1
-                    entities.append(entity)
-                    # yield the entities in batches to take advantage of the async list generator
-                    if counter == page_size:
-                        counter = 0
-                        yield entities
-                        entities = []
-                if entities:
+            page_size = 100
+            counter = 0
+            entities = []
+            async for entity in EntitiesHandler().list_entities_by_resource_kind(kind):
+                if port_resource_configuration.selector.calculate_open_issue_count:
+                    number_of_open_issues = await IssuesHandler().get_number_of_issues_by_entity_guid(
+                        entity["guid"],
+                        issue_state=IssueState.ACTIVATED,
+                    )
+                    entity["__open_issues_count"] = number_of_open_issues
+                counter += 1
+                entities.append(entity)
+                # yield the entities in batches to take advantage of the async list generator
+                if counter == page_size:
+                    counter = 0
                     yield entities
+                    entities = []
+            if entities:
+                yield entities
 
 
 @ocean.on_resync(kind="newRelicAlert")
 async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(resource_kind=kind):
-        async with httpx.AsyncClient() as http_client:
-            yield await IssuesHandler(http_client).list_issues()
+        yield await IssuesHandler().list_issues()
 
 
 @ocean.on_resync(kind="newRelicServiceLevel")
 async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(resource_kind=kind):
-        async with httpx.AsyncClient() as http_client:
-            service_level_handler = ServiceLevelsHandler(http_client)
-            semaphore = asyncio.Semaphore(SERVICE_LEVEL_MAX_CONCURRENT_REQUESTS)
+        service_level_handler = ServiceLevelsHandler()
+        semaphore = asyncio.Semaphore(SERVICE_LEVEL_MAX_CONCURRENT_REQUESTS)
 
-            async for service_levels in service_level_handler.list_service_levels():
-                tasks = [
-                    enrich_service_level(
-                        service_level_handler, semaphore, service_level
-                    )
-                    for service_level in service_levels
-                ]
-                enriched_service_levels = await asyncio.gather(*tasks)
-                yield enriched_service_levels
+        async for service_levels in service_level_handler.list_service_levels():
+            tasks = [
+                enrich_service_level(
+                    service_level_handler, semaphore, service_level
+                )
+                for service_level in service_levels
+            ]
+            enriched_service_levels = await asyncio.gather(*tasks)
+            yield enriched_service_levels
 
 
 @ocean.on_resync(kind="newRelicAlertCondition")
 async def resync_alert_conditions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(resource_kind=kind):
-        async with httpx.AsyncClient() as http_client:
-            alert_conditions_handler = AlertConditionsHandler(http_client)
-            page_size = 100
-            counter = 0
-            conditions = []
-            async for condition in alert_conditions_handler.list_alert_conditions():
-                counter += 1
-                conditions.append(condition)
-                # yield the conditions in batches to take advantage of the async list generator
-                if counter == page_size:
-                    counter = 0
-                    yield conditions
-                    conditions = []
-            if conditions:
+        alert_conditions_handler = AlertConditionsHandler()
+        page_size = 100
+        counter = 0
+        conditions = []
+        async for condition in alert_conditions_handler.list_alert_conditions():
+            counter += 1
+            conditions.append(condition)
+            # yield the conditions in batches to take advantage of the async list generator
+            if counter == page_size:
+                counter = 0
                 yield conditions
+                conditions = []
+        if conditions:
+            yield conditions
 
 
 register_live_events_webhooks()

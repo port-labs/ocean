@@ -1,6 +1,5 @@
 import typing
 
-import httpx
 from loguru import logger
 from port_ocean.context.event import event as ocean_event
 from pydantic.v1 import ValidationError
@@ -47,8 +46,7 @@ class IssueWebhookProcessor(BaseWebhookProcessor):
         with logger.contextualize(issue_id=issue_id, issue_state=issue_state):
             logger.info("Processing issue event")
 
-            async with httpx.AsyncClient() as http_client:
-                await enrich_issue_entity_relations(http_client, issue_record)
+            await enrich_issue_entity_relations(issue_record)
 
             return WebhookEventRawResults(
                 updated_raw_results=[issue_record],

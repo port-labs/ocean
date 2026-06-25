@@ -1,6 +1,5 @@
 import typing
 
-import httpx
 from loguru import logger
 from port_ocean.context.event import event as ocean_event
 from pydantic.v1 import ValidationError
@@ -50,12 +49,10 @@ class EntityWebhookProcessor(BaseWebhookProcessor):
                 resource_kind=resource_config.kind,
             )
 
-            async with httpx.AsyncClient() as http_client:
-                entities = await fetch_entities_for_resource(
-                    http_client,
-                    typing.cast(NewRelicAnyResourceConfig, resource_config),
-                    entity_guids,
-                )
+            entities = await fetch_entities_for_resource(
+                typing.cast(NewRelicAnyResourceConfig, resource_config),
+                entity_guids,
+            )
 
             return WebhookEventRawResults(
                 updated_raw_results=entities,

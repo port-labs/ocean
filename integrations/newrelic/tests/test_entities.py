@@ -4,7 +4,10 @@ import httpx
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from newrelic_integration.core.errors import NewRelicNotFoundError
-from newrelic_integration.core.entities import EntitiesHandler
+from newrelic_integration.core.entities import (
+    EntitiesHandler,
+    build_entity_search_query_for_guids,
+)
 from typing import AsyncGenerator, List, Dict, Any
 
 
@@ -50,6 +53,18 @@ async def mock_render_query() -> AsyncGenerator[AsyncMock, None]:
 
 
 # Test class using async test cases
+def test_build_entity_search_query_for_guids() -> None:
+    query = build_entity_search_query_for_guids(
+        ["guid-1", "guid-2"],
+        "type IN ('AWSEC2INSTANCE')",
+    )
+    assert (
+        query
+        == "id IN ('guid-1', 'guid-2') AND (type IN ('AWSEC2INSTANCE'))"
+    )
+    assert build_entity_search_query_for_guids([], "type = 'HOST'") is None
+
+
 @pytest.mark.asyncio
 class TestEntitiesHandler:
 
@@ -178,7 +193,7 @@ class TestEntitiesHandler:
 
         # Call the method under test
         entities: List[Dict[str, Any]] = await entities_handler.list_entities_by_guids(
-            mock_send_request, ["entity1"]
+            ["entity1"]
         )
         # Assertions
         assert len(entities) == 1

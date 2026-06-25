@@ -1,6 +1,6 @@
+import asyncio
 import typing
 
-import httpx
 from loguru import logger
 
 from newrelic_integration.core.entities import EntitiesHandler
@@ -12,6 +12,8 @@ from newrelic_integration.webhook.constants import (
     ISSUE_ENTITY_TYPE,
     RESYNC_ONLY_KINDS,
 )
+
+_inflight_entity_fetches: dict[tuple[str, ...], asyncio.Task[dict[str, dict[str, typing.Any]]]] = {}
 
 
 def get_issue_kinds(app_config: NewRelicPortAppConfig) -> list[str]:
@@ -45,59 +47,88 @@ def get_entity_kinds(app_config: NewRelicPortAppConfig) -> list[str]:
     return kinds
 
 
+async def _load_entities_by_guids(
+    entity_guids: list[str],
+) -> dict[str, dict[str, typing.Any]]:
+    entities = await EntitiesHandler().list_entities_by_guids(entity_guids)
+    return {entity["guid"]: entity for entity in entities}
+
+
+async def get_issue_event_entities(
+    entity_guids: list[str],
+) -> dict[str, dict[str, typing.Any]]:
+    unique_guids = tuple(dict.fromkeys(guid for guid in entity_guids if guid))
+    if not unique_guids:
+        return {}
+
+    fetch_key = unique_guids
+    task = _inflight_entity_fetches.get(fetch_key)
+    if task is None:
+        task = asyncio.create_task(_load_entities_by_guids(list(unique_guids)))
+        _inflight_entity_fetches[fetch_key] = task
+        task.add_done_callback(
+            lambda completed_task: _inflight_entity_fetches.pop(fetch_key, None)
+            if _inflight_entity_fetches.get(fetch_key) is completed_task
+            else None
+        )
+
+    entities_by_guid = await task
+    return {
+        entity_guid: entities_by_guid[entity_guid]
+        for entity_guid in unique_guids
+        if entity_guid in entities_by_guid
+    }
+
+
 async def enrich_issue_entity_relations(
-    http_client: httpx.AsyncClient,
     issue_record: dict[str, typing.Any],
 ) -> None:
-    for entity_guid in issue_record.get("entityGuids", []):
-        try:
-            entity = await EntitiesHandler(http_client).get_entity(
-                entity_guid=entity_guid
-            )
-            entity_type = entity["type"]
-            issue_record.setdefault(f"__{entity_type}", {}).setdefault(
-                "entity_guids", []
-            ).append(entity_guid)
-        except Exception as err:
-            logger.exception(
+    entity_guids = issue_record.get("entityGuids", [])
+    entities_by_guid = await get_issue_event_entities(entity_guids)
+
+    for entity_guid in entity_guids:
+        entity = entities_by_guid.get(entity_guid)
+        if entity is None:
+            logger.warning(
                 "Failed to get entity for issue event, continuing",
                 entity_guid=entity_guid,
-                err=str(err),
             )
+            continue
+
+        entity_type = entity["type"]
+        issue_record.setdefault(f"__{entity_type}", {}).setdefault(
+            "entity_guids", []
+        ).append(entity_guid)
 
 
 async def fetch_entities_for_resource(
-    http_client: httpx.AsyncClient,
     resource_config: NewRelicAnyResourceConfig,
     entity_guids: list[str],
 ) -> list[dict[str, typing.Any]]:
+    entity_query_filter = resource_config.selector.entity_query_filter
+    if not entity_guids or not entity_query_filter:
+        return []
+
+    entities = await EntitiesHandler().list_entities_by_guids_and_filter(
+        entity_guids,
+        entity_query_filter,
+        resource_config.selector.entity_extra_properties_query,
+    )
+    entities_by_guid = {entity["guid"]: entity for entity in entities}
     updated_entities: list[dict[str, typing.Any]] = []
-    newrelic_types = resource_config.selector.newrelic_types or []
 
     for entity_guid in entity_guids:
-        try:
-            entity = await EntitiesHandler(http_client).get_entity(
-                entity_guid=entity_guid
-            )
-            entity_type = entity["type"]
-            if newrelic_types and entity_type not in newrelic_types:
-                continue
+        entity = entities_by_guid.get(entity_guid)
+        if entity is None:
+            continue
 
-            if resource_config.selector.calculate_open_issue_count:
-                number_of_open_issues = await IssuesHandler(
-                    http_client
-                ).get_number_of_issues_by_entity_guid(
-                    entity_guid,
-                    issue_state=IssueState.ACTIVATED,
-                )
-                entity["__open_issues_count"] = number_of_open_issues
-
-            updated_entities.append(entity)
-        except Exception as err:
-            logger.exception(
-                "Failed to get entity for issue event, continuing",
-                entity_guid=entity_guid,
-                err=str(err),
+        if resource_config.selector.calculate_open_issue_count:
+            number_of_open_issues = await IssuesHandler().get_number_of_issues_by_entity_guid(
+                entity_guid,
+                issue_state=IssueState.ACTIVATED,
             )
+            entity = {**entity, "__open_issues_count": number_of_open_issues}
+
+        updated_entities.append(entity)
 
     return updated_entities
