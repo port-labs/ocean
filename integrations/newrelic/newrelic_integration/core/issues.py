@@ -5,7 +5,7 @@ from loguru import logger
 import httpx
 
 from port_ocean.context.ocean import ocean
-from pydantic import BaseModel, Field, Extra
+from pydantic.v1 import BaseModel, Field, Extra
 
 from newrelic_integration.core.errors import NewRelicNotFoundError
 from newrelic_integration.core.entities import EntitiesHandler

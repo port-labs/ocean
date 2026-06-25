@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from typing import Any
@@ -138,3 +139,27 @@ class TestBaseWebhookFactory:
             await concrete_factory.create(
                 "https://app.example.com/hook/123", "groups/123/hooks"
             )
+
+    async def test_create_webhook_skips_when_token_lacks_resource_access(
+        self,
+        concrete_factory: BaseWebhookFactory[EventConfig],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(concrete_factory, "_exists", AsyncMock(return_value=False))
+        monkeypatch.setattr(
+            concrete_factory,
+            "_send_request",
+            AsyncMock(
+                side_effect=httpx.HTTPStatusError(
+                    "Forbidden",
+                    request=MagicMock(),
+                    response=MagicMock(status_code=403),
+                )
+            ),
+        )
+
+        response = await concrete_factory.create(
+            "https://app.example.com/hook/123", "groups/123/hooks"
+        )
+
+        assert response == {}

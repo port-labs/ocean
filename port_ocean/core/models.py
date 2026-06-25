@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
 from typing import Any, Literal, NotRequired, TypedDict
-from pydantic import BaseModel
-from pydantic.fields import Field
+from pydantic.v1 import BaseModel
+from pydantic.v1.fields import Field
 
 
 class EventListenerType(StrEnum):
