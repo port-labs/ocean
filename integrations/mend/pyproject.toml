@@ -6,7 +6,7 @@ authors = ["Het Saliya <het.saliya@crestdata.ai>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.44.0", extras = ["cli"]}
+port_ocean = {version = "^0.44.1", extras = ["cli"]}
 PyJWT = "^2.8.0"
 
 [tool.poetry.group.dev.dependencies]
