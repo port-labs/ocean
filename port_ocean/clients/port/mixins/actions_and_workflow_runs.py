@@ -28,7 +28,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
     @staticmethod
     def _wf_node_completion_patch(
         result: WorkflowNodeRunResult,
-        output: dict[str, Any],
+        output: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         patch: dict[str, Any] = {
             "status": WorkflowNodeRunStatus.COMPLETED,
@@ -162,7 +162,6 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         run: ActionRun | WorkflowNodeRun,
         success: bool,
         message: str | None = None,
-        output: dict[str, Any] | None = None,
     ) -> None:
         """Report a run as completed with success or failure."""
         if self._is_wf_node_run(run):
@@ -181,9 +180,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 )
             await self.patch_wf_node_run(
                 run.id,
-                self._wf_node_completion_patch(
-                    result, output if output is not None else run.output
-                ),
+                self._wf_node_completion_patch(result, run.output),
             )
         else:
             status = RunStatus.SUCCESS if success else RunStatus.FAILURE
