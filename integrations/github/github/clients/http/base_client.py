@@ -1,6 +1,4 @@
 from abc import ABC, abstractmethod
-from port_ocean.exceptions.context import EventContextNotFoundError
-from port_ocean.context.event import event, EventType
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
@@ -107,7 +105,6 @@ class AbstractGithubClient(ABC):
     ) -> Response:
         """Make a request to the GitHub API with GitHub rate limiting and error handling."""
 
-        await self._wait_if_resync_threshold_exceeded()
         async with self.rate_limiter:
             try:
                 response = await self.client.request(
@@ -202,17 +199,3 @@ class AbstractGithubClient(ABC):
             Lists of items from paginated responses
         """
         pass
-
-    async def _wait_if_resync_threshold_exceeded(self) -> None:
-        "Pause if we are running a resync and approaching the rate limit, saving the remaining budget for webhooks."
-        try:
-            if event.event_type != EventType.RESYNC:
-                logger.debug(
-                    "Not a resync event, no need to check rate limit threshold."
-                )
-                return
-        except EventContextNotFoundError:
-            # we are not in an event context, we assume this is a standard action/webhook and should not be throttled
-            return
-
-        await self.rate_limiter.wait_if_resync_threshold_exceeded()
