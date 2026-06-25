@@ -5,14 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
 <!-- towncrier release notes start -->
 
-## 6.10.0 (2026-06-25)
+## 6.0.11 (2026-06-25)
 
 
 ### Bug Fixes
 
 - Implemented rate limit reservation threshold to prevent resync deadlocks
+
+
+## 6.0.10 (2026-06-25)
+
+
+### Improvements
+
+- Added a warning log when a GraphQL query's page size is reduced on retry
 
 
 ## 6.0.9 (2026-06-25)
