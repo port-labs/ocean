@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 
 class ListOrganizationOptions(TypedDict):

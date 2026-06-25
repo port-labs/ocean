@@ -3,7 +3,7 @@ from typing import Any, Iterator
 
 from httpx import HTTPStatusError
 from loguru import logger
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from datadog.client import DatadogClient
 from datadog.core.exporters import OrgExporter
