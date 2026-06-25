@@ -1,10 +1,11 @@
 import asyncio
 import json
-from typing import Any, Literal, List, Dict, Callable
+from typing import Any, Literal, List, Dict, Callable, Iterable
 import typing
 
 import aioboto3
 from loguru import logger
+from aws.aws_credentials import AwsCredentials
 from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
@@ -288,11 +289,41 @@ async def get_bucket_resource(
 
 async def resync_s3_bucket(
     kind: str,
-    session: aioboto3.Session,
+    credentials: AwsCredentials,
+    regions: Iterable[str],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    account_id = credentials.account_id
+    has_yielded_any = False
+    for region in regions:
+        session = await credentials.create_session(region)
+        try:
+            async for batch in _resync_s3_bucket_in_region(kind, session, account_id):
+                has_yielded_any = True
+                yield batch
+            return
+        except ClientError as e:
+            if not is_access_denied_exception(e):
+                raise
+            if has_yielded_any:
+                logger.warning(
+                    f"Access denied while resyncing {kind} in region {region} in account {account_id} after partial results; stopping"
+                )
+                return
+            logger.warning(
+                f"Skipping region {region} for {kind} in account {account_id} due to missing access permissions; trying next region"
+            )
 
+    logger.warning(
+        f"Could not resync {kind} in account {account_id}: access was denied in all candidate regions"
+    )
+
+
+async def _resync_s3_bucket_in_region(
+    kind: str,
+    session: aioboto3.Session,
+    account_id: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
     region = session.region_name
-    account_id = await _session_manager.find_account_id_by_session(session)
 
     async with session.client(
         "cloudcontrol",
@@ -308,87 +339,76 @@ async def resync_s3_bucket(
             method_name="list_resources",
             list_param="ResourceDescriptions",
         )
-        try:
-            async for resources_batch in paginator.paginate(TypeName=kind):
-                if not resources_batch:
-                    continue
-                logger.info(
-                    f"Received {len(resources_batch)} {kind} resources in region {region}"
-                )
-                total_resources = len(resources_batch)
-                processed_count = 0
-                for chunk in process_list_in_chunks(
-                    resources_batch, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
-                ):
-                    processed_chunk = []
-                    for bucket in chunk:
-                        bucket_name = bucket["Identifier"]
-                        logger.debug(f"Processing S3 bucket: {bucket_name}")
-
-                        resource = await get_bucket_resource(
-                            bucket_name, cloudcontrol_client=cloudcontrol
-                        )
-                        bucket_region = None
-
-                        if resource is None:
-                            logger.info(
-                                f"S3 bucket '{bucket_name}' not found in {region}, checking actual location..."
-                            )
-                            bucket_region = await get_bucket_location(
-                                bucket_name, session
-                            )
-                            if not bucket_region:
-                                logger.error(
-                                    f"S3 bucket '{bucket_name}' location could not be determined - bucket will be skipped"
-                                )
-                                continue
-
-                            logger.info(
-                                f"S3 bucket '{bucket_name}' located in {bucket_region}, retrying from bucket region"
-                            )
-                            async with session.client(
-                                "cloudcontrol", region_name=bucket_region
-                            ) as bucket_cloudcontrol:
-                                resource = await get_bucket_resource(
-                                    bucket_name, cloudcontrol_client=bucket_cloudcontrol
-                                )
-
-                        if resource:
-                            processed_chunk.append(
-                                fix_unserializable_date_properties(
-                                    {
-                                        "Identifier": bucket_name,
-                                        "Properties": json.loads(
-                                            resource.get("ResourceDescription", {}).get(
-                                                "Properties", "{}"
-                                            )
-                                        ),
-                                        CustomProperties.KIND.value: kind,
-                                        CustomProperties.ACCOUNT_ID.value: account_id,
-                                        CustomProperties.REGION.value: (
-                                            bucket_region if bucket_region else region
-                                        ),
-                                    }
-                                )
-                            )
-
-                    processed_count += len(chunk)
-                    logger.info(
-                        f"Processed {processed_count}/{total_resources} {kind} resources in batch from region {region} in account {account_id}"
-                    )
-                    if processed_chunk:
-                        yield processed_chunk
+        async for resources_batch in paginator.paginate(TypeName=kind):
+            if not resources_batch:
+                continue
             logger.info(
-                f"Finished processing all {kind} resources from region {region} in account {account_id}"
+                f"Received {len(resources_batch)} {kind} resources in region {region}"
             )
+            total_resources = len(resources_batch)
+            processed_count = 0
+            for chunk in process_list_in_chunks(
+                resources_batch, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
+            ):
+                processed_chunk = []
+                for bucket in chunk:
+                    bucket_name = bucket["Identifier"]
+                    logger.debug(f"Processing S3 bucket: {bucket_name}")
 
-        except cloudcontrol.exceptions.ClientError as e:
-            if is_access_denied_exception(e):
-                logger.warning(
-                    f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
+                    resource = await get_bucket_resource(
+                        bucket_name, cloudcontrol_client=cloudcontrol
+                    )
+                    bucket_region = None
+
+                    if resource is None:
+                        logger.info(
+                            f"S3 bucket '{bucket_name}' not found in {region}, checking actual location..."
+                        )
+                        bucket_region = await get_bucket_location(bucket_name, session)
+                        if not bucket_region:
+                            logger.error(
+                                f"S3 bucket '{bucket_name}' location could not be determined - bucket will be skipped"
+                            )
+                            continue
+
+                        logger.info(
+                            f"S3 bucket '{bucket_name}' located in {bucket_region}, retrying from bucket region"
+                        )
+                        async with session.client(
+                            "cloudcontrol", region_name=bucket_region
+                        ) as bucket_cloudcontrol:
+                            resource = await get_bucket_resource(
+                                bucket_name, cloudcontrol_client=bucket_cloudcontrol
+                            )
+
+                    if resource:
+                        processed_chunk.append(
+                            fix_unserializable_date_properties(
+                                {
+                                    "Identifier": bucket_name,
+                                    "Properties": json.loads(
+                                        resource.get("ResourceDescription", {}).get(
+                                            "Properties", "{}"
+                                        )
+                                    ),
+                                    CustomProperties.KIND.value: kind,
+                                    CustomProperties.ACCOUNT_ID.value: account_id,
+                                    CustomProperties.REGION.value: (
+                                        bucket_region if bucket_region else region
+                                    ),
+                                }
+                            )
+                        )
+
+                processed_count += len(chunk)
+                logger.info(
+                    f"Processed {processed_count}/{total_resources} {kind} resources in batch from region {region} in account {account_id}"
                 )
-            else:
-                raise e
+                if processed_chunk:
+                    yield processed_chunk
+        logger.info(
+            f"Finished processing all {kind} resources from region {region} in account {account_id}"
+        )
 
 
 async def fetch_group_resources(
