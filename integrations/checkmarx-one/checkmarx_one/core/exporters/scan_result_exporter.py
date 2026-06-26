@@ -17,10 +17,12 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         scan_result: Dict[str, Any],
         scan_id: str,
         project_id: str,
+        branch: str = "",
     ) -> dict[str, Any]:
-        """Enrich scan result with scan ID and project ID."""
+        """Enrich scan result with scan ID, project ID, and branch."""
         scan_result["__scan_id"] = scan_id
         scan_result["__project_id"] = project_id
+        scan_result["__branch"] = branch
         return scan_result
 
     async def get_resource(self, options: Any) -> RAW_ITEM:
@@ -49,7 +51,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
             Batches of scan results
         """
 
-        async for results in self.client.send_paginated_request(
+        async for results in self.client.send_paginated_request_page_index(
             "/results", "results", params
         ):
             logger.info(
@@ -70,6 +72,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
                     result,
                     options["scan_id"],
                     options["project_id"],
+                    options["branch"],
                 )
                 for result in results
                 if result["type"] == options["type"]

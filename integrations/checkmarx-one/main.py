@@ -113,6 +113,7 @@ async def on_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         branches=selector.branches,
         statuses=selector.statuses,
         from_date=selector.from_date,
+        latest_scans_only=selector.latest_scans_only,
     )
 
     async for scans_batch in scan_exporter.get_paginated_resources(options):
@@ -136,12 +137,14 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         branches=selector.scan_filter.branches,
         statuses=selector.scan_filter.statuses,
         from_date=selector.scan_filter.from_date,
+        latest_scans_only=selector.scan_filter.latest_scans_only,
     )
 
     async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
         for scan_data in scan_data_list:
             options = ListApiSecOptions(
                 scan_id=scan_data["id"],
+                branch=scan_data.get("branch", ""),
             )
             async for results_batch in api_sec_exporter.get_paginated_resources(
                 options
@@ -168,12 +171,14 @@ async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         branches=selector.scan_filter.branches,
         statuses=selector.scan_filter.statuses,
         from_date=selector.scan_filter.from_date,
+        latest_scans_only=selector.scan_filter.latest_scans_only,
     )
     async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
         for scan_data in scan_data_list:
             options = ListSastOptions(
                 scan_id=scan_data["id"],
                 project_id=scan_data["projectId"],
+                branch=scan_data.get("branch", ""),
                 severity=selector.severity,
                 status=selector.status,
                 state=selector.state,
@@ -208,6 +213,7 @@ async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         branches=selector.scan_filter.branches,
         statuses=selector.scan_filter.statuses,
         from_date=selector.scan_filter.from_date,
+        latest_scans_only=selector.scan_filter.latest_scans_only,
     )
     logger.warning(f"Scan options: {scan_options}")
 
@@ -216,6 +222,7 @@ async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             options = ListKicsOptions(
                 scan_id=scan_data["id"],
                 project_id=scan_data["projectId"],
+                branch=scan_data.get("branch", ""),
                 severity=selector.severity,
                 status=selector.status,
             )
@@ -249,6 +256,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         branches=selector.scan_filter.branches,
         statuses=selector.scan_filter.statuses,
         from_date=selector.scan_filter.from_date,
+        latest_scans_only=selector.scan_filter.latest_scans_only,
     )
 
     async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
@@ -257,6 +265,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 scan_id=scan_data["id"],
                 project_id=scan_data["projectId"],
                 type=kind,
+                branch=scan_data.get("branch", ""),
                 severity=selector.severity,
                 state=selector.state,
                 status=selector.status,

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.0-rc5 (2026-06-25)
+
+
+### Improvements
+
+- Added `BFL`, `bfl-group-size`, `cvss-score`, and `notes-json` to SAST `visible-columns` request.
+- Added `latestScansOnly` selector to `scanFilter` which syncs only the latest completed scan per `project + branch`, preventing stale findings from older scans.
+- Added `__branch` to all finding payloads (SAST, KICS, SCA, containers, API security) for use in custom mappings.
+- Webhook processors now populate `deleted_raw_results` with previous scan findings when `latestScansOnly=true`, keeping live events in sync with resync behaviour.
+- Fixed pagination for `/api/results/` endpoint to use the correct pagination parameters.
+
+
 ## 0.2.93 (2026-06-25)
 
 

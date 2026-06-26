@@ -36,7 +36,7 @@ class TestCheckmarxKicsExporter:
 
         mock_client.send_paginated_request = gen
 
-        options = ListKicsOptions(scan_id="scan-1", project_id="project-1")
+        options = ListKicsOptions(scan_id="scan-1", project_id="project-1", branch="")
 
         batches: list[list[dict[str, Any]]] = []
         async for batch in exporter.get_paginated_resources(options):
@@ -53,7 +53,7 @@ class TestCheckmarxKicsExporter:
     @pytest.mark.asyncio
     async def test_build_params(self, exporter: CheckmarxKicsExporter) -> None:
         # Test basic scan-id only
-        options = ListKicsOptions(scan_id="scan-2", project_id="project-2")
+        options = ListKicsOptions(scan_id="scan-2", project_id="project-2", branch="")
         params = exporter._build_params(options)
         assert params == {"scan-id": "scan-2"}
 
@@ -61,6 +61,7 @@ class TestCheckmarxKicsExporter:
         options_with_filters = ListKicsOptions(
             scan_id="scan-3",
             project_id="project-1",
+            branch="",
             severity=["HIGH", "CRITICAL"],
             status=["NEW", "RECURRENT"],
         )

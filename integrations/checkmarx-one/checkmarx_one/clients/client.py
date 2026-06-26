@@ -35,6 +35,11 @@ class CheckmarxOneClient:
             message="Resource not found at endpoint",
         ),
         IgnoredError(
+            status=500,
+            message="Internal Server Error — Checkmarx API server error, skipping resource",
+            type="INTERNAL_SERVER_ERROR",
+        ),
+        IgnoredError(
             status=502,
             message="Bad Gateway — transient upstream error",
             type="BAD_GATEWAY",
@@ -223,6 +228,8 @@ class CheckmarxOneClient:
 
             try:
                 response = await self.send_api_request(endpoint, params=page_params)
+                if not response:
+                    break
                 has_next_page = response.get("has_next", False)
                 next_page_number = response["next_page_number"]
                 items: List[dict[str, Any]] = response.get(
@@ -279,6 +286,57 @@ class CheckmarxOneClient:
                 break
 
             start_index += PAGE_SIZE
+
+    async def send_paginated_request_page_index(
+        self,
+        endpoint: str,
+        object_key: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """
+        Paginate endpoints where `offset` is a zero-based page index (0, 1, 2, …)
+        rather than an item count. Used for GET /api/results/, which documents
+        offset as "number of pages to skip" — sending offset=100 would jump
+        10 000 items ahead and silently cap results at one page.
+
+        Args:
+            endpoint: API endpoint path (e.g., "/results")
+            object_key: Key in the response body that contains the items list
+            params: Additional query parameters
+
+        Yields:
+            Batches of resources
+        """
+        params = params or {}
+        page: int = 0
+
+        while True:
+            page_params = {
+                **params,
+                "limit": PAGE_SIZE,
+                "offset": page,
+            }
+
+            try:
+                response = await self.send_api_request(endpoint, params=page_params)
+                items: List[dict[str, Any]] = []
+                if isinstance(response, list):
+                    items = response
+                elif isinstance(response, dict):
+                    items = response.get("data", []) or response.get(object_key, [])
+
+                if not items:
+                    break
+                yield items
+
+                if len(items) < PAGE_SIZE:
+                    break
+
+                page += 1
+
+            except Exception as e:
+                logger.error(f"Error in paginated request to {endpoint}: {str(e)}")
+                raise
 
     async def send_paginated_request_page_based(
         self,

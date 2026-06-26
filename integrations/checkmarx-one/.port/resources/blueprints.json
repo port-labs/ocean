@@ -48,7 +48,7 @@
           "description": "The criticality level of the project."
         }
       },
-      "required": ["name"]
+      "required": []
     },
     "relations": {}
   },
@@ -88,11 +88,6 @@
           "title": "Updated At",
           "description": "The date and time when the scan was last updated."
         },
-        "projectId": {
-          "type": "string",
-          "title": "Project ID",
-          "description": "The identifier of the project to which this scan belongs."
-        },
         "userAgent": {
           "type": "string",
           "title": "User Agent",
@@ -112,7 +107,7 @@
           "description": "Detailed status information for the scan."
         }
       },
-      "required": ["status", "projectId"]
+      "required": []
     },
     "relations": {
       "project": {
@@ -196,20 +191,10 @@
           "title": "Discovery Date",
           "description": "The date and time when the API risk was discovered."
         },
-        "scanId": {
-          "type": "string",
-          "title": "Scan ID",
-          "description": "The identifier of the scan in which the risk was found."
-        },
         "sastRiskId": {
           "type": "string",
           "title": "SAST Risk ID",
           "description": "The identifier of the related SAST risk, if available."
-        },
-        "projectId": {
-          "type": "string",
-          "title": "Project ID",
-          "description": "The identifier of the project associated with the API risk."
         },
         "state": {
           "type": "string",
@@ -225,13 +210,7 @@
           "description": "The state of the API security risk."
         }
       },
-      "required": [
-        "riskId",
-        "apiId",
-        "name",
-        "status",
-        "state"
-      ]
+      "required": []
     },
     "relations": {
       "scan": {

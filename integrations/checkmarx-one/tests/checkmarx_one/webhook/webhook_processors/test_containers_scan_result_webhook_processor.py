@@ -108,6 +108,7 @@ class TestContainersScanResultWebhookProcessor:
         valid_payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
         result = await containers_scan_result_webhook_processor.authenticate(
             valid_payload, headers
@@ -232,6 +233,7 @@ class TestContainersScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
 
         # Mock the scan result exporter
@@ -270,6 +272,7 @@ class TestContainersScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
 
         # Mock the scan result exporter to return empty results
@@ -306,6 +309,7 @@ class TestContainersScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
 
         # Mock the scan result exporter to raise an exception
@@ -361,6 +365,7 @@ class TestContainersScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
 
         # Mock the scan result exporter
@@ -400,6 +405,7 @@ class TestContainersScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-123",
             "projectId": "project-456",
+            "branch": "main",
         }
 
         captured_options: list[Any] = []
@@ -455,6 +461,7 @@ class TestContainersScanResultWebhookProcessor:
         payload: EventPayload = {
             "scanId": "scan-456",
             "projectId": "project-789",
+            "branch": "main",
         }
 
         # Mock the scan result exporter

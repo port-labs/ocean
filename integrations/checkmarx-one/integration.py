@@ -34,6 +34,11 @@ class CheckmarxOneScanModel(BaseModel):
         default=90,
         description="Filter results by the date and time when the scan was created. (UNIX timestamp in seconds)",
     )
+    latest_scans_only: bool = Field(
+        default=False,
+        alias="latestScansOnly",
+        description="When true, only sync findings from the latest completed scan per project and branch. Forces statuses=Completed and sorts newest-first.",
+    )
 
     @property
     def from_date(self) -> Optional[str]:
@@ -44,6 +49,7 @@ class CheckmarxOneResultSelector(Selector):
     scan_filter: CheckmarxOneScanModel = Field(
         default=CheckmarxOneScanModel(),
         description="Filter scan results by scan",
+        alias="scanFilter",
     )
     severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]] = (
         Field(
@@ -80,6 +86,7 @@ class CheckmarxOneSastSelector(Selector):
     scan_filter: CheckmarxOneScanModel = Field(
         default=CheckmarxOneScanModel(),
         description="Filter scan results by scan",
+        alias="scanFilter",
     )
     compliance: Optional[str] = Field(
         default=None,
@@ -135,6 +142,7 @@ class CheckmarxOneApiSecSelector(Selector):
     scan_filter: CheckmarxOneScanModel = Field(
         default=CheckmarxOneScanModel(),
         description="Filter scan results by scan",
+        alias="scanFilter",
     )
 
 
@@ -160,6 +168,7 @@ class CheckmarxOneKicsSelector(Selector):
     scan_filter: CheckmarxOneScanModel = Field(
         default=CheckmarxOneScanModel(),
         description="Filter scan results by scan",
+        alias="scanFilter",
     )
     severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]] = (
         Field(

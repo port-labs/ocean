@@ -72,9 +72,21 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
 
         logger.info(f"Processed scan data for scan: {scan_id} in project: {project_id}")
 
+        data_to_delete: list[dict[str, Any]] = []
+        if selector.latest_scans_only and self._is_scan_fully_completed():
+            previous_scan = await scan_exporter.get_previous_completed_scan(
+                project_id, payload["branch"], scan_id
+            )
+            if previous_scan:
+                logger.info(
+                    f"Queued previous scan {previous_scan.get('id')} on project "
+                    f"{project_id} branch {payload['branch']} for deletion (latestScansOnly)"
+                )
+                data_to_delete.append(previous_scan)
+
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert],
-            deleted_raw_results=[],
+            deleted_raw_results=data_to_delete,
         )
 
     @staticmethod
@@ -97,6 +109,13 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
         status_info = scan["statusInfo"]
         scan_statuses = {info["status"] for info in status_info if "status" in info}
         return bool(scan_statuses & set(statuses))
+
+    def _is_scan_fully_completed(self) -> bool:
+        """Return True only when the webhook event signals a fully completed scan."""
+        return (
+            self.event.headers.get("x-cx-webhook-event")
+            == CheckmarxEventType.SCAN_COMPLETED
+        )
 
     @staticmethod
     def _filter_scan_by_project_names(

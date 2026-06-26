@@ -1,4 +1,4 @@
-createMissingRelatedEntities: true
+createMissingRelatedEntities: false
 deleteDependentEntities: true
 resources:
   - kind: project
@@ -59,9 +59,7 @@ resources:
             documented: .documented
             authenticated: .authenticated
             discoveryDate: .discovery_date
-            scanId: .scan_id
             sastRiskId: (.sast_risk_id // empty)
-            projectId: .project_id
             state: .state
           relations:
             scan: .scan_id

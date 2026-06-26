@@ -11,11 +11,12 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One SAST results."""
 
     def _enrich_sast_result_with_scan_info(
-        self, result: Dict[str, Any], scan_id: str, project_id: str
+        self, result: Dict[str, Any], scan_id: str, project_id: str, branch: str = ""
     ) -> Dict[str, Any]:
-        """Enrich a SAST result with the scan ID and project ID."""
+        """Enrich a SAST result with the scan ID, project ID, and branch."""
         result["__scan_id"] = scan_id
         result["__project_id"] = project_id
+        result["__branch"] = branch
         return result
 
     async def get_resource(self, options: Any) -> RAW_ITEM:
@@ -48,7 +49,7 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
             )
             yield [
                 self._enrich_sast_result_with_scan_info(
-                    result, options["scan_id"], options["project_id"]
+                    result, options["scan_id"], options["project_id"], options["branch"]
                 )
                 for result in results
             ]

@@ -82,7 +82,7 @@ class TestCheckmarxApiSecExporter:
     ) -> None:
         """Test getting paginated API security risks with single batch."""
         scan_id = "scan-123"
-        options: ListApiSecOptions = {"scan_id": scan_id}
+        options: ListApiSecOptions = {"scan_id": scan_id, "branch": ""}
         mock_results = [
             {"risk_id": "1", "name": "Risk 1"},
             {"risk_id": "2", "name": "Risk 2"},
@@ -112,7 +112,7 @@ class TestCheckmarxApiSecExporter:
     ) -> None:
         """Test getting paginated API security risks with empty result."""
         scan_id = "scan-123"
-        options: ListApiSecOptions = {"scan_id": scan_id}
+        options: ListApiSecOptions = {"scan_id": scan_id, "branch": ""}
 
         async def mock_paginated_resources_api_sec(
             endpoint: str, object_key: str, params: dict[str, Any] | None = None
