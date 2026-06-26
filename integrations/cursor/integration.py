@@ -2,7 +2,7 @@ from enum import StrEnum
 import re
 from typing import Literal
 
-from pydantic import Field, root_validator
+from pydantic.v1 import Field, root_validator
 from port_ocean.core.handlers.port_app_config.models import Selector
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,

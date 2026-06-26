@@ -1,5 +1,5 @@
 from typing import Literal, Optional, List
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel, Field
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -8,7 +8,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic import Field
 
 from checkmarx_one.utils import days_ago_to_rfc3339
 

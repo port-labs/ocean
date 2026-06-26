@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.45 (2026-06-24)
+
+### Features
+
+- Added project-level webhook registration for GitLab projects in personal namespaces, enabling live events for projects not belonging to any group
+
+
+## 0.7.44 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 0.7.43 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 0.7.42 (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 0.7.41 (2026-06-21)
+
+### Features
+
+- Added `trigger_pipeline` workflow action node to trigger GitLab CI/CD pipelines from Port workflows and report pipeline completion status back to Port
+
+### Bug Fixes
+
+- Fixed 403/404 responses on non-GET requests being swallowed as empty dicts instead of raising
+- Fixed `pipelineVariables: null` and non-dict jq output causing crashes in `TriggerPipelineExecutor`
+- Fixed `reportPipelineStatus=false` leaving runs stuck in IN_PROGRESS indefinitely
+
 ## 0.7.40 (2026-06-18)
 
 ### Features

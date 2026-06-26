@@ -1,3 +1,4 @@
+import json
 import time
 from http import HTTPStatus
 from typing import Any, Callable, Coroutine, List, Optional, Tuple
@@ -7,7 +8,12 @@ import httpx
 import pytest
 
 from port_ocean.helpers.retry import RetryConfig
-from github.clients.auth.retry_transport import GitHubRetryTransport, MIN_PAGE_SIZE
+from github.clients.auth.retry_transport import (
+    GitHubRetryTransport,
+    GRAPHQL_REDUCTION_SIZE,
+    MIN_GRAPHQL_PAGE_SIZE,
+    MIN_REST_PAGE_SIZE,
+)
 
 
 def _make_transport(
@@ -83,6 +89,15 @@ def _paginated_500(page: int, per_page: int) -> httpx.Response:
         ),
     )
     return httpx.Response(500, request=req, headers={})
+
+
+def _graphql_5xx(first: int, status_code: int = 500) -> httpx.Response:
+    req = httpx.Request(
+        "POST",
+        "https://api.github.com/graphql",
+        json={"query": "{ viewer { login } }", "variables": {"first": first}},
+    )
+    return httpx.Response(status_code, request=req, headers={})
 
 
 class TestGitHubRetryTransportAfterRetryAsync:
@@ -250,14 +265,18 @@ class TestGitHubRetryTransportBeforeRetryAsync:
         assert result.url == original_req.url
 
     @pytest.mark.asyncio
-    async def test_returns_none_when_no_refresher(self) -> None:
-        """before_retry_async returns None (use original request) when no token_refresher is set."""
+    async def test_returns_equivalent_request_when_no_refresher(self) -> None:
+        """With no token_refresher and nothing to reduce, the rebuilt request is
+        equivalent to the original (same method, url, and body)."""
         transport = _make_transport(token_refresher=None)
         req = httpx.Request("GET", "https://api.github.com/repos")
 
         result = await transport.before_retry_async(req, None, 30.0, 1)
 
-        assert result is None
+        assert result is not None
+        assert result.method == req.method
+        assert result.url == req.url
+        assert result.content == req.content
 
     @pytest.mark.asyncio
     async def test_preserves_non_auth_headers(self) -> None:
@@ -348,65 +367,127 @@ class TestGitHubRetryTransportPageSizeBackoff:
     def _params(self, url: httpx.URL) -> Tuple[int, int]:
         return int(url.params["page"]), int(url.params["per_page"])
 
-    def test_reduced_page_url_halves_and_repositions_on_500(self) -> None:
+    @pytest.mark.asyncio
+    async def test_reduced_page_url_halves_and_repositions_on_500(self) -> None:
         """A 500 halves per_page and moves page to the same offset (N -> 2N-1)."""
         transport = _make_transport()
-        page, per_page = self._params(
-            transport._reduced_page_url(
-                _paginated_500(page=2, per_page=100).request,
-                _paginated_500(page=2, per_page=100),
-            )
+        reduced = await transport._reduced_page_request(
+            _paginated_500(page=2, per_page=100).request,
+            _paginated_500(page=2, per_page=100),
         )
-        assert (page, per_page) == (3, 50)
+        assert self._params(reduced.url) == (3, 50)
 
-    def test_reduced_page_url_floors_per_page(self) -> None:
-        """per_page never drops below MIN_PAGE_SIZE."""
+    @pytest.mark.asyncio
+    async def test_reduced_page_url_floors_per_page(self) -> None:
+        """per_page never drops below MIN_REST_PAGE_SIZE."""
         transport = _make_transport()
         # 50 -> 25 (the floor), page 2 -> 3
-        _, per_page = self._params(
-            transport._reduced_page_url(
-                _paginated_500(page=2, per_page=50).request,
-                _paginated_500(page=2, per_page=50),
-            )
+        reduced = await transport._reduced_page_request(
+            _paginated_500(page=2, per_page=50).request,
+            _paginated_500(page=2, per_page=50),
         )
-        assert per_page == MIN_PAGE_SIZE
+        _, per_page = self._params(reduced.url)
+        assert per_page == MIN_REST_PAGE_SIZE
 
-    def test_reduced_page_url_unchanged_at_floor(self) -> None:
-        """At the floor there is nothing left to shrink — URL is returned as-is."""
+    @pytest.mark.asyncio
+    async def test_reduced_page_url_unchanged_at_floor(self) -> None:
+        """At the floor there is nothing left to shrink — request returned as-is."""
         transport = _make_transport()
-        req = _paginated_500(page=5, per_page=MIN_PAGE_SIZE).request
-        assert (
-            transport._reduced_page_url(
-                req, _paginated_500(page=5, per_page=MIN_PAGE_SIZE)
-            )
-            == req.url
+        req = _paginated_500(page=5, per_page=MIN_REST_PAGE_SIZE).request
+        reduced = await transport._reduced_page_request(
+            req, _paginated_500(page=5, per_page=MIN_REST_PAGE_SIZE)
         )
+        assert reduced.url == req.url
 
-    def test_reduced_page_url_defaults_first_page(self) -> None:
+    @pytest.mark.asyncio
+    async def test_reduced_page_url_defaults_first_page(self) -> None:
         """The first request omits `page`; reduction treats it as page 1."""
         transport = _make_transport()
         req = httpx.Request("GET", "https://api.github.com/repos?per_page=100")
         resp = httpx.Response(500, request=req)
-        page, per_page = self._params(transport._reduced_page_url(req, resp))
-        assert (page, per_page) == (1, 50)
+        reduced = await transport._reduced_page_request(req, resp)
+        assert self._params(reduced.url) == (1, 50)
 
-    def test_reduced_page_url_unchanged_for_non_500(self) -> None:
+    @pytest.mark.asyncio
+    async def test_reduced_page_url_unchanged_for_non_500(self) -> None:
         transport = _make_transport()
         req = httpx.Request("GET", "https://api.github.com/repos?page=2&per_page=100")
         ok = httpx.Response(200, request=req)
-        assert transport._reduced_page_url(req, ok) == req.url
+        reduced = await transport._reduced_page_request(req, ok)
+        assert reduced.url == req.url
 
-    def test_reduced_page_url_unchanged_when_not_paginated(self) -> None:
+    @pytest.mark.asyncio
+    async def test_reduced_page_url_unchanged_when_not_paginated(self) -> None:
         transport = _make_transport()
         req = httpx.Request("GET", "https://api.github.com/repos")
         resp = httpx.Response(500, request=req)
-        assert transport._reduced_page_url(req, resp) == req.url
+        reduced = await transport._reduced_page_request(req, resp)
+        assert reduced.url == req.url
+
+    @pytest.mark.asyncio
+    async def test_reduced_page_url_reduces_graphql_first(self) -> None:
+        """A 500 on a GraphQL request shrinks `variables.first` in the body."""
+        transport = _make_transport()
+        body = {"query": "{ viewer { login } }", "variables": {"first": 100}}
+        req = httpx.Request("POST", "https://api.github.com/graphql", json=body)
+        resp = httpx.Response(500, request=req)
+
+        reduced = await transport._reduced_page_request(req, resp)
+
+        new_body = json.loads(reduced.content)
+        assert new_body["variables"]["first"] == 100 - GRAPHQL_REDUCTION_SIZE
+
+    @pytest.mark.asyncio
+    async def test_graphql_reduction_does_not_persist_across_requests(self) -> None:
+        """The transport keeps no cross-request page-size state.
+
+        Each reduction is derived solely from the request it is handed, so once a
+        request succeeds the next full-size request is shrunk from full size
+        again rather than continuing to step down from a prior request's reduced
+        size. This is what lets the page size return to its original value (the
+        client rebuilds the payload at PAGE_SIZE per page) instead of ratcheting
+        ever smaller across pages.
+        """
+        transport = _make_transport()
+        body = {"query": "{ viewer { login } }", "variables": {"first": 100}}
+
+        first_req = httpx.Request("POST", "https://api.github.com/graphql", json=body)
+        reduced = await transport._reduced_page_request(
+            first_req, httpx.Response(500, request=first_req)
+        )
+        assert (
+            json.loads(reduced.content)["variables"]["first"]
+            == 100 - GRAPHQL_REDUCTION_SIZE
+        )
+
+        # A brand-new full-size request reduces from 100 again, not from 95.
+        fresh_req = httpx.Request("POST", "https://api.github.com/graphql", json=body)
+        reduced_again = await transport._reduced_page_request(
+            fresh_req, httpx.Response(500, request=fresh_req)
+        )
+        assert (
+            json.loads(reduced_again.content)["variables"]["first"]
+            == 100 - GRAPHQL_REDUCTION_SIZE
+        )
+
+    @pytest.mark.asyncio
+    async def test_reduced_graphql_request_has_consistent_content_length(self) -> None:
+        """The rebuilt GraphQL request's Content-Length matches its new body
+        (regression: copying the original header described the wrong byte count)."""
+        transport = _make_transport()
+        body = {"query": "x" * 200, "variables": {"first": 100}}
+        req = httpx.Request("POST", "https://api.github.com/graphql", json=body)
+        resp = httpx.Response(500, request=req)
+
+        reduced = await transport._reduced_page_request(req, resp)
+
+        assert int(reduced.headers["content-length"]) == len(reduced.content)
 
     def test_page_reduction_exhausted_only_at_floor_500(self) -> None:
         transport = _make_transport()
         assert (
             transport._page_reduction_exhausted(
-                _paginated_500(page=5, per_page=MIN_PAGE_SIZE)
+                _paginated_500(page=5, per_page=MIN_REST_PAGE_SIZE)
             )
             is True
         )
@@ -415,9 +496,41 @@ class TestGitHubRetryTransportPageSizeBackoff:
             is False
         )
         # A non-500 at the floor size is unaffected.
-        req = _paginated_500(page=5, per_page=MIN_PAGE_SIZE).request
+        req = _paginated_500(page=5, per_page=MIN_REST_PAGE_SIZE).request
         assert (
             transport._page_reduction_exhausted(httpx.Response(200, request=req))
+            is False
+        )
+
+    def test_page_reduction_exhausted_applies_to_all_retryable_5xx(self) -> None:
+        """Reduction and exhaustion key off the same status set, so 502/504 at the
+        floor stop retrying too — not just 500."""
+        transport = _make_transport()
+        for status in (500, 502, 504):
+            req = httpx.Request(
+                "GET",
+                httpx.URL(
+                    "https://api.github.com/repos",
+                    params={"page": "5", "per_page": str(MIN_REST_PAGE_SIZE)},
+                ),
+            )
+            resp = httpx.Response(status, request=req)
+            assert transport._page_reduction_exhausted(resp) is True, status
+
+    def test_page_reduction_exhausted_for_graphql_floor(self) -> None:
+        """A GraphQL 5xx is exhausted only once `first` is at its floor."""
+        transport = _make_transport()
+        assert (
+            transport._page_reduction_exhausted(
+                _graphql_5xx(first=MIN_GRAPHQL_PAGE_SIZE)
+            )
+            is True
+        )
+        # Still room to shrink → not exhausted, keep retrying.
+        assert (
+            transport._page_reduction_exhausted(
+                _graphql_5xx(first=MIN_GRAPHQL_PAGE_SIZE + GRAPHQL_REDUCTION_SIZE)
+            )
             is False
         )
 
@@ -431,7 +544,7 @@ class TestGitHubRetryTransportPageSizeBackoff:
         )
         assert (
             await transport._should_retry_async(
-                _paginated_500(page=5, per_page=MIN_PAGE_SIZE)
+                _paginated_500(page=5, per_page=MIN_REST_PAGE_SIZE)
             )
             is False
         )
@@ -459,7 +572,7 @@ class TestGitHubRetryTransportPageSizeBackoff:
             page = int(request.url.params["page"])
             per_page = int(request.url.params["per_page"])
             seen.append((page, per_page))
-            if per_page > MIN_PAGE_SIZE:
+            if per_page > MIN_REST_PAGE_SIZE:
                 return httpx.Response(500, request=request)
             return httpx.Response(200, request=request, json=[{"id": page}])
 

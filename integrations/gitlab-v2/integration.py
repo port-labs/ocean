@@ -1,6 +1,6 @@
 from typing import Literal, Any, Type, List, Optional
 from loguru import logger
-from pydantic import BaseModel, Field, validator
+from pydantic.v1 import BaseModel, Field, validator
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
@@ -773,4 +773,7 @@ class GitlabIntegration(BaseIntegration):
             signal_handler,
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
+        )
+        self.context.app.execution_manager._webhook_manager = (
+            self.context.app.webhook_manager
         )
