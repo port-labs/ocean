@@ -52,6 +52,7 @@ def sast_visible_columns() -> List[str]:
         "state",
         "nodes",
         "BFL",
+        "bfl-group-size",
         "cvss-score",
         "notes-json",
     ]

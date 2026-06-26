@@ -80,6 +80,7 @@ class TestCheckmarxSastExporter:
                 "state",
                 "nodes",
                 "BFL",
+                "bfl-group-size",
                 "cvss-score",
                 "notes-json",
             ],
@@ -211,6 +212,7 @@ class TestCheckmarxSastExporter:
                 "state",
                 "nodes",
                 "BFL",
+                "bfl-group-size",
                 "cvss-score",
                 "notes-json",
             ],
@@ -284,7 +286,7 @@ class TestCheckmarxSastExporter:
 
         assert params["scan-id"] == "different-scan-456"
         assert "visible-columns" in params
-        assert len(params["visible-columns"]) == 21
+        assert len(params["visible-columns"]) == 22
 
     def test_visible_columns_includes_scan_id(
         self, exporter: CheckmarxSastExporter
@@ -334,6 +336,7 @@ class TestCheckmarxSastExporter:
             "state",
             "nodes",
             "BFL",
+            "bfl-group-size",
             "cvss-score",
             "notes-json",
         ]
