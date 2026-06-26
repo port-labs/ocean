@@ -63,3 +63,23 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::DynamoDB::Table
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.TableArn
+          title: .Properties.TableName
+          blueprint: '"dynamodbTable"'
+          properties:
+            arn: .Properties.TableArn
+            status: .Properties.TableStatus
+            billingMode: .Properties.BillingModeSummary.BillingMode
+            itemCount: .Properties.ItemCount
+            tableSizeBytes: .Properties.TableSizeBytes
+            creationDateTime: .Properties.CreationDateTime
+            region: .__ExtraContext.Region
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId

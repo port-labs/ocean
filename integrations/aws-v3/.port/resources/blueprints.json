@@ -180,5 +180,70 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "dynamodbTable",
+    "title": "DynamoDB Table",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the DynamoDB table"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the DynamoDB table"
+        },
+        "billingMode": {
+          "type": "string",
+          "title": "Billing Mode",
+          "description": "The billing mode for the DynamoDB table"
+        },
+        "itemCount": {
+          "type": "number",
+          "title": "Item Count",
+          "description": "The number of items in the DynamoDB table"
+        },
+        "tableSizeBytes": {
+          "type": "number",
+          "title": "Table Size (Bytes)",
+          "description": "The total size of the DynamoDB table in bytes"
+        },
+        "creationDateTime": {
+          "type": "string",
+          "title": "Creation Date",
+          "format": "date-time",
+          "description": "The date and time when the DynamoDB table was created"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The AWS region where the DynamoDB table is located"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the DynamoDB table",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
