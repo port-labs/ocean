@@ -6,6 +6,7 @@ import httpx
 
 from port_ocean.integration_testing import InterceptTransport
 
+from mocks.graphql_payloads import org_members_graphql_response
 from mocks.payloads import (
     DEFAULT_BRANCH_NAME,
     INSTALLATION_ID,
@@ -201,10 +202,14 @@ class GithubMockTransportBuilder:
         self._add_per_repo_route("collaborators", collaborator_response)
         return self
 
+    def with_user_routes(self) -> "GithubMockTransportBuilder":
+        self.add_graphql_route("OrgMemberQuery", org_members_graphql_response)
+        return self
+
     def add_graphql_route(
         self,
         query_substring: str,
-        response: dict[str, Any],
+        response: dict[str, Any] | Callable[[dict[str, Any]], dict[str, Any]],
     ) -> "GithubMockTransportBuilder":
         def matches(request: httpx.Request) -> bool:
             if "/graphql" not in str(request.url):
@@ -214,7 +219,15 @@ class GithubMockTransportBuilder:
             body = json.loads(request.content)
             return query_substring in body.get("query", "")
 
-        self._transport.add_route("POST", matches, response)
+        def build_response(request: httpx.Request) -> dict[str, Any]:
+            if callable(response):
+                body = json.loads(request.content)
+                payload = response(body.get("variables", {}))
+            else:
+                payload = response
+            return {"status_code": 200, "json": payload}
+
+        self._transport.add_route("POST", matches, build_response)
         return self
 
     def build(self, *, strict: bool = True) -> InterceptTransport:

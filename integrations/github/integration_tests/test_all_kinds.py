@@ -10,6 +10,7 @@ from mocks.transport_builder import GithubMockTransportBuilder
 INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
 KIND_BLUEPRINTS: dict[str, str] = {
+    "user": "githubUser",
     "issue": "githubIssue",
     "release": "githubRelease",
     "tag": "githubTag",
@@ -28,6 +29,7 @@ KIND_BLUEPRINTS: dict[str, str] = {
 }
 
 KIND_BUILDERS: dict[str, str] = {
+    "user": "with_user_routes",
     "issue": "with_issue_routes",
     "release": "with_release_routes",
     "tag": "with_tag_routes",

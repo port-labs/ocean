@@ -30,6 +30,32 @@ def integration_config() -> dict[str, Any]:
     }
 
 
+def _entity_mapping(
+    kind: str,
+    blueprint: str,
+    *,
+    identifier: str,
+    title: str,
+    properties: dict[str, str],
+    selector: dict[str, Any] | None = None,
+    relations: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    mappings: dict[str, Any] = {
+        "identifier": identifier,
+        "title": title,
+        "blueprint": f'"{blueprint}"',
+        "properties": properties,
+    }
+    if relations is not None:
+        mappings["relations"] = relations
+
+    return {
+        "kind": kind,
+        "selector": selector or {"query": "true"},
+        "port": {"entity": {"mappings": mappings}},
+    }
+
+
 def _repo_scoped_mapping(
     kind: str,
     blueprint: str,
@@ -39,25 +65,27 @@ def _repo_scoped_mapping(
     properties: dict[str, str],
     selector: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
-        "kind": kind,
-        "selector": selector or {"query": "true"},
-        "port": {
-            "entity": {
-                "mappings": {
-                    "identifier": identifier,
-                    "title": title,
-                    "blueprint": f'"{blueprint}"',
-                    "properties": properties,
-                    "relations": {"repository": ".__repository"},
-                }
-            }
-        },
-    }
+    return _entity_mapping(
+        kind,
+        blueprint,
+        identifier=identifier,
+        title=title,
+        properties=properties,
+        selector=selector,
+        relations={"repository": ".__repository"},
+    )
 
 
 def mapping_for_kind(kind: str) -> dict[str, Any]:
     resources: dict[str, dict[str, Any]] = {
+        "user": _entity_mapping(
+            "user",
+            "githubUser",
+            identifier=".login",
+            title=".login",
+            properties={"email": ".email", "name": ".name"},
+            selector={"query": "true", "includeSamlEmail": False},
+        ),
         "issue": _repo_scoped_mapping(
             "issue",
             "githubIssue",
