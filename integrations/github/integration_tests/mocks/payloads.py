@@ -235,3 +235,14 @@ def collaborator_response(repo_name: str, collab_id: int) -> dict[str, Any]:
             "html_url": f"https://github.com/user-{collab_id}",
         }
     ]
+
+
+def teams_list_response() -> list[dict[str, Any]]:
+    return [
+        {
+            "id": 1,
+            "slug": "team-alpha",
+            "name": "Team Alpha",
+            "description": "Team Alpha",
+        }
+    ]

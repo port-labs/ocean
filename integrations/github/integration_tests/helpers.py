@@ -86,6 +86,27 @@ def mapping_for_kind(kind: str) -> dict[str, Any]:
             properties={"email": ".email", "name": ".name"},
             selector={"query": "true", "includeSamlEmail": False},
         ),
+        "team": _entity_mapping(
+            "team",
+            "githubTeam",
+            identifier=".slug",
+            title=".name",
+            properties={"description": ".description"},
+            selector={"query": "true", "members": True, "includeSamlEmail": False},
+        ),
+        "pull-request-graphql": _repo_scoped_mapping(
+            "pull-request",
+            "githubPullRequest",
+            identifier=".__repository + (.number|tostring)",
+            title=".title",
+            properties={"status": ".state", "url": ".url"},
+            selector={
+                "query": "true",
+                "states": ["open"],
+                "api": "graphql",
+                "enrichWithFirstCommit": False,
+            },
+        ),
         "issue": _repo_scoped_mapping(
             "issue",
             "githubIssue",

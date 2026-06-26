@@ -11,6 +11,8 @@ INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
 
 KIND_BLUEPRINTS: dict[str, str] = {
     "user": "githubUser",
+    "team": "githubTeam",
+    "pull-request-graphql": "githubPullRequest",
     "issue": "githubIssue",
     "release": "githubRelease",
     "tag": "githubTag",
@@ -30,6 +32,8 @@ KIND_BLUEPRINTS: dict[str, str] = {
 
 KIND_BUILDERS: dict[str, str] = {
     "user": "with_user_routes",
+    "team": "with_team_routes",
+    "pull-request-graphql": "with_pull_request_graphql_routes",
     "issue": "with_issue_routes",
     "release": "with_release_routes",
     "tag": "with_tag_routes",

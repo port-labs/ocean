@@ -6,7 +6,11 @@ import httpx
 
 from port_ocean.integration_testing import InterceptTransport
 
-from mocks.graphql_payloads import org_members_graphql_response
+from mocks.graphql_payloads import (
+    org_members_graphql_response,
+    pull_requests_graphql_response,
+    team_with_members_graphql_response,
+)
 from mocks.payloads import (
     DEFAULT_BRANCH_NAME,
     INSTALLATION_ID,
@@ -28,6 +32,7 @@ from mocks.payloads import (
     repo_response,
     secret_scanning_alert_response,
     tag_response,
+    teams_list_response,
     workflow_id_for_index,
     workflow_list_response,
     workflow_run_list_response,
@@ -204,6 +209,19 @@ class GithubMockTransportBuilder:
 
     def with_user_routes(self) -> "GithubMockTransportBuilder":
         self.add_graphql_route("OrgMemberQuery", org_members_graphql_response)
+        return self
+
+    def with_team_routes(self) -> "GithubMockTransportBuilder":
+        self._transport.add_route(
+            "GET",
+            f"/orgs/{ORG_LOGIN}/teams",
+            {"status_code": 200, "json": teams_list_response()},
+        )
+        self.add_graphql_route("getTeam", team_with_members_graphql_response)
+        return self
+
+    def with_pull_request_graphql_routes(self) -> "GithubMockTransportBuilder":
+        self.add_graphql_route("ListPullRequests", pull_requests_graphql_response)
         return self
 
     def add_graphql_route(
