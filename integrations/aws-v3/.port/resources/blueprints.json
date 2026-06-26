@@ -180,5 +180,93 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "elbv2LoadBalancer",
+    "title": "ELBv2 Load Balancer",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the load balancer"
+        },
+        "dnsName": {
+          "type": "string",
+          "title": "DNS Name",
+          "description": "The public DNS name of the load balancer"
+        },
+        "scheme": {
+          "type": "string",
+          "title": "Scheme",
+          "description": "The load balancing scheme (internet-facing or internal)",
+          "enum": ["internet-facing", "internal"]
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "The type of load balancer (application, network, or gateway)",
+          "enum": ["application", "network", "gateway"]
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "description": "The current state of the load balancer"
+        },
+        "vpcId": {
+          "type": "string",
+          "title": "VPC ID",
+          "description": "The ID of the VPC for the load balancer"
+        },
+        "ipAddressType": {
+          "type": "string",
+          "title": "IP Address Type",
+          "description": "The type of IP addresses used by the load balancer (ipv4 or dualstack)"
+        },
+        "availabilityZones": {
+          "type": "array",
+          "title": "Availability Zones",
+          "description": "The Availability Zones for the load balancer",
+          "items": {
+            "type": "object"
+          }
+        },
+        "securityGroups": {
+          "type": "array",
+          "title": "Security Groups",
+          "description": "The IDs of the security groups for the load balancer",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdTime": {
+          "type": "string",
+          "title": "Created Time",
+          "description": "The date and time the load balancer was created",
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the load balancer",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

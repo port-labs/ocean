@@ -65,6 +65,10 @@ from aws.core.exporters.codepipeline import (
     CodePipelineActionExporter,
     PaginatedCodePipelineActionRequest,
 )
+from aws.core.exporters.elasticloadbalancingv2 import ElasticLoadBalancingV2Exporter
+from aws.core.exporters.elasticloadbalancingv2.load_balancer.models import (
+    PaginatedLoadBalancerRequest,
+)
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -373,6 +377,15 @@ async def resync_codepipeline_action(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         CodePipelineActionExporter,
         PaginatedCodePipelineActionRequest,
         regional=True,
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.ELBV2_LOAD_BALANCER)
+async def resync_elbv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, ElasticLoadBalancingV2Exporter, PaginatedLoadBalancerRequest, regional=True
     )
     async for batch in service:
         yield batch
