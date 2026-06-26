@@ -101,6 +101,28 @@ def mapping_for_kind(kind: str) -> dict[str, Any]:
             title=".name",
             properties={"protected": ".protected"},
         ),
+        "branch-protection": _repo_scoped_mapping(
+            "branch",
+            "githubBranch",
+            identifier=".__repository + .name",
+            title=".name",
+            properties={
+                "protected": ".protected",
+                "requiredCheck": '.__protection_rules.required_status_checks.contexts[0]',
+            },
+            selector={"query": "true", "protectionRules": True},
+        ),
+        "branch-detailed": _repo_scoped_mapping(
+            "branch",
+            "githubBranch",
+            identifier=".__repository + .name",
+            title=".name",
+            properties={
+                "protected": ".protected",
+                "commitMessage": ".commit.commit.message",
+            },
+            selector={"query": "true", "detailed": True},
+        ),
         "dependabot-alert": _repo_scoped_mapping(
             "dependabot-alert",
             "githubDependabotAlert",

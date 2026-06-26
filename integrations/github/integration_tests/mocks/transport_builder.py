@@ -7,9 +7,12 @@ import httpx
 from port_ocean.integration_testing import InterceptTransport
 
 from mocks.payloads import (
+    DEFAULT_BRANCH_NAME,
     INSTALLATION_ID,
     ORG_LOGIN,
     REPO_NAMES,
+    branch_detail_response,
+    branch_protection_response,
     branch_response,
     code_scanning_alert_response,
     collaborator_response,
@@ -115,6 +118,32 @@ class GithubMockTransportBuilder:
         return self
 
     def with_branch_routes(self) -> "GithubMockTransportBuilder":
+        self._add_per_repo_route("branches", branch_response)
+        return self
+
+    def with_branch_protection_routes(self) -> "GithubMockTransportBuilder":
+        for i, name in enumerate(REPO_NAMES, start=1):
+            self._transport.add_route(
+                "GET",
+                f"/repos/{ORG_LOGIN}/{name}/branches/{DEFAULT_BRANCH_NAME}/protection",
+                {
+                    "status_code": 200,
+                    "json": branch_protection_response(name, i),
+                },
+            )
+        self._add_per_repo_route("branches", branch_response)
+        return self
+
+    def with_branch_detailed_routes(self) -> "GithubMockTransportBuilder":
+        for i, name in enumerate(REPO_NAMES, start=1):
+            self._transport.add_route(
+                "GET",
+                f"/repos/{ORG_LOGIN}/{name}/branches/{DEFAULT_BRANCH_NAME}",
+                {
+                    "status_code": 200,
+                    "json": branch_detail_response(name, i),
+                },
+            )
         self._add_per_repo_route("branches", branch_response)
         return self
 

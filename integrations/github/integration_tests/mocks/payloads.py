@@ -4,6 +4,7 @@ ORG_LOGIN = "port-labs-testing"
 ORG_ID = 187526413
 INSTALLATION_ID = 101062864
 REPO_NAMES = ["test-repo-1", "test-repo-2"]
+DEFAULT_BRANCH_NAME = "main"
 
 
 def org_response() -> dict[str, Any]:
@@ -103,7 +104,7 @@ def workflow_list_response(repo_name: str, workflow_id: int) -> dict[str, Any]:
 def branch_response(repo_name: str, branch_id: int) -> dict[str, Any]:
     return [
         {
-            "name": "main",
+            "name": DEFAULT_BRANCH_NAME,
             "commit": {
                 "sha": f"branch-sha-{branch_id}",
                 "url": f"https://api.github.com/repos/{ORG_LOGIN}/{repo_name}/commits/branch-sha-{branch_id}",
@@ -111,6 +112,37 @@ def branch_response(repo_name: str, branch_id: int) -> dict[str, Any]:
             "protected": False,
         }
     ]
+
+
+def branch_detail_response(repo_name: str, branch_id: int) -> dict[str, Any]:
+    sha = f"branch-sha-{branch_id}"
+    return {
+        "name": DEFAULT_BRANCH_NAME,
+        "commit": {
+            "sha": sha,
+            "url": f"https://api.github.com/repos/{ORG_LOGIN}/{repo_name}/commits/{sha}",
+            "commit": {
+                "message": f"Latest commit on {DEFAULT_BRANCH_NAME} in {repo_name}",
+            },
+        },
+        "protected": False,
+        "_links": {
+            "html": f"https://github.com/{ORG_LOGIN}/{repo_name}/tree/{DEFAULT_BRANCH_NAME}",
+        },
+    }
+
+
+def branch_protection_response(_repo_name: str, _branch_id: int) -> dict[str, Any]:
+    return {
+        "required_status_checks": {
+            "strict": True,
+            "contexts": ["ci"],
+        },
+        "enforce_admins": False,
+        "required_pull_request_reviews": {
+            "required_approving_review_count": 1,
+        },
+    }
 
 
 def dependabot_alert_response(repo_name: str, alert_id: int) -> dict[str, Any]:
