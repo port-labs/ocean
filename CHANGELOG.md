@@ -7,6 +7,37 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.1 (2026-06-25)
+
+### Improvements
+
+- Polling event listener now triggers resyncs only on startup (when `resync_on_start` is enabled) and explicit integration resync requests, instead of on any integration document `updatedAt` change.
+
+## 0.44.0 (2026-06-25)
+
+### Bug Fixes
+
+- Update pydantic to v2
+
+
+## 0.43.19 (2026-06-22)
+
+### Bug Fixes
+
+- Fix integration test harness import integration file multiple times by caching the integration class.
+
+## 0.43.18 (2026-06-15)
+
+### Improvements
+
+- Added `selectorHash` to lakehouse raw-data metadata payloads. The value is computed from each resource selector query using trimmed-query SHA-256 (`selector.query.trim()`), and omitted when the selector query is empty.
+
+## 0.43.17 (2026-06-11)
+
+### Improvements
+
+- Allow `cache_coroutine_result` to accept additional cache only keys in order to enrich the hashed cache key without injecting extra data into the function call
+
 ## 0.43.16 (2026-06-09)
 
 ### Bug Fixes

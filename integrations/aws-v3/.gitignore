@@ -150,3 +150,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Personal Scripts
+internal_scripts/

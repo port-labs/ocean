@@ -12,6 +12,7 @@ from port_ocean.core.integrations.mixins.utils import (
     handle_items_to_parse,
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
+    selector_hash_from_resource,
 )
 from port_ocean.core.models import Entity, LakehouseDataEntry, LakehouseDataEntryBatch, LakehouseDataEntryMetadata, LakehouseOperation, LakehouseEventType
 from port_ocean.core.ocean_types import RAW_ITEM
@@ -137,6 +138,9 @@ class LiveEventsMixin(HandlerMixin):
                                 operation=LakehouseOperation.UPSERT,
                                 resource_index=resource_index,
                                 extraction_timestamp=int(datetime.now().timestamp() * 1000),
+                                selector_hash=selector_hash_from_resource(
+                                    webhook_event_raw_result.resource
+                                ),
                             ),
                             export_env_variables=webhook_event_raw_result.resource.selector.export_env_variables,
                         )
@@ -149,6 +153,9 @@ class LiveEventsMixin(HandlerMixin):
                                 operation=LakehouseOperation.DELETE,
                                 resource_index=resource_index,
                                 extraction_timestamp=int(datetime.now().timestamp() * 1000),
+                                selector_hash=selector_hash_from_resource(
+                                    webhook_event_raw_result.resource
+                                ),
                             ),
                             export_env_variables=webhook_event_raw_result.resource.selector.export_env_variables,
                         )

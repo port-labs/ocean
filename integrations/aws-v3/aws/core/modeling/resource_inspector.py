@@ -1,13 +1,15 @@
-from typing import List, Dict, Any, Callable, cast
+from typing import List, Dict, Any, Callable
 from loguru import logger
 import asyncio
-from aws.core.interfaces.action import Action, ActionMap
+from aws.core.interfaces.action import Action, ActionMap, ActionInputType
 from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_models import ResourceModel
 from collections import defaultdict
 
 
-class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
+class ResourceInspector[
+    ResourceModelT: ResourceModel[Any], ActionInput: ActionInputType
+]:
     """
     Inspects AWS resources by executing a set of actions and aggregating their results
     into a strongly-typed resource model.
@@ -32,8 +34,9 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
     def __init__(
         self,
         client: Any,
-        actions_map: ActionMap,
+        actions_map: ActionMap[ActionInput],
         model_factory: Callable[[], ResourceModelT],
+        action_id_key: str | None = None,
     ) -> None:
         """
         Initialize the ResourceInspector.
@@ -46,10 +49,11 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         self.client = client
         self.actions_map = actions_map
         self.model_factory = model_factory
+        self.action_id_key = action_id_key
 
     async def inspect(
         self,
-        identifiers: Any,
+        identifiers: ActionInput,
         include: List[str],
         extra_context: Dict[str, Any] | None = None,
     ) -> List[Dict[str, Any]]:
@@ -69,22 +73,26 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         type = self.model_factory().Type
         action_results = await asyncio.gather(
             *(self._run_action(action, identifiers) for action in actions),
-            return_exceptions=True,
         )
 
         if not action_results or not any(action_results):
             return []
 
-        resource_data: dict[int, dict[str, Any]] = defaultdict(dict)
-        for action_result in action_results:
-            if isinstance(action_result, Exception):
-                logger.warning(
-                    f"{action_result.__class__.__name__} failed: {action_result}, skipping ..."
-                )
-                continue
-            for idx, item in enumerate(cast(List[Dict[str, Any]], action_result)):
-                if item:
-                    resource_data[idx] |= item
+        resource_data: dict[int | str, dict[str, Any]] = defaultdict(dict)
+        if self.action_id_key:
+            for result_group in action_results:
+                for result in result_group:
+                    if self.action_id_key in result:
+                        resource_data[result[self.action_id_key]] |= result
+                    else:
+                        logger.warning(
+                            f"Missing key '{self.action_id_key}' in result: {result}, skipping ..."
+                        )
+        else:
+            for action_result in action_results:
+                for idx, item in enumerate(action_result):
+                    if item:
+                        resource_data[idx] |= item
 
         resources = []
         for resource_props in resource_data.values():
@@ -101,7 +109,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         return resources
 
     async def _run_action(
-        self, action: "Action", identifiers: Any
+        self, action: Action[ActionInput], identifiers: ActionInput
     ) -> List[Dict[str, Any]]:
         """
         Execute a single action for the given identifiers, handling exceptions gracefully.

@@ -12,7 +12,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class RdsDbClusterExporter(IResourceExporter):
+class RdsDbClusterExporter(IResourceExporter[list[dict[str, Any]]]):
     _service_name: SupportedServices = "rds"
     _model_cls: Type[DbCluster] = DbCluster
     _actions_map: Type[RdsDbClusterActionsMap] = RdsDbClusterActionsMap

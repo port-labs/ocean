@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, validator
+from pydantic.v1 import BaseModel, validator
 
 
 class AuditTrailAsset(BaseModel):
@@ -30,10 +30,16 @@ class AuditTrailHttp(BaseModel):
     url_details: UrlDetails
 
 
+class AuditTrailOrg(BaseModel):
+    name: str
+    uuid: str
+
+
 class AuditTrailAttributes(BaseModel):
     evt: AuditTrailEvt
     action: str
     asset: AuditTrailAsset
+    org: AuditTrailOrg
     http: Optional[AuditTrailHttp] = None
 
     @validator("action", pre=True)

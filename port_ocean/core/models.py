@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
 from typing import Any, Literal, NotRequired, TypedDict
-from pydantic import BaseModel
-from pydantic.fields import Field
+from pydantic.v1 import BaseModel
+from pydantic.v1.fields import Field
 
 
 class EventListenerType(StrEnum):
@@ -243,6 +243,7 @@ class LakehouseDataEntryMetadata(TypedDict):
     operation: LakehouseOperation
     resource_index: int
     extraction_timestamp: int
+    selector_hash: NotRequired[str | None]
 
 
 class LakehouseDataEntry(TypedDict):

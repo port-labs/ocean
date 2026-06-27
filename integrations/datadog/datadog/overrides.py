@@ -7,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic import Field, BaseModel
+from pydantic.v1 import Field, BaseModel
 
 
 class SLOHistorySelector(Selector):
@@ -222,10 +222,29 @@ class UserResourceConfig(ResourceConfig):
     )
 
 
+class RoleSelector(Selector):
+    include_users: bool = Field(
+        default=False,
+        alias="includeUsers",
+        title="Enrich roles with users",
+        description="When enabled, each role is enriched with the list of users assigned to it, available under the `__users` property. Enabling this makes an additional API request per role, which may slow down the resync.",
+    )
+
+
 class RoleResourceConfig(ResourceConfig):
     kind: Literal["role"] = Field(
         title="Datadog Role",
         description="Datadog role resource kind.",
+    )
+    selector: RoleSelector = Field(
+        title="Datadog Selector", description="Selector for Datadog roles."
+    )
+
+
+class OrgResourceConfig(ResourceConfig):
+    kind: Literal["organization"] = Field(
+        title="Datadog Organization",
+        description="Datadog organization resource kind.",
     )
 
 
@@ -241,6 +260,7 @@ class DataDogPortAppConfig(PortAppConfig):
         | ServiceResourceConfig
         | UserResourceConfig
         | RoleResourceConfig
+        | OrgResourceConfig
     ] = Field(
         default_factory=list,
         alias="resources",

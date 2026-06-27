@@ -25,6 +25,7 @@ def make_single_entry_lakehouse_batch(
     event_id: str | None = None,
     extraction_timestamp: int | None = None,
     export_env_variables: list[str] | None = None,
+    selector_hash: str | None = None,
 ) -> LakehouseDataEntryBatch:
     """Build a batch payload with one data entry (mirrors typical single-chunk sends)."""
     et = event_type or LakehouseEventType.LIVE_EVENT
@@ -41,6 +42,7 @@ def make_single_entry_lakehouse_batch(
             "operation": operation,
             "resource_index": index,
             "extraction_timestamp": ts,
+            "selector_hash": selector_hash,
         },
     }
     if export_env_variables is not None:

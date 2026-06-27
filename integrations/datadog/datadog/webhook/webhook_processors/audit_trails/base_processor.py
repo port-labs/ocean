@@ -3,8 +3,9 @@ from typing import Any
 
 from httpx import HTTPStatusError
 from loguru import logger
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
+from datadog.client import DatadogClient
 from datadog.webhook.consts import AuditTrailAction
 from datadog.webhook.types import AuditTrailEvent
 from datadog.webhook.webhook_processors.base_webhook_processor import (
@@ -67,7 +68,10 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
 
     @abstractmethod
     async def _fetch_resource(
-        self, event: AuditTrailEvent, resource_config: ResourceConfig
+        self,
+        client: DatadogClient,
+        event: AuditTrailEvent,
+        resource_config: ResourceConfig,
     ) -> dict[str, Any] | None:
         """Fetch the live resource from the Datadog API."""
         pass
@@ -85,12 +89,27 @@ class BaseAuditTrailProcessor(BaseWebhookProcessor):
                     deleted_raw_results=[deleted] if deleted else [],
                 )
 
-        resource = None
+        org_id = event.attributes.org.uuid
+        client = self._client_manager.get_client_by_org_id(org_id)
+        if client is None:
+            logger.warning(f"No Datadog client configured for org id '{org_id}'")
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         try:
-            resource = await self._fetch_resource(event, resource_config)
+            resource = await self._fetch_resource(client, event, resource_config)
         except HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning("Resource returned 404, skipping event", error=str(e))
+            logger.warning(
+                f"Failed to fetch resource for org id '{org_id}' "
+                f"({e.response.status_code}): {e}"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        if resource:
+            self._enrich_with_org_id([resource], client)
 
         return WebhookEventRawResults(
             updated_raw_results=[resource] if resource else [],

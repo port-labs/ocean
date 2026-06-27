@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, TypeVar, Generic, Any, AsyncGenerator
 
 from abc import ABC, abstractmethod
 
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from datadog.client import DatadogClient

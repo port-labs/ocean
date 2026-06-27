@@ -3,7 +3,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic import Field, BaseModel
+from pydantic.v1 import Field, BaseModel
 from typing import List, Literal
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
@@ -217,6 +217,62 @@ class AWSEC2VolumeResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeBuildProjectResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeBuild::Project"] = Field(
+        title="AWS CodeBuild Project",
+        description="AWS CodeBuild Project resource kind.",
+    )
+
+
+class AWSCodeBuildBuildRunResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeBuild::BuildRun"] = Field(
+        title="AWS CodeBuild BuildRun",
+        description="AWS CodeBuild BuildRun resource kind.",
+    )
+
+
+class AWSCodeDeployApplicationResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::Application"] = Field(
+        title="AWS CodeDeploy Application",
+        description="AWS CodeDeploy Application resource kind.",
+    )
+
+
+class AWSCodeDeployDeploymentGroupResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::DeploymentGroup"] = Field(
+        title="AWS CodeDeploy Deployment Group",
+        description="AWS CodeDeploy Deployment Group resource kind.",
+    )
+
+
+class AWSCodeDeployDeploymentResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::Deployment"] = Field(
+        title="AWS CodeDeploy Deployment",
+        description="AWS CodeDeploy Deployment resource kind.",
+    )
+
+
+class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::Pipeline"] = Field(
+        title="AWS CodePipeline Pipeline",
+        description="AWS CodePipeline Pipeline resource kind.",
+    )
+
+
+class AWSCodePipelineStageResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::Stage"] = Field(
+        title="AWS CodePipeline Stage",
+        description="AWS CodePipeline Stage resource kind.",
+    )
+
+
+class AWSCodePipelineActionResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::Action"] = Field(
+        title="AWS CodePipeline Action",
+        description="AWS CodePipeline Action resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -237,6 +293,14 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSElastiCacheClusterResourceConfig
         | AWSMemoryDbUserResourceConfig
         | AWSEC2VolumeResourceConfig
+        | AWSCodeBuildProjectResourceConfig
+        | AWSCodeBuildBuildRunResourceConfig
+        | AWSCodeDeployApplicationResourceConfig
+        | AWSCodeDeployDeploymentGroupResourceConfig
+        | AWSCodeDeployDeploymentResourceConfig
+        | AWSCodePipelinePipelineResourceConfig
+        | AWSCodePipelineStageResourceConfig
+        | AWSCodePipelineActionResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

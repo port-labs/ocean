@@ -2,8 +2,10 @@ from azure_devops.webhooks.events import AdvancedSecurityAlertEvents
 import asyncio
 import functools
 import json
+import re
 import httpx
 from collections import defaultdict
+from datetime import datetime, timezone
 from itertools import batched
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
@@ -56,6 +58,7 @@ if TYPE_CHECKING:
 API_URL_PREFIX = "_apis"
 PROJECT_TAG_PROPERTY_PREFIX = "Microsoft.TeamFoundation.Project.Tag."
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
+GRAPH_USERS_API_PARAMS = {"api-version": "7.1-preview.1"}
 ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
 PIPELINES_PUBLISHER_ID = "pipelines"
@@ -70,10 +73,16 @@ MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1 * 1024 * 1024
 MAX_CONCURRENT_FILE_DOWNLOADS = 50
 MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING = 25
 MAX_CONCURRENT_REPOS_FOR_PULL_REQUESTS = 25
+MAX_CONCURRENT_BUILDS_FOR_FIRST_COMMIT = 25
 MAX_SUBJECTS_PER_LOOKUP = 500
+# Conservative concurrency caps to avoid exhausting the shared ADO TSTU budget.
+# ADO does not publish a per-connection limit; these values are empirically chosen
+# to keep concurrent fanout low enough that the TSTU window resets before exhaustion.
 MAX_CONCURRENT_PROJECTS = 5
+MAX_CONCURRENT_TEAMS = 5
 MAX_CONCURRENT_PIPELINES = 5
 MAX_CONCURRENT_SUBSCRIPTION_REQUESTS = 5
+MAX_CONCURRENT_USER_MEMBERSHIPS = 10
 
 # Webhook subscriptions for Azure DevOps events
 AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
@@ -146,6 +155,13 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         eventType=ReleaseDeploymentEvents.DEPLOYMENT_COMPLETED,
     ),
 ]
+
+
+def _parse_change_timestamp(timestamp: str) -> datetime:
+    try:
+        return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.max.replace(tzinfo=timezone.utc)
 
 
 def _normalize_area_path(path: str) -> str:
@@ -317,7 +333,17 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             if sync_default_team:
                 logger.info("Adding default team to projects")
-                tasks = [self.get_single_project(project["id"]) for project in projects]
+                semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PROJECTS)
+
+                async def get_project_with_semaphore(
+                    project_id: str,
+                ) -> dict[str, Any] | None:
+                    async with semaphore:
+                        return await self.get_single_project(project_id)
+
+                tasks = [
+                    get_project_with_semaphore(project["id"]) for project in projects
+                ]
                 projects_batch: list[dict[str, Any] | None] = await asyncio.gather(
                     *tasks
                 )
@@ -418,8 +444,15 @@ class AzureDevopsClient(HTTPBaseClient):
         self, teams: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching members for {len(teams)} teams")
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TEAMS)
 
-        team_tasks = [self.get_team_members(team) for team in teams]
+        async def get_members_with_semaphore(
+            team: dict[str, Any],
+        ) -> list[dict[str, Any]]:
+            async with semaphore:
+                return await self.get_team_members(team)
+
+        team_tasks = [get_members_with_semaphore(team) for team in teams]
 
         members_results = await asyncio.gather(*team_tasks)
 
@@ -488,8 +521,97 @@ class AzureDevopsClient(HTTPBaseClient):
 
         return base_url
 
-    async def generate_users(
-        self, additional_params: dict[str, str] | None = None
+    async def generate_graph_users(
+        self,
+        additional_params: dict[str, str] | None = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        users_url = self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/users"
+        params = {**GRAPH_USERS_API_PARAMS, **(additional_params or {})}
+        async for users in self._get_paginated_by_top_and_continuation_token(
+            users_url, additional_params=params
+        ):
+            yield users
+
+    @staticmethod
+    def _parse_project_from_principal_name(principal_name: str) -> Optional[str]:
+        match = re.match(r"^\[(?P<project>.+?)\]\\", principal_name or "")
+        return match.group("project") if match else None
+
+    async def _fetch_group_descriptors(
+        self, descriptor: str, semaphore: asyncio.BoundedSemaphore
+    ) -> list[str]:
+        async with semaphore:
+            memberships = await self._get_subject_memberships(descriptor, "Up")
+        if not memberships:
+            return []
+        return [
+            membership["containerDescriptor"]
+            for membership in memberships
+            if membership.get("containerDescriptor")
+        ]
+
+    async def enrich_users_with_group_memberships(
+        self, users: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Enrich graph users with their direct group memberships."""
+        semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_USER_MEMBERSHIPS)
+        candidates = [user for user in users if user.get("descriptor")]
+        results = await asyncio.gather(
+            *[
+                self._fetch_group_descriptors(user["descriptor"], semaphore)
+                for user in candidates
+            ],
+            return_exceptions=True,
+        )
+
+        user_group_descriptors: dict[str, list[str]] = {}
+        all_descriptors: set[str] = set()
+        for user, result in zip(candidates, results):
+            if isinstance(result, asyncio.CancelledError):
+                raise result
+            if isinstance(result, BaseException):
+                logger.warning(
+                    f"Failed to fetch group memberships for user "
+                    f"'{user['descriptor']}': {result}"
+                )
+                user_group_descriptors[user["descriptor"]] = []
+                continue
+            user_group_descriptors[user["descriptor"]] = result
+            all_descriptors.update(result)
+
+        subject_details = (
+            await self._lookup_subjects(list(all_descriptors))
+            if all_descriptors
+            else {}
+        )
+
+        for user in users:
+            descriptor = user.get("descriptor")
+            descriptors = (
+                user_group_descriptors.get(descriptor, []) if descriptor else []
+            )
+            groups = [
+                subject_details[descriptor]
+                for descriptor in descriptors
+                if descriptor in subject_details
+            ]
+            projects = {
+                project
+                for group in groups
+                if (
+                    project := self._parse_project_from_principal_name(
+                        group.get("principalName", "")
+                    )
+                )
+            }
+            user["__groups"] = groups
+            user["__projects"] = sorted(projects)
+
+        return users
+
+    async def generate_entitlement_users(
+        self,
+        additional_params: dict[str, str] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         users_url = (
             self._format_service_url("vsaex") + f"/{API_URL_PREFIX}/userentitlements"
@@ -542,20 +664,30 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield groups
 
-    async def _get_group_direct_members(
-        self, group_descriptor: str
+    async def _get_subject_memberships(
+        self, descriptor: str, direction: str
     ) -> Optional[list[dict[str, Any]]]:
-        """Get direct members of a group."""
-        members_url = (
+        """Get memberships for a subject in the given direction.
+
+        direction='Down' yields the members contained by a group;
+        direction='Up' yields the groups a subject belongs to.
+        """
+        memberships_url = (
             self._format_service_url("vssps")
-            + f"/{API_URL_PREFIX}/graph/Memberships/{group_descriptor}"
+            + f"/{API_URL_PREFIX}/graph/memberships/{descriptor}"
         )
         response = await self.send_request(
-            "GET", members_url, params={"direction": "Down"}
+            "GET", memberships_url, params={"direction": direction}
         )
         if not response:
             return None
         return response.json()["value"]
+
+    async def _get_group_direct_members(
+        self, group_descriptor: str
+    ) -> Optional[list[dict[str, Any]]]:
+        """Get direct members of a group."""
+        return await self._get_subject_memberships(group_descriptor, "Down")
 
     async def _lookup_subjects(
         self, descriptors: list[str]
@@ -966,7 +1098,67 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield self._enrich_builds_with_project_data(builds, project)
 
-    async def generate_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def _attach_first_commit(
+        self, build: dict[str, Any], project_id: str
+    ) -> dict[str, Any]:
+        changes_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/build/builds/{build['id']}/changes"
+        )
+        try:
+            changes: list[dict[str, Any]] = []
+            async for batch in self._get_paginated_by_top_and_continuation_token(
+                changes_url
+            ):
+                changes.extend(batch)
+
+            timestamped = [change for change in changes if change.get("timestamp")]
+            if timestamped:
+                earliest = min(
+                    timestamped,
+                    key=lambda change: _parse_change_timestamp(change["timestamp"]),
+                )
+                build["__firstCommit"] = {
+                    **earliest,
+                    "__sha": earliest.get("id"),
+                    "__timestamp": earliest["timestamp"],
+                    "__commitCount": len(changes),
+                }
+                return build
+
+            source_version = build.get("sourceVersion")
+            repository_id = (build.get("repository") or {}).get("id")
+            if source_version and repository_id:
+                commit = await self.get_commit(
+                    project_id, repository_id, source_version
+                )
+                committer = commit.get("committer", {})
+                if committer.get("date"):
+                    build["__firstCommit"] = {
+                        **commit,
+                        "__sha": commit.get("commitId") or source_version,
+                        "__timestamp": committer["date"],
+                        "__commitCount": 1,
+                    }
+        except Exception as e:
+            logger.warning(
+                f"First-commit enrichment failed for build {build['id']}: {e}"
+            )
+        return build
+
+    async def _enrich_builds_with_first_commit(
+        self, project_id: str, builds: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        return await process_in_queue(
+            builds,
+            self._attach_first_commit,
+            project_id,
+            concurrency=MAX_CONCURRENT_BUILDS_FOR_FIRST_COMMIT,
+        )
+
+    async def generate_builds(
+        self, enrich_with_first_commit: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate builds across all projects in the organization.
 
         Uses continuation token pagination as per Azure DevOps Builds API.
@@ -975,6 +1167,10 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             tasks = [self._generate_builds_for_project(project) for project in projects]
             async for batch in stream_async_iterators_tasks(*tasks):
+                if enrich_with_first_commit and batch:
+                    batch = await self._enrich_builds_with_first_commit(
+                        batch[0]["__projectId"], batch
+                    )
                 yield batch
 
     async def generate_pipeline_stages(
@@ -988,9 +1184,16 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 async for builds_batch in self._generate_builds_for_project(project):
+                    semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_PIPELINES)
+
+                    async def fetch_stages_with_semaphore(
+                        build: dict[str, Any],
+                    ) -> list[dict[str, Any]]:
+                        async with semaphore:
+                            return await self._fetch_stages_for_build(project, build)
+
                     stage_tasks = [
-                        self._fetch_stages_for_build(project, build)
-                        for build in builds_batch
+                        fetch_stages_with_semaphore(build) for build in builds_batch
                     ]
                     stage_results = await asyncio.gather(
                         *stage_tasks, return_exceptions=True
@@ -1405,7 +1608,15 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             if not work_items_response:
                 continue
-            yield work_items_response.json()["value"]
+            try:
+                yield work_items_response.json()["value"]
+            except json.decoder.JSONDecodeError as e:
+                logger.error(
+                    f"Failed to decode work items response for project {project_id}, "
+                    f"batch IDs {batch_ids[0]}-{batch_ids[-1]} ({len(batch_ids)} items): {e}. "
+                    f"Aborting resync to prevent incorrect deletes of work items in incomplete batch."
+                )
+                raise
 
     def _add_project_details_to_work_items(
         self, work_items: list[dict[str, Any]], project: dict[str, Any]
@@ -2070,6 +2281,13 @@ class AzureDevopsClient(HTTPBaseClient):
         except Exception as e:
             logger.error(f"Failed to commit changes from {url}: {str(e)}")
             raise
+
+    async def get_commit(
+        self, project_id: str, repository_id: str, commit_id: str
+    ) -> dict[str, Any]:
+        url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/commits/{commit_id}"
+        response = await self.send_request("GET", url, params=API_PARAMS)
+        return response.json() if response else {}
 
     async def create_webhook_subscriptions(
         self,

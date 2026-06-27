@@ -1,5 +1,5 @@
 import pytest
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 from datetime import datetime
 
 from aws.core.exporters.ec2.instance.models import (

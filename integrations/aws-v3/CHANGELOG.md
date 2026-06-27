@@ -7,6 +7,148 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.11.0-beta (2026-06-25)
+
+
+### Improvements
+
+- Added support for AWS::CodePipeline::Stage resource kind, enabling ingestion of CodePipeline Stages into the Port catalog
+
+
+## 2.10.0-beta (2026-06-25)
+
+
+### Improvements
+
+- Added support for AWS::CodeDeploy::Deployment resource kind, enabling ingestion of CodeDeploy Deployment into the Port catalog
+
+
+## 2.9.4-beta (2026-06-25)
+
+
+### Improvements
+
+- Added base (and used in CodePipeline) to allow for Action merge by id rather than index
+
+
+## 2.9.3-beta (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 2.9.2-beta (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 2.9.1-beta (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
+## 2.9.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodeDeploy::Deployment Group resource kind, enabling ingestion of CodeDeploy Deployment Groups into the Port catalog
+
+
+## 2.8.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodePipeline::Action resource kind, enabling ingestion of CodePipeline Actions into the Port catalog
+
+
+## 2.7.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodePipeline::Pipeline resource kind, enabling ingestion of CodePipeline Pipelines into the Port catalog
+
+
+## 2.6.0-beta (2026-06-17)
+
+
+### Features
+
+- Added support for AWS::CodeDeploy::Application resource kind, enabling ingestion of CodeDeploy Applications into the Port catalog
+
+
+## 2.5.4-beta (2026-06-16)
+
+
+### Bug Fixes
+
+- Fixed silent index-shift in concurrent action result merging that caused enrichment data (tags, encryption, etc.) to be applied to the wrong AWS resource when one resource's API call returned a recoverable error. All recoverable-skip paths in S3, SQS, RDS, Lambda, Organizations, and the shared `execute_concurrent_aws_operations` helper (used by ECR, ECS, EC2) now preserve list alignment via an empty placeholder.
+
+## 2.5.3-beta (2026-06-16)
+
+
+### Improvements
+
+- Base Action class Generic had variable name override fixed, should now properly identify typing
+
+## 2.5.2-beta (2026-06-15)
+
+
+### Improvements
+
+- Added ruff ignore on unused imports in __init__ files to remove the need for __all__
+
+
+## 2.5.1-beta (2026-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.18
+
+
+## 2.5.0-beta (2026-06-15)
+
+
+### Features
+
+- Added support for AWS::CodeBuild::Build Run resource kind, enabling ingestion of CodeBuild Build Runs into the Port catalog
+
+
+## 2.4.1-beta (2026-06-15)
+
+
+### Improvements
+
+- Base Action class uses Generic[T] instead of list[Any] for typing, enabling more efficient data handling
+
+
+## 2.4.0-beta (2026-06-11)
+
+
+### Features
+
+- Added support for AWS::CodeBuild::Project resource kind, enabling ingestion of CodeBuild projects into the Port catalog
+
+
+## 2.3.1-beta (2026-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.17
+
+
 ## 2.3.0-beta (2026-06-10)
 
 
