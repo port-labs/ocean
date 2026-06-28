@@ -4,6 +4,7 @@ from loguru import logger
 from typing import Any, AsyncIterator
 from aws.auth.utils import AWSSessionError
 from aws.auth.providers.base import CredentialProvider
+from aws.utils import LocationUtils
 
 
 class SingleAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
@@ -28,10 +29,10 @@ class SingleAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 }
             session = await self.provider.get_session(**session_kwargs)
 
-            partition: str | None = self.config.get('aws_partition')
+            partition = LocationUtils.get_partition()
             if partition:
-                # We don't really care about the region, we just need a valid one to fetch the identity
-                region = (await session.get_available_regions('sts', partition_name=partition))[0]
+                # We don't really care which region is selected, we just need a valid one to fetch the identity
+                region = LocationUtils.get_first_available_region(session)
             else:
                 region = None
 
