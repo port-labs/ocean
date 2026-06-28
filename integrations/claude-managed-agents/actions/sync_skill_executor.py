@@ -10,7 +10,7 @@ from actions.skill_packaging import (
     package_skill_files,
     skill_display_title,
 )
-from clients.port_catalog import fetch_skill_content
+from clients.port_catalog import fetch_skill_content, set_port_skill_relation
 from integration import ObjectKind
 
 
@@ -62,8 +62,8 @@ class SyncSkillExecutor(AbstractAnthropicExecutor):
             claude_skill_id = api_skill["id"]
 
         raw = claude_skill_raw_from_api(api_skill)
-        raw["port_skill_id"] = port_skill_id
         await self.register_entity(ObjectKind.SKILL, raw)
+        await set_port_skill_relation(raw["id"], port_skill_id)
 
         latest_version = api_skill.get("latest_version")
         logger.info(

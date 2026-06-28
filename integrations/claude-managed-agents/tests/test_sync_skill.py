@@ -49,6 +49,7 @@ def _mock_ocean() -> MagicMock:
     mock.register_raw = AsyncMock()
     mock.integration.port_app_config_handler.get_port_app_config = AsyncMock()
     mock.port_client.report_run_completed = AsyncMock()
+    mock.port_client.upsert_entity = AsyncMock()
     return mock
 
 
@@ -68,6 +69,7 @@ async def test_sync_skill_create_mode_creates_skill_and_registers_entity() -> No
 
     mock_ocean = _mock_ocean()
 
+    set_relation = AsyncMock()
     with (
         patch("actions.abstract_executor.create_anthropic_client", return_value=client),
         patch("actions.abstract_executor.ocean", mock_ocean),
@@ -77,6 +79,7 @@ async def test_sync_skill_create_mode_creates_skill_and_registers_entity() -> No
             "actions.sync_skill_executor.fetch_skill_content",
             AsyncMock(return_value=_skill_content()),
         ),
+        patch("actions.sync_skill_executor.set_port_skill_relation", set_relation),
     ):
         executor = SyncSkillExecutor()
         await executor.execute(_run(mode="create"))
@@ -84,9 +87,7 @@ async def test_sync_skill_create_mode_creates_skill_and_registers_entity() -> No
     client.create_skill.assert_awaited_once()
     client.create_skill_version.assert_not_awaited()
     mock_ocean.register_raw.assert_awaited_once()
-    # port_skill_id is embedded in the raw object passed to register_raw
-    raw_arg = mock_ocean.register_raw.call_args.args[1][0]
-    assert raw_arg["port_skill_id"] == "port-skill-1"
+    set_relation.assert_awaited_once_with("skill_new", "port-skill-1")
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
 
@@ -107,6 +108,7 @@ async def test_sync_skill_new_version_mode_adds_version_to_existing_skill() -> N
 
     mock_ocean = _mock_ocean()
 
+    set_relation = AsyncMock()
     with (
         patch("actions.abstract_executor.create_anthropic_client", return_value=client),
         patch("actions.abstract_executor.ocean", mock_ocean),
@@ -116,6 +118,7 @@ async def test_sync_skill_new_version_mode_adds_version_to_existing_skill() -> N
             "actions.sync_skill_executor.fetch_skill_content",
             AsyncMock(return_value=_skill_content()),
         ),
+        patch("actions.sync_skill_executor.set_port_skill_relation", set_relation),
     ):
         executor = SyncSkillExecutor()
         await executor.execute(
@@ -125,8 +128,7 @@ async def test_sync_skill_new_version_mode_adds_version_to_existing_skill() -> N
     client.create_skill.assert_not_awaited()
     client.create_skill_version.assert_awaited_once_with("skill_existing", ANY)
     client.get_skill.assert_awaited_once_with("skill_existing")
-    raw_arg = mock_ocean.register_raw.call_args.args[1][0]
-    assert raw_arg["port_skill_id"] == "port-skill-1"
+    set_relation.assert_awaited_once_with("skill_existing", "port-skill-1")
     mock_ocean.port_client.report_run_completed.assert_awaited_once()
     assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
 
@@ -204,6 +206,7 @@ async def test_sync_skill_packages_resources_from_content_api() -> None:
                 )
             ),
         ),
+        patch("actions.sync_skill_executor.set_port_skill_relation", AsyncMock()),
     ):
         executor = SyncSkillExecutor()
         await executor.execute(_run(mode="create"))
