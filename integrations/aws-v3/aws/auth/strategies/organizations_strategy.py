@@ -245,7 +245,8 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         try:
             organization_session = await self._get_organization_session()
             async with organization_session.create_client(
-                "organizations"
+                "organizations",
+                region_name='us-gov-west-1',
             ) as org_client:
                 if ou_ids:
                     logger.info(

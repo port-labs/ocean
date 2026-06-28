@@ -29,7 +29,7 @@ class AssumeRoleProvider(CredentialProvider):
     async def get_credentials(self, **kwargs: Any) -> AioRefreshableCredentials:
         try:
             async with self.aws_client_factory_session.create_client(
-                "sts", region_name=kwargs.get("region")
+                "sts", region_name=kwargs.get("region", 'us-gov-west-1')
             ) as sts_client:
                 role_arn = kwargs["role_arn"]
                 assume_role_params = {
