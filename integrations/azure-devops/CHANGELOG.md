@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.10.6 (2026-06-28)
+## 0.10.6 (2026-06-29)
+
+
+### Bug Fixes
+
+- Added Azure DevOps-specific 429 retry handling that coordinates a shared 360-second cooldown across concurrent requests and retries rate-limited requests up to 10 times before failing.
 
 
 ### Improvements
