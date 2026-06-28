@@ -6,9 +6,3 @@ from aws.core.exporters.codedeploy.deployment_target.models import (
     SingleCodeDeployDeploymentTargetRequest,
     PaginatedCodeDeployDeploymentTargetRequest,
 )
-
-__all__ = [
-    "CodeDeployDeploymentTargetExporter",
-    "SingleCodeDeployDeploymentTargetRequest",
-    "PaginatedCodeDeployDeploymentTargetRequest",
-]
