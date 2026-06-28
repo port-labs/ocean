@@ -29,6 +29,7 @@ class ObjectKind(StrEnum):
     CODEPIPELINE_PIPELINE = "AWS::CodePipeline::Pipeline"
     CODEPIPELINE_STAGE = "AWS::CodePipeline::Stage"
     CODEPIPELINE_ACTION = "AWS::CodePipeline::Action"
+    CODEPIPELINE_PIPELINE_EXECUTION = "AWS::CodePipeline::PipelineExecution"
 
 
 SupportedServices = Literal[
