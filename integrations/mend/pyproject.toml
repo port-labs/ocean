@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "mend"
-version = "0.1.4"
+version = "0.1.5"
 description = "An integration for Mend.io project and scan results types"
 authors = ["Het Saliya <het.saliya@crestdata.ai>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.44.2", extras = ["cli"]}
+port_ocean = {version = "^0.44.3", extras = ["cli"]}
 PyJWT = "^2.8.0"
 
 [tool.poetry.group.dev.dependencies]
