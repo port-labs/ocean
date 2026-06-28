@@ -68,74 +68,6 @@ SESSION_SUCCESS_WEBHOOK_DATA = (
 _INTERACTION_EVENT_TYPES = ["session.error", "session.status_idle"]
 
 
-def _session_error_log_level(
-    error_event: BetaManagedAgentsSessionErrorEvent,
-) -> LogLevel:
-    """Transient errors the server is still retrying are warnings, not hard failures."""
-    if error_event.error.retry_status.type == "retrying":
-        return "WARNING"
-    return "ERROR"
-
-
-def _format_session_error(
-    error_event: BetaManagedAgentsSessionErrorEvent,
-) -> tuple[LogLevel, str]:
-    level = _session_error_log_level(error_event)
-    return (
-        level,
-        f"Session error ({error_event.error.type}): {error_event.error.message}",
-    )
-
-
-def _is_failure_event(event: BetaManagedAgentsSessionEvent) -> bool:
-    """Whether the session idle ``stop_reason`` marks the interaction as failed."""
-    if isinstance(event, BetaManagedAgentsSessionStatusIdleEvent):
-        return event.stop_reason.type == "retries_exhausted"
-    return False
-
-
-def _last_error_log_message(entries: list[tuple[LogLevel, str]]) -> str | None:
-    last_error: str | None = None
-    for level, message in entries:
-        if level == "ERROR":
-            last_error = message
-    return last_error
-
-
-async def _complete_port_run(
-    run: ActionRun | WorkflowNodeRun,
-    success: bool,
-    *,
-    extra_output: dict[str, str] | None = None,
-) -> None:
-    """Complete a Port run, merging ``extra_output`` into workflow node output when set."""
-    if isinstance(run, WorkflowNodeRun) and extra_output is not None:
-        existing_output: dict[str, Any] = getattr(run, "output", {}) or {}
-        await ocean.port_client.patch_wf_node_run(
-            run.id,
-            {
-                "status": WorkflowNodeRunStatus.COMPLETED,
-                "result": (
-                    WorkflowNodeRunResult.SUCCESS
-                    if success
-                    else WorkflowNodeRunResult.FAILED
-                ),
-                "output": {**existing_output, **extra_output},
-            },
-        )
-        return
-
-    await ocean.port_client.report_run_completed(run, success)
-
-
-def _extract_agent_message_text(event: BetaManagedAgentsAgentMessageEvent) -> str:
-    parts: list[str] = []
-    for block in event.content:
-        if isinstance(block, BetaManagedAgentsTextBlock):
-            parts.append(block.text)
-    return "\n".join(parts)
-
-
 class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
     """Reports `trigger_agent` node-run status from session webhooks.
 
@@ -147,6 +79,74 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
     Modeled after GitHub's `DispatchWorkflowWebhookProcessor`: an `ACTION`-type
     processor not tied to any kind.
     """
+
+    @staticmethod
+    def _session_error_log_level(
+        error_event: BetaManagedAgentsSessionErrorEvent,
+    ) -> LogLevel:
+        """Transient errors the server is still retrying are warnings, not hard failures."""
+        if error_event.error.retry_status.type == "retrying":
+            return "WARNING"
+        return "ERROR"
+
+    @staticmethod
+    def _format_session_error(
+        error_event: BetaManagedAgentsSessionErrorEvent,
+    ) -> tuple[LogLevel, str]:
+        level = TriggerAgentWebhookProcessor._session_error_log_level(error_event)
+        return (
+            level,
+            f"Session error ({error_event.error.type}): {error_event.error.message}",
+        )
+
+    @staticmethod
+    def _is_failure_event(event: BetaManagedAgentsSessionEvent) -> bool:
+        """Whether the session idle ``stop_reason`` marks the interaction as failed."""
+        if isinstance(event, BetaManagedAgentsSessionStatusIdleEvent):
+            return event.stop_reason.type == "retries_exhausted"
+        return False
+
+    @staticmethod
+    def _last_error_log_message(entries: list[tuple[LogLevel, str]]) -> str | None:
+        last_error: str | None = None
+        for level, message in entries:
+            if level == "ERROR":
+                last_error = message
+        return last_error
+
+    @staticmethod
+    def _extract_agent_message_text(event: BetaManagedAgentsAgentMessageEvent) -> str:
+        parts: list[str] = []
+        for block in event.content:
+            if isinstance(block, BetaManagedAgentsTextBlock):
+                parts.append(block.text)
+        return "\n".join(parts)
+
+    @staticmethod
+    async def _complete_port_run(
+        run: ActionRun | WorkflowNodeRun,
+        success: bool,
+        *,
+        extra_output: dict[str, str] | None = None,
+    ) -> None:
+        """Complete a Port run, merging ``extra_output`` into workflow node output when set."""
+        if isinstance(run, WorkflowNodeRun) and extra_output is not None:
+            existing_output: dict[str, Any] = getattr(run, "output", {}) or {}
+            await ocean.port_client.patch_wf_node_run(
+                run.id,
+                {
+                    "status": WorkflowNodeRunStatus.COMPLETED,
+                    "result": (
+                        WorkflowNodeRunResult.SUCCESS
+                        if success
+                        else WorkflowNodeRunResult.FAILED
+                    ),
+                    "output": {**existing_output, **extra_output},
+                },
+            )
+            return
+
+        await ocean.port_client.report_run_completed(run, success)
 
     @classmethod
     def get_processor_type(cls) -> WebhookProcessorType:
@@ -226,9 +226,9 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             session_id=session_id,
         )
         if extra_output:
-            await _complete_port_run(run, success, extra_output=extra_output)
+            await self._complete_port_run(run, success, extra_output=extra_output)
         else:
-            await _complete_port_run(run, success)
+            await self._complete_port_run(run, success)
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
@@ -304,7 +304,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                 for event in batch:
                     if not isinstance(event, BetaManagedAgentsAgentMessageEvent):
                         continue
-                    text = _extract_agent_message_text(event)
+                    text = self._extract_agent_message_text(event)
                     if text:
                         last_response = text
         except Exception as error:
@@ -344,15 +344,15 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             async for batch in client.get_session_events(session_id, **list_kwargs):
                 for event in batch:
                     if isinstance(event, BetaManagedAgentsSessionErrorEvent):
-                        log_entries.append(_format_session_error(event))
-                    failed = failed or _is_failure_event(event)
+                        log_entries.append(self._format_session_error(event))
+                    failed = failed or self._is_failure_event(event)
             await self._post_run_logs(run, log_entries)
         except Exception as error:
             logger.warning(
                 f"Failed to inspect session errors for {session_id} "
                 f"(completing run anyway): {error}"
             )
-        return failed, _last_error_log_message(log_entries)
+        return failed, self._last_error_log_message(log_entries)
 
     @staticmethod
     async def _post_run_logs(

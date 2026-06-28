@@ -71,9 +71,5 @@ async def on_start() -> None:
     logger.info("Starting claude-managed-agents integration")
 
 
-# Register live event webhook processors (catalog updates for sessions and vaults)
 register_live_events_webhooks()
-
-# Register action executors (create_agent, trigger_agent). The trigger_agent
-# webhook processor is auto-registered by the execution manager.
 register_action_executors()

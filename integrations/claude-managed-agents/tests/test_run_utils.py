@@ -9,7 +9,9 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 
-from webhook_processors.trigger_agent_webhook_processor import _complete_port_run
+from webhook_processors.trigger_agent_webhook_processor import TriggerAgentWebhookProcessor
+
+_complete_port_run = TriggerAgentWebhookProcessor._complete_port_run
 
 
 @pytest.mark.asyncio

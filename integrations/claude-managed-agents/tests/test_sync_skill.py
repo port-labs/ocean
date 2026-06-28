@@ -71,8 +71,9 @@ async def test_sync_skill_create_mode_creates_skill_and_registers_entity() -> No
 
     with (
         patch("actions.abstract_executor.create_anthropic_client", return_value=client),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _event_context),
         patch("actions.sync_skill_executor.ocean", mock_ocean),
-        patch("actions.sync_skill_executor.event_context", _event_context),
         patch(
             "actions.sync_skill_executor.fetch_skill_content",
             AsyncMock(return_value=_skill_content()),
@@ -111,8 +112,9 @@ async def test_sync_skill_new_version_mode_adds_version_to_existing_skill() -> N
 
     with (
         patch("actions.abstract_executor.create_anthropic_client", return_value=client),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _event_context),
         patch("actions.sync_skill_executor.ocean", mock_ocean),
-        patch("actions.sync_skill_executor.event_context", _event_context),
         patch(
             "actions.sync_skill_executor.fetch_skill_content",
             AsyncMock(return_value=_skill_content()),
@@ -204,8 +206,9 @@ async def test_sync_skill_packages_resources_from_content_api() -> None:
 
     with (
         patch("actions.abstract_executor.create_anthropic_client", return_value=client),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _event_context),
         patch("actions.sync_skill_executor.ocean", mock_ocean),
-        patch("actions.sync_skill_executor.event_context", _event_context),
         patch(
             "actions.sync_skill_executor.fetch_skill_content",
             AsyncMock(

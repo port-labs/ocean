@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
-
 from loguru import logger
-from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
 
@@ -65,7 +62,8 @@ class SyncSkillExecutor(AbstractAnthropicExecutor):
             claude_skill_id = api_skill["id"]
 
         raw = claude_skill_raw_from_api(api_skill)
-        await self._register_claude_skill(raw, port_skill_id)
+        await self.register_entity(ObjectKind.SKILL, raw)
+        await upsert_claude_skill_entity(raw["id"], port_skill_id)
 
         latest_version = api_skill.get("latest_version")
         logger.info(
@@ -77,15 +75,3 @@ class SyncSkillExecutor(AbstractAnthropicExecutor):
             True,
             f"Synced skill {claude_skill_id} (version {latest_version})",
         )
-
-    async def _register_claude_skill(
-        self,
-        raw: dict[str, Any],
-        port_skill_id: str,
-    ) -> None:
-        async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
-            await ocean.integration.port_app_config_handler.get_port_app_config(
-                use_cache=False
-            )
-            await ocean.register_raw(ObjectKind.SKILL, [raw])
-            await upsert_claude_skill_entity(raw["id"], port_skill_id)
