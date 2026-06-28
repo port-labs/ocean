@@ -16,9 +16,12 @@ class StatuspageWebhookClient:
     async def create_webhook_if_not_exists(self, page_id: str, app_host: str) -> None:
         webhook_url = self._webhook_url(app_host)
         async for webhooks in self._client._get_paginated_resources(
-            f"{self._client.pages_base_endpoint}/{page_id}/subscribers"
+            f"{self._client.pages_base_endpoint}/{page_id}/subscribers",
+            {"type": "webhook"},
         ):
-            if any(webhook["endpoint"] == webhook_url for webhook in webhooks):
+            if any(
+                webhook.get("endpoint") == webhook_url for webhook in webhooks
+            ):
                 logger.info(f"Webhook already exists for page: {page_id}")
                 return
 
