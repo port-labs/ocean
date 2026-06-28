@@ -70,28 +70,6 @@ actions:
         title: Additional configuration
         type: jqObject
         description: 'Optional advanced agent configuration passed through to the Anthropic API (for example tools, mcp_servers, skills, metadata, description). Reference the action trigger data with double brackets, for example: {{ .trigger.by.user.email }}.'
-  - name: sync_skill
-    icon: Claude
-    description: Upload a published Port skill to Claude and register a claude_skill entity
-    inputs:
-      - name: portSkillId
-        title: Port skill
-        type: string
-        description: Identifier of the Port _skill entity to sync
-        required: true
-      - name: mode
-        title: Mode
-        type: string
-        description: "create - create a new Claude skill; new_version - add a new version to an existing Claude skill"
-        required: true
-        enum:
-          - create
-          - new_version
-      - name: claudeSkillId
-        title: Claude skill ID
-        type: string
-        description: Identifier of the existing claude_skill entity to add a version to. Required when mode is new_version.
-        required: false
   - name: trigger_agent
     icon: Claude
     description: Trigger a Claude managed agent by starting or continuing a session and sending a user message
