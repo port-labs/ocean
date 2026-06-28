@@ -1,5 +1,8 @@
 from typing import Any, AsyncGenerator, Type
 
+from botocore.exceptions import ClientError
+from loguru import logger
+
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.codedeploy.deployment_target.actions import (
     CodeDeployDeploymentTargetActionsMap,
@@ -69,23 +72,29 @@ class CodeDeployDeploymentTargetExporter(
 
             async for deployment_ids in deployment_paginator.paginate():
                 for deployment_id in deployment_ids:
-                    async for target_ids in target_paginator.paginate(
-                        deploymentId=deployment_id
-                    ):
-                        yield (
-                            await inspector.inspect(
-                                DeploymentTargetActionInput(
-                                    deployment_id=deployment_id,
-                                    items=target_ids,
-                                    region=options.region,
-                                    account_id=options.account_id,
-                                ),
-                                options.include,
-                                extra_context={
-                                    "AccountId": options.account_id,
-                                    "Region": options.region,
-                                },
+                    try:
+                        async for target_ids in target_paginator.paginate(
+                            deploymentId=deployment_id
+                        ):
+                            yield (
+                                await inspector.inspect(
+                                    DeploymentTargetActionInput(
+                                        deployment_id=deployment_id,
+                                        items=target_ids,
+                                        region=options.region,
+                                        account_id=options.account_id,
+                                    ),
+                                    options.include,
+                                    extra_context={
+                                        "AccountId": options.account_id,
+                                        "Region": options.region,
+                                    },
+                                )
+                                if target_ids
+                                else []
                             )
-                            if target_ids
-                            else []
-                        )
+                    except ClientError as e:
+                        if e.response.get('Error', {}).get('Code') == 'DeploymentNotStartedException':
+                            logger.warning(f"Deployment {deployment_id} has not started, unable to fetch targets.")
+                            continue
+                        raise
