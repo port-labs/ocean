@@ -73,11 +73,17 @@ class TestTriggerPipelineWebhookProcessor:
         ) as mock_ocean:
             mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
             mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+            mock_ocean.port_client.post_run_log = AsyncMock()
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
             payload = make_event("success").payload
             await processor.handle_event(payload, resource_config)
 
+            mock_ocean.port_client.post_run_log.assert_called_once_with(
+                run,
+                "Pipeline completed with status: success",
+                should_raise=False,
+            )
             mock_ocean.port_client.report_run_completed.assert_called_once_with(
                 run, True, "Pipeline completed: success"
             )
@@ -93,11 +99,17 @@ class TestTriggerPipelineWebhookProcessor:
         ) as mock_ocean:
             mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
             mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+            mock_ocean.port_client.post_run_log = AsyncMock()
             mock_ocean.port_client.report_run_completed = AsyncMock()
 
             payload = make_event(status).payload
             await processor.handle_event(payload, resource_config)
 
+            mock_ocean.port_client.post_run_log.assert_called_once_with(
+                run,
+                f"Pipeline completed with status: {status}",
+                should_raise=False,
+            )
             mock_ocean.port_client.report_run_completed.assert_called_once_with(
                 run, False, f"Pipeline completed: {status}"
             )

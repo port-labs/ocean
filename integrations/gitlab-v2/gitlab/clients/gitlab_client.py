@@ -40,6 +40,10 @@ def _member_row_for_port(member: dict[str, Any], context: str) -> dict[str, Any]
     }
 
 
+def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
+    return project.get("namespace", {}).get("kind") == "user"
+
+
 class GitLabClient:
     DEFAULT_PARAMS: dict[str, Any] = {
         "all_available": True,  # Fetch all resources accessible to the user
@@ -47,6 +51,23 @@ class GitLabClient:
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
+
+    async def get_personal_namespace_projects(
+        self,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch projects in the authenticated user's personal namespace.
+
+        Uses the projects API with owned=true so fine-grained tokens do not need
+        the User: Read scope required by GET /user and GET /users/:id/projects.
+        Group-namespace projects are excluded via namespace.kind filtering.
+        """
+        params = {**self.DEFAULT_PARAMS, "owned": True}
+        async for batch in self.rest.get_paginated_resource("projects", params=params):
+            if personal_projects := list(filter(_is_personal_namespace_project, batch)):
+                logger.info(
+                    f"Received batch with {len(personal_projects)} personal namespace project(s)"
+                )
+                yield personal_projects
 
     async def get_tag(self, project_id: int, tag_name: str) -> dict[str, Any]:
         return await self.rest.send_api_request(

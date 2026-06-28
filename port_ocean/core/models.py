@@ -205,6 +205,7 @@ class WorkflowNodeRun(BaseModel):
     identifier: str
     status: WorkflowNodeRunStatus
     node: dict[str, Any] | None = None
+    output: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def id(self) -> str:
@@ -228,7 +229,6 @@ class WorkflowNodeRun(BaseModel):
 class ClaimedWorkflowNodeRun(WorkflowNodeRun):
     config: dict[str, Any]
     result: WorkflowNodeRunResult | None = None
-    output: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def action_type(self) -> str:
