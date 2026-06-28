@@ -92,3 +92,5 @@ resources:
             latestVersion: .latest_version
             createdAt: .created_at
             updatedAt: .updated_at
+          relations:
+            portSkill: .port_skill_id
