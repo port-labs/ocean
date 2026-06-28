@@ -1,6 +1,6 @@
 import asyncio
 from typing import Optional
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from github.clients.client_factory import create_github_client
 from port_ocean.context.ocean import ocean

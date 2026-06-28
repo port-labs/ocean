@@ -4,6 +4,7 @@ from typing import cast, Any, Dict
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from gitlab.actions.registry import register_actions_executors
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -44,6 +45,7 @@ from gitlab.webhook.webhook_processors.group_webhook_processor import (
     GroupWebhookProcessor,
 )
 from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
+from gitlab.webhook.webhook_factory.project_webhook_factory import ProjectWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
@@ -118,10 +120,15 @@ async def on_start() -> None:
         return
 
     if base_url := ocean.app.base_url:
-        logger.info(f"Creating webhooks for all groups at {base_url}")
         client = create_gitlab_client()
-        webhook_factory = GroupWebHook(client, base_url)
-        await webhook_factory.create_webhooks_for_all_groups()
+
+        logger.info(f"Creating webhooks for all groups at {base_url}")
+        group_webhook_factory = GroupWebHook(client, base_url)
+        await group_webhook_factory.create_webhooks_for_all_groups()
+
+        logger.info(f"Creating webhooks for personal namespace projects at {base_url}")
+        project_webhook_factory = ProjectWebHook(client, base_url)
+        await project_webhook_factory.create_webhooks_for_personal_projects()
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -626,3 +633,5 @@ ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", BranchWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", DeploymentWebhookProcessor)
+
+register_actions_executors()

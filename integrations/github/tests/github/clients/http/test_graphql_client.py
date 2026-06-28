@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.auth.retry_transport import GitHubRetryTransport
-from github.clients.http.graphql_client import GithubGraphQLClient
+from github.clients.http.graphql_client import GithubGraphQLClient, PAGE_SIZE
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 
 _GQL_HOST = "https://api.github.com"
@@ -200,6 +200,58 @@ class TestGithubGraphQLClient:
             assert len(results) == 2
             assert results[0] == [{"id": 1, "name": "repo1"}]
             assert results[1] == [{"id": 2, "name": "repo2"}]
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_resets_page_size_each_page(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        """Every page is built fresh at PAGE_SIZE — a reduced page size never persists.
+
+        GitHubRetryTransport shrinks `variables.first` only within a single
+        request's retry chain; the reduced request never flows back to the
+        client. Because send_paginated_request rebuilds the payload from scratch
+        on every iteration, each page returns to the full PAGE_SIZE regardless of
+        how far a previous page was shrunk to recover from a 5xx.
+        """
+        client = GithubGraphQLClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+
+        first_response_data = {
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "nodes": [{"id": 1, "name": "repo1"}],
+                        "pageInfo": {"hasNextPage": True, "endCursor": "cursor1"},
+                    }
+                }
+            }
+        }
+        second_response_data = {
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "nodes": [{"id": 2, "name": "repo2"}],
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    }
+                }
+            }
+        }
+
+        mock_send = AsyncMock(side_effect=[first_response_data, second_response_data])
+        with patch.object(client, "send_api_request", mock_send):
+            async for _ in client.send_paginated_request(
+                "query", params={"__path": "organization.repositories"}
+            ):
+                pass
+
+        page_sizes = [
+            call.kwargs["json_data"]["variables"]["first"]
+            for call in mock_send.call_args_list
+        ]
+        assert page_sizes == [PAGE_SIZE, PAGE_SIZE]
 
     @pytest.mark.asyncio
     async def test_send_paginated_request_empty_response(

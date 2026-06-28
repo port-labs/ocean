@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.11.1-beta (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 2.11.0-beta (2026-06-25)
+
+
+### Improvements
+
+- Added support for AWS::CodePipeline::Stage resource kind, enabling ingestion of CodePipeline Stages into the Port catalog
+
+
+## 2.10.0-beta (2026-06-25)
+
+
+### Improvements
+
+- Added support for AWS::CodeDeploy::Deployment resource kind, enabling ingestion of CodeDeploy Deployment into the Port catalog
+
+
+## 2.9.4-beta (2026-06-25)
+
+
+### Improvements
+
+- Added base (and used in CodePipeline) to allow for Action merge by id rather than index
+
+
+## 2.9.3-beta (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 2.9.2-beta (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
+## 2.9.1-beta (2026-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.43.19
+
+
 ## 2.9.0-beta (2026-06-17)
 
 

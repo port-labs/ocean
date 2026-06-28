@@ -11,14 +11,15 @@ the wrong AWS resource).
 from typing import Any, Dict, List, Type
 
 import pytest
-from pydantic import BaseModel
-from unittest.mock import AsyncMock
+from pydantic.v1 import BaseModel
+from unittest.mock import AsyncMock, patch, MagicMock
 
 from aws.core.interfaces.action import Action
 from aws.core.modeling.resource_inspector import ResourceInspector
 from aws.core.modeling.resource_models import ResourceModel
 
 _FakeActionInput = List[str]
+patch_prefix = "aws.core.modeling.resource_inspector"
 
 
 class _FakeProperties(BaseModel):
@@ -109,3 +110,69 @@ class TestResourceInspectorAlignment:
         assert resources[0]["Properties"] == {"a": 1, "b": 1}
         assert resources[1]["Properties"] == {"a": 2, "b": 3}  # corrupted
         assert resources[2]["Properties"] == {"a": 3}
+
+    @pytest.mark.asyncio
+    @patch(f"{patch_prefix}.logger")
+    async def test_action_id_key_merges_correctly_when_all_exist(
+        self, mock_logger: MagicMock
+    ) -> None:
+        # Arrange
+        resource_type = _FakeResource().Type
+        action_a = _make_action_class(
+            "ActionA", [{"a": 1, "id": 1}, {"a": 2, "id": 2}, {"a": 3, "id": 3}]
+        )
+        action_b = _make_action_class(
+            "ActionB", [{"b": 1, "id": 1}, {"b": 2, "id": 2}, {"b": 3, "id": 3}]
+        )
+
+        inspector = ResourceInspector[_FakeResource, _FakeActionInput](
+            AsyncMock(),
+            _FakeActionMap([action_a, action_b]),
+            _FakeResource,
+            action_id_key="id",
+        )
+
+        # Act
+        resources = await inspector.inspect(["res-1", "res-2", "res-3"], include=[])
+
+        # Assert
+        mock_logger.warning.assert_not_called()
+        assert resources == [
+            {"Properties": {"a": 1, "b": 1, "id": 1}, "Type": resource_type},
+            {"Properties": {"a": 2, "b": 2, "id": 2}, "Type": resource_type},
+            {"Properties": {"a": 3, "b": 3, "id": 3}, "Type": resource_type},
+        ]
+
+    @pytest.mark.asyncio
+    @patch(f"{patch_prefix}.logger")
+    async def test_action_id_key_merges_correctly_when_not_all_exist(
+        self, mock_logger: MagicMock
+    ) -> None:
+        # Arrange
+        resource_type = _FakeResource().Type
+        action_a = _make_action_class(
+            "ActionA", [{"a": 1, "id": 1}, {"a": 2, "id": 2}, {"a": 3, "id": 3}]
+        )
+        action_b = _make_action_class(
+            "ActionB", [{"b": 3, "id": 3}, {"b": 1, "id": 1}, {"some": "thing"}]
+        )
+
+        inspector = ResourceInspector[_FakeResource, _FakeActionInput](
+            AsyncMock(),
+            _FakeActionMap([action_a, action_b]),
+            _FakeResource,
+            action_id_key="id",
+        )
+
+        # Act
+        resources = await inspector.inspect(["res-1", "res-2", "res-3"], include=[])
+
+        # Assert
+        mock_logger.warning.assert_called_once_with(
+            "Missing key 'id' in result: {'some': 'thing'}, skipping ..."
+        )
+        assert resources == [
+            {"Properties": {"a": 1, "b": 1, "id": 1}, "Type": resource_type},
+            {"Properties": {"a": 2, "id": 2}, "Type": resource_type},
+            {"Properties": {"a": 3, "b": 3, "id": 3}, "Type": resource_type},
+        ]

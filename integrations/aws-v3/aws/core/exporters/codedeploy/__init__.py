@@ -9,6 +9,11 @@ from aws.core.exporters.codedeploy.deployment_group import (
     SingleCodeDeployDeploymentGroupRequest,
     PaginatedCodeDeployDeploymentGroupRequest,
 )
+from aws.core.exporters.codedeploy.deployment import (
+    CodeDeployDeploymentExporter,
+    SingleCodeDeployDeploymentRequest,
+    PaginatedCodeDeployDeploymentRequest,
+)
 from aws.core.exporters.codedeploy.deployment_target import (
     CodeDeployDeploymentTargetExporter,
     SingleCodeDeployDeploymentTargetRequest,
