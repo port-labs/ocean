@@ -102,7 +102,7 @@ class TestRedisStreamConsumerConnection:
         cert_pem = "-----BEGIN CERTIFICATE-----\ncert\n-----END CERTIFICATE-----"
         key_pem = "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----"
         settings = LiveEventsRedisSettings(
-            url="redis://localhost:6379",
+            url="rediss://localhost:6379",
             enable_tls=True,
             ca=_pem_b64(ca_pem),
             cert=_pem_b64(cert_pem),
@@ -189,22 +189,15 @@ class TestRedisStreamConsumerConnection:
 
         assert kwargs["connection_class"] is SSLConnection
 
-    def test_redis_client_kwargs_does_not_enable_tls_for_rediss_url_without_flag(
-        self,
-        mock_ocean_config: MagicMock,
-    ) -> None:
-        settings = LiveEventsRedisSettings(url="rediss://localhost:6379")
+    def test_redis_client_kwargs_rejects_mismatched_tls_url_scheme(self) -> None:
+        with pytest.raises(ValueError, match="rediss://"):
+            LiveEventsRedisSettings(url="rediss://localhost:6379")
 
-        with patch(
-            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
-        ):
-            consumer = RedisStreamConsumer(
-                redis_settings=settings,
-                stream_key="stream",
-                on_message=AsyncMock(),
+        with pytest.raises(ValueError, match="rediss://"):
+            LiveEventsRedisSettings(
+                url="redis://localhost:6379",
+                enable_tls=True,
             )
-
-        assert consumer._redis_client_kwargs() == {"decode_responses": True}
 
     @pytest.mark.asyncio
     async def test_stop_cleans_up_tls_files(

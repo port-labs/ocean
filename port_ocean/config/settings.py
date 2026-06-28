@@ -1,5 +1,6 @@
 import platform
 from typing import Any, Literal, Optional, Type
+from urllib.parse import urlparse
 
 from pydantic import AnyHttpUrl, Extra, Field, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
@@ -136,6 +137,36 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         ge=1,
         description="Maximum number of stream entries to return per XREADGROUP call.",
     )
+
+    @root_validator
+    def validate_tls_settings(cls, values: dict[str, Any]) -> dict[str, Any]:
+        url = values.get("url", "redis://localhost:6379")
+        enable_tls = values.get("enable_tls", False)
+        cert = values.get("cert")
+        private_key = values.get("private_key")
+
+        scheme = urlparse(url).scheme.lower()
+        uses_tls_scheme = scheme == "rediss"
+
+        if enable_tls and not uses_tls_scheme:
+            raise ValueError(
+                "enable_tls is True but the Redis URL does not use the rediss:// "
+                "scheme. Use a rediss:// URL or set enable_tls to False."
+            )
+        if not enable_tls and uses_tls_scheme:
+            raise ValueError(
+                "The Redis URL uses rediss:// but enable_tls is False. "
+                "Set enable_tls to True or use a redis:// URL."
+            )
+
+        has_cert = bool(cert)
+        has_private_key = bool(private_key)
+        if has_cert != has_private_key:
+            raise ValueError(
+                "Redis mutual TLS requires both cert and private_key to be set."
+            )
+
+        return values
 
 
 class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
