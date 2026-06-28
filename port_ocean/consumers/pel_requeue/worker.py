@@ -193,8 +193,10 @@ class PELRequeueWorker:
         new_fields = dict(fields)
         new_fields["requeue_count"] = str(requeue_count + 1)
 
-        await self._redis.xadd(self._stream_key, cast(Any, new_fields))
-        await self._redis.xack(self._stream_key, self._consumer_group, message_id)
+        async with self._redis.pipeline(transaction=True) as pipe:
+            await pipe.xadd(self._stream_key, cast(Any, new_fields))
+            await pipe.xack(self._stream_key, self._consumer_group, message_id)
+            await pipe.execute()
 
         logger.info(
             "Requeued stuck PEL message",

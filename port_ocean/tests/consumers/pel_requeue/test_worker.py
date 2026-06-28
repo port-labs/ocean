@@ -1,6 +1,8 @@
 """Tests for PELRequeueWorker."""
 
 import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from typing import Any
 from unittest.mock import AsyncMock
@@ -28,6 +30,18 @@ def _make_redis() -> AsyncMock:
     redis.xautoclaim = AsyncMock(return_value=("0-0", [], []))
     redis.xadd = AsyncMock(return_value="1700000000001-0")
     redis.xack = AsyncMock(return_value=1)
+
+    @asynccontextmanager
+    async def fake_pipeline(
+        *_args: object, **_kwargs: object
+    ) -> AsyncIterator[AsyncMock]:
+        pipe = AsyncMock()
+        pipe.xadd = redis.xadd
+        pipe.xack = redis.xack
+        pipe.execute = AsyncMock(return_value=["1700000000001-0", 1])
+        yield pipe
+
+    redis.pipeline = fake_pipeline
     return redis
 
 
@@ -187,6 +201,34 @@ class TestPELHandleStuckMessage:
         redis.xack.assert_awaited_once_with(
             worker._stream_key, worker._consumer_group, "1700000000000-0"
         )
+
+    @pytest.mark.asyncio
+    async def test_requeue_uses_transactional_pipeline(self) -> None:
+        redis = _make_redis()
+        worker = _make_worker(redis, max_requeue_count=3)
+
+        pipeline_calls: list[dict[str, Any]] = []
+
+        @asynccontextmanager
+        async def tracking_pipeline(
+            *_args: object, **kwargs: object
+        ) -> AsyncIterator[AsyncMock]:
+            pipeline_calls.append(kwargs)
+            pipe = AsyncMock()
+            pipe.xadd = redis.xadd
+            pipe.xack = redis.xack
+            pipe.execute = AsyncMock(return_value=["1700000000001-0", 1])
+            yield pipe
+
+        redis.pipeline = tracking_pipeline
+
+        fields = {"webhookPath": "/webhook", "payload": "{}", "headers": "{}"}
+        await worker._handle_stuck_message("1700000000000-0", fields)
+
+        assert pipeline_calls == [{"transaction": True}]
+        redis.xadd.assert_awaited_once()
+        redis.xack.assert_awaited_once()
+        assert redis.xadd.await_args_list[0].args[0] == worker._stream_key
 
     @pytest.mark.asyncio
     async def test_increments_requeue_count_from_zero(self) -> None:
