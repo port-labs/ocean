@@ -87,10 +87,10 @@ class AccountStrategyFactory:
         Detect the appropriate strategy type based on the global configuration.
         """
 
-        if config["account_role_arn"]:
+        if config.get("account_role_arn"):
             return OrganizationsStrategy
 
-        account_role_arns = config["account_role_arns"]
+        account_role_arns = config.get("account_role_arns")
         if account_role_arns and len(account_role_arns) > 0:
             return MultiAccountStrategy
 
@@ -141,3 +141,17 @@ async def clear_aws_account_sessions() -> None:
     if AccountStrategyFactory._cached_strategy:
         AccountStrategyFactory._cached_strategy = None
         logger.debug("All cached AWS account sessions have been cleared.")
+
+
+async def get_session_for_account(account_id: str) -> AioSession:
+    """Return an aiobotocore AioSession for the given AWS account id.
+
+    This is a convenience helper used by event handlers which need a session
+    for a single account. It iterates the configured account sessions and
+    returns the matching session. Raises ValueError if not found.
+    """
+    async for acct_info, session in get_all_account_sessions():
+        if acct_info["Id"] == account_id or acct_info.get("Id") == str(account_id):
+            return session
+
+    raise ValueError(f"No AWS session found for account {account_id}")

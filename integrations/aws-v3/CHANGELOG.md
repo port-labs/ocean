@@ -1,3 +1,11 @@
+```markdown
+# Changelog — aws-v3 integration
+
+## Unreleased
+
+- Add live events support: webhook receiver, per-kind handlers (EC2, ECS service, Lambda, S3), SNS envelope unwrapping, HMAC signature validation via `webhookSecret`, and in-memory dedupe. Tests (pytest-asyncio) added to cover routing, signature validation, handler behavior, and dedupe logic.
+
+``` 
 # Changelog - Ocean - aws-v3
 
 All notable changes to this project will be documented in this file.
