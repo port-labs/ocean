@@ -44,7 +44,7 @@ def _to_jsonable(value: Any) -> Any:
     return pydantic_encoder(value)
 
 
-class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: BaseModel]:
+class ResourceBuilder[ResourceModelT: ResourceModel[Any], TProperties: BaseModel]:
     """
     Builder class for constructing AWS resource models with strongly-typed properties.
 
