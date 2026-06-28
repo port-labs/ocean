@@ -1,8 +1,31 @@
-from typing import Any, Self
-from aws.core.modeling.resource_models import ResourceModel
+from datetime import date, datetime
+from typing import Any, Dict, Self
+
 from pydantic.v1 import BaseModel
-from typing import Dict
-import json
+from pydantic.v1.json import pydantic_encoder
+
+from aws.core.modeling.resource_models import ResourceModel
+
+_JSON_NATIVE = (str, int, float, bool, type(None))
+
+
+def _to_jsonable(value: Any) -> Any:
+    """Convert a pydantic ``.dict()`` result into JSON-native values.
+
+    Same output as the old ``json.loads(model.json(...))`` round-trip, but
+    without encoding the whole model to a string and parsing it back. Containers
+    are walked recursively; non-native leaves fall back to pydantic's encoder
+    (``datetime`` is special-cased since it dominates these AWS payloads).
+    """
+    if isinstance(value, dict):
+        return {key: _to_jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_to_jsonable(item) for item in value]
+    if isinstance(value, _JSON_NATIVE):
+        return value
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return pydantic_encoder(value)
 
 
 class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: BaseModel]:
@@ -30,6 +53,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
             model: An instance of a resource model to be built or modified.
         """
         self._model = model
+        self._props_set = False
 
     def with_properties(self, data: dict[str, Any]) -> Self:
         """
@@ -42,9 +66,12 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
             Self: The builder instance for method chaining.
         """
 
-        current_data = self._model.Properties.dict(exclude_unset=True)
-        current_data.update(data)
-        self._model.Properties = type(self._model.Properties)(**current_data)
+        # The inspector hands us a fresh model with no explicitly-set properties,
+        # so build straight from ``data``. Only merge with the existing values on
+        # the rare path where properties were already set.
+        if self._model.Properties.__fields_set__:
+            data = {**self._model.Properties.dict(exclude_unset=True), **data}
+        self._model.Properties = type(self._model.Properties)(**data)
         self._props_set = True
         return self
 
@@ -74,5 +101,4 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
                 "No data has been set for the resource model, use `with_data` to set data."
             )
 
-        resource_json = self._model.json(exclude_unset=True, by_alias=True)
-        return json.loads(resource_json)
+        return _to_jsonable(self._model.dict(exclude_unset=True, by_alias=True))
