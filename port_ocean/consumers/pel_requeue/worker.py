@@ -19,17 +19,12 @@ import asyncio
 from loguru import logger
 from redis.asyncio import Redis
 
-from port_ocean.consumers.pel_requeue_worker_settings import (
+from port_ocean.consumers.pel_requeue.leader_election import RedisLeaderElection
+from port_ocean.consumers.pel_requeue.settings import (
     PELRequeueWorkerSettings,
     _PEL_CONSUMER_NAME,
     _PEL_LEADER_ELECTION_NAME,
 )
-from port_ocean.consumers.redis_leader_election import RedisLeaderElection
-
-__all__ = [
-    "PELRequeueWorker",
-    "PELRequeueWorkerSettings",
-]
 
 
 class PELRequeueWorker:

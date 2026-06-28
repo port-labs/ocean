@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from port_ocean.consumers.redis_leader_election import RedisLeaderElection
+from port_ocean.consumers.pel_requeue.leader_election import RedisLeaderElection
 
 
 def _make_redis() -> AsyncMock:

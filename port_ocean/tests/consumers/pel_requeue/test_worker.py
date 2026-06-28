@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from port_ocean.consumers.pel_requeue_worker import PELRequeueWorker
-from port_ocean.consumers.pel_requeue_worker_settings import (
+from port_ocean.consumers.pel_requeue import PELRequeueWorker
+from port_ocean.consumers.pel_requeue.settings import (
     PELRequeueWorkerSettings,
     _LEADER_KEY_SUFFIX,
     _PEL_CONSUMER_NAME,

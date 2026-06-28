@@ -18,8 +18,7 @@ from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
-from port_ocean.consumers.pel_requeue_worker import PELRequeueWorker
-from port_ocean.consumers.pel_requeue_worker_settings import PELRequeueWorkerSettings
+from port_ocean.consumers.pel_requeue import PELRequeueWorker, PELRequeueWorkerSettings
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
