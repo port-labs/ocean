@@ -43,6 +43,10 @@ from aws.core.exporters.elasticache import ElastiCacheClusterExporter
 from aws.core.exporters.elasticache.cluster.models import PaginatedCacheClusterRequest
 from aws.core.exporters.ec2.volume import EbsVolumeExporter
 from aws.core.exporters.ec2.volume.models import PaginatedEbsVolumeRequest
+from aws.core.exporters.ec2.volume_attachment import EC2VolumeAttachmentExporter
+from aws.core.exporters.ec2.volume_attachment.models import (
+    PaginatedEC2VolumeAttachmentRequest,
+)
 from aws.core.exporters.codebuild import (
     CodeBuildProjectExporter,
     PaginatedCodeBuildProjectRequest,
@@ -372,6 +376,18 @@ async def resync_codepipeline_action(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         kind,
         CodePipelineActionExporter,
         PaginatedCodePipelineActionRequest,
+        regional=True,
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.EC2_VOLUME_ATTACHMENT)
+async def resync_ec2_volume_attachment(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind,
+        EC2VolumeAttachmentExporter,
+        PaginatedEC2VolumeAttachmentRequest,
         regional=True,
     )
     async for batch in service:
