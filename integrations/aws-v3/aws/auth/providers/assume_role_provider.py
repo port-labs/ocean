@@ -1,3 +1,4 @@
+from aws import Consts
 from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from aiobotocore.credentials import (
@@ -7,6 +8,8 @@ from aiobotocore.credentials import (
 from aws.auth.utils import CredentialsProviderError
 from loguru import logger
 from typing import Any
+
+from aws.utils import LocationUtils
 
 
 class AssumeRoleProvider(CredentialProvider):
@@ -28,9 +31,12 @@ class AssumeRoleProvider(CredentialProvider):
 
     async def get_credentials(self, **kwargs: Any) -> AioRefreshableCredentials:
         try:
-            async with self.aws_client_factory_session.create_client(
-                "sts", region_name=kwargs.get("region", 'us-gov-west-1')
-            ) as sts_client:
+            region = kwargs.get("region")
+            if not region:
+                region =  None if LocationUtils.get_partition() == Consts.default_partition else \
+                    LocationUtils.get_first_available_region(self.aws_client_factory_session)
+
+            async with self.aws_client_factory_session.create_client("sts", region_name=region) as sts_client:
                 role_arn = kwargs["role_arn"]
                 assume_role_params = {
                     "RoleArn": role_arn,

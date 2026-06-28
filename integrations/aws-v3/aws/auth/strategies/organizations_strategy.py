@@ -1,3 +1,4 @@
+from aws import Consts
 from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
 from aws.auth.utils import (
     AWSOrganizationsNotInUseError,
@@ -11,6 +12,8 @@ import asyncio
 from typing import Any, AsyncIterator, Dict, List, cast
 from botocore.utils import ArnParser, InvalidArnException
 from aiobotocore.client import AioBaseClient
+
+from aws.utils import LocationUtils
 
 # https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
 VALID_AWS_PARTITIONS = frozenset({"aws", "aws-us-gov", "aws-cn"})
@@ -244,9 +247,11 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
 
         try:
             organization_session = await self._get_organization_session()
+            region = None if LocationUtils.get_partition() == Consts.default_partition else \
+                LocationUtils.get_first_available_region(organization_session)
             async with organization_session.create_client(
                 "organizations",
-                region_name='us-gov-west-1',
+                region_name=region,
             ) as org_client:
                 if ou_ids:
                     logger.info(
