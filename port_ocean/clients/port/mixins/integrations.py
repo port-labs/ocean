@@ -426,10 +426,11 @@ class IntegrationClientMixin:
             headers=await self.auth.headers(),
             params={"kind": kind, "index": index},
         )
-        if response.status_code == 404:
-            return None
         handle_port_status_code(response)
-        raw = response.json().get("primary")
+        cursor = response.json().get("cursor")
+        if not cursor:
+            return None
+        raw = cursor.get("primary")
         return datetime.fromisoformat(raw) if raw else None
 
     async def upsert_integration_cursor(
