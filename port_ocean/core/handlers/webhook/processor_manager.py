@@ -80,7 +80,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 redis_settings=config.live_events.redis,
                 stream_key=stream_key,
                 on_message=self._on_redis_stream_message,
-                consumer_group=config.live_events.redis.consumer_group,
                 registered_paths=set(self._processors_classes.keys()),
             )
             await self._redis_consumer.start()

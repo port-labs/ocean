@@ -52,7 +52,6 @@ class TestResolveLiveEventsStreamKey:
 def redis_settings() -> LiveEventsRedisSettings:
     return LiveEventsRedisSettings(
         url="redis://localhost:6379",
-        consumer_group="test.integration",
         block_ms=100,
     )
 

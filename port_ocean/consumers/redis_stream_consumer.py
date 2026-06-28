@@ -38,13 +38,12 @@ class RedisStreamConsumer:
         stream_key: str,
         on_message: OnStreamMessage,
         *,
-        consumer_group: str | None = None,
         registered_paths: set[str] | None = None,
     ) -> None:
         self._settings = redis_settings
         self._stream_key = stream_key
         self._on_message = on_message
-        self._consumer_group = consumer_group or self._resolve_consumer_group()
+        self._consumer_group = self._resolve_consumer_group()
         self._registered_paths = registered_paths or set()
         self._redis: Redis | None = None
         self._ssl_cert_file: str | None = None
