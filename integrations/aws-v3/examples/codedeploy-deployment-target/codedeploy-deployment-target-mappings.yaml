@@ -13,10 +13,5 @@ resources:
           properties:
             deploymentId: .Properties.DeploymentId
             deploymentTargetType: .Properties.DeploymentTargetType
-            targetId: .Properties.TargetId
-            targetArn: .Properties.TargetArn
-            status: .Properties.Status
-            lastUpdatedAt: .Properties.LastUpdatedAt
-            lifecycleEvents: .Properties.LifecycleEvents
           relations:
             account: .__ExtraContext.AccountId
