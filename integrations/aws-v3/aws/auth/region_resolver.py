@@ -1,6 +1,9 @@
 from aiobotocore.session import AioSession
 from typing import List, Set, Optional
 from loguru import logger
+
+from aws import Consts
+from aws.utils import LocationUtils
 from integration import AWSResourceSelector
 from port_ocean.context.ocean import ocean
 
@@ -19,9 +22,8 @@ class RegionResolver:
         self.account_id = account_id
 
     async def get_enabled_regions(self) -> List[str]:
-        partition: str | None = ocean.integration_config.get('aws_partition')
-        if partition:
-            return await self.session.get_available_regions('ec2', partition_name=partition)
+        if LocationUtils.get_partition() != Consts.default_partition:
+            return await LocationUtils.get_all_available_regions(self.session)
 
         async with self.session.create_client("account", region_name=None) as client:
             response = await client.list_regions(

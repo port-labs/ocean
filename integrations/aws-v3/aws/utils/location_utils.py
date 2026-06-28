@@ -33,3 +33,7 @@ class LocationUtils:
     async def get_first_available_region(cls, session: AioSession) -> str | None:
         regions = await cls.get_all_available_regions(session)
         return regions[0] if regions else None
+
+    @classmethod
+    async def get_custom_partition_region_or_none(cls, session: AioSession) -> str | None:
+        return None if cls.get_partition() == Consts.default_partition else await cls.get_first_available_region(session)

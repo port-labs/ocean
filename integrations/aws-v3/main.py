@@ -199,7 +199,7 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
         )
 
         exporter = OrganizationsAccountExporter(session)
-        region = '' if LocationUtils.get_partition() == Consts.default_partition else LocationUtils.get_first_available_region(session)
+        region = await LocationUtils.get_custom_partition_region_or_none(session) or ''
         options = PaginatedAccountRequest(
             include=aws_resource_config.selector.include_actions,
             account_id=account["Id"],

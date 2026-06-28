@@ -29,13 +29,7 @@ class SingleAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 }
             session = await self.provider.get_session(**session_kwargs)
 
-            partition = LocationUtils.get_partition()
-            if partition:
-                # We don't really care which region is selected, we just need a valid one to fetch the identity
-                region = LocationUtils.get_first_available_region(session)
-            else:
-                region = None
-
+            region = await LocationUtils.get_custom_partition_region_or_none(session)
             async with session.create_client("sts", region_name=region) as sts:
                 identity = await sts.get_caller_identity()
                 self.account_id = identity["Account"]
