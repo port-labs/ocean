@@ -536,3 +536,35 @@ async def test_trigger_agent_executor_injects_github_pat_into_session_config() -
             ]
         },
     )
+
+
+@pytest.mark.asyncio
+async def test_trigger_agent_executor_completes_run_synchronously_when_report_status_false() -> None:
+    client_mock = MagicMock()
+    client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
+    client_mock.send_user_message = AsyncMock(return_value=_user_message_event())
+    executor = _build_executor(TriggerAgentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {
+        "agentId": "agent_1",
+        "environmentId": "env_1",
+        "prompt": "go",
+        "reportSessionStatus": False,
+    }
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.update_run_started = AsyncMock()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.trigger_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    mock_ocean.port_client.update_run_started.assert_awaited_once()
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+    assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True

@@ -121,3 +121,8 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
                 "userMessageEventId": user_message.id,
             },
         )
+
+        if not props.get("reportSessionStatus", True):
+            await ocean.port_client.report_run_completed(
+                run, True, f"Prompt sent to session {resolved_session_id}"
+            )

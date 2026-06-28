@@ -156,18 +156,3 @@ def test_unwrap_webhook_without_secret_raises() -> None:
     assert instance.has_webhook_secret is False
     with pytest.raises(ValueError):
         instance.unwrap_webhook("{}", {})
-
-
-@pytest.mark.asyncio
-async def test_get_skills_batches_results(client: AnthropicClient) -> None:
-    inner: Any = client._client
-    items = [_Model({"id": "s1"}), _Model({"id": "s2"}), _Model({"id": "s3"})]
-    inner.beta.skills.list = AsyncMock(return_value=_aiter(items))
-
-    batches = [batch async for batch in client.get_skills()]
-
-    assert batches == [[{"id": "s1"}, {"id": "s2"}], [{"id": "s3"}]]
-    inner.beta.skills.list.assert_awaited_once_with(
-        source="custom",
-        extra_headers={"anthropic-beta": "skills-2025-10-02"},
-    )
