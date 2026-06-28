@@ -1,5 +1,6 @@
 import os
 import sys
+from collections.abc import Iterator
 
 import pytest
 
@@ -10,9 +11,12 @@ if INTEGRATION_PATH not in sys.path:
 
 
 @pytest.fixture(autouse=True)
-def _reset_github_client_cache():
+def _reset_github_client_cache() -> Iterator[None]:
     from github.clients.client_factory import GithubClientFactory
+    from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
     GithubClientFactory._instances.clear()
+    GitHubRateLimiterRegistry.reset_for_fork()
     yield
     GithubClientFactory._instances.clear()
+    GitHubRateLimiterRegistry.reset_for_fork()

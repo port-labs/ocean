@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -29,10 +30,10 @@ def _repo_entity_id(repo: str, suffix: str) -> str:
 
 
 def _per_repo_pair(
-    suffix_fn,
+    suffix_fn: Callable[[int], str],
     *,
-    title_fn=None,
-    properties_fn=None,
+    title_fn: Callable[[str, int], str] | None = None,
+    properties_fn: Callable[[str, int], dict[str, Any]] | None = None,
     relations: bool = True,
 ) -> tuple[EntityExpectation, ...]:
     entities: list[EntityExpectation] = []
