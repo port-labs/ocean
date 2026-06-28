@@ -39,32 +39,38 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
     """
     Builder class for constructing AWS resource models with strongly-typed properties.
 
-    Provides a fluent interface to set multiple fields on the `Properties`
-    attribute of a given resource model, which is expected to be a subclass of
-    `BaseResponseModel` parameterized with a Pydantic `BaseModel` for its properties.
+    Provides a fluent interface to collect the resource's `Type`, `Properties`
+    and extra context, then constructs the model in a single pass at `build`.
+    Deferring construction lets us validate `Properties` exactly once per
+    resource, instead of instantiating an empty default model up front and
+    immediately discarding it.
 
     Type Parameters:
-        ResourceModelT: A subclass of `BaseResponseModel` with properties of type `TProperties`.
+        ResourceModelT: A subclass of `ResourceModel` with properties of type `TProperties`.
         TProperties: A Pydantic `BaseModel` representing the resource's properties.
 
     Example:
-        >>> builder = ModelBuilder(MyResourceModel(Type="...", Properties=MyProperties()))
-        >>> resource = builder.with_data({"Name": "example", "Size": 42}).build()
+        >>> builder = ResourceBuilder(MyResourceModel)
+        >>> resource = builder.with_properties({"Name": "example", "Size": 42}).build()
     """
 
-    def __init__(self, model: ResourceModelT) -> None:
+    def __init__(self, model_cls: type[ResourceModelT]) -> None:
         """
-        Initialize the builder with a resource model instance.
+        Initialize the builder for a resource model class.
 
         Args:
-            model: An instance of a resource model to be built or modified.
+            model_cls: The resource model class to construct on `build`.
         """
-        self._model = model
-        self._props_set = False
+        self._model_cls = model_cls
+        self._properties: dict[str, Any] | None = None
+        self._type: str | None = None
+        self._extra_context: dict[str, Any] | None = None
 
     def with_properties(self, data: dict[str, Any]) -> Self:
         """
-        Set multiple fields in the resource's `Properties` attribute.
+        Set the fields of the resource's `Properties`.
+
+        Repeated calls merge, with later values taking precedence.
 
         Args:
             data: A dictionary of property names and their corresponding values to set.
@@ -72,40 +78,48 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         Returns:
             Self: The builder instance for method chaining.
         """
-
-        # The inspector hands us a fresh model with no explicitly-set properties,
-        # so build straight from ``data``. Only merge with the existing values on
-        # the rare path where properties were already set.
-        if self._model.Properties.__fields_set__:
-            data = {**self._model.Properties.dict(exclude_unset=True), **data}
-        self._model.Properties = type(self._model.Properties)(**data)
-        self._props_set = True
+        self._properties = (
+            data if self._properties is None else {**self._properties, **data}
+        )
         return self
 
     def with_extra_context(self, data: dict[str, Any]) -> Self:
         """
         Set enrichments for the resource model.
         """
-        self._model.ExtraContext = self._model.ExtraContext.copy(update=data)
+        self._extra_context = (
+            data if self._extra_context is None else {**self._extra_context, **data}
+        )
         return self
 
     def with_type(self, type: str) -> Self:
         """
         Set the type of the resource model.
         """
-        self._model.Type = type
+        self._type = type
         return self
 
     def build(self) -> Dict[str, Any]:
         """
-        Finalize and return the constructed resource model.
+        Construct the resource model in a single validation pass and return it
+        as a JSON-native dict.
 
         Returns:
             Dict[str, Any]: The built resource model dictionary.
         """
-        if not self._props_set:
+        if self._properties is None:
             raise ValueError(
-                "No data has been set for the resource model, use `with_data` to set data."
+                "No data has been set for the resource model, use `with_properties` to set data."
             )
 
-        return _to_jsonable(self._model.dict(exclude_unset=True, by_alias=True))
+        # Supplying ``Properties`` directly skips the model's empty default
+        # factory and validates the payload exactly once.
+        fields: dict[str, Any] = {"Properties": self._properties}
+        if self._type is not None:
+            fields["Type"] = self._type
+        model = self._model_cls(**fields)
+
+        if self._extra_context:
+            model.ExtraContext = model.ExtraContext.copy(update=self._extra_context)
+
+        return _to_jsonable(model.dict(exclude_unset=True, by_alias=True))
