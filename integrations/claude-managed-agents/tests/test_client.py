@@ -12,7 +12,7 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
     BetaManagedAgentsUserMessageEvent,
 )
 
-from clients.anthropic_client import AnthropicClient, SKILLS_BETA, _serialize
+from clients.anthropic_client import AnthropicClient, _serialize
 
 
 class _Model:
@@ -169,41 +169,5 @@ async def test_get_skills_batches_results(client: AnthropicClient) -> None:
     assert batches == [[{"id": "s1"}, {"id": "s2"}], [{"id": "s3"}]]
     inner.beta.skills.list.assert_awaited_once_with(
         source="custom",
-        extra_headers={"anthropic-beta": SKILLS_BETA},
-    )
-
-
-@pytest.mark.asyncio
-async def test_create_skill_uses_skills_beta_header(client: AnthropicClient) -> None:
-    inner: Any = client._client
-    inner.beta.skills.create = AsyncMock(return_value=_Model({"id": "skill_1"}))
-
-    result = await client.create_skill(
-        [("dir/SKILL.md", b"bytes")], display_title="Demo"
-    )
-
-    assert result == {"id": "skill_1"}
-    inner.beta.skills.create.assert_awaited_once_with(
-        files=[("dir/SKILL.md", b"bytes")],
-        display_title="Demo",
-        extra_headers={"anthropic-beta": SKILLS_BETA},
-    )
-
-
-@pytest.mark.asyncio
-async def test_create_skill_version_uses_skills_beta_header(
-    client: AnthropicClient,
-) -> None:
-    inner: Any = client._client
-    inner.beta.skills.versions.create = AsyncMock(
-        return_value=_Model({"id": "skillver_1"})
-    )
-
-    result = await client.create_skill_version("skill_1", [("dir/SKILL.md", b"bytes")])
-
-    assert result == {"id": "skillver_1"}
-    inner.beta.skills.versions.create.assert_awaited_once_with(
-        "skill_1",
-        files=[("dir/SKILL.md", b"bytes")],
-        extra_headers={"anthropic-beta": SKILLS_BETA},
+        extra_headers={"anthropic-beta": "skills-2025-10-02"},
     )

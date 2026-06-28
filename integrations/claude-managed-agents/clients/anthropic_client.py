@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Mapping, Sequence
 from datetime import datetime
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from anthropic import AsyncAnthropic
 from anthropic.types.beta import UnwrapWebhookEvent
@@ -97,40 +97,6 @@ class AnthropicClient:
         ):
             yield batch
 
-    async def get_skill(self, skill_id: str) -> dict[str, Any]:
-        skill = await self._client.beta.skills.retrieve(
-            skill_id,
-            extra_headers=self._skills_headers(),
-        )
-        return _serialize(skill)
-
-    async def create_skill(
-        self,
-        files: Sequence[tuple[str, Any]],
-        *,
-        display_title: str | None = None,
-    ) -> dict[str, Any]:
-        logger.info(f"Creating Claude skill '{display_title or 'untitled'}'")
-        skill = await self._client.beta.skills.create(
-            files=cast(Any, list(files)),
-            display_title=display_title,
-            extra_headers=self._skills_headers(),
-        )
-        return _serialize(skill)
-
-    async def create_skill_version(
-        self,
-        skill_id: str,
-        files: Sequence[tuple[str, Any]],
-    ) -> dict[str, Any]:
-        logger.info(f"Creating new version for Claude skill '{skill_id}'")
-        version = await self._client.beta.skills.versions.create(
-            skill_id,
-            files=cast(Any, list(files)),
-            extra_headers=self._skills_headers(),
-        )
-        return _serialize(version)
-
     async def get_session(self, session_id: str) -> dict[str, Any]:
         return _serialize(await self._client.beta.sessions.retrieve(session_id))
 
@@ -206,24 +172,6 @@ class AnthropicClient:
         agent = await self._client.beta.agents.create(**payload)
         return _serialize(agent)
 
-    async def get_agent(self, agent_id: str) -> dict[str, Any]:
-        return _serialize(await self._client.beta.agents.retrieve(agent_id))
-
-    async def update_agent(
-        self,
-        agent_id: str,
-        *,
-        version: int,
-        extra: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            k: v for k, v in (extra or {}).items() if v is not None
-        }
-        payload["version"] = version
-        logger.info(f"Updating Claude agent '{agent_id}' (version {version})")
-        agent = await self._client.beta.agents.update(agent_id, **payload)
-        return _serialize(agent)
-
     async def create_session(
         self,
         agent_id: str,
@@ -240,17 +188,6 @@ class AnthropicClient:
             f"Creating Claude session for agent '{agent_id}' in environment '{environment_id}'"
         )
         session = await self._client.beta.sessions.create(**payload)
-        return _serialize(session)
-
-    async def update_session(
-        self, session_id: str, *, vault_ids: list[str] | None = None
-    ) -> dict[str, Any]:
-        payload: dict[str, Any] = {}
-        if vault_ids is not None:
-            payload["vault_ids"] = vault_ids
-
-        logger.info(f"Updating Claude session '{session_id}'")
-        session = await self._client.beta.sessions.update(session_id, **payload)
         return _serialize(session)
 
     async def send_user_message(
