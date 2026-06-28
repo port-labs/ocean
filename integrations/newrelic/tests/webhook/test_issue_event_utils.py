@@ -38,6 +38,26 @@ async def test_enrich_issue_entity_relations() -> None:
 
 
 @pytest.mark.asyncio
+async def test_enrich_issue_entity_relations_continues_on_fetch_failure() -> None:
+    issue_record: dict[str, object] = {
+        "issueId": "issue-1",
+        "entityGuids": ["entity-guid-1"],
+    }
+
+    with patch(
+        "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
+    ) as mock_handler_cls:
+        mock_handler = mock_handler_cls.return_value
+        mock_handler.list_entities_by_guids = AsyncMock(
+            side_effect=RuntimeError("GraphQL unavailable")
+        )
+        await enrich_issue_entity_relations(issue_record)
+
+    assert issue_record["issueId"] == "issue-1"
+    assert "__APM_APPLICATION" not in issue_record
+
+
+@pytest.mark.asyncio
 async def test_get_issue_event_entities_deduplicates_concurrent_fetches() -> None:
     with patch(
         "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
@@ -53,9 +73,11 @@ async def test_get_issue_event_entities_deduplicates_concurrent_fetches() -> Non
         )
 
     mock_handler.list_entities_by_guids.assert_awaited_once_with(["entity-guid-1"])
-    assert first_fetch == second_fetch == {
-        "entity-guid-1": {"type": "APM_APPLICATION", "guid": "entity-guid-1"}
-    }
+    assert (
+        first_fetch
+        == second_fetch
+        == {"entity-guid-1": {"type": "APM_APPLICATION", "guid": "entity-guid-1"}}
+    )
 
 
 @pytest.fixture

@@ -67,3 +67,23 @@ async def test_handle_event_enriches_issue(
     assert len(results.updated_raw_results) == 1
     assert results.updated_raw_results[0]["issueId"] == "issue-1"
     assert results.deleted_raw_results == []
+
+
+@pytest.mark.asyncio
+async def test_handle_event_still_syncs_issue_when_enrichment_fails(
+    processor: IssueWebhookProcessor,
+    alert_resource_config: NewRelicAlertResourceConfig,
+    issue_payload: dict[str, object],
+) -> None:
+    with patch(
+        "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
+    ) as mock_handler_cls:
+        mock_handler = mock_handler_cls.return_value
+        mock_handler.list_entities_by_guids = AsyncMock(
+            side_effect=RuntimeError("GraphQL unavailable")
+        )
+        results = await processor.handle_event(issue_payload, alert_resource_config)
+
+    assert len(results.updated_raw_results) == 1
+    assert results.updated_raw_results[0]["issueId"] == "issue-1"
+    assert results.deleted_raw_results == []

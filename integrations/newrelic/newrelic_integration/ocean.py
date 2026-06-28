@@ -47,9 +47,11 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             entities = []
             async for entity in EntitiesHandler().list_entities_by_resource_kind(kind):
                 if port_resource_configuration.selector.calculate_open_issue_count:
-                    number_of_open_issues = await IssuesHandler().get_number_of_issues_by_entity_guid(
-                        entity["guid"],
-                        issue_state=IssueState.ACTIVATED,
+                    number_of_open_issues = (
+                        await IssuesHandler().get_number_of_issues_by_entity_guid(
+                            entity["guid"],
+                            issue_state=IssueState.ACTIVATED,
+                        )
                     )
                     entity["__open_issues_count"] = number_of_open_issues
                 counter += 1
@@ -77,9 +79,7 @@ async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         async for service_levels in service_level_handler.list_service_levels():
             tasks = [
-                enrich_service_level(
-                    service_level_handler, semaphore, service_level
-                )
+                enrich_service_level(service_level_handler, semaphore, service_level)
                 for service_level in service_levels
             ]
             enriched_service_levels = await asyncio.gather(*tasks)

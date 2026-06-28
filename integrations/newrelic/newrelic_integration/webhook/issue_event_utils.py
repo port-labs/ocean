@@ -13,7 +13,9 @@ from newrelic_integration.webhook.constants import (
     RESYNC_ONLY_KINDS,
 )
 
-_inflight_entity_fetches: dict[tuple[str, ...], asyncio.Task[dict[str, dict[str, typing.Any]]]] = {}
+_inflight_entity_fetches: dict[
+    tuple[str, ...], asyncio.Task[dict[str, dict[str, typing.Any]]]
+] = {}
 
 
 def get_issue_kinds(app_config: NewRelicPortAppConfig) -> list[str]:
@@ -67,9 +69,11 @@ async def get_issue_event_entities(
         task = asyncio.create_task(_load_entities_by_guids(list(unique_guids)))
         _inflight_entity_fetches[fetch_key] = task
         task.add_done_callback(
-            lambda completed_task: _inflight_entity_fetches.pop(fetch_key, None)
-            if _inflight_entity_fetches.get(fetch_key) is completed_task
-            else None
+            lambda completed_task: (
+                _inflight_entity_fetches.pop(fetch_key, None)
+                if _inflight_entity_fetches.get(fetch_key) is completed_task
+                else None
+            )
         )
 
     entities_by_guid = await task
@@ -84,21 +88,36 @@ async def enrich_issue_entity_relations(
     issue_record: dict[str, typing.Any],
 ) -> None:
     entity_guids = issue_record.get("entityGuids", [])
-    entities_by_guid = await get_issue_event_entities(entity_guids)
+    try:
+        entities_by_guid = await get_issue_event_entities(entity_guids)
+    except Exception as err:
+        logger.exception(
+            "Failed to get entities for issue event, continuing",
+            entity_guids=entity_guids,
+            err=str(err),
+        )
+        return
 
     for entity_guid in entity_guids:
-        entity = entities_by_guid.get(entity_guid)
-        if entity is None:
-            logger.warning(
+        try:
+            entity = entities_by_guid.get(entity_guid)
+            if entity is None:
+                logger.warning(
+                    "Failed to get entity for issue event, continuing",
+                    entity_guid=entity_guid,
+                )
+                continue
+
+            entity_type = entity["type"]
+            issue_record.setdefault(f"__{entity_type}", {}).setdefault(
+                "entity_guids", []
+            ).append(entity_guid)
+        except Exception as err:
+            logger.exception(
                 "Failed to get entity for issue event, continuing",
                 entity_guid=entity_guid,
+                err=str(err),
             )
-            continue
-
-        entity_type = entity["type"]
-        issue_record.setdefault(f"__{entity_type}", {}).setdefault(
-            "entity_guids", []
-        ).append(entity_guid)
 
 
 async def fetch_entities_for_resource(
@@ -123,9 +142,11 @@ async def fetch_entities_for_resource(
             continue
 
         if resource_config.selector.calculate_open_issue_count:
-            number_of_open_issues = await IssuesHandler().get_number_of_issues_by_entity_guid(
-                entity_guid,
-                issue_state=IssueState.ACTIVATED,
+            number_of_open_issues = (
+                await IssuesHandler().get_number_of_issues_by_entity_guid(
+                    entity_guid,
+                    issue_state=IssueState.ACTIVATED,
+                )
             )
             entity = {**entity, "__open_issues_count": number_of_open_issues}
 

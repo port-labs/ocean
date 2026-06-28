@@ -58,10 +58,7 @@ def test_build_entity_search_query_for_guids() -> None:
         ["guid-1", "guid-2"],
         "type IN ('AWSEC2INSTANCE')",
     )
-    assert (
-        query
-        == "id IN ('guid-1', 'guid-2') AND (type IN ('AWSEC2INSTANCE'))"
-    )
+    assert query == "id IN ('guid-1', 'guid-2') AND (type IN ('AWSEC2INSTANCE'))"
     assert build_entity_search_query_for_guids([], "type = 'HOST'") is None
 
 
