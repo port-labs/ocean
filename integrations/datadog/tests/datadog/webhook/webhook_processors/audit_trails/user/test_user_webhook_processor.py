@@ -28,6 +28,7 @@ def _event(
         "evt": {"name": evt_name},
         "action": action,
         "asset": {"type": asset_type, "id": asset_id},
+        "org": {"name": "DPN | Port", "uuid": "uuid-1"},
     }
     if include_http:
         attrs["http"] = _USER_HTTP

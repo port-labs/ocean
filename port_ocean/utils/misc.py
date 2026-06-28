@@ -105,6 +105,14 @@ def get_subclass_class_from_module(
     return None
 
 
+# Cache loaded integration classes per resolved path. Executing integration.py
+# more than once in the same process re-registers its Pydantic validators and
+# raises a "duplicate validator" error. Production calls this once per process,
+# so the cache is a safe no-op there; it matters for the integration test
+# harness, which boots integrations repeatedly in one process.
+_integration_class_cache: dict[str, Type["BaseIntegration"] | None] = {}
+
+
 def get_integration_class(
     path: str,
 ) -> Type["BaseIntegration"] | None:
@@ -112,8 +120,14 @@ def get_integration_class(
 
     sys.path.append(".")
     integration_path = f"{path}/integration.py" if path else "integration.py"
+    cache_key = str(Path(integration_path).resolve())
+    if cache_key in _integration_class_cache:
+        return _integration_class_cache[cache_key]
+
     module = load_module(integration_path)
-    return get_subclass_class_from_module(module, BaseIntegration)
+    integration_class = get_subclass_class_from_module(module, BaseIntegration)
+    _integration_class_cache[cache_key] = integration_class
+    return integration_class
 
 
 def get_cgroup_cpu_limit() -> int:

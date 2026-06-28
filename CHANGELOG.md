@@ -7,6 +7,37 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.2 (2026-06-25)
+
+### Improvements
+
+- Skip action webhook results (no mapped resource) during live-events catalog sync and lakehouse export, so integrations no longer need custom `sync_raw_results` filtering.
+- Added `ActionExecutionError` so integration executors can fail expected action runs with a clean user-facing message, logged without a stack trace.
+
+### Bug Fixes
+
+- Preserve workflow node run `output` when reporting completion or failure, so Port no longer overwrites integration-set values (e.g. `workflowRunUrl`) with `{}`.
+
+
+## 0.44.1 (2026-06-25)
+
+### Improvements
+
+- Polling event listener now triggers resyncs only on startup (when `resync_on_start` is enabled) and explicit integration resync requests, instead of on any integration document `updatedAt` change.
+
+## 0.44.0 (2026-06-25)
+
+### Bug Fixes
+
+- Update pydantic to v2
+
+
+## 0.43.19 (2026-06-22)
+
+### Bug Fixes
+
+- Fix integration test harness import integration file multiple times by caching the integration class.
+
 ## 0.43.18 (2026-06-15)
 
 ### Improvements

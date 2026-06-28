@@ -4,6 +4,7 @@ from typing import cast, Any, Dict
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from gitlab.actions.registry import register_actions_executors
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -31,6 +32,7 @@ from integration import (
     TagResourceConfig,
     GitlabIssueResourceConfig,
     BranchResourceConfig,
+    GitlabDeploymentResourceConfig,
 )
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
@@ -43,6 +45,7 @@ from gitlab.webhook.webhook_processors.group_webhook_processor import (
     GroupWebhookProcessor,
 )
 from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
+from gitlab.webhook.webhook_factory.project_webhook_factory import ProjectWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
@@ -79,6 +82,9 @@ from gitlab.webhook.webhook_processors.release_webhook_processor import (
 from gitlab.webhook.webhook_processors.branch_webhook_processor import (
     BranchWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.deployment_webhook_processor import (
+    DeploymentWebhookProcessor,
+)
 from gitlab.clients.options import IssueOptions
 
 RESYNC_MEMBERS_BATCH_SIZE = 10
@@ -114,10 +120,15 @@ async def on_start() -> None:
         return
 
     if base_url := ocean.app.base_url:
-        logger.info(f"Creating webhooks for all groups at {base_url}")
         client = create_gitlab_client()
-        webhook_factory = GroupWebHook(client, base_url)
-        await webhook_factory.create_webhooks_for_all_groups()
+
+        logger.info(f"Creating webhooks for all groups at {base_url}")
+        group_webhook_factory = GroupWebHook(client, base_url)
+        await group_webhook_factory.create_webhooks_for_all_groups()
+
+        logger.info(f"Creating webhooks for personal namespace projects at {base_url}")
+        project_webhook_factory = ProjectWebHook(client, base_url)
+        await project_webhook_factory.create_webhooks_for_personal_projects()
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -573,6 +584,39 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield folders_batch
 
 
+async def _resync_deployments(
+    include_only_active_projects: bool | None,
+    params: dict[str, Any] | None,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+    async for projects_batch in client.get_projects(
+        params=build_project_params(
+            include_only_active_projects=include_only_active_projects
+        ),
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        include_languages=False,
+    ):
+        logger.info(
+            f"Processing batch of {len(projects_batch)} projects for deployments"
+        )
+        async for deployments_batch in client.get_deployments(
+            projects_batch,
+            max_concurrent=DEFAULT_MAX_CONCURRENT,
+            params=params,
+        ):
+            yield deployments_batch
+
+
+@ocean.on_resync(ObjectKind.DEPLOYMENT)
+async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(GitlabDeploymentResourceConfig, event.resource_config).selector
+    async for batch in _resync_deployments(
+        selector.include_only_active_projects,
+        selector.generate_query_params() or None,
+    ):
+        yield batch
+
+
 ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", MergeRequestWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", IssueWebhookProcessor)
@@ -588,3 +632,6 @@ ocean.add_webhook_processor("/hook/{group_id}", ProjectWithMemberWebhookProcesso
 ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", BranchWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", DeploymentWebhookProcessor)
+
+register_actions_executors()
