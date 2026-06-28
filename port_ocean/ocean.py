@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, Callable, Dict, Type
 
 from fastapi import APIRouter, FastAPI
 from loguru import logger
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 from starlette.types import Receive, Scope, Send
 
 import port_ocean.helpers.metric.metric

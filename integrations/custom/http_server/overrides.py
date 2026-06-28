@@ -1,5 +1,5 @@
 from typing import ClassVar, Dict, Any, Literal, Optional
-from pydantic import Field, BaseModel, root_validator
+from pydantic.v1 import Field, BaseModel, root_validator
 
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
