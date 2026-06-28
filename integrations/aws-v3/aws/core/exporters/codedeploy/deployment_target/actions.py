@@ -24,7 +24,10 @@ class GetDeploymentTargetDetailsAction(Action[DeploymentTargetActionInput]):
         logger.info(
             f"Successfully fetched details for {len(results)} CodeDeploy deployment targets"
         )
-        return results
+        return [
+            {**result, 'deploymentId': targets_data.deployment_id}
+            for result in results
+        ]
 
 
 class CodeDeployDeploymentTargetActionsMap(ActionMap[DeploymentTargetActionInput]):
