@@ -7,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from enum import StrEnum
 
 

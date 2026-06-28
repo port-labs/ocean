@@ -186,6 +186,10 @@ class WebhookEventRawResults:
         self._resource = value
 
     @property
+    def has_resource(self) -> bool:
+        return self._resource is not None
+
+    @property
     def resource_index(self) -> int | None:
         return self._resource_index
 

@@ -7,8 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic.fields import Field
-from pydantic.main import BaseModel
+from pydantic.v1 import BaseModel, Field
 
 from clients.utils import (
     get_date_range_for_last_n_months,
