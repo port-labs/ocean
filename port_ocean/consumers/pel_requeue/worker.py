@@ -15,6 +15,7 @@ actual processing.  When a message has been stuck in the PEL longer than
 """
 
 import asyncio
+from typing import Any, cast
 
 from loguru import logger
 from redis.asyncio import Redis
@@ -192,7 +193,7 @@ class PELRequeueWorker:
         new_fields = dict(fields)
         new_fields["requeue_count"] = str(requeue_count + 1)
 
-        await self._redis.xadd(self._stream_key, new_fields)
+        await self._redis.xadd(self._stream_key, cast(Any, new_fields))
         await self._redis.xack(self._stream_key, self._consumer_group, message_id)
 
         logger.info(

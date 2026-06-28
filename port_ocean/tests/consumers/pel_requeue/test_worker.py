@@ -2,6 +2,7 @@
 
 import asyncio
 from dataclasses import replace
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -30,7 +31,7 @@ def _make_redis() -> AsyncMock:
     return redis
 
 
-def _default_settings(**overrides: object) -> PELRequeueWorkerSettings:
+def _default_settings(**overrides: Any) -> PELRequeueWorkerSettings:
     defaults = PELRequeueWorkerSettings(
         stream_key="test/live-events/raw/event-stream",
         consumer_group="test.integration",
@@ -43,7 +44,7 @@ def _default_settings(**overrides: object) -> PELRequeueWorkerSettings:
     return replace(defaults, **overrides)
 
 
-def _make_worker(redis: AsyncMock, **settings_overrides: object) -> PELRequeueWorker:
+def _make_worker(redis: AsyncMock, **settings_overrides: Any) -> PELRequeueWorker:
     return PELRequeueWorker(redis, _default_settings(**settings_overrides))
 
 
@@ -115,7 +116,7 @@ class TestPELRequeueWorkerLeaderElection:
             call_count += 1
             return None if call_count == 1 else True
 
-        redis.set = flipping_set  # type: ignore[assignment]
+        redis.set = flipping_set
         redis.get = AsyncMock(return_value="pod-abc")
 
         scanned: list[bool] = []
@@ -179,7 +180,7 @@ class TestPELHandleStuckMessage:
 
         redis.xadd.assert_awaited_once()
         call_args = redis.xadd.await_args
-        sent_fields: dict = call_args.args[1]
+        sent_fields: dict[str, str] = call_args.args[1]
         assert sent_fields["requeue_count"] == "2"
         assert sent_fields["webhookPath"] == "/webhook"
 
@@ -195,7 +196,7 @@ class TestPELHandleStuckMessage:
         fields = {"webhookPath": "/webhook", "payload": "{}", "headers": "{}"}
         await worker._handle_stuck_message("1700000000000-0", fields)
 
-        sent_fields: dict = redis.xadd.await_args.args[1]
+        sent_fields: dict[str, str] = redis.xadd.await_args.args[1]
         assert sent_fields["requeue_count"] == "1"
 
     @pytest.mark.asyncio
@@ -307,7 +308,7 @@ class TestPELScanAndRequeue:
                 return ("1700000000002-0", page1_messages, [])
             return ("0-0", page2_messages, [])
 
-        redis.xautoclaim = fake_xautoclaim  # type: ignore[assignment]
+        redis.xautoclaim = fake_xautoclaim
 
         worker = _make_worker(redis)
         await worker._scan_and_requeue()

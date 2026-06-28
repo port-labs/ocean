@@ -100,7 +100,7 @@ class TestRedisLeaderElection:
             renewed.append(True)
             return True
 
-        redis.pexpire = fake_pexpire  # type: ignore[assignment]
+        redis.pexpire = fake_pexpire
 
         election = RedisLeaderElection(
             redis=redis,
