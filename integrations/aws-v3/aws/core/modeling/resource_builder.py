@@ -9,6 +9,15 @@ from aws.core.modeling.resource_models import ResourceModel
 _JSON_NATIVE = (str, int, float, bool, type(None))
 
 
+class ResourceBuilderError(Exception):
+    """Raised when ``ResourceBuilder`` is used incorrectly.
+
+    A dedicated type (rather than a bare ``ValueError``) lets callers catch
+    builder misuse precisely, separate from validation errors raised by the
+    underlying model.
+    """
+
+
 def _to_jsonable(value: Any) -> Any:
     """Convert non-JSON-native leaves in a ``.dict()`` result to JSON values.
 
@@ -108,15 +117,30 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
             Dict[str, Any]: The built resource model dictionary.
         """
         if self._properties is None:
-            raise ValueError(
+            raise ResourceBuilderError(
                 "No data has been set for the resource model, use `with_properties` to set data."
             )
 
+        # Always supply ``Type`` so it is present in the output (``exclude_unset``
+        # would otherwise drop a value that came from the model default). Fall
+        # back to the model's own default when ``with_type`` was not called, and
+        # fail explicitly if the model defines no default either.
+        resource_type = self._type
+        if resource_type is None:
+            type_field = self._model_cls.__fields__.get("Type")
+            if type_field is None or type_field.default is None:
+                raise ResourceBuilderError(
+                    "No `Type` set for the resource model and the model defines no "
+                    "default, use `with_type` to set the resource type."
+                )
+            resource_type = type_field.default
+
         # Supplying ``Properties`` directly skips the model's empty default
         # factory and validates the payload exactly once.
-        fields: dict[str, Any] = {"Properties": self._properties}
-        if self._type is not None:
-            fields["Type"] = self._type
+        fields: dict[str, Any] = {
+            "Type": resource_type,
+            "Properties": self._properties,
+        }
         model = self._model_cls(**fields)
 
         if self._extra_context:
