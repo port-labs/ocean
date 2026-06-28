@@ -3,6 +3,8 @@ from typing import Dict, Any, List, Type, cast
 from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 from loguru import logger
 import asyncio
+
+from aws.utils import LocationUtils
 from port_ocean.context.ocean import ocean
 
 
@@ -60,7 +62,7 @@ class GetCodeDeployApplicationTagsAction(Action[CodeDeployApplicationActionInput
     async def _fetch_application_tags(
         self, app_name: str, region: str, account_id: str
     ) -> Dict[str, Any]:
-        app_arn = f"arn:{ocean.integration_config.get('aws_partition', 'aws')}:codedeploy:{region}:{account_id}:application:{app_name}"
+        app_arn = f"arn:{LocationUtils.get_partition()}:codedeploy:{region}:{account_id}:application:{app_name}"
         return await self.client.list_tags_for_resource(ResourceArn=app_arn)
 
 

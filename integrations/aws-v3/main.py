@@ -1,4 +1,7 @@
 from typing import cast
+
+from aws import Consts
+from aws.utils import LocationUtils
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -196,7 +199,7 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
         )
 
         exporter = OrganizationsAccountExporter(session)
-        region = 'us-gov-west-1' if ocean.integration_config.get('aws_partition') == 'aws-us-gov' else ''
+        region = '' if LocationUtils.get_partition() == Consts.default_partition else LocationUtils.get_first_available_region(session)
         options = PaginatedAccountRequest(
             include=aws_resource_config.selector.include_actions,
             account_id=account["Id"],
