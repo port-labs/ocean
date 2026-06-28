@@ -1,6 +1,6 @@
 import pytest
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import Response, ReadTimeout
 from azure_devops.client.auth import PatAuthProvider
 from azure_devops.client.base_client import (
@@ -8,12 +8,26 @@ from azure_devops.client.base_client import (
     CONTINUATION_TOKEN_HEADER,
     PAGE_SIZE,
 )
+from azure_devops.client.rate_limiter import ADO_RATE_LIMIT_WINDOW_SECONDS
+from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 from port_ocean.context.ocean import PortOceanContext
 
 
 @pytest.fixture
 def mock_client(mock_context: PortOceanContext) -> HTTPBaseClient:
+    mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
     return HTTPBaseClient(auth_provider=PatAuthProvider("test_token"))
+
+
+def test_base_client_uses_azure_devops_retry_transport(
+    mock_client: HTTPBaseClient,
+) -> None:
+    transport = mock_client._client._transport
+
+    assert isinstance(transport, AzureDevOpsRetryTransport)
+    assert transport._rate_limiter is mock_client._rate_limiter
+    assert transport._retry_config.max_attempts == 10
+    assert transport._retry_config.max_backoff_wait == ADO_RATE_LIMIT_WINDOW_SECONDS
 
 
 @pytest.mark.asyncio
