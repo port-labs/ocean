@@ -74,16 +74,23 @@ class AzureDevOpsRateLimiter:
         queue instead of continuing to hit Azure DevOps during the cooldown.
         """
         async with self._lock:
-            throttle_end_time = time.time() + seconds
-            if self._throttle_until is None or throttle_end_time > self._throttle_until:
+            now = time.time()
+            throttle_end_time = now + seconds
+            if self._throttle_until is None or self._throttle_until <= now:
                 self._throttle_until = throttle_end_time
                 logger.warning(
                     f"ADO rate limit: {reason} detected, pausing all requests for {seconds:.0f} seconds"
                 )
+            elif throttle_end_time > self._throttle_until:
+                self._throttle_until = throttle_end_time
+                logger.debug(
+                    f"ADO rate limit: {reason} extended existing throttle window "
+                    f"(expires in {self._throttle_until - now:.0f}s)"
+                )
             else:
-                logger.warning(
+                logger.debug(
                     f"ADO rate limit: {reason} received but existing throttle window already covers it "
-                    f"(expires in {self._throttle_until - time.time():.0f}s)"
+                    f"(expires in {self._throttle_until - now:.0f}s)"
                 )
 
     async def __aenter__(self) -> "AzureDevOpsRateLimiter":
@@ -103,7 +110,7 @@ class AzureDevOpsRateLimiter:
                     )
                     await asyncio.sleep(remaining_seconds)
                 else:
-                    logger.warning(
+                    logger.debug(
                         "ADO rate limit: throttle window already expired, clearing and proceeding"
                     )
                 self._throttle_until = None
