@@ -126,7 +126,6 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 self._settings,
                 stream_key=self._stream_key,
                 consumer_group=self._consumer_group,
-                pod_id=self._consumer_name,
             ),
         )
         await self._pel_worker.start()

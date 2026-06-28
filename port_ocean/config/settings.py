@@ -167,21 +167,6 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
             "after an unexpected error."
         ),
     )
-    leader_election_ttl_ms: int = Field(
-        default=30_000,
-        ge=1000,
-        description="TTL in milliseconds for the Redis leader-election key.",
-    )
-    leader_election_heartbeat_seconds: int = Field(
-        default=10,
-        ge=1,
-        description="Interval in seconds at which the leader renews its lock TTL.",
-    )
-    leader_election_retry_seconds: int = Field(
-        default=15,
-        ge=1,
-        description="Seconds a non-leader pod waits before retrying leader election.",
-    )
 
     @root_validator
     def validate_tls_settings(cls, values: dict[str, Any]) -> dict[str, Any]:
