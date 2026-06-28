@@ -167,7 +167,9 @@ def code_scanning_alert_response(repo_name: str, alert_id: int) -> list[dict[str
     ]
 
 
-def secret_scanning_alert_response(repo_name: str, alert_id: int) -> list[dict[str, Any]]:
+def secret_scanning_alert_response(
+    repo_name: str, alert_id: int
+) -> list[dict[str, Any]]:
     return [
         {
             "number": alert_id,
