@@ -16,13 +16,6 @@ class DeploymentTargetProperties(BaseModel):
     cloudFormationTarget: Optional[Dict[str, Any]] = Field(
         default=None, alias="CloudFormationTarget"
     )
-    targetId: str = Field(default_factory=str, alias="TargetId")
-    targetArn: Optional[str] = Field(default=None, alias="TargetArn")
-    status: Optional[str] = Field(default=None, alias="Status")
-    lastUpdatedAt: Optional[str] = Field(default=None, alias="LastUpdatedAt")
-    lifecycleEvents: List[Dict[str, Any]] = Field(
-        default_factory=list, alias="LifecycleEvents"
-    )
 
     class Config:
         extra = "ignore"
