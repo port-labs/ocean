@@ -61,7 +61,7 @@ def mock_mixin(mock_port_client: MagicMock) -> SyncRawMixin:
     mixin._entity_processor = MagicMock()
     mixin._entities_state_applier = MagicMock()
     mixin._port_app_config_handler = MagicMock()
-    mixin.process_resource = AsyncMock()  # type: ignore[method-assign]
+    mixin.process_resource = AsyncMock(return_value=([], []))  # type: ignore[method-assign]
     return mixin
 
 
@@ -126,6 +126,7 @@ class TestSyncIncrementalCursorSeeding:
         with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
             await mock_mixin.sync_incremental(interval_seconds=900)
         after = datetime.now(timezone.utc)
 
@@ -147,6 +148,7 @@ class TestSyncIncrementalCursorSeeding:
         with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
             await mock_mixin.sync_incremental(interval_seconds=900)
 
         mock_port_client.upsert_integration_cursor.assert_called_once()
@@ -162,6 +164,7 @@ class TestSyncIncrementalFailure:
         with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
             await mock_mixin.sync_incremental(interval_seconds=900)
 
         mock_port_client.upsert_integration_cursor.assert_called_once()
@@ -176,6 +179,7 @@ class TestSyncIncrementalFailure:
         with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
             await mock_mixin.sync_incremental(interval_seconds=900)
 
         mock_mixin.process_resource.assert_called_once()  # type: ignore[attr-defined]
@@ -192,6 +196,7 @@ class TestSyncIncrementalFailure:
         with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
             mock_ocean.port_client = mock_port_client
             mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
             await mock_mixin.sync_incremental(interval_seconds=900)
 
         # First kind failed — second kind was never attempted
@@ -222,9 +227,12 @@ class TestSyncIncrementalSelfLoop:
 
         tick_count = 0
 
-        async def slow_process(resource: Any, index: int, user_agent_type: Any) -> None:
+        async def slow_process(
+            resource: Any, index: int, user_agent_type: Any
+        ) -> tuple[list[Any], list[Any]]:
             nonlocal tick_count
             tick_count += 1
+            return [], []
 
         mock_mixin.process_resource.side_effect = slow_process  # type: ignore[attr-defined]
 
@@ -237,7 +245,14 @@ class TestSyncIncrementalSelfLoop:
             # Fourth call (elapsed check) returns T1 + 0s so elapsed < interval.
             t0 = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
             t1 = t0 + timedelta(hours=1)
-            mock_dt.now.side_effect = [t0, t0 + timedelta(hours=2), t1, t1]
+            mock_dt.now.side_effect = [
+                t0,  # run_started_at
+                t0,  # tick 1 started
+                t0 + timedelta(hours=2),  # tick 1 elapsed (exceeds interval)
+                t1,  # tick 2 started
+                t1,  # tick 2 elapsed (within interval)
+                t1,  # run duration in finally
+            ]
             mock_dt.fromisoformat = datetime.fromisoformat
 
             with patch(
@@ -245,6 +260,7 @@ class TestSyncIncrementalSelfLoop:
             ) as mock_ocean:
                 mock_ocean.port_client = mock_port_client
                 mock_ocean.config.integration.identifier = "test-integration"
+                mock_ocean.config.integration.type = "fake-integration"
                 await mock_mixin.sync_incremental(interval_seconds=1)
 
         assert tick_count == 2

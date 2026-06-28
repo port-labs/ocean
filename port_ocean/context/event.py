@@ -153,7 +153,7 @@ async def event_context(
         attributes=attributes,
         _parent_event=parent,
         # inherit port app config from parent event, so it can be used in nested events
-        _port_app_config=parent.port_app_config if parent else None,
+        _port_app_config=parent._port_app_config if parent else None,
         entity_topological_sorter=entity_topological_sorter,
     )
     _event_context_stack.push(new_event)
