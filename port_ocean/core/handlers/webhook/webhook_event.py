@@ -1,7 +1,8 @@
 from abc import ABC
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from enum import StrEnum
-from typing import Any, Dict, Type, TypeAlias, Optional
+from typing import Any, Protocol
 from uuid import uuid4
 from fastapi import Request
 from loguru import logger
@@ -9,8 +10,34 @@ from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import RAW_ITEM
 
-EventPayload: TypeAlias = Dict[str, Any]
-EventHeaders: TypeAlias = Dict[str, str]
+EventPayload = dict[str, Any]
+EventHeaders = dict[str, str]
+
+
+class WebhookOriginalRequest(Protocol):
+    """Minimal request interface for webhook signature verification."""
+
+    @property
+    def headers(self) -> Mapping[str, str]: ...
+
+    async def body(self) -> bytes: ...
+
+
+class WebhookRequestAdapter:
+    """Read-only adapter that satisfies :class:`WebhookOriginalRequest`.
+
+    The real Starlette ``Request`` is only available during the original HTTP
+    call. When events travel through the Redis ingestion path the raw payload
+    string is preserved so that HMAC signatures can still be verified without
+    a live HTTP connection.
+    """
+
+    def __init__(self, raw_body: bytes, headers: EventHeaders) -> None:
+        self._raw_body = raw_body
+        self.headers = headers
+
+    async def body(self) -> bytes:
+        return self._raw_body
 
 
 class LiveEventTimestamp(StrEnum):
@@ -26,7 +53,7 @@ class LiveEvent(ABC):
     """Represents a live event marker class"""
 
     def set_timestamp(
-        self, timestamp: LiveEventTimestamp, params: Optional[Dict[str, Any]] = None
+        self, timestamp: LiveEventTimestamp, params: dict[str, Any] | None = None
     ) -> None:
         """Set a timestamp for a specific event
 
@@ -50,7 +77,7 @@ class WebhookEvent(LiveEvent):
         trace_id: str,
         payload: EventPayload,
         headers: EventHeaders,
-        original_request: Request | None = None,
+        original_request: WebhookOriginalRequest | None = None,
         group_id: str | None = None,
         created_at: datetime | None = None,
     ) -> None:
@@ -62,9 +89,7 @@ class WebhookEvent(LiveEvent):
         self.created_at = created_at or datetime.now(timezone.utc)
 
     @classmethod
-    async def from_request(
-        cls: Type["WebhookEvent"], request: Request
-    ) -> "WebhookEvent":
+    async def from_request(cls, request: Request) -> "WebhookEvent":
         trace_id = str(uuid4())
         payload = await request.json()
         created_at = datetime.now(timezone.utc)
@@ -78,7 +103,7 @@ class WebhookEvent(LiveEvent):
         )
 
     @classmethod
-    def from_dict(cls: Type["WebhookEvent"], data: Dict[str, Any]) -> "WebhookEvent":
+    def from_dict(cls, data: dict[str, Any]) -> "WebhookEvent":
         created_at = None
         if "created_at" in data:
             created_at = datetime.fromisoformat(data["created_at"])
@@ -100,7 +125,7 @@ class WebhookEvent(LiveEvent):
         )
 
     def set_timestamp(
-        self, timestamp: LiveEventTimestamp, params: Optional[Dict[str, Any]] = None
+        self, timestamp: LiveEventTimestamp, params: dict[str, Any] | None = None
     ) -> None:
         """Set a timestamp for a specific event"""
         super().set_timestamp(

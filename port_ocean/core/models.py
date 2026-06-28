@@ -15,6 +15,10 @@ class EventListenerType(StrEnum):
     ACTIONS_ONLY = "ACTIONS_ONLY"
 
 
+class LiveEventsConsumerType(StrEnum):
+    REDIS = "REDIS"
+
+
 class CreatePortResourcesOrigin(StrEnum):
     Empty = "Empty"
     Ocean = "Ocean"
@@ -141,6 +145,7 @@ class IntegrationFeatureFlag(StrEnum):
         "OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED"
     )
     DATA_SOURCE_PROCESSOR_ENABLED = "DATA_SOURCE_PROCESSOR_ENABLED"
+    LIVE_EVENTS_REDIS_STREAM_ENABLED = "LIVE_EVENTS_REDIS_STREAM_ENABLED"
 
 
 class ProcessingMode(StrEnum):
