@@ -33,7 +33,7 @@ class IssueWebhookProcessor(BaseWebhookProcessor):
         try:
             IssueEvent(**payload)
             return True
-        except ValidationError:
+        except (ValidationError, TypeError):
             return False
 
     async def handle_event(

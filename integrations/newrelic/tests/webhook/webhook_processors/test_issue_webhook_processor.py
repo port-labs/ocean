@@ -38,6 +38,16 @@ async def test_should_process_event_invalid(processor: IssueWebhookProcessor) ->
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("payload", [[], "not-an-object"])
+async def test_should_process_event_rejects_non_object_payload(
+    processor: IssueWebhookProcessor,
+    payload: list[object] | str,
+) -> None:
+    event = WebhookEvent(trace_id="test", payload=payload, headers={})  # type: ignore[arg-type]
+    assert await processor.should_process_event(event) is False
+
+
+@pytest.mark.asyncio
 async def test_get_matching_kinds(
     processor: IssueWebhookProcessor,
     port_app_config: NewRelicPortAppConfig,
