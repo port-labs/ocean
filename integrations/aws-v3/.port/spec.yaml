@@ -26,6 +26,7 @@ features:
       - kind: AWS::CodePipeline::Pipeline
       - kind: AWS::CodePipeline::Stage
       - kind: AWS::CodePipeline::Action
+      - kind: AWS::DynamoDB::Table
 configurations:
   - name: credentialProviderPriority
     required: false
