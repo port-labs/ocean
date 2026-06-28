@@ -21,6 +21,7 @@ from aws.core.modeling.resource_inspector import ResourceInspector
 class CodeDeployDeploymentTargetExporter(
     IResourceExporter[DeploymentTargetActionInput]
 ):
+    _max_batch_size: int = 25
     _service_name: SupportedServices = "codedeploy"
     _model_cls: Type[CodeDeployDeploymentTarget] = CodeDeployDeploymentTarget
     _actions_map: Type[CodeDeployDeploymentTargetActionsMap] = (
@@ -74,7 +75,7 @@ class CodeDeployDeploymentTargetExporter(
                 for deployment_id in deployment_ids:
                     try:
                         async for target_ids in target_paginator.paginate(
-                            deploymentId=deployment_id
+                            deploymentId=deployment_id, batch_size=self._max_batch_size
                         ):
                             yield (
                                 await inspector.inspect(
