@@ -1,22 +1,12 @@
-"""Tests for ``ResourceBuilder`` misuse handling and ``Type`` resolution.
+"""Tests for ``ResourceBuilder`` output shape after the PORT-18102 optimization.
 
-These lock in two behaviours the builder must preserve after the
-PORT-18102 optimization:
-
-* builder misuse raises a dedicated ``ResourceBuilderError`` (not a bare
-  ``ValueError``) so callers can catch it precisely;
-* the built dict always carries ``Type`` - either the value passed via
-  ``with_type`` or the model's own default - and fails explicitly when
-  neither is available.
+These lock in that ``build`` emits the resource ``Type`` (passed via
+``with_type``) alongside the accumulated ``Properties`` as a JSON-native dict.
 """
 
-import pytest
 from pydantic.v1 import BaseModel
 
-from aws.core.modeling.resource_builder import (
-    ResourceBuilder,
-    ResourceBuilderError,
-)
+from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_models import ResourceModel
 
 
@@ -30,46 +20,27 @@ class _FakeResource(ResourceModel[_FakeProperties]):
     Properties: _FakeProperties = _FakeProperties()
 
 
-class _NoDefaultTypeResource(ResourceModel[_FakeProperties]):
-    """Mirrors the abstract base: ``Type`` is required with no default."""
-
-    Properties: _FakeProperties = _FakeProperties()
-
-
-class TestResourceBuilderMisuse:
-    def test_build_without_properties_raises_resource_builder_error(self) -> None:
-        builder = ResourceBuilder[_FakeResource, _FakeProperties](_FakeResource)
-
-        with pytest.raises(ResourceBuilderError):
-            builder.build()
-
-    def test_build_without_type_and_no_default_raises_resource_builder_error(
-        self,
-    ) -> None:
-        builder = ResourceBuilder[_NoDefaultTypeResource, _FakeProperties](
-            _NoDefaultTypeResource
-        )
-        builder.with_properties({"Name": "example"})
-
-        with pytest.raises(ResourceBuilderError):
-            builder.build()
-
-
-class TestResourceBuilderTypeResolution:
-    def test_explicit_type_is_used(self) -> None:
-        builder = ResourceBuilder[_FakeResource, _FakeProperties](_FakeResource)
+class TestResourceBuilder:
+    def test_build_returns_type_and_properties(self) -> None:
         result = (
-            builder.with_properties({"Name": "example"})
+            ResourceBuilder[_FakeResource, _FakeProperties](_FakeResource)
+            .with_properties({"Name": "example", "Size": 42})
             .with_type("Test::Override::Type")
             .build()
         )
 
-        assert result["Type"] == "Test::Override::Type"
-        assert result["Properties"] == {"Name": "example"}
+        assert result == {
+            "Type": "Test::Override::Type",
+            "Properties": {"Name": "example", "Size": 42},
+        }
 
-    def test_falls_back_to_model_default_type(self) -> None:
-        builder = ResourceBuilder[_FakeResource, _FakeProperties](_FakeResource)
-        result = builder.with_properties({"Name": "example"}).build()
+    def test_repeated_with_properties_replaces(self) -> None:
+        result = (
+            ResourceBuilder[_FakeResource, _FakeProperties](_FakeResource)
+            .with_properties({"Name": "first"})
+            .with_properties({"Name": "second"})
+            .with_type("Test::Fake::Resource")
+            .build()
+        )
 
-        assert result["Type"] == "Test::Fake::Resource"
-        assert result["Properties"] == {"Name": "example"}
+        assert result["Properties"] == {"Name": "second"}

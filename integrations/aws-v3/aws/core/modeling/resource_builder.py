@@ -9,15 +9,6 @@ from aws.core.modeling.resource_models import ResourceModel
 _JSON_NATIVE = (str, int, float, bool, type(None))
 
 
-class ResourceBuilderError(Exception):
-    """Raised when ``ResourceBuilder`` is used incorrectly.
-
-    A dedicated type (rather than a bare ``ValueError``) lets callers catch
-    builder misuse precisely, separate from validation errors raised by the
-    underlying model.
-    """
-
-
 def _to_jsonable(value: Any) -> Any:
     """Convert non-JSON-native leaves in a ``.dict()`` result to JSON values.
 
@@ -50,9 +41,6 @@ class ResourceBuilder[ResourceModelT: ResourceModel[Any], TProperties: BaseModel
 
     Provides a fluent interface to collect the resource's `Type`, `Properties`
     and extra context, then constructs the model in a single pass at `build`.
-    Deferring construction lets us validate `Properties` exactly once per
-    resource, instead of instantiating an empty default model up front and
-    immediately discarding it.
 
     Type Parameters:
         ResourceModelT: A subclass of `ResourceModel` with properties of type `TProperties`.
@@ -79,26 +67,20 @@ class ResourceBuilder[ResourceModelT: ResourceModel[Any], TProperties: BaseModel
         """
         Set the fields of the resource's `Properties`.
 
-        Repeated calls merge, with later values taking precedence.
-
         Args:
             data: A dictionary of property names and their corresponding values to set.
 
         Returns:
             Self: The builder instance for method chaining.
         """
-        self._properties = (
-            data if self._properties is None else {**self._properties, **data}
-        )
+        self._properties = data
         return self
 
     def with_extra_context(self, data: dict[str, Any]) -> Self:
         """
         Set enrichments for the resource model.
         """
-        self._extra_context = (
-            data if self._extra_context is None else {**self._extra_context, **data}
-        )
+        self._extra_context = data
         return self
 
     def with_type(self, type: str) -> Self:
@@ -110,35 +92,14 @@ class ResourceBuilder[ResourceModelT: ResourceModel[Any], TProperties: BaseModel
 
     def build(self) -> Dict[str, Any]:
         """
-        Construct the resource model in a single validation pass and return it
-        as a JSON-native dict.
+        Finalize and return the constructed resource model.
 
         Returns:
             Dict[str, Any]: The built resource model dictionary.
         """
-        if self._properties is None:
-            raise ResourceBuilderError(
-                "No data has been set for the resource model, use `with_properties` to set data."
-            )
-
-        # Always supply ``Type`` so it is present in the output (``exclude_unset``
-        # would otherwise drop a value that came from the model default). Fall
-        # back to the model's own default when ``with_type`` was not called, and
-        # fail explicitly if the model defines no default either.
-        resource_type = self._type
-        if resource_type is None:
-            type_field = self._model_cls.__fields__.get("Type")
-            if type_field is None or type_field.default is None:
-                raise ResourceBuilderError(
-                    "No `Type` set for the resource model and the model defines no "
-                    "default, use `with_type` to set the resource type."
-                )
-            resource_type = type_field.default
-
-        # Supplying ``Properties`` directly skips the model's empty default
-        # factory and validates the payload exactly once.
+        # Explicitly set ``Type`` so it survives ``exclude_unset=True``.
         fields: dict[str, Any] = {
-            "Type": resource_type,
+            "Type": self._type,
             "Properties": self._properties,
         }
         model = self._model_cls(**fields)

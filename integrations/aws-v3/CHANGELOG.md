@@ -14,8 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Optimized the shared `ResourceBuilder` (used by all AWS kinds, notably the property-heavy `AWS::EC2::Instance`) to remove redundant per-resource work: it no longer instantiates and discards an empty default `Properties` model, now validates `Properties` exactly once by constructing the resource model in a single pass, and replaces the per-resource JSON serialize/deserialize round-trip with an in-place dict conversion (only non-JSON-native leaves are rewritten). Output is byte-for-byte identical.
 
-- Hardened `ResourceBuilder`: `build` now raises a dedicated `ResourceBuilderError` (instead of a bare `ValueError`) when misused, and always emits `Type` by falling back to the model's default when `with_type` was not called (raising a clear error only when the model defines no default).
-
 
 ## 2.11.2-beta (2026-06-28)
 
