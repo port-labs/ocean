@@ -19,6 +19,7 @@ from port_ocean.consumers.abstract_live_events_consumer import (
     AbstractLiveEventsConsumer,
 )
 from port_ocean.consumers.pel_requeue_worker import PELRequeueWorker
+from port_ocean.consumers.pel_requeue_worker_settings import PELRequeueWorkerSettings
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -122,15 +123,12 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
 
         self._pel_worker = PELRequeueWorker(
             redis=self._redis,
-            stream_key=self._stream_key,
-            consumer_group=self._consumer_group,
-            pod_id=self._consumer_name,
-            stuck_timeout_ms=self._settings.pel_stuck_timeout_seconds * 1000,
-            max_requeue_count=self._settings.pel_max_requeue_count,
-            scan_interval_seconds=self._settings.pel_scan_interval_seconds,
-            leader_ttl_ms=self._settings.leader_election_ttl_ms,
-            leader_heartbeat_seconds=self._settings.leader_election_heartbeat_seconds,
-            election_retry_seconds=self._settings.leader_election_retry_seconds,
+            settings=PELRequeueWorkerSettings.from_live_events_redis_settings(
+                self._settings,
+                stream_key=self._stream_key,
+                consumer_group=self._consumer_group,
+                pod_id=self._consumer_name,
+            ),
         )
         await self._pel_worker.start()
 

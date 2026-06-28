@@ -19,157 +19,52 @@ import asyncio
 from loguru import logger
 from redis.asyncio import Redis
 
-_LEADER_KEY_SUFFIX = "pel-requeue:leader"
-_PEL_CONSUMER_NAME = "pel-requeue-worker"
+from port_ocean.consumers.pel_requeue_worker_settings import (
+    PELRequeueWorkerSettings,
+    _PEL_CONSUMER_NAME,
+    _PEL_LEADER_ELECTION_NAME,
+)
+from port_ocean.consumers.redis_leader_election import RedisLeaderElection
 
-
-class RedisLeaderElection:
-    """Redis-based leader election using ``SET … NX PX``."""
-
-    def __init__(
-        self,
-        redis: Redis,
-        leader_key: str,
-        pod_id: str,
-        ttl_ms: int = 30_000,
-        heartbeat_seconds: float = 10.0,
-    ) -> None:
-        self._redis = redis
-        self._leader_key = leader_key
-        self._pod_id = pod_id
-        self._ttl_ms = ttl_ms
-        self._heartbeat_seconds = heartbeat_seconds
-        self._is_leader = False
-        self._heartbeat_task: asyncio.Task[None] | None = None
-
-    @property
-    def is_leader(self) -> bool:
-        return self._is_leader
-
-    async def try_acquire(self) -> bool:
-        """Attempt to become leader atomically.
-
-        Returns ``True`` when this pod wins and the heartbeat loop has been
-        started, ``False`` when another pod already holds the lock.
-        """
-        result = await self._redis.set(
-            self._leader_key, self._pod_id, nx=True, px=self._ttl_ms
-        )
-        if result:
-            self._is_leader = True
-            self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-            logger.info(
-                "PEL requeue leader elected",
-                leader_key=self._leader_key,
-                pod_id=self._pod_id,
-            )
-        return bool(result)
-
-    async def release(self) -> None:
-        """Relinquish leadership and delete the lock key (best-effort)."""
-        self._is_leader = False
-        if self._heartbeat_task is not None:
-            self._heartbeat_task.cancel()
-            await asyncio.gather(self._heartbeat_task, return_exceptions=True)
-            self._heartbeat_task = None
-        try:
-            current = await self._redis.get(self._leader_key)
-            if current == self._pod_id:
-                await self._redis.delete(self._leader_key)
-                logger.info(
-                    "PEL requeue leader released lock", leader_key=self._leader_key
-                )
-        except Exception as error:
-            logger.warning(
-                "Error releasing PEL requeue leader lock",
-                leader_key=self._leader_key,
-                error=str(error),
-            )
-
-    async def _heartbeat_loop(self) -> None:
-        """Renew the leader TTL every ``heartbeat_seconds`` seconds."""
-        while self._is_leader:
-            try:
-                await asyncio.sleep(self._heartbeat_seconds)
-                current = await self._redis.get(self._leader_key)
-                if current == self._pod_id:
-                    await self._redis.pexpire(self._leader_key, self._ttl_ms)
-                    logger.debug(
-                        "PEL requeue leader heartbeat renewed",
-                        leader_key=self._leader_key,
-                    )
-                else:
-                    logger.warning(
-                        "PEL requeue leader lock lost — another pod took over",
-                        leader_key=self._leader_key,
-                    )
-                    self._is_leader = False
-                    break
-            except asyncio.CancelledError:
-                break
-            except Exception as error:
-                logger.warning(
-                    "PEL requeue leader heartbeat error",
-                    leader_key=self._leader_key,
-                    error=str(error),
-                )
+__all__ = [
+    "PELRequeueWorker",
+    "PELRequeueWorkerSettings",
+]
 
 
 class PELRequeueWorker:
     """Background worker that rescues messages stuck in the Redis PEL.
 
     Uses :class:`RedisLeaderElection` so that only one pod runs the scan at
-    any given time.  Every pod runs a continuous lifecycle loop:
-
-    1. Attempt ``try_acquire()``.  If it loses, sleep for
-       ``election_retry_seconds`` and try again — so that when the current
-       leader dies and its TTL expires, a follower takes over within at most
-       ``leader_ttl_ms / 1000 + election_retry_seconds`` seconds.
-    2. Once elected, run ``_scan_and_requeue()`` on each ``scan_interval_seconds``
-       tick.
-    3. If the heartbeat detects that the lock was stolen (``is_leader`` flips
-       to ``False``), the loop falls back to step 1 and re-enters the election.
+    any given time. Every pod runs a continuous lifecycle loop that competes
+    for leadership, scans the PEL while leader, and re-enters election when
+    leadership is lost.
 
     The worker itself contains no processing logic — consumer pods handle all
     actual processing.
-
-    - Calls ``XAUTOCLAIM`` to find and claim entries idle longer than
-      ``stuck_timeout_ms``.
-    - Re-enqueues them via ``XADD`` with an incremented ``requeue_count``
-      field, then ``XACK``s the original entry to clear it from the PEL.
-    - Discards (ACKs without re-enqueuing) messages whose ``requeue_count``
-      has reached ``max_requeue_count``.
     """
 
-    def __init__(
-        self,
-        redis: Redis,
-        stream_key: str,
-        consumer_group: str,
-        pod_id: str,
-        stuck_timeout_ms: int = 60_000,
-        max_requeue_count: int = 3,
-        scan_interval_seconds: float = 30.0,
-        leader_ttl_ms: int = 30_000,
-        leader_heartbeat_seconds: float = 10.0,
-        election_retry_seconds: float = 15.0,
-    ) -> None:
+    def __init__(self, redis: Redis, settings: PELRequeueWorkerSettings) -> None:
         self._redis = redis
-        self._stream_key = stream_key
-        self._consumer_group = consumer_group
-        self._stuck_timeout_ms = stuck_timeout_ms
-        self._max_requeue_count = max_requeue_count
-        self._scan_interval_seconds = scan_interval_seconds
-        self._election_retry_seconds = election_retry_seconds
+        self._settings = settings
         self._is_running = False
         self._lifecycle_task: asyncio.Task[None] | None = None
         self._leader_election = RedisLeaderElection(
             redis=redis,
-            leader_key=f"{stream_key}:{_LEADER_KEY_SUFFIX}",
-            pod_id=pod_id,
-            ttl_ms=leader_ttl_ms,
-            heartbeat_seconds=leader_heartbeat_seconds,
+            leader_key=settings.leader_key,
+            pod_id=settings.pod_id,
+            name=_PEL_LEADER_ELECTION_NAME,
+            ttl_ms=settings.leader_ttl_ms,
+            heartbeat_seconds=settings.leader_heartbeat_seconds,
         )
+
+    @property
+    def _stream_key(self) -> str:
+        return self._settings.stream_key
+
+    @property
+    def _consumer_group(self) -> str:
+        return self._settings.consumer_group
 
     async def start(self) -> None:
         """Start the lifecycle loop on every pod.
@@ -198,32 +93,10 @@ class PELRequeueWorker:
         """Compete for leadership; scan the PEL when leader; re-enter election on loss."""
         while self._is_running:
             try:
-                if not self._leader_election.is_leader:
-                    won = await self._leader_election.try_acquire()
-                    if not won:
-                        logger.debug(
-                            "PEL requeue worker: not the leader, retrying after delay",
-                            stream_key=self._stream_key,
-                            retry_in_seconds=self._election_retry_seconds,
-                        )
-                        await asyncio.sleep(self._election_retry_seconds)
-                        continue
+                if not await self._ensure_leadership():
+                    continue
 
-                    logger.info(
-                        "PEL requeue worker became leader, starting scans",
-                        stream_key=self._stream_key,
-                    )
-
-                await self._scan_and_requeue()
-
-                await asyncio.sleep(self._scan_interval_seconds)
-
-                if not self._leader_election.is_leader:
-                    logger.info(
-                        "PEL requeue worker lost leadership, re-entering election",
-                        stream_key=self._stream_key,
-                    )
-
+                await self._run_leader_cycle()
             except asyncio.CancelledError:
                 break
             except Exception as error:
@@ -231,6 +104,39 @@ class PELRequeueWorker:
                     "Unexpected error in PEL requeue lifecycle loop",
                     error=str(error),
                 )
+                await asyncio.sleep(self._settings.lifecycle_error_backoff_seconds)
+
+    async def _ensure_leadership(self) -> bool:
+        """Try to become leader; sleep and retry when another pod holds the lock."""
+        if self._leader_election.is_leader:
+            return True
+
+        won = await self._leader_election.try_acquire()
+        if won:
+            logger.info(
+                "PEL requeue worker became leader, starting scans",
+                stream_key=self._stream_key,
+            )
+            return True
+
+        logger.debug(
+            "PEL requeue worker: not the leader, retrying after delay",
+            stream_key=self._stream_key,
+            retry_in_seconds=self._settings.election_retry_seconds,
+        )
+        await asyncio.sleep(self._settings.election_retry_seconds)
+        return False
+
+    async def _run_leader_cycle(self) -> None:
+        """Run one PEL scan, wait for the next tick, and detect leadership loss."""
+        await self._scan_and_requeue()
+        await asyncio.sleep(self._settings.scan_interval_seconds)
+
+        if not self._leader_election.is_leader:
+            logger.info(
+                "PEL requeue worker lost leadership, re-entering election",
+                stream_key=self._stream_key,
+            )
 
     async def _scan_and_requeue(self) -> None:
         """Paginate through all PEL entries idle beyond the stuck threshold."""
@@ -242,9 +148,9 @@ class PELRequeueWorker:
                 self._stream_key,
                 self._consumer_group,
                 _PEL_CONSUMER_NAME,
-                self._stuck_timeout_ms,
+                self._settings.stuck_timeout_ms,
                 cursor,
-                count=100,
+                count=self._settings.xautoclaim_count,
             )
 
             if not result:
@@ -275,13 +181,14 @@ class PELRequeueWorker:
         self, message_id: str, fields: dict[str, str]
     ) -> None:
         requeue_count = int(fields.get("requeue_count", "0"))
+        max_requeue_count = self._settings.max_requeue_count
 
-        if requeue_count >= self._max_requeue_count:
+        if requeue_count >= max_requeue_count:
             logger.warning(
                 "Discarding stuck message: requeue_count exceeded threshold",
                 message_id=message_id,
                 requeue_count=requeue_count,
-                max_requeue_count=self._max_requeue_count,
+                max_requeue_count=max_requeue_count,
                 stream_key=self._stream_key,
             )
             await self._redis.xack(self._stream_key, self._consumer_group, message_id)

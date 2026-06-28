@@ -154,6 +154,19 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         ge=1,
         description="Seconds between successive PEL scans by the requeue worker.",
     )
+    pel_xautoclaim_count: int = Field(
+        default=100,
+        ge=1,
+        description="Maximum number of PEL entries to claim per XAUTOCLAIM call.",
+    )
+    pel_lifecycle_error_backoff_seconds: int = Field(
+        default=5,
+        ge=1,
+        description=(
+            "Seconds to wait before retrying the PEL worker lifecycle loop "
+            "after an unexpected error."
+        ),
+    )
     leader_election_ttl_ms: int = Field(
         default=30_000,
         ge=1000,
