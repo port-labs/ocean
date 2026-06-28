@@ -3,7 +3,7 @@ from typing import Any, Callable, Coroutine, Dict, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
 from github.clients.auth.retry_transport import GitHubRetryTransport
-from pydantic import BaseModel, PrivateAttr, Field
+from pydantic.v1 import BaseModel, PrivateAttr, Field
 from dateutil.parser import parse
 
 from port_ocean.context.ocean import ocean

@@ -3,7 +3,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic import Field, BaseModel
+from pydantic.v1 import Field, BaseModel
 from typing import List, Literal
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
@@ -245,10 +245,24 @@ class AWSCodeDeployDeploymentGroupResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeDeployDeploymentResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::Deployment"] = Field(
+        title="AWS CodeDeploy Deployment",
+        description="AWS CodeDeploy Deployment resource kind.",
+    )
+
+
 class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodePipeline::Pipeline"] = Field(
         title="AWS CodePipeline Pipeline",
         description="AWS CodePipeline Pipeline resource kind.",
+    )
+
+
+class AWSCodePipelineStageResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::Stage"] = Field(
+        title="AWS CodePipeline Stage",
+        description="AWS CodePipeline Stage resource kind.",
     )
 
 
@@ -283,7 +297,9 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodeBuildBuildRunResourceConfig
         | AWSCodeDeployApplicationResourceConfig
         | AWSCodeDeployDeploymentGroupResourceConfig
+        | AWSCodeDeployDeploymentResourceConfig
         | AWSCodePipelinePipelineResourceConfig
+        | AWSCodePipelineStageResourceConfig
         | AWSCodePipelineActionResourceConfig
     ] = Field(
         default_factory=list,

@@ -1,5 +1,6 @@
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, cast
 from _pytest.fixtures import SubRequest
+from port_ocean.context.event import event_context, EventType
 import pytest
 import asyncio
 import gzip
@@ -574,6 +575,153 @@ class TestRateLimiterLogging:
 
             mock_bound.debug.assert_called_once()
             mock_bound.warning.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_resync_above_threshold_sleeps_and_skips_optimistic_decrement(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": 50
+            }
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                async with client.rate_limiter:
+                    pass
+
+        mock_sleep.assert_called_once()
+        assert client.rate_limiter._initialized is False
+        # resync sleep path must not also fall through
+        # to the optimistic decrement, remaining must stay untouched.
+        assert client.rate_limiter.rate_limit_info.remaining == 500
+
+    @pytest.mark.asyncio
+    async def test_resync_below_threshold_does_not_sleep_and_still_decrements(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": 95
+            }
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                async with client.rate_limiter:
+                    pass
+
+        mock_sleep.assert_not_called()
+        # Falls through correctly to the normal exhaustion path's decrement.
+        assert client.rate_limiter.rate_limit_info.remaining == 499
+
+    @pytest.mark.asyncio
+    async def test_resync_sleep_resets_initialized_so_next_caller_does_not_resleep(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": 50
+            }
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                async with client.rate_limiter:
+                    pass
+
+                mock_sleep.reset_mock()
+
+                async with client.rate_limiter:
+                    pass
+
+        # _initialized is False so _enforce_rate_limit returns
+        # immediately at the top guard, no second sleep.
+        mock_sleep.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_non_numeric_threshold_falls_back_to_default(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=20, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": "not-a-number"
+            }
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                async with client.rate_limiter:
+                    pass
+
+        # 98% utilization (20/1000 remaining) exceeds the 95% default fallback.
+        mock_sleep.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_out_of_bounds_threshold_falls_back_to_default(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=20, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        with patch("github.clients.rate_limiter.limiter.ocean") as mock_ocean:
+            mock_ocean.integration_config = {
+                "resync_ratelimit_reservation_threshold": -10
+            }
+            async with event_context(EventType.RESYNC, trigger_type="machine"):
+                async with client.rate_limiter:
+                    pass
+
+        mock_sleep.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_non_resync_event_context_ignores_threshold_entirely(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        async with event_context(EventType.HTTP_REQUEST, trigger_type="machine"):
+            async with client.rate_limiter:
+                pass
+
+        mock_sleep.assert_not_called()
+        assert client.rate_limiter.rate_limit_info.remaining == 499
+
+    @pytest.mark.asyncio
+    async def test_no_active_event_context_ignores_threshold_entirely(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        client = MockGitHubClient(github_host, client_config)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            limit=1000, remaining=500, reset_time=int(time.time()) + 10
+        )
+        client.rate_limiter._initialized = True
+
+        async with client.rate_limiter:
+            pass
+
+        mock_sleep.assert_not_called()
+        assert client.rate_limiter.rate_limit_info.remaining == 499
 
 
 class TestNotifyRateLimitedConcurrency:
