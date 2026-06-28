@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -5,7 +6,9 @@ import pytest
 from webhook.webhook_client import StatuspageWebhookClient
 
 
-async def _async_iter(items: list[list[dict[str, str]]]):
+async def _async_iter(
+    items: list[list[dict[str, str]]],
+) -> AsyncGenerator[list[dict[str, str]], None]:
     for item in items:
         yield item
 
@@ -16,7 +19,12 @@ async def test_create_webhook_if_not_exists_filters_webhook_subscribers() -> Non
     client.pages_base_endpoint = "https://api.statuspage.io/v1/pages"
     client._get_paginated_resources = MagicMock(
         return_value=_async_iter(
-            [[{"mode": "email", "email": "foo@example.com"}, {"endpoint": "https://other.example.com/webhook"}]]
+            [
+                [
+                    {"mode": "email", "email": "foo@example.com"},
+                    {"endpoint": "https://other.example.com/webhook"},
+                ]
+            ]
         )
     )
     client.client.post = AsyncMock()
@@ -44,6 +52,8 @@ async def test_create_webhook_if_not_exists_skips_when_webhook_exists() -> None:
     client.client.post = AsyncMock()
 
     webhook_client = StatuspageWebhookClient(client)
-    await webhook_client.create_webhook_if_not_exists("page-id", "https://app.example.com")
+    await webhook_client.create_webhook_if_not_exists(
+        "page-id", "https://app.example.com"
+    )
 
     client.client.post.assert_not_awaited()
