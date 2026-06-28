@@ -63,3 +63,26 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::ElasticLoadBalancingV2::LoadBalancer
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.LoadBalancerArn
+          title: .Properties.LoadBalancerName
+          blueprint: '"elbv2LoadBalancer"'
+          properties:
+            arn: .Properties.LoadBalancerArn
+            dnsName: .Properties.DNSName
+            scheme: .Properties.Scheme
+            type: .Properties.Type
+            state: .Properties.State.Code
+            vpcId: .Properties.VpcId
+            ipAddressType: .Properties.IpAddressType
+            availabilityZones: .Properties.AvailabilityZones
+            securityGroups: .Properties.SecurityGroups
+            createdTime: .Properties.CreatedTime
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
