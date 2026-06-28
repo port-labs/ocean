@@ -80,6 +80,11 @@ class AzureDevOpsRetryTransport(RetryTransport):
         sleep_time: float,
         attempt: int,
     ) -> Optional[httpx.Request]:
+        request.extensions["azure_devops_retry_attempt"] = attempt
+        request.extensions["azure_devops_max_retry_attempts"] = (
+            self._retry_config.max_attempts
+        )
+
         if response is None and self._rate_limiter is not None:
             await self._rate_limiter.signal_throttle(
                 ADO_RATE_LIMIT_WINDOW_SECONDS,
@@ -130,25 +135,37 @@ class AzureDevOpsRetryTransport(RetryTransport):
         response: Optional[httpx.Response],
         error: Optional[Exception],
     ) -> None:
+        retry_attempt = request.extensions.get("azure_devops_retry_attempt")
+        max_retry_attempts = request.extensions.get("azure_devops_max_retry_attempts")
+        retry_context = (
+            f" (retry attempt {retry_attempt}/{max_retry_attempts})"
+            if retry_attempt is not None and max_retry_attempts is not None
+            else ""
+        )
+
         if response and response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
             logger.bind(
                 remaining=response.headers.get(LIMIT_REMAINING_HEADER),
                 limit=response.headers.get(LIMIT_HEADER),
                 reset=response.headers.get(LIMIT_RESET_HEADER),
                 retry_after=response.headers.get(LIMIT_RETRY_AFTER_HEADER),
+                retry_attempt=retry_attempt,
+                max_retry_attempts=max_retry_attempts,
                 method=request.method,
                 url=str(request.url),
                 sleep_time=sleep_time,
             ).warning(
-                f"Azure DevOps rate limit hit, retrying {request.method} {request.url} in {sleep_time}s"
+                f"Azure DevOps rate limit hit, retrying {request.method} {request.url} in {sleep_time}s{retry_context}"
             )
         elif response is None and error is not None:
             logger.bind(
                 error_type=type(error).__name__,
+                retry_attempt=retry_attempt,
+                max_retry_attempts=max_retry_attempts,
                 method=request.method,
                 url=str(request.url),
                 sleep_time=sleep_time,
             ).warning(
-                f"Azure DevOps transport error hit, retrying {request.method} {request.url} in {sleep_time}s"
+                f"Azure DevOps transport error hit, retrying {request.method} {request.url} in {sleep_time}s{retry_context}"
             )
         super()._log_before_retry(request, sleep_time, response, error)

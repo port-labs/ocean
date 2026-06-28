@@ -115,6 +115,8 @@ class TestAzureDevOpsRetryTransport:
         assert refreshed.headers["authorization"] == "Bearer fresh-token"
         assert refreshed.headers["accept"] == "application/json"
         assert refreshed.content == request.content
+        assert refreshed.extensions["azure_devops_retry_attempt"] == 1
+        assert refreshed.extensions["azure_devops_max_retry_attempts"] == 10
 
     @pytest.mark.asyncio
     async def test_handle_async_request_retries_429_after_cooldown(self) -> None:
