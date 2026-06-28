@@ -2,7 +2,7 @@ from typing import Any
 
 from mocks.payloads import ORG_LOGIN, REPO_NAMES
 
-ORG_MEMBERS = [
+ORG_MEMBERS: list[dict[str, Any]] = [
     {
         "login": "octocat",
         "id": "U_octocat",

@@ -101,7 +101,7 @@ def workflow_list_response(repo_name: str, workflow_id: int) -> dict[str, Any]:
     }
 
 
-def branch_response(repo_name: str, branch_id: int) -> dict[str, Any]:
+def branch_response(repo_name: str, branch_id: int) -> list[dict[str, Any]]:
     return [
         {
             "name": DEFAULT_BRANCH_NAME,
@@ -145,7 +145,7 @@ def branch_protection_response(_repo_name: str, _branch_id: int) -> dict[str, An
     }
 
 
-def dependabot_alert_response(repo_name: str, alert_id: int) -> dict[str, Any]:
+def dependabot_alert_response(repo_name: str, alert_id: int) -> list[dict[str, Any]]:
     return [
         {
             "number": alert_id,
@@ -156,7 +156,7 @@ def dependabot_alert_response(repo_name: str, alert_id: int) -> dict[str, Any]:
     ]
 
 
-def code_scanning_alert_response(repo_name: str, alert_id: int) -> dict[str, Any]:
+def code_scanning_alert_response(repo_name: str, alert_id: int) -> list[dict[str, Any]]:
     return [
         {
             "number": alert_id,
@@ -167,7 +167,7 @@ def code_scanning_alert_response(repo_name: str, alert_id: int) -> dict[str, Any
     ]
 
 
-def secret_scanning_alert_response(repo_name: str, alert_id: int) -> dict[str, Any]:
+def secret_scanning_alert_response(repo_name: str, alert_id: int) -> list[dict[str, Any]]:
     return [
         {
             "number": alert_id,
@@ -178,7 +178,7 @@ def secret_scanning_alert_response(repo_name: str, alert_id: int) -> dict[str, A
     ]
 
 
-def deployment_response(repo_name: str, deployment_id: int) -> dict[str, Any]:
+def deployment_response(repo_name: str, deployment_id: int) -> list[dict[str, Any]]:
     return [
         {
             "id": deployment_id_for_index(deployment_id),
@@ -226,7 +226,7 @@ def workflow_run_list_response(repo_name: str, run_id: int) -> dict[str, Any]:
     }
 
 
-def collaborator_response(repo_name: str, collab_id: int) -> dict[str, Any]:
+def collaborator_response(repo_name: str, collab_id: int) -> list[dict[str, Any]]:
     return [
         {
             "login": f"user-{collab_id}",

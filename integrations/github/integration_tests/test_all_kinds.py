@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 import pytest
 
@@ -95,7 +96,7 @@ def _assert_kind_resync(result: ResyncResult, kind: str) -> None:
 
 
 def _assert_entity_count(
-    entities: list[dict],
+    entities: list[dict[str, Any]],
     expectation: KindExpectation,
     kind: str,
     blueprint: str,
@@ -107,7 +108,7 @@ def _assert_entity_count(
 
 
 def _assert_entity_contents(
-    entities: list[dict],
+    entities: list[dict[str, Any]],
     expectation: KindExpectation,
     kind: str,
 ) -> None:
