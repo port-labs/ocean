@@ -6,7 +6,10 @@ from loguru import logger
 from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.issues import IssueState, IssuesHandler
 from newrelic_integration.overrides import NewRelicPortAppConfig
-from newrelic_integration.utils import NewRelicAnyResourceConfig
+from newrelic_integration.utils import (
+    NewRelicAnyResourceConfig,
+    get_port_resource_configuration_by_newrelic_entity_type,
+)
 from newrelic_integration.webhook.constants import (
     DEFAULT_ISSUE_KIND,
     ISSUE_ENTITY_TYPE,
@@ -109,6 +112,18 @@ async def enrich_issue_entity_relations(
                 continue
 
             entity_type = entity["type"]
+            entity_resource_config = (
+                await get_port_resource_configuration_by_newrelic_entity_type(
+                    entity_type
+                )
+            )
+            if not entity_resource_config:
+                logger.warning(
+                    "Received issue event for unknown entity type, ignoring",
+                    entity_type=entity_type,
+                )
+                continue
+
             issue_record.setdefault(f"__{entity_type}", {}).setdefault(
                 "entity_guids", []
             ).append(entity_guid)

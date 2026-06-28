@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from port_ocean.context.event import event_context
 
 from newrelic_integration.overrides import (
     NewRelicCustomResourceConfig,
@@ -18,8 +19,31 @@ from newrelic_integration.webhook.issue_event_utils import (
 from tests.webhook.helpers import port_resource_config
 
 
+@pytest.fixture
+def entity_resource_config() -> NewRelicCustomResourceConfig:
+    return NewRelicCustomResourceConfig(
+        kind="newRelicService",
+        selector=NewRelicSelector(
+            query="true",
+            newRelicTypes=["APM_APPLICATION"],
+            entityQueryFilter="type = 'APM_APPLICATION'",
+            calculateOpenIssueCount=True,
+        ),
+        port=port_resource_config(),
+    )
+
+
+@pytest.fixture
+def port_app_config(
+    entity_resource_config: NewRelicCustomResourceConfig,
+) -> NewRelicPortAppConfig:
+    return NewRelicPortAppConfig(resources=[entity_resource_config])
+
+
 @pytest.mark.asyncio
-async def test_enrich_issue_entity_relations() -> None:
+async def test_enrich_issue_entity_relations(
+    port_app_config: NewRelicPortAppConfig,
+) -> None:
     issue_record: dict[str, object] = {"entityGuids": ["entity-guid-1"]}
 
     with patch(
@@ -29,12 +53,34 @@ async def test_enrich_issue_entity_relations() -> None:
         mock_handler.list_entities_by_guids = AsyncMock(
             return_value=[{"type": "APM_APPLICATION", "guid": "entity-guid-1"}]
         )
-        await enrich_issue_entity_relations(issue_record)
+        async with event_context("test_event") as event:
+            event.port_app_config = port_app_config
+            await enrich_issue_entity_relations(issue_record)
 
     mock_handler.list_entities_by_guids.assert_awaited_once_with(["entity-guid-1"])
     relations = issue_record["__APM_APPLICATION"]
     assert isinstance(relations, dict)
     assert relations["entity_guids"] == ["entity-guid-1"]
+
+
+@pytest.mark.asyncio
+async def test_enrich_issue_entity_relations_skips_unknown_entity_type(
+    port_app_config: NewRelicPortAppConfig,
+) -> None:
+    issue_record: dict[str, object] = {"entityGuids": ["entity-guid-1"]}
+
+    with patch(
+        "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
+    ) as mock_handler_cls:
+        mock_handler = mock_handler_cls.return_value
+        mock_handler.list_entities_by_guids = AsyncMock(
+            return_value=[{"type": "HOST", "guid": "entity-guid-1"}]
+        )
+        async with event_context("test_event") as event:
+            event.port_app_config = port_app_config
+            await enrich_issue_entity_relations(issue_record)
+
+    assert "__HOST" not in issue_record
 
 
 @pytest.mark.asyncio
@@ -78,27 +124,6 @@ async def test_get_issue_event_entities_deduplicates_concurrent_fetches() -> Non
         == second_fetch
         == {"entity-guid-1": {"type": "APM_APPLICATION", "guid": "entity-guid-1"}}
     )
-
-
-@pytest.fixture
-def entity_resource_config() -> NewRelicCustomResourceConfig:
-    return NewRelicCustomResourceConfig(
-        kind="newRelicService",
-        selector=NewRelicSelector(
-            query="true",
-            newRelicTypes=["APM_APPLICATION"],
-            entityQueryFilter="type = 'APM_APPLICATION'",
-            calculateOpenIssueCount=True,
-        ),
-        port=port_resource_config(),
-    )
-
-
-@pytest.fixture
-def port_app_config(
-    entity_resource_config: NewRelicCustomResourceConfig,
-) -> NewRelicPortAppConfig:
-    return NewRelicPortAppConfig(resources=[entity_resource_config])
 
 
 @pytest.mark.asyncio
