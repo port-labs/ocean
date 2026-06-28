@@ -1,6 +1,5 @@
 import os
 
-from loguru import logger
 import pytest
 
 from port_ocean.integration_testing import IntegrationTestHarness, ResyncResult

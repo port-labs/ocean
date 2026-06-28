@@ -157,7 +157,7 @@ def mapping_for_kind(kind: str) -> dict[str, Any]:
             title=".name",
             properties={
                 "protected": ".protected",
-                "requiredCheck": '.__protection_rules.required_status_checks.contexts[0]',
+                "requiredCheck": ".__protection_rules.required_status_checks.contexts[0]",
             },
             selector={"query": "true", "protectionRules": True},
         ),
