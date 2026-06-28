@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.43 (2026-06-24)
+## 0.2.44 (2026-06-25)
 
 
 ### Improvements
 
-- Refactored live events to use `AbstractWebhookProcessor` with dedicated page, incident, and incident update processors
+- Bumped ocean version to ^0.44.1
+
+
+## 0.2.43 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
 
 
 ## 0.2.42 (2026-06-22)

@@ -2,7 +2,7 @@ from typing import Any, Optional, Literal
 
 from misc import ObjectKind, ResourceKindsWithSpecialHandling
 
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (

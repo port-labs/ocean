@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Type, Any
 
 from loguru import logger
-from pydantic import ValidationError
+from pydantic.v1 import ValidationError
 
 from port_ocean.context.event import event
 from port_ocean.context.ocean import PortOceanContext

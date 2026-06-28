@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.364 (2026-06-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+0.1.363 (2026-06-25)
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
 0.1.362 (2026-06-22)
 
 ### Improvements
