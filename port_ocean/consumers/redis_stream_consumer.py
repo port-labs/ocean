@@ -15,6 +15,9 @@ from redis.asyncio.connection import SSLConnection
 from redis.exceptions import ResponseError
 
 from port_ocean.config.settings import LiveEventsRedisSettings
+from port_ocean.consumers.abstract_live_events_consumer import (
+    AbstractLiveEventsConsumer,
+)
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.live_events import InvalidLiveEventsRedisStreamFieldError
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -29,7 +32,7 @@ _INTEGRATION_PATH_PREFIX = "/integration/"
 OnStreamMessage = Callable[[str, WebhookEvent], Awaitable[None]]
 
 
-class RedisStreamConsumer:
+class RedisStreamConsumer(AbstractLiveEventsConsumer):
     """Consumes live events directly from a Redis stream and invokes a handler."""
 
     def __init__(

@@ -15,6 +15,10 @@ class EventListenerType(StrEnum):
     ACTIONS_ONLY = "ACTIONS_ONLY"
 
 
+class LiveEventsConsumerType(StrEnum):
+    REDIS = "REDIS"
+
+
 class CreatePortResourcesOrigin(StrEnum):
     Empty = "Empty"
     Ocean = "Ocean"

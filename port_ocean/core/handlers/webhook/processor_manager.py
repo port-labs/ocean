@@ -1,5 +1,8 @@
 import copy
-from typing import Dict, Tuple, Type, Set, List
+from typing import TYPE_CHECKING, Dict, Tuple, Type, Set, List
+
+if TYPE_CHECKING:
+    from port_ocean.config.settings import IntegrationConfiguration
 
 from fastapi import APIRouter, Request
 from loguru import logger
@@ -28,11 +31,17 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 )
 from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import LocalQueue
+from port_ocean.consumers.abstract_live_events_consumer import (
+    AbstractLiveEventsConsumer,
+)
 from port_ocean.core.integrations.mixins.utils import is_redis_live_events_enabled
 from port_ocean.consumers.live_events_stream_key import (
     resolve_live_events_stream_key_from_base_url,
 )
 from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
+from port_ocean.core.models import LiveEventsConsumerType
+from port_ocean.config.settings import RedisLiveEventsSettings
+from port_ocean.exceptions.core import UnsupportedLiveEventsConsumerTypeException
 
 # Cap JSON UTF-8 size before base64 when logging under events_debug_logging (1 MiB).
 _WEBHOOK_DEBUG_LOG_MAX_JSON_UTF8_BYTES = 1024 * 1024
@@ -64,7 +73,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         self._event_processor_tasks: Set[asyncio.Task[None]] = set()
         self._max_event_processing_seconds = max_event_processing_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
-        self._redis_consumer: RedisStreamConsumer | None = None
+        self._live_events_consumer: AbstractLiveEventsConsumer | None = None
         signal_handler.register(self.shutdown)
 
     async def start_processing_event_messages(self) -> None:
@@ -74,19 +83,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         config = ocean.integration.context.config
 
         if await is_redis_live_events_enabled():
-            base_url = config.base_url or ocean.app.base_url
-            stream_key = resolve_live_events_stream_key_from_base_url(base_url)
-            self._redis_consumer = RedisStreamConsumer(
-                redis_settings=config.live_events.redis,
-                stream_key=stream_key,
-                on_message=self._on_redis_stream_message,
-                registered_paths=set(self._processors_classes.keys()),
-            )
-            await self._redis_consumer.start()
-            logger.info(
-                "Live events Redis stream consumer enabled",
-                stream_key=stream_key,
-            )
+            self._live_events_consumer = self._create_live_events_consumer(config)
+            await self._live_events_consumer.start()
+            logger.info("Live events stream consumer enabled")
             return
 
         for path in self._event_queues.keys():
@@ -95,10 +94,40 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                 self._event_processor_tasks.add(task)
                 task.add_done_callback(self._event_processor_tasks.discard)
 
-    async def _on_redis_stream_message(self, path: str, event: WebhookEvent) -> None:
+    async def _on_live_event_message(self, path: str, event: WebhookEvent) -> None:
         await self._process_webhook_event(
             path, 0, event
-        )  # event is processed by a redis consumer, for parallel processing multiple LE pods are required.
+        )  # for parallel processing, multiple LE pods are required.
+
+    def _create_live_events_consumer(
+        self, config: "IntegrationConfiguration"
+    ) -> AbstractLiveEventsConsumer:
+        """Construct the live-events consumer for the current configuration.
+
+        Override this method to swap in a different consumer backend
+        (e.g. Kafka, SQS) without touching the rest of the manager.
+        """
+        live_events_config = config.live_events
+
+        match live_events_config.type:
+            case LiveEventsConsumerType.REDIS:
+                if not isinstance(live_events_config, RedisLiveEventsSettings):
+                    raise UnsupportedLiveEventsConsumerTypeException(
+                        f"Invalid live events config: expected {RedisLiveEventsSettings.__name__}, "
+                        f"got {type(live_events_config).__name__}"
+                    )
+                base_url = config.base_url or ocean.app.base_url
+                stream_key = resolve_live_events_stream_key_from_base_url(base_url)
+                return RedisStreamConsumer(
+                    redis_settings=live_events_config.redis,
+                    stream_key=stream_key,
+                    on_message=self._on_live_event_message,
+                    registered_paths=set(self._processors_classes.keys()),
+                )
+            case _:
+                raise UnsupportedLiveEventsConsumerTypeException(
+                    f"Live events consumer type {live_events_config.type!r} is not supported"
+                )
 
     async def _process_webhook_event(
         self, path: str, worker_id: int, event: WebhookEvent
@@ -422,9 +451,9 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         """Gracefully shutdown all queue processors"""
         logger.warning("Shutting down webhook processor manager")
 
-        if self._redis_consumer is not None:
-            await self._redis_consumer.stop()
-            self._redis_consumer = None
+        if self._live_events_consumer is not None:
+            await self._live_events_consumer.stop()
+            self._live_events_consumer = None
 
         try:
             await asyncio.wait_for(

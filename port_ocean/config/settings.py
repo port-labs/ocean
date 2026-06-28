@@ -16,6 +16,7 @@ from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
     EventListenerType,
+    LiveEventsConsumerType,
     ProcessExecutionMode,
     ProcessingMode,
     Runtime,
@@ -170,9 +171,17 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
 
 
 class LiveEventsSettings(BaseOceanModel, extra=Extra.allow):
+    type: LiveEventsConsumerType = LiveEventsConsumerType.REDIS
+
+
+class RedisLiveEventsSettings(LiveEventsSettings):
+    type: Literal[LiveEventsConsumerType.REDIS] = LiveEventsConsumerType.REDIS
     redis: LiveEventsRedisSettings = Field(
         default_factory=lambda: LiveEventsRedisSettings()
     )
+
+
+LiveEventsSettingsType = RedisLiveEventsSettings
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
@@ -233,8 +242,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     actions_processor: ActionsProcessorSettings = Field(
         default_factory=lambda: ActionsProcessorSettings()
     )
-    live_events: LiveEventsSettings = Field(
-        default_factory=lambda: LiveEventsSettings()
+    live_events: LiveEventsSettingsType = Field(
+        default_factory=lambda: RedisLiveEventsSettings()
     )
     ssl: SslSettings = Field(default_factory=SslSettings)
 
