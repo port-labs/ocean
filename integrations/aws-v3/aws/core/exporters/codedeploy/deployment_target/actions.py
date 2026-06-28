@@ -7,8 +7,6 @@ from loguru import logger
 @dataclass
 class DeploymentTargetActionInput(BaseActionInput[str]):
     deployment_id: str
-    account_id: str
-    region: str
 
 
 class GetDeploymentTargetDetailsAction(Action[DeploymentTargetActionInput]):

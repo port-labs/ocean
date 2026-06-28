@@ -82,8 +82,6 @@ class CodeDeployDeploymentTargetExporter(
                                     DeploymentTargetActionInput(
                                         deployment_id=deployment_id,
                                         items=target_ids,
-                                        region=options.region,
-                                        account_id=options.account_id,
                                     ),
                                     options.include,
                                     extra_context={
