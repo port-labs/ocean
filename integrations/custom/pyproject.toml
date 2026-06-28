@@ -1,14 +1,13 @@
 [tool.poetry]
 name = "custom"
-version = "0.6.51"
+version = "0.6.56"
 description = "Ocean Custom Integration"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.43.18", extras = ["cli"]}
+port_ocean = {version = "^0.44.3", extras = ["cli"]}
 httpx = "^0.28.1"
-pydantic = "^1.10.8"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
@@ -70,7 +69,8 @@ exclude = [
     '.venv',
 ]
 plugins = [
-    "pydantic.mypy"
+    "pydantic.mypy",
+    "pydantic.v1.mypy"
 ]
 
 follow_imports = "silent"

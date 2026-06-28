@@ -1,5 +1,8 @@
 from integration import ObjectKind
 from typing import cast
+
+from httpx import HTTPStatusError
+from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -42,11 +45,27 @@ class MonitorWebhookProcessor(BaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        monitor = await MonitorExporter(self.client).get_resource(
-            GetMonitorOptions.from_resource_config(
-                cast(MonitorResourceConfig, resource_config), resource_id=monitor_id
-            )
+        options = GetMonitorOptions.from_resource_config(
+            cast(MonitorResourceConfig, resource_config), resource_id=monitor_id
         )
+        org_name = payload.get("org_name")
+        clients = self._client_manager.get_clients_by_org_name(org_name)
+        if not clients:
+            logger.warning(f"No Datadog client configured for org '{org_name}'")
+
+        monitor = None
+        for client in clients:
+            try:
+                monitor = await MonitorExporter(client).get_resource(options)
+            except HTTPStatusError as e:
+                logger.warning(
+                    f"Client for org '{org_name}' could not fetch monitor "
+                    f"({e.response.status_code}); trying next"
+                )
+                continue
+            if monitor:
+                self._enrich_with_org_id([monitor], client)
+                break
 
         return WebhookEventRawResults(
             updated_raw_results=[monitor] if monitor else [],

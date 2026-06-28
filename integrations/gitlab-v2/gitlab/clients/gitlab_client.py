@@ -14,6 +14,7 @@ from wcmatch import glob
 
 from gitlab.helpers.utils import parse_file_content, build_search_query, is_bot_member
 
+from gitlab.clients.rate_limiter.utils import RateLimitInfo
 from gitlab.clients.rest_client import RestClient
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
@@ -39,6 +40,10 @@ def _member_row_for_port(member: dict[str, Any], context: str) -> dict[str, Any]
     }
 
 
+def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
+    return project.get("namespace", {}).get("kind") == "user"
+
+
 class GitLabClient:
     DEFAULT_PARAMS: dict[str, Any] = {
         "all_available": True,  # Fetch all resources accessible to the user
@@ -46,6 +51,23 @@ class GitLabClient:
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
+
+    async def get_personal_namespace_projects(
+        self,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch projects in the authenticated user's personal namespace.
+
+        Uses the projects API with owned=true so fine-grained tokens do not need
+        the User: Read scope required by GET /user and GET /users/:id/projects.
+        Group-namespace projects are excluded via namespace.kind filtering.
+        """
+        params = {**self.DEFAULT_PARAMS, "owned": True}
+        async for batch in self.rest.get_paginated_resource("projects", params=params):
+            if personal_projects := list(filter(_is_personal_namespace_project, batch)):
+                logger.info(
+                    f"Received batch with {len(personal_projects)} personal namespace project(s)"
+                )
+                yield personal_projects
 
     async def get_tag(self, project_id: int, tag_name: str) -> dict[str, Any]:
         return await self.rest.send_api_request(
@@ -1013,3 +1035,22 @@ class GitLabClient:
         if not deployment:
             return None
         return deployment
+
+    async def trigger_pipeline(
+        self,
+        project_id: str | int,
+        ref: str,
+        variables: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        """Trigger a CI/CD pipeline on the given project and ref."""
+        encoded_id = quote(str(project_id), safe="")
+        data: dict[str, Any] = {"ref": ref}
+        if variables:
+            data["variables"] = variables
+        return await self.rest.send_api_request(
+            "POST", f"projects/{encoded_id}/pipeline", data=data
+        )
+
+    def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
+        """Return the most-recently observed rate-limit info, or None if unknown."""
+        return self.rest._rate_limiter.rate_limit_info
