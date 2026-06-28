@@ -1,0 +1,94 @@
+resources:
+  - kind: agent
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"claude_agent"'
+          properties:
+            description: .description
+            model: .model.id
+            system: .system
+            version: .version
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+  - kind: environment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"claude_environment"'
+          properties:
+            description: .description
+            scope: .scope
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+  - kind: session
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '.title // .id'
+          blueprint: '"claude_session"'
+          properties:
+            status: .status
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+            vaultIds: .vault_ids
+            metadata: .metadata
+          relations:
+            agent: .agent.id
+            environment: .environment_id
+  - kind: vault
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .display_name
+          blueprint: '"claude_vault"'
+          properties:
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+  - kind: memory-store
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"claude_memory_store"'
+          properties:
+            description: .description
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+  - kind: skill
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '.display_title // .id'
+          blueprint: '"claude_skill"'
+          properties:
+            displayTitle: .display_title
+            source: .source
+            latestVersion: .latest_version
+            createdAt: .created_at
+            updatedAt: .updated_at
