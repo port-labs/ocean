@@ -372,6 +372,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/statuspage",
+      "envFile": "${workspaceFolder}/integrations/statuspage/.env",
+      "justMyCode": true,
+      "name": "Run statuspage integration",
+      "program": "${workspaceFolder}/integrations/statuspage/debug.py",
+      "python": "${workspaceFolder}/integrations/statuspage/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/terraform-cloud",
       "envFile": "${workspaceFolder}/integrations/terraform-cloud/.env",
       "justMyCode": true,
