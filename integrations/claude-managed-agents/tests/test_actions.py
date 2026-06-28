@@ -163,6 +163,32 @@ async def test_create_agent_executor_passes_skills_config_through() -> None:
 
 
 @pytest.mark.asyncio
+async def test_create_agent_executor_reports_failure_on_api_error() -> None:
+    client_mock = MagicMock()
+    client_mock.create_agent = AsyncMock(side_effect=RuntimeError("quota exceeded"))
+    executor = _build_executor(CreateAgentExecutor, client_mock)
+
+    run = MagicMock()
+    run.id = "run_1"
+    run.execution_properties = {"name": "n", "model": "m"}
+
+    mock_ocean = _build_mock_ocean()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    with (
+        patch("actions.create_agent_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.ocean", mock_ocean),
+        patch("actions.abstract_executor.event_context", _noop_event_context),
+    ):
+        await executor.execute(run)
+
+    call = mock_ocean.port_client.report_run_completed.call_args
+    assert call.args[1] is False
+    assert "quota exceeded" in call.args[2]
+    mock_ocean.register_raw.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_create_agent_executor_requires_name_and_model() -> None:
     executor = _build_executor(CreateAgentExecutor, MagicMock())
     run = MagicMock()

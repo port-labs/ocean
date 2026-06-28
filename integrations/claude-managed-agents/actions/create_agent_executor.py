@@ -28,9 +28,17 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
         if not isinstance(extra, dict):
             raise ValueError("config must be an object")
 
-        agent = await self.client.create_agent(
-            name=name, model=model, system=system, extra=extra
-        )
+        try:
+            agent = await self.client.create_agent(
+                name=name, model=model, system=system, extra=extra
+            )
+        except Exception as error:
+            logger.error(f"Failed to create Claude agent for run {run.id}: {error}")
+            await ocean.port_client.report_run_completed(
+                run, False, f"Failed to create agent: {error}"
+            )
+            return
+
         agent_id = agent.get("id")
         logger.info(f"Created Claude agent {agent_id} for run {run.id}")
 
