@@ -196,10 +196,11 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
         )
 
         exporter = OrganizationsAccountExporter(session)
+        region = 'us-gov-west-1' if ocean.integration_config.get('aws_partition') == 'aws-us-gov' else ''
         options = PaginatedAccountRequest(
             include=aws_resource_config.selector.include_actions,
             account_id=account["Id"],
-            region="",
+            region=region,
         )
 
         try:
