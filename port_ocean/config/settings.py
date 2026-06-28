@@ -132,7 +132,6 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         sensitive=True,
         description="Base64-encoded PEM private key for mutual TLS.",
     )
-    consumer_group: str | None = None
     block_ms: int = Field(default=1000, ge=1)
     read_count: int = Field(
         default=10,

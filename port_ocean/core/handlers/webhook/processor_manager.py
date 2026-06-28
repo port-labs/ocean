@@ -122,7 +122,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
                     redis_settings=live_events_config.redis,
                     stream_key=stream_key,
                     on_message=self._on_live_event_message,
-                    consumer_group=live_events_config.redis.consumer_group,
                     registered_paths=set(self._processors_classes.keys()),
                 )
             case _:
