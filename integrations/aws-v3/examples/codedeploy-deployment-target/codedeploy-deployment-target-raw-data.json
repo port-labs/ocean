@@ -1,0 +1,55 @@
+{
+  "Type": "AWS::CodeDeploy::DeploymentTarget",
+  "Properties": {
+    "DeploymentId": "d-EXAMPLE11",
+    "DeploymentTargetType": "InstanceTarget",
+    "TargetId": "i-0123456789abcdef0",
+    "TargetArn": "arn:aws:ec2:us-east-1:123456789012:instance/i-0123456789abcdef0",
+    "Status": "Succeeded",
+    "LastUpdatedAt": "2026-06-03T16:10:48.108000+00:00",
+    "LifecycleEvents": [
+      {
+        "lifecycleEventName": "ApplicationStop",
+        "diagnostics": null,
+        "startTime": "2026-06-03T16:10:47.000000+00:00",
+        "endTime": "2026-06-03T16:10:47.500000+00:00",
+        "status": "Succeeded"
+      },
+      {
+        "lifecycleEventName": "ApplicationStart",
+        "diagnostics": null,
+        "startTime": "2026-06-03T16:10:47.600000+00:00",
+        "endTime": "2026-06-03T16:10:48.108000+00:00",
+        "status": "Succeeded"
+      }
+    ],
+    "InstanceTarget": {
+      "deploymentId": "d-EXAMPLE11",
+      "targetId": "i-0123456789abcdef0",
+      "targetArn": "arn:aws:ec2:us-east-1:123456789012:instance/i-0123456789abcdef0",
+      "lastUpdatedAt": "2026-06-03T16:10:48.108000+00:00",
+      "lifecycleEvents": [
+        {
+          "lifecycleEventName": "ApplicationStop",
+          "diagnostics": null,
+          "startTime": "2026-06-03T16:10:47.000000+00:00",
+          "endTime": "2026-06-03T16:10:47.500000+00:00",
+          "status": "Succeeded"
+        },
+        {
+          "lifecycleEventName": "ApplicationStart",
+          "diagnostics": null,
+          "startTime": "2026-06-03T16:10:47.600000+00:00",
+          "endTime": "2026-06-03T16:10:48.108000+00:00",
+          "status": "Succeeded"
+        }
+      ],
+      "instanceLabel": "Blue",
+      "status": "Succeeded"
+    }
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "us-east-1"
+  }
+}
