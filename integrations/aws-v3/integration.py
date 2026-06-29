@@ -287,7 +287,6 @@ class AWSCodePipelineActionExecutionResourceConfig(AWSResourceConfig):
     )
 
 
-
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig

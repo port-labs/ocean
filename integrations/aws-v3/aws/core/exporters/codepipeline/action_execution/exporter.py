@@ -13,9 +13,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class CodePipelineActionExecutionExporter(
-    IResourceExporter[list[dict[str, Any]]]
-):
+class CodePipelineActionExecutionExporter(IResourceExporter[list[dict[str, Any]]]):
     _service_name: SupportedServices = "codepipeline"
     _model_cls: Type[CodePipelineActionExecution] = CodePipelineActionExecution
     _actions_map: Type[CodePipelineActionExecutionActionsMap] = (
@@ -33,23 +31,26 @@ class CodePipelineActionExecutionExporter(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            paginator = proxy.get_paginator('list_action_executions', 'actionExecutionDetails')
+            paginator = proxy.get_paginator(
+                "list_action_executions", "actionExecutionDetails"
+            )
             response_actions = []
-            async for action_executions in paginator.paginate(pipelineName=options.pipeline_name):
-                response_actions.extend(await inspector.inspect(
-                    action_executions,
-                    options.include,
-                    extra_context={
-                        "AccountId": options.account_id,
-                        "Region": options.region,
-                    },
-                ))
+            async for action_executions in paginator.paginate(
+                pipelineName=options.pipeline_name
+            ):
+                response_actions.extend(
+                    await inspector.inspect(
+                        action_executions,
+                        options.include,
+                        extra_context={
+                            "AccountId": options.account_id,
+                            "Region": options.region,
+                        },
+                    )
+                )
 
             for execution in response_actions:
-                if (
-                    execution.get("actionExecutionId")
-                    == options.action_execution_id
-                ):
+                if execution.get("actionExecutionId") == options.action_execution_id:
                     return execution
 
             return {}
@@ -66,11 +67,15 @@ class CodePipelineActionExecutionExporter(
             )
 
             pipeline_paginator = proxy.get_paginator("list_pipelines", "pipelines")
-            action_paginator = proxy.get_paginator('list_action_executions', 'actionExecutionDetails')
+            action_paginator = proxy.get_paginator(
+                "list_action_executions", "actionExecutionDetails"
+            )
 
             async for pipelines in pipeline_paginator.paginate():
                 for pipeline in pipelines:
-                    async for action_executions in action_paginator.paginate(pipelineName=pipeline['name']):
+                    async for action_executions in action_paginator.paginate(
+                        pipelineName=pipeline["name"]
+                    ):
                         yield await inspector.inspect(
                             action_executions,
                             options.include,
