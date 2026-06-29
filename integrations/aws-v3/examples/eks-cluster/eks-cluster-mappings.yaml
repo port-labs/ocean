@@ -1,0 +1,30 @@
+resources:
+  - kind: AWS::EKS::Cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ARN
+          title: .Properties.Name
+          blueprint: '"eksCluster"'
+          properties:
+            arn: .Properties.Arn
+            name: .Properties.Name
+            status: .Properties.Status
+            version: .Properties.Version
+            platformVersion: .Properties.PlatformVersion
+            endpoint: .Properties.Endpoint
+            roleArn: .Properties.RoleArn
+            createdAt: .Properties.CreatedAt
+            resourcesVpcConfig: .Properties.ResourcesVpcConfig
+            kubernetesNetworkConfig: .Properties.KubernetesNetworkConfig
+            logging: .Properties.Logging
+            identity: .Properties.Identity
+            certificateAuthority: .Properties.CertificateAuthority
+            tags: .Properties.Tags
+            accessConfig: .Properties.AccessConfig
+            upgradePolicy: .Properties.UpgradePolicy
+            zonalShiftConfig: .Properties.ZonalShiftConfig
+            computeConfig: .Properties.ComputeConfig
+            storageConfig: .Properties.StorageConfig
