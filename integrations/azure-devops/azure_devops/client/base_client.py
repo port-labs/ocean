@@ -17,7 +17,6 @@ PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 CONTINUATION_TOKEN_KEY = "continuationToken"
 MAX_TIMEMOUT_RETRIES = 3
-MAX_RATE_LIMIT_RETRIES = 3
 # ADO TSTU (Team Services Time Units) budget resets on a 5-minute rolling window.
 # Both the retry backoff cap and the ReadTimeout cooldown are set to this value so
 # the integration always waits out the full reset window before retrying.
