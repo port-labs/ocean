@@ -11,6 +11,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.execution_manager import (
+    ActionExecutionError,
     DuplicateActionExecutorError,
     PartitionKeyNotFoundError,
     RunAlreadyAcknowledgedError,
@@ -414,6 +415,9 @@ class ExecutionManager:
                     "Run executed successfully",
                     elapsed_ms=(time.monotonic() - start_time) * 1000,
                 )
+            except ActionExecutionError as e:
+                logger.warning("Action run failed: {}", str(e))
+                error_summary = str(e)
             except Exception as e:
                 logger.exception("Error executing run", error=str(e))
                 error_summary = f"Failed to execute run: {str(e)}"
