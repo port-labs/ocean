@@ -22,7 +22,9 @@ class TestGetAllAvailableRegions:
         with patch.object(LocationUtils, "get_partition", return_value="aws"):
             # Act
             result = await LocationUtils.get_all_available_regions(mock_session)
-            result_from_cache = await LocationUtils.get_all_available_regions(mock_session)
+            result_from_cache = await LocationUtils.get_all_available_regions(
+                mock_session
+            )
 
         # Assert
         assert result == regions

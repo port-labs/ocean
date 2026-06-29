@@ -6,9 +6,7 @@ from aws.utils.location_utils import LocationUtils
 
 class TestGetFirstAvailableRegion:
     @pytest.mark.asyncio
-    async def test_returns_first_region_from_list(
-        self
-    ) -> None:
+    async def test_returns_first_region_from_list(self) -> None:
         # Arrange
         mock_session = AsyncMock()
         regions = ["us-east-1", "us-west-2", "eu-west-1"]
@@ -27,9 +25,7 @@ class TestGetFirstAvailableRegion:
         mock_get.assert_called_once_with(mock_session)
 
     @pytest.mark.asyncio
-    async def test_returns_none_when_no_regions(
-        self
-    ) -> None:
+    async def test_returns_none_when_no_regions(self) -> None:
         # Arrange
         mock_session = AsyncMock()
         with patch.object(
