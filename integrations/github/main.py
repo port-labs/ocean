@@ -765,6 +765,7 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 repo_name=repo["name"],
                                 task=config.selector.task,
                                 environment=config.selector.environment,
+                                enrich_with_first_commit=config.selector.enrich_with_first_commit,
                             )
                         )
                     )
