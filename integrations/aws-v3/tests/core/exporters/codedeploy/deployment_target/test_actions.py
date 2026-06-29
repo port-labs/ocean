@@ -1,4 +1,3 @@
-from typing import Any
 from unittest.mock import AsyncMock
 import pytest
 
@@ -22,8 +21,6 @@ class TestGetDeploymentTargetDetailsAction:
         resources = DeploymentTargetActionInput(
             deployment_id="d-EXAMPLE11",
             items=["i-0123456789abcdef0"],
-            region="us-east-1",
-            account_id="123456789012",
         )
 
         mock_target = {
@@ -55,7 +52,10 @@ class TestGetDeploymentTargetDetailsAction:
         assert entry["DeploymentId"] == "d-EXAMPLE11"
         assert entry["DeploymentTargetType"] == "instanceTarget"
         assert entry["TargetId"] == "i-0123456789abcdef0"
-        assert entry["TargetArn"] == "arn:aws:ec2:us-east-1:123456789012:instance/i-0123456789abcdef0"
+        assert (
+            entry["TargetArn"]
+            == "arn:aws:ec2:us-east-1:123456789012:instance/i-0123456789abcdef0"
+        )
         assert entry["Status"] == "Succeeded"
         assert len(entry["LifecycleEvents"]) == 1
         action.client.batch_get_deployment_targets.assert_called_once_with(
@@ -71,8 +71,6 @@ class TestGetDeploymentTargetDetailsAction:
         resources = DeploymentTargetActionInput(
             deployment_id="d-EXAMPLE11",
             items=["i-0123456789abcdef0"],
-            region="us-east-1",
-            account_id="123456789012",
         )
         action.client.batch_get_deployment_targets.return_value = {}
 
@@ -94,8 +92,6 @@ class TestGetDeploymentTargetDetailsAction:
         resources = DeploymentTargetActionInput(
             deployment_id="d-EXAMPLE11",
             items=["i-0000000000000001", "i-0000000000000002"],
-            region="us-east-1",
-            account_id="123456789012",
         )
 
         mock_targets = [
@@ -140,8 +136,6 @@ class TestGetDeploymentTargetDetailsAction:
         resources = DeploymentTargetActionInput(
             deployment_id="d-EXAMPLE22",
             items=["my-lambda-function:1"],
-            region="us-east-1",
-            account_id="123456789012",
         )
 
         mock_target = {

@@ -134,9 +134,7 @@ async def test_get_paginated_resources_success(
         def __init__(self) -> None:
             self.calls: list[str] = []
 
-        async def paginate(
-            self, deploymentId: str
-        ) -> AsyncGenerator[list[str], None]:
+        async def paginate(self, deploymentId: str) -> AsyncGenerator[list[str], None]:
             self.calls.append(deploymentId)
             if deploymentId == "d-EXAMPLE11":
                 yield ["i-0000000000000001", "i-0000000000000002"]
@@ -243,9 +241,7 @@ async def test_get_paginated_resources_empty_targets(
             yield ["d-EXAMPLE11"]
 
     class MockTargetPaginator:
-        async def paginate(
-            self, deploymentId: str
-        ) -> AsyncGenerator[list[str], None]:
+        async def paginate(self, deploymentId: str) -> AsyncGenerator[list[str], None]:
             yield []
 
     def get_paginator(operation_name: str, *args: Any) -> Any:
@@ -293,9 +289,7 @@ async def test_get_paginated_resources_empty_deployments(
             yield []
 
     class MockTargetPaginator:
-        async def paginate(
-            self, deploymentId: str
-        ) -> AsyncGenerator[list[str], None]:
+        async def paginate(self, deploymentId: str) -> AsyncGenerator[list[str], None]:
             yield ["some-target"]
 
     def get_paginator(operation_name: str, *args: Any) -> Any:

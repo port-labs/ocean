@@ -42,8 +42,6 @@ class CodeDeployDeploymentTargetExporter(
                 DeploymentTargetActionInput(
                     deployment_id=options.deployment_id,
                     items=[options.target_id],
-                    region=options.region,
-                    account_id=options.account_id,
                 ),
                 options.include,
                 extra_context={
@@ -93,7 +91,12 @@ class CodeDeployDeploymentTargetExporter(
                                 else []
                             )
                     except ClientError as e:
-                        if e.response.get('Error', {}).get('Code') == 'DeploymentNotStartedException':
-                            logger.warning(f"Deployment {deployment_id} has not started, unable to fetch targets.")
+                        if (
+                            e.response.get("Error", {}).get("Code")
+                            == "DeploymentNotStartedException"
+                        ):
+                            logger.warning(
+                                f"Deployment {deployment_id} has not started, unable to fetch targets."
+                            )
                             continue
                         raise

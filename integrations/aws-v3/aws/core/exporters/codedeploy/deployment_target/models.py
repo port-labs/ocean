@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from pydantic.v1 import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
@@ -32,12 +32,8 @@ class CodeDeployDeploymentTarget(ResourceModel[DeploymentTargetProperties]):
 class SingleCodeDeployDeploymentTargetRequest(ResourceRequestModel):
     """Options for exporting a single CodeDeploy deployment target."""
 
-    deployment_id: str = Field(
-        ..., description="The ID of the CodeDeploy deployment"
-    )
-    target_id: str = Field(
-        ..., description="The ID of the deployment target"
-    )
+    deployment_id: str = Field(..., description="The ID of the CodeDeploy deployment")
+    target_id: str = Field(..., description="The ID of the deployment target")
 
 
 class PaginatedCodeDeployDeploymentTargetRequest(ResourceRequestModel):

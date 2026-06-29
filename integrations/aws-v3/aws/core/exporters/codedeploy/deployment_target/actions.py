@@ -25,8 +25,7 @@ class GetDeploymentTargetDetailsAction(Action[DeploymentTargetActionInput]):
             f"Successfully fetched details for {len(results)} CodeDeploy deployment targets"
         )
         return [
-            {**result, 'deploymentId': targets_data.deployment_id}
-            for result in results
+            {**result, "deploymentId": targets_data.deployment_id} for result in results
         ]
 
 
