@@ -1,0 +1,37 @@
+{
+  "identifier": "codedeployDeploymentTarget",
+  "title": "CodeDeploy Deployment Target",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "deploymentId": {
+        "type": "string",
+        "title": "Deployment ID",
+        "description": "The unique ID of the deployment"
+      },
+      "deploymentTargetType": {
+        "type": "string",
+        "title": "Deployment Target Type",
+        "description": "The deployment type that is specific to the deployment's compute platform",
+        "enum": [
+          "InstanceTarget",
+          "LambdaTarget",
+          "ECSTarget",
+          "CloudFormationTarget"
+        ]
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}

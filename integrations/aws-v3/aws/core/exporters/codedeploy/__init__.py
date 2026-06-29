@@ -14,3 +14,8 @@ from aws.core.exporters.codedeploy.deployment import (
     SingleCodeDeployDeploymentRequest,
     PaginatedCodeDeployDeploymentRequest,
 )
+from aws.core.exporters.codedeploy.deployment_target import (
+    CodeDeployDeploymentTargetExporter,
+    SingleCodeDeployDeploymentTargetRequest,
+    PaginatedCodeDeployDeploymentTargetRequest,
+)
