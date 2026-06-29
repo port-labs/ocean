@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.4 (2026-06-29)
+
+
+### Bug Fixes
+
+- Fixed a subprocess OOM / SIGKILL in multi-process resync mode caused by accumulating all passed entities in memory across every batch before serializing the entire list to disk at once via `pickle.dump`. For large kinds (e.g. 90k+ containers), this doubled peak memory — holding the live list and its serialization buffer simultaneously — pushing the subprocess over the container memory limit. The subprocess was killed mid-write, leaving the IPC file empty or corrupt and causing the parent to skip reconciliation, leaving stale entities undeleted in Port. Fixed by writing entities to the IPC file incrementally per batch (`pickle.dump` in append mode) so peak memory per batch is bounded regardless of total kind size.
+
+
 ## 0.44.3 (2026-06-28)
 
 ### Improvements
