@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.1.2 (2026-06-29)
+
+
+### Improvements
+
+- Added an opt-in `enrichWithFirstCommit` flag to the `deployment` kind that attaches the earliest commit since the previous deployment under `__firstCommit`, powering the DORA Lead Time for Changes metric (defaults to false; adds one API call per deployment when enabled).
+
+
 ## 6.1.1 (2026-06-28)
 
 

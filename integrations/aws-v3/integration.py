@@ -252,6 +252,13 @@ class AWSCodeDeployDeploymentResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodeDeployDeploymentTargetResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodeDeploy::DeploymentTarget"] = Field(
+        title="AWS CodeDeploy DeploymentTarget",
+        description="AWS CodeDeploy Deployment Target resource kind.",
+    )
+
+
 class AWSCodePipelinePipelineResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodePipeline::Pipeline"] = Field(
         title="AWS CodePipeline Pipeline",
@@ -270,6 +277,20 @@ class AWSCodePipelineActionResourceConfig(AWSResourceConfig):
     kind: Literal["AWS::CodePipeline::Action"] = Field(
         title="AWS CodePipeline Action",
         description="AWS CodePipeline Action resource kind.",
+    )
+
+
+class AWSCodePipelinePipelineExecutionResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::PipelineExecution"] = Field(
+        title="AWS CodePipeline Pipeline Execution",
+        description="AWS CodePipeline Pipeline Execution resource kind.",
+    )
+
+
+class AWSCodePipelineActionExecutionResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::ActionExecution"] = Field(
+        title="AWS CodePipeline Action Execution",
+        description="AWS CodePipeline Action Execution resource kind.",
     )
 
 
@@ -298,9 +319,12 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodeDeployApplicationResourceConfig
         | AWSCodeDeployDeploymentGroupResourceConfig
         | AWSCodeDeployDeploymentResourceConfig
+        | AWSCodeDeployDeploymentTargetResourceConfig
         | AWSCodePipelinePipelineResourceConfig
         | AWSCodePipelineStageResourceConfig
         | AWSCodePipelineActionResourceConfig
+        | AWSCodePipelinePipelineExecutionResourceConfig
+        | AWSCodePipelineActionExecutionResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
