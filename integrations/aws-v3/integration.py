@@ -280,6 +280,13 @@ class AWSCodePipelineActionResourceConfig(AWSResourceConfig):
     )
 
 
+class AWSCodePipelinePipelineExecutionResourceConfig(AWSResourceConfig):
+    kind: Literal["AWS::CodePipeline::PipelineExecution"] = Field(
+        title="AWS CodePipeline Pipeline Execution",
+        description="AWS CodePipeline Pipeline Execution resource kind.",
+    )
+
+
 class AWSPortAppConfig(PortAppConfig):
     resources: List[
         AWSS3BucketResourceConfig
@@ -305,10 +312,11 @@ class AWSPortAppConfig(PortAppConfig):
         | AWSCodeDeployApplicationResourceConfig
         | AWSCodeDeployDeploymentGroupResourceConfig
         | AWSCodeDeployDeploymentResourceConfig
+        | AWSCodeDeployDeploymentTargetResourceConfig
         | AWSCodePipelinePipelineResourceConfig
         | AWSCodePipelineStageResourceConfig
         | AWSCodePipelineActionResourceConfig
-        | AWSCodeDeployDeploymentTargetResourceConfig
+        | AWSCodePipelinePipelineExecutionResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",

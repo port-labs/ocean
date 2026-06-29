@@ -70,7 +70,9 @@ class ResourceInspector[
         """
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
-        type = self.model_factory().Type
+        template = self.model_factory()
+        model_cls = type(template)
+        resource_type = template.Type
         action_results = await asyncio.gather(
             *(self._run_action(action, identifiers) for action in actions),
         )
@@ -96,15 +98,15 @@ class ResourceInspector[
 
         resources = []
         for resource_props in resource_data.values():
-            builder = ResourceBuilder[ResourceModelT, Any](self.model_factory())
+            builder = ResourceBuilder[ResourceModelT, Any](model_cls)
             builder.with_properties(resource_props)
             if extra_context:
                 builder.with_extra_context(extra_context)
-            builder.with_type(type)
+            builder.with_type(resource_type)
             resources.append(builder.build())
 
         logger.info(
-            f"Built {len(resources)} resources from {len(action_results)} actions for {type}"
+            f"Built {len(resources)} resources from {len(action_results)} actions for {resource_type}"
         )
         return resources
 
