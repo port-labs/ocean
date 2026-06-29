@@ -1,6 +1,7 @@
 from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch, call
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.codedeploy.deployment_target.exporter import (
     CodeDeployDeploymentTargetExporter,
@@ -64,8 +65,6 @@ async def test_get_resource_success(
     mock_input.assert_called_once_with(
         deployment_id=single_deployment_target_options.deployment_id,
         items=[single_deployment_target_options.target_id],
-        region=single_deployment_target_options.region,
-        account_id=single_deployment_target_options.account_id,
     )
     mock_inspector.inspect.assert_called_once_with(
         mock_input.return_value,
@@ -128,18 +127,25 @@ async def test_get_paginated_resources_success(
 
     class MockDeploymentPaginator:
         async def paginate(self) -> AsyncGenerator[list[str], None]:
-            yield ["d-EXAMPLE11", "d-EXAMPLE22"]
+            yield ["d-EXAMPLE11", "d-EXAMPLE22", "d-EXAMPLE33"]
 
     class MockTargetPaginator:
         def __init__(self) -> None:
             self.calls: list[str] = []
 
-        async def paginate(self, deploymentId: str) -> AsyncGenerator[list[str], None]:
+        async def paginate(
+            self, deploymentId: str, **kwargs: Any
+        ) -> AsyncGenerator[list[str], None]:
             self.calls.append(deploymentId)
             if deploymentId == "d-EXAMPLE11":
                 yield ["i-0000000000000001", "i-0000000000000002"]
             elif deploymentId == "d-EXAMPLE22":
                 yield ["i-0000000000000003"]
+            elif deploymentId == "d-EXAMPLE33":
+                raise ClientError(
+                    {"Error": {"Code": "DeploymentNotStartedException"}},
+                    "operation_name",
+                )
 
     target_paginator = MockTargetPaginator()
 
@@ -190,14 +196,10 @@ async def test_get_paginated_resources_success(
             call(
                 deployment_id="d-EXAMPLE11",
                 items=["i-0000000000000001", "i-0000000000000002"],
-                region=paginated_deployment_target_options.region,
-                account_id=paginated_deployment_target_options.account_id,
             ),
             call(
                 deployment_id="d-EXAMPLE22",
                 items=["i-0000000000000003"],
-                region=paginated_deployment_target_options.region,
-                account_id=paginated_deployment_target_options.account_id,
             ),
         ]
     )
@@ -224,11 +226,13 @@ async def test_get_paginated_resources_success(
 
 
 @pytest.mark.asyncio
+@patch(f"{patch_prefix}.DeploymentTargetActionInput")
 @patch(f"{patch_prefix}.AioBaseClientProxy")
 @patch(f"{patch_prefix}.ResourceInspector")
 async def test_get_paginated_resources_empty_targets(
     mock_inspector_class: MagicMock,
     mock_proxy_class: MagicMock,
+    mock_input: MagicMock,
     exporter: CodeDeployDeploymentTargetExporter,
     paginated_deployment_target_options: PaginatedCodeDeployDeploymentTargetRequest,
 ) -> None:
@@ -236,12 +240,17 @@ async def test_get_paginated_resources_empty_targets(
     mock_proxy = AsyncMock()
     mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
+    mock_inspector = AsyncMock()
+    mock_inspector_class.return_value = mock_inspector
+
     class MockDeploymentPaginator:
         async def paginate(self) -> AsyncGenerator[list[str], None]:
             yield ["d-EXAMPLE11"]
 
     class MockTargetPaginator:
-        async def paginate(self, deploymentId: str) -> AsyncGenerator[list[str], None]:
+        async def paginate(
+            self, deploymentId: str, **kwargs: Any
+        ) -> AsyncGenerator[list[str], None]:
             yield []
 
     def get_paginator(operation_name: str, *args: Any) -> Any:
@@ -268,7 +277,15 @@ async def test_get_paginated_resources_empty_targets(
             call("list_deployment_targets", "targetIds"),
         ]
     )
-    mock_inspector_class.return_value.inspect.assert_not_called()
+    mock_input.assert_called_once_with(deployment_id="d-EXAMPLE11", items=[])
+    mock_inspector_class.return_value.inspect.assert_called_once_with(
+        mock_input.return_value,
+        paginated_deployment_target_options.include,
+        extra_context={
+            "AccountId": paginated_deployment_target_options.account_id,
+            "Region": paginated_deployment_target_options.region,
+        },
+    )
 
 
 @pytest.mark.asyncio

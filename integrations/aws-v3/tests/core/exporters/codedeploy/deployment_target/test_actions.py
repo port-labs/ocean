@@ -47,7 +47,7 @@ class TestGetDeploymentTargetDetailsAction:
         result = await action._execute(resources)
 
         # Assert
-        assert result == [{**mock_target, 'deploymentId': resources.deployment_id}]
+        assert result == [{**mock_target, "deploymentId": resources.deployment_id}]
 
         action.client.batch_get_deployment_targets.assert_called_once_with(
             deploymentId=resources.deployment_id,
