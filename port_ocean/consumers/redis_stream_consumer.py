@@ -120,15 +120,16 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         self._is_running = True
         self._read_task = asyncio.create_task(self._read_loop())
 
-        self._pel_worker = PELRequeueWorker(
-            redis=self._redis,
-            settings=PELRequeueWorkerSettings.from_live_events_redis_settings(
-                self._settings,
-                stream_key=self._stream_key,
-                consumer_group=self._consumer_group,
-            ),
-        )
-        await self._pel_worker.start()
+        if self._settings.pel_requeue_worker_enabled:
+            self._pel_worker = PELRequeueWorker(
+                redis=self._redis,
+                settings=PELRequeueWorkerSettings.from_live_events_redis_settings(
+                    self._settings,
+                    stream_key=self._stream_key,
+                    consumer_group=self._consumer_group,
+                ),
+            )
+            await self._pel_worker.start()
 
         logger.info(
             "Started Redis stream consumer",

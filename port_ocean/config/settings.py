@@ -139,6 +139,13 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         description="Maximum number of stream entries to return per XREADGROUP call.",
     )
     # PEL requeue worker settings
+    pel_requeue_worker_enabled: bool = Field(
+        default=True,
+        description=(
+            "When true, starts a background worker that reclaims stuck PEL "
+            "entries and re-enqueues them for reprocessing."
+        ),
+    )
     pel_stuck_timeout_seconds: int = Field(
         default=600,
         ge=1,

@@ -271,6 +271,90 @@ class TestRedisStreamConsumerConnection:
         assert mock_redis.xreadgroup.await_args.kwargs["count"] == 25
 
 
+class TestRedisStreamConsumerPelWorkerLifecycle:
+    @pytest.mark.asyncio
+    async def test_start_starts_pel_worker_when_enabled(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            pel_requeue_worker_enabled=True,
+        )
+        mock_redis = AsyncMock()
+        mock_redis.xgroup_create = AsyncMock()
+        mock_pel_worker = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.Redis.from_url",
+                return_value=mock_redis,
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.PELRequeueWorker",
+                return_value=mock_pel_worker,
+            ) as mock_pel_worker_cls,
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            await consumer.start()
+
+            mock_pel_worker_cls.assert_called_once()
+            mock_pel_worker.start.assert_awaited_once()
+            assert consumer._pel_worker is mock_pel_worker
+
+            await consumer.stop()
+
+            mock_pel_worker.stop.assert_awaited_once()
+            assert consumer._pel_worker is None
+            mock_redis.aclose.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_start_skips_pel_worker_when_disabled(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            pel_requeue_worker_enabled=False,
+        )
+        mock_redis = AsyncMock()
+        mock_redis.xgroup_create = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.Redis.from_url",
+                return_value=mock_redis,
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.PELRequeueWorker",
+            ) as mock_pel_worker_cls,
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            await consumer.start()
+
+            mock_pel_worker_cls.assert_not_called()
+            assert consumer._pel_worker is None
+
+            await consumer.stop()
+
+            assert consumer._pel_worker is None
+            mock_redis.aclose.assert_awaited_once()
+
+
 class TestRedisStreamConsumer:
     def test_parse_raw_json_to_dict_parses_json_object(self) -> None:
         inner = {"action": "opened", "pull_request": {"number": 1}}

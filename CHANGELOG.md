@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added a Redis PEL requeue worker with leader election so stuck pending stream messages are reclaimed and reprocessed by a single pod.
+- Added a Redis PEL requeue worker (enabled by default; disable with `OCEAN__LIVE_EVENTS__REDIS__PEL_REQUEUE_WORKER_ENABLED=false`) that reclaims stuck pending stream messages and re-enqueues them for reprocessing. All pods scan concurrently; `XAUTOCLAIM` ensures only one pod claims each message.
 
 ## 0.44.3 (2026-06-28)
 

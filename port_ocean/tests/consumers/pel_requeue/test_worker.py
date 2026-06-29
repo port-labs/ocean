@@ -268,6 +268,30 @@ class TestPELScanAndRequeue:
 
         redis.xadd.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_continues_scan_when_one_message_fails(self) -> None:
+        redis = _make_redis()
+        messages = [
+            (
+                "1700000000001-0",
+                {"requeue_count": "not-a-number"},
+            ),
+            (
+                "1700000000002-0",
+                {"webhookPath": "/w", "payload": "{}", "headers": "{}"},
+            ),
+        ]
+        redis.xautoclaim = AsyncMock(return_value=("0-0", messages, []))
+
+        worker = _make_worker(redis)
+        await worker._scan_and_requeue()
+
+        redis.xadd.assert_awaited_once()
+        assert redis.xadd.await_args.args[1]["requeue_count"] == "1"
+        redis.xack.assert_awaited_once_with(
+            worker._stream_key, worker._consumer_group, "1700000000002-0"
+        )
+
 
 # ---------------------------------------------------------------------------
 # PELRequeueWorker — worker loop

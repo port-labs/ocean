@@ -102,8 +102,16 @@ class PELRequeueWorker:
             )
 
             for message_id, fields in messages:
-                await self._handle_stuck_message(message_id, fields)
-                total_processed += 1
+                try:
+                    await self._handle_stuck_message(message_id, fields)
+                    total_processed += 1
+                except Exception as error:
+                    logger.exception(
+                        "Failed to handle stuck PEL message, skipping",
+                        message_id=message_id,
+                        stream_key=self._stream_key,
+                        error=str(error),
+                    )
 
             if next_cursor == "0-0" or not messages:
                 break
