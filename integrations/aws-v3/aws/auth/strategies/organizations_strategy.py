@@ -1,4 +1,3 @@
-from aws import Consts
 from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
 from aws.auth.utils import (
     AWSOrganizationsNotInUseError,
@@ -247,7 +246,9 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
 
         try:
             organization_session = await self._get_organization_session()
-            region = await LocationUtils.get_custom_partition_region_or_none(organization_session)
+            region = await LocationUtils.get_custom_partition_region_or_none(
+                organization_session
+            )
             async with organization_session.create_client(
                 "organizations",
                 region_name=region,

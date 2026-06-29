@@ -11,7 +11,6 @@ from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 from aws.utils import LocationUtils
-from port_ocean.context.ocean import ocean
 
 
 class EcsServiceExporter(IResourceExporter[list[str]]):

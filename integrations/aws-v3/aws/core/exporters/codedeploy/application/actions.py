@@ -5,7 +5,6 @@ from loguru import logger
 import asyncio
 
 from aws.utils import LocationUtils
-from port_ocean.context.ocean import ocean
 
 
 @dataclass

@@ -32,9 +32,13 @@ class AssumeRoleProvider(CredentialProvider):
         try:
             region = kwargs.get("region")
             if not region:
-                region = await LocationUtils.get_custom_partition_region_or_none(self.aws_client_factory_session)
+                region = await LocationUtils.get_custom_partition_region_or_none(
+                    self.aws_client_factory_session
+                )
 
-            async with self.aws_client_factory_session.create_client("sts", region_name=region) as sts_client:
+            async with self.aws_client_factory_session.create_client(
+                "sts", region_name=region
+            ) as sts_client:
                 role_arn = kwargs["role_arn"]
                 assume_role_params = {
                     "RoleArn": role_arn,
