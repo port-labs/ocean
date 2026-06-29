@@ -1,4 +1,3 @@
-from aws import Consts
 from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from aiobotocore.credentials import (
