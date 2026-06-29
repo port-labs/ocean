@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.14.0-beta (2026-06-29)
+
+
+### Improvements
+
+- Added support for AWS::CodeDeploy::DeploymentTarget resource kind, enabling ingestion of CodeDeploy Deployment Targets into the Port catalog
+
+
+## 2.13.0-beta (2026-06-29)
+
+
+### Improvements
+
+- Added support for AWS::CodePipeline::ActionExecution resource kind, enabling ingestion of CodePipeline Action Executions into the Port catalog
+
+
+
+## 2.12.0-beta (2026-06-28)
+
+
+### Improvements
+
+- Added support for AWS::CodePipeline::PipelineExecution resource kind, enabling ingestion of CodePipeline Pipeline Executions into the Port catalog
+
+
+## 2.11.3-beta (2026-06-28)
+
+
+### Improvements
+
+- Optimized the shared `ResourceBuilder` (used by all AWS kinds, notably the property-heavy `AWS::EC2::Instance`) to remove redundant per-resource work: it no longer instantiates and discards an empty default `Properties` model, now validates `Properties` exactly once by constructing the resource model in a single pass, and replaces the per-resource JSON serialize/deserialize round-trip with an in-place dict conversion (only non-JSON-native leaves are rewritten). Output is byte-for-byte identical.
+
+
 ## 2.11.2-beta (2026-06-28)
 
 
