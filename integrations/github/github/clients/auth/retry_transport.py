@@ -17,7 +17,7 @@ RETRYABLE_5XX_STATUS_CODES = (500, 502, 504)
 # Floors for the 5xx-recovery page-size backoff. We shrink the page on each retry
 # down to these sizes before giving up, since smaller pages reliably succeed.
 MIN_REST_PAGE_SIZE = 25
-MIN_GRAPHQL_PAGE_SIZE = 5
+MIN_GRAPHQL_PAGE_SIZE = 1
 GRAPHQL_REDUCTION_SIZE = 5
 
 
@@ -122,7 +122,15 @@ class GitHubRetryTransport(RetryTransport):
         if not current_page_size or current_page_size <= MIN_GRAPHQL_PAGE_SIZE:
             return request
         request_body = json.loads(await self._read_request_body(request))
-        request_body["variables"]["first"] = current_page_size - GRAPHQL_REDUCTION_SIZE
+        reduced_page_size = max(
+            current_page_size - GRAPHQL_REDUCTION_SIZE, MIN_GRAPHQL_PAGE_SIZE
+        )
+        logger.warning(
+            f"GitHub returned a server error for {request.method} "
+            f"{request.url.path} at first={current_page_size}; "
+            f"retrying at first={reduced_page_size}"
+        )
+        request_body["variables"]["first"] = reduced_page_size
         # Drop the original Content-Length so httpx recomputes it for the smaller
         # body; copying it verbatim would describe the wrong byte count.
         headers = {

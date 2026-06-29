@@ -54,12 +54,18 @@ from aws.core.exporters.codedeploy import (
     PaginatedCodeDeployApplicationRequest,
     CodeDeployDeploymentGroupExporter,
     PaginatedCodeDeployDeploymentGroupRequest,
+    CodeDeployDeploymentExporter,
+    PaginatedCodeDeployDeploymentRequest,
 )
 from aws.core.exporters.codepipeline import (
     PipelineExporter,
     PaginatedPipelineRequest,
+    CodePipelineStageExporter,
+    PaginatedCodePipelineStageRequest,
     CodePipelineActionExporter,
     PaginatedCodePipelineActionRequest,
+    CodePipelinePipelineExecutionExporter,
+    PaginatedPipelineExecutionRequest,
 )
 from aws.core.helpers.utils import is_access_denied_exception
 
@@ -329,10 +335,34 @@ async def resync_codedeploy_deployment_group(kind: str) -> ASYNC_GENERATOR_RESYN
         yield batch
 
 
+@ocean.on_resync(ObjectKind.CODEDEPLOY_DEPLOYMENT)
+async def resync_codedeploy_deployment(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind,
+        CodeDeployDeploymentExporter,
+        PaginatedCodeDeployDeploymentRequest,
+        regional=True,
+    )
+    async for batch in service:
+        yield batch
+
+
 @ocean.on_resync(ObjectKind.CODEPIPELINE_PIPELINE)
 async def resync_codepipeline_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, PipelineExporter, PaginatedPipelineRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.CODEPIPELINE_STAGE)
+async def resync_codepipeline_stage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind,
+        CodePipelineStageExporter,
+        PaginatedCodePipelineStageRequest,
+        regional=True,
     )
     async for batch in service:
         yield batch
@@ -344,6 +374,20 @@ async def resync_codepipeline_action(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         kind,
         CodePipelineActionExporter,
         PaginatedCodePipelineActionRequest,
+        regional=True,
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.CODEPIPELINE_PIPELINE_EXECUTION)
+async def resync_codepipeline_pipeline_execution(
+    kind: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind,
+        CodePipelinePipelineExecutionExporter,
+        PaginatedPipelineExecutionRequest,
         regional=True,
     )
     async for batch in service:

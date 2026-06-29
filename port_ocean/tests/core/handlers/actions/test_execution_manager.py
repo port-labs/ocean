@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from fastapi import APIRouter, FastAPI
 from loguru import logger
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 import pytest
 import httpx
 from port_ocean.clients.port.authentication import PortAuthentication
@@ -30,6 +30,7 @@ from port_ocean.core.models import (
     WorkflowNodeRunStatus,
 )
 from port_ocean.exceptions.execution_manager import (
+    ActionExecutionError,
     DuplicateActionExecutorError,
     RunAlreadyAcknowledgedError,
 )
@@ -689,6 +690,27 @@ class TestExecutionManager:
         assert called_args[0] == run
         assert error_msg in called_args[1]
         assert called_kwargs.get("should_raise") is False
+
+    @pytest.mark.asyncio
+    async def test_execute_run_handles_action_execution_error_without_stack_trace(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+        mock_test_executor: MagicMock,
+    ) -> None:
+        run = generate_mock_action_run()
+        error_msg = (
+            "Could not trigger pipeline for project 'x' on ref 'y': Reference not found"
+        )
+        mock_test_executor.execute.side_effect = ActionExecutionError(error_msg)
+
+        with patch.object(logger, "exception") as mock_exception_log:
+            await execution_manager._execute_run(run)
+
+        mock_exception_log.assert_not_called()
+        mock_port_client.report_run_failure.assert_called_once_with(
+            run, error_msg, should_raise=False
+        )
 
     @pytest.mark.asyncio
     async def test_execute_run_handles_acknowledge_run_api_error(
