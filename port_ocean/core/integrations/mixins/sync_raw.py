@@ -34,7 +34,13 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, LakehouseDataEntryMetadata, ProcessExecutionMode, LakehouseEventType, LakehouseOperation
+from port_ocean.core.models import (
+    Entity,
+    LakehouseDataEntryMetadata,
+    ProcessExecutionMode,
+    LakehouseEventType,
+    LakehouseOperation,
+)
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -420,6 +426,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType,
         index: int,
         dsp_enabled: bool = False,
+        entity_sink: FileIPC | None = None,
     ) -> tuple[list[Entity], list[Exception]]:
         send_raw_data_examples_amount = (
             SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
@@ -439,7 +446,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     raw_results.append(result)
                 else:
                     async_generators.append(result)
-
 
             buffer: LakehouseBuffer | None = (
                 LakehouseBuffer(
@@ -491,12 +497,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     batch_index=batch_index,
                 )
                 errors.extend(calculation_result.errors)
-                passed_entities = list(calculation_result.entity_selector_diff.passed)
+                batch_passed = list(calculation_result.entity_selector_diff.passed)
+                if entity_sink is not None:
+                    entity_sink.append_batch(batch_passed)
+                else:
+                    passed_entities = batch_passed
                 number_of_transformed_entities += (
                     calculation_result.number_of_transformed_entities
                 )
                 logger.info(
-                    f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(passed_entities)} entities were affected"
+                    f"Finished registering change for {len(raw_results)} raw results for kind: {resource_config.kind}. {len(batch_passed)} entities were affected"
                 )
 
         for generator in async_generators:
@@ -525,9 +535,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             user_agent_type,
                             batch_index=batch_index,
                         )
-                        passed_entities.extend(
-                            calculation_result.entity_selector_diff.passed
-                        )
+                        if entity_sink is not None:
+                            entity_sink.append_batch(
+                                list(calculation_result.entity_selector_diff.passed)
+                            )
+                        else:
+                            passed_entities.extend(
+                                calculation_result.entity_selector_diff.passed
+                            )
                         errors.extend(calculation_result.errors)
                         number_of_transformed_entities += (
                             calculation_result.number_of_transformed_entities
@@ -540,7 +555,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             await buffer.flush()
 
         logger.info(
-            f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{len(passed_entities)} entities out of {number_of_raw_results} raw results"
+            f"Finished registering kind: {resource_config.kind}-{resource.resource.index} ,{number_of_transformed_entities} entities out of {number_of_raw_results} raw results"
         )
 
         ocean.metrics.set_metric(
@@ -580,8 +595,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
         return passed_entities, errors
-
-
 
     async def register_raw(
         self,
@@ -811,9 +824,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         clear_http_client_context()
 
         async def process_resource_task() -> None:
-
-            result = await self._process_resource(resource, index, user_agent_type)
-            file_ipc_map["process_resource"].save(result)
+            entity_sink = file_ipc_map["process_resource_entities"]
+            _, errors = await self._process_resource(
+                resource, index, user_agent_type, entity_sink=entity_sink
+            )
+            file_ipc_map["process_resource_errors"].save(([], errors))
             file_ipc_map["topological_entities"].save(
                 event.entity_topological_sorter.entities
             )
@@ -826,6 +841,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         resource: ResourceConfig,
         index: int,
         user_agent_type: UserAgentType,
+        entity_sink: FileIPC | None = None,
     ) -> tuple[list[Entity], list[Exception]]:
         # create resource context per resource kind, so resync method could have access to the resource
         # config as we might have multiple resources in the same event
@@ -856,7 +872,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
 
             task = asyncio.create_task(
-                self._register_in_batches(resource, user_agent_type, index, dsp_enabled)
+                self._register_in_batches(
+                    resource,
+                    user_agent_type,
+                    index,
+                    dsp_enabled,
+                    entity_sink=entity_sink,
+                )
             )
             event.on_abort(lambda: task.cancel())
 
@@ -947,9 +969,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 id = uuid.uuid4()
                 logger.info(f"Starting subprocess with id {id}")
                 file_ipc_map = {
-                    "process_resource": FileIPC(
+                    "process_resource_errors": FileIPC(
                         str(id),
-                        "process_resource",
+                        "process_resource_errors",
                         (
                             [],
                             [
@@ -958,6 +980,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                                 )
                             ],
                         ),
+                    ),
+                    "process_resource_entities": FileIPC(
+                        str(id), "process_resource_entities", []
                     ),
                     "topological_entities": FileIPC(
                         str(id), "topological_entities", []
@@ -973,7 +998,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 event.entity_topological_sorter.entities.extend(
                     file_ipc_map["topological_entities"].load()
                 )
-                return file_ipc_map["process_resource"].load()
+                _, errors = file_ipc_map["process_resource_errors"].load()
+                is_subprocess_failure = any(
+                    isinstance(e, IntegrationSubProcessFailedException) for e in errors
+                )
+                entities = (
+                    []
+                    if is_subprocess_failure
+                    else file_ipc_map["process_resource_entities"].load_all_batches()
+                )
+                return entities, errors
 
             else:
                 return await self._process_resource(resource, index, user_agent_type)
@@ -1209,7 +1243,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
-            logger.info(f"Resync will use the following mappings: {json.loads(app_config.json())}")
+            logger.info(
+                f"Resync will use the following mappings: {json.loads(app_config.json())}"
+            )
 
             dsp_enabled = await is_dsp_mode_enabled()
             if dsp_enabled:

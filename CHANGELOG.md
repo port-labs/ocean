@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.4 (2026-06-29)
+
+
+### Bug Fixes
+
+- Fixed a subprocess OOM / SIGKILL in multi-process resync mode caused by accumulating all passed entities in memory across every batch before serializing the entire list to disk at once via `pickle.dump`. 
+
+
 ## 0.44.3 (2026-06-28)
 
 ### Improvements
