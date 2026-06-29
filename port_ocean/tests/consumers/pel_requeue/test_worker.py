@@ -3,21 +3,30 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import replace
 from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
 
+from port_ocean.config.settings import LiveEventsRedisSettings
 from port_ocean.consumers.pel_requeue import PELRequeueWorker
-from port_ocean.consumers.pel_requeue.settings import (
-    PELRequeueWorkerSettings,
-    _PEL_CONSUMER_NAME,
-)
+from port_ocean.consumers.pel_requeue.settings import PEL_CONSUMER_NAME
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+_STREAM_KEY = "test/live-events/raw/event-stream"
+_CONSUMER_GROUP = "test.integration"
+
+_DEFAULT_REDIS_SETTINGS = LiveEventsRedisSettings(
+    url="redis://localhost:6379",
+    pel_stuck_timeout_seconds=60,
+    pel_max_requeue_count=3,
+    pel_scan_interval_seconds=30.0,
+    pel_xautoclaim_count=100,
+    pel_lifecycle_error_backoff_seconds=5.0,
+)
 
 
 def _make_redis() -> AsyncMock:
@@ -40,19 +49,19 @@ def _make_redis() -> AsyncMock:
     return redis
 
 
-def _default_settings(**overrides: Any) -> PELRequeueWorkerSettings:
-    defaults = PELRequeueWorkerSettings(
-        stream_key="test/live-events/raw/event-stream",
-        consumer_group="test.integration",
-        stuck_timeout_ms=60_000,
-        max_requeue_count=3,
-        scan_interval_seconds=30.0,
+def _make_worker(
+    redis: AsyncMock,
+    stream_key: str = _STREAM_KEY,
+    consumer_group: str = _CONSUMER_GROUP,
+    **settings_overrides: Any,
+) -> PELRequeueWorker:
+    redis_settings = _DEFAULT_REDIS_SETTINGS.copy(update=settings_overrides)
+    return PELRequeueWorker(
+        redis,
+        redis_settings=redis_settings,
+        stream_key=stream_key,
+        consumer_group=consumer_group,
     )
-    return replace(defaults, **overrides)
-
-
-def _make_worker(redis: AsyncMock, **settings_overrides: Any) -> PELRequeueWorker:
-    return PELRequeueWorker(redis, _default_settings(**settings_overrides))
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +73,7 @@ class TestPELHandleStuckMessage:
     @pytest.mark.asyncio
     async def test_requeues_message_below_threshold(self) -> None:
         redis = _make_redis()
-        worker = _make_worker(redis, max_requeue_count=3)
+        worker = _make_worker(redis, pel_max_requeue_count=3)
 
         fields = {
             "webhookPath": "/webhook",
@@ -87,7 +96,7 @@ class TestPELHandleStuckMessage:
     @pytest.mark.asyncio
     async def test_requeue_uses_transactional_pipeline(self) -> None:
         redis = _make_redis()
-        worker = _make_worker(redis, max_requeue_count=3)
+        worker = _make_worker(redis, pel_max_requeue_count=3)
 
         pipeline_calls: list[dict[str, Any]] = []
 
@@ -115,7 +124,7 @@ class TestPELHandleStuckMessage:
     @pytest.mark.asyncio
     async def test_increments_requeue_count_from_zero(self) -> None:
         redis = _make_redis()
-        worker = _make_worker(redis, max_requeue_count=3)
+        worker = _make_worker(redis, pel_max_requeue_count=3)
 
         fields = {"webhookPath": "/webhook", "payload": "{}", "headers": "{}"}
         await worker._handle_stuck_message("1700000000000-0", fields)
@@ -126,7 +135,7 @@ class TestPELHandleStuckMessage:
     @pytest.mark.asyncio
     async def test_discards_message_at_threshold(self) -> None:
         redis = _make_redis()
-        worker = _make_worker(redis, max_requeue_count=3)
+        worker = _make_worker(redis, pel_max_requeue_count=3)
 
         fields = {
             "webhookPath": "/webhook",
@@ -144,7 +153,7 @@ class TestPELHandleStuckMessage:
     @pytest.mark.asyncio
     async def test_discards_message_above_threshold(self) -> None:
         redis = _make_redis()
-        worker = _make_worker(redis, max_requeue_count=3)
+        worker = _make_worker(redis, pel_max_requeue_count=3)
 
         fields = {"requeue_count": "10"}
         await worker._handle_stuck_message("1700000000000-0", fields)
@@ -163,14 +172,16 @@ class TestPELScanAndRequeue:
     async def test_calls_xautoclaim_with_correct_args(self) -> None:
         redis = _make_redis()
         redis.xautoclaim = AsyncMock(return_value=("0-0", [], []))
-        worker = _make_worker(redis, stuck_timeout_ms=60_000, xautoclaim_count=100)
+        worker = _make_worker(
+            redis, pel_stuck_timeout_seconds=60, pel_xautoclaim_count=100
+        )
 
         await worker._scan_and_requeue()
 
         redis.xautoclaim.assert_awaited_once_with(
             worker._stream_key,
             worker._consumer_group,
-            _PEL_CONSUMER_NAME,
+            PEL_CONSUMER_NAME,
             60_000,
             "0-0",
             count=100,
@@ -180,7 +191,7 @@ class TestPELScanAndRequeue:
     async def test_uses_configured_xautoclaim_count(self) -> None:
         redis = _make_redis()
         redis.xautoclaim = AsyncMock(return_value=("0-0", [], []))
-        worker = _make_worker(redis, xautoclaim_count=25)
+        worker = _make_worker(redis, pel_xautoclaim_count=25)
 
         await worker._scan_and_requeue()
 
@@ -307,7 +318,7 @@ class TestPELWorkerLoop:
         async def fake_scan() -> None:
             scan_calls.append(1)
 
-        worker = _make_worker(redis, scan_interval_seconds=0.05)
+        worker = _make_worker(redis, pel_scan_interval_seconds=0.05)
         worker._scan_and_requeue = fake_scan  # type: ignore[method-assign]
         await worker.start()
         await asyncio.sleep(0.25)
@@ -323,8 +334,8 @@ class TestPELWorkerLoop:
         redis = _make_redis()
         scan_counts: dict[str, int] = {"a": 0, "b": 0}
 
-        worker_a = _make_worker(redis, scan_interval_seconds=0.05)
-        worker_b = _make_worker(redis, scan_interval_seconds=0.05)
+        worker_a = _make_worker(redis, pel_scan_interval_seconds=0.05)
+        worker_b = _make_worker(redis, pel_scan_interval_seconds=0.05)
 
         async def fake_scan_a() -> None:
             scan_counts["a"] += 1
@@ -355,8 +366,8 @@ class TestPELWorkerLoop:
 
         worker = _make_worker(
             redis,
-            scan_interval_seconds=0.01,
-            lifecycle_error_backoff_seconds=0.05,
+            pel_scan_interval_seconds=0.01,
+            pel_lifecycle_error_backoff_seconds=0.05,
         )
         worker._scan_and_requeue = failing_scan  # type: ignore[method-assign]
         await worker.start()

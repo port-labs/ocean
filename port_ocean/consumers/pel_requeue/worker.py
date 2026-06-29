@@ -20,10 +20,8 @@ from typing import Any, cast
 from loguru import logger
 from redis.asyncio import Redis
 
-from port_ocean.consumers.pel_requeue.settings import (
-    PELRequeueWorkerSettings,
-    _PEL_CONSUMER_NAME,
-)
+from port_ocean.config.settings import LiveEventsRedisSettings
+from port_ocean.consumers.pel_requeue.settings import PEL_CONSUMER_NAME
 
 
 class PELRequeueWorker:
@@ -34,19 +32,19 @@ class PELRequeueWorker:
     one pod even when multiple pods scan concurrently.
     """
 
-    def __init__(self, redis: Redis, settings: PELRequeueWorkerSettings) -> None:
+    def __init__(
+        self,
+        redis: Redis,
+        redis_settings: LiveEventsRedisSettings,
+        stream_key: str,
+        consumer_group: str,
+    ) -> None:
         self._redis = redis
-        self._settings = settings
+        self._redis_settings = redis_settings
+        self._stream_key = stream_key
+        self._consumer_group = consumer_group
         self._is_running = False
         self._lifecycle_task: asyncio.Task[None] | None = None
-
-    @property
-    def _stream_key(self) -> str:
-        return self._settings.stream_key
-
-    @property
-    def _consumer_group(self) -> str:
-        return self._settings.consumer_group
 
     async def start(self) -> None:
         self._is_running = True
@@ -68,7 +66,7 @@ class PELRequeueWorker:
         while self._is_running:
             try:
                 await self._scan_and_requeue()
-                await asyncio.sleep(self._settings.scan_interval_seconds)
+                await asyncio.sleep(self._redis_settings.pel_scan_interval_seconds)
             except asyncio.CancelledError:
                 break
             except Exception as error:
@@ -76,7 +74,9 @@ class PELRequeueWorker:
                     "Unexpected error in PEL requeue worker loop",
                     error=str(error),
                 )
-                await asyncio.sleep(self._settings.lifecycle_error_backoff_seconds)
+                await asyncio.sleep(
+                    self._redis_settings.pel_lifecycle_error_backoff_seconds
+                )
 
     async def _scan_and_requeue(self) -> None:
         """Paginate through all PEL entries idle beyond the stuck threshold."""
@@ -87,10 +87,10 @@ class PELRequeueWorker:
             result = await self._redis.xautoclaim(
                 self._stream_key,
                 self._consumer_group,
-                _PEL_CONSUMER_NAME,
-                self._settings.stuck_timeout_ms,
+                PEL_CONSUMER_NAME,
+                self._redis_settings.stuck_timeout_ms,
                 cursor,
-                count=self._settings.xautoclaim_count,
+                count=self._redis_settings.pel_xautoclaim_count,
             )
 
             if not result:
@@ -129,7 +129,7 @@ class PELRequeueWorker:
         self, message_id: str, fields: dict[str, str]
     ) -> None:
         requeue_count = int(fields.get("requeue_count", "0"))
-        max_requeue_count = self._settings.max_requeue_count
+        max_requeue_count = self._redis_settings.pel_max_requeue_count
 
         if requeue_count >= max_requeue_count:
             logger.warning(
