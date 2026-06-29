@@ -2,7 +2,7 @@ from typing import cast
 
 from aiobotocore.session import AioSession
 
-from aws import Consts
+from aws.utils.consts import Consts
 from port_ocean.context.ocean import ocean
 
 

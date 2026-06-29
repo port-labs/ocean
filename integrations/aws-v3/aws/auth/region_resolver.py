@@ -2,10 +2,8 @@ from aiobotocore.session import AioSession
 from typing import List, Set, Optional
 from loguru import logger
 
-from aws import Consts
-from aws.utils import LocationUtils
+from aws.utils import Consts, LocationUtils
 from integration import AWSResourceSelector
-from port_ocean.context.ocean import ocean
 
 
 class RegionResolver:
