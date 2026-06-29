@@ -11,7 +11,6 @@ from aws.core.exporters.codepipeline.action_execution.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
-from tests.core.exporters.codepipeline import action_execution
 
 
 class CodePipelineActionExecutionExporter(
