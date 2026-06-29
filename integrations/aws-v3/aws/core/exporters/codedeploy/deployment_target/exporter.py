@@ -75,8 +75,7 @@ class CodeDeployDeploymentTargetExporter(
                         async for target_ids in target_paginator.paginate(
                             deploymentId=deployment_id, batch_size=self._max_batch_size
                         ):
-                            yield (
-                                await inspector.inspect(
+                            yield await inspector.inspect(
                                     DeploymentTargetActionInput(
                                         deployment_id=deployment_id,
                                         items=target_ids,
@@ -87,9 +86,6 @@ class CodeDeployDeploymentTargetExporter(
                                         "Region": options.region,
                                     },
                                 )
-                                if target_ids
-                                else []
-                            )
                     except ClientError as e:
                         if (
                             e.response.get("Error", {}).get("Code")
