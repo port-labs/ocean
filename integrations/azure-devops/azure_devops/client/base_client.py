@@ -50,63 +50,39 @@ class HTTPBaseClient:
         auth_headers = await self._auth_provider.get_auth_headers()
         headers = {**(headers or {}), **auth_headers}
         self._client.follow_redirects = True
-        rate_limit_retries = 0
 
-        while True:
-            response: Optional[Response] = None
-            try:
-                async with self._rate_limiter:
-                    response = await self._client.request(
-                        method=method,
-                        url=url,
-                        data=data,
-                        params=params,
-                        headers=headers,
-                    )
-                    response.raise_for_status()
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    # 429s that reach here have already exhausted the transport's retry budget (10 attempts).
-                    # Apply the full ADO TSTU reset window and retry a few more times.
-                    rate_limit_retries += 1
-                    if rate_limit_retries <= MAX_RATE_LIMIT_RETRIES:
-                        logger.warning(
-                            f"Request to {url} returned 429, throttling for {ADO_RATE_LIMIT_WINDOW_SECONDS}s and retrying "
-                            f"(attempt {rate_limit_retries} of {MAX_RATE_LIMIT_RETRIES})"
-                        )
-                        await self._rate_limiter.signal_throttle(
-                            ADO_RATE_LIMIT_WINDOW_SECONDS
-                        )
-                        continue
+        try:
+            async with self._rate_limiter:
+                response = await self._client.request(
+                    method=method,
+                    url=url,
+                    data=data,
+                    params=params,
+                    headers=headers,
+                )
+                response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            if response.status_code == 404:
+                logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
+                return None
+            else:
+                if response.status_code == 401:
                     logger.error(
-                        f"Request to {url} returned 429 and exhausted {MAX_RATE_LIMIT_RETRIES} retries, giving up"
+                        f"Couldn't access url {url}. Make sure the {self._auth_provider.auth_description} is valid!"
                     )
-                    raise e
-                if e.response.status_code == 404:
-                    logger.warning(
-                        f"Couldn't access url: {url}. Failed due to 404 error"
-                    )
-                    return None
-                else:
-                    if e.response.status_code == 401:
-                        logger.error(
-                            f"Couldn't access url {url}. Make sure the {self._auth_provider.auth_description} is valid!"
-                        )
-                    logger.error(
-                        f"Request with bad status code {e.response.status_code}: {method} to url {url}. Response body: {e.response.text}"
-                    )
-                    raise e
-            except httpx.HTTPError as e:
-                if isinstance(e, (ReadTimeout, ConnectTimeout)):
-                    await self._rate_limiter.signal_throttle(
-                        ADO_RATE_LIMIT_WINDOW_SECONDS
-                    )
-                logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
+                logger.error(
+                    f"Request with bad status code {response.status_code}: {method} to url {url}. Response body: {e.response.text}"
+                )
                 raise e
-            finally:
-                if response is not None:
-                    await self._rate_limiter.update_from_headers(response.headers)
-            return response
+        except httpx.HTTPError as e:
+            if isinstance(e, (ReadTimeout, ConnectTimeout)):
+                await self._rate_limiter.signal_throttle(ADO_RATE_LIMIT_WINDOW_SECONDS)
+            logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
+            raise e
+        finally:
+            if "response" in locals() and response:
+                await self._rate_limiter.update_from_headers(response.headers)
+        return response
 
     async def _get_paginated_by_top_and_continuation_token(
         self,
