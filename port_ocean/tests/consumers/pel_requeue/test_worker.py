@@ -219,6 +219,36 @@ class TestPELScanAndRequeue:
         assert redis.xack.await_count == 2
 
     @pytest.mark.asyncio
+    async def test_paginates_through_non_zero_cursor_with_empty_batch(self) -> None:
+        """XAUTOCLAIM can return an empty batch with a non-zero cursor when no
+        entries in the current page are idle long enough; scanning must continue."""
+        redis = _make_redis()
+        page2_messages = [
+            (
+                "1700000000002-0",
+                {"webhookPath": "/w", "payload": "{}", "headers": "{}"},
+            ),
+        ]
+        cursors_used: list[str] = []
+
+        async def fake_xautoclaim(stream, group, consumer, idle, cursor, count):  # type: ignore[no-untyped-def]
+            cursors_used.append(cursor)
+            if cursor == "0-0":
+                return ("1700000000002-0", [], [])
+            return ("0-0", page2_messages, [])
+
+        redis.xautoclaim = fake_xautoclaim
+
+        worker = _make_worker(redis)
+        await worker._scan_and_requeue()
+
+        assert cursors_used == ["0-0", "1700000000002-0"]
+        redis.xadd.assert_awaited_once()
+        redis.xack.assert_awaited_once_with(
+            worker._stream_key, worker._consumer_group, "1700000000002-0"
+        )
+
+    @pytest.mark.asyncio
     async def test_paginates_when_next_cursor_is_not_zero(self) -> None:
         redis = _make_redis()
         page1_messages = [
@@ -278,6 +308,44 @@ class TestPELScanAndRequeue:
         await worker._scan_and_requeue()
 
         redis.xadd.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_handles_deleted_ids_without_xack_or_requeue(self) -> None:
+        """Redis 7.0+ returns ghost PEL entries in the third response element."""
+        redis = _make_redis()
+        redis.xautoclaim = AsyncMock(
+            return_value=("0-0", [], ["1700000000999-0", "1700000000998-0"])
+        )
+
+        worker = _make_worker(redis)
+        await worker._scan_and_requeue()
+
+        redis.xadd.assert_not_awaited()
+        redis.xack.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_acknowledges_tombstoned_message_with_none_fields(self) -> None:
+        """Redis 6.x can return nil fields for deleted stream entries in result[1]."""
+        redis = _make_redis()
+        messages = [
+            ("1700000000999-0", None),
+            (
+                "1700000000001-0",
+                {"webhookPath": "/w", "payload": "{}", "headers": "{}"},
+            ),
+        ]
+        redis.xautoclaim = AsyncMock(return_value=("0-0", messages, []))
+
+        worker = _make_worker(redis)
+        await worker._scan_and_requeue()
+
+        redis.xadd.assert_awaited_once()
+        assert redis.xack.await_count == 2
+        assert (
+            worker._stream_key,
+            worker._consumer_group,
+            "1700000000999-0",
+        ) in [call.args for call in redis.xack.await_args_list]
 
     @pytest.mark.asyncio
     async def test_continues_scan_when_one_message_fails(self) -> None:

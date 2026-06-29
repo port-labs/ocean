@@ -97,11 +97,31 @@ class PELRequeueWorker:
                 break
 
             next_cursor: str = result[0]
-            messages: list[tuple[str, dict[str, str]]] = (
+            messages: list[tuple[str, dict[str, str] | None]] = (
                 result[1] if len(result) > 1 else []
             )
+            deleted_ids: list[str] = result[2] if len(result) > 2 else []
+
+            if deleted_ids:
+                logger.info(
+                    "PEL entries removed from stream during XAUTOCLAIM",
+                    message_ids=deleted_ids,
+                    count=len(deleted_ids),
+                    stream_key=self._stream_key,
+                )
 
             for message_id, fields in messages:
+                if fields is None:
+                    logger.info(
+                        "Acknowledging tombstoned PEL message missing stream entry",
+                        message_id=message_id,
+                        stream_key=self._stream_key,
+                    )
+                    await self._redis.xack(
+                        self._stream_key, self._consumer_group, message_id
+                    )
+                    continue
+
                 try:
                     await self._handle_stuck_message(message_id, fields)
                     total_processed += 1
@@ -113,7 +133,7 @@ class PELRequeueWorker:
                         error=str(error),
                     )
 
-            if next_cursor == "0-0" or not messages:
+            if next_cursor == "0-0":
                 break
 
             cursor = next_cursor
