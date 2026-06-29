@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.14.0-beta (2026-06-29)
+
+
+### Improvements
+
+- Added support for AWS::CodeDeploy::DeploymentTarget resource kind, enabling ingestion of CodeDeploy Stages into the Port catalog
+
+
 ## 2.13.0-beta (2026-06-29)
 
 
