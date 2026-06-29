@@ -1,3 +1,5 @@
+import os
+from contextlib import suppress
 from typing import Optional
 
 from loguru import logger
@@ -5,13 +7,29 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
 from azure_devops.client.auth import ACCOUNT_MODE_MULTIPLE, build_auth_provider
-from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.client.azure_devops_client import (
+    AZURE_DEVOPS_CLIENT_CACHE_KEY,
+    AzureDevopsClient,
+)
+from azure_devops.client.rate_limiter import AzureDevOpsRateLimiterRegistry
 from azure_devops.helpers.validate_config import (
     parse_organization_urls,
     validate_azure_devops_config,
 )
 
 CLIENT_MANAGER_CACHE_KEY = "azure_devops_client_manager"
+
+
+def _reset_clients_after_fork() -> None:
+    """Clear cached clients after fork so children recreate httpx and limiter state."""
+    with suppress(Exception):
+        event.attributes.pop(CLIENT_MANAGER_CACHE_KEY, None)
+        event.attributes.pop(AZURE_DEVOPS_CLIENT_CACHE_KEY, None)
+    AzureDevOpsRateLimiterRegistry.reset()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_reset_clients_after_fork)
 
 
 class AzureDevopsClientManager:

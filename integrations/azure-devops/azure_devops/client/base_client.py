@@ -22,9 +22,13 @@ MAX_TIMEMOUT_RETRIES = 3
 
 
 class HTTPBaseClient:
-    def __init__(self, auth_provider: AuthProvider) -> None:
+    def __init__(
+        self,
+        auth_provider: AuthProvider,
+        rate_limiter: AzureDevOpsRateLimiter,
+    ) -> None:
         self._auth_provider = auth_provider
-        self._rate_limiter = AzureDevOpsRateLimiter()
+        self._rate_limiter = rate_limiter
         self._client = OceanAsyncClient(
             AzureDevOpsRetryTransport,
             transport_kwargs={

@@ -32,6 +32,7 @@ from azure_devops.client.auth import AuthProvider, build_auth_provider
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
+from azure_devops.client.rate_limiter import AzureDevOpsRateLimiterRegistry
 
 from azure_devops.client.file_processing import (
     PathDescriptor,
@@ -55,6 +56,7 @@ import fnmatch
 if TYPE_CHECKING:
     from integration import CodeCoverageConfig
 
+AZURE_DEVOPS_CLIENT_CACHE_KEY = "azure_devops_client"
 API_URL_PREFIX = "_apis"
 PROJECT_TAG_PROPERTY_PREFIX = "Microsoft.TeamFoundation.Project.Tag."
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -205,7 +207,11 @@ class AzureDevopsClient(HTTPBaseClient):
         webhook_auth_username: Optional[str] = None,
         excluded_tags: Optional[list[str]] = None,
     ) -> None:
-        super().__init__(auth_provider)
+        organization_url = organization_url.rstrip("/")
+        super().__init__(
+            auth_provider,
+            rate_limiter=AzureDevOpsRateLimiterRegistry.get_limiter(organization_url),
+        )
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username
@@ -213,7 +219,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
-        if cache := event.attributes.get("azure_devops_client"):
+        if cache := event.attributes.get(AZURE_DEVOPS_CLIENT_CACHE_KEY):
             return cache
         auth_provider = build_auth_provider(ocean.integration_config)
         azure_devops_client = cls(
@@ -222,7 +228,7 @@ class AzureDevopsClient(HTTPBaseClient):
             ocean.integration_config.get("webhook_auth_username"),
             ocean.integration_config.get("excluded_tags"),
         )
-        event.attributes["azure_devops_client"] = azure_devops_client
+        event.attributes[AZURE_DEVOPS_CLIENT_CACHE_KEY] = azure_devops_client
         return azure_devops_client
 
     @classmethod

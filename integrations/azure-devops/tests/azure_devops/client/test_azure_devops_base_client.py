@@ -8,7 +8,10 @@ from azure_devops.client.base_client import (
     CONTINUATION_TOKEN_HEADER,
     PAGE_SIZE,
 )
-from azure_devops.client.rate_limiter import ADO_RATE_LIMIT_WINDOW_SECONDS
+from azure_devops.client.rate_limiter import (
+    ADO_RATE_LIMIT_WINDOW_SECONDS,
+    AzureDevOpsRateLimiter,
+)
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 from port_ocean.context.ocean import PortOceanContext
 
@@ -16,7 +19,10 @@ from port_ocean.context.ocean import PortOceanContext
 @pytest.fixture
 def mock_client(mock_context: PortOceanContext) -> HTTPBaseClient:
     mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
-    return HTTPBaseClient(auth_provider=PatAuthProvider("test_token"))
+    return HTTPBaseClient(
+        auth_provider=PatAuthProvider("test_token"),
+        rate_limiter=AzureDevOpsRateLimiter(),
+    )
 
 
 def test_base_client_uses_azure_devops_retry_transport(
