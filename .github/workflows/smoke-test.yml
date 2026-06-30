@@ -1,0 +1,117 @@
+# Manual smoke test for any PR (including from forks).
+# Maintainers can trigger this to run smoke tests with secrets on contributor PRs.
+# Usage: Actions → "Smoke Test for PR" → Run workflow → Enter PR number
+name: 🔥 Smoke Test for PR
+permissions:
+  contents: read
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to test (e.g. 123)'
+        required: true
+        type: string
+
+jobs:
+  smoke-test:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v5
+        with:
+          ref: refs/pull/${{ github.event.inputs.pr_number }}/merge
+          fetch-depth: 0
+
+      - name: Install poetry
+        run: pipx install 'poetry>=1.0.0,<2.0.0'
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: |
+          make install
+
+      - name: Build core for smoke test
+        run: |
+          make build
+
+      - name: Build fake-integration image for smoke test
+        uses: ./.github/workflows/actions/build-docker-image
+        with:
+          dockerfile: integrations/_infra/Dockerfile
+          platforms: linux/amd64
+          tags: port-ocean-fake-integration:smoke-test-local
+          build-args: |
+            BUILD_CONTEXT=integrations/fake-integration
+          skip-push: 'true'
+          load-created-image: 'true'
+          skip-login: 'true'
+
+      - name: Run fake integration for core test (single process)
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
+          SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
+          OCEAN__PROCESS_EXECUTION_MODE: single_process
+          OCEAN__CACHING_STORAGE_MODE: memory
+        run: |
+          ./scripts/run-smoke-test.sh
+
+      - name: Smoke Test Core (single process)
+        env:
+          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
+        run: |
+          make smoke/test
+
+      - name: Cleanup Smoke Test (single process)
+        if: always()
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
+        run: |
+          make smoke/clean
+
+      - name: Run fake integration for core test (multiprocessing)
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
+          SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
+          OCEAN__PROCESS_EXECUTION_MODE: multi_process
+          OCEAN__CACHING_STORAGE_MODE: disk
+        run: |
+          ./scripts/run-smoke-test.sh
+
+      - name: Smoke Test Core (multiprocessing)
+        env:
+          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
+        run: |
+          make smoke/test
+
+      - name: Cleanup Smoke Test (multiprocessing)
+        if: always()
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
+        run: |
+          make smoke/clean
