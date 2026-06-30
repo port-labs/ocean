@@ -206,9 +206,10 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         start_time = time.monotonic()
         webhook_path: str | None = None
-        time_until_consumed_ms = self._time_until_consumed_ms(
+        queued_time = self._parse_queued_at(
             fields.get("queuedAt"), stream_key=self._stream_key
         )
+        time_until_consumed_ms = self._time_since_queued_ms(queued_time)
         if time_until_consumed_ms is not None:
             logger.info(
                 "Redis stream message consumed",
@@ -266,9 +267,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             )
         finally:
             elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
-            time_until_acked_ms = self._time_until_consumed_ms(
-                fields.get("queuedAt"), stream_key=self._stream_key
-            )
+            time_until_acked_ms = self._time_since_queued_ms(queued_time)
             logger.info(
                 "Redis stream message processed",
                 stream_key=self._stream_key,
@@ -280,18 +279,16 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             await self._ack(message_id)
 
     @staticmethod
-    def _time_until_consumed_ms(
+    def _parse_queued_at(
         queued_at: str | None,
         *,
-        now: datetime | None = None,
         stream_key: str | None = None,
-    ) -> float | None:
+    ) -> datetime | None:
         if not queued_at:
             return None
 
-        consumed_at = now or datetime.now(timezone.utc)
         try:
-            queued_time = datetime.fromtimestamp(
+            return datetime.fromtimestamp(
                 float(queued_at) / 1_000_000_000, tz=timezone.utc
             )
         except (ValueError, OSError, OverflowError):
@@ -302,7 +299,29 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             )
             return None
 
-        return round((consumed_at - queued_time).total_seconds() * 1000, 2)
+    @staticmethod
+    def _time_since_queued_ms(
+        queued_time: datetime | None,
+        *,
+        now: datetime | None = None,
+    ) -> float | None:
+        if queued_time is None:
+            return None
+
+        reference_time = now or datetime.now(timezone.utc)
+        return round((reference_time - queued_time).total_seconds() * 1000, 2)
+
+    @staticmethod
+    def _time_until_consumed_ms(
+        queued_at: str | None,
+        *,
+        now: datetime | None = None,
+        stream_key: str | None = None,
+    ) -> float | None:
+        queued_time = RedisStreamConsumer._parse_queued_at(
+            queued_at, stream_key=stream_key
+        )
+        return RedisStreamConsumer._time_since_queued_ms(queued_time, now=now)
 
     @staticmethod
     def _normalize_webhook_path(webhook_path: str) -> str:
