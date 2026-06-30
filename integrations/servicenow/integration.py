@@ -20,7 +20,7 @@ class ObjectKind(StrEnum):
 
 
 class APIQueryParams(BaseModel):
-    sysparm_display_value: Literal["true", "false", "all"] | None = Field(
+    sysparm_display_value: Literal["false", "all"] | None = Field(
         alias="sysparmDisplayValue",
         default="true",
         title="Display Value",

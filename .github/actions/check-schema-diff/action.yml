@@ -1,0 +1,272 @@
+name: Check Schema Diff
+description: Checks out the repo, installs dependencies, extracts the port-app-config schema, and compares it against the base schema from main.
+
+inputs:
+  integration_folder:
+    description: The integration folder
+    required: true
+  aws_access_key_id:
+    description: The AWS access key ID
+    required: true
+  aws_secret_access_key:
+    description: The AWS secret access key
+    required: true
+  aws_region:
+    description: The AWS region
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Configure AWS Credentials 🔒
+      id: aws-credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws_access_key_id }}
+        aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - name: Install poetry
+      shell: bash
+      run: pipx install 'poetry>=1.0.0,<2.0.0'
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.integration_folder }}
+      run: |
+        make install
+
+    - name: Install Diff tool
+      uses: baptiste0928/cargo-install@v3
+      with:
+        crate: json-schema-diff
+        features: build-binary
+
+    - name: Compare Schemas and Report
+      shell: bash
+      working-directory: ${{ inputs.integration_folder }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        REPOSITORY: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+
+        post_or_update_comment() {
+          local marker="$1"
+          local body_file="$2"
+
+          if [ -z "${PR_NUMBER}" ]; then
+            return 0
+          fi
+
+          local comment_id
+          comment_id=$(gh api "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            --jq "map(select(.user.type == \"Bot\" and (.body | contains(\"${marker}\")))) | first | .id // empty")
+
+          if [ -n "${comment_id}" ]; then
+            gh api \
+              --method PATCH \
+              "repos/${REPOSITORY}/issues/comments/${comment_id}" \
+              --field body=@"${body_file}"
+          else
+            gh pr comment "${PR_NUMBER}" \
+              --repo "${REPOSITORY}" \
+              --body-file "${body_file}"
+          fi
+        }
+
+        escape_markdown_table_cell() {
+          sed 's/|/\\|/g'
+        }
+
+        integration_type=$(grep -E '^name = ".*"' "pyproject.toml" | cut -d'"' -f2)
+        poetry run ocean port-app-config schema . -o "$integration_type.revision.json"
+        aws s3 cp "s3://ocean-registry/$integration_type/port_app_config.json" "$integration_type.base.json"
+
+        set +e
+        DIFF_OUTPUT=$(json-schema-diff "$integration_type.base.json" "$integration_type.revision.json" 2>&1)
+        DIFF_EXIT_CODE=$?
+        set -e
+
+        CUSTOM_DIFF_OUTPUT=$(python3 - "$integration_type.base.json" "$integration_type.revision.json" <<'PY'
+        import json
+        import sys
+        from collections.abc import Iterator
+        from typing import Any
+
+        base_path, revision_path = sys.argv[1], sys.argv[2]
+
+        with open(base_path, encoding="utf-8") as base_file:
+            base_schema = json.load(base_file)
+
+        with open(revision_path, encoding="utf-8") as revision_file:
+            revision_schema = json.load(revision_file)
+
+        JsonPath = tuple[str | int, ...]
+
+        def iter_object_schemas(node: Any, path: JsonPath = ()) -> Iterator[tuple[JsonPath, dict[str, Any]]]:
+            if isinstance(node, dict):
+                if isinstance(node.get("properties"), dict):
+                    yield path, node
+
+                for key, value in node.items():
+                    if isinstance(value, (dict, list)):
+                        yield from iter_object_schemas(value, (*path, key))
+            elif isinstance(node, list):
+                for index, value in enumerate(node):
+                    if isinstance(value, (dict, list)):
+                        yield from iter_object_schemas(value, (*path, index))
+
+        def format_path(path: JsonPath) -> str:
+            result = "$"
+            for part in path:
+                if isinstance(part, int):
+                    result += f"[{part}]"
+                elif part.isidentifier():
+                    result += f".{part}"
+                else:
+                    result += f"[{part!r}]"
+            return result
+
+        base_objects = dict(iter_object_schemas(base_schema))
+        revision_objects = dict(iter_object_schemas(revision_schema))
+
+        for path in sorted(base_objects.keys() & revision_objects.keys(), key=format_path):
+            base_object = base_objects[path]
+            revision_object = revision_objects[path]
+
+            base_properties = set(base_object.get("properties", {}))
+            revision_properties = set(revision_object.get("properties", {}))
+
+            for property_name in sorted(base_properties - revision_properties):
+                print(json.dumps({
+                    "path": format_path((*path, "properties", property_name)),
+                    "change": {"PropertyRemove": {"removed": property_name}},
+                    "is_breaking": True,
+                }))
+
+            base_required = set(base_object.get("required", []))
+            revision_required = set(revision_object.get("required", []))
+
+            for property_name in sorted(revision_required - base_required):
+                print(json.dumps({
+                    "path": format_path((*path, "required", property_name)),
+                    "change": {"RequiredAdd": {"added": property_name}},
+                    "is_breaking": True,
+                }))
+        PY
+        )
+
+        if [ -n "$CUSTOM_DIFF_OUTPUT" ]; then
+          if [ -n "$DIFF_OUTPUT" ]; then
+            DIFF_OUTPUT="${DIFF_OUTPUT}"$'\n'"${CUSTOM_DIFF_OUTPUT}"
+          else
+            DIFF_OUTPUT="$CUSTOM_DIFF_OUTPUT"
+          fi
+        fi
+
+        COMMENT_MARKER="<!-- port-app-config-schema-diff:${integration_type} -->"
+        COMMENT_FILE="/tmp/schema-diff-comment-${integration_type}.md"
+
+        if [ -z "$DIFF_OUTPUT" ]; then
+          if [ "$DIFF_EXIT_CODE" -ne 0 ]; then
+            echo "::error::json-schema-diff failed for $integration_type without producing output"
+            exit "$DIFF_EXIT_CODE"
+          fi
+
+          echo "✅ No schema changes detected for ${integration_type}"
+          {
+            echo "${COMMENT_MARKER}"
+            echo "## Port App Config Schema Diff — \`${integration_type}\`"
+            echo ""
+            echo "No schema changes detected."
+          } > "${COMMENT_FILE}"
+
+          post_or_update_comment "${COMMENT_MARKER}" "${COMMENT_FILE}"
+          exit 0
+        fi
+
+        HAS_BREAKING=false
+        BREAKING_ROWS=""
+        NON_BREAKING_ROWS=""
+
+        while IFS= read -r line; do
+          [ -z "$line" ] && continue
+
+          if ! echo "$line" | jq -e . >/dev/null; then
+            echo "$DIFF_OUTPUT"
+            echo "::error::json-schema-diff returned non-JSON output for $integration_type"
+            exit 1
+          fi
+
+          path=$(echo "$line" | jq -r '.path')
+          change_type=$(echo "$line" | jq -r '.change | keys[0]')
+          details=$(echo "$line" | jq -c '.change | to_entries[0].value')
+          is_breaking=$(echo "$line" | jq -r '.is_breaking')
+
+          path=$(printf '%s' "$path" | escape_markdown_table_cell)
+          change_type=$(printf '%s' "$change_type" | escape_markdown_table_cell)
+          details=$(printf '%s' "$details" | escape_markdown_table_cell)
+          row="| \`${path}\` | \`${change_type}\` | \`${details}\` |"
+
+          if [ "$is_breaking" = "true" ]; then
+            HAS_BREAKING=true
+            BREAKING_ROWS+="${row}"$'\n'
+          else
+            NON_BREAKING_ROWS+="${row}"$'\n'
+          fi
+        done <<< "$DIFF_OUTPUT"
+
+        {
+          echo "${COMMENT_MARKER}"
+          echo "## Port App Config Schema Diff — \`${integration_type}\`"
+          echo ""
+
+          if [ -n "$BREAKING_ROWS" ]; then
+            echo "### Breaking Changes"
+            echo ""
+            echo "| Path | Change | Details |"
+            echo "|------|--------|---------|"
+            echo -n "$BREAKING_ROWS"
+            echo ""
+          fi
+
+          if [ -n "$NON_BREAKING_ROWS" ]; then
+            echo "### Non-Breaking Changes"
+            echo ""
+            echo "| Path | Change | Details |"
+            echo "|------|--------|---------|"
+            echo -n "$NON_BREAKING_ROWS"
+            echo ""
+          fi
+
+          echo "<details>"
+          echo "<summary>Raw json-schema-diff output</summary>"
+          echo ""
+          echo '```json'
+          echo "$DIFF_OUTPUT"
+          echo '```'
+          echo "</details>"
+          echo ""
+
+          if [ "$HAS_BREAKING" = "true" ]; then
+            echo "---"
+            echo "> **Action Required:** This PR introduces breaking changes to the \`${integration_type}\` port-app-config schema."
+            echo "> The workflow is failing intentionally so the PR cannot merge until the schema breakage is resolved."
+          fi
+        } > "${COMMENT_FILE}"
+
+        cat "${COMMENT_FILE}"
+
+        post_or_update_comment "${COMMENT_MARKER}" "${COMMENT_FILE}"
+
+        if [ "$HAS_BREAKING" = "true" ]; then
+          echo "::error::Breaking schema changes detected for $integration_type"
+          exit 1
+        fi

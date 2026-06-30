@@ -93,7 +93,7 @@ jobs:
           echo "image_tag=${IMAGE_FULL_TAG}" >> ${GITHUB_OUTPUT}
 
       - name: Build Docker Image
-        uses: ./.github/workflows/actions/build-docker-image
+        uses: ./.github/actions/build-docker-image
         with:
           dockerfile: ./integrations/_infra/Dockerfile
           platforms: linux/amd64
