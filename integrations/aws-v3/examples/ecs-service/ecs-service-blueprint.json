@@ -204,9 +204,10 @@
         ]
       },
       "createdAt": {
-        "type": "number",
+        "type": "string",
         "title": "Created At",
-        "description": "The timestamp when the service was created"
+        "description": "The timestamp when the service was created",
+        "format": "date-time"
       },
       "createdBy": {
         "type": "string",
