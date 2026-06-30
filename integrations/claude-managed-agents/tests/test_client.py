@@ -19,7 +19,7 @@ class _Model:
     def __init__(self, data: dict[str, Any]) -> None:
         self._data = data
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, **kwargs: Any) -> dict[str, Any]:
         return self._data
 
 

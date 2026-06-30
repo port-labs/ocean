@@ -27,6 +27,9 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    WebhookProcessorType,
+)
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -42,7 +45,6 @@ from port_ocean.core.models import (
 
 from actions.utils import build_external_id
 from clients.client_factory import create_anthropic_client
-from integration import ObjectKind
 from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
@@ -129,7 +131,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
     ) -> None:
         """Complete a Port run, merging ``extra_output`` into workflow node output when set."""
         if isinstance(run, WorkflowNodeRun) and extra_output is not None:
-            existing_output: dict[str, Any] = getattr(run, "output", {}) or {}
+            existing_output: dict[str, Any] = run.output
             await ocean.port_client.patch_wf_node_run(
                 run.id,
                 {
@@ -146,6 +148,10 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
         await ocean.port_client.report_run_completed(run, success)
 
+    @classmethod
+    def get_processor_type(cls) -> WebhookProcessorType:
+        return WebhookProcessorType.ACTION
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
         return self.get_event_type(event.payload) in {
             "session.idled",
@@ -154,12 +160,12 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         }
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.SESSION]
+        return []
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig | None
     ) -> WebhookEventRawResults:
-        webhook_event = UnwrapWebhookEvent.parse_obj(payload)
+        webhook_event = UnwrapWebhookEvent.model_validate(payload)
         webhook_time = webhook_event.created_at
         data = webhook_event.data
         session_id = data.id
