@@ -45,6 +45,15 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
     ACTION_NAME = "update_repo_external_properties"
     WEBHOOK_PROCESSOR_CLASS = None
 
+    async def _get_partition_key(self, run: ActionRun | WorkflowNodeRun) -> str | None:
+        """
+        Repository update operations should be executed sequentially to avoid conflicts.
+        We use the organization and repository as the partition key.
+        """
+        org: str = run.execution_properties.get("org")
+        repo: str = run.execution_properties.get("repo")
+        return f"{org}/{repo}"
+
     async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
         org: str = run.execution_properties.get("org")
         repo: str = run.execution_properties.get("repo")
