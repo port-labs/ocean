@@ -3,6 +3,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 import httpx
 from loguru import logger
 
+from github.clients.auth.retry_transport import RETRYABLE_5XX_STATUS_CODES
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
@@ -120,12 +121,28 @@ class GithubGraphQLClient(AbstractGithubClient):
             variables["after"] = cursor
         return {"query": query, "variables": variables}
 
+    @staticmethod
+    def _is_query_too_expensive(exc: BaseException) -> bool:
+        """True for a gateway error left over once the transport gives up.
+
+        GitHub surfaces a query that blows the 10s GraphQL execution budget as a
+        502/504 (and occasionally a 499 from its reverse proxy). The retry
+        transport shrinks the page size on each of these and re-raises once it
+        bottoms out at the floor, so by the time the error reaches here the page
+        is already as small as it gets — the only lever left is a lighter query.
+        """
+        return (
+            isinstance(exc, httpx.HTTPStatusError)
+            and exc.response.status_code in RETRYABLE_5XX_STATUS_CODES
+        )
+
     async def send_paginated_request(
         self,
         resource: str,
         params: Optional[Dict[str, Any]] = None,
         method: str = "POST",
         ignored_errors: Optional[List[IgnoredError]] = None,
+        fallback_queries: Optional[List[str]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         params = params or {}
         path = params.pop("__path", None)
@@ -135,19 +152,32 @@ class GithubGraphQLClient(AbstractGithubClient):
                 "GraphQL pagination requires a '__path' in params (e.g., 'organization.repositories')"
             )
 
+        fallbacks = list(fallback_queries or [])
+        query = resource
         cursor = None
         logger.info(f"[GraphQL] Starting pagination for query with path {path}")
 
         while True:
-            payload = self.build_graphql_payload(resource, params, cursor=cursor)
-            response = await self.send_api_request(
-                self.base_url,
-                method=method,
-                json_data=payload,
-                ignored_errors=ignored_errors,
-                query_path=path,
-                query_params=params,
-            )
+            payload = self.build_graphql_payload(query, params, cursor=cursor)
+            try:
+                response = await self.send_api_request(
+                    self.base_url,
+                    method=method,
+                    json_data=payload,
+                    ignored_errors=ignored_errors,
+                    query_path=path,
+                    query_params=params,
+                )
+            except httpx.HTTPStatusError as exc:
+                if not (self._is_query_too_expensive(exc) and fallbacks):
+                    raise
+                query = fallbacks.pop(0)
+                logger.warning(
+                    f"[GraphQL] Query for path {path} exceeded GitHub's execution "
+                    f"budget at the smallest page size; retrying the current page "
+                    f"with a lighter query ({len(fallbacks)} fallback(s) remaining)"
+                )
+                continue
             if not response:
                 break
 

@@ -12,7 +12,7 @@ from github.clients.rate_limiter.utils import is_rate_limit_response
 # 5xx responses GitHub returns intermittently on large pages and that we recover
 # from by shrinking the page size before each retry. Both the reduction and the
 # "stop once we can't shrink further" check key off this same set.
-RETRYABLE_5XX_STATUS_CODES = (500, 502, 504)
+RETRYABLE_5XX_STATUS_CODES = (500, 502, 504, 499)
 
 # Floors for the 5xx-recovery page-size backoff. We shrink the page on each retry
 # down to these sizes before giving up, since smaller pages reliably succeed.

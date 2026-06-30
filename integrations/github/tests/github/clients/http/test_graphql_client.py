@@ -21,6 +21,12 @@ def _make_gql_client(
     )
 
 
+def _gateway_error(status: int) -> httpx.HTTPStatusError:
+    request = httpx.Request("POST", f"{_GQL_HOST}/graphql")
+    response = httpx.Response(status, request=request)
+    return httpx.HTTPStatusError("server error", request=request, response=response)
+
+
 class TestGithubGraphQLClient:
     def test_graphql_base_url_github_com(
         self, authenticator: AbstractGitHubAuthenticator
@@ -301,6 +307,151 @@ class TestGithubGraphQLClient:
         ):
             async for _ in client.send_paginated_request("query"):
                 pass
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_falls_back_on_gateway_error(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        page: dict[str, object] = {
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "nodes": [{"id": 1}],
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    }
+                }
+            }
+        }
+        queries: list[str] = []
+
+        async def fake_send(*_: object, **kwargs: object) -> dict[str, object]:
+            payload = cast(dict[str, object], kwargs["json_data"])
+            queries.append(cast(str, payload["query"]))
+            if len(queries) == 1:
+                raise _gateway_error(502)
+            return page
+
+        with patch.object(client, "send_api_request", new=fake_send):
+            results = [
+                p
+                async for p in client.send_paginated_request(
+                    "PRIMARY",
+                    params={"__path": "organization.repositories"},
+                    fallback_queries=["FALLBACK"],
+                )
+            ]
+
+        assert results == [[{"id": 1}]]
+        assert queries == ["PRIMARY", "FALLBACK"]
+
+    @pytest.mark.asyncio
+    async def test_fallback_query_persists_for_subsequent_pages(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        page1: dict[str, object] = {
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "nodes": [{"id": 1}],
+                        "pageInfo": {"hasNextPage": True, "endCursor": "c1"},
+                    }
+                }
+            }
+        }
+        page2: dict[str, object] = {
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "nodes": [{"id": 2}],
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    }
+                }
+            }
+        }
+        queries: list[str] = []
+        cursors: list[object] = []
+
+        async def fake_send(*_: object, **kwargs: object) -> dict[str, object]:
+            payload = cast(dict[str, object], kwargs["json_data"])
+            queries.append(cast(str, payload["query"]))
+            variables = cast(dict[str, object], payload["variables"])
+            cursors.append(variables.get("after"))
+            if len(queries) == 1:
+                raise _gateway_error(504)
+            return page1 if len(queries) == 2 else page2
+
+        with patch.object(client, "send_api_request", new=fake_send):
+            results = [
+                p
+                async for p in client.send_paginated_request(
+                    "PRIMARY",
+                    params={"__path": "organization.repositories"},
+                    fallback_queries=["FALLBACK"],
+                )
+            ]
+
+        # Page that 504'd is retried at the same cursor with the lighter query,
+        # and every later page keeps using it.
+        assert results == [[{"id": 1}], [{"id": 2}]]
+        assert queries == ["PRIMARY", "FALLBACK", "FALLBACK"]
+        assert cursors == [None, None, "c1"]
+
+    @pytest.mark.asyncio
+    async def test_gateway_error_without_fallback_propagates(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        with patch.object(
+            client, "send_api_request", AsyncMock(side_effect=_gateway_error(502))
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client.send_paginated_request(
+                    "PRIMARY", params={"__path": "organization.repositories"}
+                ):
+                    pass
+
+    @pytest.mark.asyncio
+    async def test_exhausted_fallbacks_propagate(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        with patch.object(
+            client, "send_api_request", AsyncMock(side_effect=_gateway_error(502))
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client.send_paginated_request(
+                    "PRIMARY",
+                    params={"__path": "organization.repositories"},
+                    fallback_queries=["FALLBACK"],
+                ):
+                    pass
+
+    @pytest.mark.asyncio
+    async def test_non_gateway_status_not_retried_with_fallback(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = _make_gql_client(authenticator)
+        with patch.object(
+            client, "send_api_request", AsyncMock(side_effect=_gateway_error(400))
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                async for _ in client.send_paginated_request(
+                    "PRIMARY",
+                    params={"__path": "organization.repositories"},
+                    fallback_queries=["FALLBACK"],
+                ):
+                    pass
+
+    def test_is_query_too_expensive_keys_on_gateway_status(self) -> None:
+        for status in (500, 502, 504, 499):
+            assert GithubGraphQLClient._is_query_too_expensive(_gateway_error(status))
+        for status in (400, 403, 404):
+            assert not GithubGraphQLClient._is_query_too_expensive(
+                _gateway_error(status)
+            )
+        assert not GithubGraphQLClient._is_query_too_expensive(GraphQLErrorGroup([]))
 
 
 class TestGithubGraphQLClientRetryConfig:
