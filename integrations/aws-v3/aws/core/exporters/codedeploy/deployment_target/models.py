@@ -1,19 +1,19 @@
-from typing import Optional, Dict, Any
+from typing import Any
 from pydantic.v1 import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
 
 class DeploymentTargetProperties(BaseModel):
     deploymentId: str = Field(default_factory=str, alias="DeploymentId")
-    deploymentTargetType: Optional[str] = Field(
+    deploymentTargetType: str | None = Field(
         default=None, alias="DeploymentTargetType"
     )
-    instanceTarget: Optional[Dict[str, Any]] = Field(
+    instanceTarget: dict[str, Any] | None = Field(
         default=None, alias="InstanceTarget"
     )
-    lambdaTarget: Optional[Dict[str, Any]] = Field(default=None, alias="LambdaTarget")
-    ecsTarget: Optional[Dict[str, Any]] = Field(default=None, alias="EcsTarget")
-    cloudFormationTarget: Optional[Dict[str, Any]] = Field(
+    lambdaTarget: dict[str, Any] | None = Field(default=None, alias="LambdaTarget")
+    ecsTarget: dict[str, Any] | None = Field(default=None, alias="EcsTarget")
+    cloudFormationTarget: dict[str, Any] | None = Field(
         default=None, alias="CloudFormationTarget"
     )
 
