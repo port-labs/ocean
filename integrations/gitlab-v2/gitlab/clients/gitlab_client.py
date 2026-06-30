@@ -50,16 +50,12 @@ def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
     return project.get("namespace", {}).get("kind") == "user"
 
 
-def _filter_projects(
-    projects: list[dict[str, Any]],
-    predicate: Callable[[dict[str, Any]], bool],
-    reason: str,
+def _dedupe_by_id(
+    projects: list[dict[str, Any]], seen: set[int]
 ) -> list[dict[str, Any]]:
-    """Filter projects and log how many were removed."""
-    filtered = [p for p in projects if predicate(p)]
-    if (removed := len(projects) - len(filtered)) > 0:
-        logger.info(f"Filtered out {removed} {reason}")
-    return filtered
+    new = [project for project in projects if project["id"] not in seen]
+    seen.update(project["id"] for project in new)
+    return new
 
 
 class GitLabClient:
@@ -168,6 +164,52 @@ class GitLabClient:
             "GET", f"groups/{group_id}/{members_api}/{member_id}"
         )
 
+    async def _stream_all_projects(
+        self, params: dict[str, Any]
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        async for projects_batch in self.rest.get_paginated_resource(
+            "projects", params=params
+        ):
+            logger.info(f"Received batch with {len(projects_batch)} projects")
+            yield projects_batch
+
+    async def _stream_group_projects(
+        self, params: dict[str, Any]
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch group-namespace projects only, excluding personal namespace."""
+        project_params = {**params, "include_subgroups": True}
+        seen_project_ids: set[int] = set()
+
+        async for groups_batch in self.get_parent_groups(params=params):
+            for group in groups_batch:
+                group_label = group.get("full_path", group["id"])
+                async for projects_batch in self.rest.get_paginated_group_resource(
+                    str(group["id"]), "projects", params=project_params
+                ):
+                    if new_projects := _dedupe_by_id(
+                        projects_batch, seen_project_ids
+                    ):
+                        logger.info(
+                            f"Received batch with {len(new_projects)} group project(s) "
+                            f"from group '{group_label}'"
+                        )
+                        yield new_projects
+
+    async def _stream_accessible_projects(
+        self,
+        params: Optional[dict[str, Any]] = None,
+        *,
+        include_authenticated_user: bool,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        request_params = {**self.DEFAULT_PARAMS, **(params or {})}
+        stream = (
+            self._stream_all_projects(request_params)
+            if include_authenticated_user
+            else self._stream_group_projects(request_params)
+        )
+        async for projects_batch in stream:
+            yield projects_batch
+
     async def get_projects(
         self,
         params: Optional[dict[str, Any]] = None,
@@ -188,14 +230,9 @@ class GitLabClient:
         port_config = cast("GitlabPortAppConfig", event.port_app_config)
         include_authenticated_user = port_config.include_authenticated_user
 
-        request_params = {**self.DEFAULT_PARAMS}
-        if params:
-            request_params.update(params)
-
-        async for projects_batch in self.rest.get_paginated_resource(
-            "projects", params=request_params
+        async for projects_batch in self._stream_accessible_projects(
+            params, include_authenticated_user=include_authenticated_user
         ):
-            logger.info(f"Received batch with {len(projects_batch)} projects")
             enriched_batch = projects_batch
 
             if include_languages:
@@ -229,17 +266,13 @@ class GitLabClient:
             # Exclude projects pending deletion — their `project_destroy` webhook
             # only fires after the grace period (7 days on paid GitLab.com tiers),
             # so they would otherwise linger in Port until then.
-            active_batch = _filter_projects(
-                enriched_batch,
-                lambda p: not p.get("marked_for_deletion_at"),
-                "project(s) pending deletion",
-            )
-
-            if not include_authenticated_user:
-                active_batch = _filter_projects(
-                    active_batch,
-                    lambda p: not _is_personal_namespace_project(p),
-                    "personal namespace project(s)",
+            active_batch = [
+                p for p in enriched_batch if not p.get("marked_for_deletion_at")
+            ]
+            if len(active_batch) < len(enriched_batch):
+                logger.info(
+                    f"Filtered out {len(enriched_batch) - len(active_batch)} "
+                    "project(s) pending deletion"
                 )
 
             if active_batch:

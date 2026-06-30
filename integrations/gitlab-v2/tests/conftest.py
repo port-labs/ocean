@@ -26,7 +26,7 @@ mock_create_client.return_value = mock_client
 def mock_event_context() -> Generator[MagicMock, None, None]:
     """Provide port app config via event context, like resync handlers do."""
     mock_event = MagicMock(spec=EventContext)
-    mock_event.port_app_config = GitlabPortAppConfig()
+    mock_event.port_app_config = GitlabPortAppConfig(include_authenticated_user=True)
 
     with (
         patch("port_ocean.context.event.event", mock_event),

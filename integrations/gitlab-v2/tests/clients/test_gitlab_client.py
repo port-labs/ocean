@@ -252,15 +252,21 @@ class TestGitLabClient:
         self, client: GitLabClient, mock_event_context: MagicMock
     ) -> None:
         mock_event_context.port_app_config.include_authenticated_user = False
-        mock_projects = [
-            {"id": 1, "namespace": {"kind": "user"}},
-            {"id": 2, "namespace": {"kind": "group"}},
-        ]
+        mock_groups = [{"id": 10, "full_path": "my-group", "parent_id": None}]
+        mock_group_projects = [{"id": 2, "namespace": {"kind": "group"}}]
 
-        with patch.object(
-            client.rest,
-            "get_paginated_resource",
-            return_value=async_mock_generator([mock_projects]),
+        with (
+            patch.object(
+                client,
+                "get_parent_groups",
+                return_value=async_mock_generator([mock_groups]),
+            ),
+            patch.object(
+                client.rest,
+                "get_paginated_group_resource",
+                return_value=async_mock_generator([mock_group_projects]),
+            ) as mock_group_projects_api,
+            patch.object(client.rest, "get_paginated_resource") as mock_projects_api,
         ):
             results: list[dict[str, Any]] = []
             async for batch in client.get_projects():
@@ -268,6 +274,10 @@ class TestGitLabClient:
 
             assert len(results) == 1
             assert results[0]["id"] == 2
+            mock_group_projects_api.assert_called_once_with(
+                "10", "projects", params={"all_available": True, "include_subgroups": True}
+            )
+            mock_projects_api.assert_not_called()
 
     async def test_get_projects_includes_personal_namespace_when_enabled(
         self, client: GitLabClient, mock_event_context: MagicMock
