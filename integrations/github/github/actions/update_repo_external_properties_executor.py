@@ -1,11 +1,10 @@
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from loguru import logger
 from pydantic import BaseModel
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
-from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
 
@@ -50,14 +49,14 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
         Repository update operations should be executed sequentially to avoid conflicts.
         We use the organization and repository as the partition key.
         """
-        org: str = run.execution_properties.get("org")
-        repo: str = run.execution_properties.get("repo")
+        org = run.execution_properties.get("org")
+        repo = run.execution_properties.get("repo")
         return f"{org}/{repo}"
 
     async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
-        org: str = run.execution_properties.get("org")
-        repo: str = run.execution_properties.get("repo")
-        external_properties_mapping: dict[str, Any] = run.execution_properties.get(
+        org = run.execution_properties.get("org")
+        repo = run.execution_properties.get("repo")
+        external_properties_mapping = run.execution_properties.get(
             "externalPropertiesMapping"
         )
 
@@ -80,9 +79,9 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
                     f"{self.rest_client.base_url}/orgs/{org}/properties/external/values",
                     method="PATCH",
                     json_data=PatchExternalPropertiesBody(
-                        repository_names=[repo],
+                        repository_names=[cast(str, repo)],
                         properties=github_properties,
-                    ).dict(),
+                    ).model_dump(),
                     ignore_default_errors=False,
                 )
             except Exception as e:
