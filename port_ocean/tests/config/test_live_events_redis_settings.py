@@ -9,6 +9,24 @@ class TestLiveEventsRedisSettingsValidation:
         settings = LiveEventsRedisSettings(url="redis://localhost:6379")
 
         assert settings.enable_tls is False
+        assert settings.pel_requeue_worker_enabled is True
+
+    def test_pel_requeue_worker_enabled_from_env(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from port_ocean.config.settings import IntegrationConfiguration
+
+        monkeypatch.setenv(
+            "OCEAN__LIVE_EVENTS__REDIS__PEL_REQUEUE_WORKER_ENABLED", "true"
+        )
+        monkeypatch.setenv("OCEAN__PORT__CLIENT_ID", "test-client-id")
+        monkeypatch.setenv("OCEAN__PORT__CLIENT_SECRET", "test-client-secret")
+        monkeypatch.setenv("OCEAN__INTEGRATION__TYPE", "test")
+        monkeypatch.setenv("OCEAN__INTEGRATION__IDENTIFIER", "test-id")
+
+        config = IntegrationConfiguration()
+
+        assert config.live_events.redis.pel_requeue_worker_enabled is True
 
     def test_accepts_rediss_url_with_tls_enabled(self) -> None:
         settings = LiveEventsRedisSettings(
