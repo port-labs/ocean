@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING
+import json
+from typing import Any, TYPE_CHECKING
 
 import httpx
 
@@ -87,18 +88,120 @@ def get_event_context_params() -> dict[str, str]:
     return {}
 
 
+def _format_error_value(error: Any) -> str | None:
+    """Turn a Port API ``error`` field into a readable string."""
+    if error is None:
+        return None
+    if isinstance(error, str):
+        if error in ("[object Object]", "{}"):
+            return None
+        return error
+    if isinstance(error, dict):
+        if not error:
+            return None
+        name = error.get("name") or error.get("code")
+        message = error.get("message")
+        if name and message:
+            return f"{name}: {message}"
+        if message:
+            return str(message)
+        if name:
+            return str(name)
+        details = error.get("details")
+        if details:
+            return f"{name or 'error'}: {json.dumps(details, default=str)}"
+        return json.dumps(error, default=str)
+    return str(error)
+
+
+def _is_unhelpful_error_value(error: Any) -> bool:
+    return (
+        error in (None, "", "[object Object]", "{}", {}) or error == "[object Object]"
+    )
+
+
+def format_port_error_response(response: httpx.Response) -> str:
+    """Build a human-readable summary of a failed Port API response body."""
+    text = response.text.strip()
+    if not text:
+        return "(empty response body)"
+
+    try:
+        body = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        return text
+
+    if not isinstance(body, dict):
+        return json.dumps(body, default=str)
+
+    parts: list[str] = []
+
+    message = body.get("message")
+    if message not in (None, "", {}):
+        if isinstance(message, str) and message.strip():
+            parts.append(message.strip())
+        else:
+            parts.append(json.dumps(message, default=str))
+
+    error_summary = _format_error_value(body.get("error"))
+    if error_summary:
+        parts.append(error_summary)
+
+    for key in ("errors", "details"):
+        value = body.get(key)
+        if value not in (None, {}, []):
+            parts.append(f"{key}={json.dumps(value, default=str)}")
+
+    if parts:
+        return " | ".join(parts)
+
+    if body.get("ok") is False and _is_unhelpful_error_value(body.get("error")):
+        return (
+            "Port API returned ok=false without a detailed error message "
+            "(the server failed to serialize the error object)"
+        )
+
+    return json.dumps(body, default=str)
+
+
+def _build_port_error_log_message(response: httpx.Response, port_error: str) -> str:
+    """Single-line message with request target — visible at default log levels."""
+    target = "unknown request"
+    if response.request is not None:
+        target = f"{response.request.method} {response.request.url}"
+
+    message = (
+        f"Port request failed: {target} → HTTP {response.status_code} — {port_error}"
+    )
+
+    trace_id = response.headers.get("x-trace-id")
+    if response.status_code >= 500 and trace_id:
+        message += f" (trace_id={trace_id})"
+
+    return message
+
+
 def handle_port_status_code(
     response: httpx.Response, should_raise: bool = True, should_log: bool = True
 ) -> None:
     if should_log and response.is_error:
-        escaped_response_text = response.text.replace("{", "{{").replace("}", "}}")
-        error_message = f"Request failed with status code: {response.status_code}, Error: {escaped_response_text}"
-        if response.status_code >= 500 and response.headers.get("x-trace-id"):
-            logger.error(
-                error_message,
-                trace_id=response.headers.get("x-trace-id"),
-            )
-        else:
-            logger.error(error_message)
+        port_error = format_port_error_response(response)
+        log_message = _build_port_error_log_message(response, port_error)
+        log_kwargs: dict[str, Any] = {
+            "status_code": response.status_code,
+            "port_error": port_error,
+            "response_body": response.text[:2000],
+        }
+        if response.request is not None:
+            log_kwargs["method"] = response.request.method
+            log_kwargs["url"] = str(response.request.url)
+
+        trace_id = response.headers.get("x-trace-id")
+        if trace_id:
+            log_kwargs["trace_id"] = trace_id
+
+        # opt(raw=True): message is final — port_error may contain JSON braces that
+        # must not be interpreted as loguru format placeholders.
+        logger.bind(**log_kwargs).opt(raw=True).error(log_message)
     if should_raise:
         response.raise_for_status()

@@ -1,4 +1,5 @@
 from io import StringIO
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,6 +8,7 @@ from loguru import logger
 
 from port_ocean.clients.port.utils import (
     OCEAN_INFO_PREFIX,
+    format_port_error_response,
     get_event_context_params,
     handle_port_status_code,
 )
@@ -17,7 +19,7 @@ class TestHandlePortStatusCode:
     """Tests for handle_port_status_code function."""
 
     def test_handle_port_status_code_with_json_error_response(self) -> None:
-        """Test that error responses with JSON containing curly braces don't cause KeyError."""
+        """Test that structured JSON errors are logged readably."""
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 500
         mock_response.text = (
@@ -25,6 +27,9 @@ class TestHandlePortStatusCode:
         )
         mock_response.is_error = True
         mock_response.headers = {}
+        mock_response.request = MagicMock(
+            method="POST", url="https://api.example/v1/test"
+        )
         mock_response.raise_for_status = MagicMock()
 
         log_capture = StringIO()
@@ -38,8 +43,10 @@ class TestHandlePortStatusCode:
         try:
             handle_port_status_code(mock_response, should_raise=False, should_log=True)
             log_output = log_capture.getvalue()
-            assert "Request failed with status code: 500" in log_output
-            assert "ok" in log_output.lower() or "error" in log_output.lower()
+            assert "Port request failed:" in log_output
+            assert "HTTP 500" in log_output
+            assert "Internal server error" in log_output
+            assert "details=" in log_output
         finally:
             logger.remove(logger_id)
 
@@ -54,6 +61,9 @@ class TestHandlePortStatusCode:
         )
         mock_response.is_error = True
         mock_response.headers = {"x-trace-id": "trace-123-456"}
+        mock_response.request = MagicMock(
+            method="GET", url="https://api.example/v1/test"
+        )
         mock_response.raise_for_status = MagicMock()
 
         log_capture = StringIO()
@@ -67,8 +77,9 @@ class TestHandlePortStatusCode:
         try:
             handle_port_status_code(mock_response, should_raise=False, should_log=True)
             log_output = log_capture.getvalue()
-            assert "Request failed with status code: 500" in log_output
-            assert "status" in log_output.lower() or "error" in log_output.lower()
+            assert "Port request failed:" in log_output
+            assert "HTTP 500" in log_output
+            assert "Something went wrong" in log_output
         finally:
             logger.remove(logger_id)
 
@@ -79,6 +90,9 @@ class TestHandlePortStatusCode:
         mock_response.text = '{"errors": [{"field": "name", "messages": {"required": ["Name is required"]}}]}'
         mock_response.is_error = True
         mock_response.headers = {}
+        mock_response.request = MagicMock(
+            method="POST", url="https://api.example/v1/test"
+        )
         mock_response.raise_for_status = MagicMock()
 
         log_capture = StringIO()
@@ -92,8 +106,8 @@ class TestHandlePortStatusCode:
         try:
             handle_port_status_code(mock_response, should_raise=False, should_log=True)
             log_output = log_capture.getvalue()
-            assert "Request failed with status code: 400" in log_output
-            assert "errors" in log_output.lower() or "field" in log_output.lower()
+            assert "Port request failed:" in log_output
+            assert "HTTP 400" in log_output
         except KeyError as e:
             pytest.fail(f"KeyError was raised (bug not fixed): {e}")
         finally:
@@ -106,14 +120,24 @@ class TestHandlePortStatusCode:
         mock_response.text = "Resource not found"
         mock_response.is_error = True
         mock_response.headers = {}
+        mock_response.request = None
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(logger, "error") as mock_logger_error:
+        log_capture = StringIO()
+        logger_id = logger.add(
+            log_capture,
+            level="ERROR",
+            format="{message}",
+            diagnose=False,
+        )
+
+        try:
             handle_port_status_code(mock_response, should_raise=False, should_log=True)
-            mock_logger_error.assert_called_once()
-            call_args = mock_logger_error.call_args
-            error_message = call_args[0][0]
-            assert "Resource not found" in error_message
+            log_output = log_capture.getvalue()
+            assert "HTTP 404" in log_output
+            assert "Resource not found" in log_output
+        finally:
+            logger.remove(logger_id)
 
     def test_handle_port_status_code_raises_when_should_raise_true(self) -> None:
         """Test that the function raises when should_raise is True."""
@@ -172,6 +196,7 @@ class TestHandlePortStatusCode:
         mock_response.text = '{"ok": false}'
         mock_response.is_error = True
         mock_response.headers = {}
+        mock_response.request = None
         mock_response.raise_for_status = MagicMock()
 
         log_capture = StringIO()
@@ -185,12 +210,130 @@ class TestHandlePortStatusCode:
         try:
             handle_port_status_code(mock_response, should_raise=False, should_log=True)
             log_output = log_capture.getvalue()
-            assert "Request failed with status code: 500" in log_output
-            assert "ok" in log_output.lower()
+            assert "Port request failed:" in log_output
+            assert "HTTP 500" in log_output
+            assert (
+                "ok=false" in log_output.lower()
+                or "without a detailed error" in log_output
+            )
         except KeyError as e:
             pytest.fail(f"KeyError was raised (bug not fixed or fix was removed): {e}")
         finally:
             logger.remove(logger_id)
+
+    def test_handle_port_status_code_skips_object_object_when_message_present(
+        self,
+    ) -> None:
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 500
+        mock_response.text = '{"ok": false, "error": "[object Object]", "message": "Blueprint not found"}'
+        mock_response.is_error = True
+        mock_response.headers = {}
+        mock_response.request = None
+        mock_response.raise_for_status = MagicMock()
+
+        log_capture = StringIO()
+        logger_id = logger.add(
+            log_capture,
+            level="ERROR",
+            format="{message}",
+            diagnose=False,
+        )
+
+        try:
+            handle_port_status_code(mock_response, should_raise=False, should_log=True)
+            log_output = log_capture.getvalue()
+            assert "Blueprint not found" in log_output
+            assert "[object Object]" not in log_output
+        finally:
+            logger.remove(logger_id)
+
+    def test_handle_port_status_code_formats_structured_error_object(self) -> None:
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 500
+        mock_response.text = json.dumps(
+            {
+                "ok": False,
+                "error": {
+                    "name": "blueprint_not_found",
+                    "message": "Blueprint fake-department was not found",
+                },
+            }
+        )
+        mock_response.is_error = True
+        mock_response.headers = {}
+        mock_response.request = None
+        mock_response.raise_for_status = MagicMock()
+
+        log_capture = StringIO()
+        logger_id = logger.add(
+            log_capture,
+            level="ERROR",
+            format="{message}",
+            diagnose=False,
+        )
+
+        try:
+            handle_port_status_code(mock_response, should_raise=False, should_log=True)
+            log_output = log_capture.getvalue()
+            assert (
+                "blueprint_not_found: Blueprint fake-department was not found"
+                in log_output
+            )
+        finally:
+            logger.remove(logger_id)
+
+    def test_handle_port_status_code_object_object_without_message(self) -> None:
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 500
+        mock_response.text = '{"ok": false, "error": "[object Object]"}'
+        mock_response.is_error = True
+        mock_response.headers = {"x-trace-id": "trace-abc"}
+        mock_response.request = MagicMock(
+            method="POST",
+            url="https://api.getport.io/v1/blueprints/fake-department/entities/bulk",
+        )
+        mock_response.raise_for_status = MagicMock()
+
+        log_capture = StringIO()
+        logger_id = logger.add(
+            log_capture,
+            level="ERROR",
+            format="{message}",
+            diagnose=False,
+        )
+
+        try:
+            handle_port_status_code(mock_response, should_raise=False, should_log=True)
+            log_output = log_capture.getvalue()
+            assert "[object Object]" not in log_output
+            assert "entities/bulk" in log_output
+            assert "without a detailed error message" in log_output
+            assert "trace_id=trace-abc" in log_output
+        finally:
+            logger.remove(logger_id)
+
+
+class TestFormatPortErrorResponse:
+    def test_format_port_error_response_object_object_only(self) -> None:
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.text = '{"ok": false, "error": "[object Object]"}'
+        result = format_port_error_response(mock_response)
+        assert "[object Object]" not in result
+        assert "without a detailed error message" in result
+
+    def test_format_port_error_response_structured_error(self) -> None:
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.text = json.dumps(
+            {
+                "ok": False,
+                "error": {"name": "internal_error", "message": "Something broke"},
+            }
+        )
+        assert (
+            format_port_error_response(mock_response)
+            == "internal_error: Something broke"
+        )
 
 
 class TestGetEventContextParams:
