@@ -12,7 +12,8 @@
         "numberOfHotSpots": 3,
         "numberOfDuplications": 18,
         "coverage": 0,
-        "mainBranch": "main"
+        "mainBranch": "main",
+        "qualityGateName": "Sonar way"
     },
     "relations": {},
     "icon": "sonarqube"
