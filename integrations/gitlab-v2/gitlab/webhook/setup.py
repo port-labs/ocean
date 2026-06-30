@@ -15,29 +15,24 @@ async def _setup_single_namespace_webhooks(
     client: GitLabClient, base_url: str, namespace: str
 ) -> None:
     """Register webhooks for a single namespace (group or personal)."""
-    logger.info(f"Creating webhooks for namespace {namespace} at {base_url}")
+    logger.info(f"Creating webhooks for namespace '{namespace}'")
 
-    if await client.is_personal_namespace(namespace):
-        await ProjectWebHook(client, base_url).create_webhooks_for_personal_projects()
-    else:
-        group = await client.get_group(namespace)
+    if group := await client.get_group_if_exists(namespace):
         await GroupWebHook(client, base_url).create_group_webhook(group["id"])
+    else:
+        await ProjectWebHook(client, base_url).create_webhooks_for_personal_projects()
 
 
-async def _setup_multi_group_webhooks(
-    client: GitLabClient, base_url: str, include_authenticated_user: bool | None
-) -> None:
+async def _setup_multi_group_webhooks(client: GitLabClient, base_url: str) -> None:
     """Register webhooks for all owned groups, optionally including personal namespace."""
-    logger.info(f"Creating webhooks for all owned groups at {base_url}")
+    logger.info("Creating webhooks for all owned groups")
     await GroupWebHook(client, base_url).create_webhooks_for_all_groups()
 
-    if include_authenticated_user is None:
-        await ocean.integration.port_app_config_handler.get_port_app_config()
-        port_config = cast(GitlabPortAppConfig, event.port_app_config)
-        include_authenticated_user = port_config.include_authenticated_user
+    await ocean.integration.port_app_config_handler.get_port_app_config()
+    port_config = cast(GitlabPortAppConfig, event.port_app_config)
 
-    if include_authenticated_user:
-        logger.info(f"Creating webhooks for personal namespace projects at {base_url}")
+    if port_config.include_authenticated_user:
+        logger.info("Creating webhooks for personal namespace projects")
         await ProjectWebHook(client, base_url).create_webhooks_for_personal_projects()
 
 
@@ -47,7 +42,6 @@ async def setup_webhooks(
     base_url: str | None,
     gitlab_group: str | None,
     client: GitLabClient | None = None,
-    include_authenticated_user: bool | None = None,
 ) -> None:
     """Configure webhooks based on integration settings.
 
@@ -56,12 +50,10 @@ async def setup_webhooks(
         base_url: The app's public URL for webhook callbacks.
         gitlab_group: Optional single namespace to scope webhooks to.
         client: GitLab client (created if not provided).
-        include_authenticated_user: Whether to register personal namespace webhooks.
-            If None, reads from port app config.
     """
     if not should_process_webhooks:
         logger.info(
-            "Skipping webhook creation as it's not supported for this event listener"
+            "Skipping webhook creation (event listener does not support webhooks)"
         )
         return
 
@@ -73,6 +65,4 @@ async def setup_webhooks(
     if gitlab_group:
         await _setup_single_namespace_webhooks(gitlab_client, base_url, gitlab_group)
     else:
-        await _setup_multi_group_webhooks(
-            gitlab_client, base_url, include_authenticated_user
-        )
+        await _setup_multi_group_webhooks(gitlab_client, base_url)

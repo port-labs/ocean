@@ -111,13 +111,14 @@ class GitLabClient:
         encoded_group_id = quote(str(group_id), safe="")
         return await self.rest.send_api_request("GET", f"groups/{encoded_group_id}")
 
-    async def is_personal_namespace(self, namespace: str) -> bool:
-        """Return True if namespace is a user (personal), False if it's a group.
+    async def get_group_if_exists(self, namespace: str) -> dict[str, Any] | None:
+        """Return group dict if namespace is a group, None if personal/not found.
 
-        Groups return a dict with 'id'; a 404 (empty dict from base client) means personal.
+        Uses the groups API; a 404/403 (empty dict from base client) means
+        the namespace is either a personal user or inaccessible.
         """
         group = await self.get_group(namespace)
-        return not group.get("id")
+        return group if group.get("id") else None
 
     async def get_merge_request(
         self, project_id: int, merge_request_id: int

@@ -334,17 +334,24 @@ class TestGitLabClient:
                 "GET", "groups/my-org%2Fsub-group"
             )
 
-    async def test_is_personal_namespace_for_group(self, client: GitLabClient) -> None:
+    async def test_get_group_if_exists_returns_group(
+        self, client: GitLabClient
+    ) -> None:
+        mock_group = {"id": 123, "path": "my-group"}
         with patch.object(
             client.rest,
             "send_api_request",
-            AsyncMock(return_value={"id": 123, "path": "my-group"}),
+            AsyncMock(return_value=mock_group),
         ):
-            assert await client.is_personal_namespace("my-group") is False
+            result = await client.get_group_if_exists("my-group")
+            assert result == mock_group
 
-    async def test_is_personal_namespace_for_user(self, client: GitLabClient) -> None:
+    async def test_get_group_if_exists_returns_none_for_personal(
+        self, client: GitLabClient
+    ) -> None:
         with patch.object(client.rest, "send_api_request", AsyncMock(return_value={})):
-            assert await client.is_personal_namespace("alice") is True
+            result = await client.get_group_if_exists("alice")
+            assert result is None
 
     async def test_get_merge_request(self, client: GitLabClient) -> None:
         """Test fetching a single merge request by ID"""
