@@ -5,7 +5,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .Properties.ARN
+          identifier: .Properties.Arn
           title: .Properties.Name
           blueprint: '"eksCluster"'
           properties:
