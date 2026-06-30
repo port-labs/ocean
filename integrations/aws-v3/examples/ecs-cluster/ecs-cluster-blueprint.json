@@ -54,5 +54,12 @@
     "required": []
   },
   "calculationProperties": {},
-  "relations": {}
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
 }
