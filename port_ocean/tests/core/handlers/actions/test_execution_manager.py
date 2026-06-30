@@ -452,6 +452,19 @@ class TestExecutionManager:
         assert execution_manager._action_identifier_queue_counts == {}
 
     @pytest.mark.asyncio
+    async def test_action_identifier_queue_count_ignores_workflow_node_runs(
+        self, execution_manager: ExecutionManager
+    ) -> None:
+        run = generate_mock_wf_node_run()
+        await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
+
+        assert execution_manager._action_identifier_queue_counts == {}
+
+        await execution_manager._handle_global_queue_once()
+
+        assert execution_manager._action_identifier_queue_counts == {}
+
+    @pytest.mark.asyncio
     async def test_poll_action_runs_excludes_saturated_action_identifiers(
         self, execution_manager: ExecutionManager, mock_port_client: MagicMock
     ) -> None:
@@ -473,27 +486,6 @@ class TestExecutionManager:
             visibility_timeout_ms=execution_manager._visibility_timeout_ms,
             exclude_action_identifiers=["test-action-identifier"],
         )
-
-    @pytest.mark.asyncio
-    async def test_poll_action_runs_repolls_immediately_when_runs_are_deduped(
-        self, execution_manager: ExecutionManager, mock_port_client: MagicMock
-    ) -> None:
-        execution_manager._high_watermark = 10
-        execution_manager._poll_check_interval_seconds = 60
-        deduped_run = generate_mock_action_run()
-        await execution_manager._add_run_to_queue(deduped_run, GLOBAL_SOURCE)
-
-        mock_port_client.claim_pending_runs.side_effect = [
-            [deduped_run],
-            [generate_mock_action_run()],
-            [],
-        ]
-
-        polling_task = asyncio.create_task(execution_manager._poll_action_runs())
-        await asyncio.sleep(0.1)
-        await execution_manager._gracefully_cancel_task(polling_task)
-
-        assert mock_port_client.claim_pending_runs.call_count >= 2
 
     @pytest.mark.asyncio
     async def test_poll_action_runs_should_respect_high_watermark(

@@ -33,45 +33,39 @@ class ExecutionManager:
     - Round-robin worker distribution
     - Deduplication of runs
     - High watermark-based flow control
-    - Per-action buffer utilization limits for action-run claim-pending exclusion
+    - Per-action buffer utilization limits for action-run claim-pending exclusion (action runs only)
 
     Attributes:
         _webhook_manager (LiveEventsProcessorManager): Manages webhook processors for async updates
         _polling_task (asyncio.Task[None] | None): Task that polls for new action runs
         _workers_pool (set[asyncio.Task[None]]): Pool of worker tasks processing runs
-        _actions_executors (Dict[str, AbstractExecutor]): Registered action executors
+        _actions_executors (Dict[str, AbstractExecutor]): Registered action executors keyed by integration action type
         _is_shutting_down (asyncio.Event): Event flag for graceful shutdown
-        _global_queue (LocalQueue[ActionRun | WorkflowNodeRun]): Queue for non-partitioned actions
-        _partition_queues (Dict[str, AbstractQueue[ActionRun | WorkflowNodeRun]]): Queues for partitioned actions
-        _deduplication_set (Set[str]): Set of run IDs for deduplication
-        _action_identifier_queue_counts (Dict[str, int]): Queued run counts per action identifier (from `ActionRun.actionIdentifier` or workflow node config)
+        _global_queue (LocalQueue[ActionRun | WorkflowNodeRun]): Queue for non-partitioned runs
+        _partition_queues (Dict[str, AbstractQueue[ActionRun | WorkflowNodeRun]]): Queues for partitioned runs
+        _deduplication_set (Set[str]): Set of run IDs currently queued or in-flight
+        _action_identifier_queue_counts (Dict[str, int]): Queued action-run counts per Port action identifier
         _queues_locks (Dict[str, asyncio.Lock]): Locks for queue access synchronization
-        _active_sources (AbstractQueue[str]): Queue of active sources (global or partition-specific) used for round-robin distribution of work among workers
-        _workers_count (int): Number of workers to start
-        _high_watermark (int): Maximum total runs in all queues
-        _max_runs_buffer_util_pct_per_action (int | None): Max runs-buffer utilization percentage per action; saturated action identifiers are excluded from claim-pending
-        _poll_check_interval_seconds (int): Seconds between polling attempts
-        _visibility_timeout_ms (int): Visibility timeout for runs
+        _active_sources (AbstractQueue[str]): Round-robin source queue (global or partition name)
+        _workers_count (int): Number of worker tasks to start
+        _high_watermark (int): Maximum total runs buffered before throttling claim-pending polls
+        _max_runs_buffer_util_pct_per_action (int | None): Per-action buffer cap as % of high watermark; saturated identifiers are excluded from action claim-pending
+        _poll_check_interval_seconds (int): Seconds between claim-pending polls when idle or at high watermark
+        _visibility_timeout_ms (int): Claim visibility timeout passed to Port
         _max_wait_seconds_before_shutdown (float): Maximum wait time during shutdown
 
     Example:
         ```python
-        # Create and configure execution manager
         manager = ExecutionManager(
             webhook_manager=webhook_mgr,
             signal_handler=signal_handler,
             workers_count=3,
-            runs_buffer_high_watermark=1000,
-            poll_check_interval_seconds=5,
+            runs_buffer_high_watermark=100,
+            poll_check_interval_seconds=10,
             visibility_timeout_ms=30000,
-            max_wait_seconds_before_shutdown=30.0
+            max_wait_seconds_before_shutdown=30.0,
+            max_runs_buffer_util_pct_per_action=30,
         )
-
-        # Register action executors
-        manager.register_executor(MyActionExecutor())
-
-        # Start processing
-        await manager.start_processing_action_runs()
         ```
     """
 
@@ -198,7 +192,6 @@ class ExecutionManager:
                     continue
 
                 logger.info(f"Adding {len(runs)} runs to queues", runs_count=len(runs))
-                deduped_runs_count = 0
                 for run in runs:
                     try:
                         action_type = run.action_type
@@ -211,7 +204,6 @@ class ExecutionManager:
                             continue
 
                         if run.id in self._deduplication_set:
-                            deduped_runs_count += 1
                             logger.info(
                                 "Run is already being processed, skipping...",
                                 run_id=run.id,
@@ -243,9 +235,6 @@ class ExecutionManager:
                             error=str(e),
                         )
 
-                # If we deduped any runs, we can continue polling for more runs
-                if deduped_runs_count > 0:
-                    continue
             except Exception as e:
                 logger.exception(
                     "Unexpected error in poll action runs, will attempt to re-poll",
@@ -279,8 +268,15 @@ class ExecutionManager:
         return [
             action_identifier
             for action_identifier, count in self._action_identifier_queue_counts.items()
-            if count >= limit
+            if action_identifier and count >= limit
         ]
+
+    def _get_run_action_identifier(
+        self, run: ActionRun | WorkflowNodeRun
+    ) -> str | None:
+        if isinstance(run, ActionRun):
+            return run.action_identifier or None
+        return None
 
     def _increment_action_identifier_queue_count(self, action_identifier: str) -> None:
         self._action_identifier_queue_counts[action_identifier] = (
@@ -315,7 +311,8 @@ class ExecutionManager:
             if await queue.size() == 0:
                 await self._active_sources.put(queue_name)
             self._deduplication_set.add(run.id)
-            self._increment_action_identifier_queue_count(run.action_identifier)
+            if action_identifier := self._get_run_action_identifier(run):
+                self._increment_action_identifier_queue_count(action_identifier)
             logger.info(
                 f"Adding run to queue {queue_name}",
                 run_id=run.id,
@@ -387,9 +384,10 @@ class ExecutionManager:
                     logger.debug("Global queue is empty, skipping")
                     return
 
+                if action_identifier := self._get_run_action_identifier(run):
+                    self._decrement_action_identifier_queue_count(action_identifier)
                 if run.id in self._deduplication_set:
                     self._deduplication_set.remove(run.id)
-                    self._decrement_action_identifier_queue_count(run.action_identifier)
 
             await self._add_source_if_not_empty(GLOBAL_SOURCE)
             await self._execute_run(run)
@@ -411,11 +409,10 @@ class ExecutionManager:
                         queue.get(), timeout=QUEUE_GET_TIMEOUT_SECONDS
                     )
                     got_run = True
+                    if action_identifier := self._get_run_action_identifier(run):
+                        self._decrement_action_identifier_queue_count(action_identifier)
                     if run.id in self._deduplication_set:
                         self._deduplication_set.remove(run.id)
-                        self._decrement_action_identifier_queue_count(
-                            run.action_identifier
-                        )
                 except asyncio.TimeoutError:
                     logger.debug(f"Partition queue {partition_name} is empty, skipping")
                     return

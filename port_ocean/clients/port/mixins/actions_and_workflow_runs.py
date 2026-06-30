@@ -42,7 +42,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         self,
         limit: int,
         visibility_timeout_ms: int,
-        exclude_action_identifiers: list[str] = [],
+        exclude_action_identifiers: list[str] | None = None,
     ) -> list[ActionRun | WorkflowNodeRun]:
         runs: list[ActionRun | WorkflowNodeRun]
         if self._poll_wf_node:

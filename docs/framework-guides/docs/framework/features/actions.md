@@ -184,11 +184,11 @@ The Execution Manager is configured with these parameters:
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-| `workers_count` | Number of concurrent worker tasks; tune based on pod CPU and memory | `3` |
-| `runs_buffer_high_watermark` | Maximum queue size before throttling polls (1–1000) | `300` |
+| `workers_count` | Number of concurrent worker tasks; tune based on pod CPU and memory | `1` |
+| `runs_buffer_high_watermark` | Maximum queue size before throttling polls (1–1000) | `100` |
 | `poll_check_interval_seconds` | Seconds between polling attempts | `10` |
-| `visibility_timeout_ms` | Timeout for claimed runs in milliseconds (1–600000) | `60000` |
-| `max_runs_buffer_util_pct_per_action` | Max buffer utilization percentage per action identifier before excluding it from claim-pending (1–100); set to `null` to disable | `30` |
+| `visibility_timeout_ms` | Timeout for claimed runs in milliseconds (1–600000) | `30000` |
+| `max_runs_buffer_util_pct_per_action` | Max buffer utilization percentage per action identifier before excluding it from claim-pending (1–100); set to enable | unset |
 | `max_wait_seconds_before_shutdown` | Maximum time to wait during graceful shutdown | `30` |
 
 ## Implementation Guide

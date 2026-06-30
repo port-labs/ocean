@@ -196,15 +196,14 @@ class ActionRun(BaseModel):
     id: str
     status: RunStatus
     payload: IntegrationActionInvocationPayload
-    actionIdentifier: str
+    action_identifier: str = Field(default="", alias="actionIdentifier")
+
+    class Config:
+        allow_population_by_field_name = True
 
     @property
     def action_type(self) -> str:
         return self.payload.integrationActionType
-
-    @property
-    def action_identifier(self) -> str:
-        return self.actionIdentifier
 
     @property
     def execution_properties(self) -> dict[str, Any]:
@@ -228,12 +227,6 @@ class WorkflowNodeRun(BaseModel):
         return self.node.get("config", {}).get("integrationInvocationType", "")
 
     @property
-    def action_identifier(self) -> str:
-        if not self.node:
-            return ""
-        return self.node.get("config", {}).get("nodeIdentifier", "")
-
-    @property
     def execution_properties(self) -> dict[str, Any]:
         if not self.node:
             return {}
@@ -253,10 +246,6 @@ class ClaimedWorkflowNodeRun(WorkflowNodeRun):
     @property
     def execution_properties(self) -> dict[str, Any]:
         return self.config.get("integrationActionExecutionProperties", {})
-
-    @property
-    def action_identifier(self) -> str:
-        return str(self.config.get("nodeIdentifier", ""))
 
 
 class LakehouseDataEntryMetadata(TypedDict):

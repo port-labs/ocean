@@ -32,9 +32,9 @@ class ActionsClientMixin:
         self,
         limit: int,
         visibility_timeout_ms: int,
-        exclude_action_identifiers: list[str] = [],
+        exclude_action_identifiers: list[str] | None = None,
     ) -> list[ActionRun]:
-        body: dict[str, object] = {
+        body: dict[str, Any] = {
             "installationId": self.auth.integration_identifier,
             "limit": limit,
             "visibilityTimeoutMs": visibility_timeout_ms,
