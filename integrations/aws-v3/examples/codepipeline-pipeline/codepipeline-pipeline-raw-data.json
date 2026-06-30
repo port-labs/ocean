@@ -98,7 +98,16 @@
     "Triggers": [],
     "Created": "2026-06-01T14:41:13.216000+03:00",
     "Updated": "2026-06-01T14:41:13.216000+03:00",
-    "Tags": {}
+    "Tags": [
+      {
+        "key": "hill",
+        "value": "billy"
+      },
+      {
+        "key": "jazz",
+        "value": "hands"
+      }
+    ]
   },
   "__ExtraContext": {
     "AccountId": "1234567890",
