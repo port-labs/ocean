@@ -6,6 +6,7 @@ import socket
 import tempfile
 import time
 from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -204,6 +205,13 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         start_time = time.monotonic()
         webhook_path: str | None = None
+        time_until_consumed_ms = self._time_until_consumed_ms(fields.get("queuedAt"))
+        if time_until_consumed_ms is not None:
+            logger.info(
+                "Redis stream message consumed",
+                message_id=message_id,
+                time_until_consumed_ms=time_until_consumed_ms,
+            )
         try:
             raw_webhook_path = fields.get("webhookPath")
             if not raw_webhook_path:
@@ -251,13 +259,36 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             )
         finally:
             elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
+            time_until_acked_ms = self._time_until_consumed_ms(fields.get("queuedAt"))
             logger.info(
                 "Redis stream message processed",
                 message_id=message_id,
                 webhook_path=webhook_path,
                 elapsed_ms=elapsed_ms,
+                time_until_acked_ms=time_until_acked_ms,
             )
             await self._ack(message_id)
+
+    @staticmethod
+    def _time_until_consumed_ms(
+        queued_at: str | None, *, now: datetime | None = None
+    ) -> float | None:
+        if not queued_at:
+            return None
+
+        consumed_at = now or datetime.now(timezone.utc)
+        try:
+            queued_time = datetime.fromtimestamp(
+                float(queued_at) / 1_000_000_000, tz=timezone.utc
+            )
+        except (ValueError, OSError, OverflowError):
+            logger.warning(
+                "Invalid queuedAt in Redis stream message",
+                queued_at=queued_at,
+            )
+            return None
+
+        return round((consumed_at - queued_time).total_seconds() * 1000, 2)
 
     @staticmethod
     def _normalize_webhook_path(webhook_path: str) -> str:

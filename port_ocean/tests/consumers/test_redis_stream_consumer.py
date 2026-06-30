@@ -4,7 +4,8 @@ import json
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime, timezone
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from redis.asyncio.connection import SSLConnection
@@ -480,6 +481,84 @@ class TestRedisStreamConsumer:
                 "integration/webhook/monitor-events"
             )
             == "/webhook/monitor-events"
+        )
+
+    def test_time_until_consumed_ms_from_unix_nanoseconds(self) -> None:
+        queued_at = "1700000000000000000"
+        consumed_at = datetime.fromtimestamp(1700000001.5, tz=timezone.utc)
+
+        assert (
+            RedisStreamConsumer._time_until_consumed_ms(queued_at, now=consumed_at)
+            == 1500.0
+        )
+
+    def test_time_until_consumed_ms_from_unix_nanoseconds_with_fraction(self) -> None:
+        queued_at = "1700000000500000000"
+        consumed_at = datetime.fromtimestamp(1700000002.0, tz=timezone.utc)
+
+        assert (
+            RedisStreamConsumer._time_until_consumed_ms(queued_at, now=consumed_at)
+            == 1500.0
+        )
+
+    def test_time_until_consumed_ms_returns_none_when_missing(self) -> None:
+        assert RedisStreamConsumer._time_until_consumed_ms(None) is None
+        assert RedisStreamConsumer._time_until_consumed_ms("") is None
+
+    def test_time_until_consumed_ms_returns_none_for_invalid_timestamp(self) -> None:
+        assert RedisStreamConsumer._time_until_consumed_ms("not-a-timestamp") is None
+
+    @pytest.mark.asyncio
+    async def test_handle_message_logs_time_until_consumed(
+        self,
+        redis_settings: LiveEventsRedisSettings,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        path = "/webhook"
+        on_message = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.logger.info"
+            ) as mock_logger_info,
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=redis_settings,
+                stream_key="1111111/live-events/raw/event-stream",
+                on_message=on_message,
+                registered_paths={path},
+            )
+            consumer._ack = AsyncMock()  # type: ignore[method-assign]
+
+            with patch.object(
+                RedisStreamConsumer,
+                "_time_until_consumed_ms",
+                side_effect=[2000.0, 2500.0],
+            ):
+                await consumer._handle_message(
+                    "1700000000000-0",
+                    {
+                        "payload": json.dumps({}),
+                        "headers": json.dumps({}),
+                        "webhookPath": "integration/webhook",
+                        "queuedAt": "1700000000000000000",
+                    },
+                )
+
+        mock_logger_info.assert_any_call(
+            "Redis stream message consumed",
+            message_id="1700000000000-0",
+            time_until_consumed_ms=2000.0,
+        )
+        mock_logger_info.assert_any_call(
+            "Redis stream message processed",
+            message_id="1700000000000-0",
+            webhook_path="/webhook",
+            elapsed_ms=ANY,
+            time_until_acked_ms=2500.0,
         )
 
     @pytest.mark.asyncio
