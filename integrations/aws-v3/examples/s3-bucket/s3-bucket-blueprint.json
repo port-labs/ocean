@@ -39,10 +39,10 @@
   "calculationProperties": {},
   "relations": {
     "account": {
-        "title": "Account",
-        "target": "awsAccount",
-        "required": false,
-        "many": false
-      }
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
   }
 }
