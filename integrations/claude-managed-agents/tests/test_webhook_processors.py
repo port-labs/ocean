@@ -111,29 +111,11 @@ async def test_session_upsert_event_fetches_resource() -> None:
 
 
 @pytest.mark.asyncio
-async def test_vault_should_process_credential_events() -> None:
+async def test_vault_should_not_process_credential_events() -> None:
     processor = VaultWebhookProcessor(
         _event({"type": "vault_credential.created", "id": "c1", "vault_id": "v1"})
     )
-    assert await processor.should_process_event(processor.event) is True
-    assert await processor.get_matching_kinds(processor.event) == ["vault"]
-
-
-@pytest.mark.asyncio
-async def test_vault_credential_fetches_parent_vault() -> None:
-    payload = {
-        "data": {"type": "vault_credential.created", "id": "c1", "vault_id": "v1"}
-    }
-    processor = VaultWebhookProcessor(_event(payload["data"]))
-    client = MagicMock()
-    client.get_vault = AsyncMock(return_value={"id": "v1"})
-    with patch(
-        "webhook_processors.vault_webhook_processor.create_anthropic_client",
-        return_value=client,
-    ):
-        results = await processor.handle_event(payload, None)
-    assert results.updated_raw_results == [{"id": "v1"}]
-    client.get_vault.assert_awaited_once_with("v1")
+    assert await processor.should_process_event(processor.event) is False
 
 
 @pytest.mark.asyncio

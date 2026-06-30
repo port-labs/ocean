@@ -26,7 +26,7 @@ DEFAULT_PAGE_SIZE = 50
 def _serialize(obj: Any) -> dict[str, Any]:
     """Convert an SDK model instance into a plain JSON-serialisable dict."""
     if hasattr(obj, "to_dict"):
-        return obj.to_dict()
+        return obj.to_dict(mode="json")
     if hasattr(obj, "model_dump"):
         return obj.model_dump(mode="json")
     return dict(obj)

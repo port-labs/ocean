@@ -27,9 +27,6 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-    WebhookProcessorType,
-)
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -45,6 +42,7 @@ from port_ocean.core.models import (
 
 from actions.utils import build_external_id
 from clients.client_factory import create_anthropic_client
+from integration import ObjectKind
 from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
@@ -148,10 +146,6 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
 
         await ocean.port_client.report_run_completed(run, success)
 
-    @classmethod
-    def get_processor_type(cls) -> WebhookProcessorType:
-        return WebhookProcessorType.ACTION
-
     async def should_process_event(self, event: WebhookEvent) -> bool:
         return self.get_event_type(event.payload) in {
             "session.idled",
@@ -160,7 +154,7 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         }
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return []
+        return [ObjectKind.SESSION]
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig | None

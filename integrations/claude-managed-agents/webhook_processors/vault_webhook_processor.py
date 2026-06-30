@@ -12,15 +12,15 @@ from webhook_processors.abstract_webhook_processor import (
     AbstractAnthropicWebhookProcessor,
 )
 
-VAULT_EVENT_PREFIXES = ("vault.", "vault_credential.")
+VAULT_EVENTS = ("vault.",)
 VAULT_DELETE_EVENTS = {"vault.deleted"}
 
 
 class VaultWebhookProcessor(AbstractAnthropicWebhookProcessor):
-    """Keeps `vault` entities in sync from vault and vault credential webhooks."""
+    """Keeps `vault` entities in sync from vault webhooks."""
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        return self.get_event_type(event.payload).startswith(VAULT_EVENT_PREFIXES)
+        return self.get_event_type(event.payload).startswith(VAULT_EVENTS)
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.VAULT]
@@ -38,9 +38,7 @@ class VaultWebhookProcessor(AbstractAnthropicWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[{"id": vault_id}]
             )
 
-        # vault_credential.* events reference the owning vault via `vault_id`,
-        # while vault.* events carry the vault id directly under `id`.
-        vault_id = str(data.get("vault_id") or data.get("id") or "")
+        vault_id = str(data.get("id") or "")
         client = create_anthropic_client()
         vault = await client.get_vault(vault_id)
         logger.info(f"Upserting vault {vault_id} from catalog ({event_type})")

@@ -1,21 +1,4 @@
 resources:
-  - kind: agent
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .name
-          blueprint: '"claude_agent"'
-          properties:
-            description: .description
-            model: .model.id
-            system: .system
-            version: .version
-            createdAt: .created_at
-            updatedAt: .updated_at
-            archivedAt: .archived_at
   - kind: environment
     selector:
       query: 'true'
@@ -28,28 +11,11 @@ resources:
           properties:
             description: .description
             scope: .scope
-            createdAt: .created_at
-            updatedAt: .updated_at
-            archivedAt: .archived_at
-  - kind: session
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: '.title // .id'
-          blueprint: '"claude_session"'
-          properties:
-            status: .status
-            createdAt: .created_at
-            updatedAt: .updated_at
-            archivedAt: .archived_at
-            vaultIds: .vault_ids
+            environmentType: .config.type
             metadata: .metadata
-          relations:
-            agent: .agent.id
-            environment: .environment_id
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
   - kind: vault
     selector:
       query: 'true'
@@ -60,6 +26,7 @@ resources:
           title: .display_name
           blueprint: '"claude_vault"'
           properties:
+            metadata: .metadata
             createdAt: .created_at
             updatedAt: .updated_at
             archivedAt: .archived_at
@@ -74,6 +41,7 @@ resources:
           blueprint: '"claude_memory_store"'
           properties:
             description: .description
+            metadata: .metadata
             createdAt: .created_at
             updatedAt: .updated_at
             archivedAt: .archived_at
@@ -92,3 +60,52 @@ resources:
             latestVersion: .latest_version
             createdAt: .created_at
             updatedAt: .updated_at
+  - kind: agent
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"claude_agent"'
+          properties:
+            description: .description
+            model: .model.id
+            system: .system
+            version: .version
+            metadata: .metadata
+            mcpServers: '[.mcp_servers[]?.name] // []'
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+          relations:
+            skills: '[.skills[]? | select(.type == "custom") | .skill_id]'
+            delegateAgents: '[.multiagent.agents[]?.id] // []'
+  - kind: session
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: '.title // .id'
+          blueprint: '"claude_session"'
+          properties:
+            status: .status
+            inputTokens: .usage.input_tokens
+            outputTokens: .usage.output_tokens
+            cacheReadInputTokens: .usage.cache_read_input_tokens
+            activeSeconds: .stats.active_seconds
+            durationSeconds: .stats.duration_seconds
+            agentVersion: .agent.version
+            githubRepositories: '[.resources[]? | select(.type == "github_repository") | .url]'
+            vaultIds: .vault_ids
+            metadata: .metadata
+            createdAt: .created_at
+            updatedAt: .updated_at
+            archivedAt: .archived_at
+          relations:
+            agent: .agent.id
+            environment: .environment_id
+            memoryStores: '[.resources[]? | select(.type == "memory_store") | .memory_store_id]'
