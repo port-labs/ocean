@@ -92,11 +92,12 @@ class IncludedFilesEnricher:
 
         return entities
 
+    async def _fetch_bounded(
+        self, key: IncludedFileFetchKey, semaphore: asyncio.BoundedSemaphore
+    ) -> None:
+        async with semaphore:
+            await self._fetcher.get(key)
+
     async def _fetch_all(self, keys: list[IncludedFileFetchKey]) -> None:
         semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_FILE_DOWNLOADS)
-
-        async def _fetch(key: IncludedFileFetchKey) -> None:
-            async with semaphore:
-                await self._fetcher.get(key)
-
-        await asyncio.gather(*(_fetch(k) for k in keys))
+        await asyncio.gather(*(self._fetch_bounded(k, semaphore) for k in keys))

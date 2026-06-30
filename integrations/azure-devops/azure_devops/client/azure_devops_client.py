@@ -475,21 +475,21 @@ class AzureDevopsClient(HTTPBaseClient):
         response = await self.send_request("GET", field_values_url, params=API_PARAMS)
         return response.json() if response else None
 
+    async def _get_team_field_values_bounded(
+        self, team: dict[str, Any], semaphore: asyncio.BoundedSemaphore
+    ) -> Optional[dict[str, Any]]:
+        async with semaphore:
+            return await self.get_team_field_values(team)
+
     async def enrich_teams_with_area_paths(
         self, teams: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching area paths for {len(teams)} teams")
         semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TEAMS)
-
-        async def get_area_paths_with_semaphore(
-            team: dict[str, Any],
-        ) -> Optional[dict[str, Any]]:
-            async with semaphore:
-                return await self.get_team_field_values(team)
-
-        team_tasks = [get_area_paths_with_semaphore(team) for team in teams]
-
-        field_values_results = await asyncio.gather(*team_tasks, return_exceptions=True)
+        field_values_results = await asyncio.gather(
+            *(self._get_team_field_values_bounded(team, semaphore) for team in teams),
+            return_exceptions=True,
+        )
 
         for team, result in zip(teams, field_values_results):
             if isinstance(result, asyncio.CancelledError):
