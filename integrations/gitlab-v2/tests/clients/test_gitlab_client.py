@@ -248,6 +248,45 @@ class TestGitLabClient:
                 },
             )
 
+    async def test_get_projects_excludes_personal_namespace_when_disabled(
+        self, client: GitLabClient
+    ) -> None:
+        mock_projects = [
+            {"id": 1, "namespace": {"kind": "user"}},
+            {"id": 2, "namespace": {"kind": "group"}},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_projects]),
+        ):
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_projects(include_authenticated_user=False):
+                results.extend(batch)
+
+            assert len(results) == 1
+            assert results[0]["id"] == 2
+
+    async def test_get_projects_includes_personal_namespace_when_enabled(
+        self, client: GitLabClient
+    ) -> None:
+        mock_projects = [
+            {"id": 1, "namespace": {"kind": "user"}},
+            {"id": 2, "namespace": {"kind": "group"}},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_projects]),
+        ):
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_projects(include_authenticated_user=True):
+                results.extend(batch)
+
+            assert len(results) == 2
+
     async def test_get_groups_use_min_access_level(self, client: GitLabClient) -> None:
         """Test group fetching with use_min_access_level=False (no min_access_level filtering)"""
         # Arrange

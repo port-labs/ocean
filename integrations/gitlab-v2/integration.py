@@ -701,7 +701,7 @@ class GitlabPortAppConfig(PortAppConfig):
         default=False,
         alias="includeAuthenticatedUser",
         title="Include Authenticated User",
-        description="In multi-group mode, register project-level webhooks for the token owner's personal namespace.",
+        description="Include the authenticated user's personal account.",
     )
     resources: list[
         ProjectResourceConfig

@@ -7,6 +7,7 @@ from gitlab.webhook.setup import (
     setup_webhooks,
     _setup_single_namespace_webhooks,
     _setup_multi_group_webhooks,
+    _create_personal_namespace_webhooks,
 )
 
 
@@ -50,11 +51,22 @@ class TestSetupWebhooks:
             )
             mock_create.assert_not_called()
 
-    async def test_delegates_to_single_namespace(self, mock_client: MagicMock) -> None:
-        with patch(
-            "gitlab.webhook.setup._setup_single_namespace_webhooks",
-            new_callable=AsyncMock,
-        ) as mock_single:
+    async def test_delegates_to_single_namespace(
+        self, mock_client: MagicMock, mock_event_context: MagicMock
+    ) -> None:
+        mock_event_context.port_app_config.include_authenticated_user = True
+
+        with (
+            patch("gitlab.webhook.setup.ocean") as mock_ocean,
+            patch(
+                "gitlab.webhook.setup._setup_single_namespace_webhooks",
+                new_callable=AsyncMock,
+            ) as mock_single,
+        ):
+            mock_ocean.integration.port_app_config_handler.get_port_app_config = (
+                AsyncMock()
+            )
+
             await setup_webhooks(
                 should_process_webhooks=True,
                 base_url="https://app.example.com",
@@ -63,14 +75,25 @@ class TestSetupWebhooks:
             )
 
             mock_single.assert_awaited_once_with(
-                mock_client, "https://app.example.com", "my-group"
+                mock_client, "https://app.example.com", "my-group", True
             )
 
-    async def test_delegates_to_multi_group(self, mock_client: MagicMock) -> None:
-        with patch(
-            "gitlab.webhook.setup._setup_multi_group_webhooks",
-            new_callable=AsyncMock,
-        ) as mock_multi:
+    async def test_delegates_to_multi_group(
+        self, mock_client: MagicMock, mock_event_context: MagicMock
+    ) -> None:
+        mock_event_context.port_app_config.include_authenticated_user = False
+
+        with (
+            patch("gitlab.webhook.setup.ocean") as mock_ocean,
+            patch(
+                "gitlab.webhook.setup._setup_multi_group_webhooks",
+                new_callable=AsyncMock,
+            ) as mock_multi,
+        ):
+            mock_ocean.integration.port_app_config_handler.get_port_app_config = (
+                AsyncMock()
+            )
+
             await setup_webhooks(
                 should_process_webhooks=True,
                 base_url="https://app.example.com",
@@ -78,7 +101,23 @@ class TestSetupWebhooks:
                 client=mock_client,
             )
 
-            mock_multi.assert_awaited_once_with(mock_client, "https://app.example.com")
+            mock_multi.assert_awaited_once_with(
+                mock_client, "https://app.example.com", False
+            )
+
+
+@pytest.mark.asyncio
+class TestCreatePersonalNamespaceWebhooks:
+    async def test_creates_webhooks(
+        self,
+        mock_client: MagicMock,
+        mock_project_webhook: MagicMock,
+    ) -> None:
+        await _create_personal_namespace_webhooks(
+            mock_client, "https://app.example.com"
+        )
+
+        mock_project_webhook.return_value.create_webhooks_for_personal_projects.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -92,7 +131,7 @@ class TestSetupSingleNamespaceWebhooks:
         mock_client.get_group_if_exists = AsyncMock(return_value={"id": 42})
 
         await _setup_single_namespace_webhooks(
-            mock_client, "https://app.example.com", "my-group"
+            mock_client, "https://app.example.com", "my-group", True
         )
 
         mock_client.get_group_if_exists.assert_awaited_once_with("my-group")
@@ -101,7 +140,7 @@ class TestSetupSingleNamespaceWebhooks:
         )
         mock_project_webhook.return_value.create_webhooks_for_personal_projects.assert_not_awaited()
 
-    async def test_routes_to_project_webhooks_for_personal(
+    async def test_routes_to_personal_webhooks_when_enabled(
         self,
         mock_client: MagicMock,
         mock_group_webhook: MagicMock,
@@ -110,73 +149,53 @@ class TestSetupSingleNamespaceWebhooks:
         mock_client.get_group_if_exists = AsyncMock(return_value=None)
 
         await _setup_single_namespace_webhooks(
-            mock_client, "https://app.example.com", "alice"
+            mock_client, "https://app.example.com", "alice", True
         )
 
         mock_client.get_group_if_exists.assert_awaited_once_with("alice")
         mock_project_webhook.return_value.create_webhooks_for_personal_projects.assert_awaited_once()
         mock_group_webhook.return_value.create_group_webhook.assert_not_awaited()
 
-
-@pytest.mark.asyncio
-class TestSetupMultiGroupWebhooks:
-    async def test_with_personal_namespace_enabled(
+    async def test_skips_personal_webhooks_when_disabled(
         self,
         mock_client: MagicMock,
         mock_group_webhook: MagicMock,
         mock_project_webhook: MagicMock,
     ) -> None:
-        mock_config = MagicMock()
-        mock_config.include_authenticated_user = True
+        mock_client.get_group_if_exists = AsyncMock(return_value=None)
 
-        with patch("gitlab.webhook.setup.ocean") as mock_ocean:
-            mock_ocean.integration.port_app_config_handler.get_port_app_config = (
-                AsyncMock()
-            )
-            # Patch at module level to replace the LocalProxy before it's accessed
-            import gitlab.webhook.setup as setup_module
+        await _setup_single_namespace_webhooks(
+            mock_client, "https://app.example.com", "alice", False
+        )
 
-            original_event = setup_module.event  # type: ignore[attr-defined]
-            mock_event = MagicMock()
-            mock_event.port_app_config = mock_config
-            setup_module.event = mock_event  # type: ignore[attr-defined]
+        mock_client.get_group_if_exists.assert_awaited_once_with("alice")
+        mock_project_webhook.return_value.create_webhooks_for_personal_projects.assert_not_awaited()
 
-            try:
-                await _setup_multi_group_webhooks(
-                    mock_client, "https://app.example.com"
-                )
-            finally:
-                setup_module.event = original_event  # type: ignore[attr-defined]
+
+@pytest.mark.asyncio
+class TestSetupMultiGroupWebhooks:
+    async def test_registers_group_and_personal_webhooks_when_enabled(
+        self,
+        mock_client: MagicMock,
+        mock_group_webhook: MagicMock,
+        mock_project_webhook: MagicMock,
+    ) -> None:
+        await _setup_multi_group_webhooks(
+            mock_client, "https://app.example.com", True
+        )
 
         mock_group_webhook.return_value.create_webhooks_for_all_groups.assert_awaited_once()
         mock_project_webhook.return_value.create_webhooks_for_personal_projects.assert_awaited_once()
 
-    async def test_with_personal_namespace_disabled(
+    async def test_skips_personal_webhooks_when_disabled(
         self,
         mock_client: MagicMock,
         mock_group_webhook: MagicMock,
         mock_project_webhook: MagicMock,
     ) -> None:
-        mock_config = MagicMock()
-        mock_config.include_authenticated_user = False
-
-        with patch("gitlab.webhook.setup.ocean") as mock_ocean:
-            mock_ocean.integration.port_app_config_handler.get_port_app_config = (
-                AsyncMock()
-            )
-            import gitlab.webhook.setup as setup_module
-
-            original_event = setup_module.event  # type: ignore[attr-defined]
-            mock_event = MagicMock()
-            mock_event.port_app_config = mock_config
-            setup_module.event = mock_event  # type: ignore[attr-defined]
-
-            try:
-                await _setup_multi_group_webhooks(
-                    mock_client, "https://app.example.com"
-                )
-            finally:
-                setup_module.event = original_event  # type: ignore[attr-defined]
+        await _setup_multi_group_webhooks(
+            mock_client, "https://app.example.com", False
+        )
 
         mock_group_webhook.return_value.create_webhooks_for_all_groups.assert_awaited_once()
         mock_project_webhook.return_value.create_webhooks_for_personal_projects.assert_not_awaited()

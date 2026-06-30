@@ -1,21 +1,24 @@
 import asyncio
 from functools import partial
-from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Optional, Awaitable, Union, cast
+from urllib.parse import quote
 
 import anyio
 import httpx
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
-from urllib.parse import quote
 from wcmatch import glob
-
-from gitlab.helpers.utils import parse_file_content, build_search_query, is_bot_member
 
 from gitlab.clients.rate_limiter.utils import RateLimitInfo
 from gitlab.clients.rest_client import RestClient
+from gitlab.helpers.utils import parse_file_content, build_search_query, is_bot_member
+
+if TYPE_CHECKING:
+    from integration import GitlabPortAppConfig
 
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
@@ -42,6 +45,18 @@ def _member_row_for_port(member: dict[str, Any], context: str) -> dict[str, Any]
 
 def _is_personal_namespace_project(project: dict[str, Any]) -> bool:
     return project.get("namespace", {}).get("kind") == "user"
+
+
+def _filter_projects(
+    projects: list[dict[str, Any]],
+    predicate: Callable[[dict[str, Any]], bool],
+    reason: str,
+) -> list[dict[str, Any]]:
+    """Filter projects and log how many were removed."""
+    filtered = [p for p in projects if predicate(p)]
+    if (removed := len(projects) - len(filtered)) > 0:
+        logger.info(f"Filtered out {removed} {reason}")
+    return filtered
 
 
 class GitLabClient:
@@ -157,6 +172,7 @@ class GitLabClient:
         include_languages: bool = False,
         search_queries: Optional[list[dict[str, Any]]] = None,
         included_files: Optional[list[str]] = None,
+        include_authenticated_user: bool | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all projects accessible to the user.
 
@@ -166,7 +182,12 @@ class GitLabClient:
             include_languages: Whether to enrich projects with language information
             search_queries: Optional list of search queries to execute for each project
             included_files: List of file paths to fetch and attach to each project
+            include_authenticated_user: Whether to include the authenticated user's
+                personal projects. If None, reads from port app config.
         """
+        if include_authenticated_user is None:
+            port_config = cast("GitlabPortAppConfig", event.port_app_config)
+            include_authenticated_user = port_config.include_authenticated_user
         request_params = {**self.DEFAULT_PARAMS}
         if params:
             request_params.update(params)
@@ -205,15 +226,17 @@ class GitLabClient:
                 )
                 enriched_batch = await enricher.enrich_batch(enriched_batch)
 
-            # Exclude projects that are pending deletion — their `project_destroy`
-            # webhook only fires after the grace period (7 days on paid GitLab.com
-            # tiers), so they would otherwise linger in Port until then.
-            active_batch = [
-                p for p in enriched_batch if not p.get("marked_for_deletion_at")
-            ]
-            if len(active_batch) < len(enriched_batch):
-                logger.info(
-                    f"Filtered out {len(enriched_batch) - len(active_batch)} project(s) pending deletion"
+            active_batch = _filter_projects(
+                enriched_batch,
+                lambda p: not p.get("marked_for_deletion_at"),
+                "project(s) pending deletion",
+            )
+
+            if not include_authenticated_user:
+                active_batch = _filter_projects(
+                    active_batch,
+                    lambda p: not _is_personal_namespace_project(p),
+                    "personal namespace project(s)",
                 )
 
             if active_batch:
