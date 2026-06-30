@@ -533,10 +533,17 @@ class TestRedisStreamConsumer:
             )
             consumer._ack = AsyncMock()  # type: ignore[method-assign]
 
-            with patch.object(
-                RedisStreamConsumer,
-                "_time_until_consumed_ms",
-                side_effect=[2000.0, 2500.0],
+            with (
+                patch.object(
+                    RedisStreamConsumer,
+                    "_parse_queued_at",
+                    return_value=datetime.fromtimestamp(1700000000, tz=timezone.utc),
+                ),
+                patch.object(
+                    RedisStreamConsumer,
+                    "_time_since_queued_ms",
+                    side_effect=[2000.0, 2500.0],
+                ),
             ):
                 await consumer._handle_message(
                     "1700000000000-0",
@@ -561,6 +568,47 @@ class TestRedisStreamConsumer:
             webhook_path="/webhook",
             elapsed_ms=ANY,
             time_until_acked_ms=2500.0,
+        )
+
+    @pytest.mark.asyncio
+    async def test_handle_message_logs_invalid_queued_at_once(
+        self,
+        redis_settings: LiveEventsRedisSettings,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        path = "/webhook"
+        on_message = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.logger.warning"
+            ) as mock_logger_warning,
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=redis_settings,
+                stream_key="1111111/live-events/raw/event-stream",
+                on_message=on_message,
+                registered_paths={path},
+            )
+            consumer._ack = AsyncMock()  # type: ignore[method-assign]
+
+            await consumer._handle_message(
+                "1700000000000-0",
+                {
+                    "payload": json.dumps({}),
+                    "headers": json.dumps({}),
+                    "webhookPath": "integration/webhook",
+                    "queuedAt": "not-a-timestamp",
+                },
+            )
+
+        mock_logger_warning.assert_called_once_with(
+            "Invalid queuedAt in Redis stream message",
+            stream_key="1111111/live-events/raw/event-stream",
+            queued_at="not-a-timestamp",
         )
 
     @pytest.mark.asyncio
