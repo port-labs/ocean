@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Added Azure DevOps-specific 429 retry handling that coordinates a shared 360-second cooldown across concurrent requests and retries rate-limited requests up to 10 times before failing.
+- Added Azure DevOps-specific 429 retry handling that pauses requests through the affected client for a cooldown and retries rate-limited requests up to 10 times before failing.
 
 
 ## 0.10.7 (2026-06-30)
