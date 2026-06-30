@@ -17,3 +17,5 @@ resources:
             encryption: .Properties.BucketEncryption
             publicAccessBlockConfiguration: .Properties.PublicAccessBlockConfiguration
             tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
