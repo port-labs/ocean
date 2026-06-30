@@ -199,16 +199,20 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             except Exception as error:
                 logger.exception(
                     "Unexpected error in Redis stream read loop",
+                    stream_key=self._stream_key,
                     error=str(error),
                 )
 
     async def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         start_time = time.monotonic()
         webhook_path: str | None = None
-        time_until_consumed_ms = self._time_until_consumed_ms(fields.get("queuedAt"))
+        time_until_consumed_ms = self._time_until_consumed_ms(
+            fields.get("queuedAt"), stream_key=self._stream_key
+        )
         if time_until_consumed_ms is not None:
             logger.info(
                 "Redis stream message consumed",
+                stream_key=self._stream_key,
                 message_id=message_id,
                 time_until_consumed_ms=time_until_consumed_ms,
             )
@@ -217,6 +221,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             if not raw_webhook_path:
                 logger.warning(
                     "Redis stream message missing webhookPath, acknowledging",
+                    stream_key=self._stream_key,
                     message_id=message_id,
                 )
                 return
@@ -225,6 +230,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             if webhook_path not in self._registered_paths:
                 logger.warning(
                     "No processors registered for webhookPath, acknowledging",
+                    stream_key=self._stream_key,
                     webhook_path=webhook_path,
                     message_id=message_id,
                 )
@@ -254,14 +260,18 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         except Exception as error:
             logger.exception(
                 "Failed to handle Redis stream message",
+                stream_key=self._stream_key,
                 message_id=message_id,
                 error=str(error),
             )
         finally:
             elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
-            time_until_acked_ms = self._time_until_consumed_ms(fields.get("queuedAt"))
+            time_until_acked_ms = self._time_until_consumed_ms(
+                fields.get("queuedAt"), stream_key=self._stream_key
+            )
             logger.info(
                 "Redis stream message processed",
+                stream_key=self._stream_key,
                 message_id=message_id,
                 webhook_path=webhook_path,
                 elapsed_ms=elapsed_ms,
@@ -271,7 +281,10 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
 
     @staticmethod
     def _time_until_consumed_ms(
-        queued_at: str | None, *, now: datetime | None = None
+        queued_at: str | None,
+        *,
+        now: datetime | None = None,
+        stream_key: str | None = None,
     ) -> float | None:
         if not queued_at:
             return None
@@ -284,6 +297,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         except (ValueError, OSError, OverflowError):
             logger.warning(
                 "Invalid queuedAt in Redis stream message",
+                stream_key=stream_key,
                 queued_at=queued_at,
             )
             return None
