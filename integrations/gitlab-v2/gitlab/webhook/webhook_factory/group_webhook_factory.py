@@ -5,7 +5,7 @@ from loguru import logger
 """
 GitLab access levels:
 - 10: Guest
-- 20: Reporter  
+- 20: Reporter
 - 30: Developer
 - 40: Maintainer
 - 50: Owner
