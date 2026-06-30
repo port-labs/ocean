@@ -24,6 +24,10 @@ configurations:
     type: url
     default: https://gitlab.com
     description: The host of the Gitlab instance. If not specified, the default will be https://gitlab.com.
+  - name: gitlabGroup
+    required: false
+    type: string
+    description: Optional GitLab group path or username. When set, webhooks are registered only for this namespace (group webhook for groups, project webhooks for personal namespaces).
 saas:
   enabled: true
   oauthConfiguration:

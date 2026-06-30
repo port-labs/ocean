@@ -107,8 +107,15 @@ class GitLabClient:
             project = (await enricher.enrich_batch([project]))[0]
         return project
 
-    async def get_group(self, group_id: int) -> dict[str, Any]:
-        return await self.rest.send_api_request("GET", f"groups/{group_id}")
+    async def get_group(self, group_id: str | int) -> dict[str, Any]:
+        encoded_group_id = quote(str(group_id), safe="")
+        return await self.rest.send_api_request("GET", f"groups/{encoded_group_id}")
+
+    async def is_personal_namespace(self, namespace: str) -> bool:
+        """Return True if namespace is a user (personal), False if it's a group."""
+        encoded_namespace = quote(namespace, safe="")
+        group = await self.rest.send_api_request("GET", f"groups/{encoded_namespace}")
+        return not group.get("id")
 
     async def get_merge_request(
         self, project_id: int, merge_request_id: int

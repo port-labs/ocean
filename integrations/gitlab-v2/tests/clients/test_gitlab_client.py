@@ -318,7 +318,33 @@ class TestGitLabClient:
 
             # Assert
             assert result == mock_group
-            mock_send_request.assert_called_once_with("GET", f"groups/{group_id}")
+            mock_send_request.assert_called_once_with("GET", "groups/456")
+
+    async def test_get_group_by_path(self, client: GitLabClient) -> None:
+        group_path = "my-org/sub-group"
+        mock_group = {"id": 789, "path": "sub-group", "full_path": group_path}
+
+        with patch.object(
+            client.rest, "send_api_request", AsyncMock(return_value=mock_group)
+        ) as mock_send_request:
+            result = await client.get_group(group_path)
+
+            assert result == mock_group
+            mock_send_request.assert_called_once_with(
+                "GET", "groups/my-org%2Fsub-group"
+            )
+
+    async def test_is_personal_namespace_for_group(self, client: GitLabClient) -> None:
+        with patch.object(
+            client.rest,
+            "send_api_request",
+            AsyncMock(return_value={"id": 123, "path": "my-group"}),
+        ):
+            assert await client.is_personal_namespace("my-group") is False
+
+    async def test_is_personal_namespace_for_user(self, client: GitLabClient) -> None:
+        with patch.object(client.rest, "send_api_request", AsyncMock(return_value={})):
+            assert await client.is_personal_namespace("alice") is True
 
     async def test_get_merge_request(self, client: GitLabClient) -> None:
         """Test fetching a single merge request by ID"""
