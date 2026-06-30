@@ -698,7 +698,7 @@ class GitlabPortAppConfig(PortAppConfig):
         description="Configuration for resource visibility and access control",
     )
     include_authenticated_user: bool = Field(
-        default=True,
+        default=False,
         alias="includeAuthenticatedUser",
         title="Include Authenticated User",
         description="In multi-group mode, register project-level webhooks for the token owner's personal namespace.",
