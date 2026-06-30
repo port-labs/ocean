@@ -20,6 +20,9 @@ from gitlab.helpers.utils import parse_file_content, build_search_query, is_bot_
 if TYPE_CHECKING:
     from integration import GitlabPortAppConfig
 
+if TYPE_CHECKING:
+    from integration import GitlabPortAppConfig
+
 PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 
@@ -172,7 +175,6 @@ class GitLabClient:
         include_languages: bool = False,
         search_queries: Optional[list[dict[str, Any]]] = None,
         included_files: Optional[list[str]] = None,
-        include_authenticated_user: bool | None = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all projects accessible to the user.
 
@@ -182,12 +184,10 @@ class GitLabClient:
             include_languages: Whether to enrich projects with language information
             search_queries: Optional list of search queries to execute for each project
             included_files: List of file paths to fetch and attach to each project
-            include_authenticated_user: Whether to include the authenticated user's
-                personal projects. If None, reads from port app config.
         """
-        if include_authenticated_user is None:
-            port_config = cast("GitlabPortAppConfig", event.port_app_config)
-            include_authenticated_user = port_config.include_authenticated_user
+        port_config = cast("GitlabPortAppConfig", event.port_app_config)
+        include_authenticated_user = port_config.include_authenticated_user
+
         request_params = {**self.DEFAULT_PARAMS}
         if params:
             request_params.update(params)

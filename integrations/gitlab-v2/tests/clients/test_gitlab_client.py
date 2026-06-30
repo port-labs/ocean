@@ -249,8 +249,9 @@ class TestGitLabClient:
             )
 
     async def test_get_projects_excludes_personal_namespace_when_disabled(
-        self, client: GitLabClient
+        self, client: GitLabClient, mock_event_context: MagicMock
     ) -> None:
+        mock_event_context.port_app_config.include_authenticated_user = False
         mock_projects = [
             {"id": 1, "namespace": {"kind": "user"}},
             {"id": 2, "namespace": {"kind": "group"}},
@@ -262,15 +263,16 @@ class TestGitLabClient:
             return_value=async_mock_generator([mock_projects]),
         ):
             results: list[dict[str, Any]] = []
-            async for batch in client.get_projects(include_authenticated_user=False):
+            async for batch in client.get_projects():
                 results.extend(batch)
 
             assert len(results) == 1
             assert results[0]["id"] == 2
 
     async def test_get_projects_includes_personal_namespace_when_enabled(
-        self, client: GitLabClient
+        self, client: GitLabClient, mock_event_context: MagicMock
     ) -> None:
+        mock_event_context.port_app_config.include_authenticated_user = True
         mock_projects = [
             {"id": 1, "namespace": {"kind": "user"}},
             {"id": 2, "namespace": {"kind": "group"}},
@@ -282,7 +284,7 @@ class TestGitLabClient:
             return_value=async_mock_generator([mock_projects]),
         ):
             results: list[dict[str, Any]] = []
-            async for batch in client.get_projects(include_authenticated_user=True):
+            async for batch in client.get_projects():
                 results.extend(batch)
 
             assert len(results) == 2
