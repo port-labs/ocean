@@ -11,7 +11,7 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-class EcrRepositoryExporter(IResourceExporter):
+class EcrRepositoryExporter(IResourceExporter[list[dict[str, Any]]]):
     _service_name: SupportedServices = "ecr"
     _model_cls: Type[Repository] = Repository
     _actions_map: Type[EcrRepositoryActionsMap] = EcrRepositoryActionsMap

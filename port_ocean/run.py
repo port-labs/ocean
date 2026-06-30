@@ -3,7 +3,7 @@ from inspect import getmembers
 from typing import Dict, Any, Type
 
 import uvicorn
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory

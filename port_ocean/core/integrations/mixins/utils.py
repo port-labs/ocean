@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import multiprocessing
 import os
 import re
@@ -10,6 +11,7 @@ from loguru import logger
 from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers import JQEntityProcessor
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -56,6 +58,27 @@ def build_lakehouse_data_entry(
     if environment_data is not None:
         entry["environment_data"] = environment_data
     return entry
+
+
+def selector_query_from_resource(resource: ResourceConfig) -> str | None:
+    query = getattr(getattr(resource, "selector", None), "query", None)
+    if not isinstance(query, str):
+        return None
+
+    trimmed = query.strip()
+    return trimmed if trimmed else None
+
+
+def selector_hash_from_query(query: str) -> str:
+    return hashlib.sha256(query.encode("utf-8")).hexdigest()
+
+
+def selector_hash_from_resource(resource: ResourceConfig) -> str | None:
+    query = selector_query_from_resource(resource)
+    if not query:
+        return None
+
+    return selector_hash_from_query(query)
 
 
 async def is_lakehouse_data_enabled() -> bool:
@@ -118,6 +141,25 @@ async def is_dsp_mode_enabled() -> bool:
         return False
     except Exception as e:
         logger.bind(local_only=True).warning(f"Failed to check DSP mode, falling back to ocean-core: {e}")
+        return False
+
+
+async def is_redis_live_events_enabled() -> bool:
+    """Check if live events should be consumed from a Redis stream.
+
+    Gated by the organization feature flag.
+    Errors are swallowed so this never blocks core flows.
+
+    Returns:
+        bool: True when Redis stream consumption is enabled, False otherwise.
+    """
+    try:
+        flags = await ocean.port_client.get_organization_feature_flags()
+        return IntegrationFeatureFlag.LIVE_EVENTS_REDIS_STREAM_ENABLED in flags
+    except Exception as e:
+        logger.bind(local_only=True).warning(
+            f"Failed to check Redis live events feature flags, assuming disabled: {e}"
+        )
         return False
 
 

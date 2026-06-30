@@ -27,6 +27,7 @@ from port_ocean.core.integrations.mixins.utils import (
     is_dsp_mode_enabled,
     is_lakehouse_data_enabled,
     is_resource_supported,
+    selector_hash_from_resource,
     start_kind_tracking,
     stop_kind_tracking,
     unsupported_kind_response,
@@ -467,7 +468,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         if raw_results:
             if lakehouse_data_enabled and buffer:
-                metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
+                metadata = LakehouseDataEntryMetadata(
+                    operation=LakehouseOperation.UPSERT,
+                    resource_index=index,
+                    extraction_timestamp=int(datetime.now().timestamp() * 1000),
+                    selector_hash=selector_hash_from_resource(resource_config),
+                )
                 lakehouse_data_entry = build_lakehouse_data_entry(
                     items=raw_results,
                     metadata=metadata,
@@ -498,7 +504,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 async for items in generator:
                     batch_index += 1
                     if lakehouse_data_enabled and buffer:
-                        metadata = LakehouseDataEntryMetadata(operation=LakehouseOperation.UPSERT, resource_index=index, extraction_timestamp=int(datetime.now().timestamp() * 1000))
+                        metadata = LakehouseDataEntryMetadata(
+                            operation=LakehouseOperation.UPSERT,
+                            resource_index=index,
+                            extraction_timestamp=int(datetime.now().timestamp() * 1000),
+                            selector_hash=selector_hash_from_resource(resource_config),
+                        )
                         lakehouse_data_entry = build_lakehouse_data_entry(
                             items=items,
                             metadata=metadata,

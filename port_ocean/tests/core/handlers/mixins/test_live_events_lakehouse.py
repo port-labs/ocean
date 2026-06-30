@@ -218,6 +218,10 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_upsert(
         assert data_entries[0]["metadata"]["operation"] == LakehouseOperation.UPSERT
         assert data_entries[0]["items"] == raw_data
         assert data_entries[0]["metadata"]["resource_index"] == 0
+        assert (
+            data_entries[0]["metadata"]["selector_hash"]
+            == "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+        )
 
 
 @pytest.mark.asyncio
@@ -263,6 +267,10 @@ async def test_send_webhook_raw_data_to_lakehouse_enabled_delete(
         assert data_entries[0]["metadata"]["operation"] == LakehouseOperation.DELETE
         assert data_entries[0]["items"] == raw_data
         assert data_entries[0]["metadata"]["resource_index"] == 0
+        assert (
+            data_entries[0]["metadata"]["selector_hash"]
+            == "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+        )
 
 
 @pytest.mark.asyncio
@@ -374,8 +382,16 @@ async def test_send_webhook_raw_data_to_lakehouse_both_operations(
         assert upsert_entry["metadata"]["operation"] == LakehouseOperation.UPSERT
         assert upsert_entry["items"] == upsert_data
         assert upsert_entry["metadata"]["resource_index"] == 0
+        assert (
+            upsert_entry["metadata"]["selector_hash"]
+            == "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+        )
 
         delete_entry = data_entries[1]
         assert delete_entry["metadata"]["operation"] == LakehouseOperation.DELETE
         assert delete_entry["items"] == delete_data
         assert delete_entry["metadata"]["resource_index"] == 0
+        assert (
+            delete_entry["metadata"]["selector_hash"]
+            == "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"
+        )

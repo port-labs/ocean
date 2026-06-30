@@ -4,7 +4,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from typing import Any, Literal, Optional
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -217,6 +217,12 @@ class VulnerabilitySelector(Selector):
         title="Enrich with Project",
         alias="enrichWithProject",
         description="Enrich each vulnerability with its associated project data. For large orgs this is API and memory intensive — use projectQueryParams to limit scope.",
+    )
+    attach_ignore_data: bool = Field(
+        default=False,
+        alias="attachIgnoreData",
+        title="Attach Ignore Data",
+        description="Attach the matching ignore policy to each vulnerability under `__ignore_data`. Requires a per-project lookup, so use projectQueryParams to limit scope on large orgs. This uses Snyk's v1 ignore API which may become deprecated in the future.",
     )
 
 

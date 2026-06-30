@@ -12,3 +12,4 @@ class Kinds(StrEnum):
     BACKLOG = "backlog"
     EPIC = "epic"
     WORKLOG = "worklog"
+    COMPONENT = "component"

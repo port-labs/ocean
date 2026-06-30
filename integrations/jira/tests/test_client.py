@@ -19,6 +19,7 @@ from jira.client import (
     JiraClient,
 )
 from jira.overrides import JiraIssueSelector
+from jira.overrides import ComponentSource
 
 
 MOCK_BOARD_API_RESPONSE = {
@@ -228,6 +229,94 @@ MOCK_EPIC_DONE = {
     "name": "MVP",
     "summary": "MVP",
     "done": True,
+}
+
+MOCK_COMPONENT_LEAD = {
+    "accountId": "5b10a2844c20165700ede21g",
+    "accountType": "atlassian",
+    "active": False,
+    "displayName": "Mia Krystof",
+    "key": "",
+    "name": "",
+    "self": "https://your-domain.atlassian.net/rest/api/2/user?accountId=5b10a2844c20165700ede21g",
+    "avatarUrls": {
+        "16x16": "https://avatar-management--avatars.server-location.prod.public.atl-paas.net/initials/MK-5.png?size=16&s=16",
+        "24x24": "https://avatar-management--avatars.server-location.prod.public.atl-paas.net/initials/MK-5.png?size=24&s=24",
+        "32x32": "https://avatar-management--avatars.server-location.prod.public.atl-paas.net/initials/MK-5.png?size=32&s=32",
+        "48x48": "https://avatar-management--avatars.server-location.prod.public.atl-paas.net/initials/MK-5.png?size=48&s=48",
+    },
+}
+
+MOCK_COMPONENT_WITH_ISSUE_COUNT = {
+    "id": "10000",
+    "name": "Component 1",
+    "description": "This is a Jira component",
+    "assigneeType": "PROJECT_LEAD",
+    "isAssigneeTypeValid": False,
+    "issueCount": 1,
+    "project": "HSP",
+    "projectId": 10000,
+    "realAssigneeType": "PROJECT_LEAD",
+    "self": "https://your-domain.atlassian.net/rest/api/2/component/10000",
+    "lead": MOCK_COMPONENT_LEAD,
+    "assignee": MOCK_COMPONENT_LEAD,
+    "realAssignee": MOCK_COMPONENT_LEAD,
+    "componentBean": {
+        "ari": "ari:cloud:compass:fdb3fdec-4e70-be56-11ee-0242ac120002:component/fdb3fdec-4e70-11ee-be56-0242ac120002/fdb3fdec-11ee-4e70-be56-0242ac120002",
+        "id": "10000",
+        "name": "Component 1",
+        "description": "This is a Jira component",
+        "project": "HSP",
+        "projectId": 10000,
+        "isAssigneeTypeValid": False,
+        "assigneeType": "PROJECT_LEAD",
+        "lead": MOCK_COMPONENT_LEAD,
+        "assignee": MOCK_COMPONENT_LEAD,
+        "realAssignee": MOCK_COMPONENT_LEAD,
+        "realAssigneeType": "PROJECT_LEAD",
+        "self": "https://your-domain.atlassian.net/rest/api/2/component/10000",
+        "metadata": {"icon": "https://www.example.com/icon.png"},
+    },
+}
+
+MOCK_COMPONENT_WITHOUT_LEAD = {
+    "id": "10050",
+    "name": "PXA",
+    "description": "This is another Jira component",
+    "assigneeType": "PROJECT_DEFAULT",
+    "isAssigneeTypeValid": True,
+    "issueCount": 5,
+    "project": "PROJECTKEY",
+    "projectId": 10001,
+    "realAssigneeType": "PROJECT_DEFAULT",
+    "self": "https://your-domain.atlassian.net/rest/api/2/component/10050",
+    "lead": None,
+    "assignee": None,
+    "realAssignee": None,
+    "componentBean": None,
+}
+
+MOCK_COMPONENTS_PAGE = {
+    "startAt": 0,
+    "maxResults": 2,
+    "total": 7,
+    "isLast": False,
+    "values": [MOCK_COMPONENT_WITH_ISSUE_COUNT, MOCK_COMPONENT_WITHOUT_LEAD],
+}
+
+MOCK_EMPTY_PAGE = {
+    "startAt": 0,
+    "maxResults": 50,
+    "total": 0,
+    "isLast": True,
+    "values": [],
+}
+
+MOCK_PROJECT_HSP = {"id": "10000", "key": "HSP", "name": "HSP Project"}
+MOCK_PROJECT_PROJECTKEY = {
+    "id": "10001",
+    "key": "PROJECTKEY",
+    "name": "Projectkey Project",
 }
 
 
@@ -2571,3 +2660,203 @@ class TestGetPaginatedEpicsFanOut:
 
             assert mock_request.call_count == board_count
             assert len(all_epics) == board_count * epics_per_board
+
+
+@pytest.mark.asyncio
+class TestGetPaginatedComponentsForProject:
+
+    async def test_sends_component_source_as_query_param(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.return_value = MOCK_EMPTY_PAGE
+            async for _ in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
+            ):
+                pass
+            assert mock_req.call_args[1]["params"]["componentSource"] == "jira"
+
+    async def test_sends_compass_source_when_specified(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.return_value = MOCK_EMPTY_PAGE
+            async for _ in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_HSP, ComponentSource.COMPASS
+            ):
+                pass
+            assert mock_req.call_args[1]["params"]["componentSource"] == "compass"
+
+    async def test_includes_query_param_when_name_filter_provided(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.return_value = MOCK_EMPTY_PAGE
+            async for _ in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_HSP, ComponentSource.JIRA, name_filter="Component"
+            ):
+                pass
+            assert mock_req.call_args[1]["params"]["query"] == "Component"
+
+    async def test_omits_query_param_when_name_filter_is_none(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.return_value = MOCK_EMPTY_PAGE
+            async for _ in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
+            ):
+                pass
+            assert "query" not in mock_req.call_args[1]["params"]
+
+    async def test_injects_full_project_into_every_component(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.return_value = MOCK_COMPONENTS_PAGE
+            results = []
+            async for batch in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
+            ):
+                results.extend(batch)
+            assert all(c["__project"] == MOCK_PROJECT_HSP for c in results)
+
+    async def test_preserves_all_top_level_component_fields(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.return_value = {
+                **MOCK_COMPONENTS_PAGE,
+                "values": [MOCK_COMPONENT_WITH_ISSUE_COUNT],
+            }
+            results = []
+            async for batch in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
+            ):
+                results.extend(batch)
+
+            component = results[0]
+            assert component["id"] == "10000"
+            assert component["name"] == "Component 1"
+            assert component["description"] == "This is a Jira component"
+            assert component["assigneeType"] == "PROJECT_LEAD"
+            assert component["issueCount"] == 1
+            assert component["project"] == "HSP"
+            assert component["projectId"] == 10000
+            assert component["realAssigneeType"] == "PROJECT_LEAD"
+            assert component["isAssigneeTypeValid"] is False
+
+    async def test_preserves_lead_object_for_relation_mapping(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.return_value = {
+                **MOCK_COMPONENTS_PAGE,
+                "values": [MOCK_COMPONENT_WITH_ISSUE_COUNT],
+            }
+            results = []
+            async for batch in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
+            ):
+                results.extend(batch)
+
+            lead = results[0]["lead"]
+            assert lead["accountId"] == "5b10a2844c20165700ede21g"
+            assert lead["displayName"] == "Mia Krystof"
+
+    async def test_preserves_component_bean_ari_for_compass_components(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.return_value = {
+                **MOCK_COMPONENTS_PAGE,
+                "values": [MOCK_COMPONENT_WITH_ISSUE_COUNT],
+            }
+            results = []
+            async for batch in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
+            ):
+                results.extend(batch)
+
+            ari = results[0]["componentBean"]["ari"]
+            assert ari.startswith("ari:cloud:compass:")
+
+    async def test_handles_component_with_null_lead_and_no_component_bean(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.return_value = {
+                **MOCK_COMPONENTS_PAGE,
+                "values": [MOCK_COMPONENT_WITHOUT_LEAD],
+            }
+            results = []
+            async for batch in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_PROJECTKEY, ComponentSource.JIRA
+            ):
+                results.extend(batch)
+
+            component = results[0]
+            assert component["id"] == "10050"
+            assert component["lead"] is None
+            assert component["componentBean"] is None
+            assert component["__project"]["key"] == "PROJECTKEY"
+
+    async def test_yields_nothing_when_project_has_no_components(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.return_value = MOCK_EMPTY_PAGE
+            results = []
+            async for batch in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
+            ):
+                results.extend(batch)
+            assert results == []
+
+    async def test_yields_all_components_across_multiple_pages(
+        self, mock_jira_client: JiraClient
+    ) -> None:
+        page_one = {
+            "startAt": 0,
+            "maxResults": 1,
+            "total": 2,
+            "isLast": False,
+            "values": [MOCK_COMPONENT_WITH_ISSUE_COUNT],
+        }
+        page_two = {
+            "startAt": 1,
+            "maxResults": 1,
+            "total": 2,
+            "isLast": True,
+            "values": [MOCK_COMPONENT_WITHOUT_LEAD],
+        }
+        with patch.object(
+            mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_req:
+            mock_req.side_effect = [page_one, page_two]
+            results = []
+            async for batch in mock_jira_client.get_paginated_components_for_project(
+                MOCK_PROJECT_HSP, ComponentSource.JIRA
+            ):
+                results.extend(batch)
+            assert [r["id"] for r in results] == ["10000", "10050"]
