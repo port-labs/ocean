@@ -196,14 +196,14 @@ class ActionRun(BaseModel):
     id: str
     status: RunStatus
     payload: IntegrationActionInvocationPayload
-    actionIdentifier: str | None = None
+    actionIdentifier: str
 
     @property
     def action_type(self) -> str:
         return self.payload.integrationActionType
 
     @property
-    def action_identifier(self) -> str | None:
+    def action_identifier(self) -> str:
         return self.actionIdentifier
 
     @property
@@ -228,6 +228,12 @@ class WorkflowNodeRun(BaseModel):
         return self.node.get("config", {}).get("integrationInvocationType", "")
 
     @property
+    def action_identifier(self) -> str:
+        if not self.node:
+            return ""
+        return self.node.get("config", {}).get("nodeIdentifier", "")
+
+    @property
     def execution_properties(self) -> dict[str, Any]:
         if not self.node:
             return {}
@@ -247,6 +253,10 @@ class ClaimedWorkflowNodeRun(WorkflowNodeRun):
     @property
     def execution_properties(self) -> dict[str, Any]:
         return self.config.get("integrationActionExecutionProperties", {})
+
+    @property
+    def action_identifier(self) -> str:
+        return str(self.config.get("nodeIdentifier", ""))
 
 
 class LakehouseDataEntryMetadata(TypedDict):

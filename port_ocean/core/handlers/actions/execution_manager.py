@@ -44,7 +44,7 @@ class ExecutionManager:
         _global_queue (LocalQueue[ActionRun | WorkflowNodeRun]): Queue for non-partitioned actions
         _partition_queues (Dict[str, AbstractQueue[ActionRun | WorkflowNodeRun]]): Queues for partitioned actions
         _deduplication_set (Set[str]): Set of run IDs for deduplication
-        _action_identifier_queue_counts (Dict[str, int]): Queued run counts per action identifier
+        _action_identifier_queue_counts (Dict[str, int]): Queued run counts per action identifier (from `ActionRun.actionIdentifier` or workflow node config)
         _queues_locks (Dict[str, asyncio.Lock]): Locks for queue access synchronization
         _active_sources (AbstractQueue[str]): Queue of active sources (global or partition-specific) used for round-robin distribution of work among workers
         _workers_count (int): Number of workers to start
@@ -272,13 +272,6 @@ class ExecutionManager:
             self._high_watermark * self._max_runs_buffer_util_pct_per_action // 100,
         )
 
-    def _get_run_action_identifier(
-        self, run: ActionRun | WorkflowNodeRun
-    ) -> str | None:
-        if isinstance(run, ActionRun):
-            return run.action_identifier
-        return None
-
     def _get_saturated_action_identifiers(self) -> list[str]:
         limit = self._get_max_runs_buffer_util_per_action()
         if limit is None:
@@ -322,8 +315,7 @@ class ExecutionManager:
             if await queue.size() == 0:
                 await self._active_sources.put(queue_name)
             self._deduplication_set.add(run.id)
-            if action_identifier := self._get_run_action_identifier(run):
-                self._increment_action_identifier_queue_count(action_identifier)
+            self._increment_action_identifier_queue_count(run.action_identifier)
             logger.info(
                 f"Adding run to queue {queue_name}",
                 run_id=run.id,
@@ -397,8 +389,7 @@ class ExecutionManager:
 
                 if run.id in self._deduplication_set:
                     self._deduplication_set.remove(run.id)
-                    if action_identifier := self._get_run_action_identifier(run):
-                        self._decrement_action_identifier_queue_count(action_identifier)
+                    self._decrement_action_identifier_queue_count(run.action_identifier)
 
             await self._add_source_if_not_empty(GLOBAL_SOURCE)
             await self._execute_run(run)
@@ -422,10 +413,9 @@ class ExecutionManager:
                     got_run = True
                     if run.id in self._deduplication_set:
                         self._deduplication_set.remove(run.id)
-                        if action_identifier := self._get_run_action_identifier(run):
-                            self._decrement_action_identifier_queue_count(
-                                action_identifier
-                            )
+                        self._decrement_action_identifier_queue_count(
+                            run.action_identifier
+                        )
                 except asyncio.TimeoutError:
                     logger.debug(f"Partition queue {partition_name} is empty, skipping")
                     return
