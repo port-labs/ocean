@@ -620,22 +620,11 @@ def mock_azure_client() -> AzureDevopsClient:
     return AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
 
 
-def test_clients_for_same_org_share_rate_limiter() -> None:
+def test_clients_for_same_org_use_client_local_rate_limiters() -> None:
     client_1 = AzureDevopsClient(
         f"{MOCK_ORG_URL}/", MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME
     )
     client_2 = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
-
-    assert client_1._rate_limiter is client_2._rate_limiter
-
-
-def test_clients_for_different_orgs_use_different_rate_limiters() -> None:
-    client_1 = AzureDevopsClient(MOCK_ORG_URL, MOCK_AUTH_PROVIDER, MOCK_AUTH_USERNAME)
-    client_2 = AzureDevopsClient(
-        "https://other_organization_url.com",
-        MOCK_AUTH_PROVIDER,
-        MOCK_AUTH_USERNAME,
-    )
 
     assert client_1._rate_limiter is not client_2._rate_limiter
 

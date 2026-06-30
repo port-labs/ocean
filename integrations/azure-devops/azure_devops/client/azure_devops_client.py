@@ -32,7 +32,6 @@ from azure_devops.client.auth import AuthProvider, build_auth_provider
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
-from azure_devops.client.rate_limiter import AzureDevOpsRateLimiterRegistry
 
 from azure_devops.client.file_processing import (
     PathDescriptor,
@@ -208,10 +207,7 @@ class AzureDevopsClient(HTTPBaseClient):
         excluded_tags: Optional[list[str]] = None,
     ) -> None:
         organization_url = organization_url.rstrip("/")
-        super().__init__(
-            auth_provider,
-            rate_limiter=AzureDevOpsRateLimiterRegistry.get_limiter(organization_url),
-        )
+        super().__init__(auth_provider)
         self._organization_base_url = organization_url
         self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username

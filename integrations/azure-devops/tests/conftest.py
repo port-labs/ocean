@@ -2,7 +2,6 @@ from typing import Any, Generator
 from unittest.mock import MagicMock, AsyncMock
 
 import pytest
-from azure_devops.client.rate_limiter import AzureDevOpsRateLimiterRegistry
 from integration import GitPortAppConfig
 from port_ocean.context.event import _event_context_stack, EventContext
 from port_ocean.context.ocean import PortOceanContext
@@ -20,13 +19,6 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 MOCK_ORG_URL = "https://dev.azure.com/test"
 # resourceContainers fragment that satisfies _extract_org_url_from_payload.
 MOCK_RESOURCE_CONTAINERS_ACCOUNT = {"account": {"baseUrl": f"{MOCK_ORG_URL}/"}}
-
-
-@pytest.fixture(autouse=True)
-def reset_rate_limiter_registry() -> Generator[None, None, None]:
-    AzureDevOpsRateLimiterRegistry.reset()
-    yield
-    AzureDevOpsRateLimiterRegistry.reset()
 
 
 def mock_client_manager(monkeypatch: Any, mock_client: MagicMock) -> MagicMock:

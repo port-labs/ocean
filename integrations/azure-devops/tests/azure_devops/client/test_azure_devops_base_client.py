@@ -10,7 +10,6 @@ from azure_devops.client.base_client import (
 )
 from azure_devops.client.rate_limiter import (
     ADO_RATE_LIMIT_WINDOW_SECONDS,
-    AzureDevOpsRateLimiter,
 )
 from azure_devops.client.retry_transport import AzureDevOpsRetryTransport
 from port_ocean.context.ocean import PortOceanContext
@@ -21,7 +20,6 @@ def mock_client(mock_context: PortOceanContext) -> HTTPBaseClient:
     mock_context.is_saas = MagicMock(return_value=False)  # type: ignore[attr-defined]
     return HTTPBaseClient(
         auth_provider=PatAuthProvider("test_token"),
-        rate_limiter=AzureDevOpsRateLimiter(),
     )
 
 

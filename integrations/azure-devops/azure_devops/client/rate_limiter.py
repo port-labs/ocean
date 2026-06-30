@@ -1,6 +1,5 @@
 import asyncio
 import time
-from threading import Lock
 from typing import Any, Optional, Type
 
 import httpx
@@ -11,30 +10,6 @@ LIMIT_REMAINING_HEADER = "x-ratelimit-remaining"
 LIMIT_RESET_HEADER = "x-ratelimit-reset"
 LIMIT_RETRY_AFTER_HEADER = "retry-after"
 ADO_RATE_LIMIT_WINDOW_SECONDS = 360
-
-
-def _normalize_org_url(org_url: str) -> str:
-    return org_url.rstrip("/")
-
-
-class AzureDevOpsRateLimiterRegistry:
-    """Process-level registry for per-organization Azure DevOps limiters."""
-
-    _instances: dict[str, "AzureDevOpsRateLimiter"] = {}
-    _lock = Lock()
-
-    @classmethod
-    def reset(cls) -> None:
-        cls._instances.clear()
-        cls._lock = Lock()
-
-    @classmethod
-    def get_limiter(cls, org_url: str) -> "AzureDevOpsRateLimiter":
-        key = _normalize_org_url(org_url)
-        with cls._lock:
-            if key not in cls._instances:
-                cls._instances[key] = AzureDevOpsRateLimiter()
-            return cls._instances[key]
 
 
 class AzureDevOpsRateLimiter:
