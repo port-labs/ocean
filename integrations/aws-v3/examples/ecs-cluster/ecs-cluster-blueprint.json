@@ -49,6 +49,10 @@
         "items": {
           "type": "object"
         }
+      },
+      "clusterArn": {
+        "type": "string",
+        "title": "Cluster ARN"
       }
     },
     "required": []
