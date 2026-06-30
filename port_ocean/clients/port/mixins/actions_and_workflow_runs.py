@@ -39,19 +39,26 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         return patch
 
     async def claim_pending_runs(
-        self, limit: int, visibility_timeout_ms: int
+        self,
+        limit: int,
+        visibility_timeout_ms: int,
+        exclude_action_types: list[str] | None = None,
     ) -> list[ActionRun | WorkflowNodeRun]:
         runs: list[ActionRun | WorkflowNodeRun]
         if self._poll_wf_node:
             runs = list(
                 await self.claim_pending_wf_node_runs(
-                    limit=limit, visibility_timeout_ms=visibility_timeout_ms
+                    limit=limit,
+                    visibility_timeout_ms=visibility_timeout_ms,
+                    exclude_action_types=exclude_action_types,
                 )
             )
         else:
             runs = list(
                 await self.claim_pending_action_runs(
-                    limit=limit, visibility_timeout_ms=visibility_timeout_ms
+                    limit=limit,
+                    visibility_timeout_ms=visibility_timeout_ms,
+                    exclude_action_types=exclude_action_types,
                 )
             )
         self._poll_wf_node = not self._poll_wf_node

@@ -29,16 +29,22 @@ class ActionsClientMixin:
         handle_port_status_code(response, should_log=should_log)
 
     async def claim_pending_action_runs(
-        self, limit: int, visibility_timeout_ms: int
+        self,
+        limit: int,
+        visibility_timeout_ms: int,
+        exclude_action_types: list[str] | None = None,
     ) -> list[ActionRun]:
+        body: dict[str, object] = {
+            "installationId": self.auth.integration_identifier,
+            "limit": limit,
+            "visibilityTimeoutMs": visibility_timeout_ms,
+        }
+        if exclude_action_types:
+            body["excludeActionTypes"] = exclude_action_types
         response = await self.client.post(
             f"{self.auth.api_url}/actions/runs/claim-pending",
             headers={**(await self.auth.headers()), **INTERNAL_ACTIONS_CLIENT_HEADER},
-            json={
-                "installationId": self.auth.integration_identifier,
-                "limit": limit,
-                "visibilityTimeoutMs": visibility_timeout_ms,
-            },
+            json=body,
         )
         if response.is_error:
             logger.error("Error claiming pending runs", error=response.text)

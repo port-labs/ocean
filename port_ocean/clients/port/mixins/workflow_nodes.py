@@ -19,16 +19,22 @@ class WorkflowNodesClientMixin:
         self.client = client
 
     async def claim_pending_wf_node_runs(
-        self, limit: int, visibility_timeout_ms: int
+        self,
+        limit: int,
+        visibility_timeout_ms: int,
+        exclude_action_types: list[str] | None = None,
     ) -> list[ClaimedWorkflowNodeRun]:
+        body: dict[str, object] = {
+            "installationId": self.auth.integration_identifier,
+            "limit": limit,
+            "visibilityTimeoutMs": visibility_timeout_ms,
+        }
+        if exclude_action_types:
+            body["excludeActionTypes"] = exclude_action_types
         response = await self.client.post(
             f"{self.auth.api_url}/workflows/runs/claim-pending",
             headers={**(await self.auth.headers()), **INTERNAL_WORKFLOW_CLIENT_HEADER},
-            json={
-                "installationId": self.auth.integration_identifier,
-                "limit": limit,
-                "visibilityTimeoutMs": visibility_timeout_ms,
-            },
+            json=body,
         )
         if response.is_error:
             logger.error("Error claiming pending wf_node runs", error=response.text)

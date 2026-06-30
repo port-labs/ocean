@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.5 (2026-06-30)
+
+### Improvements
+
+- Added per-action-type queue tracking in the execution manager. When `OCEAN__ACTIONS_PROCESSOR__MAX_RUNS_BUFFER_UTIL_PCT_PER_ACTION` is set, saturated action types are passed as `excludeActionTypes` on claim-pending requests.
+
 ## 0.44.4 (2026-06-28)
 
 ### Improvements

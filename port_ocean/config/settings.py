@@ -112,6 +112,16 @@ class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
     visibility_timeout_ms: int = Field(default=30000)
     poll_check_interval_seconds: int = Field(default=10)
     workers_count: int = Field(default=1)
+    max_runs_buffer_util_pct_per_action: int | None = Field(
+        default=None,
+        ge=1,
+        le=100,
+        description=(
+            "Max runs-buffer utilization percentage per action. When queued runs "
+            "for an action type reach this % of runs_buffer_high_watermark, "
+            "exclude it from claim-pending."
+        ),
+    )
 
 
 class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):

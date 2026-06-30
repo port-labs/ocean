@@ -33,6 +33,7 @@ class ExecutionManager:
     - Round-robin worker distribution
     - Deduplication of runs
     - High watermark-based flow control
+    - Per-action-type buffer utilization limits for claim-pending exclusion
 
     Attributes:
         _webhook_manager (LiveEventsProcessorManager): Manages webhook processors for async updates
@@ -43,10 +44,12 @@ class ExecutionManager:
         _global_queue (LocalQueue[ActionRun | WorkflowNodeRun]): Queue for non-partitioned actions
         _partition_queues (Dict[str, AbstractQueue[ActionRun | WorkflowNodeRun]]): Queues for partitioned actions
         _deduplication_set (Set[str]): Set of run IDs for deduplication
+        _action_type_queue_counts (Dict[str, int]): Queued run counts per action type
         _queues_locks (Dict[str, asyncio.Lock]): Locks for queue access synchronization
         _active_sources (AbstractQueue[str]): Queue of active sources (global or partition-specific) used for round-robin distribution of work among workers
         _workers_count (int): Number of workers to start
         _high_watermark (int): Maximum total runs in all queues
+        _max_runs_buffer_util_pct_per_action (int | None): Max runs-buffer utilization percentage per action; saturated action types are excluded from claim-pending
         _poll_check_interval_seconds (int): Seconds between polling attempts
         _visibility_timeout_ms (int): Visibility timeout for runs
         _max_wait_seconds_before_shutdown (float): Maximum wait time during shutdown
@@ -81,6 +84,7 @@ class ExecutionManager:
         poll_check_interval_seconds: int,
         visibility_timeout_ms: int,
         max_wait_seconds_before_shutdown: float,
+        max_runs_buffer_util_pct_per_action: int | None = None,
     ):
         self._webhook_manager = webhook_manager
         self._polling_task: asyncio.Task[None] | None = None
@@ -92,6 +96,7 @@ class ExecutionManager:
             str, AbstractQueue[ActionRun | WorkflowNodeRun]
         ] = {}
         self._deduplication_set: Set[str] = set[str]()
+        self._action_type_queue_counts: Dict[str, int] = {}
         self._queues_locks: Dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
         self._active_sources: AbstractQueue[str] = LocalQueue[str]()
         self._workers_count: int = workers_count
@@ -99,6 +104,9 @@ class ExecutionManager:
         self._poll_check_interval_seconds: int = poll_check_interval_seconds
         self._visibility_timeout_ms: int = visibility_timeout_ms
         self._max_wait_seconds_before_shutdown: float = max_wait_seconds_before_shutdown
+        self._max_runs_buffer_util_pct_per_action: int | None = (
+            max_runs_buffer_util_pct_per_action
+        )
 
         signal_handler.register(self.shutdown)
 
@@ -165,10 +173,19 @@ class ExecutionManager:
                     continue
 
                 poll_limit = self._high_watermark - queues_size
+                exclude_action_types = self._get_saturated_action_types()
+                if exclude_action_types:
+                    logger.info(
+                        "Excluding saturated action types from claim-pending",
+                        exclude_action_types=exclude_action_types,
+                        max_runs_buffer_util_per_action=self._get_max_runs_buffer_util_per_action(),
+                        max_runs_buffer_util_pct_per_action=self._max_runs_buffer_util_pct_per_action,
+                    )
 
                 runs = await ocean.port_client.claim_pending_runs(
                     limit=poll_limit,
                     visibility_timeout_ms=self._visibility_timeout_ms,
+                    exclude_action_types=exclude_action_types or None,
                 )
 
                 if not runs:
@@ -241,6 +258,36 @@ class ExecutionManager:
             partition_sizes.append(await queue.size())
         return global_size + sum(partition_sizes)
 
+    def _get_max_runs_buffer_util_per_action(self) -> int | None:
+        if self._max_runs_buffer_util_pct_per_action is None:
+            return None
+        return max(
+            1,
+            self._high_watermark * self._max_runs_buffer_util_pct_per_action // 100,
+        )
+
+    def _get_saturated_action_types(self) -> list[str]:
+        limit = self._get_max_runs_buffer_util_per_action()
+        if limit is None:
+            return []
+        return [
+            action_type
+            for action_type, count in self._action_type_queue_counts.items()
+            if count >= limit
+        ]
+
+    def _increment_action_type_queue_count(self, action_type: str) -> None:
+        self._action_type_queue_counts[action_type] = (
+            self._action_type_queue_counts.get(action_type, 0) + 1
+        )
+
+    def _decrement_action_type_queue_count(self, action_type: str) -> None:
+        count = self._action_type_queue_counts.get(action_type, 0)
+        if count <= 1:
+            self._action_type_queue_counts.pop(action_type, None)
+        else:
+            self._action_type_queue_counts[action_type] = count - 1
+
     async def _add_run_to_queue(
         self,
         run: ActionRun | WorkflowNodeRun,
@@ -262,6 +309,7 @@ class ExecutionManager:
             if await queue.size() == 0:
                 await self._active_sources.put(queue_name)
             self._deduplication_set.add(run.id)
+            self._increment_action_type_queue_count(run.action_type)
             logger.info(
                 f"Adding run to queue {queue_name}",
                 run_id=run.id,
@@ -333,6 +381,7 @@ class ExecutionManager:
 
                 if run.id in self._deduplication_set:
                     self._deduplication_set.remove(run.id)
+                    self._decrement_action_type_queue_count(run.action_type)
 
             await self._add_source_if_not_empty(GLOBAL_SOURCE)
             await self._execute_run(run)
@@ -353,6 +402,7 @@ class ExecutionManager:
                     )
                     if run.id in self._deduplication_set:
                         self._deduplication_set.remove(run.id)
+                        self._decrement_action_type_queue_count(run.action_type)
                 except asyncio.TimeoutError:
                     logger.debug(f"Partition queue {partition_name} is empty, skipping")
                     return

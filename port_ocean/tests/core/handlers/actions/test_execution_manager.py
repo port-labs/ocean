@@ -418,6 +418,42 @@ class TestExecutionManager:
             mock_execute.assert_called_once_with(run)
 
     @pytest.mark.asyncio
+    async def test_action_type_queue_count_tracks_queued_runs(
+        self, execution_manager: ExecutionManager
+    ) -> None:
+        run = generate_mock_action_run()
+        await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
+
+        assert execution_manager._action_type_queue_counts == {"test_action": 1}
+
+        await execution_manager._handle_global_queue_once()
+
+        assert execution_manager._action_type_queue_counts == {}
+
+    @pytest.mark.asyncio
+    async def test_poll_action_runs_excludes_saturated_action_types(
+        self, execution_manager: ExecutionManager, mock_port_client: MagicMock
+    ) -> None:
+        execution_manager._max_runs_buffer_util_pct_per_action = 2
+        execution_manager._poll_check_interval_seconds = 0
+        mock_port_client.claim_pending_runs.return_value = []
+
+        for _ in range(2):
+            await execution_manager._add_run_to_queue(
+                generate_mock_action_run(), GLOBAL_SOURCE
+            )
+
+        polling_task = asyncio.create_task(execution_manager._poll_action_runs())
+        await asyncio.sleep(0.1)
+        await execution_manager._gracefully_cancel_task(polling_task)
+
+        mock_port_client.claim_pending_runs.assert_called_with(
+            limit=ANY,
+            visibility_timeout_ms=execution_manager._visibility_timeout_ms,
+            exclude_action_types=["test_action"],
+        )
+
+    @pytest.mark.asyncio
     async def test_poll_action_runs_should_respect_high_watermark(
         self, execution_manager: ExecutionManager, mock_port_client: MagicMock
     ) -> None:
@@ -448,7 +484,9 @@ class TestExecutionManager:
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
         mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms: [generate_mock_action_run()]
+            lambda limit, visibility_timeout_ms, exclude_action_types=None: [
+                generate_mock_action_run()
+            ]
         )
 
         # Act
@@ -473,7 +511,7 @@ class TestExecutionManager:
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
         mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms: [
+            lambda limit, visibility_timeout_ms, exclude_action_types=None: [
                 generate_mock_action_run(action_type="unregistered_action")
             ]
         )
@@ -616,7 +654,7 @@ class TestExecutionManager:
             wrapped_handle_partition_queue_once,
         )
         mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms: [
+            lambda limit, visibility_timeout_ms, exclude_action_types=None: [
                 *[
                     generate_mock_action_run(
                         action_type=mock_test_partition_executor.ACTION_NAME,
@@ -754,7 +792,9 @@ class TestExecutionManager:
         poll_count = 0
 
         async def claim_runs_with_errors(
-            limit: int, visibility_timeout_ms: int
+            limit: int,
+            visibility_timeout_ms: int,
+            exclude_action_types: list[str] | None = None,
         ) -> list[ActionRun]:
             nonlocal poll_count
             poll_count += 1
@@ -853,7 +893,9 @@ class TestExecutionManager:
         call_count = 0
 
         async def claim_runs_side_effect(
-            limit: int, visibility_timeout_ms: int
+            limit: int,
+            visibility_timeout_ms: int,
+            exclude_action_types: list[str] | None = None,
         ) -> list[ActionRun]:
             nonlocal call_count
             call_count += 1
