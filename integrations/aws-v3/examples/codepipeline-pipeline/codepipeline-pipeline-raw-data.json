@@ -2,7 +2,7 @@
   "Type": "AWS::CodePipeline::Pipeline",
   "Properties": {
     "Name": "SimpleSchedulePythonBuildService",
-    "Arn": "arn:aws:codepipeline:us-east-1:123456789012:pipeline/sample-codepipeline-pipeline",
+    "PipelineArn": "arn:aws:codepipeline:us-east-1:123456789012:pipeline/sample-codepipeline-pipeline",
     "RoleArn": "arn:aws:iam::1234567890:role/CodePipelineStarterTempla-CodeConnectionsActionRole-abcD7EOOCwn8",
     "ArtifactStore": {
       "location": "codepipelinestartertempla-codepipelineartifactsbuc-xdz8gvyceuuh",
