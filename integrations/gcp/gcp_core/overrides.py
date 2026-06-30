@@ -1,4 +1,4 @@
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -110,6 +110,31 @@ class GCPResourceConfig(ResourceConfig):
     )
 
 
+class GCPCloudFunctionSelector(Selector):
+    query: str = Field(default="true", title="Query", description="JQ filter applied to results returned by the cloud function.")
+    function_url: str = Field(
+        alias="functionUrl",
+        title="Function URL",
+        description="URL of the HTTP endpoint implementing the cloud-function sync protocol (e.g. a Cloud Run service).",
+    )
+    secrets: dict[str, Any] = Field(
+        default_factory=dict,
+        title="Secrets",
+        description="Key-value pairs forwarded to the endpoint in every request body. Use for upstream API credentials.",
+    )
+
+
+class GCPCloudFunctionResourceConfig(ResourceConfig):
+    kind: str = Field(
+        title="Kind",
+        description="Resource kind name — forwarded to the cloud function as the `kind` field so the function can route internally.",
+    )
+    selector: GCPCloudFunctionSelector = Field(
+        title="Cloud Function Selector",
+        description="Selector for a resource served by the cloud-function sync protocol.",
+    )
+
+
 class GCPPortAppConfig(PortAppConfig):
     allow_custom_kinds: ClassVar[bool] = True
 
@@ -120,6 +145,7 @@ class GCPPortAppConfig(PortAppConfig):
         | GCPProjectResourceConfig
         | GCPOrganizationResourceConfig
         | GCPFolderResourceConfig
+        | GCPCloudFunctionResourceConfig
         | GCPResourceConfig
     ] = Field(
         title="Resources",
