@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added per-action-type queue tracking in the execution manager. When `OCEAN__ACTIONS_PROCESSOR__MAX_RUNS_BUFFER_UTIL_PCT_PER_ACTION` is set, saturated action types are passed as `excludeActionTypes` on claim-pending requests.
+- Added per-action queue tracking in the execution manager for action runs using `actionIdentifier`. When `OCEAN__ACTIONS_PROCESSOR__MAX_RUNS_BUFFER_UTIL_PCT_PER_ACTION` is set, saturated action identifiers are passed as `exclude` in the action-run claim-pending body. Deduped claimed runs trigger an immediate re-poll while buffer capacity remains.
 
 ## 0.44.4 (2026-06-28)
 

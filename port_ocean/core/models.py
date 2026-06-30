@@ -196,10 +196,15 @@ class ActionRun(BaseModel):
     id: str
     status: RunStatus
     payload: IntegrationActionInvocationPayload
+    actionIdentifier: str | None = None
 
     @property
     def action_type(self) -> str:
         return self.payload.integrationActionType
+
+    @property
+    def action_identifier(self) -> str | None:
+        return self.actionIdentifier
 
     @property
     def execution_properties(self) -> dict[str, Any]:

@@ -16,6 +16,7 @@ from port_ocean.core.handlers.actions.execution_manager import (
     ExecutionManager,
     GLOBAL_SOURCE,
 )
+from port_ocean.core.handlers.queue.local_queue import LocalQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -40,6 +41,7 @@ from port_ocean.utils.signal import SignalHandler
 
 def generate_mock_action_run(
     action_type: str = "test_action",
+    action_identifier: str = "test-action-identifier",
     integrationActionExecutionProperties: dict[str, Any] | None = None,
 ) -> ActionRun:
     if integrationActionExecutionProperties is None:
@@ -47,6 +49,7 @@ def generate_mock_action_run(
     return ActionRun(
         id=f"test-run-id-{uuid.uuid4()}",
         status=RunStatus.IN_PROGRESS,
+        actionIdentifier=action_identifier,
         payload=IntegrationActionInvocationPayload(
             type="INTEGRATION_ACTION",
             installationId="test-installation-id",
@@ -418,20 +421,38 @@ class TestExecutionManager:
             mock_execute.assert_called_once_with(run)
 
     @pytest.mark.asyncio
-    async def test_action_type_queue_count_tracks_queued_runs(
+    async def test_handle_global_queue_once_does_not_commit_on_timeout(
+        self, execution_manager: ExecutionManager
+    ) -> None:
+        await execution_manager._handle_global_queue_once()
+
+    @pytest.mark.asyncio
+    async def test_handle_partition_queue_once_does_not_commit_on_timeout(
+        self, execution_manager: ExecutionManager
+    ) -> None:
+        partition_name = "test_action:empty-partition"
+        execution_manager._partition_queues[partition_name] = LocalQueue()
+        execution_manager._queues_locks[partition_name] = asyncio.Lock()
+
+        await execution_manager._handle_partition_queue_once(partition_name)
+
+    @pytest.mark.asyncio
+    async def test_action_identifier_queue_count_tracks_queued_runs(
         self, execution_manager: ExecutionManager
     ) -> None:
         run = generate_mock_action_run()
         await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
 
-        assert execution_manager._action_type_queue_counts == {"test_action": 1}
+        assert execution_manager._action_identifier_queue_counts == {
+            "test-action-identifier": 1
+        }
 
         await execution_manager._handle_global_queue_once()
 
-        assert execution_manager._action_type_queue_counts == {}
+        assert execution_manager._action_identifier_queue_counts == {}
 
     @pytest.mark.asyncio
-    async def test_poll_action_runs_excludes_saturated_action_types(
+    async def test_poll_action_runs_excludes_saturated_action_identifiers(
         self, execution_manager: ExecutionManager, mock_port_client: MagicMock
     ) -> None:
         execution_manager._max_runs_buffer_util_pct_per_action = 2
@@ -450,8 +471,29 @@ class TestExecutionManager:
         mock_port_client.claim_pending_runs.assert_called_with(
             limit=ANY,
             visibility_timeout_ms=execution_manager._visibility_timeout_ms,
-            exclude_action_types=["test_action"],
+            exclude_action_identifiers=["test-action-identifier"],
         )
+
+    @pytest.mark.asyncio
+    async def test_poll_action_runs_repolls_immediately_when_runs_are_deduped(
+        self, execution_manager: ExecutionManager, mock_port_client: MagicMock
+    ) -> None:
+        execution_manager._high_watermark = 10
+        execution_manager._poll_check_interval_seconds = 60
+        deduped_run = generate_mock_action_run()
+        await execution_manager._add_run_to_queue(deduped_run, GLOBAL_SOURCE)
+
+        mock_port_client.claim_pending_runs.side_effect = [
+            [deduped_run],
+            [generate_mock_action_run()],
+            [],
+        ]
+
+        polling_task = asyncio.create_task(execution_manager._poll_action_runs())
+        await asyncio.sleep(0.1)
+        await execution_manager._gracefully_cancel_task(polling_task)
+
+        assert mock_port_client.claim_pending_runs.call_count >= 2
 
     @pytest.mark.asyncio
     async def test_poll_action_runs_should_respect_high_watermark(
@@ -484,7 +526,7 @@ class TestExecutionManager:
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
         mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms, exclude_action_types=None: [
+            lambda limit, visibility_timeout_ms, exclude_action_identifiers=[]: [
                 generate_mock_action_run()
             ]
         )
@@ -511,7 +553,7 @@ class TestExecutionManager:
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
         mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms, exclude_action_types=None: [
+            lambda limit, visibility_timeout_ms, exclude_action_identifiers=[]: [
                 generate_mock_action_run(action_type="unregistered_action")
             ]
         )
@@ -654,7 +696,7 @@ class TestExecutionManager:
             wrapped_handle_partition_queue_once,
         )
         mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms, exclude_action_types=None: [
+            lambda limit, visibility_timeout_ms, exclude_action_identifiers=[]: [
                 *[
                     generate_mock_action_run(
                         action_type=mock_test_partition_executor.ACTION_NAME,
@@ -794,7 +836,7 @@ class TestExecutionManager:
         async def claim_runs_with_errors(
             limit: int,
             visibility_timeout_ms: int,
-            exclude_action_types: list[str] | None = None,
+            exclude_action_identifiers: list[str] = [],
         ) -> list[ActionRun]:
             nonlocal poll_count
             poll_count += 1
@@ -895,7 +937,7 @@ class TestExecutionManager:
         async def claim_runs_side_effect(
             limit: int,
             visibility_timeout_ms: int,
-            exclude_action_types: list[str] | None = None,
+            exclude_action_identifiers: list[str] = [],
         ) -> list[ActionRun]:
             nonlocal call_count
             call_count += 1

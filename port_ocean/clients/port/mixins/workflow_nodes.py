@@ -22,15 +22,12 @@ class WorkflowNodesClientMixin:
         self,
         limit: int,
         visibility_timeout_ms: int,
-        exclude_action_types: list[str] | None = None,
     ) -> list[ClaimedWorkflowNodeRun]:
         body: dict[str, object] = {
             "installationId": self.auth.integration_identifier,
             "limit": limit,
             "visibilityTimeoutMs": visibility_timeout_ms,
         }
-        if exclude_action_types:
-            body["excludeActionTypes"] = exclude_action_types
         response = await self.client.post(
             f"{self.auth.api_url}/workflows/runs/claim-pending",
             headers={**(await self.auth.headers()), **INTERNAL_WORKFLOW_CLIENT_HEADER},

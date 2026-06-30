@@ -33,7 +33,7 @@ class ExecutionManager:
     - Round-robin worker distribution
     - Deduplication of runs
     - High watermark-based flow control
-    - Per-action-type buffer utilization limits for claim-pending exclusion
+    - Per-action buffer utilization limits for action-run claim-pending exclusion
 
     Attributes:
         _webhook_manager (LiveEventsProcessorManager): Manages webhook processors for async updates
@@ -44,12 +44,12 @@ class ExecutionManager:
         _global_queue (LocalQueue[ActionRun | WorkflowNodeRun]): Queue for non-partitioned actions
         _partition_queues (Dict[str, AbstractQueue[ActionRun | WorkflowNodeRun]]): Queues for partitioned actions
         _deduplication_set (Set[str]): Set of run IDs for deduplication
-        _action_type_queue_counts (Dict[str, int]): Queued run counts per action type
+        _action_identifier_queue_counts (Dict[str, int]): Queued run counts per action identifier
         _queues_locks (Dict[str, asyncio.Lock]): Locks for queue access synchronization
         _active_sources (AbstractQueue[str]): Queue of active sources (global or partition-specific) used for round-robin distribution of work among workers
         _workers_count (int): Number of workers to start
         _high_watermark (int): Maximum total runs in all queues
-        _max_runs_buffer_util_pct_per_action (int | None): Max runs-buffer utilization percentage per action; saturated action types are excluded from claim-pending
+        _max_runs_buffer_util_pct_per_action (int | None): Max runs-buffer utilization percentage per action; saturated action identifiers are excluded from claim-pending
         _poll_check_interval_seconds (int): Seconds between polling attempts
         _visibility_timeout_ms (int): Visibility timeout for runs
         _max_wait_seconds_before_shutdown (float): Maximum wait time during shutdown
@@ -96,7 +96,7 @@ class ExecutionManager:
             str, AbstractQueue[ActionRun | WorkflowNodeRun]
         ] = {}
         self._deduplication_set: Set[str] = set[str]()
-        self._action_type_queue_counts: Dict[str, int] = {}
+        self._action_identifier_queue_counts: Dict[str, int] = {}
         self._queues_locks: Dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
         self._active_sources: AbstractQueue[str] = LocalQueue[str]()
         self._workers_count: int = workers_count
@@ -148,8 +148,8 @@ class ExecutionManager:
         self._polling_task = asyncio.create_task(self._poll_action_runs())
 
         workers_count = max(1, self._workers_count)
-        for _ in range(workers_count):
-            task = asyncio.create_task(self._process_actions_runs())
+        for i in range(workers_count):
+            task = asyncio.create_task(self._process_actions_runs(), name=f"worker_{i}")
             self._workers_pool.add(task)
             task.add_done_callback(self._workers_pool.discard)
 
@@ -173,11 +173,11 @@ class ExecutionManager:
                     continue
 
                 poll_limit = self._high_watermark - queues_size
-                exclude_action_types = self._get_saturated_action_types()
-                if exclude_action_types:
+                exclude_action_identifiers = self._get_saturated_action_identifiers()
+                if exclude_action_identifiers:
                     logger.info(
-                        "Excluding saturated action types from claim-pending",
-                        exclude_action_types=exclude_action_types,
+                        "Excluding saturated action identifiers from claim-pending",
+                        exclude_action_identifiers=exclude_action_identifiers,
                         max_runs_buffer_util_per_action=self._get_max_runs_buffer_util_per_action(),
                         max_runs_buffer_util_pct_per_action=self._max_runs_buffer_util_pct_per_action,
                     )
@@ -185,7 +185,7 @@ class ExecutionManager:
                 runs = await ocean.port_client.claim_pending_runs(
                     limit=poll_limit,
                     visibility_timeout_ms=self._visibility_timeout_ms,
-                    exclude_action_types=exclude_action_types or None,
+                    exclude_action_identifiers=exclude_action_identifiers,
                 )
 
                 if not runs:
@@ -198,6 +198,7 @@ class ExecutionManager:
                     continue
 
                 logger.info(f"Adding {len(runs)} runs to queues", runs_count=len(runs))
+                deduped_runs_count = 0
                 for run in runs:
                     try:
                         action_type = run.action_type
@@ -210,6 +211,7 @@ class ExecutionManager:
                             continue
 
                         if run.id in self._deduplication_set:
+                            deduped_runs_count += 1
                             logger.info(
                                 "Run is already being processed, skipping...",
                                 run_id=run.id,
@@ -240,6 +242,10 @@ class ExecutionManager:
                             action_type=action_type,
                             error=str(e),
                         )
+
+                # If we deduped any runs, we can continue polling for more runs
+                if deduped_runs_count > 0:
+                    continue
             except Exception as e:
                 logger.exception(
                     "Unexpected error in poll action runs, will attempt to re-poll",
@@ -266,27 +272,34 @@ class ExecutionManager:
             self._high_watermark * self._max_runs_buffer_util_pct_per_action // 100,
         )
 
-    def _get_saturated_action_types(self) -> list[str]:
+    def _get_run_action_identifier(
+        self, run: ActionRun | WorkflowNodeRun
+    ) -> str | None:
+        if isinstance(run, ActionRun):
+            return run.action_identifier
+        return None
+
+    def _get_saturated_action_identifiers(self) -> list[str]:
         limit = self._get_max_runs_buffer_util_per_action()
         if limit is None:
             return []
         return [
-            action_type
-            for action_type, count in self._action_type_queue_counts.items()
+            action_identifier
+            for action_identifier, count in self._action_identifier_queue_counts.items()
             if count >= limit
         ]
 
-    def _increment_action_type_queue_count(self, action_type: str) -> None:
-        self._action_type_queue_counts[action_type] = (
-            self._action_type_queue_counts.get(action_type, 0) + 1
+    def _increment_action_identifier_queue_count(self, action_identifier: str) -> None:
+        self._action_identifier_queue_counts[action_identifier] = (
+            self._action_identifier_queue_counts.get(action_identifier, 0) + 1
         )
 
-    def _decrement_action_type_queue_count(self, action_type: str) -> None:
-        count = self._action_type_queue_counts.get(action_type, 0)
+    def _decrement_action_identifier_queue_count(self, action_identifier: str) -> None:
+        count = self._action_identifier_queue_counts.get(action_identifier, 0)
         if count <= 1:
-            self._action_type_queue_counts.pop(action_type, None)
+            self._action_identifier_queue_counts.pop(action_identifier, None)
         else:
-            self._action_type_queue_counts[action_type] = count - 1
+            self._action_identifier_queue_counts[action_identifier] = count - 1
 
     async def _add_run_to_queue(
         self,
@@ -309,7 +322,8 @@ class ExecutionManager:
             if await queue.size() == 0:
                 await self._active_sources.put(queue_name)
             self._deduplication_set.add(run.id)
-            self._increment_action_type_queue_count(run.action_type)
+            if action_identifier := self._get_run_action_identifier(run):
+                self._increment_action_identifier_queue_count(action_identifier)
             logger.info(
                 f"Adding run to queue {queue_name}",
                 run_id=run.id,
@@ -368,6 +382,7 @@ class ExecutionManager:
         """
         Try to process a single run from the global queue.
         """
+        got_run = False
         try:
             async with self._queues_locks[GLOBAL_SOURCE]:
                 try:
@@ -375,23 +390,27 @@ class ExecutionManager:
                     run = await asyncio.wait_for(
                         self._global_queue.get(), timeout=QUEUE_GET_TIMEOUT_SECONDS
                     )
+                    got_run = True
                 except asyncio.TimeoutError:
                     logger.debug("Global queue is empty, skipping")
                     return
 
                 if run.id in self._deduplication_set:
                     self._deduplication_set.remove(run.id)
-                    self._decrement_action_type_queue_count(run.action_type)
+                    if action_identifier := self._get_run_action_identifier(run):
+                        self._decrement_action_identifier_queue_count(action_identifier)
 
             await self._add_source_if_not_empty(GLOBAL_SOURCE)
             await self._execute_run(run)
         finally:
-            await self._global_queue.commit()
+            if got_run:
+                await self._global_queue.commit()
 
     async def _handle_partition_queue_once(self, partition_name: str) -> None:
         """
         Try to process a single run from the given partition queue.
         """
+        got_run = False
         queue = self._partition_queues[partition_name]
         try:
             async with self._queues_locks[partition_name]:
@@ -400,16 +419,21 @@ class ExecutionManager:
                     run = await asyncio.wait_for(
                         queue.get(), timeout=QUEUE_GET_TIMEOUT_SECONDS
                     )
+                    got_run = True
                     if run.id in self._deduplication_set:
                         self._deduplication_set.remove(run.id)
-                        self._decrement_action_type_queue_count(run.action_type)
+                        if action_identifier := self._get_run_action_identifier(run):
+                            self._decrement_action_identifier_queue_count(
+                                action_identifier
+                            )
                 except asyncio.TimeoutError:
                     logger.debug(f"Partition queue {partition_name} is empty, skipping")
                     return
 
             await self._execute_run(run)
         finally:
-            await queue.commit()
+            if got_run:
+                await queue.commit()
             await self._add_source_if_not_empty(partition_name)
 
     async def _execute_run(self, run: ActionRun | WorkflowNodeRun) -> None:

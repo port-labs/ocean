@@ -32,15 +32,15 @@ class ActionsClientMixin:
         self,
         limit: int,
         visibility_timeout_ms: int,
-        exclude_action_types: list[str] | None = None,
+        exclude_action_identifiers: list[str] = [],
     ) -> list[ActionRun]:
         body: dict[str, object] = {
             "installationId": self.auth.integration_identifier,
             "limit": limit,
             "visibilityTimeoutMs": visibility_timeout_ms,
         }
-        if exclude_action_types:
-            body["excludeActionTypes"] = exclude_action_types
+        if exclude_action_identifiers:
+            body["exclude"] = exclude_action_identifiers
         response = await self.client.post(
             f"{self.auth.api_url}/actions/runs/claim-pending",
             headers={**(await self.auth.headers()), **INTERNAL_ACTIONS_CLIENT_HEADER},

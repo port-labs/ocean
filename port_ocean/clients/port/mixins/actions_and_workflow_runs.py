@@ -42,7 +42,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         self,
         limit: int,
         visibility_timeout_ms: int,
-        exclude_action_types: list[str] | None = None,
+        exclude_action_identifiers: list[str] = [],
     ) -> list[ActionRun | WorkflowNodeRun]:
         runs: list[ActionRun | WorkflowNodeRun]
         if self._poll_wf_node:
@@ -50,7 +50,6 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 await self.claim_pending_wf_node_runs(
                     limit=limit,
                     visibility_timeout_ms=visibility_timeout_ms,
-                    exclude_action_types=exclude_action_types,
                 )
             )
         else:
@@ -58,7 +57,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 await self.claim_pending_action_runs(
                     limit=limit,
                     visibility_timeout_ms=visibility_timeout_ms,
-                    exclude_action_types=exclude_action_types,
+                    exclude_action_identifiers=exclude_action_identifiers,
                 )
             )
         self._poll_wf_node = not self._poll_wf_node
