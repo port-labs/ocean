@@ -226,6 +226,9 @@ class GitLabClient:
                 )
                 enriched_batch = await enricher.enrich_batch(enriched_batch)
 
+            # Exclude projects pending deletion — their `project_destroy` webhook
+            # only fires after the grace period (7 days on paid GitLab.com tiers),
+            # so they would otherwise linger in Port until then.
             active_batch = _filter_projects(
                 enriched_batch,
                 lambda p: not p.get("marked_for_deletion_at"),
