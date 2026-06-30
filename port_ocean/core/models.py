@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
 from typing import Any, Literal, NotRequired, TypedDict
-from pydantic import BaseModel
-from pydantic.fields import Field
+from pydantic.v1 import BaseModel
+from pydantic.v1.fields import Field
 
 
 class EventListenerType(StrEnum):
@@ -13,6 +13,10 @@ class EventListenerType(StrEnum):
     ONCE = "ONCE"
     WEBHOOKS_ONLY = "WEBHOOKS_ONLY"
     ACTIONS_ONLY = "ACTIONS_ONLY"
+
+
+class LiveEventsConsumerType(StrEnum):
+    REDIS = "REDIS"
 
 
 class CreatePortResourcesOrigin(StrEnum):
@@ -141,6 +145,7 @@ class IntegrationFeatureFlag(StrEnum):
         "OCEAN_KAFKA_INTEGRATION_RESYNC_REQUESTS_TOPIC_ENABLED"
     )
     DATA_SOURCE_PROCESSOR_ENABLED = "DATA_SOURCE_PROCESSOR_ENABLED"
+    LIVE_EVENTS_REDIS_STREAM_ENABLED = "LIVE_EVENTS_REDIS_STREAM_ENABLED"
 
 
 class ProcessingMode(StrEnum):
@@ -205,6 +210,7 @@ class WorkflowNodeRun(BaseModel):
     identifier: str
     status: WorkflowNodeRunStatus
     node: dict[str, Any] | None = None
+    output: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def id(self) -> str:
@@ -228,7 +234,6 @@ class WorkflowNodeRun(BaseModel):
 class ClaimedWorkflowNodeRun(WorkflowNodeRun):
     config: dict[str, Any]
     result: WorkflowNodeRunResult | None = None
-    output: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def action_type(self) -> str:

@@ -4,7 +4,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from typing import Any, Literal, Optional
 from port_ocean.core.integrations.base import BaseIntegration
 

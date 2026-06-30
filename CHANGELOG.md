@@ -7,6 +7,39 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.3 (2026-06-28)
+
+### Improvements
+
+- Added Redis stream consumption for live events when the `LIVE_EVENTS_REDIS_STREAM_ENABLED` organization feature flag is enabled. Integrations can consume webhook events directly from a Redis stream instead of the local HTTP queue.
+- Introduced `AbstractLiveEventsConsumer` and `LiveEventsConsumerType` so live-events transport backends are selected via typed configuration, following the same pattern as event listeners.
+- Added `OCEAN__LIVE_EVENTS__REDIS__*` settings for Redis connection, TLS, and stream read tuning (`block_ms`, `read_count`).
+
+## 0.44.2 (2026-06-25)
+
+### Improvements
+
+- Skip action webhook results (no mapped resource) during live-events catalog sync and lakehouse export, so integrations no longer need custom `sync_raw_results` filtering.
+- Added `ActionExecutionError` so integration executors can fail expected action runs with a clean user-facing message, logged without a stack trace.
+
+### Bug Fixes
+
+- Preserve workflow node run `output` when reporting completion or failure, so Port no longer overwrites integration-set values (e.g. `workflowRunUrl`) with `{}`.
+
+
+## 0.44.1 (2026-06-25)
+
+### Improvements
+
+- Polling event listener now triggers resyncs only on startup (when `resync_on_start` is enabled) and explicit integration resync requests, instead of on any integration document `updatedAt` change.
+
+## 0.44.0 (2026-06-25)
+
+### Bug Fixes
+
+- Update pydantic to v2
+
+
 ## 0.43.19 (2026-06-22)
 
 ### Bug Fixes
