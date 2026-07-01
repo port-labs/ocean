@@ -5,7 +5,7 @@ from loguru import logger
 """
 GitLab access levels:
 - 10: Guest
-- 20: Reporter  
+- 20: Reporter
 - 30: Developer
 - 40: Maintainer
 - 50: Owner
@@ -29,7 +29,7 @@ class GroupWebHook(BaseWebhookFactory[GroupEvents]):
     The class provides methods to create webhooks for individual groups or all root-level groups.
     """
 
-    async def create_group_webhook(self, group_id: str) -> bool:
+    async def create_group_webhook(self, group_id: str | int) -> bool:
         """
         Create a webhook for a specific group.
 
