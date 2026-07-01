@@ -1,0 +1,17 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: AWS::CodeDeploy::DeploymentTarget
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.DeploymentId + "/" + .Properties.TargetId
+          title: .Properties.DeploymentId + "/" + .Properties.TargetId
+          blueprint: '"codedeployDeploymentTarget"'
+          properties:
+            deploymentId: .Properties.DeploymentId
+            deploymentTargetType: .Properties.DeploymentTargetType
+          relations:
+            account: .__ExtraContext.AccountId
