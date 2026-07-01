@@ -89,7 +89,7 @@ async def on_start() -> None:
     if not base_url:
         logger.info(
             "Skipping webhook subscription because no base URL is configured. "
-            "Set OCEAN__BASE_URL to enable live events."
+            "Set OCEAN__BASE_URL to enable live events (appHost is also supported as a deprecated fallback)."
         )
         return
 

@@ -23,10 +23,9 @@ class CacheKeys(StrEnum):
 
 
 class FirehydrantClient:
-    def __init__(self, base_url: str, api_key: str, app_host: str):
+    def __init__(self, base_url: str, api_key: str):
         self.base_url = base_url
         self.api_key = api_key
-        self.app_host = app_host
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
 
