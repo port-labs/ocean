@@ -3,6 +3,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 import httpx
 from loguru import logger
 
+from github.clients.auth.retry_transport import GRAPHQL_SENT_VARIABLES_EXTENSION
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
@@ -81,6 +82,18 @@ class GithubGraphQLClient(AbstractGithubClient):
 
         return {}
 
+    @staticmethod
+    def _sent_variables(response: httpx.Response) -> Optional[Dict[str, Any]]:
+        """Variables from the request that actually produced this response.
+
+        The retry transport can rewrite a GraphQL request body between attempts
+        (e.g. shrinking `variables.first` on a retryable 5xx), and httpx resets
+        `response.request` to the caller's original request once the transport
+        returns — so the transport records the variables it truly sent in the
+        response extensions, which is what we read here for error logs.
+        """
+        return response.extensions.get(GRAPHQL_SENT_VARIABLES_EXTENSION)
+
     async def send_api_request(
         self,
         resource: str,
@@ -93,18 +106,21 @@ class GithubGraphQLClient(AbstractGithubClient):
         query_path: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        response = await super().send_api_request(
+        response = await self.make_request(
             resource=resource,
             params=params,
             method=method,
             json_data=json_data,
             ignored_errors=ignored_errors,
+            ignore_default_errors=ignore_default_errors,
             authenticator_headers_params=authenticator_headers_params,
         )
-        response = self._handle_graphql_errors(
-            response, ignored_errors, query_path=query_path, query_params=query_params
+        return self._handle_graphql_errors(
+            response.json(),
+            ignored_errors,
+            query_path=query_path,
+            query_params=self._sent_variables(response) or query_params,
         )
-        return response
 
     def build_graphql_payload(
         self,
