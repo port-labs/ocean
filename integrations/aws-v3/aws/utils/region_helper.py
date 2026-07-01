@@ -7,7 +7,6 @@ from port_ocean.context.ocean import ocean
 
 
 class RegionHelper:
-    _partition: str = ""
     _available_regions: list[str] = []
 
     @classmethod

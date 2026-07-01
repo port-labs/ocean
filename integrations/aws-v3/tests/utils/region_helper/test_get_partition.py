@@ -6,12 +6,6 @@ from aws.utils.region_helper import RegionHelper
 
 
 class TestGetPartition:
-    @pytest.fixture(autouse=True)
-    def reset_cache(self) -> Generator[None, None, None]:
-        RegionHelper._partition = ""
-        yield
-        RegionHelper._partition = ""
-
     def test_returns_aws_partition_from_config(self) -> None:
         with patch(
             "aws.utils.region_helper.ocean", new_callable=MagicMock
