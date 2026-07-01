@@ -9,10 +9,15 @@ from port_ocean.helpers.retry import RetryConfig, RetryTransport
 from github.clients.rate_limiter.utils import is_rate_limit_response
 
 
-# 5xx responses GitHub returns intermittently on large pages and that we recover
-# from by shrinking the page size before each retry. Both the reduction and the
-# "stop once we can't shrink further" check key off this same set.
-RETRYABLE_5XX_STATUS_CODES = (500, 502, 504, 499)
+# Gateway errors that signal a query exceeded GitHub's GraphQL execution budget:
+# gateway timeouts (502/504) and the reverse proxy's client-closed 499. These
+# drive both the page-size backoff and the GraphQL query fallback.
+GATEWAY_TIMEOUT_STATUS_CODES = (502, 504, 499)
+
+# All 5xx we recover from by shrinking the page size before each retry — the
+# gateway timeouts plus a plain 500 (a generic server error, which gets page-size
+# backoff but not the GraphQL query fallback, hence kept separate above).
+RETRYABLE_5XX_STATUS_CODES = GATEWAY_TIMEOUT_STATUS_CODES + (500,)
 
 # Floors for the 5xx-recovery page-size backoff. We shrink the page on each retry
 # down to these sizes before giving up, since smaller pages reliably succeed.

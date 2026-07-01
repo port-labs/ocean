@@ -4,8 +4,8 @@ import httpx
 from loguru import logger
 
 from github.clients.auth.retry_transport import (
+    GATEWAY_TIMEOUT_STATUS_CODES,
     MIN_GRAPHQL_PAGE_SIZE,
-    RETRYABLE_5XX_STATUS_CODES,
 )
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
@@ -126,17 +126,20 @@ class GithubGraphQLClient(AbstractGithubClient):
 
     @staticmethod
     def _is_query_too_expensive(exc: BaseException) -> bool:
-        """True for a gateway error left over once the transport gives up.
+        """True for a gateway timeout left over once the transport gives up.
 
         GitHub surfaces a query that blows the 10s GraphQL execution budget as a
-        502/504 (and occasionally a 499 from its reverse proxy). The retry
-        transport shrinks the page size on each of these and re-raises once it
-        bottoms out at the floor, so by the time the error reaches here the page
-        is already as small as it gets — the only lever left is a lighter query.
+        502/504 (and occasionally a 499 from its reverse proxy) — see
+        GATEWAY_TIMEOUT_STATUS_CODES. The retry transport shrinks the page size on
+        each of these and re-raises once it bottoms out at the floor, so by the
+        time the error reaches here the page is already as small as it gets — the
+        only lever left is a lighter query. A plain 500 is intentionally excluded:
+        it's a generic server error, not an over-budget signal, so it should not
+        trigger the field-stripping fallback.
         """
         return (
             isinstance(exc, httpx.HTTPStatusError)
-            and exc.response.status_code in RETRYABLE_5XX_STATUS_CODES
+            and exc.response.status_code in GATEWAY_TIMEOUT_STATUS_CODES
         )
 
     async def send_paginated_request(

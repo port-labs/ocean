@@ -452,8 +452,12 @@ class TestGithubGraphQLClient:
                     pass
 
     def test_is_query_too_expensive_keys_on_gateway_status(self) -> None:
-        for status in (500, 502, 504, 499):
+        # Gateway timeouts signal an over-budget query and trigger the fallback.
+        for status in (502, 504, 499):
             assert GithubGraphQLClient._is_query_too_expensive(_gateway_error(status))
+        # A plain 500 is a generic server error, not an over-budget signal, so it
+        # gets page-size backoff but never the field-stripping query fallback.
+        assert not GithubGraphQLClient._is_query_too_expensive(_gateway_error(500))
         for status in (400, 403, 404):
             assert not GithubGraphQLClient._is_query_too_expensive(
                 _gateway_error(status)
