@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.14.2-beta (2026-07-01)
+
+
+### Improvements
+
+- Fixed typo in alias kwarg which caused ExportedEnvironmentVariables field in CodeBuild Build Run to not be ingested properly
+
+
 ## 2.14.1-beta (2026-06-30)
 
 

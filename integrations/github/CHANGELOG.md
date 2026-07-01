@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.0 (2026-07-01)
+
+
+### Features
+
+- Added `update_repo_external_properties` action that pushes Port blueprint property values to GitHub repository external properties.
+
+
 ## 6.1.3 (2026-06-30)
 
 
