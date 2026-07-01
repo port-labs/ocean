@@ -1,6 +1,9 @@
+import asyncio
 import base64
 import json
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,6 +18,7 @@ from port_ocean.exceptions.live_events import (
     LiveEventsUuidNotFoundError,
     MissingLiveEventsBaseUrlError,
 )
+from port_ocean.consumers.pel_requeue import PELRequeueWorker
 from port_ocean.consumers.redis_stream_consumer import RedisStreamConsumer
 from port_ocean.core.handlers.webhook.webhook_event import WebhookRequestAdapter
 
@@ -269,6 +273,167 @@ class TestRedisStreamConsumerConnection:
 
         mock_redis.xreadgroup.assert_awaited_once()
         assert mock_redis.xreadgroup.await_args.kwargs["count"] == 25
+
+
+class TestRedisStreamConsumerPelWorkerLifecycle:
+    @pytest.mark.asyncio
+    async def test_start_starts_pel_worker_when_enabled(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            pel_requeue_worker_enabled=True,
+        )
+        mock_redis = AsyncMock()
+        mock_redis.xgroup_create = AsyncMock()
+        mock_pel_worker = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.Redis.from_url",
+                return_value=mock_redis,
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.PELRequeueWorker",
+                return_value=mock_pel_worker,
+            ) as mock_pel_worker_cls,
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            await consumer.start()
+
+            mock_pel_worker_cls.assert_called_once()
+            mock_pel_worker.start.assert_awaited_once()
+            assert consumer._pel_worker is mock_pel_worker
+
+            await consumer.stop()
+
+            mock_pel_worker.stop.assert_awaited_once()
+            assert consumer._pel_worker is None
+            mock_redis.aclose.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_start_skips_pel_worker_when_disabled(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            pel_requeue_worker_enabled=False,
+        )
+        mock_redis = AsyncMock()
+        mock_redis.xgroup_create = AsyncMock()
+
+        with (
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.Redis.from_url",
+                return_value=mock_redis,
+            ),
+            patch(
+                "port_ocean.consumers.redis_stream_consumer.PELRequeueWorker",
+            ) as mock_pel_worker_cls,
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=AsyncMock(),
+            )
+            await consumer.start()
+
+            mock_pel_worker_cls.assert_not_called()
+            assert consumer._pel_worker is None
+
+            await consumer.stop()
+
+            assert consumer._pel_worker is None
+            mock_redis.aclose.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_pel_worker_requeues_while_handler_still_processing(
+        self,
+        mock_ocean_config: MagicMock,
+    ) -> None:
+        """If processing exceeds stuck_timeout, PEL worker can requeue while the
+        original handler is still in flight — enabling duplicate delivery."""
+        handler_entered = asyncio.Event()
+        release_handler = asyncio.Event()
+
+        async def slow_on_message(path: str, event: object) -> None:
+            handler_entered.set()
+            await release_handler.wait()
+
+        settings = LiveEventsRedisSettings(
+            url="redis://localhost:6379",
+            pel_stuck_timeout_seconds=60,
+        )
+        message_id = "1700000000000-0"
+        fields = {
+            "webhookPath": "integration/webhook",
+            "payload": json.dumps({}),
+            "headers": json.dumps({}),
+        }
+
+        mock_redis = AsyncMock()
+        mock_redis.xadd = AsyncMock(return_value="1700000000001-0")
+        mock_redis.xack = AsyncMock(return_value=1)
+
+        @asynccontextmanager
+        async def fake_pipeline(
+            *_args: object, **_kwargs: object
+        ) -> AsyncIterator[AsyncMock]:
+            pipe = AsyncMock()
+            pipe.xadd = mock_redis.xadd
+            pipe.xack = mock_redis.xack
+            pipe.execute = AsyncMock(return_value=["1700000000001-0", 1])
+            yield pipe
+
+        mock_redis.pipeline = fake_pipeline
+        mock_redis.xautoclaim = AsyncMock(
+            return_value=("0-0", [(message_id, fields)], [])
+        )
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.ocean", mock_ocean_config
+        ):
+            consumer = RedisStreamConsumer(
+                redis_settings=settings,
+                stream_key="stream",
+                on_message=slow_on_message,
+                registered_paths={"/webhook"},
+            )
+            consumer._redis = mock_redis
+
+            handle_task = asyncio.create_task(
+                consumer._handle_message(message_id, fields)
+            )
+            await handler_entered.wait()
+
+            pel_worker = PELRequeueWorker(
+                mock_redis,
+                redis_settings=settings,
+                stream_key="stream",
+                consumer_group=consumer._consumer_group,
+            )
+            await pel_worker._scan_and_requeue()
+
+            mock_redis.xadd.assert_awaited_once()
+            requeued_fields: dict[str, str] = mock_redis.xadd.await_args.args[1]
+            assert requeued_fields["requeue_count"] == "1"
+
+            release_handler.set()
+            await handle_task
+
+            assert mock_redis.xack.await_count >= 1
 
 
 class TestRedisStreamConsumer:
