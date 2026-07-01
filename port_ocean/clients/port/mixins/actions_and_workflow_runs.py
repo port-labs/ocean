@@ -45,19 +45,23 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
             if remaining <= 0:
                 break
             if workflow:
-                batch = await self.claim_pending_wf_node_runs(
-                    limit=remaining,
-                    visibility_timeout_ms=visibility_timeout_ms,
-                    exclude_invocation_types=exclude_workflow_invocation_types,
+                claimed: list[IntegrationRun] = list(
+                    await self.claim_pending_wf_node_runs(
+                        limit=remaining,
+                        visibility_timeout_ms=visibility_timeout_ms,
+                        exclude_invocation_types=exclude_workflow_invocation_types,
+                    )
                 )
             else:
-                batch = await self.claim_pending_action_runs(
-                    limit=remaining,
-                    visibility_timeout_ms=visibility_timeout_ms,
-                    exclude_action_identifiers=exclude_action_identifiers,
+                claimed = list(
+                    await self.claim_pending_action_runs(
+                        limit=remaining,
+                        visibility_timeout_ms=visibility_timeout_ms,
+                        exclude_action_identifiers=exclude_action_identifiers,
+                    )
                 )
-            runs.extend(batch)
-            remaining -= len(batch)
+            runs.extend(claimed)
+            remaining -= len(claimed)
         self._claim_workflow_first = not self._claim_workflow_first
         return runs
 

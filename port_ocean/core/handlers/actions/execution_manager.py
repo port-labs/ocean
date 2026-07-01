@@ -49,7 +49,7 @@ class ExecutionManager:
         _active_sources (AbstractQueue[str]): Round-robin source queue (global or partition name)
         _workers_count (int): Number of worker tasks to start
         _high_watermark (int): Maximum total runs buffered before throttling claim-pending polls
-        _max_runs_buffer_util_pct_per_action (int | None): Per-action buffer cap as % of high watermark; saturated identifiers are excluded from action claim-pending
+        _max_runs_buffer_util_pct_per_action (int | None): Per-identifier buffer cap as % of high watermark; saturated keys are excluded from claim-pending per run kind
         _poll_check_interval_seconds (int): Seconds between claim-pending polls when idle or at high watermark
         _visibility_timeout_ms (int): Claim visibility timeout passed to Port
         _max_wait_seconds_before_shutdown (float): Maximum wait time during shutdown
