@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.97 (2026-07-01)
+
+
+### Bug Fixes
+
+- Use simple string literals in kind names to prevent Loguru from crashing in multi-process mode
+
+
 ## 0.3.96 (2026-06-30)
 
 
