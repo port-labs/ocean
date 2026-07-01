@@ -192,8 +192,10 @@ commits(first: 1) {
 EXPENSIVE_PR_GRAPHQL_FIELDS = [
     "reviewRequests",
     "reviews",
+    "reviewThreads",
     "assignees",
     "statusCheckRollup",
+    "labels",
 ]
 
 

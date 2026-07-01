@@ -253,15 +253,15 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         A single fallback that drops the most expensive per-node fields; empty
         when the user already excludes all of them, so no redundant retry is made.
         """
-        full = generate_list_pull_requests_gql(
-            pr_gql_options, order_by_field=order_by_field
-        )
+        already_excluded = set(pr_gql_options.exclude_graphql_fields)
+        if all(field in already_excluded for field in EXPENSIVE_PR_GRAPHQL_FIELDS):
+            return []
         stripped = generate_list_pull_requests_gql(
             pr_gql_options,
             order_by_field=order_by_field,
             extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS,
         )
-        return [stripped] if stripped != full else []
+        return [stripped]
 
     async def _fetch_open_pull_requests(
         self,
