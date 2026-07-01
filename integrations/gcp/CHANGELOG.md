@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.344 (2026-07-01)
+
+
+### Features
+
+- Added Cloud Function Sync support to the GCP integration: resource kinds can now be routed to external HTTP endpoints (e.g. Cloud Run) using a Fivetran-compatible pagination protocol, enabling non-GCP data sources to be synced through the GCP integration.
+
+
 ## 0.1.342 (2026-06-28)
 
 
