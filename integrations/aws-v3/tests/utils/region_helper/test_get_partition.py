@@ -1,5 +1,3 @@
-import pytest
-from typing import Generator
 from unittest.mock import MagicMock, patch
 
 from aws.utils.region_helper import RegionHelper
