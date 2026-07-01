@@ -155,21 +155,21 @@ class FirehydrantClient:
 
         return services
 
-    async def create_webhooks_if_not_exists(self) -> None:
+    async def create_webhooks_if_not_exists(self, base_url: str) -> None:
         webhook_endpoint = "webhooks"
         all_subscriptions = []
 
         async for item in self.get_paginated_resource(webhook_endpoint):
             all_subscriptions.extend(item)
 
-        app_host_webhook_url = f"{self.app_host}/integration/webhook"
+        target_url = f"{base_url}/integration/webhook"
 
         for webhook in all_subscriptions:
-            if webhook["url"] == app_host_webhook_url:
+            if webhook["url"] == target_url:
                 return
 
         body = {
-            "url": app_host_webhook_url,
+            "url": target_url,
             "state": "active",
             "subscriptions": ["incidents", "change_events"],
         }
