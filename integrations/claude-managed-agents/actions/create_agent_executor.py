@@ -24,8 +24,10 @@ class CreateAgentExecutor(AbstractAnthropicExecutor):
             raise ValueError("name and model are required")
 
         system = props.get("systemPrompt")
-        extra = props.get("config") or {}
-        if not isinstance(extra, dict):
+        extra = props.get("config")
+        if extra is None:
+            extra = {}
+        elif not isinstance(extra, dict):
             raise ValueError("config must be an object")
 
         try:

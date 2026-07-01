@@ -50,4 +50,4 @@ class AbstractAnthropicWebhookProcessor(AbstractWebhookProcessor):
     @staticmethod
     def get_resource_id(payload: EventPayload) -> str:
         data = payload.get("data") or {}
-        return data.get("id", "")
+        return str(data.get("id") or "")

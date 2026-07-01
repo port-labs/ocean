@@ -75,8 +75,10 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         environment_id = props.get("environmentId")
         prompt = props.get("prompt")
         session_id = props.get("sessionId")
-        config = props.get("config") or {}
-        if config and not isinstance(config, dict):
+        config = props.get("config")
+        if config is None:
+            config = {}
+        elif not isinstance(config, dict):
             raise ValueError("config must be an object")
 
         if not (agent_id and prompt):

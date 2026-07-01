@@ -62,6 +62,7 @@ class AnthropicClient:
         api_key: str,
         webhook_signing_secret: str | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
+        anthropic_version: str | None = None,
     ) -> None:
         # A dedicated OceanAsyncClient gets us SaaS IP-blocking and consistent SSL
         # verification. Ocean's own retry layer is disabled (max_attempts=0) since
@@ -70,9 +71,13 @@ class AnthropicClient:
             timeout=ocean.config.client_timeout,
             retry_config=RetryConfig(max_attempts=0),
         )
+        default_headers = (
+            {"anthropic-version": anthropic_version} if anthropic_version else None
+        )
         self._client = AsyncAnthropic(
             api_key=api_key,
             base_url=api_host.rstrip("/"),
+            default_headers=default_headers,
             http_client=self._http_client,
         )
         self._webhook_signing_secret = webhook_signing_secret

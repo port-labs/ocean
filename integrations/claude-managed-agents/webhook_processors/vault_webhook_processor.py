@@ -29,16 +29,14 @@ class VaultWebhookProcessor(AbstractAnthropicWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig | None
     ) -> WebhookEventRawResults:
         event_type = self.get_event_type(payload)
-        data = payload.get("data") or {}
+        vault_id = self.get_resource_id(payload)
 
         if event_type in VAULT_DELETE_EVENTS:
-            vault_id = data.get("id")
             logger.info(f"Deleting vault {vault_id} from catalog ({event_type})")
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[{"id": vault_id}]
             )
 
-        vault_id = str(data.get("id") or "")
         client = create_anthropic_client()
         vault = await client.get_vault(vault_id)
         logger.info(f"Upserting vault {vault_id} from catalog ({event_type})")
