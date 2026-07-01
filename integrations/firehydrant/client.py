@@ -22,6 +22,9 @@ class CacheKeys(StrEnum):
     INCIDENT = "incident"
 
 
+WEBHOOK_INTEGRATION_PATH = "integration/webhook"
+
+
 class FirehydrantClient:
     def __init__(self, base_url: str, api_key: str):
         self.base_url = base_url
@@ -154,6 +157,14 @@ class FirehydrantClient:
 
         return services
 
+    @staticmethod
+    def _build_webhook_target_url(base_url: str) -> str:
+        return f"{base_url.rstrip('/')}/{WEBHOOK_INTEGRATION_PATH}"
+
+    @staticmethod
+    def _normalize_webhook_url(url: str) -> str:
+        return url.rstrip("/")
+
     async def create_webhooks_if_not_exists(self, base_url: str) -> None:
         webhook_endpoint = "webhooks"
         all_subscriptions = []
@@ -161,10 +172,10 @@ class FirehydrantClient:
         async for item in self.get_paginated_resource(webhook_endpoint):
             all_subscriptions.extend(item)
 
-        target_url = f"{base_url}/integration/webhook"
+        target_url = self._build_webhook_target_url(base_url)
 
         for webhook in all_subscriptions:
-            if webhook["url"] == target_url:
+            if self._normalize_webhook_url(webhook["url"]) == target_url:
                 return
 
         body = {
