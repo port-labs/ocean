@@ -717,6 +717,25 @@ class TestRedisStreamConsumer:
             == 1500.0
         )
 
+    def test_time_since_queued_ms_clamps_negative_delta_to_zero(self) -> None:
+        queued_time = datetime.fromtimestamp(1700000001.5, tz=timezone.utc)
+        consumed_at = datetime.fromtimestamp(1700000000, tz=timezone.utc)
+
+        with patch(
+            "port_ocean.consumers.redis_stream_consumer.logger.warning"
+        ) as mock_warning:
+            assert (
+                RedisStreamConsumer._time_since_queued_ms(queued_time, now=consumed_at)
+                == 0.0
+            )
+
+        mock_warning.assert_called_once_with(
+            "queuedAt is in the future relative to consumer clock",
+            queued_time=queued_time.isoformat(),
+            reference_time=consumed_at.isoformat(),
+            delta_ms=-1500.0,
+        )
+
     def test_time_since_queued_ms_returns_none_when_queued_time_missing(self) -> None:
         assert RedisStreamConsumer._time_since_queued_ms(None) is None
 
