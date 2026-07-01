@@ -19,7 +19,9 @@ from gcp_core.errors import (
     GotFeedCreatedSuccessfullyMessageError,
 )
 from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
+from gcp_core.cloud_function.client import CloudFunctionClient
 from gcp_core.overrides import (
+    GCPCloudFunctionResourceConfig,
     GCPCloudResourceSelector,
     GCPPortAppConfig,
     ProtoConfig,
@@ -48,6 +50,21 @@ RATE_LIMITER_TIME_PERIOD_SECONDS: float = 60.0
 PROJECT_V3_GET_REQUESTS_RATE_LIMITER: FixedWindowLimiter
 PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE: BoundedSemaphore
 BACKGROUND_TASK_THRESHOLD: float
+
+
+async def _get_id_token(audience: str) -> typing.Optional[str]:
+    """Fetch a GCP OIDC ID token for the given audience (Cloud Run URL) using ADC."""
+    import google.auth.transport.requests
+    import google.oauth2.id_token
+
+    try:
+        request = google.auth.transport.requests.Request()
+        return await asyncio.to_thread(
+            google.oauth2.id_token.fetch_id_token, request, audience
+        )
+    except Exception as e:
+        logger.warning(f"Failed to fetch GCP ID token for {audience!r}: {e}")
+        return None
 
 
 async def _resolve_resync_method_for_resource(
@@ -168,6 +185,30 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in AssetTypesWithSpecialHandling:
         logger.debug("Kind already has a specific handling, skipping")
         return
+
+    config = get_current_resource_config()
+    if isinstance(config, GCPCloudFunctionResourceConfig):
+        function_url = config.selector.function_url
+        secrets = config.selector.secrets
+        integration_id = getattr(
+            ocean.config.integration, "identifier", "gcp-integration"
+        )
+        agent = f"gcp/{integration_id}"
+
+        async def _token_supplier() -> typing.Optional[str]:
+            return await _get_id_token(function_url)
+
+        client = CloudFunctionClient(
+            agent=agent,
+            function_url=function_url,
+            secrets=secrets,
+            token_supplier=_token_supplier,
+        )
+        logger.info(f"Syncing kind={kind!r} via cloud function at {function_url!r}")
+        async for page in client.sync(kind):
+            yield page
+        return
+
     asset_rate_limiter, asset_semaphore = await resolve_request_controllers(kind)
     async for batch in iterate_per_available_project(
         search_all_resources,

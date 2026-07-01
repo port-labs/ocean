@@ -12,7 +12,7 @@ from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-from gcp_core.overrides import GCPCloudResourceConfig, ProtoConfig
+from gcp_core.overrides import GCPCloudFunctionResourceConfig, GCPCloudResourceConfig, ProtoConfig
 from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path
@@ -133,13 +133,14 @@ class AssetTypesWithSpecialHandling(enum.StrEnum):
 
 
 def get_current_resource_config() -> (
-    typing.Union[ResourceConfig, GCPCloudResourceConfig]
+    typing.Union[ResourceConfig, GCPCloudResourceConfig, GCPCloudFunctionResourceConfig]
 ):
     """
     Returns the current resource config, accessible only inside an event context
     """
     return typing.cast(
-        typing.Union[ResourceConfig, GCPCloudResourceConfig], event.resource_config
+        typing.Union[ResourceConfig, GCPCloudResourceConfig, GCPCloudFunctionResourceConfig],
+        event.resource_config,
     )
 
 
