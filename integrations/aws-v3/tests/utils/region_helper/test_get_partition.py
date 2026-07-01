@@ -16,4 +16,6 @@ class TestGetPartition:
             result = RegionHelper.get_partition()
 
         assert result == "aws-cn"
-        mock_ocean.integration_config.get.assert_called_once_with("aws_partition", Consts.default_partition)
+        mock_ocean.integration_config.get.assert_called_once_with(
+            "aws_partition", Consts.default_partition
+        )
