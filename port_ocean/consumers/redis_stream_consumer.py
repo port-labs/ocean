@@ -261,13 +261,6 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             fields.get("queuedAt"), stream_key=self._stream_key
         )
         time_until_consumed_ms = self._time_since_queued_ms(queued_time)
-        if time_until_consumed_ms is not None:
-            logger.info(
-                "Redis stream message consumed",
-                stream_key=self._stream_key,
-                message_id=message_id,
-                time_until_consumed_ms=time_until_consumed_ms,
-            )
         try:
             raw_webhook_path = fields.get("webhookPath")
             if not raw_webhook_path:
@@ -326,6 +319,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 message_id=message_id,
                 webhook_path=webhook_path,
                 elapsed_ms=elapsed_ms,
+                time_until_consumed_ms=time_until_consumed_ms,
                 time_until_acked_ms=time_until_acked_ms,
             )
 

@@ -787,17 +787,12 @@ class TestRedisStreamConsumer:
                 )
 
         mock_logger_info.assert_any_call(
-            "Redis stream message consumed",
-            stream_key="1111111/live-events/raw/event-stream",
-            message_id="1700000000000-0",
-            time_until_consumed_ms=2000.0,
-        )
-        mock_logger_info.assert_any_call(
             "Redis stream message processed",
             stream_key="1111111/live-events/raw/event-stream",
             message_id="1700000000000-0",
             webhook_path="/webhook",
             elapsed_ms=ANY,
+            time_until_consumed_ms=2000.0,
             time_until_acked_ms=2500.0,
         )
 
