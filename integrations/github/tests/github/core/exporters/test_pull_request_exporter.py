@@ -15,6 +15,7 @@ from github.core.options import (
     PullRequestGraphQLOptions,
 )
 from github.helpers.gql_queries import (
+    EXPENSIVE_PR_GRAPHQL_FIELDS,
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
 )
@@ -892,20 +893,24 @@ class TestGraphQLPullRequestExporter:
         assert len(batches[1]) == 1
 
         # Ensure GraphQL variables were built correctly for both calls
+        open_options = PullRequestGraphQLOptions(enrich_with_first_commit=False)
         mock_paginated.assert_any_call(
-            generate_list_pull_requests_gql(
-                PullRequestGraphQLOptions(enrich_with_first_commit=False)
-            ),
+            generate_list_pull_requests_gql(open_options),
             {
                 "organization": "test-org",
                 "repo": "repo1",
                 "states": ["OPEN"],
                 "__path": "repository.pullRequests",
             },
+            fallback_queries=[
+                generate_list_pull_requests_gql(
+                    open_options, extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS
+                )
+            ],
         )
         mock_paginated.assert_any_call(
             generate_list_pull_requests_gql(
-                PullRequestGraphQLOptions(enrich_with_first_commit=False),
+                open_options,
                 order_by_field="UPDATED_AT",
             ),
             {
@@ -914,6 +919,13 @@ class TestGraphQLPullRequestExporter:
                 "states": ["CLOSED", "MERGED"],
                 "__path": "repository.pullRequests",
             },
+            fallback_queries=[
+                generate_list_pull_requests_gql(
+                    open_options,
+                    order_by_field="UPDATED_AT",
+                    extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS,
+                )
+            ],
         )
 
     async def test_get_paginated_resources_passes_enriched_query_when_enabled(
@@ -973,16 +985,20 @@ class TestGraphQLPullRequestExporter:
 
         assert len(batches) == 1
         assert batches[0][0]["firstCommit"]["oid"] == "sha1"
+        enriched_options = PullRequestGraphQLOptions(enrich_with_first_commit=True)
         mock_paginated.assert_called_once_with(
-            generate_list_pull_requests_gql(
-                PullRequestGraphQLOptions(enrich_with_first_commit=True)
-            ),
+            generate_list_pull_requests_gql(enriched_options),
             {
                 "organization": "test-org",
                 "repo": "repo1",
                 "states": ["OPEN"],
                 "__path": "repository.pullRequests",
             },
+            fallback_queries=[
+                generate_list_pull_requests_gql(
+                    enriched_options, extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS
+                )
+            ],
         )
 
     async def test_closed_prs_use_closed_at_filter_and_max_results(
@@ -1056,9 +1072,10 @@ class TestGraphQLPullRequestExporter:
         fields = [call.args[1] for call in mock_filter.call_args_list]
         assert fields == ["closedAt", "updatedAt"]
 
+        closed_options = PullRequestGraphQLOptions(enrich_with_first_commit=False)
         mock_paginated.assert_called_once_with(
             generate_list_pull_requests_gql(
-                PullRequestGraphQLOptions(enrich_with_first_commit=False),
+                closed_options,
                 order_by_field="UPDATED_AT",
             ),
             {
@@ -1067,6 +1084,13 @@ class TestGraphQLPullRequestExporter:
                 "states": ["CLOSED", "MERGED"],
                 "__path": "repository.pullRequests",
             },
+            fallback_queries=[
+                generate_list_pull_requests_gql(
+                    closed_options,
+                    order_by_field="UPDATED_AT",
+                    extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS,
+                )
+            ],
         )
         assert mock_normalize.call_count == 2
 

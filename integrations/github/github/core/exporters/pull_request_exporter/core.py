@@ -12,6 +12,7 @@ from github.core.options import (
     SinglePullRequestOptions,
 )
 from github.helpers.gql_queries import (
+    EXPENSIVE_PR_GRAPHQL_FIELDS,
     generate_list_pull_requests_gql,
     generate_pull_request_details_gql,
 )
@@ -242,6 +243,26 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             ):
                 yield batch
 
+    @staticmethod
+    def _build_pr_fallback_queries(
+        pr_gql_options: PullRequestGraphQLOptions,
+        order_by_field: str = "CREATED_AT",
+    ) -> list[str]:
+        """Lighter queries to retry with when the full query keeps timing out.
+
+        A single fallback that drops the most expensive per-node fields; empty
+        when the user already excludes all of them, so no redundant retry is made.
+        """
+        already_excluded = set(pr_gql_options.exclude_graphql_fields)
+        if all(field in already_excluded for field in EXPENSIVE_PR_GRAPHQL_FIELDS):
+            return []
+        stripped = generate_list_pull_requests_gql(
+            pr_gql_options,
+            order_by_field=order_by_field,
+            extra_excluded_fields=EXPENSIVE_PR_GRAPHQL_FIELDS,
+        )
+        return [stripped]
+
     async def _fetch_open_pull_requests(
         self,
         organization: str,
@@ -263,6 +284,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         async for pr_nodes in self.client.send_paginated_request(
             generate_list_pull_requests_gql(pr_gql_options),
             variables,
+            fallback_queries=self._build_pr_fallback_queries(pr_gql_options),
         ):
             if not pr_nodes:
                 continue
@@ -318,6 +340,9 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                     pr_gql_options, order_by_field=GRAPHQL_ORDER_BY_UPDATED_AT
                 ),
                 variables,
+                fallback_queries=self._build_pr_fallback_queries(
+                    pr_gql_options, order_by_field=GRAPHQL_ORDER_BY_UPDATED_AT
+                ),
             ),
             enrich=enrich,
             max_results=max_results,
