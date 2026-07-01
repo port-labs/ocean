@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.48 (2026-07-01)
+
+
+### Improvements
+
+- Refactored webhook handling to use Ocean's processor manager with dedicated incident, environment, and service processors
+- Webhook subscription now uses `OCEAN__BASE_URL` (with legacy `appHost` fallback) instead of the integration client `app_host` field
+
+
 ## 0.2.47 (2026-06-30)
 
 

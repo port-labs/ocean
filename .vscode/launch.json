@@ -35,6 +35,17 @@
       "type": "debugpy"
     },
     {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/firehydrant",
+      "envFile": "${workspaceFolder}/integrations/firehydrant/.env",
+      "justMyCode": true,
+      "name": "Run firehydrant integration",
+      "program": "${workspaceFolder}/integrations/firehydrant/debug.py",
+      "python": "${workspaceFolder}/integrations/firehydrant/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
       "name": "Attach to docker fake-integration integration",
       "type": "debugpy",
       "request": "attach",
