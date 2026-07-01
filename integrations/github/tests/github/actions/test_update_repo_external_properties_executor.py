@@ -11,6 +11,7 @@ from github.actions.update_repo_external_properties_executor import (
     external_properties_from_mapping,
 )
 from github.helpers.exceptions import InvalidActionParametersException
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
@@ -246,6 +247,35 @@ class TestUpdateRepoExternalPropertiesExecutor:
         )
 
         with pytest.raises(Exception, match="Unprocessable Entity"):
+            with patch(
+                "github.actions.update_repo_external_properties_executor.ocean"
+            ) as mock_ocean:
+                mock_ocean.port_client = mock_port_client
+                await executor.execute(run)
+
+    @pytest.mark.asyncio
+    async def test_forbidden_raises_missing_permission_error(
+        self,
+        executor: UpdateRepoExternalPropertiesExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "repo": "ocean",
+                "externalPropertiesMapping": {"tier": "1"},
+            }
+        )
+        request = httpx.Request(
+            "PATCH", "https://api.github.com/orgs/port-labs/properties/external/values"
+        )
+        response = httpx.Response(403, json={"message": "Forbidden"}, request=request)
+        mock_rest_client.make_request.side_effect = httpx.HTTPStatusError(
+            "403", request=request, response=response
+        )
+
+        with pytest.raises(ActionExecutionError, match="Custom properties write"):
             with patch(
                 "github.actions.update_repo_external_properties_executor.ocean"
             ) as mock_ocean:

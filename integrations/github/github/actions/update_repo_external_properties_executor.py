@@ -4,9 +4,11 @@ import httpx
 from loguru import logger
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.clients.rate_limiter.utils import is_rate_limit_response
 from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
+from port_ocean.exceptions.execution_manager import ActionExecutionError
 
 
 def external_properties_from_mapping(
@@ -74,13 +76,22 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
             except Exception as e:
                 error_message = str(e)
                 if isinstance(e, httpx.HTTPStatusError):
+                    if e.response.status_code == 403 and not is_rate_limit_response(
+                        e.response
+                    ):
+                        raise ActionExecutionError(
+                            "Missing external properties write permission on the organization. "
+                            "Update the integration permissions in order to enable this action."
+                        )
                     error_message = e.response.json().get("message", str(e))
                     logger.error(
                         "GitHub API error while updating external properties",
                         status_code=e.response.status_code,
                         message=error_message,
                     )
-                raise Exception(f"Error updating external properties: {error_message}")
+                raise ActionExecutionError(
+                    f"Error updating external properties: {error_message}"
+                )
 
             logger.info("Successfully updated external properties")
             await ocean.port_client.report_run_completed(
