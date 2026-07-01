@@ -44,6 +44,7 @@ class SinglePullRequestOptions(RepositoryIdentifier):
     pr_number: Required[int]
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
+    enrich_nested_fields_separately: NotRequired[bool]
 
 
 class ListPullRequestOptions(RepositoryIdentifier):
@@ -59,6 +60,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
     closed_after: NotRequired[Optional[datetime]]
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
+    enrich_nested_fields_separately: NotRequired[bool]
 
 
 class PullRequestGraphQLOptions(BaseModel):
@@ -68,6 +70,15 @@ class PullRequestGraphQLOptions(BaseModel):
         description=(
             "List of PullRequest GraphQL fields to omit from the query. "
             "Useful as a workaround for GitHub GraphQL instability around certain fields."
+        ),
+    )
+    enrich_nested_fields_separately: bool = Field(
+        default=False,
+        description=(
+            "When enabled, the PR list query is fetched without heavy nested connections "
+            "(assignees, reviewRequests, labels, reviews, statusCheckRollup). Each PR is "
+            "then enriched with those connections in a follow-up per-PR query. Trades more "
+            "requests for smaller queries that stay under GitHub's 10s GraphQL timeout."
         ),
     )
 

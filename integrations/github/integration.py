@@ -371,6 +371,18 @@ class GithubPullRequestSelector(RepoSearchSelector):
             "This option will be ignored if the api selector is set to rest."
         ),
     )
+    enrich_nested_fields_separately: bool = Field(
+        title="Enrich Nested Fields Separately",
+        alias="enrichNestedFieldsSeparately",
+        default=False,
+        description=(
+            "When the api selector is set to graphql and this option is enabled, the PR list query is fetched "
+            "without the heavy nested connections (assignees, reviewRequests, labels, reviews, statusCheckRollup); "
+            "each PR is then enriched with those connections via a follow-up per-PR query. Trades more requests "
+            "for smaller queries that stay under GitHub's 10s GraphQL timeout — recommended for large orgs hitting "
+            "502s on the standard query. This option will be ignored if the api selector is set to rest."
+        ),
+    )
 
     @property
     def updated_after(self) -> Optional[datetime]:
