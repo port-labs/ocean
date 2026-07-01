@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.1.3 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 6.1.2 (2026-06-29)
+
+
+### Improvements
+
+- Added an opt-in `enrichWithFirstCommit` flag to the `deployment` kind that attaches the earliest commit since the previous deployment under `__firstCommit`, powering the DORA Lead Time for Changes metric (defaults to false; adds one API call per deployment when enabled).
+
+
+## 6.1.1 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 6.1.0 (2026-06-28)
+
+
+### Improvements
+
+- Added integration tests for all kinds of resources
+
+## 6.0.14 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.2
+
+
+## 6.0.13 (2026-06-25)
+
+
+### Bug Fixes
+
+- Implemented rate limit reservation threshold to prevent resync deadlocks
+
+
+## 6.0.12 (2026-06-25)
+
+
+### Improvements
+
+- Reduce GraphQL API minimum page size to 1, add tests to formalize page-recovery behavior
+
+
+## 6.0.11 (2026-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.1
+
+
+## 6.0.10 (2026-06-25)
+
+
+### Improvements
+
+- Added a warning log when a GraphQL query's page size is reduced on retry
+
+
+## 6.0.9 (2026-06-25)
+
+
+### Improvements
+
+- All Pydantic imports modified to v1 in order to allow for gradual migration to v2
+
+
 ## 6.0.8 (2026-06-23)
 
 

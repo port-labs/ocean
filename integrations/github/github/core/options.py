@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 
 
 class ListOrganizationOptions(TypedDict):
@@ -183,6 +183,7 @@ class ListDeploymentsOptions(RepositoryIdentifier):
 
     task: NotRequired[Optional[str]]
     environment: NotRequired[Optional[str]]
+    enrich_with_first_commit: NotRequired[bool]
 
 
 class SingleDeploymentStatusOptions(RepositoryIdentifier):

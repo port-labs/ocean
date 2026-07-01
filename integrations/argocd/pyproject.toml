@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "argocd"
-version = "0.4.42"
+version = "0.4.48"
 description = "Argo CD integration powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.43.19", extras = ["cli"]}
+port_ocean = {version = "^0.44.4", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
@@ -67,7 +67,8 @@ exclude = [
     '.venv',
 ]
 plugins = [
-    "pydantic.mypy"
+    "pydantic.mypy",
+    "pydantic.v1.mypy"
 ]
 
 follow_imports = "silent"

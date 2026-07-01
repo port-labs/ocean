@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "datadog"
-version = "0.6.1"
+version = "0.6.6"
 description = "Datadog Ocean Integration"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.43.19", extras = ["cli"]}
+port_ocean = {version = "^0.44.4", extras = ["cli"]}
 loguru = "^0.7.2"
 
 [tool.poetry.group.dev.dependencies]
@@ -69,7 +69,8 @@ exclude = [
     '.venv',
 ]
 plugins = [
-    "pydantic.mypy"
+    "pydantic.mypy",
+    "pydantic.v1.mypy"
 ]
 
 follow_imports = "silent"

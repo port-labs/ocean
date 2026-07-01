@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import Request
 from loguru import logger
-from pydantic import BaseModel, Field, root_validator
+from pydantic.v1 import BaseModel, Field, root_validator
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -542,6 +542,16 @@ class GithubDeploymentSelector(RepoSearchSelector):
         title="Environment name",
         description="Filter deployments by environment name (e.g. staging, production).",
         default=None,
+    )
+    enrich_with_first_commit: bool = Field(
+        title="Enrich with first commit",
+        alias="enrichWithFirstCommit",
+        default=False,
+        description=(
+            "When enabled, each deployment is enriched with the earliest commit shipped since the previous "
+            "deployment to the same environment: __firstCommit (__sha, __timestamp in UTC) plus a "
+            "deployment-level __commitCount. Defaults to false."
+        ),
     )
 
 

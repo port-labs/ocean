@@ -45,6 +45,7 @@ from gitlab.webhook.webhook_processors.group_webhook_processor import (
     GroupWebhookProcessor,
 )
 from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
+from gitlab.webhook.webhook_factory.project_webhook_factory import ProjectWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
@@ -119,10 +120,15 @@ async def on_start() -> None:
         return
 
     if base_url := ocean.app.base_url:
-        logger.info(f"Creating webhooks for all groups at {base_url}")
         client = create_gitlab_client()
-        webhook_factory = GroupWebHook(client, base_url)
-        await webhook_factory.create_webhooks_for_all_groups()
+
+        logger.info(f"Creating webhooks for all groups at {base_url}")
+        group_webhook_factory = GroupWebHook(client, base_url)
+        await group_webhook_factory.create_webhooks_for_all_groups()
+
+        logger.info(f"Creating webhooks for personal namespace projects at {base_url}")
+        project_webhook_factory = ProjectWebHook(client, base_url)
+        await project_webhook_factory.create_webhooks_for_personal_projects()
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
