@@ -21,7 +21,7 @@ class BuildRunProperties(BaseModel):
     endTime: datetime | None = Field(default=None, alias="EndTime")
     environment: dict[str, Any] | None = Field(default=None, alias="Environment")
     exportedEnvironmentVariables: list[dict[str, Any]] = Field(
-        default_factory=list, alais="ExportedEnvironmentVariables"
+        default_factory=list, alias="ExportedEnvironmentVariables"
     )
     fileSystemLocations: list[dict[str, Any]] = Field(
         default_factory=list, alias="FileSystemLocations"
