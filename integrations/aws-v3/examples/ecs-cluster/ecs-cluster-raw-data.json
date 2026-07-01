@@ -2,6 +2,7 @@
   "Type": "AWS::ECS::Cluster",
   "Properties": {
     "ClusterName": "my-production-cluster",
+    "ClusterArn": "arn:aws:ecs:eu-west-1:123456789012:cluster/my-cluster",
     "CapacityProviders": [
       "FARGATE",
       "FARGATE_SPOT"
@@ -29,5 +30,9 @@
     "ActiveServicesCount": 5,
     "PendingTasksCount": 2,
     "RegisteredContainerInstancesCount": 8
+  },
+  "__ExtraContext": {
+    "AccountId": "123456789012",
+    "Region": "eu-west-1"
   }
 }

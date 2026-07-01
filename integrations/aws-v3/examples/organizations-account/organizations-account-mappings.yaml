@@ -1,0 +1,17 @@
+resources:
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.Name
+          blueprint: '"organizationsAccount"'
+          properties:
+            arn: .Properties.Arn
+            email: .Properties.Email
+            name: .Properties.Name
+            status: .Properties.Status
+            joinedMethod: .Properties.JoinedMethod
+            joinedTimestamp: .Properties.JoinedTimestamp
