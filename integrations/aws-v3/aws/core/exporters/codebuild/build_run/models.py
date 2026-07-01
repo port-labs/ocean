@@ -21,7 +21,7 @@ class BuildRunProperties(BaseModel):
     endTime: Optional[datetime] = Field(default=None, alias="EndTime")
     environment: Optional[Dict[str, Any]] = Field(default=None, alias="Environment")
     exportedEnvironmentVariables: List[Dict[str, Any]] = Field(
-        default_factory=list, alais="ExportedEnvironmentVariables"
+        default_factory=list, alias="ExportedEnvironmentVariables"
     )
     fileSystemLocations: List[Dict[str, Any]] = Field(
         default_factory=list, alias="FileSystemLocations"
