@@ -7,9 +7,10 @@ import httpx
 import pytest
 
 from github.actions.update_repo_external_properties_executor import (
-    ExternalProperty,
     UpdateRepoExternalPropertiesExecutor,
+    external_properties_from_mapping,
 )
+from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
@@ -30,26 +31,26 @@ def make_run(execution_properties: dict[str, Any]) -> ActionRun:
     )
 
 
-class TestExternalPropertyFromDict:
+class TestExternalPropertiesFromMapping:
     def test_string_value(self) -> None:
-        result = ExternalProperty.from_dict({"lifecycle": "Deprecated"})
-        assert result == [
-            ExternalProperty(property_name="lifecycle", value="Deprecated")
+        assert external_properties_from_mapping({"lifecycle": "Deprecated"}) == [
+            {"property_name": "lifecycle", "value": "Deprecated"}
         ]
 
     def test_none_value(self) -> None:
-        result = ExternalProperty.from_dict({"prop": None})
-        assert result == [ExternalProperty(property_name="prop", value=None)]
+        assert external_properties_from_mapping({"prop": None}) == [
+            {"property_name": "prop", "value": None}
+        ]
 
     def test_empty_string_becomes_none(self) -> None:
-        result = ExternalProperty.from_dict({"prop": ""})
-        assert result == [ExternalProperty(property_name="prop", value=None)]
+        assert external_properties_from_mapping({"prop": ""}) == [
+            {"property_name": "prop", "value": None}
+        ]
 
     def test_non_string_value_coerced_to_str(self) -> None:
-        result = ExternalProperty.from_dict({"count": 42, "active": True})
-        assert result == [
-            ExternalProperty(property_name="count", value="42"),
-            ExternalProperty(property_name="active", value="True"),
+        assert external_properties_from_mapping({"count": 42, "active": True}) == [
+            {"property_name": "count", "value": "42"},
+            {"property_name": "active", "value": "True"},
         ]
 
 
@@ -118,7 +119,7 @@ class TestUpdateRepoExternalPropertiesExecutor:
         )
 
     @pytest.mark.asyncio
-    async def test_empty_mapping_skips_github_call(
+    async def test_empty_mapping_fails(
         self,
         executor: UpdateRepoExternalPropertiesExecutor,
         mock_rest_client: MagicMock,
@@ -132,19 +133,21 @@ class TestUpdateRepoExternalPropertiesExecutor:
             }
         )
 
-        with patch(
-            "github.actions.update_repo_external_properties_executor.ocean"
-        ) as mock_ocean:
-            mock_ocean.port_client = mock_port_client
-            await executor.execute(run)
+        with pytest.raises(
+            InvalidActionParametersException,
+            match="externalPropertiesMapping is required and must not be empty",
+        ):
+            with patch(
+                "github.actions.update_repo_external_properties_executor.ocean"
+            ) as mock_ocean:
+                mock_ocean.port_client = mock_port_client
+                await executor.execute(run)
 
         mock_rest_client.make_request.assert_not_awaited()
-        mock_port_client.report_run_completed.assert_awaited_once_with(
-            run, success=True, message="No changes to apply."
-        )
+        mock_port_client.report_run_completed.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_missing_mapping_skips_github_call(
+    async def test_missing_mapping_fails(
         self,
         executor: UpdateRepoExternalPropertiesExecutor,
         mock_rest_client: MagicMock,
@@ -152,16 +155,70 @@ class TestUpdateRepoExternalPropertiesExecutor:
     ) -> None:
         run = make_run({"org": "port-labs", "repo": "ocean"})
 
-        with patch(
-            "github.actions.update_repo_external_properties_executor.ocean"
-        ) as mock_ocean:
-            mock_ocean.port_client = mock_port_client
-            await executor.execute(run)
+        with pytest.raises(
+            InvalidActionParametersException,
+            match="externalPropertiesMapping is required and must not be empty",
+        ):
+            with patch(
+                "github.actions.update_repo_external_properties_executor.ocean"
+            ) as mock_ocean:
+                mock_ocean.port_client = mock_port_client
+                await executor.execute(run)
 
         mock_rest_client.make_request.assert_not_awaited()
-        mock_port_client.report_run_completed.assert_awaited_once_with(
-            run, success=True, message="No changes to apply."
+        mock_port_client.report_run_completed.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_missing_org_fails(
+        self,
+        executor: UpdateRepoExternalPropertiesExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "repo": "ocean",
+                "externalPropertiesMapping": {"lifecycle": "Deprecated"},
+            }
         )
+
+        with pytest.raises(
+            InvalidActionParametersException, match="org and repo are required"
+        ):
+            with patch(
+                "github.actions.update_repo_external_properties_executor.ocean"
+            ) as mock_ocean:
+                mock_ocean.port_client = mock_port_client
+                await executor.execute(run)
+
+        mock_rest_client.make_request.assert_not_awaited()
+        mock_port_client.report_run_completed.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_missing_repo_fails(
+        self,
+        executor: UpdateRepoExternalPropertiesExecutor,
+        mock_rest_client: MagicMock,
+        mock_port_client: MagicMock,
+    ) -> None:
+        run = make_run(
+            {
+                "org": "port-labs",
+                "externalPropertiesMapping": {"lifecycle": "Deprecated"},
+            }
+        )
+
+        with pytest.raises(
+            InvalidActionParametersException, match="org and repo are required"
+        ):
+            with patch(
+                "github.actions.update_repo_external_properties_executor.ocean"
+            ) as mock_ocean:
+                mock_ocean.port_client = mock_port_client
+                await executor.execute(run)
+
+        mock_rest_client.make_request.assert_not_awaited()
+        mock_port_client.report_run_completed.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_github_http_error_raises(

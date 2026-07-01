@@ -1,38 +1,24 @@
-from typing import Any, cast
+from typing import Any
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel
 
 from github.actions.abstract_github_executor import AbstractGithubExecutor
+from github.helpers.exceptions import InvalidActionParametersException
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import ActionRun, WorkflowNodeRun
 
 
-class ExternalProperty(BaseModel):
-    property_name: str
-    value: str | None
-
-    @staticmethod
-    def from_dict(
-        external_properties_mapping: dict[str, Any],
-    ) -> list["ExternalProperty"]:
-        """
-        Convert a flat {name: value} dict into the GitHub properties array:
-            [ExternalProperty(property_name="...", value="...")]
-        """
-        return [
-            ExternalProperty(
-                property_name=name,
-                value=None if value is None or value == "" else str(value),
-            )
-            for name, value in external_properties_mapping.items()
-        ]
-
-
-class PatchExternalPropertiesBody(BaseModel):
-    repository_names: list[str]
-    properties: list[ExternalProperty]
+def external_properties_from_mapping(
+    external_properties_mapping: dict[str, Any],
+) -> list[dict[str, str | None]]:
+    return [
+        {
+            "property_name": name,
+            "value": None if value is None or value == "" else str(value),
+        }
+        for name, value in external_properties_mapping.items()
+    ]
 
 
 class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
@@ -60,28 +46,29 @@ class UpdateRepoExternalPropertiesExecutor(AbstractGithubExecutor):
             "externalPropertiesMapping"
         )
 
+        if not (org and repo):
+            raise InvalidActionParametersException("org and repo are required")
+
+        if not external_properties_mapping:
+            logger.warning("No external properties to update")
+            raise InvalidActionParametersException(
+                "externalPropertiesMapping is required and must not be empty"
+            )
+
         with logger.contextualize(org=org, repo=repo):
-            logger.info("Processing external property update")
-
-            if not external_properties_mapping:
-                logger.info(
-                    "No properties changes detected — nothing to push to GitHub"
-                )
-                await ocean.port_client.report_run_completed(
-                    run, success=True, message="No changes to apply."
-                )
-                return
-
-            github_properties = ExternalProperty.from_dict(external_properties_mapping)
+            logger.info("Processing external properties update")
+            github_properties = external_properties_from_mapping(
+                external_properties_mapping
+            )
 
             try:
                 await self.rest_client.make_request(
                     f"{self.rest_client.base_url}/orgs/{org}/properties/external/values",
                     method="PATCH",
-                    json_data=PatchExternalPropertiesBody(
-                        repository_names=[cast(str, repo)],
-                        properties=github_properties,
-                    ).model_dump(),
+                    json_data={
+                        "repository_names": [str(repo)],
+                        "properties": github_properties,
+                    },
                     ignore_default_errors=False,
                 )
             except Exception as e:
