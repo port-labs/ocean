@@ -410,7 +410,9 @@ async def test_send_request_signals_throttle_on_read_error(
         ) as mock_throttle,
     ):
         with pytest.raises(ReadError):
-            await mock_client.send_request("GET", "https://dev.azure.com/org/_apis/test")
+            await mock_client.send_request(
+                "GET", "https://dev.azure.com/org/_apis/test"
+            )
 
         mock_throttle.assert_awaited_once_with(
             ADO_RATE_LIMIT_WINDOW_SECONDS,
@@ -436,7 +438,9 @@ async def test_send_request_signals_throttle_on_read_timeout(
         ) as mock_throttle,
     ):
         with pytest.raises(ReadTimeout):
-            await mock_client.send_request("GET", "https://dev.azure.com/org/_apis/test")
+            await mock_client.send_request(
+                "GET", "https://dev.azure.com/org/_apis/test"
+            )
 
         mock_throttle.assert_awaited_once_with(
             ADO_RATE_LIMIT_WINDOW_SECONDS,
