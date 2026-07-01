@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -25,10 +26,13 @@ class ServiceWebhookProcessor(FirehydrantBaseWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         client = init_client()
+        services = payload["data"]["services"]
         # get_single_service returns a list (service enriched with incident milestones)
+        service_results = await asyncio.gather(
+            *(client.get_single_service(service_id=service["id"]) for service in services)
+        )
         updated: list[dict[str, Any]] = []
-        for service in payload["data"]["services"]:
-            service_data = await client.get_single_service(service_id=service["id"])
+        for service_data in service_results:
             updated.extend(service_data)
         return WebhookEventRawResults(
             updated_raw_results=updated,

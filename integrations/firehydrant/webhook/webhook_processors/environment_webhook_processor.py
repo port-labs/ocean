@@ -1,4 +1,4 @@
-from typing import Any
+import asyncio
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -25,13 +25,14 @@ class EnvironmentWebhookProcessor(FirehydrantBaseWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         client = init_client()
-        updated: list[dict[str, Any]] = []
-        for environment in payload["data"]["environments"]:
-            env_data = await client.get_single_environment(
-                environment_id=environment["id"]
+        environments = payload["data"]["environments"]
+        updated = await asyncio.gather(
+            *(
+                client.get_single_environment(environment_id=environment["id"])
+                for environment in environments
             )
-            updated.append(env_data)
+        )
         return WebhookEventRawResults(
-            updated_raw_results=updated,
+            updated_raw_results=list(updated),
             deleted_raw_results=[],
         )
