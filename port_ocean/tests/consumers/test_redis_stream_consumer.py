@@ -310,7 +310,7 @@ class TestRedisStreamConsumerConnection:
             )
             consumer._redis = mock_redis
             consumer._is_running = True
-            consumer._ensure_consumer_group = AsyncMock()
+            consumer._ensure_consumer_group = AsyncMock()  # type: ignore[method-assign]
 
             await consumer._read_loop()
 
