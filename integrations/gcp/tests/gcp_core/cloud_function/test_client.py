@@ -27,6 +27,7 @@ def _make_client(
 def _mock_post(response_body: dict) -> tuple[MagicMock, AsyncMock]:
     """Return (mock_http_client, mock_post) configured to return response_body."""
     mock_response = MagicMock()
+    mock_response.is_error = False
     mock_response.raise_for_status = MagicMock()
     mock_response.json.return_value = response_body
     mock_http = MagicMock()
@@ -55,6 +56,7 @@ async def test_sync_single_page_no_more() -> None:
 @pytest.mark.asyncio
 async def test_sync_pagination_passes_state() -> None:
     page1 = MagicMock()
+    page1.is_error = False
     page1.raise_for_status = MagicMock()
     page1.json.return_value = {
         "insert": [{"id": "1"}],
@@ -62,6 +64,7 @@ async def test_sync_pagination_passes_state() -> None:
         "state": {"cursor": "page-2"},
     }
     page2 = MagicMock()
+    page2.is_error = False
     page2.raise_for_status = MagicMock()
     page2.json.return_value = {
         "insert": [{"id": "2"}],
@@ -88,6 +91,30 @@ async def test_sync_skips_empty_pages() -> None:
         pages = [page async for page in _make_client().sync("employee")]
 
     assert pages == []
+
+
+@pytest.mark.asyncio
+async def test_sync_stops_when_state_does_not_advance() -> None:
+    """Endpoint returning hasMore=true with unchanged state must not loop forever."""
+    stuck_page = MagicMock()
+    stuck_page.is_error = False
+    stuck_page.raise_for_status = MagicMock()
+    stuck_page.json.return_value = {
+        "insert": [{"id": "1"}],
+        "hasMore": True,
+        "state": None,  # state never advances
+    }
+    mock_http = MagicMock()
+    mock_http.post = AsyncMock(return_value=stuck_page)
+
+    with patch(f"{_MODULE}.http_async_client", mock_http), patch(
+        f"{_MODULE}.logger"
+    ) as mock_logger:
+        pages = [page async for page in _make_client().sync("employee")]
+
+    assert pages == [[{"id": "1"}]]
+    assert mock_http.post.call_count == 1
+    mock_logger.warning.assert_called_once()
 
 
 @pytest.mark.asyncio

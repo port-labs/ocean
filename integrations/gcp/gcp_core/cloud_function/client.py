@@ -23,8 +23,14 @@ class CloudFunctionClient:
         state: Optional[dict[str, Any]] = None
         while has_more:
             body = await self._fetch(kind=kind, state=state)
-            state = body.get("state")
+            new_state = body.get("state")
             has_more = bool(body.get("hasMore", False))
+            if has_more and new_state == state:
+                logger.warning(
+                    f"Cloud function returned hasMore=true but state did not advance for kind={kind!r}; stopping to prevent infinite loop"
+                )
+                has_more = False
+            state = new_state
             items = body.get("insert", [])
             if items:
                 yield items
@@ -44,11 +50,11 @@ class CloudFunctionClient:
             f"Calling cloud function for kind={kind!r}, hasState={state is not None}"
         )
         response = await http_async_client.post(
-            self._function_url, json=payload, headers=headers, timeout=60.0
+            self._function_url, json=payload, headers=headers
         )
         if response.is_error:
             logger.error(
-                f"Cloud function returned {response.status_code} for kind={kind!r}: {response.text}"
+                f"Cloud function returned {response.status_code} for kind={kind!r}: {response.text[:200]}"
             )
         response.raise_for_status()
         return response.json()
