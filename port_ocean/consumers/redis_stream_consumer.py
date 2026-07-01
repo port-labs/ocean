@@ -318,6 +318,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             )
         finally:
             elapsed_ms = round((time.monotonic() - start_time) * 1000, 2)
+            await self._ack(message_id)
             time_until_acked_ms = self._time_since_queued_ms(queued_time)
             logger.info(
                 "Redis stream message processed",
@@ -327,7 +328,6 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
                 elapsed_ms=elapsed_ms,
                 time_until_acked_ms=time_until_acked_ms,
             )
-            await self._ack(message_id)
 
     @staticmethod
     def _parse_queued_at(
@@ -360,7 +360,17 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             return None
 
         reference_time = now or datetime.now(timezone.utc)
-        return round((reference_time - queued_time).total_seconds() * 1000, 2)
+        delta_ms = (reference_time - queued_time).total_seconds() * 1000
+        if delta_ms < 0:
+            logger.warning(
+                "queuedAt is in the future relative to consumer clock",
+                queued_time=queued_time.isoformat(),
+                reference_time=reference_time.isoformat(),
+                delta_ms=round(delta_ms, 2),
+            )
+            return 0.0
+
+        return round(delta_ms, 2)
 
     @staticmethod
     def _normalize_webhook_path(webhook_path: str) -> str:
