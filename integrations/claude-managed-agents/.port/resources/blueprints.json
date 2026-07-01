@@ -1,0 +1,322 @@
+[
+    {
+        "identifier": "claude_environment",
+        "title": "Claude Environment",
+        "icon": "Claude",
+        "schema": {
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "scope": {
+                    "type": "string",
+                    "title": "Scope",
+                    "enum": [
+                        "organization",
+                        "account"
+                    ]
+                },
+                "environmentType": {
+                    "type": "string",
+                    "title": "Environment type",
+                    "enum": [
+                        "cloud",
+                        "self_hosted"
+                    ]
+                },
+                "metadata": {
+                    "type": "object",
+                    "title": "Metadata"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                },
+                "archivedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Archived At"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "claude_vault",
+        "title": "Claude Vault",
+        "icon": "Claude",
+        "schema": {
+            "properties": {
+                "metadata": {
+                    "type": "object",
+                    "title": "Metadata"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                },
+                "archivedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Archived At"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "claude_memory_store",
+        "title": "Claude Memory Store",
+        "icon": "Claude",
+        "schema": {
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "metadata": {
+                    "type": "object",
+                    "title": "Metadata"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                },
+                "archivedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Archived At"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "claude_skill",
+        "title": "Claude Skill",
+        "icon": "Claude",
+        "schema": {
+            "properties": {
+                "displayTitle": {
+                    "type": "string",
+                    "title": "Display title"
+                },
+                "source": {
+                    "type": "string",
+                    "title": "Source",
+                    "enum": [
+                        "custom",
+                        "anthropic"
+                    ]
+                },
+                "latestVersion": {
+                    "type": "string",
+                    "title": "Latest version"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "claude_agent",
+        "title": "Claude Agent",
+        "icon": "Claude",
+        "schema": {
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "model": {
+                    "type": "string",
+                    "title": "Model"
+                },
+                "system": {
+                    "type": "string",
+                    "title": "System prompt"
+                },
+                "version": {
+                    "type": "number",
+                    "title": "Version"
+                },
+                "metadata": {
+                    "type": "object",
+                    "title": "Metadata"
+                },
+                "mcpServers": {
+                    "type": "array",
+                    "title": "MCP servers",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                },
+                "archivedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Archived At"
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "skills": {
+                "title": "Skills",
+                "target": "claude_skill",
+                "required": false,
+                "many": true
+            },
+            "delegateAgents": {
+                "title": "Delegate agents",
+                "target": "claude_agent",
+                "required": false,
+                "many": true
+            }
+        }
+    },
+    {
+        "identifier": "claude_session",
+        "title": "Claude Session",
+        "icon": "Claude",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "enum": [
+                        "rescheduling",
+                        "running",
+                        "idle",
+                        "terminated"
+                    ],
+                    "enumColors": {
+                        "rescheduling": "yellow",
+                        "running": "blue",
+                        "idle": "green",
+                        "terminated": "red"
+                    }
+                },
+                "inputTokens": {
+                    "type": "number",
+                    "title": "Input tokens"
+                },
+                "outputTokens": {
+                    "type": "number",
+                    "title": "Output tokens"
+                },
+                "cacheReadInputTokens": {
+                    "type": "number",
+                    "title": "Cache read input tokens"
+                },
+                "activeSeconds": {
+                    "type": "number",
+                    "title": "Active seconds"
+                },
+                "durationSeconds": {
+                    "type": "number",
+                    "title": "Duration seconds"
+                },
+                "agentVersion": {
+                    "type": "number",
+                    "title": "Agent version"
+                },
+                "githubRepositories": {
+                    "type": "array",
+                    "title": "GitHub repositories",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "vaultIds": {
+                    "type": "array",
+                    "title": "Vault IDs",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "metadata": {
+                    "type": "object",
+                    "title": "Metadata"
+                },
+                "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                },
+                "archivedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Archived At"
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "agent": {
+                "title": "Agent",
+                "target": "claude_agent",
+                "required": false,
+                "many": false
+            },
+            "environment": {
+                "title": "Environment",
+                "target": "claude_environment",
+                "required": false,
+                "many": false
+            },
+            "memoryStores": {
+                "title": "Memory stores",
+                "target": "claude_memory_store",
+                "required": false,
+                "many": true
+            }
+        }
+    }
+]
