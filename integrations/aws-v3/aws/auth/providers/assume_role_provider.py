@@ -8,7 +8,7 @@ from aws.auth.utils import CredentialsProviderError
 from loguru import logger
 from typing import Any
 
-from aws.utils import LocationUtils
+from aws.utils import RegionHelper
 
 
 class AssumeRoleProvider(CredentialProvider):
@@ -32,7 +32,7 @@ class AssumeRoleProvider(CredentialProvider):
         try:
             region = kwargs.get("region")
             if not region:
-                region = await LocationUtils.get_custom_partition_region_or_none(
+                region = await RegionHelper.get_custom_partition_region_or_none(
                     self.aws_client_factory_session
                 )
 

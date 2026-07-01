@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from aws.utils.location_utils import LocationUtils
+from aws.utils.region_helper import RegionHelper
 
 
 class TestGetFirstAvailableRegion:
@@ -12,13 +12,13 @@ class TestGetFirstAvailableRegion:
         regions = ["us-east-1", "us-west-2", "eu-west-1"]
 
         with patch.object(
-            LocationUtils,
+            RegionHelper,
             "get_all_available_regions",
             new_callable=AsyncMock,
             return_value=regions,
         ) as mock_get:
             # Act
-            result = await LocationUtils.get_first_available_region(mock_session)
+            result = await RegionHelper.get_first_available_region(mock_session)
 
         # Assert
         assert result == "us-east-1"
@@ -29,13 +29,13 @@ class TestGetFirstAvailableRegion:
         # Arrange
         mock_session = AsyncMock()
         with patch.object(
-            LocationUtils,
+            RegionHelper,
             "get_all_available_regions",
             new_callable=AsyncMock,
             return_value=[],
         ) as mock_get:
             # Act
-            result = await LocationUtils.get_first_available_region(mock_session)
+            result = await RegionHelper.get_first_available_region(mock_session)
 
         # Assert
         assert result is None

@@ -12,7 +12,7 @@ from typing import Any, AsyncIterator, Dict, List, cast
 from botocore.utils import ArnParser, InvalidArnException
 from aiobotocore.client import AioBaseClient
 
-from aws.utils import LocationUtils
+from aws.utils import RegionHelper
 
 # https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
 VALID_AWS_PARTITIONS = frozenset({"aws", "aws-us-gov", "aws-cn"})
@@ -246,7 +246,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
 
         try:
             organization_session = await self._get_organization_session()
-            region = await LocationUtils.get_custom_partition_region_or_none(
+            region = await RegionHelper.get_custom_partition_region_or_none(
                 organization_session
             )
             async with organization_session.create_client(

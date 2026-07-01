@@ -6,7 +6,7 @@ from aws.utils.consts import Consts
 from port_ocean.context.ocean import ocean
 
 
-class LocationUtils:
+class RegionHelper:
     _partition: str = ""
     _available_regions: list[str] = []
 

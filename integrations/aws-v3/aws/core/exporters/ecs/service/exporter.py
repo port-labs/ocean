@@ -10,7 +10,7 @@ from aws.core.exporters.ecs.service.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
-from aws.utils import LocationUtils
+from aws.utils import RegionHelper
 
 
 class EcsServiceExporter(IResourceExporter[list[str]]):
@@ -28,7 +28,7 @@ class EcsServiceExporter(IResourceExporter[list[str]]):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            partition = LocationUtils.get_partition()
+            partition = RegionHelper.get_partition()
             cluster_arn = f"arn:{partition}:ecs:{options.region}:{options.account_id}:cluster/{options.cluster_name}"
             service_arn = f"arn:{partition}:ecs:{options.region}:{options.account_id}:service/{options.cluster_name}/{options.service_name}"
 

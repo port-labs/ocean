@@ -5,7 +5,7 @@ from loguru import logger
 
 import asyncio
 
-from aws.utils import LocationUtils
+from aws.utils import RegionHelper
 
 
 class GetPublicAccessBlockAction(Action[list[dict[str, Any]]]):
@@ -125,7 +125,7 @@ class GetBucketLocationAction(Action[list[dict[str, Any]]]):
 class ListBucketsAction(Action[list[dict[str, Any]]]):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
-        partition = LocationUtils.get_partition()
+        partition = RegionHelper.get_partition()
         for bucket in buckets:
             data = {
                 "CreationDate": bucket[

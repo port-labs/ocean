@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from aws.utils.location_utils import LocationUtils
+from aws.utils.region_helper import RegionHelper
 from aws.utils.consts import Consts
 
 
@@ -12,16 +12,16 @@ class TestGetCustomPartitionRegionOrNone:
         mock_session = AsyncMock()
         with (
             patch.object(
-                LocationUtils, "get_partition", return_value=Consts.default_partition
+                RegionHelper, "get_partition", return_value=Consts.default_partition
             ),
             patch.object(
-                LocationUtils,
+                RegionHelper,
                 "get_first_available_region",
                 new_callable=AsyncMock,
             ) as mock_get_first,
         ):
             # Act
-            result = await LocationUtils.get_custom_partition_region_or_none(
+            result = await RegionHelper.get_custom_partition_region_or_none(
                 mock_session
             )
 
@@ -34,16 +34,16 @@ class TestGetCustomPartitionRegionOrNone:
         # Arrange
         mock_session = AsyncMock()
         with (
-            patch.object(LocationUtils, "get_partition", return_value="aws-us-gov"),
+            patch.object(RegionHelper, "get_partition", return_value="aws-us-gov"),
             patch.object(
-                LocationUtils,
+                RegionHelper,
                 "get_first_available_region",
                 new_callable=AsyncMock,
                 return_value="us-gov-west-1",
             ) as mock_get_region,
         ):
             # Act
-            result = await LocationUtils.get_custom_partition_region_or_none(
+            result = await RegionHelper.get_custom_partition_region_or_none(
                 mock_session
             )
 

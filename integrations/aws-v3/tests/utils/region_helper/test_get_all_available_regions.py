@@ -2,15 +2,15 @@ import pytest
 from typing import Generator
 from unittest.mock import AsyncMock, patch
 
-from aws.utils.location_utils import LocationUtils
+from aws.utils.region_helper import RegionHelper
 
 
 class TestGetAllAvailableRegions:
     @pytest.fixture(autouse=True)
     def reset_cache(self) -> Generator[None, None, None]:
-        LocationUtils._available_regions = []
+        RegionHelper._available_regions = []
         yield
-        LocationUtils._available_regions = []
+        RegionHelper._available_regions = []
 
     @pytest.mark.asyncio
     async def test_returns_regions_from_session(self) -> None:
@@ -19,10 +19,10 @@ class TestGetAllAvailableRegions:
         regions = ["us-east-1", "us-west-2", "eu-west-1"]
         mock_session.get_available_regions.return_value = regions
 
-        with patch.object(LocationUtils, "get_partition", return_value="aws"):
+        with patch.object(RegionHelper, "get_partition", return_value="aws"):
             # Act
-            result = await LocationUtils.get_all_available_regions(mock_session)
-            result_from_cache = await LocationUtils.get_all_available_regions(
+            result = await RegionHelper.get_all_available_regions(mock_session)
+            result_from_cache = await RegionHelper.get_all_available_regions(
                 mock_session
             )
 

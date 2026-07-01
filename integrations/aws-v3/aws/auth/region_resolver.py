@@ -2,7 +2,7 @@ from aiobotocore.session import AioSession
 from typing import List, Set, Optional
 from loguru import logger
 
-from aws.utils import Consts, LocationUtils
+from aws.utils import Consts, RegionHelper
 from integration import AWSResourceSelector
 
 
@@ -20,8 +20,8 @@ class RegionResolver:
         self.account_id = account_id
 
     async def get_enabled_regions(self) -> List[str]:
-        if LocationUtils.get_partition() != Consts.default_partition:
-            return await LocationUtils.get_all_available_regions(self.session)
+        if RegionHelper.get_partition() != Consts.default_partition:
+            return await RegionHelper.get_all_available_regions(self.session)
 
         async with self.session.create_client("account", region_name=None) as client:
             response = await client.list_regions(
