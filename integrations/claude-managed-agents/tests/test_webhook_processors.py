@@ -57,6 +57,7 @@ from port_ocean.core.models import (
 from actions.utils import build_external_id
 from webhook_processors.session_webhook_processor import SessionWebhookProcessor
 from webhook_processors.trigger_agent_webhook_processor import (
+    _INTERACTION_EVENT_TYPES,
     TriggerAgentWebhookProcessor,
 )
 from webhook_processors.vault_webhook_processor import VaultWebhookProcessor
@@ -148,11 +149,15 @@ async def test_trigger_should_process_only_terminal_events() -> None:
     assert await running.should_process_event(running.event) is False
 
 
-def _wf_node_run(report_status: bool = True) -> MagicMock:
+def _wf_node_run(
+    report_status: bool = True, *, session_id: str | None = None
+) -> MagicMock:
     run = MagicMock(spec=WorkflowNodeRun)
     run.id = "run_1"
     run.output = {"sessionId": "s1", "userMessageEventId": _ANCHOR_ID}
     run.execution_properties = {"reportSessionStatus": report_status}
+    if session_id is not None:
+        run.execution_properties["sessionId"] = session_id
     return run
 
 
@@ -215,6 +220,13 @@ def _patch_session_events(
     prior_idle: BetaManagedAgentsSessionStatusIdleEvent | None = None,
     agent_message_batches: list[list[BetaManagedAgentsSessionEvent]] | None = None,
 ) -> Any:
+    """Mock ``get_session_events`` for the anchor, prior-idle, and combined
+    interaction-events (errors + idle + agent messages) calls. ``interaction_batches``
+    and ``agent_message_batches`` are concatenated since the interaction is now
+    fetched in a single combined call.
+    """
+    combined_batches = list(interaction_batches) + list(agent_message_batches or [])
+
     async def _gen(_session_id: str, **kwargs: Any) -> Any:
         if kwargs.get("types") == ["user.message"] and kwargs.get("order") == "desc":
             yield [anchor]
@@ -227,31 +239,16 @@ def _patch_session_events(
             if prior_idle is not None:
                 yield [prior_idle]
             return
-        if kwargs.get("types") == ["session.error", "session.status_idle"]:
+        if kwargs.get("types") == _INTERACTION_EVENT_TYPES:
             if prior_idle is not None:
                 if kwargs.get("created_at_gt") == prior_idle.processed_at:
-                    for batch in interaction_batches:
+                    for batch in combined_batches:
                         yield batch
             elif (
                 kwargs.get("created_at_gt") is None
                 and kwargs.get("created_at_lte") is not None
             ):
-                for batch in interaction_batches:
-                    yield batch
-            return
-        if kwargs.get("types") == ["agent.message"]:
-            if prior_idle is not None:
-                if kwargs.get("created_at_gt") == prior_idle.processed_at:
-                    for batch in agent_message_batches or []:
-                        yield batch
-            elif kwargs.get("created_at_gte") is not None:
-                for batch in agent_message_batches or []:
-                    yield batch
-            elif (
-                kwargs.get("created_at_gt") is None
-                and kwargs.get("created_at_lte") is not None
-            ):
-                for batch in agent_message_batches or []:
+                for batch in combined_batches:
                     yield batch
             return
 
@@ -599,6 +596,53 @@ async def test_trigger_skips_when_report_disabled() -> None:
 
 
 @pytest.mark.asyncio
+async def test_trigger_new_session_skips_prior_idle_lookup() -> None:
+    """A run with no ``sessionId`` in execution_properties is a fresh session;
+    the prior-idle lookup must not be dispatched at all."""
+    anchor = _user_message("do the thing")
+    payload = _webhook_payload()
+    processor = TriggerAgentWebhookProcessor(_event(payload["data"]))
+
+    run = _wf_node_run()
+    mock_ocean = MagicMock()
+    mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
+    mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
+    mock_ocean.port_client.post_wf_node_run_logs = AsyncMock()
+    mock_ocean.port_client.report_run_completed = AsyncMock()
+
+    batch: list[BetaManagedAgentsSessionEvent] = [
+        _idle(BetaManagedAgentsSessionEndTurn(type="end_turn")),
+    ]
+
+    async def _gen(_session_id: str, **kwargs: Any) -> Any:
+        if kwargs.get("types") == ["user.message"] and kwargs.get("order") == "desc":
+            yield [anchor]
+            return
+        if kwargs.get("types") == ["session.status_idle"]:
+            raise AssertionError(
+                "prior-idle lookup must be skipped for a fresh session"
+            )
+        if kwargs.get("types") == _INTERACTION_EVENT_TYPES:
+            yield batch
+            return
+
+    client = MagicMock()
+    client.get_session_events = _gen
+
+    with (
+        patch("webhook_processors.trigger_agent_webhook_processor.ocean", mock_ocean),
+        patch(
+            "webhook_processors.trigger_agent_webhook_processor.create_anthropic_client",
+            return_value=client,
+        ),
+    ):
+        await processor.handle_event(payload, None)
+
+    mock_ocean.port_client.report_run_completed.assert_awaited_once()
+    assert mock_ocean.port_client.report_run_completed.call_args.args[1] is True
+
+
+@pytest.mark.asyncio
 async def test_trigger_delayed_webhook_anchors_prior_run() -> None:
     """A newer user message after webhook time must not steal correlation."""
     anchor_a = _user_message("run A", event_id="msg_a", processed_at=_TS)
@@ -631,7 +675,7 @@ async def test_trigger_delayed_webhook_anchors_prior_run() -> None:
         ):
             return
         if (
-            kwargs.get("types") == ["session.error", "session.status_idle"]
+            kwargs.get("types") == _INTERACTION_EVENT_TYPES
             and kwargs.get("created_at_gt") is None
             and kwargs.get("created_at_lte") is not None
         ):
@@ -670,7 +714,7 @@ async def test_trigger_continuation_scopes_errors_to_current_interaction() -> No
     )
     processor = TriggerAgentWebhookProcessor(_event(payload["data"]))
 
-    run = _wf_node_run()
+    run = _wf_node_run(session_id="s1")
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
@@ -711,7 +755,7 @@ async def test_trigger_continuation_scopes_errors_to_current_interaction() -> No
             yield [turn_one_idle]
             return
         if (
-            kwargs.get("types") == ["session.error", "session.status_idle"]
+            kwargs.get("types") == _INTERACTION_EVENT_TYPES
             and kwargs.get("created_at_gt") == turn_one_idle_ts
         ):
             yield interaction_batch
@@ -756,7 +800,7 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
     payload = _webhook_payload(created_at=wh_ts)
     processor = TriggerAgentWebhookProcessor(_event(payload["data"]))
 
-    run = _wf_node_run()
+    run = _wf_node_run(session_id="s1")
     mock_ocean = MagicMock()
     mock_ocean.port_client.find_run_by_external_id = AsyncMock(return_value=run)
     mock_ocean.port_client.is_run_in_progress = MagicMock(return_value=True)
@@ -799,7 +843,7 @@ async def test_user_message_after_idle_still_scopes_via_prior_idle() -> None:
             yield [prior_idle]
             return
         if (
-            kwargs.get("types") == ["session.error", "session.status_idle"]
+            kwargs.get("types") == _INTERACTION_EVENT_TYPES
             and kwargs.get("created_at_gt") == prior_idle_ts
         ):
             yield [billing, idle]

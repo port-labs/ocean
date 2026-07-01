@@ -114,7 +114,7 @@ class TriggerAgentExecutor(AbstractAnthropicExecutor):
         external_id = build_external_id(resolved_session_id, user_message.id)
         await ocean.port_client.update_run_started(
             run,
-            build_session_link(resolved_session_id),
+            build_session_link(self.client.get_workspace_id(), resolved_session_id),
             external_id,
             extra_output={
                 "sessionId": resolved_session_id,

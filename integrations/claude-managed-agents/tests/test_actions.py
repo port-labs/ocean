@@ -47,7 +47,100 @@ def test_build_external_id() -> None:
 
 
 def test_build_session_link() -> None:
-    assert build_session_link("s1") == "https://console.anthropic.com/sessions/s1"
+    assert (
+        build_session_link("ws_1", "s1")
+        == "https://platform.claude.com/workspaces/ws_1/sessions/s1"
+    )
+
+
+def test_build_session_link_falls_back_without_workspace_id() -> None:
+    assert build_session_link(None, "s1") == "https://platform.claude.com/"
+
+
+@pytest.mark.asyncio
+async def test_is_close_to_rate_limit_false_when_no_status_cached() -> None:
+    client_mock = MagicMock()
+    client_mock.get_create_rate_limit_status.return_value = None
+    executor = _build_executor(CreateAgentExecutor, client_mock)
+
+    assert await executor.is_close_to_rate_limit() is False
+
+
+@pytest.mark.asyncio
+async def test_is_close_to_rate_limit_false_with_healthy_headroom() -> None:
+    from clients.anthropic_client import CreateRateLimitInfo
+    from datetime import datetime, timedelta, timezone
+
+    client_mock = MagicMock()
+    client_mock.get_create_rate_limit_status.return_value = CreateRateLimitInfo(
+        limit=300,
+        remaining=250,
+        reset=datetime.now(timezone.utc) + timedelta(seconds=30),
+    )
+    executor = _build_executor(CreateAgentExecutor, client_mock)
+
+    assert await executor.is_close_to_rate_limit() is False
+
+
+@pytest.mark.asyncio
+async def test_is_close_to_rate_limit_true_when_nearly_exhausted() -> None:
+    from clients.anthropic_client import CreateRateLimitInfo
+    from datetime import datetime, timedelta, timezone
+
+    client_mock = MagicMock()
+    client_mock.get_create_rate_limit_status.return_value = CreateRateLimitInfo(
+        limit=300,
+        remaining=20,
+        reset=datetime.now(timezone.utc) + timedelta(seconds=30),
+    )
+    executor = _build_executor(CreateAgentExecutor, client_mock)
+
+    assert await executor.is_close_to_rate_limit() is True
+
+
+@pytest.mark.asyncio
+async def test_get_remaining_seconds_until_rate_limit_zero_when_no_status_cached() -> (
+    None
+):
+    client_mock = MagicMock()
+    client_mock.get_create_rate_limit_status.return_value = None
+    executor = _build_executor(CreateAgentExecutor, client_mock)
+
+    assert await executor.get_remaining_seconds_until_rate_limit() == 0.0
+
+
+@pytest.mark.asyncio
+async def test_get_remaining_seconds_until_rate_limit_matches_reset_window() -> None:
+    from clients.anthropic_client import CreateRateLimitInfo
+    from datetime import datetime, timedelta, timezone
+
+    reset_at = datetime.now(timezone.utc) + timedelta(seconds=42)
+    client_mock = MagicMock()
+    client_mock.get_create_rate_limit_status.return_value = CreateRateLimitInfo(
+        limit=300, remaining=1, reset=reset_at
+    )
+    executor = _build_executor(CreateAgentExecutor, client_mock)
+
+    remaining = await executor.get_remaining_seconds_until_rate_limit()
+    assert 40 <= remaining <= 42
+
+
+@pytest.mark.asyncio
+async def test_is_close_to_rate_limit_false_once_reset_time_has_passed() -> None:
+    """A stale cache past its reset must not wedge the execution manager's
+    backoff loop forever: nothing refreshes the cache while backing off, so a
+    passed reset has to be treated as fully replenished."""
+    from clients.anthropic_client import CreateRateLimitInfo
+    from datetime import datetime, timedelta, timezone
+
+    stale_reset = datetime.now(timezone.utc) - timedelta(seconds=5)
+    client_mock = MagicMock()
+    client_mock.get_create_rate_limit_status.return_value = CreateRateLimitInfo(
+        limit=300, remaining=1, reset=stale_reset
+    )
+    executor = _build_executor(CreateAgentExecutor, client_mock)
+
+    assert await executor.is_close_to_rate_limit() is False
 
 
 @pytest.mark.asyncio
@@ -565,7 +658,9 @@ async def test_trigger_agent_executor_injects_github_pat_into_session_config() -
 
 
 @pytest.mark.asyncio
-async def test_trigger_agent_executor_completes_run_synchronously_when_report_status_false() -> None:
+async def test_trigger_agent_executor_completes_run_synchronously_when_report_status_false() -> (
+    None
+):
     client_mock = MagicMock()
     client_mock.create_session = AsyncMock(return_value={"id": "sess_1"})
     client_mock.send_user_message = AsyncMock(return_value=_user_message_event())

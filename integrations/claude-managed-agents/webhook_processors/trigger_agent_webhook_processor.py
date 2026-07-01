@@ -65,7 +65,7 @@ SESSION_SUCCESS_WEBHOOK_DATA = (
     BetaWebhookSessionStatusIdledEventData,
 )
 
-_INTERACTION_EVENT_TYPES = ["session.error", "session.status_idle"]
+_INTERACTION_EVENT_TYPES = ["session.error", "session.status_idle", "agent.message"]
 
 
 class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
@@ -75,9 +75,6 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
     state, the matching Port run (correlated by external id) is completed with
     success or failure. Session errors for the interaction are written to the
     run logs; live conversation streaming is out of scope for v1.
-
-    Modeled after GitHub's `DispatchWorkflowWebhookProcessor`: an `ACTION`-type
-    processor not tied to any kind.
     """
 
     @staticmethod
@@ -190,28 +187,34 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        idle_search_before = (
-            anchor.processed_at
-            if isinstance(anchor.processed_at, datetime)
-            else webhook_time
-        )
-        prior_idle_time = await self._find_prior_idle_time(
-            session_id, idle_search_before
-        )
+        if run.execution_properties.get("sessionId"):
+            idle_search_before = (
+                anchor.processed_at
+                if isinstance(anchor.processed_at, datetime)
+                else webhook_time
+            )
+            prior_idle_time = await self._find_prior_idle_time(
+                session_id, idle_search_before
+            )
+        else:
+            # A freshly created session
+            prior_idle_time = None
 
-        interaction_failed, last_error = await self._log_errors_and_detect_failure(
-            run, session_id, prior_idle_time, webhook_time
+        events = await self._fetch_interaction_events(
+            session_id, prior_idle_time, webhook_time
         )
+        interaction_failed, log_entries = self._detect_failure_and_log_entries(events)
+        await self._post_run_logs(run, log_entries)
+        last_error = self._last_error_log_message(log_entries)
 
         webhook_succeeded = isinstance(data, SESSION_SUCCESS_WEBHOOK_DATA)
         success = webhook_succeeded and not interaction_failed
 
         extra_output: dict[str, str] = {}
         if success:
-            response = await self._find_last_agent_response(
-                session_id,
-                prior_idle_time,
-                webhook_time,
+            response = self._extract_last_agent_response(
+                events,
+                prior_idle_time=prior_idle_time,
                 anchor_processed_at=anchor.processed_at,
             )
             if response is not None:
@@ -280,58 +283,20 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
             return None
         return None
 
-    async def _find_last_agent_response(
+    async def _fetch_interaction_events(
         self,
         session_id: str,
         prior_idle_time: datetime | None,
         webhook_time: datetime,
-        *,
-        anchor_processed_at: datetime | None,
-    ) -> str | None:
-        client = create_anthropic_client()
-        last_response: str | None = None
-        list_kwargs: dict[str, Any] = {
-            "types": ["agent.message"],
-            "created_at_lte": webhook_time,
-            "order": "asc",
-        }
-        if prior_idle_time is not None:
-            list_kwargs["created_at_gt"] = prior_idle_time
-        elif isinstance(anchor_processed_at, datetime):
-            list_kwargs["created_at_gte"] = anchor_processed_at
-        try:
-            async for batch in client.get_session_events(session_id, **list_kwargs):
-                for event in batch:
-                    if not isinstance(event, BetaManagedAgentsAgentMessageEvent):
-                        continue
-                    text = self._extract_agent_message_text(event)
-                    if text:
-                        last_response = text
-        except Exception as error:
-            logger.warning(
-                f"Failed to fetch agent response for session {session_id}: {error}"
-            )
-        return last_response
-
-    async def _log_errors_and_detect_failure(
-        self,
-        run: ActionRun | WorkflowNodeRun,
-        session_id: str,
-        prior_idle_time: datetime | None,
-        webhook_time: datetime,
-    ) -> tuple[bool, str | None]:
-        """Log session errors for this interaction and detect failure from idle stop_reason.
+    ) -> list[BetaManagedAgentsSessionEvent]:
+        """Fetch this interaction's errors, idle transitions, and agent messages.
 
         When a prior ``session.status_idle`` exists, events are scoped with
         ``created_at_gt`` from that idle through ``webhook_time``. On a new
-        session with no prior idle, no lower bound is applied. Run
-        success/failure uses only the idle event ``stop_reason`` (via
-        ``_is_failure_event``); ``session.error`` is logged but does not change
-        the result. Best-effort: on fetch error the run is still completed and
-        ``(False, None)`` is returned.
+        session with no prior idle, no lower bound is applied. Best-effort: on
+        fetch error, an empty list is returned and the run still completes
+        without logs or a response.
         """
-        failed = False
-        log_entries: list[tuple[LogLevel, str]] = []
         list_kwargs: dict[str, Any] = {
             "types": _INTERACTION_EVENT_TYPES,
             "created_at_lte": webhook_time,
@@ -339,20 +304,65 @@ class TriggerAgentWebhookProcessor(AbstractAnthropicWebhookProcessor):
         }
         if prior_idle_time is not None:
             list_kwargs["created_at_gt"] = prior_idle_time
+        events: list[BetaManagedAgentsSessionEvent] = []
         try:
             client = create_anthropic_client()
             async for batch in client.get_session_events(session_id, **list_kwargs):
-                for event in batch:
-                    if isinstance(event, BetaManagedAgentsSessionErrorEvent):
-                        log_entries.append(self._format_session_error(event))
-                    failed = failed or self._is_failure_event(event)
-            await self._post_run_logs(run, log_entries)
+                events.extend(batch)
         except Exception as error:
             logger.warning(
-                f"Failed to inspect session errors for {session_id} "
+                f"Failed to inspect session events for {session_id} "
                 f"(completing run anyway): {error}"
             )
-        return failed, self._last_error_log_message(log_entries)
+            return []
+        return events
+
+    def _detect_failure_and_log_entries(
+        self, events: list[BetaManagedAgentsSessionEvent]
+    ) -> tuple[bool, list[tuple[LogLevel, str]]]:
+        """Detect interaction failure and collect session error log entries.
+
+        Success/failure uses only the idle event ``stop_reason`` (via
+        ``_is_failure_event``); ``session.error`` is logged but does not
+        change the result.
+        """
+        failed = False
+        log_entries: list[tuple[LogLevel, str]] = []
+        for event in events:
+            if isinstance(event, BetaManagedAgentsSessionErrorEvent):
+                log_entries.append(self._format_session_error(event))
+            failed = failed or self._is_failure_event(event)
+        return failed, log_entries
+
+    def _extract_last_agent_response(
+        self,
+        events: list[BetaManagedAgentsSessionEvent],
+        *,
+        prior_idle_time: datetime | None,
+        anchor_processed_at: datetime | None,
+    ) -> str | None:
+        """Return the last agent message text scoped to this interaction.
+
+        Mirrors the fetch's lower bound: events after ``prior_idle_time`` when
+        available, otherwise events at or after ``anchor_processed_at`` (the
+        combined fetch has no lower bound in that case, so filtering here
+        excludes any earlier interaction's agent messages).
+        """
+        last_response: str | None = None
+        for event in events:
+            if not isinstance(event, BetaManagedAgentsAgentMessageEvent):
+                continue
+            if prior_idle_time is None and isinstance(anchor_processed_at, datetime):
+                processed_at = event.processed_at
+                if not (
+                    isinstance(processed_at, datetime)
+                    and processed_at >= anchor_processed_at
+                ):
+                    continue
+            text = self._extract_agent_message_text(event)
+            if text:
+                last_response = text
+        return last_response
 
     @staticmethod
     async def _post_run_logs(

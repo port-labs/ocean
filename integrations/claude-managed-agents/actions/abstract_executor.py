@@ -10,6 +10,11 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
 
 from clients.client_factory import create_anthropic_client
 
+# Below this fraction of remaining create-endpoint requests, new actions back
+# off until the create rate limit window resets. A percentage (rather than an
+# absolute count) keeps this correct regardless of the account's RPM tier.
+CREATE_RATE_LIMIT_HEADROOM_RATIO = 0.1
+
 
 class AbstractAnthropicExecutor(AbstractExecutor):
     """Base executor for Claude Managed Agents actions."""
@@ -21,11 +26,19 @@ class AbstractAnthropicExecutor(AbstractExecutor):
         self.client = create_anthropic_client()
 
     async def is_close_to_rate_limit(self) -> bool:
-        # The Anthropic SDK handles retries/backoff for rate limits internally.
-        return False
+        """Throttles on the create-endpoints RPM limit only (see
+        `AnthropicClient.get_create_rate_limit_status`); read-endpoint calls
+        are not gated. A stale cache past its reset is treated as replenished,
+        since nothing refreshes it while this backoff loop is running.
+        """
+        info = self.client.get_create_rate_limit_status()
+        if info is None or info.limit == 0 or info.seconds_until_reset <= 0:
+            return False
+        return info.remaining / info.limit < CREATE_RATE_LIMIT_HEADROOM_RATIO
 
     async def get_remaining_seconds_until_rate_limit(self) -> float:
-        return 0.0
+        info = self.client.get_create_rate_limit_status()
+        return info.seconds_until_reset if info else 0.0
 
     async def register_entity(self, kind: str, raw: dict[str, Any]) -> None:
         """Best-effort upsert of a raw object into the catalog.

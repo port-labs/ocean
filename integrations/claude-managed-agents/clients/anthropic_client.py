@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Mapping, Sequence
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Literal
 
+import anthropic
+import httpx
 from anthropic import AsyncAnthropic
 from anthropic.types.beta import UnwrapWebhookEvent
 from anthropic.types.beta.sessions.beta_managed_agents_session_event import (
@@ -13,14 +16,17 @@ from anthropic.types.beta.sessions.beta_managed_agents_user_message_event import
     BetaManagedAgentsUserMessageEvent,
 )
 from loguru import logger
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
 
-# The Managed Agents API is in beta and requires this fixed beta header on every
-# request. The SDK sets it automatically for `client.beta.*` calls; we also set it
-# as a default header to make the requirement explicit and future-proof.
-MANAGED_AGENTS_BETA = "managed-agents-2026-04-01"
-SKILLS_BETA = "skills-2025-10-02"
 
 DEFAULT_PAGE_SIZE = 50
+
+_CREATE_RATE_LIMIT_LIMIT_HEADER = "anthropic-ratelimit-requests-limit"
+_CREATE_RATE_LIMIT_REMAINING_HEADER = "anthropic-ratelimit-requests-remaining"
+_CREATE_RATE_LIMIT_RESET_HEADER = "anthropic-ratelimit-requests-reset"
+_WORKSPACE_ID_HEADER = "anthropic-workspace-id"
 
 
 def _serialize(obj: Any) -> dict[str, Any]:
@@ -32,9 +38,24 @@ def _serialize(obj: Any) -> dict[str, Any]:
     return dict(obj)
 
 
-class AnthropicClient:
-    """Thin async wrapper around the official Anthropic SDK (Managed Agents beta)."""
+@dataclass(frozen=True)
+class CreateRateLimitInfo:
+    """Snapshot of the Managed Agents *create-endpoints* RPM limit.
 
+    Distinct from the (untracked) read-endpoints RPM limit, which is a
+    separate pool per Anthropic's Managed Agents rate limits.
+    """
+
+    limit: int
+    remaining: int
+    reset: datetime
+
+    @property
+    def seconds_until_reset(self) -> float:
+        return max(0.0, (self.reset - datetime.now(timezone.utc)).total_seconds())
+
+
+class AnthropicClient:
     def __init__(
         self,
         api_host: str,
@@ -42,13 +63,45 @@ class AnthropicClient:
         webhook_signing_secret: str | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> None:
+        # A dedicated OceanAsyncClient gets us SaaS IP-blocking and consistent SSL
+        # verification. Ocean's own retry layer is disabled (max_attempts=0) since
+        # the Anthropic SDK already retries internally;
+        self._http_client = OceanAsyncClient(
+            timeout=ocean.config.client_timeout,
+            retry_config=RetryConfig(max_attempts=0),
+        )
         self._client = AsyncAnthropic(
             api_key=api_key,
             base_url=api_host.rstrip("/"),
-            default_headers={"anthropic-beta": MANAGED_AGENTS_BETA},
+            http_client=self._http_client,
         )
         self._webhook_signing_secret = webhook_signing_secret
         self._page_size = page_size
+        self._create_rate_limit_info: CreateRateLimitInfo | None = None
+        self._workspace_id: str | None = None
+
+    def _capture_create_rate_limit_headers(self, headers: httpx.Headers) -> None:
+        limit = headers.get(_CREATE_RATE_LIMIT_LIMIT_HEADER)
+        remaining = headers.get(_CREATE_RATE_LIMIT_REMAINING_HEADER)
+        reset = headers.get(_CREATE_RATE_LIMIT_RESET_HEADER)
+        if limit is None or remaining is None or reset is None:
+            return
+        try:
+            self._create_rate_limit_info = CreateRateLimitInfo(
+                limit=int(limit),
+                remaining=int(remaining),
+                reset=datetime.fromisoformat(reset.replace("Z", "+00:00")),
+            )
+        except (TypeError, ValueError) as error:
+            logger.warning(
+                f"Failed to parse Managed Agents create rate limit headers: {error}"
+            )
+
+    def get_create_rate_limit_status(self) -> CreateRateLimitInfo | None:
+        return self._create_rate_limit_info
+
+    def get_workspace_id(self) -> str | None:
+        return self._workspace_id
 
     async def _paginate(
         self, paginator: Any
@@ -105,17 +158,11 @@ class AnthropicClient:
         ):
             yield batch
 
-    def _skills_headers(self) -> dict[str, str]:
-        return {"anthropic-beta": SKILLS_BETA}
-
     async def get_skills(
         self, *, source: Literal["custom", "anthropic"] = "custom"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for batch in self._paginate(
-            await self._client.beta.skills.list(
-                source=source,
-                extra_headers=self._skills_headers(),
-            )
+            await self._client.beta.skills.list(source=source)
         ):
             yield batch
 
@@ -134,16 +181,6 @@ class AnthropicClient:
         created_at_lte: datetime | None = None,
         limit: int | None = None,
     ) -> AsyncGenerator[list[BetaManagedAgentsSessionEvent], None]:
-        """Yield a session's events in batches.
-
-        Session webhooks are thin status pings; the actual conversation (user and
-        agent messages, tool use, errors, etc.) lives in the session events API.
-        Optional filters are forwarded to ``events.list`` (sorted by ``created_at``).
-
-        Unlike the catalog resources, session events are never mapped to entities;
-        they are only logged and used for the run status decision, so the typed SDK
-        models are kept instead of being flattened to dicts.
-        """
         list_kwargs: dict[str, Any] = {}
         if types is not None:
             list_kwargs["types"] = types
@@ -191,8 +228,13 @@ class AnthropicClient:
             payload["system"] = system
 
         logger.info(f"Creating Claude agent '{name}' with model '{model}'")
-        agent = await self._client.beta.agents.create(**payload)
-        return _serialize(agent)
+        try:
+            raw = await self._client.beta.agents.with_raw_response.create(**payload)
+        except anthropic.APIStatusError as error:
+            self._capture_create_rate_limit_headers(error.response.headers)
+            raise
+        self._capture_create_rate_limit_headers(raw.headers)
+        return _serialize(raw.parse())
 
     async def create_session(
         self,
@@ -209,14 +251,19 @@ class AnthropicClient:
         logger.info(
             f"Creating Claude session for agent '{agent_id}' in environment '{environment_id}'"
         )
-        session = await self._client.beta.sessions.create(**payload)
-        return _serialize(session)
+        try:
+            raw = await self._client.beta.sessions.with_raw_response.create(**payload)
+        except anthropic.APIStatusError as error:
+            self._capture_create_rate_limit_headers(error.response.headers)
+            raise
+        self._capture_create_rate_limit_headers(raw.headers)
+        return _serialize(raw.parse())
 
     async def send_user_message(
         self, session_id: str, prompt: str
     ) -> BetaManagedAgentsUserMessageEvent:
         logger.info(f"Sending user message to Claude session '{session_id}'")
-        response = await self._client.beta.sessions.events.send(
+        raw = await self._client.beta.sessions.events.with_raw_response.send(
             session_id,
             events=[
                 {
@@ -225,6 +272,10 @@ class AnthropicClient:
                 }
             ],
         )
+        workspace_id = raw.headers.get(_WORKSPACE_ID_HEADER)
+        if workspace_id:
+            self._workspace_id = workspace_id
+        response = raw.parse()
         if not response.data:
             raise ValueError("User message was sent but no event was returned")
         event = response.data[0]
@@ -235,10 +286,6 @@ class AnthropicClient:
     def unwrap_webhook(
         self, payload: str, headers: Mapping[str, str]
     ) -> UnwrapWebhookEvent:
-        """Verify the Standard Webhooks signature and return the parsed event.
-
-        Raises if the signing secret is missing or the signature is invalid.
-        """
         if not self._webhook_signing_secret:
             raise ValueError("Webhook signing secret is not configured")
         return self._client.beta.webhooks.unwrap(

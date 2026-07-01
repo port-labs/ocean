@@ -4,4 +4,4 @@ An integration used to import [Claude Managed Agents](https://platform.claude.co
 
 #### Install & use the integration - [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/ai-agents/claude-managed-agents/)
 
-#### Develop & improve the integration - [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)
+#### Develop & improve the integration - [Ocean integration development documentation](https://ocean.port.io/developing-an-integration/)
