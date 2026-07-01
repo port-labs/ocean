@@ -1,3 +1,4 @@
+import json
 from enum import StrEnum, IntEnum
 from typing import List, Tuple, Dict, Any, AsyncGenerator
 
@@ -96,16 +97,18 @@ async def get_fake_persons_batch(
     raw_persons = response.json()
 
     return [
-        FakePerson(
-            **{
-                **person,
-                "department": [
-                    department
-                    for department in FAKE_DEPARTMENTS
-                    if department_id == department.id
-                ][0],
-            }
-        ).dict()
+        json.loads(
+            FakePerson(
+                **{
+                    **person,
+                    "department": [
+                        department
+                        for department in FAKE_DEPARTMENTS
+                        if department_id == department.id
+                    ][0],
+                }
+            ).json()
+        )
         for person in raw_persons["results"]
     ]
 

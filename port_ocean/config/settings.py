@@ -79,6 +79,8 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     identifier: str
     type: str
     config: Any = Field(default_factory=dict)
+    incremental_sync_enabled: bool = False
+    incremental_sync_interval: int = 15  # minutes
 
     @root_validator(pre=True)
     def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:

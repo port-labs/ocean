@@ -39,6 +39,7 @@ class ResourceUsageStats:
     latency: LatencyStats = field(default_factory=LatencyStats)
     response_size: ResponseSizeStats = field(default_factory=ResponseSizeStats)
     sample_count: int = 0
+    request_count: int = 0
 
 
 @dataclass

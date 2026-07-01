@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import StrEnum
 from typing import Optional
 
@@ -22,6 +23,7 @@ class FakePerson(BaseModel):
     age: int
     department: FakeDepartment
     bio: str
+    updatedAt: datetime
 
     class Config:
         use_enum_values = True
