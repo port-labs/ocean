@@ -3,7 +3,10 @@ from typing import cast
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-from github.clients.auth.retry_transport import GitHubRetryTransport
+from github.clients.auth.retry_transport import (
+    GitHubRetryTransport,
+    MIN_GRAPHQL_PAGE_SIZE,
+)
 from github.clients.http.graphql_client import GithubGraphQLClient, PAGE_SIZE
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 
@@ -346,7 +349,7 @@ class TestGithubGraphQLClient:
         assert queries == ["PRIMARY", "FALLBACK"]
 
     @pytest.mark.asyncio
-    async def test_fallback_query_persists_for_subsequent_pages(
+    async def test_fallback_is_scoped_per_page_and_resets_to_primary(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
         client = _make_gql_client(authenticator)
@@ -372,12 +375,15 @@ class TestGithubGraphQLClient:
         }
         queries: list[str] = []
         cursors: list[object] = []
+        firsts: list[object] = []
 
         async def fake_send(*_: object, **kwargs: object) -> dict[str, object]:
             payload = cast(dict[str, object], kwargs["json_data"])
             queries.append(cast(str, payload["query"]))
             variables = cast(dict[str, object], payload["variables"])
             cursors.append(variables.get("after"))
+            firsts.append(variables.get("first"))
+            # Only the first page's primary attempt is too expensive.
             if len(queries) == 1:
                 raise _gateway_error(504)
             return page1 if len(queries) == 2 else page2
@@ -392,11 +398,12 @@ class TestGithubGraphQLClient:
                 )
             ]
 
-        # Page that 504'd is retried at the same cursor with the lighter query,
-        # and every later page keeps using it.
         assert results == [[{"id": 1}], [{"id": 2}]]
-        assert queries == ["PRIMARY", "FALLBACK", "FALLBACK"]
+        # Page 1 escalates to the lighter query at the floor; page 2 starts over
+        # at the full query and page size — the escalation does not persist.
+        assert queries == ["PRIMARY", "FALLBACK", "PRIMARY"]
         assert cursors == [None, None, "c1"]
+        assert firsts == [PAGE_SIZE, MIN_GRAPHQL_PAGE_SIZE, PAGE_SIZE]
 
     @pytest.mark.asyncio
     async def test_gateway_error_without_fallback_propagates(
