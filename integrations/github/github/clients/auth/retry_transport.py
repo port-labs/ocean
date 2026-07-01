@@ -20,6 +20,13 @@ MIN_REST_PAGE_SIZE = 25
 MIN_GRAPHQL_PAGE_SIZE = 1
 GRAPHQL_REDUCTION_SIZE = 5
 
+# Response-extensions key under which the transport records the GraphQL variables
+# it actually sent. httpx resets `response.request` to the caller's original
+# request once the transport returns, so variables the retry loop rewrote (e.g. a
+# shrunk `variables.first`) survive only here — the GraphQL client reads this so
+# error logs report what truly went over the wire, not the caller's stale copy.
+GRAPHQL_SENT_VARIABLES_EXTENSION = "github_graphql_sent_variables"
+
 
 class GitHubRetryTransport(RetryTransport):
     """
@@ -187,6 +194,11 @@ class GitHubRetryTransport(RetryTransport):
         if is_rate_limit_response(response) and self._rate_limit_notifier:
             await self._rate_limit_notifier(response)
 
+        if self._is_graphql_request(request):
+            variables = self._graphql_variables(request)
+            if variables is not None:
+                response.extensions[GRAPHQL_SENT_VARIABLES_EXTENSION] = variables
+
     def _log_before_retry(
         self,
         request: httpx.Request,
@@ -236,6 +248,18 @@ class GitHubRetryTransport(RetryTransport):
         except (httpx.RequestNotRead, ValueError, AttributeError):
             return None
         return first if isinstance(first, int) else None
+
+    @staticmethod
+    def _graphql_variables(request: httpx.Request) -> Optional[Dict[str, Any]]:
+        """The `variables` of a GraphQL request body, or None if unavailable.
+
+        Read from the request the retry loop actually sent, so the value reflects
+        any rewrite (e.g. a shrunk `first`) rather than the caller's original.
+        """
+        try:
+            return json.loads(request.content).get("variables")
+        except Exception:
+            return None
 
     def _page_reduction_exhausted(self, response: httpx.Response) -> bool:
         """True for a retryable 5xx whose request is already at the page floor.
