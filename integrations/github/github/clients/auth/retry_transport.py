@@ -21,10 +21,9 @@ MIN_GRAPHQL_PAGE_SIZE = 1
 GRAPHQL_REDUCTION_SIZE = 5
 
 # Response-extensions key under which the transport records the GraphQL variables
-# it actually sent. httpx resets `response.request` to the caller's original
-# request once the transport returns, so variables the retry loop rewrote (e.g. a
-# shrunk `variables.first`) survive only here — the GraphQL client reads this so
-# error logs report what truly went over the wire, not the caller's stale copy.
+# it actually sent. httpx resets `response.request` to the caller's original once
+# the transport returns, so variables the retry loop rewrote (e.g. a shrunk
+# `variables.first`) survive only here for the GraphQL client's error logs.
 GRAPHQL_SENT_VARIABLES_EXTENSION = "github_graphql_sent_variables"
 
 
