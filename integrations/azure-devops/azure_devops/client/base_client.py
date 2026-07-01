@@ -1,7 +1,7 @@
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
-from httpx import ConnectTimeout, ReadTimeout, Response
+from httpx import ConnectTimeout, ReadError, ReadTimeout, Response
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -82,7 +82,7 @@ class HTTPBaseClient:
                 )
                 raise e
         except httpx.HTTPError as e:
-            if isinstance(e, (ReadTimeout, ConnectTimeout)):
+            if isinstance(e, (ReadTimeout, ConnectTimeout, ReadError)):
                 await self._rate_limiter.signal_throttle(
                     ADO_RATE_LIMIT_WINDOW_SECONDS,
                     reason=type(e).__name__,
