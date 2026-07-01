@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.5 (2026-06-30)
+
+### Improvements
+
+- Added per-action queue tracking in the execution manager for action runs using `actionIdentifier`. When `OCEAN__ACTIONS_PROCESSOR__MAX_RUNS_BUFFER_UTIL_PCT_PER_ACTION` is set, saturated action identifiers are passed as `exclude` in the action-run claim-pending body.
+- Added optional `actionIdentifier` on `ActionRun` (defaults to empty string for backward compatibility with older Port payloads).
+- Added descriptions and validation bounds to `ActionsProcessorSettings` (`runs_buffer_high_watermark`, `visibility_timeout_ms`, `poll_check_interval_seconds`, `workers_count`).
+
+### Bug Fixes
+
+- Fixed `task_done() called too many times` when a worker timed out on an empty queue by only calling `commit()` after a run was successfully dequeued.
+
 ## 0.44.4 (2026-06-28)
 
 ### Improvements

@@ -6,7 +6,6 @@ from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.core.models import (
     WorkflowNodeRun,
     WorkflowNodeRunLog,
-    ClaimedWorkflowNodeRun,
 )
 from port_ocean.exceptions.execution_manager import RunAlreadyAcknowledgedError
 
@@ -19,22 +18,28 @@ class WorkflowNodesClientMixin:
         self.client = client
 
     async def claim_pending_wf_node_runs(
-        self, limit: int, visibility_timeout_ms: int
-    ) -> list[ClaimedWorkflowNodeRun]:
+        self,
+        limit: int,
+        visibility_timeout_ms: int,
+        exclude_invocation_types: list[str] | None = None,
+    ) -> list[WorkflowNodeRun]:
+        body: dict[str, Any] = {
+            "installationId": self.auth.integration_identifier,
+            "limit": limit,
+            "visibilityTimeoutMs": visibility_timeout_ms,
+        }
+        if exclude_invocation_types:
+            body["exclude"] = exclude_invocation_types
         response = await self.client.post(
             f"{self.auth.api_url}/workflows/runs/claim-pending",
             headers={**(await self.auth.headers()), **INTERNAL_WORKFLOW_CLIENT_HEADER},
-            json={
-                "installationId": self.auth.integration_identifier,
-                "limit": limit,
-                "visibilityTimeoutMs": visibility_timeout_ms,
-            },
+            json=body,
         )
         if response.is_error:
             logger.error("Error claiming pending wf_node runs", error=response.text)
             return []
         return [
-            ClaimedWorkflowNodeRun.parse_obj(run)
+            WorkflowNodeRun.parse_obj(run)
             for run in response.json().get("nodeRuns", [])
         ]
 

@@ -26,6 +26,66 @@ def actions_client() -> ActionsAndWorkflowRunsClientMixin:
 
 
 @pytest.mark.asyncio
+async def test_claim_pending_runs(
+    actions_client: ActionsAndWorkflowRunsClientMixin,
+) -> None:
+    action_runs = [MagicMock() for _ in range(3)]
+    with (
+        patch.object(
+            actions_client,
+            "claim_pending_action_runs",
+            AsyncMock(return_value=action_runs),
+        ),
+        patch.object(
+            actions_client,
+            "claim_pending_wf_node_runs",
+            AsyncMock(),
+        ) as mock_workflow,
+    ):
+        assert (
+            await actions_client.claim_pending_runs(limit=3, visibility_timeout_ms=1)
+            == action_runs
+        )
+        mock_workflow.assert_not_awaited()
+
+    action_run, wf_run = MagicMock(), MagicMock()
+    with (
+        patch.object(
+            actions_client,
+            "claim_pending_action_runs",
+            AsyncMock(return_value=[action_run]),
+        ) as mock_actions,
+        patch.object(
+            actions_client,
+            "claim_pending_wf_node_runs",
+            AsyncMock(return_value=[wf_run]),
+        ) as mock_workflow,
+    ):
+        assert await actions_client.claim_pending_runs(
+            limit=10, visibility_timeout_ms=1
+        ) == [wf_run, action_run]
+        assert mock_workflow.await_args.kwargs["limit"] == 10
+        assert mock_actions.await_args.kwargs["limit"] == 9
+
+    action_run, wf_run = MagicMock(), MagicMock()
+    with (
+        patch.object(
+            actions_client,
+            "claim_pending_action_runs",
+            AsyncMock(return_value=[action_run]),
+        ),
+        patch.object(
+            actions_client,
+            "claim_pending_wf_node_runs",
+            AsyncMock(return_value=[wf_run]),
+        ),
+    ):
+        assert await actions_client.claim_pending_runs(
+            limit=5, visibility_timeout_ms=1
+        ) == [action_run, wf_run]
+
+
+@pytest.mark.asyncio
 class TestWorkflowNodeRunOutputPreservation:
     async def test_update_run_started_sets_run_output(
         self, actions_client: ActionsAndWorkflowRunsClientMixin
