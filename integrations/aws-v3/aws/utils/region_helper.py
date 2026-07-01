@@ -1,0 +1,36 @@
+from aiobotocore.session import AioSession
+
+from aws.utils.consts import Consts
+from port_ocean.context.ocean import ocean
+
+
+class RegionHelper:
+    _available_regions: list[str] = []
+
+    @classmethod
+    def get_partition(cls) -> str:
+        return ocean.integration_config.get("aws_partition", Consts.default_partition)
+
+    @classmethod
+    async def get_all_available_regions(cls, session: AioSession) -> list[str]:
+        if not cls._available_regions:
+            cls._available_regions = await session.get_available_regions(
+                "ec2", partition_name=cls.get_partition()
+            )
+
+        return cls._available_regions
+
+    @classmethod
+    async def get_first_available_region(cls, session: AioSession) -> str | None:
+        regions = await cls.get_all_available_regions(session)
+        return regions[0] if regions else None
+
+    @classmethod
+    async def get_custom_partition_region_or_none(
+        cls, session: AioSession
+    ) -> str | None:
+        return (
+            None
+            if cls.get_partition() == Consts.default_partition
+            else await cls.get_first_available_region(session)
+        )
