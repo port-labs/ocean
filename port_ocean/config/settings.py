@@ -109,7 +109,7 @@ class StreamingSettings(BaseOceanModel, extra=Extra.allow):
 class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
     enabled: bool = Field(default=False)
     runs_buffer_high_watermark: int = Field(
-        default=100,
+        default=300,
         ge=1,
         le=1_000,
         description=(
@@ -118,7 +118,7 @@ class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
         ),
     )
     visibility_timeout_ms: int = Field(
-        default=30_000,
+        default=60_000,
         ge=1,
         le=600_000,
         description=(
@@ -132,7 +132,7 @@ class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
         description="Seconds between claim-pending polling attempts.",
     )
     workers_count: int = Field(
-        default=1,
+        default=3,
         ge=1,
         description=(
             "Number of concurrent worker tasks processing claimed runs. "
@@ -140,7 +140,7 @@ class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
         ),
     )
     max_runs_buffer_util_pct_per_action: int | None = Field(
-        default=None,
+        default=30,
         ge=1,
         le=100,
         description=(

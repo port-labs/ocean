@@ -25,9 +25,10 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.models import (
     ActionRun,
-    ClaimedWorkflowNodeRun,
-    IntegrationActionInvocationPayload,
+    IntegrationActionInvocation,
+    RunKind,
     RunStatus,
+    WorkflowNodeRun,
     WorkflowNodeRunStatus,
 )
 from port_ocean.exceptions.execution_manager import (
@@ -50,7 +51,7 @@ def generate_mock_action_run(
         id=f"test-run-id-{uuid.uuid4()}",
         status=RunStatus.IN_PROGRESS,
         actionIdentifier=action_identifier,
-        payload=IntegrationActionInvocationPayload(
+        payload=IntegrationActionInvocation(
             type="INTEGRATION_ACTION",
             installationId="test-installation-id",
             integrationActionType=action_type,
@@ -62,18 +63,18 @@ def generate_mock_action_run(
 def generate_mock_wf_node_run(
     action_type: str = "test_action",
     integrationActionExecutionProperties: dict[str, Any] | None = None,
-) -> ClaimedWorkflowNodeRun:
+) -> WorkflowNodeRun:
     if integrationActionExecutionProperties is None:
         integrationActionExecutionProperties = {}
-    return ClaimedWorkflowNodeRun(
+    return WorkflowNodeRun(
         identifier=f"test-wf-node-run-id-{uuid.uuid4()}",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
-        config={
-            "type": "INTEGRATION_ACTION",
-            "installationId": "test-installation-id",
-            "integrationInvocationType": action_type,
-            "integrationActionExecutionProperties": integrationActionExecutionProperties,
-        },
+        config=IntegrationActionInvocation(
+            type="INTEGRATION_ACTION",
+            installationId="test-installation-id",
+            integrationInvocationType=action_type,
+            integrationActionExecutionProperties=integrationActionExecutionProperties,
+        ),
     )
 
 
@@ -443,26 +444,29 @@ class TestExecutionManager:
         run = generate_mock_action_run()
         await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
 
-        assert execution_manager._action_identifier_queue_counts == {
+        assert execution_manager._buffer_queue_counts[RunKind.ACTION] == {
             "test-action-identifier": 1
         }
 
         await execution_manager._handle_global_queue_once()
 
-        assert execution_manager._action_identifier_queue_counts == {}
+        assert execution_manager._buffer_queue_counts[RunKind.ACTION] == {}
 
     @pytest.mark.asyncio
-    async def test_action_identifier_queue_count_ignores_workflow_node_runs(
+    async def test_workflow_buffer_queue_count_tracks_workflow_node_runs_separately(
         self, execution_manager: ExecutionManager
     ) -> None:
         run = generate_mock_wf_node_run()
         await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
 
-        assert execution_manager._action_identifier_queue_counts == {}
+        assert execution_manager._buffer_queue_counts[RunKind.ACTION] == {}
+        assert execution_manager._buffer_queue_counts[RunKind.WORKFLOW_NODE] == {
+            "test_action": 1
+        }
 
         await execution_manager._handle_global_queue_once()
 
-        assert execution_manager._action_identifier_queue_counts == {}
+        assert execution_manager._buffer_queue_counts[RunKind.WORKFLOW_NODE] == {}
 
     @pytest.mark.asyncio
     async def test_poll_action_runs_excludes_saturated_action_identifiers(
@@ -485,6 +489,31 @@ class TestExecutionManager:
             limit=ANY,
             visibility_timeout_ms=execution_manager._visibility_timeout_ms,
             exclude_action_identifiers=["test-action-identifier"],
+            exclude_workflow_invocation_types=[],
+        )
+
+    @pytest.mark.asyncio
+    async def test_poll_action_runs_excludes_saturated_workflow_invocation_types(
+        self, execution_manager: ExecutionManager, mock_port_client: MagicMock
+    ) -> None:
+        execution_manager._max_runs_buffer_util_pct_per_action = 2
+        execution_manager._poll_check_interval_seconds = 0
+        mock_port_client.claim_pending_runs.return_value = []
+
+        for _ in range(2):
+            await execution_manager._add_run_to_queue(
+                generate_mock_wf_node_run(), GLOBAL_SOURCE
+            )
+
+        polling_task = asyncio.create_task(execution_manager._poll_action_runs())
+        await asyncio.sleep(0.1)
+        await execution_manager._gracefully_cancel_task(polling_task)
+
+        mock_port_client.claim_pending_runs.assert_called_with(
+            limit=ANY,
+            visibility_timeout_ms=execution_manager._visibility_timeout_ms,
+            exclude_action_identifiers=[],
+            exclude_workflow_invocation_types=["test_action"],
         )
 
     @pytest.mark.asyncio
@@ -517,11 +546,9 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
-        mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms, exclude_action_identifiers=[]: [
-                generate_mock_action_run()
-            ]
-        )
+        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_workflow_invocation_types=None: [
+            generate_mock_action_run()
+        ]
 
         # Act
         polling_task: asyncio.Task[None] = asyncio.create_task(
@@ -544,11 +571,9 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0
-        mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms, exclude_action_identifiers=[]: [
-                generate_mock_action_run(action_type="unregistered_action")
-            ]
-        )
+        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_workflow_invocation_types=None: [
+            generate_mock_action_run(action_type="unregistered_action")
+        ]
 
         # Act
         polling_task: asyncio.Task[None] = asyncio.create_task(
@@ -687,29 +712,23 @@ class TestExecutionManager:
             "_handle_partition_queue_once",
             wrapped_handle_partition_queue_once,
         )
-        mock_port_client.claim_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_ms, exclude_action_identifiers=[]: [
-                *[
-                    generate_mock_action_run(
-                        action_type=mock_test_partition_executor.ACTION_NAME,
-                        integrationActionExecutionProperties={
-                            "partition_name": partition1
-                        },
-                    )
-                    for _ in range(5)
-                ],
-                *[
-                    generate_mock_action_run(
-                        action_type=mock_test_partition_executor.ACTION_NAME,
-                        integrationActionExecutionProperties={
-                            "partition_name": partition2
-                        },
-                    )
-                    for _ in range(5)
-                ],
-                *[generate_mock_action_run() for _ in range(5)],
-            ]
-        )
+        mock_port_client.claim_pending_runs.side_effect = lambda limit, visibility_timeout_ms, exclude_action_identifiers=None, exclude_workflow_invocation_types=None: [
+            *[
+                generate_mock_action_run(
+                    action_type=mock_test_partition_executor.ACTION_NAME,
+                    integrationActionExecutionProperties={"partition_name": partition1},
+                )
+                for _ in range(5)
+            ],
+            *[
+                generate_mock_action_run(
+                    action_type=mock_test_partition_executor.ACTION_NAME,
+                    integrationActionExecutionProperties={"partition_name": partition2},
+                )
+                for _ in range(5)
+            ],
+            *[generate_mock_action_run() for _ in range(5)],
+        ]
 
         def check_global_queue_measurements() -> None:
             queue_measurements = run_measurements[GLOBAL_SOURCE]
@@ -802,15 +821,15 @@ class TestExecutionManager:
         )
         mock_port_client.acknowledge_run.side_effect = http_error
 
-        # Act
-        await execution_manager._execute_run(run)
+        with patch.object(
+            execution_manager._actions_executors["test_action"], "execute"
+        ) as mock_execute:
+            with pytest.raises(httpx.HTTPStatusError):
+                await execution_manager._execute_run(run)
 
-        # Assert
-        assert mock_port_client.report_run_failure.call_count == 1
-        called_args, called_kwargs = mock_port_client.report_run_failure.call_args
-        assert called_args[0] == run
-        assert "Failed to trigger run execution" == called_args[1]
-        assert called_kwargs.get("should_raise") is False
+            mock_execute.assert_not_called()
+
+        mock_port_client.report_run_failure.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_polling_continues_after_api_errors(
@@ -828,7 +847,8 @@ class TestExecutionManager:
         async def claim_runs_with_errors(
             limit: int,
             visibility_timeout_ms: int,
-            exclude_action_identifiers: list[str] = [],
+            exclude_action_identifiers: list[str] | None = None,
+            exclude_workflow_invocation_types: list[str] | None = None,
         ) -> list[ActionRun]:
             nonlocal poll_count
             poll_count += 1
@@ -929,7 +949,8 @@ class TestExecutionManager:
         async def claim_runs_side_effect(
             limit: int,
             visibility_timeout_ms: int,
-            exclude_action_identifiers: list[str] = [],
+            exclude_action_identifiers: list[str] | None = None,
+            exclude_workflow_invocation_types: list[str] | None = None,
         ) -> list[ActionRun]:
             nonlocal call_count
             call_count += 1

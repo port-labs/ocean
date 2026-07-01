@@ -3,9 +3,7 @@ import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
-from port_ocean.core.models import (
-    ActionRun,
-)
+from port_ocean.core.models import ActionRun
 from port_ocean.exceptions.execution_manager import RunAlreadyAcknowledgedError
 
 INTERNAL_ACTIONS_CLIENT_HEADER = {"x-port-reserved-usage": "true"}
