@@ -29,7 +29,10 @@ class ServiceWebhookProcessor(FirehydrantBaseWebhookProcessor):
         services = payload["data"]["services"]
         # get_single_service returns a list (service enriched with incident milestones)
         service_results = await asyncio.gather(
-            *(client.get_single_service(service_id=service["id"]) for service in services)
+            *(
+                client.get_single_service(service_id=service["id"])
+                for service in services
+            )
         )
         updated: list[dict[str, Any]] = []
         for service_data in service_results:

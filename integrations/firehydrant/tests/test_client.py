@@ -16,7 +16,10 @@ class TestBuildWebhookTargetUrl:
     @pytest.mark.parametrize(
         "base_url,expected",
         [
-            ("https://ocean.example.com", "https://ocean.example.com/integration/webhook"),
+            (
+                "https://ocean.example.com",
+                "https://ocean.example.com/integration/webhook",
+            ),
             (
                 "https://ocean.example.com/",
                 "https://ocean.example.com/integration/webhook",
@@ -47,9 +50,7 @@ class TestCreateWebhooksIfNotExists:
     async def test_skips_creation_when_existing_webhook_matches_normalized_url(
         self, client: FirehydrantClient
     ) -> None:
-        existing_webhooks = [
-            {"url": "https://ocean.example.com/integration/webhook/"}
-        ]
+        existing_webhooks = [{"url": "https://ocean.example.com/integration/webhook/"}]
 
         with (
             patch.object(
@@ -57,7 +58,9 @@ class TestCreateWebhooksIfNotExists:
                 "get_paginated_resource",
                 return_value=self._mock_paginated_webhooks(existing_webhooks),
             ),
-            patch.object(client, "send_api_request", new_callable=AsyncMock) as mock_send,
+            patch.object(
+                client, "send_api_request", new_callable=AsyncMock
+            ) as mock_send,
         ):
             await client.create_webhooks_if_not_exists("https://ocean.example.com/")
 
@@ -72,7 +75,9 @@ class TestCreateWebhooksIfNotExists:
                 "get_paginated_resource",
                 return_value=self._mock_paginated_webhooks([]),
             ),
-            patch.object(client, "send_api_request", new_callable=AsyncMock) as mock_send,
+            patch.object(
+                client, "send_api_request", new_callable=AsyncMock
+            ) as mock_send,
         ):
             await client.create_webhooks_if_not_exists("https://ocean.example.com/")
 
