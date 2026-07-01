@@ -183,7 +183,7 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
             await redis.xgroup_create(
                 self._stream_key,
                 self._consumer_group,
-                id="0" if stream_existed else "$",
+                id="$",
                 mkstream=True,
             )
             consumer_group_created = True
