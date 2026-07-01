@@ -57,6 +57,17 @@ async def test_get_agents_batches_results(client: AnthropicClient) -> None:
     batches = [batch async for batch in client.get_agents()]
 
     assert batches == [[{"id": "a1"}, {"id": "a2"}], [{"id": "a3"}]]
+    inner.beta.agents.list.assert_called_once_with(include_archived=False)
+
+
+@pytest.mark.asyncio
+async def test_get_agents_forwards_include_archived(client: AnthropicClient) -> None:
+    inner: Any = client._client
+    inner.beta.agents.list = AsyncMock(return_value=_aiter([]))
+
+    [batch async for batch in client.get_agents(include_archived=True)]
+
+    inner.beta.agents.list.assert_called_once_with(include_archived=True)
 
 
 @pytest.mark.asyncio

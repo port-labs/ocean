@@ -63,24 +63,46 @@ class AnthropicClient:
         if batch:
             yield batch
 
-    async def get_agents(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for batch in self._paginate(await self._client.beta.agents.list()):
+    async def get_agents(
+        self, *, include_archived: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._paginate(
+            await self._client.beta.agents.list(include_archived=include_archived)
+        ):
             yield batch
 
-    async def get_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for batch in self._paginate(await self._client.beta.environments.list()):
+    async def get_environments(
+        self, *, include_archived: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._paginate(
+            await self._client.beta.environments.list(include_archived=include_archived)
+        ):
             yield batch
 
-    async def get_sessions(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for batch in self._paginate(await self._client.beta.sessions.list()):
+    async def get_sessions(
+        self, *, include_archived: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._paginate(
+            await self._client.beta.sessions.list(include_archived=include_archived)
+        ):
             yield batch
 
-    async def get_vaults(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for batch in self._paginate(await self._client.beta.vaults.list()):
+    async def get_vaults(
+        self, *, include_archived: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._paginate(
+            await self._client.beta.vaults.list(include_archived=include_archived)
+        ):
             yield batch
 
-    async def get_memory_stores(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for batch in self._paginate(await self._client.beta.memory_stores.list()):
+    async def get_memory_stores(
+        self, *, include_archived: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for batch in self._paginate(
+            await self._client.beta.memory_stores.list(
+                include_archived=include_archived
+            )
+        ):
             yield batch
 
     def _skills_headers(self) -> dict[str, str]:
