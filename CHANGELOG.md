@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.4 (2026-06-28)
+
+### Improvements
+
+- Added a Redis PEL requeue worker (enabled by default, disable with `OCEAN__LIVE_EVENTS__REDIS__PEL_REQUEUE_WORKER_ENABLED=false`) that reclaims stuck pending stream messages and re-enqueues them for reprocessing. All pods scan concurrently, `XAUTOCLAIM` ensures only one pod claims each message.
+
 ## 0.44.3 (2026-06-28)
 
 ### Improvements

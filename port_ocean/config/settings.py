@@ -138,6 +138,46 @@ class LiveEventsRedisSettings(BaseOceanModel, extra=Extra.allow):
         ge=1,
         description="Maximum number of stream entries to return per XREADGROUP call.",
     )
+    # PEL requeue worker settings
+    pel_requeue_worker_enabled: bool = Field(
+        default=True,
+        description=(
+            "When true, starts a background worker that reclaims stuck PEL "
+            "entries and re-enqueues them for reprocessing."
+        ),
+    )
+    pel_stuck_timeout_seconds: int = Field(
+        default=600,
+        ge=1,
+        description="Seconds a PEL entry must be idle before the requeue worker reclaims it.",
+    )
+    pel_max_requeue_count: int = Field(
+        default=3,
+        ge=1,
+        description="Maximum number of times a message is requeued before being discarded.",
+    )
+    pel_scan_interval_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        description="Seconds between successive PEL scans by the requeue worker.",
+    )
+    pel_xautoclaim_count: int = Field(
+        default=100,
+        ge=1,
+        description="Maximum number of PEL entries to claim per XAUTOCLAIM call.",
+    )
+    pel_lifecycle_error_backoff_seconds: float = Field(
+        default=5.0,
+        gt=0,
+        description=(
+            "Seconds to wait before retrying the PEL worker lifecycle loop "
+            "after an unexpected error."
+        ),
+    )
+
+    @property
+    def stuck_timeout_ms(self) -> int:
+        return self.pel_stuck_timeout_seconds * 1000
 
     @root_validator
     def validate_tls_settings(cls, values: dict[str, Any]) -> dict[str, Any]:

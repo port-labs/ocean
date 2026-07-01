@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `update_repo_external_properties` action that pushes Port blueprint property values to GitHub repository external properties.
 
 
+## 6.1.3 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
 ## 6.1.2 (2026-06-29)
 
 
