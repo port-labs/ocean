@@ -11,7 +11,7 @@ class RegionHelper:
 
     @classmethod
     def get_partition(cls) -> str:
-        return cast(str, ocean.integration_config.get("aws_partition"))
+        return ocean.integration_config.get("aws_partition", Consts.default_partition)
 
     @classmethod
     async def get_all_available_regions(cls, session: AioSession) -> list[str]:
