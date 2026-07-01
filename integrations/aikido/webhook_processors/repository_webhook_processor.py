@@ -16,7 +16,7 @@ class RepositoryWebhookProcessor(BaseAikidoWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        issue_id = payload["payload"]["issue_id"]
+        issue_id = payload.get("payload", {}).get("issue_id")
         if not issue_id:
             logger.error("No issue_id found in webhook payload")
             return WebhookEventRawResults(
