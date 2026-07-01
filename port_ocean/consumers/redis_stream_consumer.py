@@ -363,18 +363,6 @@ class RedisStreamConsumer(AbstractLiveEventsConsumer):
         return round((reference_time - queued_time).total_seconds() * 1000, 2)
 
     @staticmethod
-    def _time_until_consumed_ms(
-        queued_at: str | None,
-        *,
-        now: datetime | None = None,
-        stream_key: str | None = None,
-    ) -> float | None:
-        queued_time = RedisStreamConsumer._parse_queued_at(
-            queued_at, stream_key=stream_key
-        )
-        return RedisStreamConsumer._time_since_queued_ms(queued_time, now=now)
-
-    @staticmethod
     def _normalize_webhook_path(webhook_path: str) -> str:
         """Map ingestion HTTP paths to integration processor paths.
 

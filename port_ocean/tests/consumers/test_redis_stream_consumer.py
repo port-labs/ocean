@@ -687,30 +687,38 @@ class TestRedisStreamConsumer:
             == "/webhook/monitor-events"
         )
 
-    def test_time_until_consumed_ms_from_unix_nanoseconds(self) -> None:
+    def test_parse_queued_at_from_unix_nanoseconds(self) -> None:
         queued_at = "1700000000000000000"
+
+        assert RedisStreamConsumer._parse_queued_at(
+            queued_at
+        ) == datetime.fromtimestamp(1700000000, tz=timezone.utc)
+
+    def test_parse_queued_at_from_unix_nanoseconds_with_fraction(self) -> None:
+        queued_at = "1700000000500000000"
+
+        assert RedisStreamConsumer._parse_queued_at(
+            queued_at
+        ) == datetime.fromtimestamp(1700000000.5, tz=timezone.utc)
+
+    def test_parse_queued_at_returns_none_when_missing(self) -> None:
+        assert RedisStreamConsumer._parse_queued_at(None) is None
+        assert RedisStreamConsumer._parse_queued_at("") is None
+
+    def test_parse_queued_at_returns_none_for_invalid_timestamp(self) -> None:
+        assert RedisStreamConsumer._parse_queued_at("not-a-timestamp") is None
+
+    def test_time_since_queued_ms(self) -> None:
+        queued_time = datetime.fromtimestamp(1700000000, tz=timezone.utc)
         consumed_at = datetime.fromtimestamp(1700000001.5, tz=timezone.utc)
 
         assert (
-            RedisStreamConsumer._time_until_consumed_ms(queued_at, now=consumed_at)
+            RedisStreamConsumer._time_since_queued_ms(queued_time, now=consumed_at)
             == 1500.0
         )
 
-    def test_time_until_consumed_ms_from_unix_nanoseconds_with_fraction(self) -> None:
-        queued_at = "1700000000500000000"
-        consumed_at = datetime.fromtimestamp(1700000002.0, tz=timezone.utc)
-
-        assert (
-            RedisStreamConsumer._time_until_consumed_ms(queued_at, now=consumed_at)
-            == 1500.0
-        )
-
-    def test_time_until_consumed_ms_returns_none_when_missing(self) -> None:
-        assert RedisStreamConsumer._time_until_consumed_ms(None) is None
-        assert RedisStreamConsumer._time_until_consumed_ms("") is None
-
-    def test_time_until_consumed_ms_returns_none_for_invalid_timestamp(self) -> None:
-        assert RedisStreamConsumer._time_until_consumed_ms("not-a-timestamp") is None
+    def test_time_since_queued_ms_returns_none_when_queued_time_missing(self) -> None:
+        assert RedisStreamConsumer._time_since_queued_ms(None) is None
 
     @pytest.mark.asyncio
     async def test_handle_message_logs_time_until_consumed(
