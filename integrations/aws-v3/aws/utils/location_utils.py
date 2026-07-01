@@ -12,19 +12,7 @@ class LocationUtils:
 
     @classmethod
     def get_partition(cls) -> str:
-        if not cls._partition:
-            if ocean.integration_config.get("aws_partition"):
-                cls._partition = cast(
-                    str, ocean.integration_config.get("aws_partition")
-                )
-            elif ocean.integration_config.get("accountRoleArn"):
-                cls._partition = cast(
-                    str, ocean.integration_config.get("accountRoleArn")
-                ).split(":")[1]
-            else:
-                cls._partition = Consts.default_partition
-
-        return cls._partition
+        return cast(str, ocean.integration_config.get("aws_partition"))
 
     @classmethod
     async def get_all_available_regions(cls, session: AioSession) -> list[str]:
