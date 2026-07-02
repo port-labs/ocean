@@ -52,31 +52,37 @@ class GithubGraphQLClient(AbstractGithubClient):
 
     def _handle_graphql_errors(
         self,
-        response: Dict[str, Any],
+        response: httpx.Response,
         ignored_errors: Optional[List[IgnoredError]] = None,
         query_path: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        if "errors" not in response:
-            return response
+        body = response.json()
+        if "errors" not in body:
+            return body
 
         ignored_errors = ignored_errors or []
         ignored_errors.extend(self._DEFAULT_IGNORED_ERRORS)
         ignored_types = {e.type: e.message for e in ignored_errors}
 
+        status_code = response.status_code
         non_ignored_exceptions = []
 
-        for error in response["errors"]:
+        for error in body["errors"]:
             error_type = error.get("type")
             if error_type in ignored_types:
-                log_message = f"{ignored_types[error_type]} due to {error['message']} for {error.get('path', [])})"
+                log_message = f"{ignored_types[error_type]} due to {error['message']} for {error.get('path', [])} (status {status_code})"
                 logger.warning(log_message)
                 continue
             non_ignored_exceptions.append(GraphQLClientError(error["message"]))
 
         if non_ignored_exceptions:
+            # The transport can rewrite variables between retries (e.g. shrinking
+            # `variables.first`); prefer what it actually sent over the caller's copy.
+            variables = self._sent_variables(response) or query_params
             logger.error(
-                f"[GraphQL] Query failed for path {query_path} with variables {query_params}"
+                f"[GraphQL] Query failed with status {status_code} for path "
+                f"{query_path} with variables {variables}"
             )
             raise GraphQLErrorGroup(non_ignored_exceptions)
 
@@ -116,10 +122,10 @@ class GithubGraphQLClient(AbstractGithubClient):
             authenticator_headers_params=authenticator_headers_params,
         )
         return self._handle_graphql_errors(
-            response.json(),
+            response,
             ignored_errors,
             query_path=query_path,
-            query_params=self._sent_variables(response) or query_params,
+            query_params=query_params,
         )
 
     def build_graphql_payload(
