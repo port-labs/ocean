@@ -6,6 +6,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.helpers.retry import RetryConfig, RetryTransport
+from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
 from github.clients.rate_limiter.utils import is_rate_limit_response
 
 
@@ -19,12 +20,6 @@ RETRYABLE_5XX_STATUS_CODES = (500, 502, 504)
 MIN_REST_PAGE_SIZE = 25
 MIN_GRAPHQL_PAGE_SIZE = 1
 GRAPHQL_REDUCTION_SIZE = 5
-
-# Response-extensions key under which the transport records the GraphQL variables
-# it actually sent. httpx resets `response.request` to the caller's original once
-# the transport returns, so variables the retry loop rewrote (e.g. a shrunk
-# `variables.first`) survive only here for the GraphQL client's error logs.
-GRAPHQL_SENT_VARIABLES_EXTENSION = "github_graphql_sent_variables"
 
 
 class GitHubRetryTransport(RetryTransport):

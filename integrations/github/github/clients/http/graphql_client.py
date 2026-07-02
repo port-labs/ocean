@@ -3,7 +3,7 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 import httpx
 from loguru import logger
 
-from github.clients.auth.retry_transport import GRAPHQL_SENT_VARIABLES_EXTENSION
+from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
