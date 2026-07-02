@@ -1,10 +1,10 @@
 from typing import Optional, Dict, Any, List
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 from datetime import datetime
 
 
-class TaskDefinitionProperties(BaseModel):
+class TaskDefinitionProperties(BaseAWSPropertiesModel):
     taskDefinitionArn: str = Field(default_factory=str, alias="TaskDefinitionArn")
     family: str = Field(default_factory=str, alias="Family")
     revision: int = Field(default=0, alias="Revision")
@@ -26,10 +26,6 @@ class TaskDefinitionProperties(BaseModel):
     )
     tags: List[Dict[str, Any]] = Field(default_factory=list, alias="Tags")
     registeredAt: Optional[datetime] = Field(default=None, alias="RegisteredAt")
-
-    class Config:
-        allow_population_by_field_name = True
-        extra = "ignore"
 
 
 class TaskDefinition(ResourceModel[TaskDefinitionProperties]):

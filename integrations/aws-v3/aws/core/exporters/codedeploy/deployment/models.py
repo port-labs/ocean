@@ -1,10 +1,10 @@
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import BaseModel, Field
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 
 
-class CodeDeployDeploymentProperties(BaseModel):
+class CodeDeployDeploymentProperties(BaseAWSPropertiesModel):
     """Properties for a CodeDeploy Deployment resource."""
 
     additionalDeploymentStatusInfo: Optional[str] = Field(
@@ -71,10 +71,6 @@ class CodeDeployDeploymentProperties(BaseModel):
     updateOutdatedInstancesOnly: Optional[bool] = Field(
         default=None, alias="UpdateOutdatedInstancesOnly"
     )
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class CodeDeployDeployment(ResourceModel[CodeDeployDeploymentProperties]):

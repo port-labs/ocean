@@ -1,11 +1,13 @@
 from typing import Optional, Dict, Any, List
 from datetime import datetime
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+
+from pydantic import ConfigDict, Field
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 
 
-class EC2InstanceProperties(BaseModel):
+class EC2InstanceProperties(BaseAWSPropertiesModel):
     """Properties for an EC2 instance resource."""
+    model_config = ConfigDict(extra="allow")
 
     AmiLaunchIndex: Optional[int] = None
     Architecture: Optional[str] = None
@@ -60,10 +62,6 @@ class EC2InstanceProperties(BaseModel):
     UsageOperationUpdateTime: Optional[datetime] = None
     VirtualizationType: Optional[str] = None
     VpcId: Optional[str] = None
-
-    class Config:
-        extra = "allow"
-        allow_population_by_name = True
 
 
 class EC2Instance(ResourceModel[EC2InstanceProperties]):

@@ -1,10 +1,11 @@
 from typing import Optional, Dict, Any, List
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field, ConfigDict
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 from datetime import datetime
 
 
-class BucketProperties(BaseModel):
+class BucketProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="forbid")
     BucketName: str = Field(default_factory=str)
     Arn: str = Field(default_factory=str)
     CreationDate: Optional[datetime] = None
@@ -15,10 +16,6 @@ class BucketProperties(BaseModel):
     BucketEncryption: Optional[Dict[str, Any]] = None
     PublicAccessBlockConfiguration: Optional[Dict[str, Any]] = None
     OwnershipControls: Optional[Dict[str, Any]] = None
-
-    class Config:
-        extra = "forbid"
-        populate_by_name = True
 
 
 class Bucket(ResourceModel[BucketProperties]):

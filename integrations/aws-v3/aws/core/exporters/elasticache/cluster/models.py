@@ -1,10 +1,11 @@
 from typing import Optional, Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field, ConfigDict
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 from datetime import datetime
 
 
-class CacheClusterProperties(BaseModel):
+class CacheClusterProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="allow")
     CacheClusterId: str = Field(default_factory=str)
     ARN: Optional[str] = Field(default=None)
     CacheNodeType: Optional[str] = Field(default=None)
@@ -39,10 +40,6 @@ class CacheClusterProperties(BaseModel):
     ConfigurationEndpoint: Optional[dict[str, Any]] = Field(default=None)
     ClientDownloadLandingPage: Optional[str] = Field(default=None)
     TagList: Optional[list[dict[str, Any]]] = Field(default=None)
-
-    class Config:
-        allow_population_by_field_name = True
-        extra = "allow"
 
 
 class CacheCluster(ResourceModel[CacheClusterProperties]):

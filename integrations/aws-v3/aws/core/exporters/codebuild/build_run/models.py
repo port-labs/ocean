@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 
 
-class BuildRunProperties(BaseModel):
+class BuildRunProperties(BaseAWSPropertiesModel):
     arn: str = Field(default_factory=str, alias="Arn")
     artifacts: dict[str, Any] | None = Field(default=None, alias="Artifacts")
     autoRetryConfig: dict[str, Any] | None = Field(
@@ -56,10 +56,6 @@ class BuildRunProperties(BaseModel):
     startTime: Optional[datetime] = Field(default=None, alias="StartTime")
     timeoutInMinutes: Optional[int] = Field(default=None, alias="TimeoutInMinutes")
     vpcConfig: Optional[Dict[str, Any]] = Field(default=None, alias="VpcConfig")
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class BuildRun(ResourceModel[BuildRunProperties]):

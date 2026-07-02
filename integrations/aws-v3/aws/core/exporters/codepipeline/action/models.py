@@ -1,20 +1,16 @@
 from typing import Optional, Dict, List, Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 
 
-class ActionTypeIdProperties(BaseModel):
+class ActionTypeIdProperties(BaseAWSPropertiesModel):
     category: str | None = Field(default=None, alias="Category")
     owner: str | None = Field(default=None, alias="Owner")
     provider: str | None = Field(default=None, alias="Provider")
     version: str | None = Field(default=None, alias="Version")
 
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
-
-class CodePipelineActionProperties(BaseModel):
+class CodePipelineActionProperties(BaseAWSPropertiesModel):
     actionTypeId: ActionTypeIdProperties = Field(
         default_factory=ActionTypeIdProperties, alias="ActionTypeId"
     )
@@ -40,10 +36,6 @@ class CodePipelineActionProperties(BaseModel):
     runOrder: Optional[int] = Field(default=None, alias="RunOrder")
     stageName: Optional[str] = Field(default=None, alias="StageName")
     timeoutInMinutes: Optional[int] = Field(default=None, alias="TimeoutInMinutes")
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class CodePipelineAction(ResourceModel[CodePipelineActionProperties]):

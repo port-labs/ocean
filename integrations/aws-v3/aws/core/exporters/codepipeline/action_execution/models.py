@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 
 
-class CodePipelineActionExecutionProperties(BaseModel):
+class CodePipelineActionExecutionProperties(BaseAWSPropertiesModel):
     actionExecutionId: str | None = Field(default=None, alias="ActionExecutionId")
     actionName: str | None = Field(default=None, alias="ActionName")
     input: dict[str, Any] | None = Field(default=None, alias="Input")
@@ -16,10 +16,6 @@ class CodePipelineActionExecutionProperties(BaseModel):
     startTime: datetime | None = Field(default=None, alias="StartTime")
     status: str | None = Field(default=None, alias="Status")
     updatedBy: str | None = Field(default=None, alias="UpdatedBy")
-
-    class Config:
-        extra = "ignore"
-        allow_population_by_field_name = True
 
 
 class CodePipelineActionExecution(ResourceModel[CodePipelineActionExecutionProperties]):

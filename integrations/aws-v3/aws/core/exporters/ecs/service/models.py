@@ -1,10 +1,10 @@
 from typing import Optional, Dict, Any, List
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 from datetime import datetime
 
 
-class ServiceProperties(BaseModel):
+class ServiceProperties(BaseAWSPropertiesModel):
     availabilityZoneRebalancing: Optional[str] = Field(
         default=None, alias="AvailabilityZoneRebalancing"
     )
@@ -62,10 +62,6 @@ class ServiceProperties(BaseModel):
     taskDefinition: str = Field(default_factory=str, alias="TaskDefinition")
     taskSets: List[Dict[str, Any]] = Field(default_factory=list, alias="TaskSets")
     updatedAt: Optional[datetime] = Field(default=None, alias="UpdatedAt")
-
-    class Config:
-        allow_population_by_field_name = True
-        extra = "ignore"
 
 
 class Service(ResourceModel[ServiceProperties]):

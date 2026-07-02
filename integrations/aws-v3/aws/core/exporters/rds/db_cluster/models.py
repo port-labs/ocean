@@ -1,10 +1,12 @@
 from typing import Optional, Any
-from pydantic.v1 import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from pydantic import Field, ConfigDict
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel, BaseAWSPropertiesModel
 from datetime import datetime
 
 
-class DbClusterProperties(BaseModel):
+class DbClusterProperties(BaseAWSPropertiesModel):
+    model_config = ConfigDict(extra="allow")
+
     ActivityStreamStatus: Optional[str] = Field(default=None)
     AssociatedRoles: list[dict[str, Any]] = Field(default_factory=list)
     AutoMinorVersionUpgrade: bool = Field(default=False)
@@ -42,9 +44,6 @@ class DbClusterProperties(BaseModel):
     Tags: list[dict[str, Any]] = Field(default_factory=list)
     VpcSecurityGroups: list[dict[str, Any]] = Field(default_factory=list)
     DBSubnetGroup: Optional[str] = Field(default=None)
-
-    class Config:
-        extra = "allow"
 
 
 class DbCluster(ResourceModel[DbClusterProperties]):
