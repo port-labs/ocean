@@ -133,7 +133,6 @@ class OnceEventListener(BaseEventListener):
     async def _start(self) -> None:
         """
         Starts the resync process, and exits the application once finished.
-
         When ``incrementalSyncEnabled`` is set on the integration config the pod
         runs ``sync_incremental`` instead of a full resync.  This is how the Helm
         CronJob for incremental sync works: same ONCE listener, different routing.

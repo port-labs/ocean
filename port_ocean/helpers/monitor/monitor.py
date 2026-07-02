@@ -275,18 +275,7 @@ class PerformanceMonitor:
 
         if not cpu_samples:
             logger.debug(f"[Monitor] No samples collected for kind: {kind}")
-            return ResourceUsageStats(
-                response_size=ResponseSizeStats(
-                    response_size_total=sum(response_sizes) if response_sizes else 0,
-                    response_size_avg=(
-                        statistics.mean(response_sizes) if response_sizes else 0.0
-                    ),
-                    response_size_median=(
-                        statistics.median(response_sizes) if response_sizes else 0.0
-                    ),
-                ),
-                request_count=len(response_sizes),
-            )
+            return ResourceUsageStats()
 
         stats = ResourceUsageStats(
             cpu=CPUStats(
@@ -314,7 +303,6 @@ class PerformanceMonitor:
                 ),
             ),
             sample_count=len(cpu_samples),
-            request_count=len(response_sizes),
         )
 
         logger.debug(
