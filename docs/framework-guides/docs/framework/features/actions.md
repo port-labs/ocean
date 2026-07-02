@@ -131,7 +131,7 @@ When the execution manager detects an approaching rate limit:
 
 The framework implements a high-watermark system to prevent queue overload:
 
-- **High Watermark** - Maximum total size across all queues (default: 1000 runs)
+- **High Watermark** - Maximum total size across all queues (default: 300 runs)
 - **Poll Throttling** - When queues reach the watermark, polling pauses
 - **Automatic Resume** - Polling resumes once workers process runs and free up space
 
@@ -180,16 +180,41 @@ Webhook processors allow the integration to receive external events (e.g., from 
 
 ## Configuration
 
-The Execution Manager is configured with these parameters:
+Action processing is controlled by the `actionsProcessor` section of the Ocean configuration (or `OCEAN__ACTIONS_PROCESSOR__*` environment variables).
 
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `workers_count` | Number of concurrent worker tasks; tune based on pod CPU and memory | `1` |
-| `runs_buffer_high_watermark` | Maximum queue size before throttling polls (1–1000) | `100` |
-| `poll_check_interval_seconds` | Seconds between polling attempts | `10` |
-| `visibility_timeout_ms` | Timeout for claimed runs in milliseconds (1–600000) | `30000` |
-| `max_runs_buffer_util_pct_per_action` | Max buffer utilization percentage per action identifier before excluding it from claim-pending (1–100); set to enable | unset |
-| `max_wait_seconds_before_shutdown` | Maximum time to wait during graceful shutdown | `30` |
+To start the Execution Manager, set `actionsProcessor.enabled` to `true`. This also requires:
+
+- `actionsProcessingEnabled: true` in the integration `.port/spec.yaml`
+- An event listener that supports action processing (for example, `POLLING` or `KAFKA`; listeners such as `WEBHOOKS_ONLY` disable it)
+
+```yaml showLineNumbers
+actionsProcessor:
+  enabled: true
+  workersCount: 3
+  runsBufferHighWatermark: 300
+  pollCheckIntervalSeconds: 10
+  visibilityTimeoutMs: 60000
+  maxRunsBufferUtilPctPerAction: 30
+```
+
+### Actions processor settings
+
+| Parameter | Env variable | Description | Default |
+| --------- | ------------ | ----------- | ------- |
+| `enabled` | `OCEAN__ACTIONS_PROCESSOR__ENABLED` | Start the Execution Manager and poll for pending runs | `false` |
+| `workersCount` | `OCEAN__ACTIONS_PROCESSOR__WORKERS_COUNT` | Number of concurrent worker tasks; tune based on pod CPU and memory (≥ 1) | `3` |
+| `runsBufferHighWatermark` | `OCEAN__ACTIONS_PROCESSOR__RUNS_BUFFER_HIGH_WATERMARK` | Max total runs queued before throttling claim-pending polls (1–1000) | `300` |
+| `pollCheckIntervalSeconds` | `OCEAN__ACTIONS_PROCESSOR__POLL_CHECK_INTERVAL_SECONDS` | Seconds between claim-pending polling attempts (≥ 1) | `10` |
+| `visibilityTimeoutMs` | `OCEAN__ACTIONS_PROCESSOR__VISIBILITY_TIMEOUT_MS` | How long a claimed run stays invisible to other consumers before becoming reclaimable, in milliseconds (1–600000) | `60000` |
+| `maxRunsBufferUtilPctPerAction` | `OCEAN__ACTIONS_PROCESSOR__MAX_RUNS_BUFFER_UTIL_PCT_PER_ACTION` | Max buffer utilization per action identifier before excluding it from claim-pending (1–100). When an identifier's queued runs reach this percentage of `runsBufferHighWatermark`, new runs for that identifier are not claimed until the buffer drains | `30` |
+
+### General shutdown setting
+
+The Execution Manager also uses this top-level Ocean setting during graceful shutdown:
+
+| Parameter | Env variable | Description | Default |
+| --------- | ------------ | ----------- | ------- |
+| `maxWaitSecondsBeforeShutdown` | `OCEAN__MAX_WAIT_SECONDS_BEFORE_SHUTDOWN` | Maximum time to wait for workers to finish during shutdown | `5` |
 
 ## Implementation Guide
 

@@ -56,6 +56,7 @@ class ExecutionManager:
 
     Example:
         ```python
+        # Create and configure execution manager
         manager = ExecutionManager(
             webhook_manager=webhook_mgr,
             signal_handler=signal_handler,
@@ -66,6 +67,12 @@ class ExecutionManager:
             max_wait_seconds_before_shutdown=30.0,
             max_runs_buffer_util_pct_per_action=30,
         )
+
+        # Register action executors
+        manager.register_executor(MyActionExecutor())
+
+        # Start processing
+        await manager.start_processing_action_runs()
         ```
     """
 
@@ -299,12 +306,16 @@ class ExecutionManager:
     def _track_buffer_enqueue(self, run: IntegrationRun) -> None:
         key = run.buffer_utilization_key
         if key:
-            self._increment_buffer_queue_count(self._buffer_queue_counts[run.kind], key)
+            self._increment_buffer_queue_count(
+                self._buffer_queue_counts[run.run_kind], key
+            )
 
     def _track_buffer_dequeue(self, run: IntegrationRun) -> None:
         key = run.buffer_utilization_key
         if key:
-            self._decrement_buffer_queue_count(self._buffer_queue_counts[run.kind], key)
+            self._decrement_buffer_queue_count(
+                self._buffer_queue_counts[run.run_kind], key
+            )
 
     async def _add_run_to_queue(
         self,
@@ -359,28 +370,31 @@ class ExecutionManager:
         """
         Round-robin worker across global and partitions queues.
         """
-        while not self._is_shutting_down.is_set():
-            try:
-                # Enable graceful worker shutdown when there are no active sources to process
-                # Using asyncio.Queue.get without a timeout would block indefinitely if active sources are empty
+        with logger.contextualize(worker_id=asyncio.current_task().get_name()):
+            while not self._is_shutting_down.is_set():
                 try:
-                    source = await asyncio.wait_for(
-                        self._active_sources.get(),
-                        timeout=self._max_wait_seconds_before_shutdown / 3,
-                    )
-                    logger.debug(
-                        f"Processing run from {source} queue",
-                        queue_size=await self._get_queues_size(),
-                    )
-                except asyncio.TimeoutError:
-                    continue
+                    # Enable graceful worker shutdown when there are no active sources to process
+                    # Using asyncio.Queue.get without a timeout would block indefinitely if active sources are empty
+                    try:
+                        source = await asyncio.wait_for(
+                            self._active_sources.get(),
+                            timeout=self._max_wait_seconds_before_shutdown / 3,
+                        )
+                        logger.debug(
+                            f"Processing run from {source} queue",
+                            queue_size=await self._get_queues_size(),
+                        )
+                    except asyncio.TimeoutError:
+                        continue
 
-                if source == GLOBAL_SOURCE:
-                    await self._handle_global_queue_once()
-                else:
-                    await self._handle_partition_queue_once(source)
-            except Exception as e:
-                logger.exception("Worker processing error", source=source, error=str(e))
+                    if source == GLOBAL_SOURCE:
+                        await self._handle_global_queue_once()
+                    else:
+                        await self._handle_partition_queue_once(source)
+                except Exception as e:
+                    logger.exception(
+                        "Worker processing error", source=source, error=str(e)
+                    )
 
     async def _handle_global_queue_once(self) -> None:
         """
@@ -497,8 +511,8 @@ class ExecutionManager:
                 error_summary = f"Failed to execute run: {str(e)}"
 
             if error_summary:
-                await ocean.port_client.report_run_failure(
-                    run, error_summary, should_raise=False
+                await ocean.port_client.report_run_completed(
+                    run, success=False, message=error_summary, should_raise=False
                 )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None] | None) -> None:

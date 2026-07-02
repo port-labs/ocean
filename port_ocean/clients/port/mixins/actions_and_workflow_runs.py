@@ -7,9 +7,10 @@ from port_ocean.clients.port.mixins.workflow_nodes import WorkflowNodesClientMix
 from port_ocean.core.models import (
     IntegrationRun,
     RunStatus,
+    WorkflowNodeRun,
     WorkflowNodeRunLog,
-    WorkflowNodeRunStatus,
     WorkflowNodeRunResult,
+    WorkflowNodeRunStatus,
 )
 
 
@@ -66,7 +67,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         return runs
 
     async def acknowledge_run(self, run: IntegrationRun) -> None:
-        if run.is_workflow_node_run:
+        if isinstance(run, WorkflowNodeRun):
             await self.acknowledge_wf_node_run(run.id)
         else:
             await self.acknowledge_action_run(run.id)
@@ -78,7 +79,8 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         level: Literal["INFO", "WARNING", "ERROR", "DEBUG"] = "INFO",
         should_raise: bool = False,
     ) -> None:
-        if run.is_workflow_node_run:
+        if isinstance(run, WorkflowNodeRun):
+            # API expects "WARN" not "WARNING"
             log_level: Literal["INFO", "WARN", "ERROR", "DEBUG"] = (
                 "WARN" if level == "WARNING" else level
             )
@@ -90,34 +92,17 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         else:
             await self.post_action_run_log(run.id, message)
 
-    async def report_run_failure(
+    async def patch_run(
         self,
         run: IntegrationRun,
-        error_summary: str,
-        should_raise: bool = False,
+        payload: dict[str, Any],
+        should_raise: bool = True,
     ) -> None:
-        if run.is_workflow_node_run:
-            await self.post_wf_node_run_logs(
-                run.id,
-                [WorkflowNodeRunLog(level="ERROR", message=error_summary)],
-                should_raise=should_raise,
-            )
-            await self.patch_wf_node_run(
-                run.id,
-                self._wf_node_completion_patch(
-                    WorkflowNodeRunResult.FAILED, run.output
-                ),
-                should_raise=should_raise,
-            )
+        """Patch an action or workflow node run."""
+        if isinstance(run, WorkflowNodeRun):
+            await self.patch_wf_node_run(run.id, payload, should_raise=should_raise)
         else:
-            await self.patch_run(
-                run.id,
-                {
-                    "summary": error_summary,
-                    "status": RunStatus.FAILURE,
-                },
-                should_raise=should_raise,
-            )
+            await self.patch_action_run(run.id, payload, should_raise=should_raise)
 
     async def find_run_by_external_id(self, external_id: str) -> IntegrationRun | None:
         """Get a run by its external ID."""
@@ -131,9 +116,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
 
     def is_run_in_progress(self, run: IntegrationRun) -> bool:
         """Check if a run is currently in progress."""
-        if run.is_workflow_node_run:
-            return run.status == WorkflowNodeRunStatus.IN_PROGRESS
-        return run.status == RunStatus.IN_PROGRESS
+        return run.is_in_progress
 
     async def update_run_started(
         self,
@@ -143,7 +126,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         extra_output: dict[str, Any] | None = None,
     ) -> None:
         """Update a run to indicate it has started, setting the link and external ID."""
-        if run.is_workflow_node_run:
+        if isinstance(run, WorkflowNodeRun):
             output: dict[str, Any] = {"workflowRunUrl": link}
             if extra_output:
                 output.update(extra_output)
@@ -157,9 +140,8 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
             )
             run.output = output
         else:
-            await self.patch_run(
-                run.id,
-                {"link": link, "externalRunId": external_id},
+            await self.patch_action_run(
+                run.id, {"link": link, "externalRunId": external_id}
             )
 
     async def report_run_completed(
@@ -167,9 +149,10 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         run: IntegrationRun,
         success: bool,
         message: str | None = None,
+        should_raise: bool = False,
     ) -> None:
         """Report a run as completed with success or failure."""
-        if run.is_workflow_node_run:
+        if isinstance(run, WorkflowNodeRun):
             result = (
                 WorkflowNodeRunResult.SUCCESS
                 if success
@@ -182,13 +165,18 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 await self.post_wf_node_run_logs(
                     run.id,
                     [WorkflowNodeRunLog(level=log_level, message=message)],
+                    should_raise=should_raise,
                 )
             await self.patch_wf_node_run(
                 run.id,
                 self._wf_node_completion_patch(result, run.output),
+                should_raise=should_raise,
             )
         else:
             status = RunStatus.SUCCESS if success else RunStatus.FAILURE
+            patch: dict[str, Any] = {"status": status}
             if message:
                 await self.post_action_run_log(run.id, message)
-            await self.patch_run(run.id, {"status": status})
+                if not success:
+                    patch["summary"] = message
+            await self.patch_action_run(run.id, patch, should_raise=should_raise)

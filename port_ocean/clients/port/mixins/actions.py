@@ -59,7 +59,7 @@ class ActionsClientMixin:
         runs = response.json().get("runs", [])
         return None if not len(runs) else ActionRun.parse_obj(runs[0])
 
-    async def patch_run(
+    async def patch_action_run(
         self,
         run_id: str,
         run: ActionRun | dict[str, Any],

@@ -67,7 +67,7 @@ def generate_mock_wf_node_run(
     if integrationActionExecutionProperties is None:
         integrationActionExecutionProperties = {}
     return WorkflowNodeRun(
-        identifier=f"test-wf-node-run-id-{uuid.uuid4()}",
+        id=f"test-wf-node-run-id-{uuid.uuid4()}",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
         config=IntegrationActionInvocation(
             type="INTEGRATION_ACTION",
@@ -75,6 +75,7 @@ def generate_mock_wf_node_run(
             integrationInvocationType=action_type,
             integrationActionExecutionProperties=integrationActionExecutionProperties,
         ),
+        output={},
     )
 
 
@@ -94,7 +95,7 @@ def mock_port_client() -> MagicMock:
     mock_port_client.claim_pending_runs = AsyncMock(return_value=[])
     mock_port_client.acknowledge_run = AsyncMock()
     mock_port_client.post_run_log = AsyncMock()
-    mock_port_client.report_run_failure = AsyncMock()
+    mock_port_client.report_run_completed = AsyncMock()
     mock_port_client.auth = AsyncMock(spec=PortAuthentication)
     mock_port_client.auth.is_machine_user = AsyncMock(return_value=True)
     return mock_port_client
@@ -776,10 +777,11 @@ class TestExecutionManager:
         await execution_manager._execute_run(run)
 
         # Assert
-        assert mock_port_client.report_run_failure.call_count == 1
-        called_args, called_kwargs = mock_port_client.report_run_failure.call_args
+        assert mock_port_client.report_run_completed.call_count == 1
+        called_args, called_kwargs = mock_port_client.report_run_completed.call_args
         assert called_args[0] == run
-        assert error_msg in called_args[1]
+        assert called_kwargs["success"] is False
+        assert error_msg in called_kwargs["message"]
         assert called_kwargs.get("should_raise") is False
 
     @pytest.mark.asyncio
@@ -799,8 +801,8 @@ class TestExecutionManager:
             await execution_manager._execute_run(run)
 
         mock_exception_log.assert_not_called()
-        mock_port_client.report_run_failure.assert_called_once_with(
-            run, error_msg, should_raise=False
+        mock_port_client.report_run_completed.assert_called_once_with(
+            run, success=False, message=error_msg, should_raise=False
         )
 
     @pytest.mark.asyncio
@@ -829,7 +831,7 @@ class TestExecutionManager:
 
             mock_execute.assert_not_called()
 
-        mock_port_client.report_run_failure.assert_not_called()
+        mock_port_client.report_run_completed.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_polling_continues_after_api_errors(
@@ -890,7 +892,7 @@ class TestExecutionManager:
         # Arrange
         run = generate_mock_action_run()
 
-        # Make execute raise an exception, and report_run_failure also fail
+        # Make execute raise an exception, and report_run_completed also fail
         mock_test_executor.execute.side_effect = Exception("Execution failed")
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 503
@@ -899,7 +901,7 @@ class TestExecutionManager:
             request=MagicMock(),
             response=mock_response,
         )
-        mock_port_client.report_run_failure.side_effect = patch_error
+        mock_port_client.report_run_completed.side_effect = patch_error
 
         # Add run to queue
         await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
@@ -928,8 +930,8 @@ class TestExecutionManager:
         # Exception should have been caught by worker loop, not crashed
         # Run should have been acknowledged before execution failed
         mock_port_client.acknowledge_run.assert_called_once_with(run)
-        # report_run_failure should have been attempted (even if it failed)
-        mock_port_client.report_run_failure.assert_called_once()
+        # report_run_completed should have been attempted (even if it failed)
+        mock_port_client.report_run_completed.assert_called_once()
         # Worker task should have completed (either naturally or cancelled), not crashed
         assert worker_task.done()
 

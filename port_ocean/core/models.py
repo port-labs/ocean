@@ -1,7 +1,9 @@
+from ast import TypeAlias
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
-from typing import Any, Literal, NotRequired, Protocol, TypedDict, runtime_checkable
+from abc import ABC, abstractmethod
+from typing import Any, Literal, NotRequired, TypedDict
 from pydantic.v1 import BaseModel, Extra, root_validator
 from pydantic.v1.fields import Field
 
@@ -169,6 +171,10 @@ class RunStatus(StrEnum):
     FAILURE = "FAILURE"
 
 
+# TODO: Rename RunStatus to that once this name is used in the integrations code
+ActionRunStatus: TypeAlias = RunStatus
+
+
 class WorkflowNodeRunStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
@@ -210,49 +216,47 @@ class IntegrationActionInvocation(BaseModel):
 IntegrationActionInvocationPayload = IntegrationActionInvocation
 
 
-@runtime_checkable
-class IntegrationRun(Protocol):
-    """Shared execution contract for action runs and workflow node runs."""
+class IntegrationRun(ABC):
+    """Abstract contract for integration runs (action runs and workflow node runs).
 
-    output: dict[str, Any]
+    Consumers operate through this interface and stay agnostic to the concrete
+    run type. Use ``run_kind`` only for the rare cases that need to branch on type.
+    """
 
-    @property
-    def kind(self) -> RunKind: ...
-
-    @property
-    def id(self) -> str: ...
+    id: str
 
     @property
-    def status(self) -> RunStatus | WorkflowNodeRunStatus: ...
+    @abstractmethod
+    def run_kind(self) -> RunKind: ...
 
     @property
+    @abstractmethod
     def action_type(self) -> str: ...
 
     @property
+    @abstractmethod
     def execution_properties(self) -> dict[str, Any]: ...
 
     @property
-    def buffer_utilization_key(self) -> str | None: ...
+    @abstractmethod
+    def buffer_utilization_key(self) -> str: ...
 
     @property
-    def is_action_run(self) -> bool: ...
-
-    @property
-    def is_workflow_node_run(self) -> bool: ...
+    @abstractmethod
+    def is_in_progress(self) -> bool: ...
 
 
-class ActionRun(BaseModel):
+class ActionRun(BaseModel, IntegrationRun):
     id: str
     status: RunStatus
     payload: IntegrationActionInvocation
-    action_identifier: str = Field(default="", alias="actionIdentifier")
-    output: dict[str, Any] = Field(default_factory=dict)
+    action_identifier: str = Field(alias="actionIdentifier")
 
     class Config:
         allow_population_by_field_name = True
 
     @property
-    def kind(self) -> RunKind:
+    def run_kind(self) -> RunKind:
         return RunKind.ACTION
 
     @property
@@ -264,36 +268,27 @@ class ActionRun(BaseModel):
         return self.payload.integrationActionExecutionProperties
 
     @property
-    def buffer_utilization_key(self) -> str | None:
-        return self.action_identifier or None
+    def buffer_utilization_key(self) -> str:
+        return self.action_identifier
 
     @property
-    def is_action_run(self) -> bool:
-        return True
-
-    @property
-    def is_workflow_node_run(self) -> bool:
-        return False
+    def is_in_progress(self) -> bool:
+        return self.status == RunStatus.IN_PROGRESS
 
 
-class WorkflowNodeRun(BaseModel):
-    id: str = ""
-    identifier: str = ""
+class WorkflowNodeRun(BaseModel, IntegrationRun):
+    id: str
     status: WorkflowNodeRunStatus
-    config: IntegrationActionInvocation | None = None
-    output: dict[str, Any] = Field(default_factory=dict)
-    result: WorkflowNodeRunResult | None = None
-    installationId: str | None = None
+    config: IntegrationActionInvocation
+    output: dict[str, Any]
 
     class Config:
         allow_population_by_field_name = True
 
     @root_validator(pre=True)
     def normalize_api_shapes(cls, values: dict[str, Any]) -> dict[str, Any]:
-        run_id = values.get("id") or values.get("identifier")
-        if run_id:
-            values["id"] = run_id
-            values["identifier"] = run_id
+        if not values.get("id") and values.get("identifier"):
+            values["id"] = values["identifier"]
 
         node = values.get("node")
         if isinstance(node, dict) and node.get("config") and not values.get("config"):
@@ -302,32 +297,24 @@ class WorkflowNodeRun(BaseModel):
         return values
 
     @property
-    def kind(self) -> RunKind:
+    def run_kind(self) -> RunKind:
         return RunKind.WORKFLOW_NODE
 
     @property
     def action_type(self) -> str:
-        return self.config.action_type if self.config else ""
+        return self.config.action_type
 
     @property
     def execution_properties(self) -> dict[str, Any]:
-        if self.config is None:
-            return {}
         return self.config.integrationActionExecutionProperties
 
     @property
-    def buffer_utilization_key(self) -> str | None:
-        if self.config is None:
-            return None
-        return self.config.integrationInvocationType or None
+    def buffer_utilization_key(self) -> str:
+        return self.config.integrationInvocationType
 
     @property
-    def is_action_run(self) -> bool:
-        return False
-
-    @property
-    def is_workflow_node_run(self) -> bool:
-        return True
+    def is_in_progress(self) -> bool:
+        return self.status == WorkflowNodeRunStatus.IN_PROGRESS
 
 
 class LakehouseDataEntryMetadata(TypedDict):
