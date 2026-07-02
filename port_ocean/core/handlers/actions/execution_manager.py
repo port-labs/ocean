@@ -61,7 +61,7 @@ class ExecutionManager:
             webhook_manager=webhook_mgr,
             signal_handler=signal_handler,
             workers_count=3,
-            runs_buffer_high_watermark=100,
+            runs_buffer_high_watermark=300,
             poll_check_interval_seconds=10,
             visibility_timeout_ms=30000,
             max_wait_seconds_before_shutdown=30.0,
@@ -289,33 +289,24 @@ class ExecutionManager:
             if key and count >= limit
         ]
 
-    def _increment_buffer_queue_count(
-        self, queue_counts: Dict[str, int], key: str
-    ) -> None:
+    def _track_buffer_enqueue(self, run: IntegrationRun) -> None:
+        self._deduplication_set.add(run.id)
+
+        key = run.buffer_utilization_key
+        queue_counts = self._buffer_queue_counts[run.run_kind]
         queue_counts[key] = queue_counts.get(key, 0) + 1
 
-    def _decrement_buffer_queue_count(
-        self, queue_counts: Dict[str, int], key: str
-    ) -> None:
-        count = queue_counts.get(key, 0)
-        if count <= 1:
+    def _track_buffer_dequeue(self, run: IntegrationRun) -> None:
+        if run.id in self._deduplication_set:
+            self._deduplication_set.remove(run.id)
+
+        key = run.buffer_utilization_key
+        queue_counts = self._buffer_queue_counts[run.run_kind]
+        count = queue_counts.get(key, 0) - 1
+        if count <= 0 and key in queue_counts:
             queue_counts.pop(key, None)
         else:
-            queue_counts[key] = count - 1
-
-    def _track_buffer_enqueue(self, run: IntegrationRun) -> None:
-        key = run.buffer_utilization_key
-        if key:
-            self._increment_buffer_queue_count(
-                self._buffer_queue_counts[run.run_kind], key
-            )
-
-    def _track_buffer_dequeue(self, run: IntegrationRun) -> None:
-        key = run.buffer_utilization_key
-        if key:
-            self._decrement_buffer_queue_count(
-                self._buffer_queue_counts[run.run_kind], key
-            )
+            queue_counts[key] = count
 
     async def _add_run_to_queue(
         self,
@@ -337,7 +328,6 @@ class ExecutionManager:
         async with self._queues_locks[queue_name]:
             if await queue.size() == 0:
                 await self._active_sources.put(queue_name)
-            self._deduplication_set.add(run.id)
             self._track_buffer_enqueue(run)
             logger.info(
                 f"Adding run to queue {queue_name}",
@@ -414,8 +404,6 @@ class ExecutionManager:
                     return
 
                 self._track_buffer_dequeue(run)
-                if run.id in self._deduplication_set:
-                    self._deduplication_set.remove(run.id)
 
             await self._add_source_if_not_empty(GLOBAL_SOURCE)
             await self._execute_run(run)
@@ -438,8 +426,6 @@ class ExecutionManager:
                     )
                     got_run = True
                     self._track_buffer_dequeue(run)
-                    if run.id in self._deduplication_set:
-                        self._deduplication_set.remove(run.id)
                 except asyncio.TimeoutError:
                     logger.debug(f"Partition queue {partition_name} is empty, skipping")
                     return

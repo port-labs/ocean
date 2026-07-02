@@ -92,6 +92,18 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         else:
             await self.post_action_run_log(run.id, message)
 
+    async def post_run_logs(
+        self,
+        run: IntegrationRun,
+        logs: list[WorkflowNodeRunLog],
+        should_raise: bool = False,
+    ) -> None:
+        if isinstance(run, WorkflowNodeRun):
+            await self.post_wf_node_run_logs(run.id, logs, should_raise=should_raise)
+        else:
+            for log in logs:
+                await self.post_action_run_log(run.id, log.message)
+
     async def patch_run(
         self,
         run: IntegrationRun,
@@ -174,9 +186,8 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
             )
         else:
             status = RunStatus.SUCCESS if success else RunStatus.FAILURE
-            patch: dict[str, Any] = {"status": status}
             if message:
                 await self.post_action_run_log(run.id, message)
-                if not success:
-                    patch["summary"] = message
-            await self.patch_action_run(run.id, patch, should_raise=should_raise)
+            await self.patch_action_run(
+                run.id, {"status": status}, should_raise=should_raise
+            )

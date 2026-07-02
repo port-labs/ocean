@@ -11,8 +11,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added per-action queue tracking in the execution manager for action runs using `actionIdentifier`. When `OCEAN__ACTIONS_PROCESSOR__MAX_RUNS_BUFFER_UTIL_PCT_PER_ACTION` is set, saturated action identifiers are passed as `exclude` in the action-run claim-pending body.
-- Added optional `actionIdentifier` on `ActionRun` (defaults to empty string for backward compatibility with older Port payloads).
+- Improved action processor fairness: each claim-pending poll now considers both action runs and workflow node runs in the same cycle (instead of alternating), preventing one run type from waiting up to twice the poll interval while the other is claimed.
+- Added per-action-type buffer limits in the execution manager. When a run type fills its share of the queue, it is temporarily excluded from claim-pending so high-volume actions cannot starve other action types.
 - Added descriptions and validation bounds to `ActionsProcessorSettings` (`runs_buffer_high_watermark`, `visibility_timeout_ms`, `poll_check_interval_seconds`, `workers_count`).
 
 ### Bug Fixes
