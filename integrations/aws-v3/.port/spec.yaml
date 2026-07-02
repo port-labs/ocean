@@ -75,7 +75,6 @@ configurations:
     required: false
     type: string
     sensitive: false
-    default: "aws"
     description: AWS Partition, defaults to "aws" which is the standard global one (optional).
     enum: ["aws", "aws-us-gov", "aws-cn"]
 disableDefaultInstallationMethods: true

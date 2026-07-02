@@ -1,3 +1,5 @@
+from typing import cast
+
 from aiobotocore.session import AioSession
 
 from aws.utils.consts import Consts
@@ -5,11 +7,24 @@ from port_ocean.context.ocean import ocean
 
 
 class RegionHelper:
+    _partition: str = ""
     _available_regions: list[str] = []
 
     @classmethod
     def get_partition(cls) -> str:
-        return ocean.integration_config.get("aws_partition", Consts.default_partition)
+        if not cls._partition:
+            if ocean.integration_config.get("aws_partition"):
+                cls._partition = cast(
+                    str, ocean.integration_config.get("aws_partition")
+                )
+            elif ocean.integration_config.get("accountRoleArn"):
+                cls._partition = cast(
+                    str, ocean.integration_config.get("accountRoleArn")
+                ).split(":")[1]
+            else:
+                cls._partition = Consts.default_partition
+
+        return cls._partition
 
     @classmethod
     async def get_all_available_regions(cls, session: AioSession) -> list[str]:
