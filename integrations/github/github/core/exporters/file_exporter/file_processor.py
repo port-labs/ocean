@@ -27,7 +27,7 @@ class FileProcessor:
         branch: str,
         content: str,
         metadata: Optional[Dict[str, Any]] = None,
-        resolve_references: bool = True,
+        should_resolve_references: bool = True,
     ) -> FileObject:
         """
         Common content processor for GraphQL and REST paths.
@@ -52,7 +52,7 @@ class FileProcessor:
 
         parsed_content = parse_content(content, file_path)
 
-        if not resolve_references:
+        if not should_resolve_references:
             return FileObject(
                 organization=organization,
                 content=parsed_content,
