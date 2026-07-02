@@ -26,7 +26,6 @@ from port_ocean.exceptions.core import (
 )
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.helpers.monitor.monitor import get_monitor
-from port_ocean.helpers.monitor.models import ResourceUsageStats
 from port_ocean.utils.async_http import _http_client
 from port_ocean.core.models import IntegrationFeatureFlag, LakehouseDataEntry, LakehouseDataEntryMetadata, ProcessingMode
 
@@ -389,10 +388,12 @@ def start_kind_tracking(kind: str) -> None:
     monitor = get_monitor()
     monitor.start_kind_tracking(kind)
 
-
-def _report_kind_usage_metrics(kind: str, stats: ResourceUsageStats) -> None:
-    """Publish per-kind CPU, memory, latency, and response-size metrics."""
+def stop_kind_tracking(kind: str) -> None:
+    monitor = get_monitor()
+    monitor.stop_kind_tracking(kind)
+    stats = monitor.get_kind_stats(kind)
     if stats.sample_count > 0:
+        # Report CPU metrics
         ocean.metrics.set_metric(
             MetricType.CPU_MAX_NAME, [kind], stats.cpu.cpu_max
         )
@@ -402,6 +403,7 @@ def _report_kind_usage_metrics(kind: str, stats: ResourceUsageStats) -> None:
         ocean.metrics.set_metric(
             MetricType.CPU_AVG_NAME, [kind], stats.cpu.cpu_avg
         )
+        # Report memory metrics
         ocean.metrics.set_metric(
             MetricType.MEMORY_MAX_NAME, [kind], stats.memory.memory_max
         )
@@ -413,6 +415,7 @@ def _report_kind_usage_metrics(kind: str, stats: ResourceUsageStats) -> None:
         ocean.metrics.set_metric(
             MetricType.MEMORY_AVG_NAME, [kind], stats.memory.memory_avg
         )
+        # Report latency metrics
         ocean.metrics.set_metric(
             MetricType.LATENCY_MAX_NAME,
             [kind],
@@ -428,8 +431,7 @@ def _report_kind_usage_metrics(kind: str, stats: ResourceUsageStats) -> None:
             [kind],
             stats.latency.latency_avg,
         )
-
-    # Response-size metrics are reported even when no CPU samples were collected.
+    # Report response size metrics (always report, even if no requests)
     ocean.metrics.set_metric(
         MetricType.RESPONSE_SIZE_TOTAL_NAME,
         [kind],
@@ -445,14 +447,4 @@ def _report_kind_usage_metrics(kind: str, stats: ResourceUsageStats) -> None:
         [kind],
         stats.response_size.response_size_median,
     )
-
-
-def stop_kind_tracking(kind: str, *, report_metrics: bool = True) -> ResourceUsageStats:
-    """Stop tracking a kind, optionally publish metrics, and return usage stats."""
-    monitor = get_monitor()
-    monitor.stop_kind_tracking(kind)
-    stats = monitor.get_kind_stats(kind)
-    if report_metrics:
-        _report_kind_usage_metrics(kind, stats)
     monitor.cleanup_kind_tracking(kind)
-    return stats

@@ -1,7 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
 import sys
-import time
 import uuid
 from graphlib import CycleError
 import inspect
@@ -52,19 +51,6 @@ from port_ocean.core.utils.utils import (
 )
 from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from port_ocean.core.incremental.cursor_store import CursorStore
-from port_ocean.core.incremental.observability import (
-    IncrementalRunAccumulator,
-    KindResourceStats,
-    KindSyncOutcome,
-    clear_kind_resource_stats,
-    get_kind_resource_stats,
-    install_interrupt_handler,
-    log_incremental_kind_completed,
-    log_incremental_kind_failure,
-    log_incremental_run_completed,
-    remove_interrupt_handler,
-    set_kind_resource_stats,
-)
 from port_ocean.exceptions.core import (
     IntegrationSubProcessFailedException,
     OceanAbortException,
@@ -909,14 +895,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 ocean.metrics.sync_state = SyncState.FAILED
                 kind_results = ([], [e])
             finally:
-                kind_stats = stop_kind_tracking(
-                    resource_kind_id, report_metrics=not is_incremental
-                )
+                # Stop tracking and report resource usage metrics
+                stop_kind_tracking(resource_kind_id)
                 await stop_monitoring()
-                if is_incremental:
-                    set_kind_resource_stats(
-                        KindResourceStats.from_usage_stats(kind_stats)
-                    )
 
             if not is_incremental:
                 await ocean.metrics.send_metrics_to_webhook(kind=resource_kind_id)
@@ -1215,71 +1196,43 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         index: int,
         cursor: datetime,
         next_cursor: datetime,
-        cursor_source: str,
         cursor_store: CursorStore,
-        trigger_type: TriggerType,
         user_agent_type: UserAgentType,
-    ) -> KindSyncOutcome:
-        """Sync a single kind incrementally with a scoped per-kind cursor.
-
-        On failure the cursor is left unchanged so the next CronJob pod retries
-        from the same point.
-        """
-        kind_started = time.monotonic()
-        outcome = KindSyncOutcome(
-            success=False,
-            kind=resource.kind,
-            index=index,
-            cursor_before=cursor,
-            cursor_source=cursor_source,
-        )
-        clear_kind_resource_stats()
+    ) -> bool:
+        """Sync one kind incrementally. Returns True when the cursor was advanced."""
         integration_id = ocean.config.integration.identifier
         try:
             with with_active_incremental_cursor(cursor):
-                entities, errors = await self.process_resource(
+                _, errors = await self.process_resource(
                     resource, index, user_agent_type
                 )
 
-            outcome.items_fetched = len(entities)
-            resource_stats = get_kind_resource_stats() or KindResourceStats()
-            outcome.api_calls = resource_stats.api_calls
-            outcome.cpu_max_percent = resource_stats.cpu_max_percent
-            outcome.memory_max_bytes = resource_stats.memory_max_bytes
-            outcome.duration_seconds = time.monotonic() - kind_started
-
             if errors:
-                outcome.errors = [str(e) for e in errors]
-                log_incremental_kind_completed(outcome)
-                log_incremental_kind_failure(
-                    resource.kind,
+                logger.error(
+                    "Incremental sync failed — cursor not updated, next run will retry",
+                    kind=resource.kind,
                     integration_id=integration_id,
-                    errors=outcome.errors,
+                    errors=[str(e) for e in errors],
                 )
-                return outcome
+                return False
 
             await cursor_store.save(resource.kind, index, next_cursor)
-            outcome.success = True
-            outcome.cursor_after = next_cursor
-            log_incremental_kind_completed(outcome)
-            return outcome
+            logger.info(
+                "Incremental sync kind completed",
+                kind=resource.kind,
+                index=index,
+            )
+            return True
         except asyncio.CancelledError:
-            outcome.duration_seconds = time.monotonic() - kind_started
-            outcome.errors = ["cancelled"]
-            log_incremental_kind_completed(outcome)
             raise
         except Exception as exc:
-            outcome.duration_seconds = time.monotonic() - kind_started
-            outcome.errors = [str(exc)]
-            log_incremental_kind_completed(outcome)
-            log_incremental_kind_failure(
-                resource.kind,
+            logger.error(
+                "Incremental sync failed — cursor not updated, next run will retry",
+                kind=resource.kind,
                 integration_id=integration_id,
                 error=str(exc),
             )
-            return outcome
-        finally:
-            clear_kind_resource_stats()
+            return False
 
     async def sync_incremental(
         self,
@@ -1287,143 +1240,72 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         trigger_type: TriggerType = "machine",
         user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
-        """Run incremental sync for all registered kinds.
-
-        The method loops indefinitely while each tick takes longer than
-        *interval_seconds*, ensuring no data window is silently skipped when a
-        Kubernetes CronJob would otherwise be blocked by ``concurrencyPolicy: Forbid``.
-        It exits gracefully once a tick completes within the interval so the next
-        scheduled CronJob pod takes over.
+        """Run incremental sync for all kinds registered with ``on_incremental_resync``.
 
         Cursor semantics
         ----------------
-        * The ``next_cursor`` timestamp is snapshotted *before* the API call so
-          that items arriving during the fetch window are captured by the next run.
+        * ``next_cursor`` is snapshotted at the start of the run so items that
+          change during the fetch window are picked up on the next run.
         * On failure the cursor is not advanced, allowing the next run to retry
           from the same starting point.
         * When no cursor exists (first run) the seed is ``now − interval_seconds``.
         """
         logger.info("Incremental resync triggered", interval_seconds=interval_seconds)
 
-        run_started_at = datetime.now(timezone.utc)
-        accumulator: IncrementalRunAccumulator | None = None
+        async with event_context(
+            EventType.INCREMENTAL_RESYNC, trigger_type=trigger_type
+        ):
+            app_config = await self.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
 
-        def mark_interrupted() -> None:
-            if accumulator is not None:
-                accumulator.interrupted = True
-                accumulator.status = "interrupted"
+            incremental_resources = [
+                (index, resource_cfg)
+                for index, resource_cfg in enumerate(app_config.resources)
+                if self.event_strategy["incremental"].get(resource_cfg.kind)
+            ]
 
-        install_interrupt_handler(mark_interrupted)
-        try:
-            async with event_context(
-                EventType.INCREMENTAL_RESYNC, trigger_type=trigger_type
-            ):
-                app_config = await self.port_app_config_handler.get_port_app_config(
-                    use_cache=False
+            if not incremental_resources:
+                logger.info("No kinds registered for incremental sync, skipping")
+                return
+
+            logger.info(
+                "Incremental sync kinds registered",
+                kinds=[cfg.kind for _, cfg in incremental_resources],
+            )
+
+            cursor_store = CursorStore(ocean.port_client)
+            run_started_at = datetime.now(timezone.utc)
+
+            for index, resource_cfg in incremental_resources:
+                stored_cursor = await cursor_store.get(resource_cfg.kind, index)
+                effective_cursor = stored_cursor or (
+                    run_started_at - timedelta(seconds=interval_seconds)
                 )
-
-                incremental_resources = [
-                    (index, resource_cfg)
-                    for index, resource_cfg in enumerate(app_config.resources)
-                    if self.event_strategy["incremental"].get(resource_cfg.kind)
-                ]
-
-                if not incremental_resources:
-                    logger.info("No kinds registered for incremental sync, skipping")
-                    return
 
                 logger.info(
-                    "Incremental sync kinds registered",
-                    kinds=[cfg.kind for _, cfg in incremental_resources],
+                    "Starting incremental sync for kind",
+                    kind=resource_cfg.kind,
+                    index=index,
+                    cursor=effective_cursor.isoformat(),
+                    next_cursor=run_started_at.isoformat(),
                 )
 
-                accumulator = IncrementalRunAccumulator(
-                    interval_seconds=interval_seconds,
-                    kinds_total=len(incremental_resources),
+                success = await self._sync_incremental_kind(
+                    resource_cfg,
+                    index,
+                    effective_cursor,
+                    run_started_at,
+                    cursor_store,
+                    user_agent_type,
                 )
-                cursor_store = CursorStore(ocean.port_client)
+                if not success:
+                    return
 
-                while True:
-                    if accumulator.interrupted:
-                        return
-
-                    accumulator.tick_loops += 1
-                    tick_started_at = datetime.now(timezone.utc)
-
-                    for index, resource_cfg in incremental_resources:
-                        if accumulator.interrupted:
-                            return
-
-                        stored_cursor = await cursor_store.get(
-                            resource_cfg.kind, index
-                        )
-                        cursor_source = "stored" if stored_cursor else "seeded"
-                        effective_cursor = stored_cursor or (
-                            tick_started_at - timedelta(seconds=interval_seconds)
-                        )
-                        accumulator.record_cursor_age(
-                            effective_cursor, tick_started_at
-                        )
-
-                        logger.info(
-                            "Starting incremental sync for kind",
-                            kind=resource_cfg.kind,
-                            index=index,
-                            cursor=effective_cursor.isoformat(),
-                            cursor_source=cursor_source,
-                            next_cursor=tick_started_at.isoformat(),
-                        )
-
-                        outcome = await self._sync_incremental_kind(
-                            resource_cfg,
-                            index,
-                            effective_cursor,
-                            tick_started_at,
-                            cursor_source,
-                            cursor_store,
-                            trigger_type,
-                            user_agent_type,
-                        )
-
-                        if not outcome.success:
-                            accumulator.record_kind_failure(outcome)
-                            return
-
-                        accumulator.record_kind_success(outcome)
-
-                        if accumulator.interrupted:
-                            return
-
-                    elapsed_seconds = (
-                        datetime.now(timezone.utc) - tick_started_at
-                    ).total_seconds()
-
-                    if elapsed_seconds < interval_seconds:
-                        logger.info(
-                            "Incremental sync completed within interval",
-                            elapsed_seconds=round(elapsed_seconds, 2),
-                            interval_seconds=interval_seconds,
-                        )
-                        accumulator.status = "success"
-                        return
-
-                    logger.info(
-                        "Incremental sync tick exceeded interval, re-triggering immediately",
-                        elapsed_seconds=elapsed_seconds,
-                        interval_seconds=interval_seconds,
-                    )
-        finally:
-            remove_interrupt_handler()
-            if accumulator is not None:
-                duration_seconds = (
-                    datetime.now(timezone.utc) - run_started_at
-                ).total_seconds()
-                log_incremental_run_completed(
-                    accumulator,
-                    duration_seconds=duration_seconds,
-                    integration_id=ocean.config.integration.identifier,
-                    integration_type=ocean.config.integration.type,
-                )
+            logger.info(
+                "Incremental sync completed",
+                kinds=len(incremental_resources),
+            )
 
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(

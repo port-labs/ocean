@@ -1,6 +1,6 @@
-"""Unit tests for SyncRawMixin.sync_incremental and the retry helper."""
+"""Unit tests for SyncRawMixin.sync_incremental."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -131,7 +131,7 @@ class TestSyncIncrementalCursorSeeding:
         after = datetime.now(timezone.utc)
 
         mock_port_client.upsert_integration_cursor.assert_called_once()
-        # The persisted cursor is tick_started_at (snapshotted before the fetch).
+        # The persisted cursor is run_started_at (snapshotted before the fetch).
         saved_cursor: datetime = mock_port_client.upsert_integration_cursor.call_args[
             0
         ][2]
@@ -229,68 +229,6 @@ class TestSyncIncrementalFailure:
         # First kind failed — second kind was never attempted
         mock_mixin.process_resource.assert_called_once()  # type: ignore[attr-defined]
         mock_port_client.upsert_integration_cursor.assert_not_called()
-
-
-class TestSyncIncrementalSelfLoop:
-    async def test_exits_after_one_tick_when_elapsed_less_than_interval(
-        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
-    ) -> None:
-        configure_app_config(mock_mixin, ["issue"])
-        register_incremental_handler(mock_mixin, kind="issue")
-
-        with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
-            mock_ocean.port_client = mock_port_client
-            mock_ocean.config.integration.identifier = "test-integration"
-            await mock_mixin.sync_incremental(interval_seconds=9999)
-
-        # process_resource called exactly once (one tick, no self-loop)
-        mock_mixin.process_resource.assert_called_once()  # type: ignore[attr-defined]
-
-    async def test_self_loops_when_tick_exceeds_interval(
-        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
-    ) -> None:
-        configure_app_config(mock_mixin, ["issue"])
-        register_incremental_handler(mock_mixin, kind="issue")
-
-        tick_count = 0
-
-        async def slow_process(
-            resource: Any, index: int, user_agent_type: Any
-        ) -> tuple[list[Any], list[Any]]:
-            nonlocal tick_count
-            tick_count += 1
-            return [], []
-
-        mock_mixin.process_resource.side_effect = slow_process  # type: ignore[attr-defined]
-
-        # Use interval=0 so elapsed always exceeds the interval — but cap at 2 ticks
-        # by having the third tick return immediately without work (no more resources).
-        with patch("port_ocean.core.integrations.mixins.sync_raw.datetime") as mock_dt:
-            # First call (tick_started_at) returns T0.
-            # Second call (elapsed check) returns T0 + 1h so elapsed > interval=1s.
-            # Third call (tick_started_at again) returns T1.
-            # Fourth call (elapsed check) returns T1 + 0s so elapsed < interval.
-            t0 = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
-            t1 = t0 + timedelta(hours=1)
-            mock_dt.now.side_effect = [
-                t0,  # run_started_at
-                t0,  # tick 1 started
-                t0 + timedelta(hours=2),  # tick 1 elapsed (exceeds interval)
-                t1,  # tick 2 started
-                t1,  # tick 2 elapsed (within interval)
-                t1,  # run duration in finally
-            ]
-            mock_dt.fromisoformat = datetime.fromisoformat
-
-            with patch(
-                "port_ocean.core.integrations.mixins.sync_raw.ocean"
-            ) as mock_ocean:
-                mock_ocean.port_client = mock_port_client
-                mock_ocean.config.integration.identifier = "test-integration"
-                mock_ocean.config.integration.type = "fake-integration"
-                await mock_mixin.sync_incremental(interval_seconds=1)
-
-        assert tick_count == 2
 
 
 class TestEventType:
