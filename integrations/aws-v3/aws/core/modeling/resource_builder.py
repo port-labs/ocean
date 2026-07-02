@@ -1,41 +1,13 @@
-from datetime import date, datetime
 from typing import Any, Dict, Self
 
-from pydantic.v1 import BaseModel
-from pydantic.v1.json import pydantic_encoder
+from pydantic.json import pydantic_encoder
 
 from aws.core.modeling.resource_models import ResourceModel
 
 _JSON_NATIVE = (str, int, float, bool, type(None))
 
 
-def _to_jsonable(value: Any) -> Any:
-    """Convert non-JSON-native leaves in a ``.dict()`` result to JSON values.
-
-    Same output as the old ``json.loads(model.json(...))`` round-trip, but for a
-    fraction of the CPU: ``.dict()`` hands us a freshly-built structure we
-    exclusively own, so dicts/lists are rewritten in place (no parallel copy)
-    and only non-native leaves (``datetime``, ``Decimal``, enums, ...) allocate.
-    Native leaves are skipped before recursing to avoid the call overhead.
-    """
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if not isinstance(item, _JSON_NATIVE):
-                value[key] = _to_jsonable(item)
-        return value
-    if isinstance(value, list):
-        for index, item in enumerate(value):
-            if not isinstance(item, _JSON_NATIVE):
-                value[index] = _to_jsonable(item)
-        return value
-    if isinstance(value, tuple):
-        return [_to_jsonable(item) for item in value]
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
-    return pydantic_encoder(value)
-
-
-class ResourceBuilder[ResourceModelT: ResourceModel[Any], TProperties: BaseModel]:
+class ResourceBuilder[ResourceModelT: ResourceModel[Any]]:
     """
     Builder class for constructing AWS resource models with strongly-typed properties.
 
@@ -108,4 +80,4 @@ class ResourceBuilder[ResourceModelT: ResourceModel[Any], TProperties: BaseModel
 
         model = self._model_cls(**fields)
 
-        return _to_jsonable(model.dict(exclude_unset=True, by_alias=True))
+        return model.model_dump(mode="json", exclude_unset=True, by_alias=True)
