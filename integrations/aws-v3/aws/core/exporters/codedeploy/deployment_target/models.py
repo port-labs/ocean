@@ -5,12 +5,8 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 class DeploymentTargetProperties(BaseModel):
     deploymentId: str = Field(default_factory=str, alias="DeploymentId")
-    deploymentTargetType: str | None = Field(
-        default=None, alias="DeploymentTargetType"
-    )
-    instanceTarget: dict[str, Any] | None = Field(
-        default=None, alias="InstanceTarget"
-    )
+    deploymentTargetType: str | None = Field(default=None, alias="DeploymentTargetType")
+    instanceTarget: dict[str, Any] | None = Field(default=None, alias="InstanceTarget")
     lambdaTarget: dict[str, Any] | None = Field(default=None, alias="LambdaTarget")
     ecsTarget: dict[str, Any] | None = Field(default=None, alias="EcsTarget")
     cloudFormationTarget: dict[str, Any] | None = Field(

@@ -25,9 +25,7 @@ class ClusterProperties(BaseModel):
     statistics: list[dict[str, Any]] = Field(default_factory=list, alias="Statistics")
     status: str | None = Field(default=None, alias="Status")
     runningTasksCount: int | None = Field(default=None, alias="RunningTasksCount")
-    activeServicesCount: int | None = Field(
-        default=None, alias="ActiveServicesCount"
-    )
+    activeServicesCount: int | None = Field(default=None, alias="ActiveServicesCount")
     pendingTasksCount: int | None = Field(default=None, alias="PendingTasksCount")
     registeredContainerInstancesCount: int | None = Field(
         default=None, alias="RegisteredContainerInstancesCount"

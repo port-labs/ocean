@@ -18,9 +18,7 @@ class DeploymentGroupProperties(BaseModel):
         default=None, alias="BlueGreenDeploymentConfiguration"
     )
     computePlatform: str | None = Field(default=None, alias="ComputePlatform")
-    deploymentConfigName: str | None = Field(
-        default=None, alias="DeploymentConfigName"
-    )
+    deploymentConfigName: str | None = Field(default=None, alias="DeploymentConfigName")
     deploymentGroupId: str = Field(default_factory=str, alias="DeploymentGroupId")
     deploymentGroupName: str = Field(default_factory=str, alias="DeploymentGroupName")
     deploymentStyle: dict[str, Any] | None = Field(
@@ -51,9 +49,7 @@ class DeploymentGroupProperties(BaseModel):
     )
     serviceRoleArn: str | None = Field(default=None, alias="ServiceRoleArn")
     Tags: list[dict[str, str]] = Field(default_factory=list)
-    targetRevision: dict[str, Any] | None = Field(
-        default=None, alias="TargetRevision"
-    )
+    targetRevision: dict[str, Any] | None = Field(default=None, alias="TargetRevision")
     terminationHookEnabled: bool | None = Field(
         default=None, alias="TerminationHookEnabled"
     )

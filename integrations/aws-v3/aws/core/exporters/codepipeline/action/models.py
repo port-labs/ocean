@@ -36,7 +36,7 @@ class CodePipelineActionProperties(BaseModel):
     pipelineArn: str | None = Field(default=None, alias="PipelineArn")
     pipelineVersion: int | None = Field(default=None, alias="PipelineVersion")
     region: str | None = Field(default=None, alias="Region")
-    roleArn: str = Field(default=None, alias="RoleArn")
+    roleArn: str | None = Field(default=None, alias="RoleArn")
     runOrder: int | None = Field(default=None, alias="RunOrder")
     stageName: str | None = Field(default=None, alias="StageName")
     timeoutInMinutes: int | None = Field(default=None, alias="TimeoutInMinutes")

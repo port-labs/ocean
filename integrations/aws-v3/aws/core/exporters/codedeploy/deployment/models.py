@@ -21,12 +21,8 @@ class CodeDeployDeploymentProperties(BaseModel):
     computePlatform: str | None = Field(default=None, alias="ComputePlatform")
     createTime: datetime | None = Field(default=None, alias="CreateTime")
     creator: str | None = Field(default=None, alias="Creator")
-    deploymentConfigName: str | None = Field(
-        default=None, alias="DeploymentConfigName"
-    )
-    deploymentGroupName: str | None = Field(
-        default=None, alias="DeploymentGroupName"
-    )
+    deploymentConfigName: str | None = Field(default=None, alias="DeploymentConfigName")
+    deploymentGroupName: str | None = Field(default=None, alias="DeploymentGroupName")
     deploymentId: str = Field(default_factory=str, alias="DeploymentId")
     deploymentOverview: dict[str, Any] | None = Field(
         default=None, alias="DeploymentOverview"

@@ -20,9 +20,7 @@ class RepositoryProperties(BaseModel):
     lifecyclePolicy: dict[str, Any] | None = Field(
         default=None, alias="LifecyclePolicy"
     )
-    repositoryPolicyText: str | None = Field(
-        default=None, alias="RepositoryPolicyText"
-    )
+    repositoryPolicyText: str | None = Field(default=None, alias="RepositoryPolicyText")
     tags: list[dict[str, str]] = Field(default_factory=list, alias="Tags")
 
     class Config:

@@ -13,9 +13,7 @@ class ProjectProperties(BaseModel):
         default=None, alias="BuildBatchConfig"
     )
     cache: dict[str, Any] | None = Field(default=None, alias="Cache")
-    concurrentBuildLimit: int | None = Field(
-        default=None, alias="ConcurrentBuildLimit"
-    )
+    concurrentBuildLimit: int | None = Field(default=None, alias="ConcurrentBuildLimit")
     created: datetime | None = Field(default=None, alias="Created")
     description: str | None = Field(default=None, alias="Description")
     encryptionKey: str | None = Field(default=None, alias="EncryptionKey")
