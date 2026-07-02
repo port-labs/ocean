@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.3 (2026-07-02)
+
+
+### Bug Fixes
+
+- Fixed file-kind live events not deleting entities when a file is deleted or an item is removed from a file that uses `items_to_parse`. Old content is now fetched from the before commit (concurrently with new content) so the delete path carries real content, while plain files still fall back to path/name-based deletion when old content is unavailable.
+
+
 ## 6.2.2 (2026-07-02)
 
 
