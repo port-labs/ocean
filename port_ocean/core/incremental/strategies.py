@@ -6,8 +6,8 @@ into the correct API parameters for their specific resource.
 
 The cursor itself is available at runtime via::
 
-    from port_ocean.context.event import event
-    cursor: datetime | None = event.attributes.get("incremental_cursor")
+    from port_ocean.core.incremental.cursor_context import active_incremental_cursor
+    cursor: datetime | None = active_incremental_cursor()
 
 Example — T1 (server-side filter)::
 
@@ -15,7 +15,7 @@ Example — T1 (server-side filter)::
 
     @ocean.on_incremental_resync(Kind.ISSUE)
     async def incremental_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        cursor = event.attributes.get("incremental_cursor")
+        cursor = active_incremental_cursor()
         params = strategy.build_params(cursor)
         async for batch in client.get_issues(**params):
             yield batch
@@ -29,7 +29,7 @@ Example — T2 (client-side cutoff)::
 
     @ocean.on_incremental_resync(Kind.PULL_REQUEST)
     async def incremental_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        cursor = event.attributes.get("incremental_cursor")
+        cursor = active_incremental_cursor()
         async for page in client.get_pull_requests(sort="updated", direction="desc"):
             items = [item for item in page if not strategy.should_stop(item, cursor)]
             if items:

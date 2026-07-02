@@ -81,7 +81,8 @@ class EventsMixin:
         """Register a function as a listener for incremental resync events.
 
         The registered function receives the resource kind and may retrieve
-        the cursor timestamp from ``event.attributes["incremental_cursor"]``.
+        the cursor timestamp from ``active_incremental_cursor()`` (see
+        ``port_ocean.core.incremental.cursor_context``).
         """
         if function is not None:
             logger.info(f"Registering incremental resync listener for kind {kind}")

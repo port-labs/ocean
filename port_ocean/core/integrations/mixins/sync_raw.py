@@ -50,6 +50,7 @@ from port_ocean.core.utils.utils import (
     zip_and_sum,
     gather_and_split_errors_from_results,
 )
+from port_ocean.core.incremental.cursor_context import with_active_incremental_cursor
 from port_ocean.core.incremental.cursor_store import CursorStore
 from port_ocean.core.incremental.observability import (
     IncrementalRunAccumulator,
@@ -59,6 +60,7 @@ from port_ocean.core.incremental.observability import (
     get_kind_resource_stats,
     install_interrupt_handler,
     log_incremental_kind_completed,
+    log_incremental_kind_failure,
     log_incremental_run_completed,
     remove_interrupt_handler,
     set_kind_resource_stats,
@@ -913,11 +915,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 await stop_monitoring()
                 if is_incremental:
                     set_kind_resource_stats(
-                        KindResourceStats(
-                            api_calls=kind_stats.request_count,
-                            cpu_max_percent=kind_stats.cpu.cpu_max,
-                            memory_max_bytes=kind_stats.memory.memory_max,
-                        )
+                        KindResourceStats.from_usage_stats(kind_stats)
                     )
 
             if not is_incremental:
@@ -1222,7 +1220,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         trigger_type: TriggerType,
         user_agent_type: UserAgentType,
     ) -> KindSyncOutcome:
-        """Sync a single kind incrementally within a dedicated event context.
+        """Sync a single kind incrementally with a scoped per-kind cursor.
 
         On failure the cursor is left unchanged so the next CronJob pod retries
         from the same point.
@@ -1236,12 +1234,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             cursor_source=cursor_source,
         )
         clear_kind_resource_stats()
+        integration_id = ocean.config.integration.identifier
         try:
-            async with event_context(
-                EventType.INCREMENTAL_RESYNC,
-                trigger_type=trigger_type,
-                attributes={"incremental_cursor": cursor},
-            ):
+            with with_active_incremental_cursor(cursor):
                 entities, errors = await self.process_resource(
                     resource, index, user_agent_type
                 )
@@ -1256,10 +1251,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             if errors:
                 outcome.errors = [str(e) for e in errors]
                 log_incremental_kind_completed(outcome)
-                logger.error(
-                    "Incremental sync failed — cursor not updated, next run will retry",
-                    kind=resource.kind,
-                    integration_id=ocean.config.integration.identifier,
+                log_incremental_kind_failure(
+                    resource.kind,
+                    integration_id=integration_id,
                     errors=outcome.errors,
                 )
                 return outcome
@@ -1278,10 +1272,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             outcome.duration_seconds = time.monotonic() - kind_started
             outcome.errors = [str(exc)]
             log_incremental_kind_completed(outcome)
-            logger.error(
-                "Incremental sync failed — cursor not updated, next run will retry",
-                kind=resource.kind,
-                integration_id=ocean.config.integration.identifier,
+            log_incremental_kind_failure(
+                resource.kind,
+                integration_id=integration_id,
                 error=str(exc),
             )
             return outcome

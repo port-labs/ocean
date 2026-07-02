@@ -272,10 +272,11 @@ class PerformanceMonitor:
         memory_samples = tracking["memory_samples"]
         latency_samples = tracking["latency_samples"]
         response_sizes = tracking.get("response_sizes", [])
+        request_count = len(response_sizes)
 
         if not cpu_samples:
             logger.debug(f"[Monitor] No samples collected for kind: {kind}")
-            return ResourceUsageStats()
+            return ResourceUsageStats(request_count=request_count)
 
         stats = ResourceUsageStats(
             cpu=CPUStats(
@@ -303,6 +304,7 @@ class PerformanceMonitor:
                 ),
             ),
             sample_count=len(cpu_samples),
+            request_count=request_count,
         )
 
         logger.debug(

@@ -154,6 +154,33 @@ class TestSyncIncrementalCursorSeeding:
         mock_port_client.upsert_integration_cursor.assert_called_once()
 
 
+class TestSyncIncrementalCursorScope:
+    async def test_handler_sees_cursor_via_context_var(
+        self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
+    ) -> None:
+        from port_ocean.core.incremental.cursor_context import active_incremental_cursor
+
+        configure_app_config(mock_mixin, ["issue"])
+        register_incremental_handler(mock_mixin, kind="issue")
+        captured: dict[str, datetime | None] = {"cursor": None}
+
+        async def capture_cursor(
+            resource: Any, index: int, user_agent_type: Any
+        ) -> tuple[list[Any], list[Any]]:
+            captured["cursor"] = active_incremental_cursor()
+            return [], []
+
+        mock_mixin.process_resource.side_effect = capture_cursor  # type: ignore[attr-defined]
+
+        with patch("port_ocean.core.integrations.mixins.sync_raw.ocean") as mock_ocean:
+            mock_ocean.port_client = mock_port_client
+            mock_ocean.config.integration.identifier = "test-integration"
+            mock_ocean.config.integration.type = "fake-integration"
+            await mock_mixin.sync_incremental(interval_seconds=900)
+
+        assert captured["cursor"] is not None
+
+
 class TestSyncIncrementalFailure:
     async def test_saves_cursor_after_successful_process(
         self, mock_mixin: SyncRawMixin, mock_port_client: MagicMock
