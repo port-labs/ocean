@@ -17,9 +17,9 @@ class RegionHelper:
                 cls._partition = cast(
                     str, ocean.integration_config.get("aws_partition")
                 )
-            elif ocean.integration_config.get("accountRoleArn"):
+            elif ocean.integration_config.get("account_role_arn"):
                 cls._partition = cast(
-                    str, ocean.integration_config.get("accountRoleArn")
+                    str, ocean.integration_config.get("account_role_arn")
                 ).split(":")[1]
             else:
                 cls._partition = Consts.default_partition
