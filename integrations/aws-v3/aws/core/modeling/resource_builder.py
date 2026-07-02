@@ -102,9 +102,10 @@ class ResourceBuilder[ResourceModelT: ResourceModel[Any], TProperties: BaseModel
             "Type": self._type,
             "Properties": self._properties,
         }
-        model = self._model_cls(**fields)
 
         if self._extra_context:
-            model.ExtraContext = model.ExtraContext.copy(update=self._extra_context)
+            fields["ExtraContext"] = self._extra_context
+
+        model = self._model_cls(**fields)
 
         return _to_jsonable(model.dict(exclude_unset=True, by_alias=True))
