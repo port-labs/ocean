@@ -248,6 +248,57 @@ class TestGitLabClient:
                 },
             )
 
+    async def test_get_projects_excludes_personal_namespace_when_disabled(
+        self, client: GitLabClient, mock_event_context: MagicMock
+    ) -> None:
+        mock_event_context.port_app_config.include_authenticated_user = False
+        mock_groups = [{"id": 10, "full_path": "my-group", "parent_id": None}]
+        mock_group_projects = [{"id": 2, "namespace": {"kind": "group"}}]
+
+        with (
+            patch.object(
+                client,
+                "get_parent_groups",
+                return_value=async_mock_generator([mock_groups]),
+            ),
+            patch.object(
+                client.rest,
+                "get_paginated_group_resource",
+                return_value=async_mock_generator([mock_group_projects]),
+            ) as mock_group_projects_api,
+            patch.object(client.rest, "get_paginated_resource") as mock_projects_api,
+        ):
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_projects():
+                results.extend(batch)
+
+            assert len(results) == 1
+            assert results[0]["id"] == 2
+            mock_group_projects_api.assert_called_once_with(
+                "10", "projects", params={"all_available": True, "include_subgroups": True}
+            )
+            mock_projects_api.assert_not_called()
+
+    async def test_get_projects_includes_personal_namespace_when_enabled(
+        self, client: GitLabClient, mock_event_context: MagicMock
+    ) -> None:
+        mock_event_context.port_app_config.include_authenticated_user = True
+        mock_projects = [
+            {"id": 1, "namespace": {"kind": "user"}},
+            {"id": 2, "namespace": {"kind": "group"}},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_projects]),
+        ):
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_projects():
+                results.extend(batch)
+
+            assert len(results) == 2
+
     async def test_get_groups_use_min_access_level(self, client: GitLabClient) -> None:
         """Test group fetching with use_min_access_level=False (no min_access_level filtering)"""
         # Arrange
@@ -318,7 +369,40 @@ class TestGitLabClient:
 
             # Assert
             assert result == mock_group
-            mock_send_request.assert_called_once_with("GET", f"groups/{group_id}")
+            mock_send_request.assert_called_once_with("GET", "groups/456")
+
+    async def test_get_group_by_path(self, client: GitLabClient) -> None:
+        group_path = "my-org/sub-group"
+        mock_group = {"id": 789, "path": "sub-group", "full_path": group_path}
+
+        with patch.object(
+            client.rest, "send_api_request", AsyncMock(return_value=mock_group)
+        ) as mock_send_request:
+            result = await client.get_group(group_path)
+
+            assert result == mock_group
+            mock_send_request.assert_called_once_with(
+                "GET", "groups/my-org%2Fsub-group"
+            )
+
+    async def test_get_group_if_exists_returns_group(
+        self, client: GitLabClient
+    ) -> None:
+        mock_group = {"id": 123, "path": "my-group"}
+        with patch.object(
+            client.rest,
+            "send_api_request",
+            AsyncMock(return_value=mock_group),
+        ):
+            result = await client.get_group_if_exists("my-group")
+            assert result == mock_group
+
+    async def test_get_group_if_exists_returns_none_for_personal(
+        self, client: GitLabClient
+    ) -> None:
+        with patch.object(client.rest, "send_api_request", AsyncMock(return_value={})):
+            result = await client.get_group_if_exists("alice")
+            assert result is None
 
     async def test_get_merge_request(self, client: GitLabClient) -> None:
         """Test fetching a single merge request by ID"""

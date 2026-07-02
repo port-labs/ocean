@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.49 (2026-07-01)
+
+
+### Features
+
+- Added optional `gitlabGroup` integration config to scope webhook registration to a single namespace
+- Added `includeAuthenticatedUser` port app config option (default false) to include the authenticated user's personal account in resync and webhook registration
+
+
 ## 0.7.48 (2026-06-30)
 
 

@@ -17,6 +17,7 @@ from gitlab.clients.utils import (
     build_branch_params,
 )
 from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
+from gitlab.webhook.setup import setup_webhooks
 from integration import (
     GitLabFilesResourceConfig,
     GroupResourceConfig,
@@ -44,8 +45,6 @@ from gitlab.webhook.webhook_processors.issue_webhook_processor import (
 from gitlab.webhook.webhook_processors.group_webhook_processor import (
     GroupWebhookProcessor,
 )
-from gitlab.webhook.webhook_factory.group_webhook_factory import GroupWebHook
-from gitlab.webhook.webhook_factory.project_webhook_factory import ProjectWebHook
 from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
@@ -115,20 +114,11 @@ async def _fetch_included_files_content(
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean GitLab-v2 Integration")
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
-        return
-
-    if base_url := ocean.app.base_url:
-        client = create_gitlab_client()
-
-        logger.info(f"Creating webhooks for all groups at {base_url}")
-        group_webhook_factory = GroupWebHook(client, base_url)
-        await group_webhook_factory.create_webhooks_for_all_groups()
-
-        logger.info(f"Creating webhooks for personal namespace projects at {base_url}")
-        project_webhook_factory = ProjectWebHook(client, base_url)
-        await project_webhook_factory.create_webhooks_for_personal_projects()
+    await setup_webhooks(
+        should_process_webhooks=ocean.app.config.event_listener.should_process_webhooks,
+        base_url=ocean.app.base_url,
+        gitlab_group=ocean.integration_config.get("gitlab_group"),
+    )
 
 
 @ocean.on_resync(ObjectKind.PROJECT)

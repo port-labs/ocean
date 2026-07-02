@@ -697,6 +697,12 @@ class GitlabPortAppConfig(PortAppConfig):
         title="Visibility",
         description="Configuration for resource visibility and access control",
     )
+    include_authenticated_user: bool = Field(
+        default=False,
+        alias="includeAuthenticatedUser",
+        title="Include Authenticated User",
+        description="Include the authenticated user's personal account.",
+    )
     resources: list[
         ProjectResourceConfig
         | GroupResourceConfig
