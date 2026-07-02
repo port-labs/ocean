@@ -74,7 +74,7 @@ class IncidentResourceConfig(ResourceConfig):
         title="Incident Selector",
         description="Selector for filtering ServiceNow incident records",
     )
-    kind: Literal[ObjectKind.INCIDENT] = Field(
+    kind: Literal["incident"] = Field(
         title="ServiceNow Incident",
         description="A ServiceNow incident record from the incident table",
     )
@@ -85,7 +85,7 @@ class UserGroupResourceConfig(ResourceConfig):
         title="User Group Selector",
         description="Selector for filtering ServiceNow user group records",
     )
-    kind: Literal[ObjectKind.USER_GROUP] = Field(
+    kind: Literal["sys_user_group"] = Field(
         title="ServiceNow User Group",
         description="A ServiceNow user group from the sys_user_group table",
     )
@@ -96,7 +96,7 @@ class ServiceCatalogResourceConfig(ResourceConfig):
         title="Service Catalog Selector",
         description="Selector for filtering ServiceNow service catalog records",
     )
-    kind: Literal[ObjectKind.SERVICE_CATALOG] = Field(
+    kind: Literal["sc_catalog"] = Field(
         title="ServiceNow Service Catalog",
         description="A ServiceNow service catalog from the sc_catalog table",
     )
@@ -107,7 +107,7 @@ class VulnerabilityResourceConfig(ResourceConfig):
         title="Vulnerability Selector",
         description="Selector for filtering ServiceNow vulnerable item records",
     )
-    kind: Literal[ObjectKind.VULNERABILITY] = Field(
+    kind: Literal["sn_vul_vulnerable_item"] = Field(
         title="ServiceNow Vulnerability",
         description="A ServiceNow vulnerable item from the sn_vul_vulnerable_item table",
     )
@@ -118,7 +118,7 @@ class ReleaseProjectResourceConfig(ResourceConfig):
         title="Release Project Selector",
         description="Selector for filtering ServiceNow release project records",
     )
-    kind: Literal[ObjectKind.RELEASE_PROJECT] = Field(
+    kind: Literal["release_project"] = Field(
         title="ServiceNow Release Project",
         description="A ServiceNow release project from the release_project table",
     )
