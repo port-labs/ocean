@@ -1,8 +1,6 @@
-import http
 import os
 import typing
 
-from cloudevents.pydantic import CloudEvent
 import fastapi
 from loguru import logger
 from starlette import responses
@@ -13,27 +11,23 @@ from azure_integration.iterators import (
     resource_extention_kind_iterator,
 )
 from azure_integration.overrides import (
-    AzurePortAppConfig,
     AzureSpecificKindSelector,
     AzureCloudResourceSelector,
 )
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from azure.identity.aio import DefaultAzureCredential
-from azure.core.exceptions import ResourceNotFoundError
 from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
 
 from azure_integration.utils import (
     ResourceKindsWithSpecialHandling,
-    resource_client_context,
-    resolve_resource_type_from_resource_uri,
     batch_resources_iterator,
     is_sub_resource,
     get_current_resource_config,
-    get_resource_configs_with_resource_kind,
+)
+from azure_integration.webhooks.resource_event_processor import (
+    AzureResourceEventProcessor,
 )
 
 
@@ -188,85 +182,6 @@ async def resync_extension_resources(
                         yield resources_batch
 
 
-@ocean.router.post("/events")
-async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
-    """
-    Handles System events from Azure Event Grid by the Azure subscription resource and registers them in Port
-    The event payload is a CloudEvent
-    https://learn.microsoft.com/en-us/azure/event-grid/event-schema-subscriptions?tabs=event-grid-event-schema
-    https://learn.microsoft.com/en-us/azure/event-grid/cloud-event-schema
-    """
-    cloud_event_data: dict[str, typing.Any] = cloud_event.data  # type: ignore
-    subscription_id = cloud_event_data["subscriptionId"]
-    resource_uri = cloud_event_data["resourceUri"]
-    logger.info(
-        f"Received event {cloud_event.id} of type {cloud_event.type} with operation {cloud_event_data['operationName']} for resource {resource_uri}",
-        event_id=cloud_event.id,
-        event_type=cloud_event.type,
-        resource_provider=cloud_event_data["resourceProvider"],
-        operation_name=cloud_event_data["operationName"],
-        subscription_id=subscription_id,
-    )
-    resource_type = resolve_resource_type_from_resource_uri(
-        resource_uri=resource_uri,
-    )
-    if not resource_type:
-        logger.warning(
-            "Could not resolve resource type from cloud event",
-            resource_uri=resource_uri,
-        )
-        return fastapi.Response(status_code=http.HTTPStatus.NOT_FOUND)
-
-    matching_resource_configs = get_resource_configs_with_resource_kind(
-        resource_kind=resource_type,
-        resource_configs=typing.cast(
-            AzurePortAppConfig, event.port_app_config
-        ).resources,
-    )
-    if not matching_resource_configs:
-        logger.info(
-            "Resource type not found in port app config, update port app config to include the resource type",
-            resource_type=resource_type,
-        )
-        return fastapi.Response(status_code=http.HTTPStatus.NOT_FOUND)
-
-    async with resource_client_context(subscription_id) as client:
-        for resource_config in matching_resource_configs:
-            if isinstance(resource_config.selector, AzureSpecificKindSelector):
-                api_version = resource_config.selector.api_version
-            else:
-                api_version = resource_config.selector.resource_kinds[resource_type]
-            blueprint = resource_config.port.entity.mappings.blueprint.strip('"')
-            logger.info(
-                f"Querying full resource details for resource {resource_uri}, api version {api_version} for kind {resource_type} in subscription {subscription_id}"
-            )
-            try:
-                resource = await client.resources.get_by_id(
-                    resource_id=resource_uri,
-                    api_version=api_version,
-                )
-                await ocean.register_raw(
-                    resource_config.kind, [dict(resource.as_dict())]
-                )
-            except ResourceNotFoundError:
-                logger.info(
-                    "Resource not found in azure, unregistering from port",
-                    id=resource_uri,
-                    kind=resource_config.kind,
-                    api_version=api_version,
-                    blueprint=blueprint,
-                )
-                await ocean.unregister(
-                    [
-                        Entity(
-                            blueprint=blueprint,
-                            identifier=resource_uri,
-                        )
-                    ]
-                )
-    return fastapi.Response(status_code=http.HTTPStatus.OK)
-
-
 @ocean.app.fast_api_app.middleware("azure_cloud_event")
 async def cloud_event_validation_middleware_handler(
     request: fastapi.Request,
@@ -317,3 +232,6 @@ async def on_start() -> None:
         )
         os.environ["AZURE_TENANT_ID"] = azure_tenant_id
     logger.info("Azure client credentials set up")
+
+
+ocean.add_webhook_processor("/events", AzureResourceEventProcessor)

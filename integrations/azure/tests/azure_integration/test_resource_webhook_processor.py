@@ -1,0 +1,246 @@
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from azure.core.exceptions import ResourceNotFoundError
+from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
+
+from azure_integration.webhooks.resource_event_processor import (
+    AzureResourceEvent,
+    AzureResourceEventProcessor,
+)
+
+
+SUBSCRIPTION_ID = "test-subscription-id"
+RESOURCE_URI = "/subscriptions/test-subscription-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/teststorage"
+RESOURCE_TYPE = "Microsoft.Storage/storageAccounts"
+API_VERSION = "2026-07-02"
+
+
+@pytest.fixture
+def cloud_event_payload() -> EventPayload:
+    return {
+        "specversion": "1.0",
+        "id": "test-event-id",
+        "source": "/subscriptions/test-subscription-id",
+        "type": "Microsoft.Resources.ResourceWriteSuccess",
+        "datacontenttype": "application/json",
+        "time": "2026-07-03T00:00:00Z",
+        "data": {
+            "subscriptionId": SUBSCRIPTION_ID,
+            "resourceUri": RESOURCE_URI,
+            "operationName": "Microsoft.Storage/storageAccounts/write",
+            "resourceProvider": "Microsoft.Storage",
+        },
+    }
+
+
+@pytest.fixture
+def mock_webhook_event(cloud_event_payload: EventPayload) -> WebhookEvent:
+    return WebhookEvent(
+        trace_id="trace-id",
+        headers={},
+        payload=cloud_event_payload,
+    )
+
+
+@pytest.fixture
+def processor(mock_webhook_event: WebhookEvent) -> AzureResourceEventProcessor:
+    return AzureResourceEventProcessor(event=mock_webhook_event)
+
+
+@pytest.fixture
+def resource_config() -> MagicMock:
+    config = MagicMock()
+    config.kind = RESOURCE_TYPE
+    config.selector.api_version = API_VERSION
+    config.port.entity.mappings.blueprint = f'"{RESOURCE_TYPE}"'
+    return config
+
+
+def _mock_resource_type() -> Any:
+    return patch(
+        "azure_integration.webhooks.resource_event_processor.resolve_resource_type_from_resource_uri",
+        return_value=RESOURCE_TYPE,
+    )
+
+
+def _mock_matching_configs(configs: list[MagicMock] | None = None) -> Any:
+    return patch(
+        "azure_integration.webhooks.resource_event_processor.get_resource_configs_with_resource_kind",
+        return_value=configs if configs is not None else [MagicMock()],
+    )
+
+
+def _mock_port_app_config() -> Any:
+    mock_app_config = MagicMock()
+    mock_event = MagicMock()
+    mock_event.port_app_config = mock_app_config
+    return patch(
+        "azure_integration.webhooks.resource_event_processor.port_event",
+        new=mock_event,
+    )
+
+
+class TestParseResourceEvent:
+    def test_returns_parsed_resource_event(
+        self,
+        processor: AzureResourceEventProcessor,
+        cloud_event_payload: EventPayload,
+    ) -> None:
+        with _mock_resource_type():
+            result = processor._parse_resource_event(cloud_event_payload)
+
+        assert result == AzureResourceEvent(
+            id="test-event-id",
+            type="Microsoft.Resources.ResourceWriteSuccess",
+            subscription_id=SUBSCRIPTION_ID,
+            resource_uri=RESOURCE_URI,
+            operation_name="Microsoft.Storage/storageAccounts/write",
+            resource_type=RESOURCE_TYPE,
+            resource_provider="Microsoft.Storage",
+        )
+
+    def test_returns_none_for_invalid_payload(
+        self,
+        processor: AzureResourceEventProcessor,
+    ) -> None:
+        assert processor._parse_resource_event({"not": "a cloud event"}) is None
+
+
+class TestEventValidation:
+    async def test_should_process_event(
+        self,
+        processor: AzureResourceEventProcessor,
+        mock_webhook_event: WebhookEvent,
+    ) -> None:
+        with _mock_resource_type(), _mock_port_app_config(), _mock_matching_configs():
+            assert await processor.should_process_event(mock_webhook_event) is True
+
+    async def test_should_process_event_returns_false_when_no_matching_config(
+        self,
+        processor: AzureResourceEventProcessor,
+        mock_webhook_event: WebhookEvent,
+    ) -> None:
+        with (
+            _mock_resource_type(),
+            _mock_port_app_config(),
+            _mock_matching_configs(configs=[]),
+        ):
+            assert await processor.should_process_event(mock_webhook_event) is False
+
+    async def test_should_process_event_returns_false_for_unresolvable_resource(
+        self,
+        processor: AzureResourceEventProcessor,
+        mock_webhook_event: WebhookEvent,
+    ) -> None:
+        with patch(
+            "azure_integration.webhooks.resource_event_processor.resolve_resource_type_from_resource_uri",
+            return_value=None,
+        ):
+            assert await processor.should_process_event(mock_webhook_event) is False
+
+    @pytest.mark.parametrize(
+        ("payload", "expected"),
+        [
+            pytest.param(
+                {
+                    "specversion": "1.0",
+                    "id": "id",
+                    "source": "source",
+                    "type": "type",
+                    "datacontenttype": "application/json",
+                    "time": "2026-07-03T00:00:00Z",
+                    "data": {
+                        "subscriptionId": SUBSCRIPTION_ID,
+                        "resourceUri": RESOURCE_URI,
+                        "operationName": "write",
+                    },
+                },
+                True,
+                id="valid",
+            ),
+            pytest.param({"not": "a cloud event"}, False, id="invalid"),
+        ],
+    )
+    async def test_validate_payload(
+        self,
+        processor: AzureResourceEventProcessor,
+        payload: EventPayload,
+        expected: bool,
+    ) -> None:
+        with _mock_resource_type():
+            assert await processor.validate_payload(payload) is expected
+
+    async def test_get_matching_kinds(
+        self,
+        processor: AzureResourceEventProcessor,
+        mock_webhook_event: WebhookEvent,
+    ) -> None:
+        with _mock_resource_type():
+            assert await processor.get_matching_kinds(mock_webhook_event) == [
+                RESOURCE_TYPE
+            ]
+
+    async def test_authenticate_always_returns_true(
+        self,
+        processor: AzureResourceEventProcessor,
+        cloud_event_payload: EventPayload,
+    ) -> None:
+        assert await processor.authenticate(cloud_event_payload, {}) is True
+
+
+class TestHandleEvent:
+    async def test_returns_updated_resource(
+        self,
+        processor: AzureResourceEventProcessor,
+        cloud_event_payload: EventPayload,
+        resource_config: MagicMock,
+        mock_storage_account: dict[str, Any],
+    ) -> None:
+        mock_resource = MagicMock()
+        mock_resource.as_dict.return_value = mock_storage_account
+
+        client = AsyncMock()
+        client.resources.get_by_id = AsyncMock(return_value=mock_resource)
+
+        context = MagicMock()
+        context.__aenter__ = AsyncMock(return_value=client)
+        context.__aexit__ = AsyncMock(return_value=None)
+
+        with (
+            _mock_resource_type(),
+            patch(
+                "azure_integration.webhooks.resource_event_processor.resource_client_context",
+                return_value=context,
+            ),
+        ):
+            result = await processor.handle_event(cloud_event_payload, resource_config)
+
+        assert result.updated_raw_results == [mock_storage_account]
+        assert result.deleted_raw_results == []
+
+    async def test_returns_deleted_entity_when_resource_not_found(
+        self,
+        processor: AzureResourceEventProcessor,
+        cloud_event_payload: EventPayload,
+        resource_config: MagicMock,
+    ) -> None:
+        client = AsyncMock()
+        client.resources.get_by_id.side_effect = ResourceNotFoundError("not found")
+
+        context = MagicMock()
+        context.__aenter__ = AsyncMock(return_value=client)
+        context.__aexit__ = AsyncMock(return_value=None)
+
+        with (
+            _mock_resource_type(),
+            patch(
+                "azure_integration.webhooks.resource_event_processor.resource_client_context",
+                return_value=context,
+            ),
+        ):
+            result = await processor.handle_event(cloud_event_payload, resource_config)
+
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == [{"id": RESOURCE_URI}]
