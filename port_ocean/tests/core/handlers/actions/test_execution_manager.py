@@ -24,10 +24,12 @@ from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
 from port_ocean.core.models import (
+    ActionRunAction,
     ActionRun,
     IntegrationActionInvocation,
     RunKind,
     RunStatus,
+    WorkflowIntegrationActionConfig,
     WorkflowNodeRun,
     WorkflowNodeRunStatus,
 )
@@ -50,7 +52,7 @@ def generate_mock_action_run(
     return ActionRun(
         id=f"test-run-id-{uuid.uuid4()}",
         status=RunStatus.IN_PROGRESS,
-        actionIdentifier=action_identifier,
+        action=ActionRunAction(identifier=action_identifier),
         payload=IntegrationActionInvocation(
             type="INTEGRATION_ACTION",
             installationId="test-installation-id",
@@ -67,11 +69,13 @@ def generate_mock_wf_node_run(
     if integrationActionExecutionProperties is None:
         integrationActionExecutionProperties = {}
     return WorkflowNodeRun(
-        id=f"test-wf-node-run-id-{uuid.uuid4()}",
+        identifier=f"test-wf-node-run-id-{uuid.uuid4()}",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
-        config=IntegrationActionInvocation(
+        installationId="test-installation-id",
+        config=WorkflowIntegrationActionConfig(
             type="INTEGRATION_ACTION",
             installationId="test-installation-id",
+            integrationProvider="gitlab",
             integrationInvocationType=action_type,
             integrationActionExecutionProperties=integrationActionExecutionProperties,
         ),

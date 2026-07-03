@@ -5,7 +5,7 @@ from port_ocean.clients.port.mixins.actions_and_workflow_runs import (
     ActionsAndWorkflowRunsClientMixin,
 )
 from port_ocean.core.models import (
-    IntegrationActionInvocation,
+    WorkflowIntegrationActionConfig,
     WorkflowNodeRun,
     WorkflowNodeRunResult,
     WorkflowNodeRunStatus,
@@ -16,9 +16,13 @@ EXTERNAL_ID = "gl_42_99"
 
 def make_run() -> WorkflowNodeRun:
     return WorkflowNodeRun(
-        id="run-1",
+        identifier="run-1",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
-        config=IntegrationActionInvocation(
+        installationId="test-installation-id",
+        config=WorkflowIntegrationActionConfig(
+            type="INTEGRATION_ACTION",
+            installationId="test-installation-id",
+            integrationProvider="gitlab",
             integrationInvocationType="trigger_pipeline",
             integrationActionExecutionProperties={},
         ),

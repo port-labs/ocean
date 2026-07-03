@@ -1,10 +1,9 @@
-from ast import TypeAlias
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
 from abc import ABC, abstractmethod
-from typing import Any, Literal, NotRequired, TypedDict
-from pydantic.v1 import BaseModel, Extra, root_validator
+from typing import Any, Literal, NotRequired, Optional, TypeAlias, TypedDict
+from pydantic.v1 import BaseModel
 from pydantic.v1.fields import Field
 
 
@@ -197,23 +196,20 @@ class RunKind(StrEnum):
 
 
 class IntegrationActionInvocation(BaseModel):
-    type: Literal["INTEGRATION_ACTION"] = "INTEGRATION_ACTION"
-    installationId: str = ""
-    integrationActionType: str = ""
-    integrationInvocationType: str = ""
-    integrationActionExecutionProperties: dict[str, Any] = Field(default_factory=dict)
-    integrationProvider: str | None = None
-
-    class Config:
-        extra = Extra.allow
-        allow_population_by_field_name = True
-
-    @property
-    def action_type(self) -> str:
-        return self.integrationActionType or self.integrationInvocationType
+    type: Literal["INTEGRATION_ACTION"]
+    installationId: str
+    integrationActionType: str
+    integrationActionExecutionProperties: dict[str, Any]
 
 
 IntegrationActionInvocationPayload = IntegrationActionInvocation
+
+
+class WorkflowIntegrationActionConfig(BaseModel):
+    type: Literal["INTEGRATION_ACTION"]
+    installationId: str
+    integrationInvocationType: str
+    integrationActionExecutionProperties: dict[str, Any]
 
 
 class IntegrationRun(ABC):
@@ -247,21 +243,29 @@ class IntegrationRun(ABC):
 
 
 class ActionRun(BaseModel, IntegrationRun):
-    id: str
-    status: RunStatus
-    payload: IntegrationActionInvocation
-    action_identifier: str = Field(alias="actionIdentifier")
+
+    class Action(BaseModel):
+        identifier: str
 
     class Config:
         allow_population_by_field_name = True
+
+    id: str
+    status: RunStatus
+    payload: IntegrationActionInvocation
+    action: Action
 
     @property
     def run_kind(self) -> RunKind:
         return RunKind.ACTION
 
     @property
+    def action_identifier(self) -> str:
+        return self.action.identifier
+
+    @property
     def action_type(self) -> str:
-        return self.payload.action_type
+        return self.payload.integrationActionType
 
     @property
     def execution_properties(self) -> dict[str, Any]:
@@ -277,24 +281,14 @@ class ActionRun(BaseModel, IntegrationRun):
 
 
 class WorkflowNodeRun(BaseModel, IntegrationRun):
-    id: str
+    id: str = Field(alias="identifier")
     status: WorkflowNodeRunStatus
-    config: IntegrationActionInvocation
-    output: dict[str, Any]
+    installationId: str
+    config: WorkflowIntegrationActionConfig
+    output: Optional[dict[str, Any]] = Field(default_factory=dict)
 
     class Config:
         allow_population_by_field_name = True
-
-    @root_validator(pre=True)
-    def normalize_api_shapes(cls, values: dict[str, Any]) -> dict[str, Any]:
-        if not values.get("id") and values.get("identifier"):
-            values["id"] = values["identifier"]
-
-        node = values.get("node")
-        if isinstance(node, dict) and node.get("config") and not values.get("config"):
-            values["config"] = node["config"]
-
-        return values
 
     @property
     def run_kind(self) -> RunKind:
@@ -302,7 +296,7 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
 
     @property
     def action_type(self) -> str:
-        return self.config.action_type
+        return self.config.integrationInvocationType
 
     @property
     def execution_properties(self) -> dict[str, Any]:
@@ -310,7 +304,7 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
 
     @property
     def buffer_utilization_key(self) -> str:
-        return self.config.integrationInvocationType
+        return self.action_type
 
     @property
     def is_in_progress(self) -> bool:
