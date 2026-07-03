@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
 from abc import ABC, abstractmethod
-from typing import Any, Literal, NotRequired, Optional, TypeAlias, TypedDict
-from pydantic.v1 import BaseModel
+from typing import Any, Literal, NotRequired, TypeAlias, TypedDict
+from pydantic.v1 import BaseModel, Extra, root_validator
 from pydantic.v1.fields import Field
 
 
@@ -208,8 +208,19 @@ IntegrationActionInvocationPayload = IntegrationActionInvocation
 class WorkflowIntegrationActionConfig(BaseModel):
     type: Literal["INTEGRATION_ACTION"]
     installationId: str
+    integrationProvider: str
     integrationInvocationType: str
     integrationActionExecutionProperties: dict[str, Any]
+
+    class Config:
+        extra = Extra.allow
+
+
+class WorkflowNode(BaseModel):
+    config: WorkflowIntegrationActionConfig | None = None
+
+    class Config:
+        extra = Extra.allow
 
 
 class IntegrationRun(ABC):
@@ -283,12 +294,32 @@ class ActionRun(BaseModel, IntegrationRun):
 class WorkflowNodeRun(BaseModel, IntegrationRun):
     id: str = Field(alias="identifier")
     status: WorkflowNodeRunStatus
-    installationId: str
-    config: WorkflowIntegrationActionConfig
-    output: Optional[dict[str, Any]] = Field(default_factory=dict)
+    config: WorkflowIntegrationActionConfig | None = None
+    node: WorkflowNode | None = None
+    output: dict[str, Any] = Field(default_factory=dict)
 
     class Config:
         allow_population_by_field_name = True
+        extra = Extra.allow
+
+    @root_validator(skip_on_failure=True)
+    def require_config_source(cls, values: dict[str, Any]) -> dict[str, Any]:
+        config = values.get("config")
+        node = values.get("node")
+        has_node_config = node is not None and (
+            node.config is not None or node.nodeConfig is not None
+        )
+        if config is None and not has_node_config:
+            raise ValueError("either config or node.config must be provided")
+        return values
+
+    @property
+    def integration_config(self) -> WorkflowIntegrationActionConfig:
+        if self.config is not None:
+            return self.config
+        if self.node is not None:
+            return self.node.config
+        raise ValueError("either config or node.config must be provided")
 
     @property
     def run_kind(self) -> RunKind:
@@ -296,11 +327,11 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
 
     @property
     def action_type(self) -> str:
-        return self.config.integrationInvocationType
+        return self.integration_config.integrationInvocationType
 
     @property
     def execution_properties(self) -> dict[str, Any]:
-        return self.config.integrationActionExecutionProperties
+        return self.integration_config.integrationActionExecutionProperties
 
     @property
     def buffer_utilization_key(self) -> str:

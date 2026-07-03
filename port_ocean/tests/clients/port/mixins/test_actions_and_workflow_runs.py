@@ -30,6 +30,43 @@ def make_run() -> WorkflowNodeRun:
     )
 
 
+@pytest.mark.parametrize(
+    "raw",
+    [
+        {
+            "identifier": "wfnr_claim",
+            "status": WorkflowNodeRunStatus.IN_PROGRESS,
+            "installationId": "github-actions",
+            "config": {
+                "type": "INTEGRATION_ACTION",
+                "installationId": "github-actions",
+                "integrationProvider": "github-ocean",
+                "integrationInvocationType": "dispatch_workflow",
+                "integrationActionExecutionProperties": {},
+            },
+        },
+        {
+            "identifier": "wfnr_lookup",
+            "status": WorkflowNodeRunStatus.IN_PROGRESS,
+            "output": {"workflowRunUrl": "https://github.com/x"},
+            "externalRunId": "gh_1",
+            "node": {
+                "config": {
+                    "type": "INTEGRATION_ACTION",
+                    "installationId": "github-actions",
+                    "integrationProvider": "github-ocean",
+                    "integrationInvocationType": "dispatch_workflow",
+                    "integrationActionExecutionProperties": {},
+                }
+            },
+        },
+    ],
+)
+def test_workflow_node_run_parses_claim_and_lookup_shapes(raw: dict) -> None:
+    run = WorkflowNodeRun.parse_obj(raw)
+    assert run.action_type == "dispatch_workflow"
+
+
 @pytest.fixture
 def actions_client() -> ActionsAndWorkflowRunsClientMixin:
     return ActionsAndWorkflowRunsClientMixin(auth=MagicMock(), client=MagicMock())

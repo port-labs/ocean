@@ -24,7 +24,6 @@ from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
 from port_ocean.core.models import (
-    ActionRunAction,
     ActionRun,
     IntegrationActionInvocation,
     RunKind,
@@ -52,7 +51,7 @@ def generate_mock_action_run(
     return ActionRun(
         id=f"test-run-id-{uuid.uuid4()}",
         status=RunStatus.IN_PROGRESS,
-        action=ActionRunAction(identifier=action_identifier),
+        action=ActionRun.Action(identifier=action_identifier),
         payload=IntegrationActionInvocation(
             type="INTEGRATION_ACTION",
             installationId="test-installation-id",
