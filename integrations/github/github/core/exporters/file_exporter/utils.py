@@ -108,6 +108,7 @@ def parse_content(content: str, file_path: str) -> Any:
 class FileDiffStatus(StrEnum):
     ADDED = "added"
     REMOVED = "removed"
+    RENAMED = "renamed"
 
 
 def group_files_by_status(

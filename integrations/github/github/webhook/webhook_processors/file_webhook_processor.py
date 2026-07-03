@@ -217,7 +217,6 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                 content_ref=before_sha,
                 should_resolve_references=False,
                 should_use_previous_filename=True,
-                should_fallback_on_missing_content=True,
             ),
         )
 
@@ -235,8 +234,10 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         for file_info in files:
             if file_info.get("status") == FileDiffStatus.REMOVED:
                 deleted_path = file_info["filename"]
-            elif file_info.get("previous_filename"):
-                deleted_path = file_info["previous_filename"]
+            elif file_info.get("status") == FileDiffStatus.RENAMED:
+                deleted_path = file_info.get("previous_filename")
+                if not deleted_path:
+                    continue
             else:
                 continue
 
@@ -275,7 +276,6 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         content_ref: str | None = None,
         should_resolve_references: bool = True,
         should_use_previous_filename: bool = False,
-        should_fallback_on_missing_content: bool = False,
     ) -> list[dict[str, Any]]:
         """Fetch content from ``content_ref`` (defaults to ``current_branch``) but always stamp ``current_branch`` so upsert and delete identifiers match."""
         content_ref = content_ref or current_branch
@@ -305,21 +305,9 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                     )
                     if content is None:
                         logger.warning(
-                            f"File {file_path} has no content or is too large at ref {content_ref} from {organization}"
+                            f"File {file_path} has no content or is too large at ref {content_ref} from {organization}; "
+                            "cannot compute sub-entity deletions for this file"
                         )
-                        if (
-                            should_fallback_on_missing_content
-                            and file_info.get("status") == FileDiffStatus.REMOVED
-                        ):
-                            results.append(
-                                self._build_deletion_metadata_result(
-                                    organization,
-                                    file_path,
-                                    repository,
-                                    current_branch,
-                                )
-                            )
-                            break
                         continue
 
                     file_obj = await exporter.file_processor.process_file(
