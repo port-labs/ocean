@@ -1,6 +1,8 @@
 """Unit tests for incremental sync strategy utilities."""
 
+from collections.abc import AsyncIterator
 from datetime import datetime, timezone
+from typing import Any
 
 import pytest
 
@@ -166,7 +168,7 @@ class TestPaginateWithStrategy:
     async def test_paginate_with_strategy_passes_through_when_no_strategy(
         self,
     ) -> None:
-        async def pages():
+        async def pages() -> AsyncIterator[list[dict[str, Any]]]:
             yield [{"id": 1}]
             yield [{"id": 2}]
 
@@ -186,7 +188,7 @@ class TestPaginateWithStrategy:
             query_params={"sort": "updated", "direction": "desc"},
         )
 
-        async def pages():
+        async def pages() -> AsyncIterator[list[dict[str, Any]]]:
             yield [{"updated_at": "2026-06-15T12:00:00+00:00"}]
             yield [{"updated_at": "2026-05-01T12:00:00+00:00"}]
 
@@ -203,7 +205,7 @@ class TestPaginateWithStrategy:
     ) -> None:
         strategy = ServerSideTimestampStrategy(param_key="since")
 
-        async def pages():
+        async def pages() -> AsyncIterator[list[dict[str, Any]]]:
             yield [{"id": 1}]
             yield [{"id": 2}]
 
