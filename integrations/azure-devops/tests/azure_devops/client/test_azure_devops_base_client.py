@@ -1,7 +1,7 @@
 import pytest
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import Response, ReadTimeout
+from httpx import ReadError, Response, ReadTimeout
 from azure_devops.client.auth import PatAuthProvider
 from azure_devops.client.base_client import (
     HTTPBaseClient,
@@ -390,3 +390,59 @@ async def test_get_paginated_by_top_and_skip_exhausts_retries(
             _ = [item async for page in generator for item in page]
 
         assert mock_send.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_send_request_signals_throttle_on_read_error(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """ReadError during body read (ADO closing connection instead of 429) triggers throttle."""
+    with (
+        patch.object(
+            mock_client._client,
+            "request",
+            side_effect=ReadError("connection closed"),
+        ),
+        patch.object(
+            mock_client._rate_limiter,
+            "signal_throttle",
+            new_callable=AsyncMock,
+        ) as mock_throttle,
+    ):
+        with pytest.raises(ReadError):
+            await mock_client.send_request(
+                "GET", "https://dev.azure.com/org/_apis/test"
+            )
+
+        mock_throttle.assert_awaited_once_with(
+            ADO_RATE_LIMIT_WINDOW_SECONDS,
+            reason="ReadError",
+        )
+
+
+@pytest.mark.asyncio
+async def test_send_request_signals_throttle_on_read_timeout(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """ReadTimeout triggers throttle — existing behaviour, kept for parity."""
+    with (
+        patch.object(
+            mock_client._client,
+            "request",
+            side_effect=ReadTimeout("timed out"),
+        ),
+        patch.object(
+            mock_client._rate_limiter,
+            "signal_throttle",
+            new_callable=AsyncMock,
+        ) as mock_throttle,
+    ):
+        with pytest.raises(ReadTimeout):
+            await mock_client.send_request(
+                "GET", "https://dev.azure.com/org/_apis/test"
+            )
+
+        mock_throttle.assert_awaited_once_with(
+            ADO_RATE_LIMIT_WINDOW_SECONDS,
+            reason="ReadTimeout",
+        )
