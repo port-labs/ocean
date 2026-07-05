@@ -1,4 +1,4 @@
-import typing
+from typing import Any
 
 from loguru import logger
 
@@ -40,7 +40,7 @@ def get_entity_kinds(app_config: NewRelicPortAppConfig) -> list[str]:
 
 
 async def enrich_issue_entity_relations(
-    issue_record: dict[str, typing.Any],
+    issue_record: dict[str, Any],
 ) -> None:
     for entity_guid in issue_record.get("entityGuids", []):
         try:
@@ -61,19 +61,18 @@ async def enrich_issue_entity_relations(
             issue_record.setdefault(f"__{entity_type}", {}).setdefault(
                 "entity_guids", []
             ).append(entity_guid)
-        except Exception as err:
+        except Exception:
             logger.exception(
                 "Failed to get entity for issue event, continuing",
                 entity_guid=entity_guid,
-                err=str(err),
             )
 
 
 async def fetch_entities_for_resource(
     resource_config: NewRelicAnyResourceConfig,
     entity_guids: list[str],
-) -> list[dict[str, typing.Any]]:
-    updated_entities: list[dict[str, typing.Any]] = []
+) -> list[dict[str, Any]]:
+    updated_entities: list[dict[str, Any]] = []
     newrelic_types = resource_config.selector.newrelic_types or []
 
     for entity_guid in entity_guids:
@@ -93,11 +92,10 @@ async def fetch_entities_for_resource(
                 entity["__open_issues_count"] = number_of_open_issues
 
             updated_entities.append(entity)
-        except Exception as err:
+        except Exception:
             logger.exception(
                 "Failed to get entity for issue event, continuing",
                 entity_guid=entity_guid,
-                err=str(err),
             )
 
     return updated_entities
