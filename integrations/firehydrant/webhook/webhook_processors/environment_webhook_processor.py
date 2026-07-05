@@ -1,4 +1,4 @@
-import asyncio
+from functools import partial
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -9,6 +9,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from init_client import init_client
 from utils import ObjectKind
+from webhook.utils import gather_with_concurrency_limit
 from webhook.webhook_processors.base_webhook_processor import (
     FirehydrantBaseWebhookProcessor,
 )
@@ -26,11 +27,11 @@ class EnvironmentWebhookProcessor(FirehydrantBaseWebhookProcessor):
     ) -> WebhookEventRawResults:
         client = init_client()
         environments = payload["data"]["environments"]
-        updated = await asyncio.gather(
-            *(
-                client.get_single_environment(environment_id=environment["id"])
+        updated = await gather_with_concurrency_limit(
+            [
+                partial(client.get_single_environment, environment_id=environment["id"])
                 for environment in environments
-            )
+            ]
         )
         return WebhookEventRawResults(
             updated_raw_results=list(updated),
