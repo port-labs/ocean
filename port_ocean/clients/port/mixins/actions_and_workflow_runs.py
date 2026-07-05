@@ -6,7 +6,7 @@ from port_ocean.clients.port.mixins.actions import ActionsClientMixin
 from port_ocean.clients.port.mixins.workflow_nodes import WorkflowNodesClientMixin
 from port_ocean.core.models import (
     IntegrationRun,
-    RunStatus,
+    ActionRunStatus,
     WorkflowNodeRun,
     WorkflowNodeRunLog,
     WorkflowNodeRunResult,
@@ -185,7 +185,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 should_raise=should_raise,
             )
         else:
-            status = RunStatus.SUCCESS if success else RunStatus.FAILURE
+            status = ActionRunStatus.SUCCESS if success else ActionRunStatus.FAILURE
             if message:
                 await self.post_action_run_log(run.id, message)
             await self.patch_action_run(

@@ -19,6 +19,7 @@ EXTERNAL_ID = "gl_42_99"
 def make_run() -> WorkflowNodeRun:
     return WorkflowNodeRun(
         id="run-1",
+        nodeUid="test-node-uid",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
         config=WorkflowIntegrationActionConfig(
             type="INTEGRATION_ACTION",
@@ -36,6 +37,7 @@ def make_run() -> WorkflowNodeRun:
     [
         {
             "identifier": "wfnr_claim",
+            "nodeUid": "node-claim",
             "status": WorkflowNodeRunStatus.IN_PROGRESS,
             "config": {
                 "type": "INTEGRATION_ACTION",
@@ -47,6 +49,7 @@ def make_run() -> WorkflowNodeRun:
         },
         {
             "identifier": "wfnr_lookup",
+            "nodeUid": "node-lookup",
             "status": WorkflowNodeRunStatus.IN_PROGRESS,
             "output": {"workflowRunUrl": "https://github.com/x"},
             "node": {

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, StrEnum
 from abc import ABC, abstractmethod
-from typing import Any, Literal, NotRequired, TypeAlias, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 from pydantic.v1 import BaseModel, Extra, root_validator
 from pydantic.v1.fields import Field
 
@@ -164,14 +164,10 @@ class LakehouseEventType(StrEnum):
     LIVE_EVENT = "live-event"
 
 
-class RunStatus(StrEnum):
+class ActionRunStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
-
-
-# TODO: Rename RunStatus to that once this name is used in the integrations code
-ActionRunStatus: TypeAlias = RunStatus
 
 
 class WorkflowNodeRunStatus(StrEnum):
@@ -252,7 +248,7 @@ class ActionRun(BaseModel, IntegrationRun):
         allow_population_by_field_name = True
 
     id: str
-    status: RunStatus
+    status: ActionRunStatus
     payload: IntegrationActionInvocationPayload
     action: Action
 
@@ -278,7 +274,7 @@ class ActionRun(BaseModel, IntegrationRun):
 
     @property
     def is_in_progress(self) -> bool:
-        return self.status == RunStatus.IN_PROGRESS
+        return self.status == ActionRunStatus.IN_PROGRESS
 
 
 class WorkflowNodeRun(BaseModel, IntegrationRun):

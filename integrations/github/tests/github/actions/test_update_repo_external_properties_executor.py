@@ -15,14 +15,14 @@ from port_ocean.exceptions.execution_manager import ActionExecutionError
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
-    RunStatus,
+    ActionRunStatus,
 )
 
 
 def make_run(execution_properties: dict[str, Any]) -> ActionRun:
     return ActionRun(
         id="run-123",
-        status=RunStatus.IN_PROGRESS,
+        status=ActionRunStatus.IN_PROGRESS,
         payload=IntegrationActionInvocationPayload(
             type="INTEGRATION_ACTION",
             installationId="inst-1",

@@ -27,7 +27,7 @@ from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
     RunKind,
-    RunStatus,
+    ActionRunStatus,
     WorkflowIntegrationActionConfig,
     WorkflowNodeRun,
     WorkflowNodeRunStatus,
@@ -50,7 +50,7 @@ def generate_mock_action_run(
         integrationActionExecutionProperties = {}
     return ActionRun(
         id=f"test-run-id-{uuid.uuid4()}",
-        status=RunStatus.IN_PROGRESS,
+        status=ActionRunStatus.IN_PROGRESS,
         action=ActionRun.Action(identifier=action_identifier),
         payload=IntegrationActionInvocationPayload(
             type="INTEGRATION_ACTION",
@@ -65,11 +65,13 @@ def generate_mock_wf_node_run(
     action_type: str = "test_action",
     integrationActionExecutionProperties: dict[str, Any] | None = None,
     run_id: str | None = None,
+    node_uid: str = "test-node-uid",
 ) -> WorkflowNodeRun:
     if integrationActionExecutionProperties is None:
         integrationActionExecutionProperties = {}
     return WorkflowNodeRun(
         id=run_id or f"test-wf-node-run-id-{uuid.uuid4()}",
+        nodeUid=node_uid,
         status=WorkflowNodeRunStatus.IN_PROGRESS,
         config=WorkflowIntegrationActionConfig(
             type="INTEGRATION_ACTION",
