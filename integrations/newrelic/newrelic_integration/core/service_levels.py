@@ -1,6 +1,7 @@
 from typing import Any, AsyncIterable, Tuple, Optional
 import httpx
 from port_ocean.context.ocean import ocean
+from port_ocean.utils import http_async_client
 from newrelic_integration.core.query_templates.service_levels import (
     LIST_SLOS_QUERY,
     GET_SLI_BY_NRQL_QUERY,
@@ -17,8 +18,8 @@ BATCH_SIZE = 50
 
 
 class ServiceLevelsHandler:
-    def __init__(self, http_client: httpx.AsyncClient):
-        self.http_client = http_client
+    def __init__(self, http_client: httpx.AsyncClient | None = None):
+        self.http_client = http_client or http_async_client
 
     async def get_service_level_indicator_value(
         self, http_client: httpx.AsyncClient, nrql: str

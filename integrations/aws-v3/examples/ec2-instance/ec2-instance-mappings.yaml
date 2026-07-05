@@ -1,0 +1,29 @@
+resources:
+  - kind: AWS::EC2::Instance
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.InstanceId
+          title: '(.Properties.Tags // [] | map(select(.Key == "Name")) | first | .Value) // .Properties.InstanceId'
+          blueprint: '"ec2Instance"'
+          properties:
+            instanceType: .Properties.InstanceType
+            state: .Properties.State.Name
+            publicIpAddress: .Properties.PublicIpAddress
+            privateIpAddress: .Properties.PrivateIpAddress
+            imageId: .Properties.ImageId
+            subnetId: .Properties.SubnetId
+            vpcId: .Properties.VpcId
+            launchTime: .Properties.LaunchTime
+            platform: .Properties.Platform
+            architecture: .Properties.Architecture
+            keyName: .Properties.KeyName
+            availabilityZone: .Properties.Placement.AvailabilityZone
+            monitoring: .Properties.Monitoring.State
+            securityGroups: .Properties.SecurityGroups
+            tags: .Properties.Tags
+            arn: '"arn:aws:ec2:" + .__ExtraContext.Region + ":" + .__ExtraContext.AccountId + ":instance/" + .Properties.InstanceId'
+          relations:
+            account: .__ExtraContext.AccountId
