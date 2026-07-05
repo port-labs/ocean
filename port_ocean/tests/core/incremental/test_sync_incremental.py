@@ -1,7 +1,7 @@
 """Unit tests for SyncRawMixin.sync_incremental."""
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -60,18 +60,18 @@ def mock_mixin(mock_port_client: MagicMock) -> SyncRawMixin:
     mixin = SyncRawMixin()
     mixin._entity_processor = MagicMock()
     mixin._entities_state_applier = MagicMock()
-    mixin._port_app_config_handler = MagicMock()
+    port_app_config_handler = MagicMock()
+    port_app_config_handler.get_port_app_config = AsyncMock()
+    mixin._port_app_config_handler = port_app_config_handler
     mixin.process_resource = AsyncMock(return_value=([], []))  # type: ignore[method-assign]
     return mixin
 
 
 def configure_app_config(mixin: SyncRawMixin, kinds: list[str]) -> PortAppConfig:
     config = make_port_app_config(kinds)
-
-    async def get_config(use_cache: bool = True) -> PortAppConfig:
-        return config
-
-    mixin._port_app_config_handler.get_port_app_config = get_config
+    cast(MagicMock, mixin._port_app_config_handler).get_port_app_config.return_value = (
+        config
+    )
     return config
 
 

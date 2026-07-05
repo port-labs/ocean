@@ -105,7 +105,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         ):
             return unsupported_kind_response(resource_config.kind, available_kinds)
 
-        fns = self._collect_resync_functions(resource_config)
+        fns = self._collect_resync_functions(resource_config, strategy_key)
         logger.info(f"Found {len(fns)} resync functions for {resource_config.kind}")
 
         results, errors = await self._execute_resync_tasks(
@@ -115,11 +115,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return results, errors
 
     def _collect_resync_functions(
-        self, resource_config: ResourceConfig
+        self, resource_config: ResourceConfig, strategy_key: str = "resync"
     ) -> list[Callable[[str], Awaitable[RAW_RESULT]]]:
-        strategy_key = (
-            "incremental" if event.event_type == EventType.INCREMENTAL_RESYNC else "resync"
-        )
         fns = [
             *self.event_strategy[strategy_key][resource_config.kind],
             *self.event_strategy[strategy_key][None],
