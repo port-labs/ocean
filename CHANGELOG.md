@@ -7,6 +7,26 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.44.5 (2026-06-30)
+
+### Improvements
+
+- Added Redis stream consumer observability: logs now include `stream_key`, `time_until_consumed_ms` (queue-to-consume latency from `queuedAt`), and `time_until_acked_ms` (queue-to-ack latency) for each message.
+
+## 0.44.4 (2026-06-28)
+
+### Improvements
+
+- Added a Redis PEL requeue worker (enabled by default, disable with `OCEAN__LIVE_EVENTS__REDIS__PEL_REQUEUE_WORKER_ENABLED=false`) that reclaims stuck pending stream messages and re-enqueues them for reprocessing. All pods scan concurrently, `XAUTOCLAIM` ensures only one pod claims each message.
+
+## 0.44.3 (2026-06-28)
+
+### Improvements
+
+- Added Redis stream consumption for live events when the `LIVE_EVENTS_REDIS_STREAM_ENABLED` organization feature flag is enabled. Integrations can consume webhook events directly from a Redis stream instead of the local HTTP queue.
+- Introduced `AbstractLiveEventsConsumer` and `LiveEventsConsumerType` so live-events transport backends are selected via typed configuration, following the same pattern as event listeners.
+- Added `OCEAN__LIVE_EVENTS__REDIS__*` settings for Redis connection, TLS, and stream read tuning (`block_ms`, `read_count`).
+
 ## 0.44.2 (2026-06-25)
 
 ### Improvements

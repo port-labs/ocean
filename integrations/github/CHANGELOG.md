@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 6.2.2 (2026-07-02)
+
+
+### Improvements
+
+- Improve log message in the GraphQL error handler
+
+
+## 6.2.1 (2026-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.5
+
+
+## 6.2.0 (2026-07-01)
+
+
+### Features
+
+- Added `update_repo_external_properties` action that pushes Port blueprint property values to GitHub repository external properties.
+
+
+## 6.1.3 (2026-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.4
+
+
+## 6.1.2 (2026-06-29)
+
+
+### Improvements
+
+- Added an opt-in `enrichWithFirstCommit` flag to the `deployment` kind that attaches the earliest commit since the previous deployment under `__firstCommit`, powering the DORA Lead Time for Changes metric (defaults to false; adds one API call per deployment when enabled).
+
+
+## 6.1.1 (2026-06-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.44.3
+
+
+## 6.1.0 (2026-06-28)
+
+
+### Improvements
+
+- Added integration tests for all kinds of resources
+
 ## 6.0.14 (2026-06-28)
 
 
