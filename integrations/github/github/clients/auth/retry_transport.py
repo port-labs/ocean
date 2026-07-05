@@ -6,6 +6,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.helpers.retry import RetryConfig, RetryTransport
+from github.clients.constants import GRAPHQL_SENT_VARIABLES_EXTENSION
 from github.clients.rate_limiter.utils import is_rate_limit_response
 
 
@@ -187,6 +188,11 @@ class GitHubRetryTransport(RetryTransport):
         if is_rate_limit_response(response) and self._rate_limit_notifier:
             await self._rate_limit_notifier(response)
 
+        if self._is_graphql_request(request):
+            variables = self._graphql_variables(request)
+            if variables is not None:
+                response.extensions[GRAPHQL_SENT_VARIABLES_EXTENSION] = variables
+
     def _log_before_retry(
         self,
         request: httpx.Request,
@@ -236,6 +242,18 @@ class GitHubRetryTransport(RetryTransport):
         except (httpx.RequestNotRead, ValueError, AttributeError):
             return None
         return first if isinstance(first, int) else None
+
+    @staticmethod
+    def _graphql_variables(request: httpx.Request) -> Optional[Dict[str, Any]]:
+        """The `variables` of a GraphQL request body, or None if unavailable.
+
+        Read from the request the retry loop actually sent, so the value reflects
+        any rewrite (e.g. a shrunk `first`) rather than the caller's original.
+        """
+        try:
+            return json.loads(request.content).get("variables")
+        except Exception:
+            return None
 
     def _page_reduction_exhausted(self, response: httpx.Response) -> bool:
         """True for a retryable 5xx whose request is already at the page floor.

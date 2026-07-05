@@ -1,9 +1,8 @@
 {
   "Type": "AWS::S3::Bucket",
   "Properties": {
-    "Name": "my-production-bucket",
-    "BucketArn": "arn:aws:s3:::my-production-bucket",
-    "BucketRegion": "us-west-2",
+    "BucketName": "my-production-bucket",
+    "Arn": "arn:aws:s3:::my-production-bucket",
     "CreationDate": "2023-10-15T14:30:00.000Z",
     "Tags": [
       {

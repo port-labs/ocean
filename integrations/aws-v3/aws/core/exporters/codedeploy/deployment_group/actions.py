@@ -4,6 +4,8 @@ from aws.core.interfaces.action import Action, ActionMap, BaseActionInput
 from loguru import logger
 import asyncio
 
+from aws.utils import RegionHelper
+
 
 @dataclass
 class DeploymentGroupActionInput(BaseActionInput[str]):
@@ -61,7 +63,7 @@ class GetDeploymentGroupTags(Action[DeploymentGroupActionInput]):
     async def _fetch_tags(
         self, app_name: str, group_name: str, region: str, account_id: str
     ) -> List[Dict[str, Any]]:
-        arn = f"arn:aws:codedeploy:{region}:{account_id}:deploymentgroup:{app_name}/{group_name}"
+        arn = f"arn:{RegionHelper.get_partition()}:codedeploy:{region}:{account_id}:deploymentgroup:{app_name}/{group_name}"
         return await self.client.list_tags_for_resource(ResourceArn=arn)
 
 

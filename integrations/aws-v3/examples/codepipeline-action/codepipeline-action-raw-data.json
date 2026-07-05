@@ -2,10 +2,10 @@
   "Type": "AWS::CodePipeline::Action",
   "Properties": {
     "ActionTypeId": {
-      "category": "Source",
-      "owner": "AWS",
-      "provider": "CodeStarSourceConnection",
-      "version": "1"
+      "Category": "Source",
+      "Owner": "AWS",
+      "Provider": "CodeStarSourceConnection",
+      "Version": "1"
     },
     "Configuration": {
       "BranchName": "main",
@@ -20,12 +20,12 @@
         "name": "SourceArtifact"
       }
     ],
-    "pipelineName": "my-pipeline",
+    "PipelineName": "my-pipeline",
     "PipelineArn": "arn:aws:codepipeline:eu-west-1:123456789012:my-pipeline",
     "PipelineVersion": 2,
     "Region": "eu-west-1",
     "RunOrder": 1,
-    "stageName": "Source"
+    "StageName": "Source"
   },
   "__ExtraContext": {
     "AccountId": "123456789012",
