@@ -7,6 +7,7 @@ from port_ocean.core.incremental.strategies import (
     IncrementalStrategy,
     ServerSideTimestampStrategy,
     ClientSideCutoffStrategy,
+    paginate_with_strategy,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "IncrementalStrategy",
     "ServerSideTimestampStrategy",
     "ClientSideCutoffStrategy",
+    "paginate_with_strategy",
 ]

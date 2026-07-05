@@ -29,6 +29,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
     included_relations: NotRequired[Optional[dict[str, dict[str, Any]]]]
+    incremental_cursor: NotRequired[Optional[datetime]]
 
 
 class RepositoryIdentifier(SingleOrganizationOptions):
@@ -57,6 +58,8 @@ class ListPullRequestOptions(RepositoryIdentifier):
     max_results: Required[Optional[int]]
     updated_after: NotRequired[Optional[datetime]]
     closed_after: NotRequired[Optional[datetime]]
+    incremental_sync: NotRequired[bool]
+    incremental_cursor: NotRequired[Optional[datetime]]
     enrich_with_first_commit: NotRequired[bool]
     exclude_graphql_fields: NotRequired[list[str]]
 
@@ -83,6 +86,8 @@ class ListIssueOptions(RepositoryIdentifier):
 
     state: Required[str]
     labels: NotRequired[Optional[str]]
+    since: NotRequired[Optional[str]]
+    incremental_cursor: NotRequired[Optional[datetime]]
 
 
 class BaseUserOptions(SingleOrganizationOptions):
@@ -120,6 +125,7 @@ class ListWorkflowRunOptions(RepositoryIdentifier):
     max_runs: Required[int]
     status: NotRequired[Optional[str]]
     created: NotRequired[Optional[str]]
+    incremental_cursor: NotRequired[Optional[datetime]]
 
 
 class SingleWorkflowRunOptions(RepositoryIdentifier):
@@ -134,6 +140,8 @@ class SingleReleaseOptions(RepositoryIdentifier):
 
 class ListReleaseOptions(RepositoryIdentifier):
     """Options for listing releases."""
+
+    incremental_cursor: NotRequired[Optional[datetime]]
 
 
 class SingleTagOptions(RepositoryIdentifier):
@@ -184,6 +192,7 @@ class ListDeploymentsOptions(RepositoryIdentifier):
     task: NotRequired[Optional[str]]
     environment: NotRequired[Optional[str]]
     enrich_with_first_commit: NotRequired[bool]
+    incremental_cursor: NotRequired[Optional[datetime]]
 
 
 class SingleDeploymentStatusOptions(RepositoryIdentifier):
@@ -211,6 +220,7 @@ class ListDependabotAlertOptions(RepositoryIdentifier):
     state: Required[list[str]]
     severity: NotRequired[Optional[str]]
     ecosystem: NotRequired[Optional[str]]
+    incremental_cursor: NotRequired[Optional[datetime]]
 
 
 class SingleCodeScanningAlertOptions(RepositoryIdentifier):
@@ -224,6 +234,7 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
 
     state: Required[str]
     severity: NotRequired[Optional[str]]
+    incremental_cursor: NotRequired[Optional[datetime]]
 
 
 class FileContentOptions(RepositoryIdentifier):

@@ -5,6 +5,7 @@ from loguru import logger
 from github.actions.registry import register_actions_executors
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.incremental.cursor_context import active_incremental_cursor
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
@@ -59,7 +60,6 @@ from github.core.exporters.folder_exporter import (
 )
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.exporters.organization_exporter import RestOrganizationExporter
-
 from github.core.options import (
     ListBranchOptions,
     ListDeploymentsOptions,
@@ -188,6 +188,7 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield organizations
 
 
+@ocean.on_incremental_resync(ObjectKind.REPOSITORY)
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories across organizations."""
@@ -207,6 +208,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if included_files
         else None
     )
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -219,6 +221,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     type=port_app_config.repository_type,
                     included_relations=included_relations,
                     search_params=repo_config.selector.repo_search,
+                    incremental_cursor=cursor,
                 )
             )
             for org in organizations
@@ -353,6 +356,7 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield workflows
 
 
+@ocean.on_incremental_resync(ObjectKind.WORKFLOW_RUN)
 @ocean.on_resync(ObjectKind.WORKFLOW_RUN)
 async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all workflow runs for specified Github repositories"""
@@ -366,6 +370,7 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowRunConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -401,6 +406,7 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                         max_runs=100,
                                         status=status,
                                         created=config.selector.created_after,
+                                        incremental_cursor=cursor,
                                     )
                                 )
                                 for workflow in workflows
@@ -415,6 +421,7 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                         workflow_id=workflow["id"],
                                         max_runs=100,
                                         created=config.selector.created_after,
+                                        incremental_cursor=cursor,
                                     )
                                 )
                                 for workflow in workflows
@@ -424,6 +431,7 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         yield runs
 
 
+@ocean.on_incremental_resync(ObjectKind.PULL_REQUEST)
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests in the organization's repositories."""
@@ -435,6 +443,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repository_exporter = RestRepositoryExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubPullRequestConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
     pull_request_exporter: AbstractGithubExporter[Any] = (
@@ -471,6 +480,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 max_results=config.selector.effective_max_results,
                                 updated_after=config.selector.updated_after,
                                 closed_after=config.selector.closed_after,
+                                incremental_cursor=cursor,
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
                                 repo=repo if is_graphql_api else None,
                                 exclude_graphql_fields=config.selector.exclude_graphql_fields,
@@ -502,6 +512,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
 
 
+@ocean.on_incremental_resync(ObjectKind.ISSUE)
 @ocean.on_resync(ObjectKind.ISSUE)
 async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all issues from repositories."""
@@ -514,6 +525,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubIssueConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -539,6 +551,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 repo_name=repo["name"],
                                 state=config.selector.state,
                                 labels=config.selector.labels_str,
+                                incremental_cursor=cursor,
                             )
                         )
                     )
@@ -547,6 +560,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield issues
 
 
+@ocean.on_incremental_resync(ObjectKind.RELEASE)
 @ocean.on_resync(ObjectKind.RELEASE)
 async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all releases in the organization's repositories."""
@@ -559,6 +573,7 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubReleaseConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -580,7 +595,9 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     tasks.append(
                         release_exporter.get_paginated_resources(
                             ListReleaseOptions(
-                                organization=org_name, repo_name=repo["name"]
+                                organization=org_name,
+                                repo_name=repo["name"],
+                                incremental_cursor=cursor,
                             )
                         )
                     )
@@ -728,6 +745,7 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield environments
 
 
+@ocean.on_incremental_resync(ObjectKind.DEPLOYMENT)
 @ocean.on_resync(ObjectKind.DEPLOYMENT)
 async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all deployments in the organization."""
@@ -740,6 +758,7 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDeploymentConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -766,6 +785,7 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 task=config.selector.task,
                                 environment=config.selector.environment,
                                 enrich_with_first_commit=config.selector.enrich_with_first_commit,
+                                incremental_cursor=cursor,
                             )
                         )
                     )
@@ -850,6 +870,7 @@ async def resync_deployment_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             yield statuses
 
 
+@ocean.on_incremental_resync(ObjectKind.DEPENDABOT_ALERT)
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
 async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all Dependabot alerts in the organization's repositories."""
@@ -862,6 +883,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDependabotAlertConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -889,6 +911,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 state=list(config.selector.states),
                                 severity=config.selector.severity_str,
                                 ecosystem=config.selector.ecosystems_str,
+                                incremental_cursor=cursor,
                             )
                         )
                     )
@@ -897,6 +920,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     yield alerts
 
 
+@ocean.on_incremental_resync(ObjectKind.CODE_SCANNING_ALERT)
 @ocean.on_resync(ObjectKind.CODE_SCANNING_ALERT)
 async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all code scanning alerts in the organization's repositories."""
@@ -909,6 +933,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
+    cursor = active_incremental_cursor()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -934,6 +959,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 repo_name=repo["name"],
                                 state=config.selector.state,
                                 severity=config.selector.severity,
+                                incremental_cursor=cursor,
                             )
                         )
                     )

@@ -8,7 +8,10 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleIssueOptions, ListIssueOptions
+from port_ocean.core.incremental.strategies import ServerSideTimestampStrategy
 from github.clients.http.base_client import AbstractGithubClient
+
+ISSUE_INCREMENTAL = ServerSideTimestampStrategy(param_key="since")
 
 
 class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
@@ -40,10 +43,12 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         repo_name, organization, params = parse_github_options(dict(options))
+        incremental_cursor = params.pop("incremental_cursor", None)
+        request_params = ISSUE_INCREMENTAL.merge_params(params, incremental_cursor)
 
         async for issues in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{organization}/{repo_name}/issues",
-            params,
+            request_params,
         ):
             logger.info(
                 f"Fetched batch of {len(issues)} issues from repository {repo_name} from {organization}"

@@ -12,6 +12,15 @@ from github.core.options import (
     SingleCodeScanningAlertOptions,
 )
 from github.clients.http.rest_client import GithubRestClient
+from port_ocean.core.incremental.strategies import (
+    ClientSideCutoffStrategy,
+    paginate_with_strategy,
+)
+
+CODE_SCANNING_INCREMENTAL = ClientSideCutoffStrategy(
+    stop_field="updated_at",
+    query_params={"sort": "updated", "direction": "desc"},
+)
 
 
 class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
@@ -45,10 +54,18 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all code scanning alerts in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))
+        incremental_cursor = params.pop("incremental_cursor", None)
+        request_params = CODE_SCANNING_INCREMENTAL.merge_params(
+            params, incremental_cursor
+        )
 
-        async for alerts in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{organization}/{repo_name}/code-scanning/alerts",
-            params,
+        async for alerts in paginate_with_strategy(
+            self.client.send_paginated_request(
+                f"{self.client.base_url}/repos/{organization}/{repo_name}/code-scanning/alerts",
+                request_params,
+            ),
+            cursor=incremental_cursor,
+            strategy=CODE_SCANNING_INCREMENTAL,
         ):
             logger.info(
                 f"Fetched batch of {len(alerts)} code scanning alerts from repository {repo_name} from {organization}"

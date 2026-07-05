@@ -16,29 +16,35 @@ Example — T1 (server-side filter)::
     @ocean.on_incremental_resync(Kind.ISSUE)
     async def incremental_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         cursor = active_incremental_cursor()
-        params = strategy.build_params(cursor)
-        async for batch in client.get_issues(**params):
-            yield batch
+        params = strategy.merge_params(base_params, cursor)
+        async for batch in paginate_with_strategy(
+            client.send_paginated_request(url, params),
+            cursor=cursor,
+            strategy=strategy,
+        ):
+            yield enrich(batch)
 
 Example — T2 (client-side cutoff)::
 
     strategy = ClientSideCutoffStrategy(
-        sort_param="sort=updated&direction=desc",
         stop_field="updated_at",
+        query_params={"sort": "updated", "direction": "desc"},
     )
 
     @ocean.on_incremental_resync(Kind.PULL_REQUEST)
     async def incremental_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         cursor = active_incremental_cursor()
-        async for page in client.get_pull_requests(sort="updated", direction="desc"):
-            items = [item for item in page if not strategy.should_stop(item, cursor)]
-            if items:
-                yield items
-            if strategy.page_exhausted(page, cursor):
-                break
+        params = strategy.merge_params(base_params, cursor)
+        async for batch in paginate_with_strategy(
+            client.send_paginated_request(url, params),
+            cursor=cursor,
+            strategy=strategy,
+        ):
+            yield enrich(batch)
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
 
@@ -60,6 +66,24 @@ class IncrementalStrategy(ABC):
         """
         ...
 
+    def merge_params(
+        self, base_params: dict[str, Any], cursor: datetime | None
+    ) -> dict[str, Any]:
+        """Merge :meth:`build_params` into *base_params*."""
+        return {**base_params, **self.build_params(cursor)}
+
+    def filter_page(
+        self, page: list[dict[str, Any]], cursor: datetime | None
+    ) -> list[dict[str, Any]]:
+        """Return items to yield from *page* (T1 default: pass through)."""
+        return page
+
+    def should_break_pagination(
+        self, page: list[dict[str, Any]], cursor: datetime | None
+    ) -> bool:
+        """Return ``True`` when paging should stop (T1 default: never)."""
+        return False
+
 
 class ServerSideTimestampStrategy(IncrementalStrategy):
     """T1 strategy: injects the cursor as a single URL query parameter.
@@ -71,11 +95,19 @@ class ServerSideTimestampStrategy(IncrementalStrategy):
         param_key: The query-parameter name expected by the API
                    (e.g. ``"since"``, ``"minTime"``, ``"criteria.modifiedSince"``).
         date_format: Optional ``strftime`` format string.  Defaults to ISO 8601.
+        value_prefix: Optional prefix prepended to the formatted value
+                      (e.g. ``">="`` for GitHub workflow-run ``created`` param).
     """
 
-    def __init__(self, param_key: str, date_format: str | None = None) -> None:
+    def __init__(
+        self,
+        param_key: str,
+        date_format: str | None = None,
+        value_prefix: str = "",
+    ) -> None:
         self._param_key = param_key
         self._date_format = date_format
+        self._value_prefix = value_prefix
 
     def build_params(self, cursor: datetime | None) -> dict[str, Any]:
         if cursor is None:
@@ -85,7 +117,7 @@ class ServerSideTimestampStrategy(IncrementalStrategy):
             if self._date_format
             else cursor.isoformat()
         )
-        return {self._param_key: value}
+        return {self._param_key: f"{self._value_prefix}{value}"}
 
 
 class ClientSideCutoffStrategy(IncrementalStrategy):
@@ -96,19 +128,40 @@ class ClientSideCutoffStrategy(IncrementalStrategy):
     become older than the cursor.
 
     Args:
-        sort_param: The query-parameter name used to request descending order
-                    (e.g. ``"sort=updated&direction=desc"``).
         stop_field: The field name on each API response item that holds its
                     timestamp (e.g. ``"updated_at"``).
+        query_params: Query parameters to request descending time order
+                      (e.g. ``{"sort": "updated", "direction": "desc"}``).
+                      Omit when the API already returns newest-first.
     """
 
-    def __init__(self, sort_param: str, stop_field: str) -> None:
-        self._sort_param = sort_param
+    def __init__(
+        self,
+        *,
+        stop_field: str,
+        query_params: dict[str, Any] | None = None,
+    ) -> None:
         self._stop_field = stop_field
+        self._query_params = query_params or {}
 
     def build_params(self, cursor: datetime | None) -> dict[str, Any]:
-        """Return the sort parameter regardless of whether a cursor exists."""
-        return {self._sort_param: True}
+        if cursor is None:
+            return {}
+        return dict(self._query_params)
+
+    def filter_page(
+        self, page: list[dict[str, Any]], cursor: datetime | None
+    ) -> list[dict[str, Any]]:
+        if cursor is None:
+            return page
+        return [item for item in page if not self.should_stop(item, cursor)]
+
+    def should_break_pagination(
+        self, page: list[dict[str, Any]], cursor: datetime | None
+    ) -> bool:
+        if cursor is None:
+            return False
+        return self.page_exhausted(page, cursor)
 
     def should_stop(self, item: dict[str, Any], cursor: datetime | None) -> bool:
         """Return ``True`` when *item* predates *cursor* and pagination should stop."""
@@ -130,3 +183,23 @@ class ClientSideCutoffStrategy(IncrementalStrategy):
         all subsequent pages will be older too.
         """
         return any(self.should_stop(item, cursor) for item in page)
+
+
+async def paginate_with_strategy(
+    pages: AsyncIterator[list[dict[str, Any]]],
+    *,
+    cursor: datetime | None,
+    strategy: IncrementalStrategy | None,
+) -> AsyncIterator[list[dict[str, Any]]]:
+    """Walk paginated API pages applying strategy filter and early-stop."""
+    if strategy is None:
+        async for page in pages:
+            yield page
+        return
+
+    async for page in pages:
+        batch = strategy.filter_page(page, cursor)
+        if batch:
+            yield batch
+        if strategy.should_break_pagination(page, cursor):
+            break

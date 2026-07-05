@@ -17,6 +17,12 @@ from github.helpers.utils import (
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import SingleDeploymentOptions, ListDeploymentsOptions
+from port_ocean.core.incremental.strategies import (
+    ClientSideCutoffStrategy,
+    paginate_with_strategy,
+)
+
+DEPLOYMENT_INCREMENTAL = ClientSideCutoffStrategy(stop_field="created_at")
 
 
 BATCH_CONCURRENCY_LIMIT = 10
@@ -48,12 +54,18 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_name, organization, params = parse_github_options(dict(options))
         repo = cast(str, repo_name)
+        incremental_cursor = params.pop("incremental_cursor", None)
         enrich_first_commit = bool(params.pop("enrich_with_first_commit", False))
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo}/deployments"
 
         if not enrich_first_commit:
-            async for deployments in self.client.send_paginated_request(
-                endpoint, params
+            request_params = DEPLOYMENT_INCREMENTAL.merge_params(
+                params, incremental_cursor
+            )
+            async for deployments in paginate_with_strategy(
+                self.client.send_paginated_request(endpoint, request_params),
+                cursor=incremental_cursor,
+                strategy=DEPLOYMENT_INCREMENTAL,
             ):
                 logger.info(
                     f"Fetched batch of {len(deployments)} deployments from repository {repo} from {organization}"
