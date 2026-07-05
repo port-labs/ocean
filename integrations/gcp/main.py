@@ -1,13 +1,11 @@
 import asyncio
-import http
 import os
 import tempfile
 import typing
 from asyncio import BoundedSemaphore
-import gcp_core.webhook_processors.asset_feed_processor as _feed_processor
-from gcp_core.webhook_processors.asset_feed_processor import AssetFeedProcessor
+import gcp_core.webhooks.asset_feed_processor as _feed_processor
+from gcp_core.webhooks.asset_feed_processor import AssetFeedProcessor
 
-from fastapi import Request, Response
 from loguru import logger
 
 import gcp_core.clients as clients
@@ -16,20 +14,11 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.signal import signal_handler
 
-from gcp_core.errors import (
-    AssetHasNoProjectAncestorError,
-    GotFeedCreatedSuccessfullyMessageError,
-)
-from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
 from gcp_core.overrides import (
     GCPCloudResourceSelector,
-    GCPPortAppConfig,
-    ProtoConfig,
 )
-from port_ocean.context.event import event
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
-    feed_event_to_resource,
     list_all_subscriptions_per_project,
     list_all_topics_per_project,
     search_all_folders,
@@ -197,150 +186,6 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         async for resources_batch in iterator_resync_method:
             yield resources_batch
-
-
-async def process_realtime_event(
-    asset_type: str,
-    asset_name: str,
-    asset_project: str,
-    asset_data: dict[str, typing.Any],
-    config: ProtoConfig,
-) -> None:
-    """
-    This function runs in the background to ensure the real-time event endpoints
-    do not time out while waiting for rate-limited operations to complete. It is triggered
-    by the real-time events handler when a new event is received.
-
-    PROJECT_V3_GET_REQUESTS_RATE_LIMITER is provided as a static value instead of being dynamic because all real-time events
-    needs to share the same instance of the limiter and it had to be instantiated on start for this to be possible.
-    The dynamic initialization of the limiter will make it impossible to share the same instance across all event context.
-    """
-    try:
-        logger.debug(
-            f"Processing real-time event for {asset_type} : {asset_name} in the background"
-        )
-        asset_resource_data = await feed_event_to_resource(
-            asset_type,
-            asset_name,
-            asset_project,
-            asset_data,
-            PROJECT_V3_GET_REQUESTS_RATE_LIMITER,
-            PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE,
-            config,
-        )
-        if asset_data.get("deleted") is True:
-            logger.info(
-                f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
-            )
-            await ocean.unregister_raw(asset_type, [asset_resource_data])
-        else:
-            logger.info(
-                f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
-            )
-            await ocean.register_raw(asset_type, [asset_resource_data])
-    except AssetHasNoProjectAncestorError:
-        logger.exception(
-            f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
-        )
-    except Exception as e:
-        logger.exception(f"Got error {e} while processing a real time event")
-
-
-@ocean.router.post("/events")
-async def feed_events_callback(
-    request: Request,
-) -> Response:
-    """
-    This is the real-time events handler. The subscription which is connected to the Feeds Topic will send events here once
-    the events are inserted into the Assets Inventory.
-
-    NOTICE that there might be a 10 minute delay here, as documented:
-    https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#limitations
-
-    The request has a message, which contains a 64based data of the asset.
-    The message schema: https://cloud.google.com/pubsub/docs/push?_gl=1*thv8i4*_ga*NDQwMTA2MzM5LjE3MTEyNzQ2MDY.*_ga_WH2QY8WWF5*MTcxMzA3NzU3Ni40My4xLjE3MTMwNzgxMjUuMC4wLjA.&_ga=2.161162040.-440106339.1711274606&_gac=1.184150868.1711468720.CjwKCAjw5ImwBhBtEiwAFHDZx1mm-z19UdKpEARcG2-F_TXXbXw7j7_gVPKiQ9Z5KcpsvXF1fFb_MBoCUFkQAvD_BwE#receive_push
-    The Asset schema: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#creating_feeds
-
-    The handler will reject the request if the background processing threshold is reached, to avoid overloading the system.
-    The subscription has a retry policy, so the event will be retried later if it's rejected.
-    Documentation: https://cloud.google.com/pubsub/docs/handling-failures#subscription_retry_policy
-    """
-    if ocean.event_listener_type == "ONCE":
-        logger.warning(
-            "Live events are not supported for the 'ONCE' event listener type. "
-            "Remove live event configuration from the integration to prevent this warning"
-        )
-        return Response(
-            status_code=http.HTTPStatus.BAD_REQUEST,
-            content="Client disconnected.",
-        )
-
-    try:
-        request_json = await request.json()
-    except Exception as e:
-        logger.warning(
-            f"Client raised exception {str(e)} before the request could be processed."
-        )
-        return Response(
-            status_code=http.HTTPStatus.BAD_REQUEST, content="Client disconnected."
-        )
-    try:
-        if (
-            len(
-                [
-                    task
-                    for task in asyncio.all_tasks()
-                    if "process_realtime_event" in str(task)
-                ]
-            )
-            > BACKGROUND_TASK_THRESHOLD
-        ):
-            logger.debug(
-                "Background processing threshold reached. Closing incoming real-time event"
-            )
-            return Response(status_code=http.HTTPStatus.TOO_MANY_REQUESTS)
-        asset_data = await parse_asset_data(request_json["message"]["data"])
-        asset_type = asset_data["asset"]["assetType"]
-        asset_name = asset_data["asset"]["name"]
-        asset_project = get_project_name_from_ancestors(
-            asset_data["asset"]["ancestors"]
-        )
-        logger.info(
-            f"Got Real-Time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
-        )
-        resource_configs = typing.cast(
-            GCPPortAppConfig, event.port_app_config
-        ).resources
-        matching_resource_configs = [
-            resource_config
-            for resource_config in resource_configs
-            if (resource_config.kind == asset_type)
-        ]
-        for matching_resource_config in matching_resource_configs:
-            selector = matching_resource_config.selector
-            config = ProtoConfig(
-                preserving_proto_field_name=bool(
-                    getattr(selector, "preserve_api_response_case_style", False)
-                )
-            )
-            asyncio.create_task(
-                process_realtime_event(
-                    asset_type, asset_name, asset_project, asset_data, config
-                )
-            )
-            logger.info(
-                f"Added background task to process real-time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
-            )
-    except AssetHasNoProjectAncestorError:
-        logger.exception(
-            f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
-        )
-    except GotFeedCreatedSuccessfullyMessageError:
-        logger.info("Assets Feed created successfully")
-    except Exception as e:
-        logger.exception(f"Got error {str(e)} while handling a real time event")
-        return Response(status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR)
-    return Response(status_code=200)
 
 
 ocean.add_webhook_processor("/events", AssetFeedProcessor)

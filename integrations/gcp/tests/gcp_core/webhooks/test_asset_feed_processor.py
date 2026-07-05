@@ -10,7 +10,6 @@ from port_ocean.context.ocean import (
     initialize_port_ocean_context,
 )
 from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
-from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 
 ASSET_TYPE = "compute.googleapis.com/Instance"
@@ -25,19 +24,16 @@ def _encode_asset_data(asset_data: dict[str, Any]) -> str:
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> Generator[None, None, None]:
-    try:
-        mock_app: MagicMock = MagicMock()
-        mock_app.config.integration.config = {
-            "search_all_resources_per_minute_quota": 100,
-            "encoded_adc_configuration": None,
-        }
-        mock_app.integration_router = MagicMock()
-        mock_app.port_client = MagicMock()
-        mock_app.cache_provider = AsyncMock()
-        mock_app.cache_provider.get.return_value = None
-        initialize_port_ocean_context(mock_app)
-    except PortOceanContextAlreadyInitializedError:
-        pass
+    mock_app: MagicMock = MagicMock()
+    mock_app.config.integration.config = {
+        "search_all_resources_per_minute_quota": 100,
+        "encoded_adc_configuration": None,
+    }
+    mock_app.integration_router = MagicMock()
+    mock_app.port_client = MagicMock()
+    mock_app.cache_provider = AsyncMock()
+    mock_app.cache_provider.get.return_value = None
+    initialize_port_ocean_context(mock_app)
     yield
     ocean_context_module._port_ocean = PortOceanContext(None)
 
@@ -197,6 +193,14 @@ class TestHandleEvent:
     ) -> None:
         with (
             patch(
+                "gcp_core.webhooks.asset_feed_processor.rate_limiter",
+                new=MagicMock(),
+            ),
+            patch(
+                "gcp_core.webhooks.asset_feed_processor.semaphore",
+                new=MagicMock(),
+            ),
+            patch(
                 "gcp_core.webhooks.asset_feed_processor.parse_asset_data",
                 new=AsyncMock(return_value=asset_payload),
             ),
@@ -227,6 +231,14 @@ class TestHandleEvent:
         }
 
         with (
+            patch(
+                "gcp_core.webhooks.asset_feed_processor.rate_limiter",
+                new=MagicMock(),
+            ),
+            patch(
+                "gcp_core.webhooks.asset_feed_processor.semaphore",
+                new=MagicMock(),
+            ),
             patch(
                 "gcp_core.webhooks.asset_feed_processor.parse_asset_data",
                 new=AsyncMock(return_value=deleted_payload),

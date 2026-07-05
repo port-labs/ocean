@@ -26,6 +26,22 @@ semaphore: BoundedSemaphore | None = None
 
 
 class AssetFeedProcessor(AbstractWebhookProcessor):
+    """
+    This is the real-time events handler. The subscription which is connected to the Feeds Topic will send events here once
+    the events are inserted into the Assets Inventory.
+
+    NOTICE that there might be a 10 minute delay here, as documented:
+    https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#limitations
+
+    The request has a message, which contains a 64based data of the asset.
+    The message schema: https://cloud.google.com/pubsub/docs/push?_gl=1*thv8i4*_ga*NDQwMTA2MzM5LjE3MTEyNzQ2MDY.*_ga_WH2QY8WWF5*MTcxMzA3NzU3Ni40My4xLjE3MTMwNzgxMjUuMC4wLjA.&_ga=2.161162040.-440106339.1711274606&_gac=1.184150868.1711468720.CjwKCAjw5ImwBhBtEiwAFHDZx1mm-z19UdKpEARcG2-F_TXXbXw7j7_gVPKiQ9Z5KcpsvXF1fFb_MBoCUFkQAvD_BwE#receive_push
+    The Asset schema: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#creating_feeds
+
+    The handler will reject the request if the background processing threshold is reached, to avoid overloading the system.
+    The subscription has a retry policy, so the event will be retried later if it's rejected.
+    Documentation: https://cloud.google.com/pubsub/docs/handling-failures#subscription_retry_policy
+    """
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             await parse_asset_data(event.payload["message"]["data"])
@@ -44,7 +60,8 @@ class AssetFeedProcessor(AbstractWebhookProcessor):
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return "message" in payload and "data" in payload["message"]
+        message = payload.get("message")
+        return isinstance(message, dict) and "data" in message
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -77,6 +94,11 @@ class AssetFeedProcessor(AbstractWebhookProcessor):
         logger.info(
             f"Processing real-time event for {asset_type}: {asset_name} in {asset_project}"
         )
+
+        if rate_limiter is None or semaphore is None:
+            raise RuntimeError(
+                "Rate limiter and semaphore must be initialized before processing events."
+            )
 
         asset_resource_data = await feed_event_to_resource(
             asset_type,
