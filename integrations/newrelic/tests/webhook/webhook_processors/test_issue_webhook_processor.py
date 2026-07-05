@@ -89,7 +89,7 @@ async def test_handle_event_still_syncs_issue_when_enrichment_fails(
         "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
     ) as mock_handler_cls:
         mock_handler = mock_handler_cls.return_value
-        mock_handler.list_entities_by_guids = AsyncMock(
+        mock_handler.get_entity = AsyncMock(
             side_effect=RuntimeError("GraphQL unavailable")
         )
         results = await processor.handle_event(issue_payload, alert_resource_config)

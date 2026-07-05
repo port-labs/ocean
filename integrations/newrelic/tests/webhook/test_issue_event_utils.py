@@ -1,4 +1,3 @@
-import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -13,7 +12,6 @@ from newrelic_integration.webhook.issue_event_utils import (
     enrich_issue_entity_relations,
     fetch_entities_for_resource,
     get_entity_kinds,
-    get_issue_event_entities,
     get_issue_kinds,
 )
 from tests.webhook.helpers import port_resource_config
@@ -50,14 +48,14 @@ async def test_enrich_issue_entity_relations(
         "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
     ) as mock_handler_cls:
         mock_handler = mock_handler_cls.return_value
-        mock_handler.list_entities_by_guids = AsyncMock(
-            return_value=[{"type": "APM_APPLICATION", "guid": "entity-guid-1"}]
+        mock_handler.get_entity = AsyncMock(
+            return_value={"type": "APM_APPLICATION", "guid": "entity-guid-1"}
         )
         async with event_context("test_event") as event:
             event.port_app_config = port_app_config
             await enrich_issue_entity_relations(issue_record)
 
-    mock_handler.list_entities_by_guids.assert_awaited_once_with(["entity-guid-1"])
+    mock_handler.get_entity.assert_awaited_once_with(entity_guid="entity-guid-1")
     relations = issue_record["__APM_APPLICATION"]
     assert isinstance(relations, dict)
     assert relations["entity_guids"] == ["entity-guid-1"]
@@ -73,8 +71,8 @@ async def test_enrich_issue_entity_relations_skips_unknown_entity_type(
         "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
     ) as mock_handler_cls:
         mock_handler = mock_handler_cls.return_value
-        mock_handler.list_entities_by_guids = AsyncMock(
-            return_value=[{"type": "HOST", "guid": "entity-guid-1"}]
+        mock_handler.get_entity = AsyncMock(
+            return_value={"type": "HOST", "guid": "entity-guid-1"}
         )
         async with event_context("test_event") as event:
             event.port_app_config = port_app_config
@@ -94,36 +92,13 @@ async def test_enrich_issue_entity_relations_continues_on_fetch_failure() -> Non
         "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
     ) as mock_handler_cls:
         mock_handler = mock_handler_cls.return_value
-        mock_handler.list_entities_by_guids = AsyncMock(
+        mock_handler.get_entity = AsyncMock(
             side_effect=RuntimeError("GraphQL unavailable")
         )
         await enrich_issue_entity_relations(issue_record)
 
     assert issue_record["issueId"] == "issue-1"
     assert "__APM_APPLICATION" not in issue_record
-
-
-@pytest.mark.asyncio
-async def test_get_issue_event_entities_deduplicates_concurrent_fetches() -> None:
-    with patch(
-        "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
-    ) as mock_handler_cls:
-        mock_handler = mock_handler_cls.return_value
-        mock_handler.list_entities_by_guids = AsyncMock(
-            return_value=[{"type": "APM_APPLICATION", "guid": "entity-guid-1"}]
-        )
-
-        first_fetch, second_fetch = await asyncio.gather(
-            get_issue_event_entities(["entity-guid-1"]),
-            get_issue_event_entities(["entity-guid-1"]),
-        )
-
-    mock_handler.list_entities_by_guids.assert_awaited_once_with(["entity-guid-1"])
-    assert (
-        first_fetch
-        == second_fetch
-        == {"entity-guid-1": {"type": "APM_APPLICATION", "guid": "entity-guid-1"}}
-    )
 
 
 @pytest.mark.asyncio
@@ -139,8 +114,8 @@ async def test_fetch_entities_for_resource_filters_by_type(
         ) as mock_issues_cls,
     ):
         mock_handler = mock_handler_cls.return_value
-        mock_handler.list_entities_by_guids_and_filter = AsyncMock(
-            return_value=[
+        mock_handler.get_entity = AsyncMock(
+            side_effect=[
                 {"type": "APM_APPLICATION", "guid": "entity-guid-1"},
                 {"type": "APM_APPLICATION", "guid": "entity-guid-2"},
             ]
@@ -154,11 +129,7 @@ async def test_fetch_entities_for_resource_filters_by_type(
             ["entity-guid-1", "entity-guid-2"],
         )
 
-    mock_handler.list_entities_by_guids_and_filter.assert_awaited_once_with(
-        ["entity-guid-1", "entity-guid-2"],
-        "type = 'APM_APPLICATION'",
-        None,
-    )
+    assert mock_handler.get_entity.await_count == 2
     assert len(entities) == 2
     assert entities[0]["__open_issues_count"] == 2
     assert entities[1]["__open_issues_count"] == 2
@@ -184,7 +155,9 @@ async def test_fetch_entities_for_resource_skips_non_matching_types() -> None:
         "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
     ) as mock_handler_cls:
         mock_handler = mock_handler_cls.return_value
-        mock_handler.list_entities_by_guids_and_filter = AsyncMock(return_value=[])
+        mock_handler.get_entity = AsyncMock(
+            return_value={"type": "APM_APPLICATION", "guid": "entity-guid-1"}
+        )
 
         entities = await fetch_entities_for_resource(
             resource_config,
@@ -195,7 +168,7 @@ async def test_fetch_entities_for_resource_skips_non_matching_types() -> None:
 
 
 @pytest.mark.asyncio
-async def test_fetch_entities_for_resource_uses_entity_query_filter_without_newrelic_types() -> (
+async def test_fetch_entities_for_resource_includes_entities_without_newrelic_types() -> (
     None
 ):
     resource_config = NewRelicCustomResourceConfig(
@@ -211,8 +184,11 @@ async def test_fetch_entities_for_resource_uses_entity_query_filter_without_newr
         "newrelic_integration.webhook.issue_event_utils.EntitiesHandler"
     ) as mock_handler_cls:
         mock_handler = mock_handler_cls.return_value
-        mock_handler.list_entities_by_guids_and_filter = AsyncMock(
-            return_value=[{"type": "AWSEC2INSTANCE", "guid": "entity-guid-1"}]
+        mock_handler.get_entity = AsyncMock(
+            side_effect=[
+                {"type": "AWSEC2INSTANCE", "guid": "entity-guid-1"},
+                RuntimeError("Entity not found"),
+            ]
         )
 
         entities = await fetch_entities_for_resource(
@@ -220,11 +196,6 @@ async def test_fetch_entities_for_resource_uses_entity_query_filter_without_newr
             ["entity-guid-1", "entity-guid-2"],
         )
 
-    mock_handler.list_entities_by_guids_and_filter.assert_awaited_once_with(
-        ["entity-guid-1", "entity-guid-2"],
-        "type IN ('AWSEC2INSTANCE')",
-        None,
-    )
     assert entities == [{"type": "AWSEC2INSTANCE", "guid": "entity-guid-1"}]
 
 

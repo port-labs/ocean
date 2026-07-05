@@ -19,18 +19,6 @@ from newrelic_integration.utils import (
 from newrelic_integration.core.errors import NewRelicNotFoundError
 
 
-def build_entity_search_query_for_guids(
-    entity_guids: list[str],
-    entity_query_filter: str,
-) -> str | None:
-    unique_guids = list(dict.fromkeys(guid for guid in entity_guids if guid))
-    if not unique_guids:
-        return None
-
-    guid_list = ", ".join(f"'{guid}'" for guid in unique_guids)
-    return f"id IN ({guid_list}) AND ({entity_query_filter})"
-
-
 class EntitiesHandler:
     def __init__(self, http_client: httpx.AsyncClient | None = None):
         self.http_client = http_client or http_async_client
@@ -100,9 +88,6 @@ class EntitiesHandler:
     async def list_entities_by_guids(
         self, entity_guids: list[str]
     ) -> list[dict[Any, Any]]:
-        if not entity_guids:
-            return []
-
         # entities api doesn't support pagination
         query = await render_query(
             LIST_ENTITIES_BY_GUIDS_QUERY, entity_guids=entity_guids
@@ -116,48 +101,6 @@ class EntitiesHandler:
         entities = response.get("data", {}).get("actor", {}).get("entities", [])
         for entity in entities:
             format_tags(entity)
-        return entities
-
-    async def list_entities_by_guids_and_filter(
-        self,
-        entity_guids: list[str],
-        entity_query_filter: str,
-        extra_entity_properties: str | None = None,
-    ) -> list[dict[Any, Any]]:
-        combined_query_filter = build_entity_search_query_for_guids(
-            entity_guids,
-            entity_query_filter,
-        )
-        if combined_query_filter is None:
-            return []
-
-        async def extract_entities(
-            response: Optional[Dict[str, Any]] = None,
-        ) -> Tuple[Optional[str], list[Dict[str, Any]]]:
-            if not response:
-                return None, []
-
-            results = (
-                response.get("data", {})
-                .get("actor", {})
-                .get("entitySearch", {})
-                .get("results", {})
-            )
-            return results.get("nextCursor"), results.get("entities", [])
-
-        entities: list[dict[Any, Any]] = []
-        async for entity in send_paginated_graph_api_request(
-            self.http_client,
-            LIST_ENTITIES_WITH_FILTER_QUERY,
-            request_type="list_entities_by_guids_and_filter",
-            extract_data=extract_entities,
-            entity_query_filter=combined_query_filter,
-            extra_entity_properties=extra_entity_properties or "",
-        ):
-            if entity:
-                self._format_tags(entity)
-                entities.append(entity)
-
         return entities
 
     @staticmethod
