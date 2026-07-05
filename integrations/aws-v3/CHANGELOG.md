@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.15.1-beta (2026-07-05)
+
+
+### Improvements
+
+- Typing for models uses new syntax rather than the deprecated format
+
+
 ## 2.15.0-beta (2026-07-02)
 
 
