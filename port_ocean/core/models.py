@@ -328,7 +328,7 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
 
     @property
     def buffer_utilization_key(self) -> str:
-        return self.action_type
+        return f"{self.id}-{self.action_type}"
 
     @property
     def is_in_progress(self) -> bool:
