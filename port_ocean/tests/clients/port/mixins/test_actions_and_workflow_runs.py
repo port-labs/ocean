@@ -1,5 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from typing import Any
+
 import pytest
 from port_ocean.clients.port.mixins.actions_and_workflow_runs import (
     ActionsAndWorkflowRunsClientMixin,
@@ -16,9 +18,8 @@ EXTERNAL_ID = "gl_42_99"
 
 def make_run() -> WorkflowNodeRun:
     return WorkflowNodeRun(
-        identifier="run-1",
+        id="run-1",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
-        installationId="test-installation-id",
         config=WorkflowIntegrationActionConfig(
             type="INTEGRATION_ACTION",
             installationId="test-installation-id",
@@ -36,7 +37,6 @@ def make_run() -> WorkflowNodeRun:
         {
             "identifier": "wfnr_claim",
             "status": WorkflowNodeRunStatus.IN_PROGRESS,
-            "installationId": "github-actions",
             "config": {
                 "type": "INTEGRATION_ACTION",
                 "installationId": "github-actions",
@@ -49,7 +49,6 @@ def make_run() -> WorkflowNodeRun:
             "identifier": "wfnr_lookup",
             "status": WorkflowNodeRunStatus.IN_PROGRESS,
             "output": {"workflowRunUrl": "https://github.com/x"},
-            "externalRunId": "gh_1",
             "node": {
                 "config": {
                     "type": "INTEGRATION_ACTION",
@@ -62,7 +61,7 @@ def make_run() -> WorkflowNodeRun:
         },
     ],
 )
-def test_workflow_node_run_parses_claim_and_lookup_shapes(raw: dict) -> None:
+def test_workflow_node_run_parses_claim_and_lookup_shapes(raw: dict[str, Any]) -> None:
     run = WorkflowNodeRun.parse_obj(raw)
     assert run.action_type == "dispatch_workflow"
 
@@ -111,6 +110,8 @@ async def test_claim_pending_runs(
         assert await actions_client.claim_pending_runs(
             limit=10, visibility_timeout_ms=1
         ) == [wf_run, action_run]
+        assert mock_workflow.await_args is not None
+        assert mock_actions.await_args is not None
         assert mock_workflow.await_args.kwargs["limit"] == 10
         assert mock_actions.await_args.kwargs["limit"] == 9
 
