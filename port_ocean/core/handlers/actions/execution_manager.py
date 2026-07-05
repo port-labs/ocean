@@ -9,6 +9,7 @@ from port_ocean.core.handlers.queue.local_queue import LocalQueue
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
+from port_ocean.context.event import EventType, event_context
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.execution_manager import (
     ActionExecutionError,
@@ -442,66 +443,75 @@ class ExecutionManager:
         """
         Execute a run using its registered executor.
         """
-        with logger.contextualize(run_id=run.id, action=run.action_type):
-            try:
-                executor = self._actions_executors[run.action_type]
-                while (
-                    await executor.is_close_to_rate_limit()
-                    and not self._is_shutting_down.is_set()
-                ):
-                    backoff_seconds = min(
-                        RATE_LIMIT_MAX_BACKOFF_SECONDS,
-                        await executor.get_remaining_seconds_until_rate_limit(),
-                    )
-                    logger.info(
-                        "Encountered rate limit, will attempt to re-run in {backoff_seconds} seconds",
-                        backoff_seconds=backoff_seconds,
-                    )
-                    msg = f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds"
-                    await ocean.port_client.post_run_log(
-                        run, msg, level="WARNING", should_raise=False
-                    )
-                    await asyncio.sleep(backoff_seconds)
+        async with event_context(
+            EventType.ACTION_RUN,
+            trigger_type="machine",
+            attributes={
+                "run_id": run.id,
+                "action_type": run.action_type,
+                "run_kind": run.run_kind.value,
+            },
+        ):
+            with logger.contextualize(run_id=run.id, action=run.action_type):
+                try:
+                    executor = self._actions_executors[run.action_type]
+                    while (
+                        await executor.is_close_to_rate_limit()
+                        and not self._is_shutting_down.is_set()
+                    ):
+                        backoff_seconds = min(
+                            RATE_LIMIT_MAX_BACKOFF_SECONDS,
+                            await executor.get_remaining_seconds_until_rate_limit(),
+                        )
+                        logger.info(
+                            "Encountered rate limit, will attempt to re-run in {backoff_seconds} seconds",
+                            backoff_seconds=backoff_seconds,
+                        )
+                        msg = f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds"
+                        await ocean.port_client.post_run_log(
+                            run, msg, level="WARNING", should_raise=False
+                        )
+                        await asyncio.sleep(backoff_seconds)
 
-                if self._is_shutting_down.is_set():
+                    if self._is_shutting_down.is_set():
+                        logger.warning(
+                            "Shutting down execution manager, skipping execution"
+                        )
+                        return
+
+                    await ocean.port_client.acknowledge_run(run)
+                    logger.info("Run acknowledged successfully")
+                except RunAlreadyAcknowledgedError:
                     logger.warning(
-                        "Shutting down execution manager, skipping execution"
+                        "Run already being processed by another worker, skipping execution",
                     )
                     return
+                except Exception as e:
+                    logger.exception(
+                        "Error occurred while trying to acknowledge run",
+                        error=str(e),
+                    )
+                    raise
 
-                await ocean.port_client.acknowledge_run(run)
-                logger.info("Run acknowledged successfully")
-            except RunAlreadyAcknowledgedError:
-                logger.warning(
-                    "Run already being processed by another worker, skipping execution",
-                )
-                return
-            except Exception as e:
-                logger.exception(
-                    "Error occurred while trying to acknowledge run",
-                    error=str(e),
-                )
-                raise
+                error_summary: str | None = None
+                try:
+                    start_time = time.monotonic()
+                    await executor.execute(run)
+                    logger.info(
+                        "Run executed successfully",
+                        elapsed_ms=(time.monotonic() - start_time) * 1000,
+                    )
+                except ActionExecutionError as e:
+                    logger.warning("Action run failed: {}", str(e))
+                    error_summary = str(e)
+                except Exception as e:
+                    logger.exception("Error executing run", error=str(e))
+                    error_summary = f"Failed to execute run: {str(e)}"
 
-            error_summary: str | None = None
-            try:
-                start_time = time.monotonic()
-                await executor.execute(run)
-                logger.info(
-                    "Run executed successfully",
-                    elapsed_ms=(time.monotonic() - start_time) * 1000,
-                )
-            except ActionExecutionError as e:
-                logger.warning("Action run failed: {}", str(e))
-                error_summary = str(e)
-            except Exception as e:
-                logger.exception("Error executing run", error=str(e))
-                error_summary = f"Failed to execute run: {str(e)}"
-
-            if error_summary:
-                await ocean.port_client.report_run_completed(
-                    run, success=False, message=error_summary, should_raise=False
-                )
+                if error_summary:
+                    await ocean.port_client.report_run_completed(
+                        run, success=False, message=error_summary, should_raise=False
+                    )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None] | None) -> None:
         """

@@ -164,10 +164,14 @@ class LakehouseEventType(StrEnum):
     LIVE_EVENT = "live-event"
 
 
-class ActionRunStatus(StrEnum):
+class RunStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
+
+
+# TODO: Remove this once the ActionRunStatus is removed from the integrations code
+ActionRunStatus = RunStatus
 
 
 class WorkflowNodeRunStatus(StrEnum):
@@ -286,7 +290,7 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
         extra = Extra.allow
 
     id: str = Field(alias="identifier")
-    node_uid: str = Field(alias="nodeUid")
+    node_uid: str | None = Field(default=None, alias="nodeUid")
     status: WorkflowNodeRunStatus
     config: WorkflowIntegrationActionConfig | None = None
     node: WorkflowNode | None = None
@@ -325,7 +329,7 @@ class WorkflowNodeRun(BaseModel, IntegrationRun):
 
     @property
     def buffer_utilization_key(self) -> str:
-        return self.node_uid
+        return self.node_uid or self.id
 
     @property
     def is_in_progress(self) -> bool:

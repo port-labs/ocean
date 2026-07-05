@@ -4,11 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from port_ocean.core.models import (
-    WorkflowIntegrationActionConfig,
-    WorkflowNodeRun,
-    WorkflowNodeRunStatus,
-)
+from port_ocean.core.models import WorkflowNodeRun, WorkflowNodeRunStatus
 
 from gitlab.actions.trigger_pipeline_executor import TriggerPipelineExecutor
 from gitlab.helpers.exceptions import (
@@ -27,18 +23,14 @@ PIPELINE_RESPONSE = {
 
 def make_run(execution_properties: dict[str, Any]) -> WorkflowNodeRun:
     return WorkflowNodeRun(
-        id="run-1",
-        node_uid="test-node-uid",
+        identifier="run-1",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
-        node=WorkflowNodeRun.WorkflowNode(
-            config=WorkflowIntegrationActionConfig(
-                type="INTEGRATION_ACTION",
-                installationId="test-installation-id",
-                integrationProvider="gitlab",
-                integrationInvocationType="trigger_pipeline",
-                integrationActionExecutionProperties=execution_properties,
-            ),
-        ),
+        node={
+            "config": {
+                "integrationInvocationType": "trigger_pipeline",
+                "integrationActionExecutionProperties": execution_properties,
+            },
+        },
     )
 
 
